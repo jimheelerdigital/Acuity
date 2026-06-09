@@ -16,6 +16,7 @@ const LINKS: [string, string][] = [
   ["Features", "#features"],
   ["How it works", "#how"],
   ["Pricing", "#pricing"],
+  ["Blog", "/blog"],
 ];
 
 export function MarketingNav() {
@@ -70,7 +71,7 @@ export function MarketingNav() {
           </button>
 
           <a
-            href="#start"
+            href="/start"
             className="rounded-acuity-pill bg-acuity-grad-primary px-[18px] py-2.5 font-sans text-[14.5px] font-bold text-white shadow-acuity-glow-soft"
           >
             Start free trial

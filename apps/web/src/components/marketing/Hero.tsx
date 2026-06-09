@@ -82,7 +82,7 @@ export function Hero() {
 
             <div className="flex flex-wrap items-center gap-3">
               <a
-                href="#start"
+                href="/start"
                 className="inline-flex items-center gap-2.5 rounded-acuity-pill border-[0.5px] border-white/25 bg-acuity-grad-primary px-[26px] py-[15px] font-sans text-[16px] font-bold tracking-[-0.2px] text-white shadow-acuity-glow-primary transition-transform hover:-translate-y-0.5"
               >
                 Start free trial

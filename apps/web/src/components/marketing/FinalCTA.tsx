@@ -24,7 +24,7 @@ export function FinalCTA() {
             Your first entry takes one minute. Your first pattern shows up by Sunday.
           </p>
           <a
-            href="#"
+            href="/start"
             className="inline-flex items-center gap-2.5 rounded-acuity-pill bg-white px-8 py-4 font-sans text-[17px] font-bold transition-transform hover:-translate-y-0.5"
             style={{ color: "var(--acuity-primary-lo)", boxShadow: "0 12px 30px oklch(0 0 0 / 0.2)" }}
           >

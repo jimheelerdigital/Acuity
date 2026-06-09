@@ -55,7 +55,7 @@ export function Pricing() {
               </div>
 
               <a
-                href="#start"
+                href="/start"
                 className="flex w-full items-center justify-center gap-2.5 rounded-acuity-pill border-[0.5px] border-white/25 bg-acuity-grad-primary px-[26px] py-[15px] font-sans text-[16px] font-bold text-white shadow-acuity-glow-primary transition-transform hover:-translate-y-0.5"
               >
                 Start free trial

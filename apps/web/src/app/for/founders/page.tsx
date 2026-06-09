@@ -26,7 +26,7 @@ const WAITLIST = `/start?utm_campaign=${UTM}`;
 
 export default function FoundersPage() {
   return (
-    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-acuity-bg text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -51,7 +51,7 @@ export default function FoundersPage() {
             <HeroHeadline text="Your daily debrief. Just talk. AI does the rest." />
           </Reveal>
           <Reveal delay={1}>
-            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
               Every day you carry 40 unfinished thoughts. Acuity captures
               every task, tracks every goal, and writes your weekly debrief
               automatically.
@@ -64,7 +64,7 @@ export default function FoundersPage() {
               </PulsingCTA>
               <a
                 href="#how-it-works"
-                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                className="rounded-xl border border-acuity-line px-7 py-3.5 text-sm font-semibold text-acuity-text-sec transition hover:border-acuity-line-strong hover:bg-acuity-card-bg active:scale-95"
               >
                 See how it works
               </a>
@@ -104,9 +104,9 @@ export default function FoundersPage() {
               "Less mental overhead outside work",
             ].map((stat, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6 text-center">
-                  <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-4 mx-auto">
-                    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <div className="rounded-xl border border-acuity-line bg-acuity-card-bg p-6 text-center">
+                  <div className="h-10 w-10 rounded-xl bg-acuity-primary-soft flex items-center justify-center mb-4 mx-auto">
+                    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
@@ -125,7 +125,7 @@ export default function FoundersPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">
               What Acuity extracts from a founder debrief
             </h2>
-            <p className="text-center text-[#B0A898] mb-12">
+            <p className="text-center text-acuity-text-sec mb-12">
               From a single recording, Acuity automatically extracts:
             </p>
           </Reveal>
@@ -158,7 +158,7 @@ export default function FoundersPage() {
               },
             ].map((item, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
-                <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-[#1E1C1A] p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+                <div className="flex items-center gap-4 rounded-xl border border-acuity-line bg-acuity-card-bg p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
                   <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
                     <svg
                       className="h-5 w-5 text-violet-600"
@@ -174,7 +174,7 @@ export default function FoundersPage() {
                       />
                     </svg>
                   </div>
-                  <p className="text-sm text-[#B0A898] font-medium">{item.text}</p>
+                  <p className="text-sm text-acuity-text-sec font-medium">{item.text}</p>
                 </div>
               </Reveal>
             ))}
@@ -236,13 +236,13 @@ export default function FoundersPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">
               Your Sunday morning debrief. Written by AI.
             </h2>
-            <p className="text-center text-[#B0A898] mb-12">
+            <p className="text-center text-acuity-text-sec mb-12">
               Framed as a performance report, not a wellness diary.
             </p>
           </Reveal>
 
           <Reveal delay={1}>
-            <div className="rounded-2xl border border-white/10 bg-[#1E1C1A] p-8 shadow-sm">
+            <div className="rounded-2xl border border-acuity-line bg-acuity-card-bg p-8 shadow-sm">
               <div className="grid gap-4 sm:grid-cols-2">
                 {[
                   "Task completion rate this week",
@@ -266,11 +266,11 @@ export default function FoundersPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    <span className="text-sm text-[#B0A898]">{item}</span>
+                    <span className="text-sm text-acuity-text-sec">{item}</span>
                   </div>
                 ))}
               </div>
-              <div className="mt-6 rounded-xl bg-[#7C5CFC]/10 border border-[#7C5CFC]/30 p-4">
+              <div className="mt-6 rounded-xl bg-acuity-primary-soft border border-acuity-primary/30 p-4">
                 <div className="flex items-start gap-2.5">
                   <svg
                     className="mt-0.5 h-4 w-4 shrink-0 text-violet-600"
@@ -285,7 +285,7 @@ export default function FoundersPage() {
                       d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
                     />
                   </svg>
-                  <span className="text-sm text-[#7C5CFC] font-medium">
+                  <span className="text-sm text-acuity-primary font-medium">
                     + One key insight the AI surfaced that you missed
                   </span>
                 </div>
@@ -296,7 +296,7 @@ export default function FoundersPage() {
       </section>
 
       {/* ───── COMPOUNDING INTELLIGENCE ───── */}
-      <section className="px-6 py-24 sm:py-32 bg-[#1E1C1A] text-white">
+      <section className="px-6 py-24 sm:py-32 bg-acuity-card-bg text-white">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
@@ -353,7 +353,7 @@ export default function FoundersPage() {
                 7 minutes a week.
               </span>
             </h2>
-            <p className="mt-4 text-lg text-[#B0A898] mb-8">
+            <p className="mt-4 text-lg text-acuity-text-sec mb-8">
               That's the total time investment. In return:
             </p>
           </Reveal>
@@ -380,7 +380,7 @@ export default function FoundersPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  <span className="text-sm text-[#B0A898]">{item}</span>
+                  <span className="text-sm text-acuity-text-sec">{item}</span>
                 </div>
               ))}
             </div>

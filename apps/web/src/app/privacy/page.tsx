@@ -33,19 +33,19 @@ const LAST_UPDATED = "June 3, 2026";
  */
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-6 py-16 text-[#E5E5EC]">
+    <div className="min-h-screen bg-acuity-bg px-6 py-16 text-acuity-text">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/"
-          className="text-sm text-[#A0A0B8] transition hover:text-white"
+          className="text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
           &larr; Back to Acuity
         </Link>
 
-        <h1 className="mt-8 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h1 className="mt-8 text-3xl font-bold tracking-tight text-acuity-text sm:text-4xl">
           Privacy Policy
         </h1>
-        <p className="mt-2 text-sm text-[#A0A0B8]">
+        <p className="mt-2 text-sm text-acuity-text-sec">
           Last updated: {LAST_UPDATED}
         </p>
 
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
               export or delete it at any time.
             </p>
             <p className="mt-4">
-              <strong className="text-white">Data controller.</strong>{" "}
+              <strong className="text-acuity-text">Data controller.</strong>{" "}
               Heeler Digital, LLC (&ldquo;Acuity&rdquo;, &ldquo;we&rdquo;,
               &ldquo;us&rdquo;) is the data controller for personal data
               processed via the Acuity service. We are established in the
@@ -84,24 +84,24 @@ export default function PrivacyPage() {
             <p>To run Acuity, we collect the following categories of personal data:</p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
-                <strong className="text-white">Account data.</strong> Email
+                <strong className="text-acuity-text">Account data.</strong> Email
                 address (required for sign-in), display name and profile
                 image (if provided via Google or Apple sign-in), timezone,
                 reminder preferences, language.
               </li>
               <li>
-                <strong className="text-white">Voice recordings.</strong>{" "}
+                <strong className="text-acuity-text">Voice recordings.</strong>{" "}
                 The audio you record in the app, up to 120 seconds per
                 session. Stored encrypted at rest until transcription
                 completes, then deleted from our servers within minutes.
               </li>
               <li>
-                <strong className="text-white">Transcripts.</strong> The
+                <strong className="text-acuity-text">Transcripts.</strong> The
                 text version of each recording, generated automatically
                 from your audio via OpenAI Whisper.
               </li>
               <li>
-                <strong className="text-white">
+                <strong className="text-acuity-text">
                   AI-extracted structured data.
                 </strong>{" "}
                 Mood, energy level, themes, wins, blockers, tasks,
@@ -109,21 +109,21 @@ export default function PrivacyPage() {
                 transcript by Anthropic Claude.
               </li>
               <li>
-                <strong className="text-white">Subscription state.</strong>{" "}
+                <strong className="text-acuity-text">Subscription state.</strong>{" "}
                 Your trial status and (if you subscribe) the
                 Stripe-issued customer and subscription identifiers.
                 Payment card details are handled directly by Stripe
                 &mdash; we never see them.
               </li>
               <li>
-                <strong className="text-white">Device + technical data.</strong>{" "}
+                <strong className="text-acuity-text">Device + technical data.</strong>{" "}
                 Push notification token (if you opt in), app version,
                 operating system, and scrubbed crash + diagnostic data
                 from Sentry with personal identifiers removed before
                 upload.
               </li>
               <li>
-                <strong className="text-white">Usage analytics.</strong>{" "}
+                <strong className="text-acuity-text">Usage analytics.</strong>{" "}
                 Sanitised, aggregate product events sent to PostHog
                 (e.g. &ldquo;recorded an entry&rdquo;,
                 &ldquo;viewed paywall&rdquo;). Your account is
@@ -141,7 +141,7 @@ export default function PrivacyPage() {
                 Section 2.
               </li>
               <li>
-                <strong className="text-white">Consent records.</strong>{" "}
+                <strong className="text-acuity-text">Consent records.</strong>{" "}
                 We retain a record of your cookie + email-marketing
                 consent (date, choice, version of this policy) so we
                 can demonstrate compliance with Art. 7(1) GDPR.
@@ -168,15 +168,15 @@ export default function PrivacyPage() {
             </p>
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-white/10 text-white">
+                <thead className="border-b border-acuity-line text-acuity-text">
                   <tr>
                     <th className="py-2 pr-4 font-semibold">Processing purpose</th>
                     <th className="py-2 pr-4 font-semibold">Lawful basis</th>
                     <th className="py-2 font-semibold">Notes</th>
                   </tr>
                 </thead>
-                <tbody className="text-[#C5C5D2]">
-                  <tr className="border-b border-white/5">
+                <tbody className="text-acuity-text-ter">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Account creation + sign-in
                     </td>
@@ -187,7 +187,7 @@ export default function PrivacyPage() {
                       We can&rsquo;t deliver the service without an account.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Voice transcription + AI extraction
                     </td>
@@ -199,7 +199,7 @@ export default function PrivacyPage() {
                       our subprocessors under Art. 28 DPAs.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Special-category data inside transcripts
                       (e.g. health, beliefs)
@@ -219,7 +219,7 @@ export default function PrivacyPage() {
                       consent.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Subscription billing
                     </td>
@@ -231,7 +231,7 @@ export default function PrivacyPage() {
                       the Stripe customer / subscription identifiers.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Transactional email (weekly report, Life Audit,
                       account events)
@@ -243,7 +243,7 @@ export default function PrivacyPage() {
                       Delivers the product you signed up for.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Product analytics on the web (PostHog, sanitised
                       events)
@@ -256,7 +256,7 @@ export default function PrivacyPage() {
                       the web.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       In-app product analytics (how you use features,
                       after sign-in)
@@ -271,7 +271,7 @@ export default function PrivacyPage() {
                       or share it for advertising.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Pre-signup funnel measurement + ad attribution
                       (anonymous)
@@ -288,7 +288,7 @@ export default function PrivacyPage() {
                       browser on our website.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Marketing emails (drip + waitlist nudges)
                     </td>
@@ -301,7 +301,7 @@ export default function PrivacyPage() {
                       processing.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Crash + error telemetry (Sentry, scrubbed)
                     </td>
@@ -313,7 +313,7 @@ export default function PrivacyPage() {
                       are scrubbed before upload.
                     </td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Fraud and abuse prevention; rate limiting
                     </td>
@@ -360,7 +360,7 @@ export default function PrivacyPage() {
               </li>
             </ul>
             <p className="mt-4">
-              We do <strong className="text-white">not</strong> use
+              We do <strong className="text-acuity-text">not</strong> use
               your voice, transcripts, or extracted content to train AI
               models. We do not sell personal data. We do not use
               automated decision-making with legal or similarly
@@ -386,7 +386,7 @@ export default function PrivacyPage() {
             </p>
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-white/10 text-white">
+                <thead className="border-b border-acuity-line text-acuity-text">
                   <tr>
                     <th className="py-2 pr-4 font-semibold">Subprocessor</th>
                     <th className="py-2 pr-4 font-semibold">Purpose</th>
@@ -394,8 +394,8 @@ export default function PrivacyPage() {
                     <th className="py-2 font-semibold">Transfer mechanism</th>
                   </tr>
                 </thead>
-                <tbody className="text-[#C5C5D2]">
-                  <tr className="border-b border-white/5">
+                <tbody className="text-acuity-text-ter">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">OpenAI</td>
                     <td className="py-2 pr-4 align-top">
                       Voice transcription (Whisper API)
@@ -403,7 +403,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Anthropic</td>
                     <td className="py-2 pr-4 align-top">
                       AI extraction + weekly report (Claude API)
@@ -411,7 +411,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Stripe</td>
                     <td className="py-2 pr-4 align-top">
                       Subscription billing
@@ -421,7 +421,7 @@ export default function PrivacyPage() {
                     </td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Supabase</td>
                     <td className="py-2 pr-4 align-top">
                       Database hosting + voice file storage
@@ -429,7 +429,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US (us-west-2)</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Vercel</td>
                     <td className="py-2 pr-4 align-top">
                       Web and API hosting
@@ -437,7 +437,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Expo</td>
                     <td className="py-2 pr-4 align-top">
                       Push token relay + notification delivery
@@ -445,7 +445,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Google (FCM, OAuth, Analytics)
                     </td>
@@ -456,7 +456,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA + DPF</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Resend</td>
                     <td className="py-2 pr-4 align-top">
                       Transactional + marketing email
@@ -464,7 +464,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Inngest</td>
                     <td className="py-2 pr-4 align-top">
                       Background job orchestration
@@ -472,7 +472,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">PostHog</td>
                     <td className="py-2 pr-4 align-top">
                       Product analytics (consent-gated)
@@ -480,7 +480,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">Sentry</td>
                     <td className="py-2 pr-4 align-top">
                       Crash + error monitoring (scrubbed)
@@ -488,7 +488,7 @@ export default function PrivacyPage() {
                     <td className="py-2 pr-4 align-top">US</td>
                     <td className="py-2 align-top">SCCs + UK IDTA</td>
                   </tr>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-acuity-line">
                     <td className="py-2 pr-4 align-top">
                       Meta (Pixel)
                     </td>
@@ -522,7 +522,7 @@ export default function PrivacyPage() {
               emailing{" "}
               <a
                 href="mailto:privacy@heelerdigital.com"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 privacy@heelerdigital.com
               </a>
@@ -534,7 +534,7 @@ export default function PrivacyPage() {
               published at{" "}
               <Link
                 href="https://getacuity.io/compliance/subprocessors"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 /compliance/subprocessors
               </Link>{" "}
@@ -563,19 +563,19 @@ export default function PrivacyPage() {
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
-                <strong className="text-white">Right of access (Art. 15).</strong>{" "}
+                <strong className="text-acuity-text">Right of access (Art. 15).</strong>{" "}
                 Request a copy of your data. The fastest route is the
                 in-app export at Profile &rarr; Export my data, which
                 returns a JSON file covering all data we hold about
                 you. You can also email us (see Section 12).
               </li>
               <li>
-                <strong className="text-white">Right to rectification (Art. 16).</strong>{" "}
+                <strong className="text-acuity-text">Right to rectification (Art. 16).</strong>{" "}
                 Correct inaccurate or incomplete data. Most fields are
                 editable in-app; for others, email us.
               </li>
               <li>
-                <strong className="text-white">Right to erasure / right to be forgotten (Art. 17).</strong>{" "}
+                <strong className="text-acuity-text">Right to erasure / right to be forgotten (Art. 17).</strong>{" "}
                 Delete your account and all associated personal data
                 via Profile &rarr; Delete account. We erase your data
                 from our live systems immediately and from rolling
@@ -586,32 +586,32 @@ export default function PrivacyPage() {
                 legally required periods (see Section 6).
               </li>
               <li>
-                <strong className="text-white">Right to restrict processing (Art. 18).</strong>{" "}
+                <strong className="text-acuity-text">Right to restrict processing (Art. 18).</strong>{" "}
                 Ask us to pause processing while we investigate a
                 request. Email us.
               </li>
               <li>
-                <strong className="text-white">Right to data portability (Art. 20).</strong>{" "}
+                <strong className="text-acuity-text">Right to data portability (Art. 20).</strong>{" "}
                 Receive your data in a structured, machine-readable
                 format (JSON). Same export endpoint as above.
               </li>
               <li>
-                <strong className="text-white">Right to object (Art. 21).</strong>{" "}
+                <strong className="text-acuity-text">Right to object (Art. 21).</strong>{" "}
                 Object to processing based on legitimate interest
                 (Art. 6(1)(f)) or to direct marketing.
               </li>
               <li>
-                <strong className="text-white">Right to withdraw consent (Art. 7(3)).</strong>{" "}
+                <strong className="text-acuity-text">Right to withdraw consent (Art. 7(3)).</strong>{" "}
                 Withdraw cookie consent or marketing-email consent at
                 any time. Future processing stops; past processing
                 stays lawful.
               </li>
               <li>
-                <strong className="text-white">Right to complain to us directly.</strong>{" "}
+                <strong className="text-acuity-text">Right to complain to us directly.</strong>{" "}
                 You can raise a data-protection complaint with us at{" "}
                 <a
                   href="mailto:privacy@heelerdigital.com"
-                  className="underline hover:text-white"
+                  className="underline hover:text-acuity-text"
                 >
                   privacy@heelerdigital.com
                 </a>
@@ -620,7 +620,7 @@ export default function PrivacyPage() {
                 supervisory authority at any time.
               </li>
               <li>
-                <strong className="text-white">Right to lodge a complaint.</strong>{" "}
+                <strong className="text-acuity-text">Right to lodge a complaint.</strong>{" "}
                 You can complain to your local data protection
                 authority. In the UK, the Information Commissioner&rsquo;s
                 Office (ico.org.uk). In Ireland, the Data Protection
@@ -649,26 +649,26 @@ export default function PrivacyPage() {
             <p>How long we keep things:</p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
-                <strong className="text-white">Voice recordings.</strong>{" "}
+                <strong className="text-acuity-text">Voice recordings.</strong>{" "}
                 Deleted from our servers within minutes of
                 transcription completing. We do not retain the audio
                 file beyond the transcription window.
               </li>
               <li>
-                <strong className="text-white">Transcripts + extracted data.</strong>{" "}
+                <strong className="text-acuity-text">Transcripts + extracted data.</strong>{" "}
                 Retained while your account is active. Deleted within
                 30 days of account deletion (some short-lived backups
                 expire on the same window).
               </li>
               <li>
-                <strong className="text-white">Account + subscription records.</strong>{" "}
+                <strong className="text-acuity-text">Account + subscription records.</strong>{" "}
                 Retained while your account is active. After deletion,
                 we retain a minimal anti-abuse tombstone (email hash
                 only) for up to 6 months to prevent free-trial
                 cycling. No content, no name, no profile data.
               </li>
               <li>
-                <strong className="text-white">Consent records.</strong>{" "}
+                <strong className="text-acuity-text">Consent records.</strong>{" "}
                 The record of any explicit consent you give (for
                 example, to processing special-category content, or
                 your 14-day-withdrawal acknowledgement at checkout) is
@@ -680,19 +680,19 @@ export default function PrivacyPage() {
                 content.
               </li>
               <li>
-                <strong className="text-white">Billing records.</strong>{" "}
+                <strong className="text-acuity-text">Billing records.</strong>{" "}
                 Stripe retains payment records for the period required
                 by tax and accounting law (typically 7 years). We do
                 not hold card numbers.
               </li>
               <li>
-                <strong className="text-white">Crash + diagnostic logs.</strong>{" "}
+                <strong className="text-acuity-text">Crash + diagnostic logs.</strong>{" "}
                 Sentry retains scrubbed crash data for 30 days. Vercel
                 runtime logs are retained for up to 1 day. Neither
                 contains transcripts.
               </li>
               <li>
-                <strong className="text-white">Analytics events.</strong>{" "}
+                <strong className="text-acuity-text">Analytics events.</strong>{" "}
                 PostHog retains aggregated event data for the
                 contractual term of our agreement; events are
                 sanitised before upload (no transcripts, audio, or
@@ -700,7 +700,7 @@ export default function PrivacyPage() {
                 your email.
               </li>
               <li>
-                <strong className="text-white">Backups.</strong>{" "}
+                <strong className="text-acuity-text">Backups.</strong>{" "}
                 Database backups are retained for up to 7 days on a
                 rolling window and then irrevocably overwritten.
                 Deleted accounts may persist in backups during this
@@ -726,7 +726,7 @@ export default function PrivacyPage() {
               issue with Acuity, please email{" "}
               <a
                 href="mailto:security@heelerdigital.com"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 security@heelerdigital.com
               </a>
@@ -777,7 +777,7 @@ export default function PrivacyPage() {
               email{" "}
               <a
                 href="mailto:privacy@heelerdigital.com"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 privacy@heelerdigital.com
               </a>{" "}
@@ -800,12 +800,12 @@ export default function PrivacyPage() {
               For any privacy question, request, or complaint, contact:
             </p>
             <p className="mt-3">
-              <strong className="text-white">Heeler Digital, LLC</strong>
+              <strong className="text-acuity-text">Heeler Digital, LLC</strong>
               <br />
               Privacy contact:{" "}
               <a
                 href="mailto:privacy@heelerdigital.com"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 privacy@heelerdigital.com
               </a>
@@ -813,7 +813,7 @@ export default function PrivacyPage() {
               Security disclosures:{" "}
               <a
                 href="mailto:security@heelerdigital.com"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 security@heelerdigital.com
               </a>
@@ -821,10 +821,10 @@ export default function PrivacyPage() {
           </Section>
         </div>
 
-        <div className="mt-16 border-t border-white/10 pt-8 text-sm text-[#A0A0B8]">
+        <div className="mt-16 border-t border-acuity-line pt-8 text-sm text-acuity-text-sec">
           <p>
             See also:{" "}
-            <Link href="/terms" className="underline hover:text-white">
+            <Link href="/terms" className="underline hover:text-acuity-text">
               Terms of Service
             </Link>
             .
@@ -846,8 +846,8 @@ function Section({
 }) {
   return (
     <section id={id}>
-      <h2 className="text-xl font-semibold text-white">{title}</h2>
-      <div className="mt-4 text-[#C5C5D2]">{children}</div>
+      <h2 className="text-xl font-semibold text-acuity-text">{title}</h2>
+      <div className="mt-4 text-acuity-text-ter">{children}</div>
     </section>
   );
 }

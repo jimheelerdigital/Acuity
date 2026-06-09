@@ -25,7 +25,7 @@ const WAITLIST = `/start?utm_campaign=${UTM}`;
 
 export default function WeeklyReportPage() {
   return (
-    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-acuity-bg text-white pb-24 sm:pb-0 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -50,7 +50,7 @@ export default function WeeklyReportPage() {
             <HeroHeadline text="Every Sunday, an AI writes your week back to you." />
           </Reveal>
           <Reveal delay={1}>
-            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
               From your own voice notes. Your wins. Your patterns. What you said
               you'd do versus what actually happened.
             </p>
@@ -62,7 +62,7 @@ export default function WeeklyReportPage() {
               </PulsingCTA>
               <a
                 href="#how-it-works"
-                className="rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-[#B0A898] transition hover:border-white/20 hover:bg-white/5 active:scale-95"
+                className="rounded-xl border border-acuity-line px-7 py-3.5 text-sm font-semibold text-acuity-text-sec transition hover:border-acuity-line-strong hover:bg-acuity-card-bg active:scale-95"
               >
                 See how it works
               </a>
@@ -166,13 +166,13 @@ export default function WeeklyReportPage() {
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <div className="text-center mb-14">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#7C5CFC] mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary mb-4">
                 Life Matrix
               </p>
               <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
                 Your Life Matrix grows with every report.
               </h2>
-              <p className="mt-4 text-[#B0A898] text-base max-w-xl mx-auto">
+              <p className="mt-4 text-acuity-text-sec text-base max-w-xl mx-auto">
                 Across Health, Wealth, Relationships, Spirituality, Career, and Growth
                 — Acuity tracks your scores over time and surfaces the patterns
                 that weekly reports reveal.
@@ -247,7 +247,7 @@ export default function WeeklyReportPage() {
                 Report 12 changes what you pay attention to.
               </span>
             </h2>
-            <p className="mt-6 text-lg text-[#B0A898] leading-relaxed">
+            <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed">
               The first weekly report shows you last week. The twelfth shows you who
               you've been for three months — the patterns that repeat, the
               growth that compounds, the blind spots that finally become visible. This
@@ -269,7 +269,7 @@ export default function WeeklyReportPage() {
                 />
               ))}
             </div>
-            <p className="mt-4 text-xs text-[#B0A898]/60">
+            <p className="mt-4 text-xs text-acuity-text-sec/60">
               12 weeks of compounding insight
             </p>
           </Reveal>

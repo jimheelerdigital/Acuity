@@ -69,7 +69,7 @@ export function FirstDebriefFlow({
   // Intro screen uses dark bg; record screen uses light bg; others use dark
   // All screens use white theme for seamless flow
   const bgClass = screen === "intro"
-    ? "bg-[#181614] text-[#F5EDE4]"
+    ? "bg-acuity-bg text-[#F5EDE4]"
     : "bg-white text-zinc-900";
 
   return (
@@ -206,7 +206,7 @@ function IntroAnimation({ onComplete }: { onComplete: () => void }) {
       className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-1000 ${
         stage === "confetti" || stage === "done"
           ? "bg-white"
-          : "bg-[#181614]"
+          : "bg-acuity-bg"
       }`}
     >
       <h1
@@ -516,7 +516,7 @@ function RecordScreen({
                   : phase === "uploading"
                     ? undefined
                     : {
-                        background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+                        background: "var(--acuity-grad-primary)",
                         boxShadow: "0 8px 40px rgba(124,92,252,0.3), 0 2px 12px rgba(124,58,237,0.2)",
                       }
               }
@@ -872,7 +872,7 @@ function ProcessingScreen({
         {Array.from({ length: 10 }).map((_, i) => (
           <span
             key={i}
-            className="absolute rounded-full bg-[#7C5CFC]/[0.03]"
+            className="absolute rounded-full bg-acuity-primary/[0.03]"
             style={{
               width: 3 + (i % 3) * 3,
               height: 3 + (i % 3) * 3,
@@ -929,7 +929,7 @@ function ProcessingScreen({
                         </span>
                       ) : (
                         <span
-                          className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] sm:text-base"
+                          className="text-sm font-bold uppercase tracking-[0.25em] text-acuity-primary sm:text-base"
                           style={{ textShadow: "0 0 20px rgba(124,92,252,0.3)" }}
                         >
                           {slide.label}
@@ -959,9 +959,9 @@ function ProcessingScreen({
                       {slide.testimonial && (
                         <div className="max-w-sm mx-auto">
                           <p className="text-sm text-zinc-500 italic leading-relaxed">
-                            <span className="text-[#7C5CFC]/40 text-lg not-italic">&ldquo;</span>
+                            <span className="text-acuity-primary/40 text-lg not-italic">&ldquo;</span>
                             {slide.testimonial.quote}
-                            <span className="text-[#7C5CFC]/40 text-lg not-italic">&rdquo;</span>
+                            <span className="text-acuity-primary/40 text-lg not-italic">&rdquo;</span>
                           </p>
                           <p className="mt-2 text-xs text-zinc-400">
                             &mdash; {slide.testimonial.name}
@@ -989,7 +989,7 @@ function ProcessingScreen({
                         ? {
                             width: 20,
                             height: 5,
-                            background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
+                            background: "var(--acuity-grad-primary)",
                             boxShadow: "0 0 8px 2px rgba(124,92,252,0.3)",
                           }
                         : i < slideIndex
@@ -1015,8 +1015,8 @@ function ProcessingScreen({
         <div className="text-center mb-3">
           <div className="inline-flex items-center gap-2 px-4 py-2">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-50" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#7C5CFC]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-acuity-primary opacity-50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-acuity-primary" />
             </span>
             <span className="text-xs text-zinc-400">{processingLabel}</span>
           </div>
@@ -1026,7 +1026,7 @@ function ProcessingScreen({
             className="h-full rounded-full transition-all duration-1000 ease-out"
             style={{
               width: `${progressPct}%`,
-              background: "linear-gradient(90deg, #7C5CFC, #9F7AEA, #7C3AED)",
+              background: "var(--acuity-grad-primary)",
             }}
           />
         </div>
@@ -1190,7 +1190,7 @@ function ExtractionScreen({
         {/* Tasks */}
         {hasTasks && (
           <div className={`mb-5 transition-all duration-500 ${vis(tasksHeaderAt)}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-acuity-primary mb-3">
               Tasks
             </p>
             <div className="space-y-2">
@@ -1227,7 +1227,7 @@ function ExtractionScreen({
         {/* Goals */}
         {hasGoals && (
           <div className={`mb-5 transition-all duration-500 ${vis(goalsHeaderAt)}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-acuity-primary mb-3">
               Goals
             </p>
             <div className="space-y-2">
@@ -1255,14 +1255,14 @@ function ExtractionScreen({
         {/* Themes */}
         {hasThemes && (
           <div className={`mb-10 transition-all duration-500 ${vis(themesHeaderAt)}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-acuity-primary mb-3">
               What&rsquo;s on your mind
             </p>
             <div className="flex flex-wrap gap-2">
               {extraction.themes.map((t, i) => (
                 <span
                   key={t}
-                  className={`rounded-full bg-[#7C5CFC]/8 border border-[#7C5CFC]/15 px-3.5 py-1.5 text-sm font-medium text-[#7C5CFC] transition-all duration-300 ${scaleVis(themeItemAt(i))}`}
+                  className={`rounded-full bg-acuity-primary/8 border border-acuity-primary/15 px-3.5 py-1.5 text-sm font-medium text-acuity-primary transition-all duration-300 ${scaleVis(themeItemAt(i))}`}
                 >
                   {t}
                 </span>
@@ -1279,7 +1279,7 @@ function ExtractionScreen({
             onClick={onContinue}
             className="animate-mic-glow inline-flex items-center gap-2 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-105 hover:-translate-y-0.5 active:scale-95"
             style={{
-              background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+              background: "var(--acuity-grad-primary)",
             }}
           >
             Continue &rarr;
@@ -1300,7 +1300,7 @@ function CheckboxIcon() {
 
 function FlagIcon() {
   return (
-    <svg className="h-5 w-5 shrink-0 mt-0.5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 shrink-0 mt-0.5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
     </svg>
   );
@@ -1399,7 +1399,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
             onClick={() => trackOnboardingEvent("onboarding_app_store_clicked", { userId })}
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+              background: "var(--acuity-grad-primary)",
               boxShadow: "0 8px 32px rgba(124,92,252,0.3), 0 2px 8px rgba(124,58,237,0.15)",
             }}
           >
@@ -1415,7 +1415,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
             <span
               className="absolute inset-[2px] rounded-full pointer-events-none"
               style={{
-                background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)",
+                background: "var(--acuity-grad-primary)",
               }}
             />
             <span className="relative z-10 flex items-center gap-3">

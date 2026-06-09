@@ -11,7 +11,7 @@ const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
 export function SuccessPageClient() {
   return (
-    <div className="min-h-screen bg-[#181614] text-[#F5EDE4]">
+    <div className="min-h-screen bg-acuity-bg text-[#F5EDE4]">
       {/* ── Hero section ── */}
       <div className="flex flex-col items-center justify-center px-6 pt-16 pb-10 sm:pt-24 sm:pb-14">
         <div className="w-full max-w-md text-center">
@@ -37,9 +37,9 @@ export function SuccessPageClient() {
               href={APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative inline-flex items-center gap-3 rounded-full bg-[#7C5CFC] px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95"
+              className="group relative inline-flex items-center gap-3 rounded-full bg-acuity-primary px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-acuity-primary-lo hover:shadow-xl hover:shadow-acuity-glow-soft hover:-translate-y-0.5 active:scale-95"
             >
-              <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/30 animate-pulse-ring" />
+              <span className="absolute inset-0 rounded-full bg-acuity-primary/30 animate-pulse-ring" />
               <AppleLogo />
               Download on the App Store
             </a>
@@ -98,7 +98,7 @@ export function SuccessPageClient() {
       <div className="px-6 pb-16 sm:pb-24 text-center">
         <Link
           href="/home"
-          className="inline-block rounded-full border border-white/20 px-6 py-3 text-sm font-medium text-[#F5EDE4]/80 transition hover:border-white/40 hover:text-white active:scale-95"
+          className="inline-block rounded-full border border-acuity-line-strong px-6 py-3 text-sm font-medium text-[#F5EDE4]/80 transition hover:border-white/40 hover:text-white active:scale-95"
         >
           Continue in your browser →
         </Link>
@@ -125,12 +125,12 @@ function Step({
 }) {
   return (
     <div className="flex items-start gap-4">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#7C5CFC]/10">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-acuity-primary-soft">
         {icon}
       </div>
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#7C5CFC]">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-acuity-primary">
             Step {number}
           </span>
         </div>
@@ -151,7 +151,7 @@ function AppleLogo() {
 
 function MicIcon() {
   return (
-    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
     </svg>
   );
@@ -159,7 +159,7 @@ function MicIcon() {
 
 function SparklesIcon() {
   return (
-    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
     </svg>
   );
@@ -167,7 +167,7 @@ function SparklesIcon() {
 
 function ChartIcon() {
   return (
-    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
     </svg>
   );

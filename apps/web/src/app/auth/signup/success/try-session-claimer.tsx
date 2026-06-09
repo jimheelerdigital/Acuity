@@ -65,7 +65,7 @@ export function TrySessionClaimer() {
     return (
       <div
         className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-1000 ${
-          stage === "confetti" ? "bg-white" : "bg-[#181614]"
+          stage === "confetti" ? "bg-white" : "bg-acuity-bg"
         }`}
       >
         {stage === "claiming" ? (
@@ -174,10 +174,10 @@ function DownloadCTAScreen() {
             target="_blank"
             rel="noopener noreferrer"
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
-            style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)", boxShadow: "0 8px 32px rgba(124,92,252,0.3), 0 2px 8px rgba(124,58,237,0.15)" }}
+            style={{ background: "var(--acuity-grad-primary)", boxShadow: "0 8px 32px rgba(124,92,252,0.3), 0 2px 8px rgba(124,58,237,0.15)" }}
           >
             <span className="absolute inset-[-2px] rounded-full pointer-events-none" style={{ background: "conic-gradient(from 0deg, transparent 0%, transparent 70%, rgba(255,255,255,0.5) 78%, transparent 86%, transparent 100%)", animation: "shine-ring 2.5s linear infinite" }} />
-            <span className="absolute inset-[2px] rounded-full pointer-events-none" style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)" }} />
+            <span className="absolute inset-[2px] rounded-full pointer-events-none" style={{ background: "var(--acuity-grad-primary)" }} />
             <span className="relative z-10 flex items-center gap-3">
               <AppleLogo />
               Download on the App Store

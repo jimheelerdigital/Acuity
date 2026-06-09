@@ -278,14 +278,14 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="mb-12">
               <Link
                 href="/blog"
-                className="inline-flex items-center gap-1.5 text-sm text-[#A0A0B8] hover:text-acuity-primary transition-colors mb-8"
+                className="inline-flex items-center gap-1.5 text-sm text-acuity-text-sec hover:text-acuity-primary transition-colors mb-8"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
                 Back to blog
               </Link>
-              <div className="flex items-center gap-3 text-sm text-[#A0A0B8] mb-6">
+              <div className="flex items-center gap-3 text-sm text-acuity-text-sec mb-6">
                 <time dateTime={staticPost.publishedAt}>
                   {new Date(staticPost.publishedAt).toLocaleDateString("en-US", {
                     month: "long",
@@ -293,17 +293,17 @@ export default async function BlogPostPage({ params }: Props) {
                     year: "numeric",
                   })}
                 </time>
-                <span className="text-white/20">|</span>
+                <span className="text-acuity-line-strong">|</span>
                 <span>{staticPost.readingTime}</span>
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1] mb-6">
                 {staticPost.title}
               </h1>
-              <p className="text-lg text-[#A0A0B8] leading-relaxed">
+              <p className="text-lg text-acuity-text-sec leading-relaxed">
                 {staticPost.excerpt}
               </p>
             </div>
-            <div className="h-px bg-white/10 mb-12" />
+            <div className="h-px bg-acuity-line mb-12" />
             <div className="prose-custom">
               {staticPost.content.map((block, i) => {
                 switch (block.tag) {
@@ -311,7 +311,7 @@ export default async function BlogPostPage({ params }: Props) {
                     return (
                       <h2
                         key={i}
-                        className="text-2xl font-bold tracking-tight mt-12 mb-4 text-white"
+                        className="text-2xl font-bold tracking-tight mt-12 mb-4 text-acuity-text"
                         dangerouslySetInnerHTML={{ __html: block.text }}
                       />
                     );
@@ -319,7 +319,7 @@ export default async function BlogPostPage({ params }: Props) {
                     return (
                       <h3
                         key={i}
-                        className="text-xl font-semibold mt-8 mb-3 text-white"
+                        className="text-xl font-semibold mt-8 mb-3 text-acuity-text"
                         dangerouslySetInnerHTML={{ __html: block.text }}
                       />
                     );
@@ -327,7 +327,7 @@ export default async function BlogPostPage({ params }: Props) {
                     return (
                       <p
                         key={i}
-                        className="text-base text-[#A0A0B8] leading-[1.8] mb-5"
+                        className="text-base text-acuity-text-sec leading-[1.8] mb-5"
                         dangerouslySetInnerHTML={{ __html: block.text }}
                       />
                     );
@@ -371,14 +371,14 @@ export default async function BlogPostPage({ params }: Props) {
           <div className="mb-12">
             <Link
               href="/blog"
-              className="inline-flex items-center gap-1.5 text-sm text-[#A0A0B8] hover:text-acuity-primary transition-colors mb-8"
+              className="inline-flex items-center gap-1.5 text-sm text-acuity-text-sec hover:text-acuity-primary transition-colors mb-8"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
               Back to blog
             </Link>
-            <div className="flex items-center gap-3 text-sm text-[#A0A0B8] mb-6">
+            <div className="flex items-center gap-3 text-sm text-acuity-text-sec mb-6">
               <time dateTime={publishedAt}>
                 {new Date(publishedAt).toLocaleDateString("en-US", {
                   month: "long",
@@ -386,15 +386,15 @@ export default async function BlogPostPage({ params }: Props) {
                   year: "numeric",
                 })}
               </time>
-              <span className="text-white/20">|</span>
+              <span className="text-acuity-line-strong">|</span>
               <span>{readingTime}</span>
-              <span className="text-white/20">|</span>
+              <span className="text-acuity-line-strong">|</span>
               <span>By Keenan Assaraf</span>
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1] mb-6">
               {dynamicPost.title}
             </h1>
-            <p className="text-lg text-[#A0A0B8] leading-relaxed">
+            <p className="text-lg text-acuity-text-sec leading-relaxed">
               {dynamicPost.hook}
             </p>
           </div>
@@ -411,10 +411,10 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           )}
           {!dynamicPost.heroImageUrl && (
-            <div className="h-px bg-white/10 mb-12" />
+            <div className="h-px bg-acuity-line mb-12" />
           )}
           <div
-            className="prose prose-invert prose-base max-w-none prose-headings:text-white prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-[#A0A0B8] prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-acuity-primary prose-strong:text-white prose-li:text-[#A0A0B8] prose-li:text-base prose-blockquote:border-acuity-primary/40 prose-blockquote:text-[#A0A0B8]"
+            className="prose prose-invert prose-base max-w-none prose-headings:text-acuity-text prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-acuity-text-sec prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-acuity-primary prose-strong:text-acuity-text prose-li:text-acuity-text-sec prose-li:text-base prose-blockquote:border-acuity-primary/40 prose-blockquote:text-acuity-text-sec"
             dangerouslySetInnerHTML={{ __html: htmlBody }}
           />
           <BlogCta />
@@ -430,23 +430,23 @@ export default async function BlogPostPage({ params }: Props) {
 function BlogCta() {
   return (
     <>
-      <div className="mt-16 rounded-xl border border-acuity-primary/30 bg-[#13131F] p-8 sm:p-10 text-center">
+      <div className="mt-16 rounded-xl border border-acuity-primary/30 bg-acuity-card-bg p-8 sm:p-10 text-center">
         <h2 className="text-2xl font-bold mb-3">
           Brain dump daily. Get your life back.
         </h2>
-        <p className="text-[#A0A0B8] mb-6 max-w-md mx-auto">
+        <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
           Try Acuity free for 14 days. Just talk. No typing. Just
           talk.
         </p>
         <BlogCtaButtons />
-        <p className="mt-3 text-xs text-[#A0A0B8]">
+        <p className="mt-3 text-xs text-acuity-text-sec">
           No credit card required &middot; Cancel anytime
         </p>
       </div>
       <div className="mt-12 text-center">
         <Link
           href="/blog"
-          className="text-sm text-[#A0A0B8] hover:text-acuity-primary transition-colors"
+          className="text-sm text-acuity-text-sec hover:text-acuity-primary transition-colors"
         >
           &larr; More articles
         </Link>
@@ -461,16 +461,16 @@ function RelatedPosts({ currentSlug }: { currentSlug: string }) {
 
   return (
     <div className="mt-16">
-      <h2 className="text-xl font-bold mb-6 text-white">Related articles</h2>
+      <h2 className="text-xl font-bold mb-6 text-acuity-text">Related articles</h2>
       <div className="grid gap-4 sm:grid-cols-3">
         {related.map((post) => (
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}
-            className="group rounded-lg border border-white/10 bg-[#13131F] p-5 transition hover:border-acuity-primary/40"
+            className="group rounded-lg border border-acuity-line bg-acuity-card-bg p-5 transition hover:border-acuity-primary/40"
           >
-            <p className="text-xs text-[#A0A0B8] mb-2">{post.readingTime}</p>
-            <h3 className="text-sm font-semibold text-white group-hover:text-acuity-primary transition-colors leading-snug">
+            <p className="text-xs text-acuity-text-sec mb-2">{post.readingTime}</p>
+            <h3 className="text-sm font-semibold text-acuity-text group-hover:text-acuity-primary transition-colors leading-snug">
               {post.title}
             </h3>
           </Link>

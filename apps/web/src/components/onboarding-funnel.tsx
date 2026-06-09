@@ -430,8 +430,8 @@ export function OnboardingFunnel() {
     <div className="min-h-screen">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes funnel-glow {
-          0%, 100% { box-shadow: 0 4px 16px rgba(124,92,252,0.3); }
-          50% { box-shadow: 0 4px 28px rgba(124,92,252,0.55), 0 0 8px rgba(124,92,252,0.2); }
+          0%, 100% { box-shadow: 0 4px 16px var(--acuity-glow-soft); }
+          50% { box-shadow: 0 4px 28px var(--acuity-glow-primary), 0 0 8px var(--acuity-glow-soft); }
         }
         @keyframes funnel-slide-up {
           from { opacity: 0; transform: translateY(20px); }
@@ -473,7 +473,7 @@ export function OnboardingFunnel() {
 
       {/* Progress bar */}
       <div className="fixed top-0 inset-x-0 z-50 h-[2px] bg-zinc-200/50">
-        <div className="h-full bg-[#7C5CFC] transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+        <div className="h-full bg-acuity-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
       </div>
 
       {/* Back button — hidden on entry and download */}
@@ -650,7 +650,7 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
             <button key={opt.label} onClick={() => handleTap(opt)}
               className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
                 selected === opt.label
-                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900 animate-[funnel-pulse-select_0.2s_ease-out]"
+                  ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900 animate-[funnel-pulse-select_0.2s_ease-out]"
                   : selected
                     ? "border-zinc-200 bg-zinc-50 text-zinc-700 opacity-40"
                     : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
@@ -658,7 +658,7 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
               style={{ animationDelay: `${i * 100}ms` }}
               disabled={!!selected}
             >
-              {selected === opt.label && <span className="mr-2 text-[#7C5CFC]">&#10003;</span>}
+              {selected === opt.label && <span className="mr-2 text-acuity-primary">&#10003;</span>}
               {opt.label}
             </button>
           ))}
@@ -701,13 +701,13 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
             <button key={opt} onClick={() => toggle(opt)}
               className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
                 selected.has(opt)
-                  ? "border-[#7C5CFC] bg-[#7C5CFC]/10 text-zinc-900"
+                  ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900"
                   : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
               }`}
               style={{ animationDelay: `${i * 100}ms` }}
             >
               {selected.has(opt) ? (
-                <span className="mr-2 text-[#7C5CFC]">&#10003;</span>
+                <span className="mr-2 text-acuity-primary">&#10003;</span>
               ) : (
                 <span className="mr-2 text-zinc-300">&#9711;</span>
               )}
@@ -721,7 +721,7 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
         {selected.size > 0 && (
           <div className="mt-6 text-center funnel-bounce">
             <button onClick={() => onSubmit([...selected])}
-              className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+              className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
               Continue
             </button>
           </div>
@@ -767,7 +767,7 @@ function MirrorScreen({ branch, answers, onContinue }: {
           {lines.map((line, i) => (
             <div
               key={i}
-              className={`border-l-2 border-[#7C5CFC]/40 pl-5 transition-all duration-[800ms] ease-out ${
+              className={`border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[800ms] ease-out ${
                 i < visibleLines ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[15px]"
               }`}
             >
@@ -780,7 +780,7 @@ function MirrorScreen({ branch, answers, onContinue }: {
         </div>
         <div className={`mt-8 text-center transition-all duration-500 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <button onClick={onContinue}
-            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
           </button>
         </div>
@@ -909,12 +909,12 @@ function MechanismScreen({ branch, answers, onContinue }: {
 
       {/* ── STEP 1: TALK ── */}
       <div className="mb-8" style={fadeUp(800)}>
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 1</p>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 1</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">Talk for 60 seconds.</p>
         <p className="mb-4 text-sm leading-5 text-zinc-500">About your day. Your stress. Your wins. Whatever&rsquo;s on your mind.</p>
         <div className="flex items-end gap-[4px]" style={{ height: 40 }}>
           {MECHANISM_WAVE_HEIGHTS.map((h, i) => (
-            <div key={i} className="w-[3px] origin-bottom rounded-full bg-[#B8A9FE]"
+            <div key={i} className="w-[3px] origin-bottom rounded-full bg-acuity-primary-hi"
               style={{ height: h, animation: prefersReducedMotion ? "none" : `mech-wave ${600 + (i % 5) * 80}ms ease-in-out ${i * 40}ms infinite alternate` }} />
           ))}
         </div>
@@ -922,14 +922,14 @@ function MechanismScreen({ branch, answers, onContinue }: {
 
       {/* ── STEP 2: WE EXTRACT (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(2200)}>
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 2</p>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 2</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">We pull out what matters.</p>
         <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, mood shifts, and patterns &mdash; extracted from your own words.</p>
         <div className="space-y-2">
           {cards.map((c, i) => (
-            <div key={i} className="flex items-center rounded-xl border-l-[3px] border-[#7C5CFC] bg-white px-3.5 py-3 shadow-sm"
+            <div key={i} className="flex items-center rounded-xl border-l-[3px] border-acuity-primary bg-white px-3.5 py-3 shadow-sm"
               style={fadeUpShort(2200 + 600 + i * 200)}>
-              <span className="mr-2.5 text-[13px] font-semibold text-[#7C5CFC]">{c.icon}</span>
+              <span className="mr-2.5 text-[13px] font-semibold text-acuity-primary">{c.icon}</span>
               <span className="text-[13px] font-medium leading-[18px] text-zinc-900">{c.text}</span>
             </div>
           ))}
@@ -938,7 +938,7 @@ function MechanismScreen({ branch, answers, onContinue }: {
 
       {/* ── STEP 3: YOUR PICTURE (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(3800)}>
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[#7C5CFC]">Step 3</p>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 3</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">A living picture of your life.</p>
         <p className="mb-5 text-sm leading-5 text-zinc-500">{content.step3Sub}</p>
         <div className="mb-4 flex items-center justify-between px-2">
@@ -948,14 +948,14 @@ function MechanismScreen({ branch, answers, onContinue }: {
             return (
               <div key={i} className="flex flex-col items-center">
                 <div className="relative flex items-center">
-                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] ${filled ? "border-[#B8A9FE]" : "border-zinc-200"}`}>
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] ${filled ? "border-acuity-primary-hi" : "border-zinc-200"}`}>
                     {filled && (
-                      <div className="h-[18px] w-[18px] rounded-full bg-[#7C5CFC]"
+                      <div className="h-[18px] w-[18px] rounded-full bg-acuity-primary"
                         style={prefersReducedMotion ? {} : { animation: `mech-dot-fill 300ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay}ms both` }} />
                     )}
                   </div>
                   {filled && i < 4 && (
-                    <div className="h-0.5 w-2 origin-left bg-[#B8A9FE]"
+                    <div className="h-0.5 w-2 origin-left bg-acuity-primary-hi"
                       style={prefersReducedMotion ? {} : { animation: `mech-line-grow 200ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay + 200}ms both` }} />
                   )}
                 </div>
@@ -964,9 +964,9 @@ function MechanismScreen({ branch, answers, onContinue }: {
             );
           })}
         </div>
-        <div className="rounded-xl border-l-[3px] border-[#7C5CFC] bg-[#F0ECFF] px-3.5 py-3"
+        <div className="rounded-xl border-l-[3px] border-acuity-primary bg-acuity-primary-soft px-3.5 py-3"
           style={fadeUpShort(3800 + 600 + 500 + 500)}>
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.06em] text-[#7C5CFC]">Weekly insight</p>
+          <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.06em] text-acuity-primary">Weekly insight</p>
           <p className="text-[13px] font-medium leading-[18px] text-zinc-900">{content.insight}</p>
         </div>
       </div>
@@ -979,7 +979,7 @@ function MechanismScreen({ branch, answers, onContinue }: {
       {/* ── Continue button — always visible from mount, never gated behind animations ── */}
       <div className="text-center">
         <button onClick={onContinue}
-          className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+          className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
           Continue
         </button>
       </div>
@@ -1058,8 +1058,8 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit to one minute a day.</h2>
         <div className="relative inline-flex items-center justify-center">
           <svg className="h-40 w-40" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="54" fill="none" stroke="#e4e4e7" strokeWidth="4" />
-            <circle ref={ringRef} cx="60" cy="60" r="54" fill="none" stroke="#7C5CFC" strokeWidth="4" strokeLinecap="round"
+            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--acuity-line-strong)" strokeWidth="4" />
+            <circle ref={ringRef} cx="60" cy="60" r="54" fill="none" stroke="var(--acuity-primary)" strokeWidth="4" strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE} strokeDashoffset={CIRCUMFERENCE}
               transform="rotate(-90 60 60)" />
           </svg>
@@ -1067,7 +1067,7 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
             onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}
             onTouchStart={(e) => { e.preventDefault(); startHold(); }} onTouchEnd={endHold}
             onContextMenu={(e) => e.preventDefault()}
-            className={`absolute inset-4 rounded-full bg-[#7C5CFC]/5 border border-zinc-200 flex items-center justify-center transition active:bg-[#7C5CFC]/10 ${!holding && !completed ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
+            className={`absolute inset-4 rounded-full bg-acuity-primary/5 border border-zinc-200 flex items-center justify-center transition active:bg-acuity-primary/10 ${!holding && !completed ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
             aria-label="Hold to commit" style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}>
             <span className="text-3xl">{completed ? "\u2713" : ""}</span>
           </button>
@@ -1104,7 +1104,7 @@ function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-8">Building your insight profile&hellip;</h2>
         <div className="mx-auto w-64 mb-6">
           <div className="h-2 w-full rounded-full bg-zinc-200 overflow-hidden">
-            <div className="h-full bg-[#7C5CFC] rounded-full transition-all duration-300 ease-out" style={{ width: `${pct}%` }} />
+            <div className="h-full bg-acuity-primary rounded-full transition-all duration-300 ease-out" style={{ width: `${pct}%` }} />
           </div>
         </div>
         <p className="text-sm text-zinc-500 h-6 transition-opacity duration-300">{stage.text}</p>
@@ -1142,9 +1142,9 @@ function SnapshotScreen({ branch, answers, onContinue }: {
         </h2>
 
         {/* Section 1 — The Pattern You Can't See */}
-        <div className={`mb-10 rounded-2xl border-2 border-[#7C5CFC]/30 bg-white p-6 transition-all duration-[800ms] ${show(1)}`}
-          style={{ boxShadow: vis >= 1 ? "0 0 24px 4px rgba(124,92,252,0.1)" : "none" }}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">The pattern you can&rsquo;t see</p>
+        <div className={`mb-10 rounded-2xl border-2 border-acuity-primary/30 bg-white p-6 transition-all duration-[800ms] ${show(1)}`}
+          style={{ boxShadow: vis >= 1 ? "var(--acuity-glow-soft)" : "none" }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-3">The pattern you can&rsquo;t see</p>
           <p className="text-[15px] text-zinc-700 leading-relaxed">{insight}</p>
         </div>
 
@@ -1154,7 +1154,7 @@ function SnapshotScreen({ branch, answers, onContinue }: {
           <div className="space-y-3">
             {previews.map((p, i) => (
               <div key={i} className={`rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3 transition-all duration-500 ${vis >= 3 + i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
-                style={{ borderLeft: "3px solid #7C5CFC" }}>
+                style={{ borderLeft: "3px solid var(--acuity-primary)" }}>
                 <p className="text-xs text-zinc-600 leading-relaxed font-mono">{p}</p>
               </div>
             ))}
@@ -1168,7 +1168,7 @@ function SnapshotScreen({ branch, answers, onContinue }: {
 
         <div className={`text-center transition-all duration-500 ${show(6)}`}>
           <button onClick={onContinue}
-            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
           </button>
         </div>
@@ -1201,31 +1201,31 @@ function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answe
         </h2>
         <div className="relative">
           <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-zinc-200 overflow-hidden">
-            <div className="w-full bg-[#7C5CFC] transition-all duration-700" style={{ height: `${(visibleNodes / weeks.length) * 100}%` }} />
+            <div className="w-full bg-acuity-primary transition-all duration-700" style={{ height: `${(visibleNodes / weeks.length) * 100}%` }} />
           </div>
           <div className="space-y-6">
             {weeks.map((w, i) => (
               <div key={i} className={`relative pl-10 transition-all duration-500 ${i < visibleNodes ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
                 <div className={`absolute left-1 top-1 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                  i < visibleNodes ? "border-[#7C5CFC] bg-[#7C5CFC]/10 scale-100" : "border-zinc-200 bg-white scale-75"
+                  i < visibleNodes ? "border-acuity-primary bg-acuity-primary/10 scale-100" : "border-zinc-200 bg-white scale-75"
                 }`}>
                   {i === 0 && visibleNodes > 0 ? (
-                    <svg className="h-3 w-3 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="h-3 w-3 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#7C5CFC]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-acuity-primary" />
                   )}
                 </div>
                 <p className="text-sm text-zinc-700"><span className="font-bold">{w.week}:</span> {w.text}</p>
-                {w.badge && <span className="text-[11px] text-[#7C5CFC] font-medium">{w.badge}</span>}
+                {w.badge && <span className="text-[11px] text-acuity-primary font-medium">{w.badge}</span>}
               </div>
             ))}
           </div>
         </div>
         <div className={`mt-10 text-center transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <button onClick={onContinue}
-            className="rounded-full bg-[#7C5CFC] px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
           </button>
         </div>
@@ -1360,12 +1360,12 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
         <form onSubmit={handleSignup} className="space-y-3">
           <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="Full name" autoComplete="name"
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
           <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="Email address" autoComplete="email"
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
           <div className="relative">
             <input type={showPassword ? "text" : "password"} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20" />
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
             <button type="button" onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600 font-medium">
               {showPassword ? "Hide" : "Show"}
@@ -1376,13 +1376,13 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
             <p className="text-xs text-red-500 px-1">
               {signupError}
               {signupError.includes("Sign in") && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-[#7C5CFC] font-semibold ml-1 underline">Sign in</button>
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-acuity-primary font-semibold ml-1 underline">Sign in</button>
               )}
             </p>
           )}
 
           <button type="submit" disabled={signupLoading !== null}
-            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 shadow-[0_4px_20px_rgba(124,92,252,0.3)] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
             {signupLoading === "email" ? (
               <span className="flex items-center justify-center gap-2">
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
@@ -1394,7 +1394,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
         <p className="text-xs text-zinc-400 text-center mt-6">
           Already have an account?{" "}
-          <button onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-[#7C5CFC] font-semibold underline">Sign in</button>
+          <button onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-acuity-primary font-semibold underline">Sign in</button>
         </p>
       </div>
     </div>
@@ -1441,7 +1441,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             {SAVINGS_TIMELINE.map((item, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="flex flex-col items-center shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-[#7C5CFC] mt-1" />
+                  <div className="w-2 h-2 rounded-full bg-acuity-primary mt-1" />
                   {i < SAVINGS_TIMELINE.length - 1 && <div className="w-px h-6 bg-zinc-200" />}
                 </div>
                 <div>
@@ -1466,15 +1466,15 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         <section className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "260ms" }}>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <button onClick={() => onPlanChange("monthly")}
-              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "monthly" ? "border-2 border-[#7C5CFC] bg-gradient-to-b from-[#7C5CFC]/10 to-[#7C5CFC]/5 shadow-[0_4px_24px_rgba(124,92,252,0.25)]" : "border border-zinc-200 bg-white"}`}>
+              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "monthly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft" : "border border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
               <p className="text-sm text-red-400 line-through font-semibold">$19.99<span className="text-xs font-normal">/mo</span></p>
               <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
-              <span className="inline-block mt-2 rounded-full bg-[#7C5CFC] text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm">FOUNDING RATE</span>
+              <span className="inline-block mt-2 rounded-full bg-acuity-primary text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm">FOUNDING RATE</span>
               <p className="text-[10px] text-zinc-400 mt-1">Billed monthly</p>
             </button>
             <button onClick={() => onPlanChange("yearly")}
-              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-2 border-[#7C5CFC] bg-gradient-to-b from-[#7C5CFC]/10 to-[#7C5CFC]/5 shadow-[0_4px_24px_rgba(124,92,252,0.25)]" : "border border-zinc-200 bg-white"}`}>
+              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft" : "border border-zinc-200 bg-white"}`}>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
               <p className="text-sm text-red-400 line-through font-semibold">$199<span className="text-xs font-normal">/yr</span></p>
               <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(ANNUAL_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/yr</span></p>
@@ -1501,7 +1501,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
           <button onClick={onCheckout} disabled={loading}
-            className="w-full rounded-full bg-[#7C5CFC] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98] disabled:opacity-50 shadow-[0_4px_20px_rgba(124,92,252,0.3)] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
             {loading ? "Loading\u2026" : "Lock In My Savings"}
           </button>
           <button onClick={onSkip} className="w-full py-3 text-sm text-zinc-500 hover:text-zinc-700 transition font-medium">
@@ -1583,7 +1583,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
             }
           }}
           className="relative w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-          style={{ background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)", boxShadow: "0 4px 24px rgba(124,92,252,0.4)" }}>
+          style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
           <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
           <span className="relative">Download on the App Store</span>
         </button>
@@ -1596,7 +1596,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
                 navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch(() => {});
                 track("funnel_copy_app_link_clicked");
               }}
-              className="text-[#7C5CFC] font-medium underline"
+              className="text-acuity-primary font-medium underline"
             >
               {copied ? "Link copied! Paste in Safari." : "Copy link and open in Safari"}
             </button>
@@ -1637,7 +1637,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
               window.location.href = "/home";
             }
           }}
-          className="w-full mt-3 rounded-full border-2 border-[#7C5CFC] px-8 py-3.5 text-[15px] font-semibold text-[#7C5CFC] text-center transition hover:bg-[#7C5CFC]/5 active:scale-[0.98]"
+          className="w-full mt-3 rounded-full border-2 border-acuity-primary px-8 py-3.5 text-[15px] font-semibold text-acuity-primary text-center transition hover:bg-acuity-primary/5 active:scale-[0.98]"
         >
           Continue in the Web App
           <span className="block text-[11px] font-normal text-zinc-400 mt-0.5">Record your first debrief right now &mdash; no download needed.</span>

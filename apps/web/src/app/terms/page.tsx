@@ -11,19 +11,19 @@ const LAST_UPDATED = "June 3, 2026";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-6 py-16 text-[#E5E5EC]">
+    <div className="min-h-screen bg-acuity-bg px-6 py-16 text-acuity-text">
       <div className="mx-auto max-w-3xl">
         <Link
           href="/"
-          className="text-sm text-[#A0A0B8] transition hover:text-white"
+          className="text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
           &larr; Back to Acuity
         </Link>
 
-        <h1 className="mt-8 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h1 className="mt-8 text-3xl font-bold tracking-tight text-acuity-text sm:text-4xl">
           Terms of Service
         </h1>
-        <p className="mt-2 text-sm text-[#A0A0B8]">
+        <p className="mt-2 text-sm text-acuity-text-sec">
           Last updated: {LAST_UPDATED}
         </p>
 
@@ -46,7 +46,7 @@ export default function TermsPage() {
               insights. The service is delivered via the web at{" "}
               <a
                 href="https://getacuity.io"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 getacuity.io
               </a>{" "}
@@ -125,7 +125,7 @@ export default function TermsPage() {
           <Section id="subscription" title="5. Subscription &amp; billing">
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
-                <strong className="text-white">Free trial.</strong>{" "}
+                <strong className="text-acuity-text">Free trial.</strong>{" "}
                 New accounts get a 14-day free trial of the full
                 product. No payment information required to start the
                 trial. The trial ends automatically; if you don&rsquo;t
@@ -134,7 +134,7 @@ export default function TermsPage() {
                 AI outputs until you subscribe).
               </li>
               <li>
-                <strong className="text-white">Subscription.</strong>{" "}
+                <strong className="text-acuity-text">Subscription.</strong>{" "}
                 When you subscribe, you authorise us (via Stripe on
                 the web, or Apple via in-app purchase on iOS) to
                 charge you $4.99 per month or $39.99 per year, depending
@@ -143,7 +143,7 @@ export default function TermsPage() {
                 you cancel.
               </li>
               <li>
-                <strong className="text-white">In-app purchase (iOS).</strong>{" "}
+                <strong className="text-acuity-text">In-app purchase (iOS).</strong>{" "}
                 If you subscribe through our iOS app, the transaction
                 is processed by Apple and billed to your Apple ID.
                 Apple&rsquo;s standard auto-renewing subscription
@@ -158,14 +158,14 @@ export default function TermsPage() {
                 Apple&rsquo;s{" "}
                 <a
                   href="https://www.apple.com/legal/internet-services/itunes/"
-                  className="underline hover:text-white"
+                  className="underline hover:text-acuity-text"
                 >
                   Media Services Terms
                 </a>{" "}
                 also apply to in-app purchases.
               </li>
               <li>
-                <strong className="text-white">In-app purchase (Android).</strong>{" "}
+                <strong className="text-acuity-text">In-app purchase (Android).</strong>{" "}
                 If you subscribe through our Android app, the
                 transaction is processed by Google and billed to your
                 Google account under Google Play&rsquo;s terms. The
@@ -179,7 +179,7 @@ export default function TermsPage() {
                 directly.
               </li>
               <li>
-                <strong className="text-white">Cancellation.</strong>{" "}
+                <strong className="text-acuity-text">Cancellation.</strong>{" "}
                 For web subscriptions, you can cancel any time from
                 your account settings or the Stripe billing portal.
                 For iOS in-app purchases, cancel via iOS Settings
@@ -188,7 +188,7 @@ export default function TermsPage() {
                 you keep access until then.
               </li>
               <li>
-                <strong className="text-white">Refunds.</strong> For
+                <strong className="text-acuity-text">Refunds.</strong> For
                 web subscriptions, we don&rsquo;t prorate or refund
                 partial months &mdash; if you cancel mid-month, you
                 keep paid access until the end of that month and
@@ -197,7 +197,7 @@ export default function TermsPage() {
                 policy; request them at{" "}
                 <a
                   href="https://reportaproblem.apple.com"
-                  className="underline hover:text-white"
+                  className="underline hover:text-acuity-text"
                 >
                   reportaproblem.apple.com
                 </a>
@@ -205,13 +205,13 @@ export default function TermsPage() {
                 transactions directly.
               </li>
               <li>
-                <strong className="text-white">Price changes.</strong>{" "}
+                <strong className="text-acuity-text">Price changes.</strong>{" "}
                 If we change the subscription price, we&rsquo;ll notify
                 existing subscribers by email at least 30 days before
                 the change takes effect on your account.
               </li>
               <li>
-                <strong className="text-white">Failed payments.</strong>{" "}
+                <strong className="text-acuity-text">Failed payments.</strong>{" "}
                 If a renewal payment fails, Stripe will retry for up to
                 three weeks. During that window your access continues.
                 If the retries don&rsquo;t succeed, your subscription
@@ -237,14 +237,14 @@ export default function TermsPage() {
               2011/83/EU applies.
             </p>
             <p className="mt-3">
-              <strong className="text-white">When the 14-day clock starts.</strong>{" "}
+              <strong className="text-acuity-text">When the 14-day clock starts.</strong>{" "}
               Your free trial is separate from this right. The 14-day
               cancellation period runs from the day your paid
               subscription begins (your first charge), not from when
               the trial started.
             </p>
             <p className="mt-3">
-              <strong className="text-white">Starting paid features early.</strong>{" "}
+              <strong className="text-acuity-text">Starting paid features early.</strong>{" "}
               When you subscribe, we ask you to confirm that you want
               your paid features to start immediately and that you
               understand the effect on your cancellation right. If you
@@ -272,26 +272,26 @@ export default function TermsPage() {
               paid with.
             </p>
             <p className="mt-3">
-              <strong className="text-white">How to cancel.</strong>{" "}
+              <strong className="text-acuity-text">How to cancel.</strong>{" "}
               To exercise the right, tell us clearly within the 14 days
               &mdash; email{" "}
               <a
                 href="mailto:privacy@heelerdigital.com"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 privacy@heelerdigital.com
               </a>{" "}
               or use the model cancellation form below. You may use this
               wording (completing the bracketed parts):
             </p>
-            <blockquote className="mt-3 border-l-2 border-white/15 pl-4 text-[#A0A0B8]">
+            <blockquote className="mt-3 border-l-2 border-acuity-line pl-4 text-acuity-text-sec">
               &ldquo;To Heeler Digital, LLC: I hereby give notice that I
               withdraw from my contract for the Acuity subscription.
               Ordered on [date] / my account email is [email]. [Your
               name]. [Date].&rdquo;
             </blockquote>
             <p className="mt-3">
-              <strong className="text-white">Statutory rights preserved.</strong>{" "}
+              <strong className="text-acuity-text">Statutory rights preserved.</strong>{" "}
               Nothing in these Terms limits your statutory consumer
               rights under applicable law, including (where relevant)
               the UK Consumer Rights Act 2015, the Australian Consumer
@@ -316,7 +316,7 @@ export default function TermsPage() {
               sell or share your content with third parties for any
               purpose other than the subprocessor relationships disclosed
               in our{" "}
-              <Link href="/privacy" className="underline hover:text-white">
+              <Link href="/privacy" className="underline hover:text-acuity-text">
                 Privacy Policy
               </Link>
               .
@@ -330,7 +330,7 @@ export default function TermsPage() {
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-amber-100">
               Acuity is a journaling tool that uses AI to help you see
               patterns in your own thinking. It is{" "}
-              <strong className="text-white">not</strong> a substitute
+              <strong className="text-acuity-text">not</strong> a substitute
               for therapy, counselling, psychiatric care, medical advice,
               or any other professional service.
             </p>
@@ -341,20 +341,20 @@ export default function TermsPage() {
               psychological, psychiatric, or medical condition.
             </p>
             <p className="mt-4">
-              <strong className="text-white">
+              <strong className="text-acuity-text">
                 If you are in a mental health crisis, contact a
                 professional.
               </strong>{" "}
               In the United States, dial or text{" "}
-              <strong className="text-white">988</strong> for the Suicide
+              <strong className="text-acuity-text">988</strong> for the Suicide
               and Crisis Lifeline. In the UK, dial{" "}
-              <strong className="text-white">116 123</strong> for
+              <strong className="text-acuity-text">116 123</strong> for
               Samaritans. Internationally, see{" "}
               <a
                 href="https://findahelpline.com"
                 target="_blank"
                 rel="noreferrer"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 findahelpline.com
               </a>
@@ -364,7 +364,7 @@ export default function TermsPage() {
 
           <Section id="warranty" title="8. Service is provided &ldquo;as is&rdquo;">
             <p className="mb-4">
-              <strong className="text-white">Consumers first.</strong>{" "}
+              <strong className="text-acuity-text">Consumers first.</strong>{" "}
               Nothing in this section excludes or limits any rights you
               have as a consumer that cannot be excluded or limited
               under applicable law &mdash; including the statutory
@@ -420,19 +420,19 @@ export default function TermsPage() {
           <Section id="termination" title="10. Termination">
             <p>
               You can terminate your account at any time from{" "}
-              <Link href="/account" className="underline hover:text-white">
+              <Link href="/account" className="underline hover:text-acuity-text">
                 Account &rarr; Delete account
               </Link>
               , or by emailing{" "}
               <a
                 href="mailto:hello@getacuity.io"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 hello@getacuity.io
               </a>
               . On termination, your data is deleted on the schedule
               described in the{" "}
-              <Link href="/privacy" className="underline hover:text-white">
+              <Link href="/privacy" className="underline hover:text-acuity-text">
                 Privacy Policy
               </Link>{" "}
               (immediate from our application database; infrastructure
@@ -483,7 +483,7 @@ export default function TermsPage() {
               Questions about these Terms? Email{" "}
               <a
                 href="mailto:hello@getacuity.io"
-                className="underline hover:text-white"
+                className="underline hover:text-acuity-text"
               >
                 hello@getacuity.io
               </a>
@@ -492,10 +492,10 @@ export default function TermsPage() {
           </Section>
         </div>
 
-        <div className="mt-16 border-t border-white/10 pt-8 text-sm text-[#A0A0B8]">
+        <div className="mt-16 border-t border-acuity-line pt-8 text-sm text-acuity-text-sec">
           <p>
             See also:{" "}
-            <Link href="/privacy" className="underline hover:text-white">
+            <Link href="/privacy" className="underline hover:text-acuity-text">
               Privacy Policy
             </Link>
             .
@@ -517,8 +517,8 @@ function Section({
 }) {
   return (
     <section id={id}>
-      <h2 className="text-xl font-semibold text-white">{title}</h2>
-      <div className="mt-4 text-[#C5C5D2]">{children}</div>
+      <h2 className="text-xl font-semibold text-acuity-text">{title}</h2>
+      <div className="mt-4 text-acuity-text-ter">{children}</div>
     </section>
   );
 }

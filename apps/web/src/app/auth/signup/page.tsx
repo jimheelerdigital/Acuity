@@ -243,8 +243,7 @@ function SignUpForm() {
             onClick={scrollToForm}
             className="rounded-full px-5 py-2.5 text-xs font-semibold text-white"
             style={{
-              background:
-                "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)",
+              background: "var(--acuity-grad-primary)",
               // v1.4 mobile responsiveness pass: bump tap target to
               // 44pt minimum so iOS doesn't dock the chevron over it
               // and so users can hit it reliably one-handed.
@@ -263,7 +262,7 @@ function SignUpForm() {
           <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-4xl xl:text-5xl">
             One minute a day.
             <br />
-            <span className="bg-gradient-to-r from-[#7C5CFC] to-[#9F7AEA] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-acuity-primary to-acuity-primary-hi bg-clip-text text-transparent">
               A life of clarity.
             </span>
           </h1>
@@ -288,7 +287,7 @@ function SignUpForm() {
                 {SOCIAL_PROOF.rating} from {SOCIAL_PROOF.users} users
               </span>
             </div>
-            <span className="text-xs font-medium text-[#7C5CFC]">
+            <span className="text-xs font-medium text-acuity-primary">
               Your first weekly report arrives this Sunday.
             </span>
           </div>
@@ -383,7 +382,7 @@ function SignUpForm() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name (optional)"
                   autoComplete="name"
-                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20"
                 />
                 <input
                   type="email"
@@ -392,7 +391,7 @@ function SignUpForm() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   required
-                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-[#7C5CFC] focus:ring-2 focus:ring-[#7C5CFC]/20"
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20"
                 />
                 <div>
                   <p className="mb-1.5 text-xs text-zinc-500">
@@ -412,7 +411,7 @@ function SignUpForm() {
                     className={`w-full rounded-lg border bg-zinc-50 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:ring-2 ${
                       pwError
                         ? "border-red-400 focus:border-red-400 focus:ring-red-200"
-                        : "border-zinc-200 focus:border-[#7C5CFC] focus:ring-[#7C5CFC]/20"
+                        : "border-zinc-200 focus:border-acuity-primary focus:ring-acuity-primary/20"
                     }`}
                   />
                   {pwError && (
@@ -430,8 +429,8 @@ function SignUpForm() {
                   disabled={loading !== null}
                   className="w-full rounded-full px-6 py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
                   style={{
-                    background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)",
-                    boxShadow: "0 4px 16px rgba(124,92,252,0.3)",
+                    background: "var(--acuity-grad-primary)",
+                    boxShadow: "0 4px 16px var(--acuity-glow-soft)",
                   }}
                 >
                   {loading === "password"
@@ -448,7 +447,7 @@ function SignUpForm() {
                 Already have an account?{" "}
                 <Link
                   href="/auth/signin"
-                  className="font-semibold text-[#7C5CFC] transition hover:text-[#6D28D9]"
+                  className="font-semibold text-acuity-primary transition hover:text-acuity-primary-lo"
                 >
                   Sign in
                 </Link>
@@ -514,12 +513,12 @@ function HowItWorksStep({
 }) {
   return (
     <div className="flex items-start gap-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#7C5CFC]/10">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-acuity-primary-soft">
         {icon}
       </div>
       <div>
         <p className="text-sm font-bold text-zinc-900">
-          <span className="text-[#7C5CFC]">Step {step}:</span> {title}
+          <span className="text-acuity-primary">Step {step}:</span> {title}
         </p>
         <p className="mt-0.5 text-sm text-zinc-600">{description}</p>
       </div>
@@ -529,7 +528,7 @@ function HowItWorksStep({
 
 function MicIcon() {
   return (
-    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
     </svg>
   );
@@ -537,7 +536,7 @@ function MicIcon() {
 
 function SparkleIcon() {
   return (
-    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
     </svg>
   );
@@ -545,7 +544,7 @@ function SparkleIcon() {
 
 function ChartIcon() {
   return (
-    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
     </svg>
   );

@@ -50,7 +50,7 @@ export default async function StartPage({
         .ssr-entry__opt{width:100%;text-align:left;border-radius:0.75rem;border:1px solid #e4e4e7;background:#fafafa;padding:1rem 1.25rem;font-size:0.9375rem;color:#3f3f46;margin-bottom:0.75rem;cursor:pointer;transition:background 0.15s}
         .ssr-entry__opt:hover{background:#f4f4f5}
         .ssr-entry__progress{position:fixed;top:0;left:0;right:0;height:2px;background:#e4e4e7}
-        .ssr-entry__progress-bar{height:100%;width:6.25%;background:#7C5CFC}
+        .ssr-entry__progress-bar{height:100%;width:6.25%;background:var(--acuity-primary)}
       `}} />
 
       {/* Server-rendered Screen 1 — visible instantly, before JS loads */}

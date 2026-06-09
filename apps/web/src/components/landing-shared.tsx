@@ -322,9 +322,9 @@ export function PulsingCTA({
     <a
       href={href}
       onClick={trackInitiateCheckout}
-      className={`relative inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/25 hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#181614] ${className}`}
+      className={`relative inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-4 text-sm font-semibold text-white transition-all duration-300 hover:bg-acuity-primary-lo hover:shadow-xl hover:shadow-acuity-glow-soft hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-acuity-bg ${className}`}
     >
-      <span className="absolute inset-0 rounded-full bg-[#7C5CFC]/30 animate-pulse-ring" />
+      <span className="absolute inset-0 rounded-full bg-acuity-primary/30 animate-pulse-ring" />
       <span className="relative z-10 flex items-center gap-2">{children}</span>
     </a>
   );
@@ -432,7 +432,7 @@ function LandingWhoItsFor() {
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C5CFC] focus-visible:rounded-sm"
+        className="flex items-center gap-1 transition hover:text-acuity-text relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-acuity-primary after:transition-all hover:after:w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary focus-visible:rounded-sm"
       >
         Who it's for
         <svg
@@ -447,7 +447,7 @@ function LandingWhoItsFor() {
       </button>
 
       <div
-        className={`absolute left-0 top-full mt-2 w-[640px] rounded-xl border border-white/10 bg-[#1E1C1A] shadow-2xl transition-all duration-200 origin-top ${
+        className={`absolute left-0 top-full mt-2 w-[640px] rounded-xl border border-acuity-line bg-acuity-card-bg shadow-2xl transition-all duration-200 origin-top ${
           open
             ? "opacity-100 scale-y-100 translate-y-0"
             : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
@@ -455,9 +455,9 @@ function LandingWhoItsFor() {
       >
         <div className="flex">
           {/* Featured column */}
-          <div className="w-[280px] border-r border-white/5 py-3">
+          <div className="w-[280px] border-r border-acuity-line py-3">
             <div className="px-4 pb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC]">Featured</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-acuity-primary">Featured</span>
             </div>
             {DROPDOWN_FEATURED.map((item) => (
               <Link
@@ -467,7 +467,7 @@ function LandingWhoItsFor() {
                 className="block px-4 py-2.5 transition-all duration-150 border-l-2 border-transparent hover:border-violet-500 hover:bg-white/5"
               >
                 <div className="text-sm font-medium text-white">{item.title}</div>
-                <div className="text-xs text-[#A0A0B8] mt-0.5 leading-snug">{item.description}</div>
+                <div className="text-xs text-acuity-text-sec mt-0.5 leading-snug">{item.description}</div>
               </Link>
             ))}
           </div>
@@ -477,13 +477,13 @@ function LandingWhoItsFor() {
             <div className="grid grid-cols-3 gap-x-4">
               {/* Mental Health */}
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Mental Health</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-acuity-primary block mb-2">Mental Health</span>
                 {DROPDOWN_MENTAL_HEALTH.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={close}
-                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
+                    className="block py-1.5 text-sm text-acuity-text-sec transition hover:text-acuity-text"
                   >
                     {item.label}
                   </Link>
@@ -492,13 +492,13 @@ function LandingWhoItsFor() {
 
               {/* Lifestyle */}
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Lifestyle</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-acuity-primary block mb-2">Lifestyle</span>
                 {DROPDOWN_LIFESTYLE.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={close}
-                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
+                    className="block py-1.5 text-sm text-acuity-text-sec transition hover:text-acuity-text"
                   >
                     {item.label}
                   </Link>
@@ -507,13 +507,13 @@ function LandingWhoItsFor() {
 
               {/* Professionals */}
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Professionals</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-acuity-primary block mb-2">Professionals</span>
                 {DROPDOWN_PROFESSIONALS.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={close}
-                    className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white"
+                    className="block py-1.5 text-sm text-acuity-text-sec transition hover:text-acuity-text"
                   >
                     {item.label}
                   </Link>
@@ -535,30 +535,30 @@ export function LandingNav() {
   const ctaHref = useCtaHref();
   return (
     <div className="fixed top-0 inset-x-0 z-50">
-      <nav className="bg-[#181614]/80 backdrop-blur-md border-b border-white/5">
+      <nav className="bg-acuity-bg/80 backdrop-blur-md border-b border-acuity-line">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
             <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
             <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
           </Link>
-          <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
+          <div className="hidden sm:flex items-center gap-6 text-sm text-acuity-text-sec">
             <LandingWhoItsFor />
             <a
               href="#how-it-works"
-              className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+              className="transition hover:text-acuity-text relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-acuity-primary after:transition-all hover:after:w-full"
             >
               How it Works
             </a>
             <a
               href="#pricing"
-              className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+              className="transition hover:text-acuity-text relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-acuity-primary after:transition-all hover:after:w-full"
             >
               Pricing
             </a>
             <Link
               href="/blog"
-              className="transition hover:text-white relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-violet-500 after:transition-all hover:after:w-full"
+              className="transition hover:text-acuity-text relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-acuity-primary after:transition-all hover:after:w-full"
             >
               Articles
             </Link>
@@ -567,7 +567,7 @@ export function LandingNav() {
         <a
           href={ctaHref}
           onClick={trackInitiateCheckout}
-          className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/20 active:scale-95"
+          className="rounded-full bg-acuity-primary px-5 py-2 text-sm font-medium text-white transition hover:bg-acuity-primary-lo hover:shadow-lg hover:shadow-acuity-glow-soft active:scale-95"
         >
           Start Free Trial
         </a>
@@ -583,7 +583,7 @@ export function LandingNav() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 px-6 py-12 bg-[#181614]">
+    <footer className="border-t border-acuity-line px-6 py-12 bg-acuity-bg">
       <div className="mx-auto max-w-5xl">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -591,7 +591,7 @@ export function Footer() {
               <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
             </div>
-            <p className="mt-2 text-sm text-[#A0A0B8] max-w-xs">
+            <p className="mt-2 text-sm text-acuity-text-sec max-w-xs">
               Debrief daily. See your life clearly.
             </p>
             <div className="mt-4">
@@ -600,29 +600,29 @@ export function Footer() {
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Product</h3>
-            <ul className="space-y-2 text-sm text-[#A0A0B8]">
-              <li><a href="/" className="transition hover:text-white">Home</a></li>
-              <li><a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-white">Download on App Store</a></li>
+            <ul className="space-y-2 text-sm text-acuity-text-sec">
+              <li><a href="/" className="transition hover:text-acuity-text">Home</a></li>
+              <li><a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-acuity-text">Download on App Store</a></li>
             </ul>
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Learn</h3>
-            <ul className="space-y-2 text-sm text-[#A0A0B8]">
-              <li><a href="/voice-journaling" className="transition hover:text-white">Voice Journaling Guide</a></li>
-              <li><a href="/blog" className="transition hover:text-white">Blog</a></li>
+            <ul className="space-y-2 text-sm text-acuity-text-sec">
+              <li><a href="/voice-journaling" className="transition hover:text-acuity-text">Voice Journaling Guide</a></li>
+              <li><a href="/blog" className="transition hover:text-acuity-text">Blog</a></li>
             </ul>
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Company</h3>
-            <ul className="space-y-2 text-sm text-[#A0A0B8]">
-              <li><a href="/terms" className="transition hover:text-white">Terms</a></li>
-              <li><a href="/privacy" className="transition hover:text-white">Privacy</a></li>
-              <li><a href="mailto:hello@getacuity.io" className="transition hover:text-white">Contact</a></li>
+            <ul className="space-y-2 text-sm text-acuity-text-sec">
+              <li><a href="/terms" className="transition hover:text-acuity-text">Terms</a></li>
+              <li><a href="/privacy" className="transition hover:text-acuity-text">Privacy</a></li>
+              <li><a href="mailto:hello@getacuity.io" className="transition hover:text-acuity-text">Contact</a></li>
             </ul>
           </div>
         </div>
-        <div className="mt-8 pt-6 border-t border-white/10 text-center">
-          <p className="text-xs text-[#A0A0B8]">
+        <div className="mt-8 pt-6 border-t border-acuity-line text-center">
+          <p className="text-xs text-acuity-text-sec">
             &copy; {new Date().getFullYear()} Acuity. All rights reserved.
           </p>
         </div>
@@ -662,15 +662,15 @@ export function PricingSection({
           <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
             {headline}
           </h2>
-          <p className="mt-4 text-[#A0A0B8] text-lg">{subheadline}</p>
+          <p className="mt-4 text-acuity-text-sec text-lg">{subheadline}</p>
         </Reveal>
 
         <Reveal delay={1}>
           <div className="mt-12 relative group">
             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-violet-400 via-indigo-400 to-violet-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-shimmer blur-[1px]" />
-            <div className="relative rounded-2xl border border-[#E8DDD0]/20 bg-[#1E1C1A] p-8 text-left shadow-sm">
+            <div className="relative rounded-2xl border border-acuity-line bg-acuity-card-bg p-8 text-left shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold uppercase tracking-wider text-[#E8DDD0]">
+                <p className="text-sm font-semibold uppercase tracking-wider text-acuity-text-sec">
                   Pro
                 </p>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400">
@@ -681,17 +681,17 @@ export function PricingSection({
                 <span className="text-5xl font-extrabold text-white">
                   {formatDollars(MONTHLY_PRICE_CENTS)}
                 </span>
-                <span className="text-[#A0A0B8]">/month</span>
+                <span className="text-acuity-text-sec">/month</span>
               </p>
-              <p className="mt-2 text-sm text-[#A0A0B8]">
+              <p className="mt-2 text-sm text-acuity-text-sec">
                 14-day free trial &middot; No card. Quick setup.
               </p>
 
-              <ul className="mt-8 space-y-3 text-sm text-[#A0A0B8]">
+              <ul className="mt-8 space-y-3 text-sm text-acuity-text-sec">
                 {pricingFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2.5">
                     <svg
-                      className="mt-0.5 h-4 w-4 shrink-0 text-[#7C5CFC]"
+                      className="mt-0.5 h-4 w-4 shrink-0 text-acuity-primary"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -711,12 +711,12 @@ export function PricingSection({
               <a
                 href={ctaHref}
                 onClick={trackInitiateCheckout}
-                className="mt-8 block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/20 active:scale-95"
+                className="mt-8 block w-full rounded-full bg-acuity-primary py-3.5 text-center text-sm font-semibold text-white transition hover:bg-acuity-primary-lo hover:shadow-xl hover:shadow-acuity-glow-soft active:scale-95"
               >
                 Start Free Trial
               </a>
 
-              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-[#A0A0B8]">
+              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-acuity-text-sec">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.71 19.5c-.83-1.15-1.64-2.3-2.76-2.3s-1.51.68-2.83.68c-1.35 0-1.83-.7-3.08-.7s-2.22 1.22-3.08 2.43c-1.21 1.71-.99 4.94.86 7.74.66.99 1.54 2.1 2.69 2.12h.04c1.01 0 1.32-.68 2.74-.69h.04c1.39 0 1.67.68 2.71.67h.04c1.17-.02 2.09-1.24 2.75-2.23.47-.71.65-1.07 1.01-1.87-2.66-1.01-3.09-4.78-.46-6.22-.86-1.07-2.18-1.69-3.43-1.63-1.31.06-2.4.73-3.08.73s-1.95-.69-3.13-.67zM21.88 8.66c-1.69 0-3.37 1.17-4.48 3.2 3.72.18 6.56 2.62 6.56 5.23 0 .33-.05.65-.12.96 2.1-.45 3.56-2.91 3.56-5.45 0-2.45-2.26-3.94-5.52-3.94z" />
                 </svg>
@@ -784,7 +784,7 @@ function CascadingTasks({ tasks }: { tasks: { text: string; checked?: boolean }[
       {tasks.map((task, i) => (
         <div
           key={task.text}
-          className="flex items-center gap-2 text-xs text-[#A0A0B8] transition-all duration-500"
+          className="flex items-center gap-2 text-xs text-acuity-text-sec transition-all duration-500"
           style={{
             opacity: i < visibleCount ? 1 : 0,
             transform: i < visibleCount ? "translateX(0)" : "translateX(20px)",
@@ -849,9 +849,9 @@ function MoodBars({ heights, color }: { heights: number[]; color: string }) {
 /* Phone mockup for Step 1: Record */
 export function RecordPhone() {
   return (
-    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
-      <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-        <div className="text-xs text-[#A0A0B8] font-medium mb-auto">Recording</div>
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-acuity-bg-inset p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-acuity-card-bg p-5 flex flex-col overflow-hidden">
+        <div className="text-xs text-acuity-text-sec font-medium mb-auto">Recording</div>
         <div className="flex flex-col items-center justify-center flex-1 gap-4">
           <div className="relative flex items-center justify-center">
             <div className="absolute h-20 w-20 rounded-full bg-red-500/20 animate-pulse-ring" />
@@ -865,7 +865,7 @@ export function RecordPhone() {
           </div>
           <WaveformVisualizer />
           <div className="text-xl font-bold text-white font-mono">0:47</div>
-          <div className="text-xs text-[#A0A0B8]">Speak freely...</div>
+          <div className="text-xs text-acuity-text-sec">Speak freely...</div>
         </div>
       </div>
     </div>
@@ -881,21 +881,21 @@ interface ExtractPhoneProps {
 
 export function ExtractPhone({ tasks, goal, mood }: ExtractPhoneProps) {
   return (
-    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
-      <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-        <div className="text-xs text-[#A0A0B8] font-medium mb-3">AI Extraction</div>
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-acuity-bg-inset p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-acuity-card-bg p-5 flex flex-col overflow-hidden">
+        <div className="text-xs text-acuity-text-sec font-medium mb-3">AI Extraction</div>
         <div className="space-y-2.5 flex-1">
-          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-1.5">Tasks</div>
+          <div className="rounded-xl border border-acuity-line bg-acuity-bg-inset p-3 shadow-sm">
+            <div className="text-[10px] text-acuity-text-sec/60 uppercase tracking-wider mb-1.5">Tasks</div>
             <CascadingTasks tasks={tasks} />
           </div>
-          <div className="rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 p-3">
+          <div className="rounded-xl border border-acuity-primary/30 bg-acuity-primary/10 p-3">
             <div className="text-[10px] text-violet-600 uppercase tracking-wider mb-1">Goal</div>
-            <div className="text-xs text-[#A0A0B8]">"{goal}"</div>
+            <div className="text-xs text-acuity-text-sec">"{goal}"</div>
           </div>
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
             <div className="text-[10px] text-emerald-600 uppercase tracking-wider mb-1">Mood</div>
-            <div className="text-xs text-[#A0A0B8]">{mood}</div>
+            <div className="text-xs text-acuity-text-sec">{mood}</div>
           </div>
         </div>
       </div>
@@ -911,23 +911,23 @@ interface ReflectPhoneProps {
 
 export function ReflectPhone({ pattern, actions }: ReflectPhoneProps) {
   return (
-    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-[#252220] p-2 shadow-xl">
-      <div className="h-full w-full rounded-[2rem] bg-[#1E1C1A] p-5 flex flex-col overflow-hidden">
-        <div className="text-xs text-[#A0A0B8] font-medium mb-3">Weekly Report</div>
+    <div className="w-[220px] h-[420px] rounded-[2.5rem] bg-acuity-bg-inset p-2 shadow-xl">
+      <div className="h-full w-full rounded-[2rem] bg-acuity-card-bg p-5 flex flex-col overflow-hidden">
+        <div className="text-xs text-acuity-text-sec font-medium mb-3">Weekly Report</div>
         <div className="space-y-2.5 flex-1">
-          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-2">Mood this week</div>
+          <div className="rounded-xl border border-acuity-line bg-acuity-bg-inset p-3 shadow-sm">
+            <div className="text-[10px] text-acuity-text-sec/60 uppercase tracking-wider mb-2">Mood this week</div>
             <div className="h-10">
               <MoodBars heights={[50, 60, 45, 75, 70, 85, 80]} color="bg-violet-400" />
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-1">Pattern</div>
-            <div className="text-xs text-[#A0A0B8]">{pattern}</div>
+          <div className="rounded-xl border border-acuity-line bg-acuity-bg-inset p-3 shadow-sm">
+            <div className="text-[10px] text-acuity-text-sec/60 uppercase tracking-wider mb-1">Pattern</div>
+            <div className="text-xs text-acuity-text-sec">{pattern}</div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-[#252220] p-3 shadow-sm">
-            <div className="text-[10px] text-[#A0A0B8]/60 uppercase tracking-wider mb-1">Top 3 Actions</div>
-            <div className="space-y-1 text-xs text-[#A0A0B8]">
+          <div className="rounded-xl border border-acuity-line bg-acuity-bg-inset p-3 shadow-sm">
+            <div className="text-[10px] text-acuity-text-sec/60 uppercase tracking-wider mb-1">Top 3 Actions</div>
+            <div className="space-y-1 text-xs text-acuity-text-sec">
               {actions.map((a, i) => (
                 <div key={i}>{i + 1}. {a}</div>
               ))}
@@ -966,7 +966,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
               How it works
             </h2>
-            <p className="mt-4 text-[#A0A0B8] text-lg">
+            <p className="mt-4 text-acuity-text-sec text-lg">
               Three steps. Zero effort.
             </p>
           </div>
@@ -977,11 +977,11 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-acuity-bg-inset px-3 py-1 text-xs font-semibold text-acuity-text-sec uppercase tracking-wider mb-4">
                   Step 1
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[0]?.title || "Record"}</h3>
-                <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
+                <p className="mt-4 text-lg text-acuity-text-sec leading-relaxed max-w-md">
                   {steps[0]?.description || "Hit record. Speak freely about your day, your worries, your wins — whatever comes to mind."}
                 </p>
               </Reveal>
@@ -997,11 +997,11 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row-reverse">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-acuity-bg-inset px-3 py-1 text-xs font-semibold text-acuity-text-sec uppercase tracking-wider mb-4">
                   Step 2
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[1]?.title || "Extract"}</h3>
-                <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
+                <p className="mt-4 text-lg text-acuity-text-sec leading-relaxed max-w-md">
                   {steps[1]?.description || "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word."}
                 </p>
               </Reveal>
@@ -1017,11 +1017,11 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
           <div className="flex flex-col gap-8 lg:items-center lg:flex-row">
             <div className="flex-1">
               <Reveal>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#252220] px-3 py-1 text-xs font-semibold text-[#A0A0B8] uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-acuity-bg-inset px-3 py-1 text-xs font-semibold text-acuity-text-sec uppercase tracking-wider mb-4">
                   Step 3
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[2]?.title || "Reflect"}</h3>
-                <p className="mt-4 text-lg text-[#A0A0B8] leading-relaxed max-w-md">
+                <p className="mt-4 text-lg text-acuity-text-sec leading-relaxed max-w-md">
                   {steps[2]?.description || "Get a weekly narrative report showing patterns in your life, so you can course-correct before the next week starts."}
                 </p>
               </Reveal>
@@ -1069,7 +1069,7 @@ export function CTABanner({
               {headline}
             </h2>
             {subheadline && (
-              <p className="mt-5 text-[#A0A0B8] text-lg max-w-md mx-auto">
+              <p className="mt-5 text-acuity-text-sec text-lg max-w-md mx-auto">
                 {subheadline}
               </p>
             )}
@@ -1077,11 +1077,11 @@ export function CTABanner({
               <a
                 href={ctaHref}
                 onClick={trackInitiateCheckout}
-                className="rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition hover:shadow-xl hover:shadow-[#7C5CFC]/20 hover:-translate-y-0.5 active:scale-95"
+                className="rounded-full bg-acuity-primary px-8 py-4 text-sm font-bold text-white shadow-lg shadow-acuity-glow-soft transition hover:shadow-xl hover:shadow-acuity-glow-soft hover:-translate-y-0.5 active:scale-95"
               >
                 {buttonText}
               </a>
-              <span className="text-sm text-[#A0A0B8]">
+              <span className="text-sm text-acuity-text-sec">
                 Then {formatDollars(MONTHLY_PRICE_CENTS)}/month &middot; No
                 card. Quick setup.
               </span>
@@ -1123,24 +1123,24 @@ export function TestimonialsSection({
         <div className="mt-16 grid gap-8 sm:grid-cols-3">
           {testimonials.map((t, i) => (
             <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <figure className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+              <figure className="group rounded-2xl border border-acuity-line bg-acuity-card-bg p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <div className="flex items-center gap-1 mb-4">
                   <span className="text-amber-400 font-bold text-xs">{SOCIAL_PROOF.rating} ★</span>
                 </div>
-                <blockquote className="text-sm leading-relaxed text-[#A0A0B8]">
+                <blockquote className="text-sm leading-relaxed text-acuity-text-sec">
                   "{t.quote}"
                 </blockquote>
                 <figcaption className="mt-5 flex items-center gap-3">
                   {t.imageSrc ? (
                     <Image src={t.imageSrc} alt={t.name} width={40} height={40} className="h-10 w-10 rounded-full object-cover" loading="lazy" />
                   ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#252220] text-sm font-bold text-[#A0A0B8] transition-colors group-hover:bg-[#7C5CFC]/20 group-hover:text-[#7C5CFC]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-acuity-bg-inset text-sm font-bold text-acuity-text-sec transition-colors group-hover:bg-acuity-primary/20 group-hover:text-acuity-primary">
                       {t.name[0]}
                     </div>
                   )}
                   <div>
                     <div className="text-sm font-semibold text-white">{t.name}</div>
-                    <div className="text-xs text-[#A0A0B8]/60">{t.role}</div>
+                    <div className="text-xs text-acuity-text-sec/60">{t.role}</div>
                   </div>
                 </figcaption>
               </figure>
@@ -1172,17 +1172,17 @@ export function ComparisonTable({
 }) {
   return (
     <Reveal>
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#1E1C1A] shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-acuity-line bg-acuity-card-bg shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/5">
-              <th className="py-4 px-6 text-left text-[#A0A0B8] font-medium" />
+            <tr className="border-b border-acuity-line">
+              <th className="py-4 px-6 text-left text-acuity-text-sec font-medium" />
               {headers.map((h, i) => (
                 <th
                   key={h}
                   className={`py-4 px-6 text-left font-semibold ${
                     i === headers.length - 1
-                      ? "text-[#7C5CFC] bg-[#7C5CFC]/10"
+                      ? "text-acuity-primary bg-acuity-primary/10"
                       : "text-white"
                   }`}
                 >
@@ -1193,8 +1193,8 @@ export function ComparisonTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.feature} className="border-b border-white/5">
-                <td className="py-4 px-6 font-medium text-[#A0A0B8]">
+              <tr key={row.feature} className="border-b border-acuity-line">
+                <td className="py-4 px-6 font-medium text-acuity-text-sec">
                   {row.feature}
                 </td>
                 {row.values.map((val, i) => (
@@ -1202,8 +1202,8 @@ export function ComparisonTable({
                     key={i}
                     className={`py-4 px-6 ${
                       i === row.values.length - 1
-                        ? "text-[#7C5CFC] font-semibold bg-[#7C5CFC]/10"
-                        : "text-[#A0A0B8]"
+                        ? "text-acuity-primary font-semibold bg-acuity-primary/10"
+                        : "text-acuity-text-sec"
                     }`}
                   >
                     {val}
@@ -1215,7 +1215,7 @@ export function ComparisonTable({
         </table>
       </div>
       {note && (
-        <p className="mt-4 text-center text-sm text-[#A0A0B8]/60 italic">{note}</p>
+        <p className="mt-4 text-center text-sm text-acuity-text-sec/60 italic">{note}</p>
       )}
     </Reveal>
   );
@@ -1331,7 +1331,7 @@ export function FeatureGrid({ features }: { features: FeatureCard[] }) {
                 key={f.title}
                 delay={Math.min((i % 3) + 1, 3) as 1 | 2 | 3}
               >
-                <div className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div className="group rounded-2xl border border-acuity-line bg-acuity-card-bg p-6 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                   <div
                     className={`h-10 w-10 rounded-xl ${icon.bg} flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110`}
                   >
@@ -1350,7 +1350,7 @@ export function FeatureGrid({ features }: { features: FeatureCard[] }) {
                     </svg>
                   </div>
                   <h3 className="text-base font-semibold text-white mb-2">{f.title}</h3>
-                  <p className="text-sm text-[#A0A0B8] leading-relaxed">
+                  <p className="text-sm text-acuity-text-sec leading-relaxed">
                     {f.description}
                   </p>
                 </div>
@@ -1374,7 +1374,7 @@ export function PainSection({ points }: { points: string[] }) {
         <div className="grid gap-6 sm:grid-cols-3">
           {points.map((point, i) => (
             <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3} className="h-full">
-              <div className="h-full group rounded-2xl bg-[#1E1C1A] p-8 text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:shadow-zinc-900/20">
+              <div className="h-full group rounded-2xl bg-acuity-card-bg p-8 text-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:shadow-zinc-900/20">
                 <div className="h-10 w-10 rounded-xl bg-violet-600/20 flex items-center justify-center mb-5">
                   <svg
                     className="h-5 w-5 text-violet-400"
@@ -1390,7 +1390,7 @@ export function PainSection({ points }: { points: string[] }) {
                     />
                   </svg>
                 </div>
-                <p className="text-sm leading-relaxed text-[#A0A0B8]">
+                <p className="text-sm leading-relaxed text-acuity-text-sec">
                   {point}
                 </p>
               </div>
@@ -1414,13 +1414,13 @@ export function SolutionSection({
   body: string;
 }) {
   return (
-    <section className="px-6 py-24 sm:py-32 bg-[#1E1C1A]">
+    <section className="px-6 py-24 sm:py-32 bg-acuity-card-bg">
       <div className="mx-auto max-w-3xl text-center">
         <Reveal>
           <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
             {headline}
           </h2>
-          <p className="mt-6 text-lg text-[#A0A0B8] leading-relaxed">{body}</p>
+          <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed">{body}</p>
         </Reveal>
       </div>
     </section>
@@ -1433,8 +1433,8 @@ export function SolutionSection({
 
 export function UrgencyBadge({ text }: { text: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC]/10 border border-[#7C5CFC]/30 px-4 py-2 text-sm font-medium text-[#7C5CFC]">
-      <span className="h-2 w-2 rounded-full bg-[#7C5CFC] animate-pulse" />
+    <div className="inline-flex items-center gap-2 rounded-full bg-acuity-primary/10 border border-acuity-primary/30 px-4 py-2 text-sm font-medium text-acuity-primary">
+      <span className="h-2 w-2 rounded-full bg-acuity-primary animate-pulse" />
       {text}
     </div>
   );
@@ -1466,7 +1466,7 @@ export function MidPageCTA({
           <a
             href={ctaHref}
             onClick={trackInitiateCheckout}
-            className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-full bg-acuity-primary px-8 py-4 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo hover:shadow-xl hover:shadow-acuity-glow-soft active:scale-95"
           >
             Start Free Trial
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1474,7 +1474,7 @@ export function MidPageCTA({
             </svg>
           </a>
           {subheadline && (
-            <p className="mt-3 text-sm text-[#A0A0B8]">{subheadline}</p>
+            <p className="mt-3 text-sm text-acuity-text-sec">{subheadline}</p>
           )}
         </div>
       </Reveal>
@@ -1519,7 +1519,7 @@ export function LifeMatrixShowcase({ areas }: { areas: MatrixArea[] }) {
       {areas.map((area, i) => (
         <div
           key={area.label}
-          className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
+          className="group rounded-2xl border border-acuity-line bg-acuity-card-bg p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
           style={{
             opacity: visible ? 1 : 0,
             transform: visible ? "translateY(0)" : "translateY(20px)",
@@ -1545,7 +1545,7 @@ export function LifeMatrixShowcase({ areas }: { areas: MatrixArea[] }) {
               }}
             />
           </div>
-          <p className="text-xs text-[#A0A0B8] leading-relaxed">
+          <p className="text-xs text-acuity-text-sec leading-relaxed">
             {area.insight}
           </p>
         </div>
@@ -1570,13 +1570,13 @@ export function BeforeAfterSection({
       <div className="mx-auto max-w-4xl">
         <div className="grid gap-8 sm:grid-cols-2">
           <Reveal>
-            <div className="rounded-2xl bg-[#1E1C1A] p-8">
-              <h3 className="text-lg font-bold text-[#A0A0B8]/60 mb-6 uppercase tracking-wider text-sm">
+            <div className="rounded-2xl bg-acuity-card-bg p-8">
+              <h3 className="text-lg font-bold text-acuity-text-sec/60 mb-6 uppercase tracking-wider text-sm">
                 Before Acuity
               </h3>
               <ul className="space-y-4">
                 {before.map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-[#A0A0B8]">
+                  <li key={i} className="flex items-start gap-3 text-sm text-acuity-text-sec">
                     <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -1588,14 +1588,14 @@ export function BeforeAfterSection({
           </Reveal>
 
           <Reveal delay={1}>
-            <div className="rounded-2xl bg-[#7C5CFC]/5 border border-[#7C5CFC]/20 p-8">
-              <h3 className="text-lg font-bold text-[#7C5CFC] mb-6 uppercase tracking-wider text-sm">
+            <div className="rounded-2xl bg-acuity-primary/5 border border-acuity-primary/20 p-8">
+              <h3 className="text-lg font-bold text-acuity-primary mb-6 uppercase tracking-wider text-sm">
                 After Acuity
               </h3>
               <ul className="space-y-4">
                 {after.map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-white">
-                    <svg className="mt-0.5 h-4 w-4 shrink-0 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="mt-0.5 h-4 w-4 shrink-0 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     {item}
@@ -1623,7 +1623,7 @@ export interface Stat {
 
 export function StatsSection({ stats }: { stats: Stat[] }) {
   return (
-    <section className="py-12 px-6 border-y border-white/5 bg-[#1E1C1A]/50 backdrop-blur">
+    <section className="py-12 px-6 border-y border-acuity-line bg-acuity-card-bg/50 backdrop-blur">
       <div className="mx-auto max-w-5xl">
         <div className={`grid grid-cols-2 sm:grid-cols-${Math.min(stats.length, 4)} gap-8 text-center`}>
           {stats.map((stat, i) => (
@@ -1635,7 +1635,7 @@ export function StatsSection({ stats }: { stats: Stat[] }) {
                   prefix={stat.prefix || ""}
                 />
               </div>
-              <div className="mt-1 text-sm text-[#A0A0B8]">{stat.label}</div>
+              <div className="mt-1 text-sm text-acuity-text-sec">{stat.label}</div>
             </Reveal>
           ))}
         </div>
@@ -1676,7 +1676,7 @@ export function RevealCards({ items }: { items: string[] }) {
       {items.map((item, i) => (
         <div
           key={i}
-          className="group rounded-2xl border border-white/10 bg-[#1E1C1A] p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
+          className="group rounded-2xl border border-acuity-line bg-acuity-card-bg p-6 shadow-sm transition-all duration-500 hover:shadow-lg hover:-translate-y-1"
           style={{
             opacity: i < visibleCount ? 1 : 0,
             transform: i < visibleCount ? "translateY(0)" : "translateY(20px)",
@@ -1684,7 +1684,7 @@ export function RevealCards({ items }: { items: string[] }) {
         >
           <div className="flex items-start gap-3">
             <div className="mt-1 h-2 w-2 rounded-full bg-violet-500 shrink-0" />
-            <p className="text-sm text-[#A0A0B8] leading-relaxed">{item}</p>
+            <p className="text-sm text-acuity-text-sec leading-relaxed">{item}</p>
           </div>
         </div>
       ))}
@@ -1709,21 +1709,21 @@ export function ReportPreview({
 }) {
   return (
     <Reveal>
-      <div className="mx-auto max-w-2xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-8 shadow-lg relative overflow-hidden">
+      <div className="mx-auto max-w-2xl rounded-2xl border border-acuity-line bg-acuity-card-bg p-8 shadow-lg relative overflow-hidden">
         <div className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-2">
           Weekly Report
         </div>
         <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
 
-        <div className="rounded-xl bg-[#252220] p-4 mb-4">
-          <div className="text-xs font-semibold text-[#A0A0B8]/60 uppercase tracking-wider mb-2">
+        <div className="rounded-xl bg-acuity-bg-inset p-4 mb-4">
+          <div className="text-xs font-semibold text-acuity-text-sec/60 uppercase tracking-wider mb-2">
             Mood Arc
           </div>
-          <p className="text-sm text-[#A0A0B8] leading-relaxed">{moodArc}</p>
+          <p className="text-sm text-acuity-text-sec leading-relaxed">{moodArc}</p>
         </div>
 
         <div className="mb-4">
-          <p className="text-sm text-[#A0A0B8] italic leading-relaxed">
+          <p className="text-sm text-acuity-text-sec italic leading-relaxed">
             "{narrative}"
           </p>
         </div>
@@ -1739,10 +1739,10 @@ export function ReportPreview({
               }}
             >
               <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-500 shrink-0" />
-              <p className="text-sm text-[#A0A0B8]">{bullet}</p>
+              <p className="text-sm text-acuity-text-sec">{bullet}</p>
             </div>
           ))}
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#1E1C1A] to-transparent flex items-end justify-center pb-2">
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-acuity-card-bg to-transparent flex items-end justify-center pb-2">
             <span className="text-xs font-medium text-violet-600">
               Read your full report
             </span>
@@ -1765,7 +1765,7 @@ export function SocialProofBar() {
           <div className="flex items-center gap-1">
             <span className="text-amber-400 font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
           </div>
-          <p className="text-sm text-[#A0A0B8]">
+          <p className="text-sm text-acuity-text-sec">
             Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
           </p>
         </div>
@@ -1790,7 +1790,7 @@ export function TrustStrip() {
       <Reveal>
         <div className="mx-auto max-w-3xl flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           {items.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-[#A0A0B8]">
+            <div key={i} className="flex items-center gap-2 text-sm text-acuity-text-sec">
               <svg className="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
@@ -1838,9 +1838,9 @@ export function FAQSection() {
         <div className="space-y-4">
           {faqs.map((faq, i) => (
             <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6">
+              <div className="rounded-xl border border-acuity-line bg-acuity-card-bg p-6">
                 <h3 className="text-base font-semibold text-white mb-2">{faq.q}</h3>
-                <p className="text-sm text-[#A0A0B8] leading-relaxed">{faq.a}</p>
+                <p className="text-sm text-acuity-text-sec leading-relaxed">{faq.a}</p>
               </div>
             </Reveal>
           ))}
@@ -1858,15 +1858,15 @@ export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
   const ctaHref = useCtaHref();
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden">
-      <div className="bg-[#181614]/95 backdrop-blur-lg border-t border-white/10 px-4 py-3">
+      <div className="bg-acuity-bg/95 backdrop-blur-lg border-t border-acuity-line px-4 py-3">
         <a
           href={ctaHref}
           onClick={trackInitiateCheckout}
-          className="block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[#6B4FE0] active:scale-[0.98]"
+          className="block w-full rounded-full bg-acuity-primary py-3.5 text-center text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98]"
         >
           Start Free Trial
         </a>
-        <p className="mt-1.5 text-center text-xs text-[#A0A0B8]">
+        <p className="mt-1.5 text-center text-xs text-acuity-text-sec">
           Free for 14 days &middot; No card required
         </p>
       </div>

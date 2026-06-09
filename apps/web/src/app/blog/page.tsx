@@ -113,7 +113,7 @@ export default async function BlogIndex() {
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl mb-4">
           Blog
         </h1>
-        <p className="text-lg text-[#A0A0B8] mb-16 max-w-2xl">
+        <p className="text-lg text-acuity-text-sec mb-16 max-w-2xl">
           Ideas on voice journaling, productivity, mental health, and the
           science of getting your thoughts out of your head.
         </p>
@@ -123,7 +123,7 @@ export default async function BlogIndex() {
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group rounded-xl border border-white/10 bg-[#13131F] overflow-hidden transition-all duration-300 hover:border-acuity-primary/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-acuity-glow-primary"
+              className="group rounded-xl border border-acuity-line bg-acuity-card-bg overflow-hidden transition-all duration-300 hover:border-acuity-primary/40 hover:-translate-y-1 hover:shadow-lg hover:shadow-acuity-glow-primary"
             >
               {post.heroImageUrl && (
                 <div className="relative w-full aspect-[16/9]">
@@ -137,7 +137,7 @@ export default async function BlogIndex() {
                 </div>
               )}
               <div className="p-6">
-                <div className="flex items-center gap-3 text-xs text-[#A0A0B8] mb-4">
+                <div className="flex items-center gap-3 text-xs text-acuity-text-sec mb-4">
                   <time dateTime={post.publishedAt}>
                     {new Date(post.publishedAt).toLocaleDateString("en-US", {
                       month: "long",
@@ -145,13 +145,13 @@ export default async function BlogIndex() {
                       year: "numeric",
                     })}
                   </time>
-                  <span className="text-white/20">|</span>
+                  <span className="text-acuity-line-strong">|</span>
                   <span>{post.readingTime}</span>
                 </div>
                 <h2 className="text-lg font-bold leading-snug mb-3 group-hover:text-acuity-primary transition-colors">
                   {post.title}
                 </h2>
-                <p className="text-sm text-[#A0A0B8] leading-relaxed line-clamp-3">
+                <p className="text-sm text-acuity-text-sec leading-relaxed line-clamp-3">
                   {post.excerpt}
                 </p>
               </div>

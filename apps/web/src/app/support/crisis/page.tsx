@@ -23,11 +23,11 @@ export const metadata = {
  */
 export default function CrisisResourcesPage() {
   return (
-    <div className="min-h-screen bg-[#13131F] text-zinc-100">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <main className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
         <Link
           href="/support"
-          className="inline-flex items-center gap-1 text-sm text-[#A0A0B8] transition hover:text-white"
+          className="inline-flex items-center gap-1 text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
           ← Support
         </Link>
@@ -36,7 +36,7 @@ export default function CrisisResourcesPage() {
           Crisis resources
         </h1>
 
-        <p className="mt-6 text-base leading-relaxed text-[#A0A0B8]">
+        <p className="mt-6 text-base leading-relaxed text-acuity-text-sec">
           Acuity is a journaling tool. It&rsquo;s not a substitute for professional
           mental-health care, and it&rsquo;s not an appropriate first stop if
           you&rsquo;re in crisis. If you or someone you know is in immediate danger,
@@ -106,14 +106,14 @@ export default function CrisisResourcesPage() {
           </p>
         </section>
 
-        <section className="mt-12 border-t border-white/10 pt-8 text-sm text-[#A0A0B8]">
+        <section className="mt-12 border-t border-acuity-line pt-8 text-sm text-acuity-text-sec">
           <p>
             Acuity doesn&rsquo;t detect crisis signals in your entries and doesn&rsquo;t
             alert anyone based on what you write. The content you save here stays
             private — see our{" "}
             <Link
               href="/privacy"
-              className="text-[#A78BFA] hover:underline"
+              className="text-acuity-primary hover:underline"
             >
               privacy policy
             </Link>{" "}
@@ -121,7 +121,7 @@ export default function CrisisResourcesPage() {
             using Acuity, you can{" "}
             <Link
               href="/account"
-              className="text-[#A78BFA] hover:underline"
+              className="text-acuity-primary hover:underline"
             >
               delete your account
             </Link>{" "}
@@ -142,27 +142,27 @@ type ResourceProps = {
 
 function Resource({ title, region, lines, note }: ResourceProps) {
   return (
-    <article className="rounded-lg border border-white/10 bg-white/5 p-5">
-      <h2 className="text-lg font-semibold text-white">{title}</h2>
-      <p className="text-xs uppercase tracking-wider text-[#A0A0B8]">{region}</p>
+    <article className="rounded-lg border border-acuity-line bg-acuity-card-bg p-5">
+      <h2 className="text-lg font-semibold text-acuity-text">{title}</h2>
+      <p className="text-xs uppercase tracking-wider text-acuity-text-sec">{region}</p>
       <ul className="mt-3 space-y-1 text-sm">
         {lines.map((l) => (
           <li key={l.label} className="flex flex-wrap items-baseline gap-2">
-            <span className="text-xs uppercase tracking-wider text-[#A0A0B8]">
+            <span className="text-xs uppercase tracking-wider text-acuity-text-sec">
               {l.label}
             </span>
             <a
               href={l.href}
               target={l.href.startsWith("http") ? "_blank" : undefined}
               rel={l.href.startsWith("http") ? "noopener noreferrer" : undefined}
-              className="font-medium text-[#A78BFA] hover:underline"
+              className="font-medium text-acuity-primary hover:underline"
             >
               {l.value}
             </a>
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-sm leading-relaxed text-[#A0A0B8]">{note}</p>
+      <p className="mt-3 text-sm leading-relaxed text-acuity-text-sec">{note}</p>
     </article>
   );
 }

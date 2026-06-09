@@ -20,11 +20,11 @@ export const metadata = {
  */
 export default function SupportPage() {
   return (
-    <div className="min-h-screen bg-[#13131F] text-zinc-100">
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
       <main className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
         <Link
           href="/"
-          className="inline-flex items-center gap-1 text-sm text-[#A0A0B8] transition hover:text-white"
+          className="inline-flex items-center gap-1 text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
           ← Back to Acuity
         </Link>
@@ -33,11 +33,11 @@ export default function SupportPage() {
           Support
         </h1>
 
-        <p className="mt-6 text-base leading-relaxed text-[#A0A0B8]">
+        <p className="mt-6 text-base leading-relaxed text-acuity-text-sec">
           Need help? Email{" "}
           <a
             href="mailto:jim@heelerdigital.com"
-            className="text-[#A78BFA] underline-offset-4 hover:underline"
+            className="text-acuity-primary underline-offset-4 hover:underline"
           >
             jim@heelerdigital.com
           </a>
@@ -45,7 +45,7 @@ export default function SupportPage() {
         </p>
 
         <section className="mt-12">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-acuity-text">
             Common questions
           </h2>
           <div className="mt-6 space-y-6">
@@ -57,7 +57,7 @@ export default function SupportPage() {
                   portal, accessible from the{" "}
                   <Link
                     href="/upgrade"
-                    className="text-[#A78BFA] hover:underline"
+                    className="text-acuity-primary hover:underline"
                   >
                     account page
                   </Link>
@@ -74,7 +74,7 @@ export default function SupportPage() {
                   web, the same option lives under your{" "}
                   <Link
                     href="/account"
-                    className="text-[#A78BFA] hover:underline"
+                    className="text-acuity-primary hover:underline"
                   >
                     account
                   </Link>{" "}
@@ -89,7 +89,7 @@ export default function SupportPage() {
               a={
                 <>
                   iOS microphone permission lives in{" "}
-                  <span className="font-medium text-zinc-100">
+                  <span className="font-medium text-acuity-text">
                     Settings → Acuity → Microphone
                   </span>
                   . If you denied it on first launch, toggle it on there,
@@ -108,7 +108,7 @@ export default function SupportPage() {
                   transcription completes. Full detail in our{" "}
                   <Link
                     href="/privacy"
-                    className="text-[#A78BFA] hover:underline"
+                    className="text-acuity-primary hover:underline"
                   >
                     privacy policy
                   </Link>
@@ -138,36 +138,36 @@ export default function SupportPage() {
             support. If you or someone you know is in crisis, please reach out.{" "}
             <Link
               href="/support/crisis"
-              className="text-[#A78BFA] hover:underline"
+              className="text-acuity-primary hover:underline"
             >
               Crisis resources →
             </Link>
           </p>
         </section>
 
-        <section className="mt-12 border-t border-white/10 pt-8">
+        <section className="mt-12 border-t border-acuity-line pt-8">
           <div className="flex flex-wrap gap-4 text-sm">
             <Link
               href="/privacy"
-              className="text-[#A0A0B8] transition hover:text-white"
+              className="text-acuity-text-sec transition hover:text-acuity-text"
             >
               Privacy Policy
             </Link>
             <Link
               href="/terms"
-              className="text-[#A0A0B8] transition hover:text-white"
+              className="text-acuity-text-sec transition hover:text-acuity-text"
             >
               Terms of Service
             </Link>
             <Link
               href="/support/crisis"
-              className="text-[#A0A0B8] transition hover:text-white"
+              className="text-acuity-text-sec transition hover:text-acuity-text"
             >
               Crisis resources
             </Link>
             <a
               href="mailto:jim@heelerdigital.com"
-              className="text-[#A0A0B8] transition hover:text-white"
+              className="text-acuity-text-sec transition hover:text-acuity-text"
             >
               Email support
             </a>
@@ -181,8 +181,8 @@ export default function SupportPage() {
 function Faq({ q, a }: { q: string; a: React.ReactNode }) {
   return (
     <div>
-      <p className="text-sm font-semibold text-white">{q}</p>
-      <div className="mt-1.5 text-sm leading-relaxed text-[#A0A0B8]">{a}</div>
+      <p className="text-sm font-semibold text-acuity-text">{q}</p>
+      <div className="mt-1.5 text-sm leading-relaxed text-acuity-text-sec">{a}</div>
     </div>
   );
 }

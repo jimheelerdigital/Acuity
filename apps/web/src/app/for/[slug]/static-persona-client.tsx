@@ -32,7 +32,7 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
   const ctaHref = useCtaHref();
 
   return (
-    <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
+    <div className="min-h-screen bg-acuity-bg text-white pb-24 sm:pb-0 overflow-x-hidden">
       <LandingNav />
       <script
         type="application/ld+json"
@@ -50,13 +50,13 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal><HeroHeadline text={page.headline} /></Reveal>
-          <Reveal delay={1}><p className="mt-6 text-lg text-[#B0A898] leading-relaxed max-w-2xl mx-auto">{page.subheadline}</p></Reveal>
+          <Reveal delay={1}><p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">{page.subheadline}</p></Reveal>
           <Reveal delay={2}>
             <div className="mt-8 flex flex-col items-center gap-3">
               <div className="flex flex-row items-center gap-3">
                 <PulsingCTA href={ctaHref}>Start Free Trial</PulsingCTA>
               </div>
-              <p className="text-xs text-[#B0A898]">No credit card. Quick setup.</p>
+              <p className="text-xs text-acuity-text-sec">No credit card. Quick setup.</p>
             </div>
           </Reveal>
         </div>
@@ -70,11 +70,11 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
           <div className="grid gap-6 sm:grid-cols-3">
             {page.painPoints.map((point, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="h-full rounded-xl border border-white/10 bg-[#1E1C1A] p-8 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
-                  <div className="h-10 w-10 rounded-xl bg-[#7C5CFC]/10 flex items-center justify-center mb-5">
-                    <svg className="h-5 w-5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                <div className="h-full rounded-xl border border-acuity-line bg-acuity-card-bg p-8 transition-all duration-300 hover:border-acuity-line-strong hover:-translate-y-1">
+                  <div className="h-10 w-10 rounded-xl bg-acuity-primary-soft flex items-center justify-center mb-5">
+                    <svg className="h-5 w-5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
                   </div>
-                  <p className="text-sm leading-relaxed text-[#B0A898]">{point}</p>
+                  <p className="text-sm leading-relaxed text-acuity-text-sec">{point}</p>
                 </div>
               </Reveal>
             ))}
@@ -86,7 +86,7 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">{page.solutionHeadline}</h2>
-            <p className="text-lg text-[#B0A898] leading-relaxed">{page.solutionBody}</p>
+            <p className="text-lg text-acuity-text-sec leading-relaxed">{page.solutionBody}</p>
           </Reveal>
         </div>
       </section>
@@ -100,9 +100,9 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
           <div className="grid gap-6 sm:grid-cols-3">
             {page.features.map((f, i) => (
               <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1">
+                <div className="rounded-xl border border-acuity-line bg-acuity-card-bg p-6 transition-all duration-300 hover:border-acuity-line-strong hover:-translate-y-1">
                   <h3 className="text-base font-semibold mb-2">{f.title}</h3>
-                  <p className="text-sm text-[#B0A898] leading-relaxed">{f.description}</p>
+                  <p className="text-sm text-acuity-text-sec leading-relaxed">{f.description}</p>
                 </div>
               </Reveal>
             ))}
@@ -114,13 +114,13 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
 
       <section className="px-6 py-24 sm:py-32">
         <Reveal>
-          <div className="mx-auto max-w-4xl rounded-2xl bg-[#1E1C1A] border border-white/10 p-12 sm:p-16 text-center relative overflow-hidden">
+          <div className="mx-auto max-w-4xl rounded-2xl bg-acuity-card-bg border border-acuity-line p-12 sm:p-16 text-center relative overflow-hidden">
             <div className="relative">
               <h2 className="text-3xl font-bold sm:text-4xl tracking-tight mb-6">{page.ctaHeadline}</h2>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <a href={ctaHref} className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden">
                   <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                  <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-bold text-white">Start Free Trial</span>
+                  <span className="relative flex items-center justify-center rounded-full bg-acuity-primary px-7 py-3.5 text-sm font-bold text-white">Start Free Trial</span>
                 </a>
               </div>
             </div>
@@ -146,9 +146,9 @@ function SimpleHowItWorks() {
           ].map((item, i) => (
             <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
               <div className="text-center">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#7C5CFC]/10 text-[#7C5CFC] font-bold text-sm mb-4">{item.step}</div>
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-acuity-primary-soft text-acuity-primary font-bold text-sm mb-4">{item.step}</div>
                 <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-                <p className="text-sm text-[#B0A898] leading-relaxed">{item.desc}</p>
+                <p className="text-sm text-acuity-text-sec leading-relaxed">{item.desc}</p>
               </div>
             </Reveal>
           ))}

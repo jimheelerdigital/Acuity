@@ -10,7 +10,7 @@ const COLS: { head: string; links: [string, string][] }[] = [
       ["Features", "#features"],
       ["How it works", "#how"],
       ["Pricing", "#pricing"],
-      ["Download", "#start"],
+      ["Download", "/start"],
     ],
   },
   {

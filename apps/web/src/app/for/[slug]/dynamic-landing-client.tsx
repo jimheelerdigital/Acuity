@@ -41,14 +41,14 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
       name,
       role: "Acuity member",
       initials,
-      bgColor: "bg-[#7C5CFC]",
+      bgColor: "bg-acuity-primary",
       imageSrc: pickFallbackHeadshot(name),
     });
   }
   allTestimonials.push(...STATIC_CAROUSEL_TESTIMONIALS);
 
   return (
-    <div className="min-h-screen bg-[#181614] text-[#F5EDE4] overflow-x-hidden">
+    <div className="min-h-screen bg-acuity-bg text-[#F5EDE4] overflow-x-hidden">
       <LandingNav />
 
       {/* Hero — text + phone mockup side by side */}
@@ -75,7 +75,7 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                       Start Free Trial
                     </PulsingCTA>
                   </div>
-                  <p className="text-xs text-[#B0A898]">
+                  <p className="text-xs text-acuity-text-sec">
                     No credit card. Quick setup.
                   </p>
                 </div>
@@ -107,14 +107,14 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
       <section className="px-6 py-14 sm:py-18">
         <div className="mx-auto max-w-2xl">
           <Reveal>
-            <p className="text-center text-xs font-semibold text-[#E8DDD0] uppercase tracking-widest mb-5">
+            <p className="text-center text-xs font-semibold text-acuity-text-sec uppercase tracking-widest mb-5">
               Sound familiar?
             </p>
           </Reveal>
           <div className="space-y-2.5">
             {page.painPoints.map((point, i) => (
               <SlideIn key={i} direction="left" delay={i * 200}>
-                <div className="rounded-lg border border-white/10 bg-[#1E1C1A] border-l-[3px] border-l-[#7C5CFC] py-3.5 px-5">
+                <div className="rounded-lg border border-acuity-line bg-acuity-card-bg border-l-[3px] border-l-acuity-primary py-3.5 px-5">
                   <p className="text-base leading-relaxed text-[#F5EDE4]">{point}</p>
                 </div>
               </SlideIn>
@@ -153,14 +153,14 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
               const rest = words.slice(titleEnd).join(" ");
               return (
                 <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-                  <div className="rounded-xl border border-white/10 bg-[#1E1C1A] p-5 transition-all duration-300 hover:border-white/20">
+                  <div className="rounded-xl border border-acuity-line bg-acuity-card-bg p-5 transition-all duration-300 hover:border-acuity-line-strong">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C5CFC]/20">
-                        <svg className="h-3.5 w-3.5 text-[#7C5CFC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-acuity-primary-soft">
+                        <svg className="h-3.5 w-3.5 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
-                      <p className="text-sm text-[#B0A898] leading-relaxed">
+                      <p className="text-sm text-acuity-text-sec leading-relaxed">
                         <span className="font-semibold text-white">{title}</span>
                         {rest ? ` ${rest}` : ""}
                       </p>
@@ -176,8 +176,8 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
       {/* Final CTA */}
       <section className="px-6 py-14 sm:py-20">
         <Reveal>
-          <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#1E1C1A] p-10 sm:p-14 text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#7C5CFC]/5 via-transparent to-[#7C5CFC]/5 pointer-events-none" />
+          <div className="mx-auto max-w-3xl rounded-2xl border border-acuity-line bg-acuity-card-bg p-10 sm:p-14 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-acuity-primary/5 via-transparent to-acuity-primary/5 pointer-events-none" />
             <div className="relative">
               <h2 className="text-2xl font-bold sm:text-3xl tracking-tight text-white mb-5">
                 {page.closingHeadline || "Your week doesn\u2019t have to disappear."}
@@ -188,13 +188,13 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                   className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
                 >
                   <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                  <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-bold text-white">Start Free Trial</span>
+                  <span className="relative flex items-center justify-center rounded-full bg-acuity-primary px-7 py-3.5 text-sm font-bold text-white">Start Free Trial</span>
                 </a>
               </div>
-              <p className="mt-2.5 text-sm text-[#B0A898]">
+              <p className="mt-2.5 text-sm text-acuity-text-sec">
                 No credit card. Cancel anytime.
               </p>
-              <p className="mt-4 text-xs text-[#B0A898]/60">
+              <p className="mt-4 text-xs text-acuity-text-sec/60">
                 <span className="text-amber-400">4.9 ★</span> on the App Store
               </p>
             </div>
@@ -265,7 +265,7 @@ function SplitHeroHeadline({ text }: { text: string }) {
           {i === whiteWordCount && purplePart && <br />}
           <span
             className={`inline-block mr-[0.3em] ${animated ? "transition-all duration-500" : ""} ${
-              i < whiteWordCount ? "text-white" : "text-[#7C5CFC]"
+              i < whiteWordCount ? "text-white" : "text-acuity-primary"
             }`}
             style={{
               opacity: i < visibleCount ? 1 : 0,
