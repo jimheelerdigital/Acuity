@@ -467,13 +467,22 @@ export const processEntryFn = inngest.createFunction(
     //   - readDispositionalFlag: V5 theme prompt-variant gate. Lifted
     //     out of step.run("extract") W-B 2026-05-03 so persist can
     //     write Entry.themePromptVersion without re-reading.
+    // Path B (v1.3.3): trim prompt context for very short entries. A
+    // sub-~25-word transcript almost never references a calendar event
+    // and doesn't need deep memory grounding — skip those reads + their
+    // prompt blocks (saves a Google Calendar call + a UserMemory read +
+    // tokens) with no quality loss on one-liners.
+    const SHORT_ENTRY_CHARS = 140;
+    const isShortEntry = transcriptLength < SHORT_ENTRY_CHARS;
     const [memoryContext, calendarContext, useDispositional] =
       await Promise.all([
         step.run("build-memory-context", async () => {
+          if (isShortEntry) return "";
           const { buildMemoryContext } = await import("@/lib/memory");
           return buildMemoryContext(userId);
         }),
         step.run("fetch-calendar-context", async () => {
+          if (isShortEntry) return { events: [], promptBlock: "" };
           const { fetchCalendarContext } = await import(
             "@/lib/calendar/context"
           );
