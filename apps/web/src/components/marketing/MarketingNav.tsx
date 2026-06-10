@@ -13,9 +13,9 @@
 import { useAppearance } from "@/contexts/appearance-context";
 
 const LINKS: [string, string][] = [
-  ["Features", "#features"],
-  ["How it works", "#how"],
-  ["Pricing", "#pricing"],
+  ["Features", "/#features"],
+  ["How it works", "/#how"],
+  ["Pricing", "/#pricing"],
   ["Blog", "/blog"],
 ];
 
@@ -29,7 +29,7 @@ export function MarketingNav() {
       style={{ background: "color-mix(in oklch, var(--acuity-bg), transparent 28%)" }}
     >
       <div className="mx-auto flex max-w-[1180px] items-center justify-between px-7 py-[15px]">
-        <a href="#top" className="flex items-center gap-2.5">
+        <a href="/" className="flex items-center gap-2.5">
           <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[9px] bg-acuity-grad-primary shadow-acuity-glow-soft">
             <span className="h-2 w-2 rounded-[5px] bg-white/95" />
           </span>
