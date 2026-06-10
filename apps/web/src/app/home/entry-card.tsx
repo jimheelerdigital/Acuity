@@ -28,7 +28,22 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
   const date = formatRelativeDate(entry.createdAt);
   const moodKey = entry.mood as Mood | null;
   const isFailed = entry.status === "FAILED";
-  const isProcessing = entry.status === "PROCESSING" || entry.status === "PENDING";
+  // v1.3.3 async pipeline statuses (QUEUED/TRANSCRIBING/EXTRACTING/
+  // PERSISTING) + the legacy PENDING/PROCESSING all read as in-progress.
+  const isProcessing = [
+    "PROCESSING",
+    "PENDING",
+    "QUEUED",
+    "TRANSCRIBING",
+    "EXTRACTING",
+    "PERSISTING",
+  ].includes(entry.status ?? "");
+  const processingLabel =
+    entry.status === "TRANSCRIBING"
+      ? "Transcribing…"
+      : entry.status === "EXTRACTING"
+        ? "Extracting…"
+        : "Processing…";
 
   return (
     <Link
@@ -62,7 +77,7 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
             )}
             {isProcessing && (
               <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-600 dark:bg-amber-950/40 dark:border-amber-900/60 dark:text-amber-400">
-                Processing...
+                {processingLabel}
               </span>
             )}
           </div>

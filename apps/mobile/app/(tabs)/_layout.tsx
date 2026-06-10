@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/contexts/theme-context";
 import type { AcuityTokens } from "@/lib/theme/tokens";
+import { getCached } from "@/lib/cache";
+import { PROCESSING_STATUSES } from "./entries";
 
 /**
  * Custom tab bar — 5 slots all rendered by ONE code path so the labels
@@ -115,6 +117,16 @@ function CustomTabBar({
   const tabBarBorder = tokens.line;
   const activeTint = tokens.primary;
   const inactiveTint = tokens.textSec;
+
+  // v1.3.3: dot on the Entries tab when any cached entry is still
+  // processing. Cache-derived (refreshes when the entries list fetches);
+  // re-reads on each tab-bar render (e.g. on navigation).
+  const cachedEntries = getCached<{ entries: { status: string }[] }>(
+    "/api/entries"
+  );
+  const hasProcessingEntries = (cachedEntries?.entries ?? []).some((e) =>
+    PROCESSING_STATUSES.has(e.status)
+  );
 
   // Figure out which slot is currently focused for tint purposes.
   // state.routes contains EVERY screen registered in the Tabs group,
@@ -216,6 +228,21 @@ function CustomTabBar({
                     name={(active ? meta.iconOn : meta.iconOff) as never}
                     size={22}
                     color={tint}
+                  />
+                )}
+                {tabKey === "entries" && hasProcessingEntries && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: -2,
+                      right: -3,
+                      width: 9,
+                      height: 9,
+                      borderRadius: 5,
+                      backgroundColor: tokens.primary,
+                      borderWidth: 1.5,
+                      borderColor: tabBarBg,
+                    }}
                   />
                 )}
               </View>
