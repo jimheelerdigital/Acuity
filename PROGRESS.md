@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-10] — Fix marketing header nav links broken on blog pages
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 6dbe1ac7
+
+### In plain English (for Keenan)
+
+When you're reading a blog post (e.g. getacuity.io/blog/the-best-voice-journaling-apps-in-2026...) and click "Features", "How it works", or "Pricing" in the top nav, it now takes you to the homepage and scrolls to that section. Before this fix, clicking those links did nothing — they just added a hash to the current blog URL. The Acuity logo in the header also now takes you home instead of doing nothing on blog pages.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/marketing/MarketingNav.tsx`: Changed nav link hrefs from bare hashes (`#features`, `#how`, `#pricing`) to root-relative paths (`/#features`, `/#how`, `/#pricing`). Changed logo href from `#top` to `/`.
+- Same `MarketingNav` component renders on homepage, `/blog` index, and `/blog/[slug]` post pages (via shared blog layout). Only one component needed fixing.
+- Homepage section IDs confirmed matching: `id="features"`, `id="how"`, `id="pricing"` — no changes needed there.
+- Blog link (`/blog`), Start free trial (`/start`), and Back to blog (`/blog`) links were already correct and unchanged.
+- No schema change. No new dependencies.
+
+### Manual steps needed
+
+None — deploys automatically on push. Keenan to verify nav works from a blog post page before push.
+
+### Notes
+
+- A previous style migration commit (8e6f71e5) fixed the CTA from `#start` to `/start` but left all other nav links as bare hashes. This commit completes that fix.
+- The `/for/*` persona pages use a separate `LandingNav` component (in `landing-shared.tsx`) which also has bare-hash links (`#how-it-works`, `#pricing`), but those pages have their own matching section IDs so the anchors work correctly in that context.
+
+---
+
 ## [2026-06-09] — Show user first name in admin Users table
 
 - **Requested by:** Keenan
