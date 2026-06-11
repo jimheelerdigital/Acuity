@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-06-10] — Funnel v3: Gap screen, identity commit, benefit copy, admin instrumentation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4d7b4c0
+
+### In plain English (for Keenan)
+The start funnel now has a stronger persuasion architecture. After the Mirror shows her what she told us, a new "Gap" screen amplifies the cost she selected and paints a sensory picture of what changes — before showing how the product works. The "how it works" steps now sell the benefit she'll feel, not just the feature. The commit screen says "hold to commit — not to an app, to 60 seconds a day of finally keeping track of YOU." All six branches have personalized Gap copy. Ads can now deep-link to the matching pain option (?p=rumination), which pre-highlights it on the entry screen. The admin Funnel Analytics tab has a v3 toggle so you can compare old copy vs new copy cleanly, plus commit completion rate and ad-match attribution.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: rewrote shared_q9 ("What's one pattern you'd like to stop?" with 4 new options); softened all graveyard Mirror absolutes to maybe-framing; softened patterns-family Mirror absolute; updated DESIRE_REWRITES keys/values for new q9; updated getSnapshotInsight; removed "record" framing from timeline w1 blur; added buildGapContent() with 6-branch amplify/imagine/promise copy; added GapContent type
+- `apps/web/src/components/onboarding-funnel.tsx`: added "gap" step between mirror and mechanism in Step type + STEP_ORDER; added GapScreen component (CTA at 1.8s); rewrote Mechanism step 1/2/3 titles + subtitles with benefit clauses; unified step3Sub to single non-branch copy; updated MECH_CONTENT cards to remove record-keeping/nightly/discipline framing ("0% this week" → "Day 1"); identity rewrite on CommitmentScreen; added ?p= URL param support with adMatchBranch state; added highlightBranch prop to SingleSelectScreen; bumped flowVersion to v3; fires funnel_ad_match event
+- `apps/web/src/app/api/admin/metrics/route.ts`: added FUNNEL_STEPS_V3_COPY with gap + commit_completed steps; v3 flow version support; commit completion rate calc; ad-match stats breakdown; updated Q9 label to "Pattern to stop"; added gap/commit_completed to SUGGESTED_FIXES; fixed branch breakdown to use event-based checks instead of fragile step-number indices
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: added v1/v2/v3/all flow version toggle buttons; commit completion % row; banner-to-buyer attribution panel
+
+### Manual steps needed
+None — no schema changes required. All event types are additive string-based and don't require Prisma migration.
+
+### Notes
+- flowVersion "v3" tags all new sessions. Historical v1/v2 data is untouched — the admin tab renders them exactly as before when toggled.
+- The ?p= param is purely additive — when absent, entry screen behaves exactly as before. When present, the matching option gets a subtle purple tint border but is NOT auto-selected.
+- Commit completion tracking reuses the existing `funnel_commit_completed` event that was already fired but never surfaced in the admin bar chart. Now it's a distinct step in the v3 funnel visualization.
+- Mirror absolutes fixed: all 5 graveyard entries ("Someone told you to meditate" → "Maybe someone told you to meditate...") and 1 patterns entry ("since you were a kid" → "Maybe since you were a kid").
+- Gap screen total copy is ~50-60 words per branch, under the 60-word target.
+
+---
+
 ## [2026-06-10] — Web app light theme default + funnel fix + orange record button
 
 **Requested by:** Keenan
