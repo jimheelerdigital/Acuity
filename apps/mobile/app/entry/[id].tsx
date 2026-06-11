@@ -96,7 +96,8 @@ function asCanonicalTheme(label: string): ThemeKey | null {
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { tokens } = useTheme();
+  const { tokens, resolved } = useTheme();
+  const isDark = resolved === "dark";
   const insets = useSafeAreaInsets();
   const cacheKey = id ? entryDetailKey(id) : null;
   const initialCached = cacheKey
@@ -657,21 +658,22 @@ export default function EntryDetailScreen() {
               right: 12,
               minWidth: 200,
               borderRadius: 14,
-              // Issue C contrast fix (v1.3.3): a clearly-layered popup. The
-              // old cardBg (L≈0.245) sat too close to the page bg + a faint
-              // shadow read as "embedded". Raised surface (cardBgRaised
-              // L≈0.27) + a stronger border (lineStrong) + a real drop
-              // shadow lift it off the page; iOS uses the shadow*, Android
-              // the elevation.
+              // Issue C (iteration 4): HARDCODED surface so the popup is an
+              // obvious card over the page. Tokens (cardBgRaised) sat too
+              // close to the page bg in both modes. Light = true white; dark
+              // = a clearly-lighter raised gray. NO overflow:hidden — it was
+              // clipping the iOS drop shadow (why the shadow looked absent).
+              // Border defines the edge; shadow + elevation lift it.
               borderWidth: 1,
-              borderColor: tokens.lineStrong,
-              backgroundColor: tokens.cardBgRaised,
-              overflow: "hidden",
+              borderColor: isDark
+                ? "rgba(255,255,255,0.18)"
+                : "rgba(0,0,0,0.12)",
+              backgroundColor: isDark ? "#383343" : "#FFFFFF",
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 12 },
-              shadowRadius: 24,
-              shadowOpacity: 0.45,
-              elevation: 16,
+              shadowOffset: { width: 0, height: 16 },
+              shadowRadius: 32,
+              shadowOpacity: 0.5,
+              elevation: 24,
             }}
           >
             <Pressable
@@ -684,13 +686,6 @@ export default function EntryDetailScreen() {
               }}
               accessibilityRole="menuitem"
               accessibilityLabel="Delete entry"
-              style={({ pressed }) => ({
-                paddingHorizontal: 20,
-                paddingVertical: 16,
-                backgroundColor: pressed
-                  ? `${tokens.bad}1F`
-                  : "transparent",
-              })}
             >
               {/* Issue C (stacked-menu fix): row layout lives on a plain
                   static-style View, NOT the Pressable's function style. The
@@ -699,7 +694,13 @@ export default function EntryDetailScreen() {
                   column + alignItems:center stacked the icon ABOVE the text.
                   A static View can't fall back — it forces the row. */}
               <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  paddingHorizontal: 20,
+                  paddingVertical: 14,
+                }}
               >
                 <Ionicons name="trash-outline" size={18} color={tokens.bad} />
                 <Text
