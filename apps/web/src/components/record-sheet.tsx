@@ -358,12 +358,12 @@ function RecordButton({
       className={`relative flex h-20 w-20 items-center justify-center rounded-full transition-all ${
         isRecording
           ? "bg-red-500 hover:bg-red-400 animate-pulse-slow"
-          : "bg-violet-600 hover:bg-violet-500"
+          : "bg-orange-500 hover:bg-orange-400"
       } disabled:opacity-60 shadow-lg`}
       style={{
         boxShadow: isRecording
           ? "0 0 0 8px rgba(239, 68, 68, 0.15)"
-          : "0 0 0 6px rgba(124, 58, 237, 0.18)",
+          : "0 0 0 6px rgba(249, 115, 22, 0.18)",
       }}
     >
       {isBusy ? (

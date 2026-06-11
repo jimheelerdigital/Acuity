@@ -195,7 +195,7 @@ export function useAppearance(): AppearanceContextValue {
     // (which mount without the provider) don't crash. Setters are
     // no-ops; theme/palette read as the canonical defaults.
     return {
-      themePreference: "system",
+      themePreference: "light",
       theme: "light",
       palette: "coral",
       setThemePreference: () => {},

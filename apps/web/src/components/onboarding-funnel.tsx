@@ -899,7 +899,7 @@ function MechanismScreen({ branch, answers, onContinue }: {
     ? {} : { animation: `funnel-slide-up 400ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
 
   return (
-    <div className="min-h-[100dvh] overflow-y-auto px-6 py-10">
+    <div className="min-h-[100dvh] overflow-y-auto px-6 py-10 bg-white text-zinc-900">
       <style dangerouslySetInnerHTML={{ __html: mechanismStyles }} />
 
       {/* Headline */}
@@ -1058,7 +1058,7 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit to one minute a day.</h2>
         <div className="relative inline-flex items-center justify-center">
           <svg className="h-40 w-40" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--acuity-line-strong)" strokeWidth="4" />
+            <circle cx="60" cy="60" r="54" fill="none" stroke="#d4d4d8" strokeWidth="4" />
             <circle ref={ringRef} cx="60" cy="60" r="54" fill="none" stroke="var(--acuity-primary)" strokeWidth="4" strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE} strokeDashoffset={CIRCUMFERENCE}
               transform="rotate(-90 60 60)" />
@@ -1067,7 +1067,7 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
             onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}
             onTouchStart={(e) => { e.preventDefault(); startHold(); }} onTouchEnd={endHold}
             onContextMenu={(e) => e.preventDefault()}
-            className={`absolute inset-4 rounded-full bg-acuity-primary/5 border border-zinc-200 flex items-center justify-center transition active:bg-acuity-primary/10 ${!holding && !completed ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
+            className={`absolute inset-4 rounded-full bg-acuity-primary/10 border-2 border-zinc-300 flex items-center justify-center transition active:bg-acuity-primary/15 ${!holding && !completed ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
             aria-label="Hold to commit" style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}>
             <span className="text-3xl">{completed ? "\u2713" : ""}</span>
           </button>
