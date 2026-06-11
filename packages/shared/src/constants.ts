@@ -26,6 +26,23 @@ export const NO_SOUND_CAPTURED_MESSAGE =
 export function isEffectivelySilentPeak(peak: number): boolean {
   return peak < SILENCE_PEAK_THRESHOLD;
 }
+
+// Entry processing (non-terminal) statuses + tappability (Issue A, v1.3.3).
+// Single source of truth for the entry-row lock so Home + Entries + web
+// can't drift. A processing entry isn't tappable — opening it mid-pipeline
+// navigates into a half-baked detail. Terminal: COMPLETE / PARTIAL / FAILED.
+export const PROCESSING_ENTRY_STATUSES: ReadonlySet<string> = new Set([
+  "QUEUED",
+  "PENDING",
+  "PROCESSING",
+  "TRANSCRIBING",
+  "EXTRACTING",
+  "PERSISTING",
+]);
+
+export function isEntryTappable(status: string | null | undefined): boolean {
+  return !PROCESSING_ENTRY_STATUSES.has(status ?? "");
+}
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // 25 MB (Whisper limit)
 export const SUPPORTED_AUDIO_TYPES = [
   "audio/webm",

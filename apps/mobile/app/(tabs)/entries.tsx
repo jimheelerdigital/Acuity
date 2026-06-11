@@ -18,7 +18,9 @@ import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
+  isEntryTappable,
   MOOD_LABELS,
+  PROCESSING_ENTRY_STATUSES,
   type EntryDTO,
   type Mood,
 } from "@acuity/shared";
@@ -33,17 +35,9 @@ import { WARN_AMBER } from "@/lib/tone-colors";
 
 const ENTRIES_CACHE_KEY = "/api/entries";
 
-// Non-terminal entry statuses — drive the "Processing" badge (v1.3.3
-// background processing) + the Entries tab dot. Terminal: COMPLETE /
-// PARTIAL / FAILED.
-export const PROCESSING_STATUSES = new Set([
-  "QUEUED",
-  "PENDING",
-  "PROCESSING",
-  "TRANSCRIBING",
-  "EXTRACTING",
-  "PERSISTING",
-]);
+// Re-export the shared set (single source of truth in @acuity/shared) so the
+// "Processing" badge + the Entries tab dot can't drift from the lock logic.
+export const PROCESSING_STATUSES = PROCESSING_ENTRY_STATUSES;
 
 /**
  * Entries tab — full-screen chronological list with search + mood
@@ -385,7 +379,7 @@ function EntryRow({
   const swipeRef = useRef<Swipeable | null>(null);
   // Issue A (v1.3.3): lock the row while processing — not tappable + faded.
   // Swipe + long-press (delete) stay available so a stuck entry is removable.
-  const isLocked = PROCESSING_STATUSES.has(entry.status);
+  const isLocked = !isEntryTappable(entry.status);
 
   const renderRightActions = () => (
     <Pressable

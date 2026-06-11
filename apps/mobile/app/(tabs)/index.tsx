@@ -12,6 +12,7 @@ import { GradientText, HeroCard } from "@/components/acuity";
 
 import {
   MOOD_LABELS,
+  isEntryTappable,
   type EntryDTO,
   formatRelativeDate,
   type ProgressionItemKey,
@@ -385,7 +386,11 @@ export default function DashboardTab() {
                   : undefined
               }
               themes={latestEntry.themes ?? []}
-              onPress={() => openEntry(latestEntry.id)}
+              onPress={
+                isEntryTappable(latestEntry.status)
+                  ? () => openEntry(latestEntry.id)
+                  : undefined
+              }
             />
           </>
         )}
@@ -753,9 +758,12 @@ const EntryRow = memo(function EntryRow({
   const dateLabel = formatRelativeDate(entry.createdAt);
   const isPartial = entry.status === "PARTIAL";
   const handlePress = useCallback(() => onPress(entry.id), [onPress, entry.id]);
+  // Issue A (v1.3.3): lock the Home row while processing — not tappable +
+  // faded (parity with Entries). Prevents opening a half-baked detail.
+  const tappable = isEntryTappable(entry.status);
   return (
     <Pressable
-      onPress={handlePress}
+      onPress={tappable ? handlePress : undefined}
       style={{
         borderRadius: tokens.radius.lg,
         backgroundColor: tokens.cardBg,
@@ -766,6 +774,7 @@ const EntryRow = memo(function EntryRow({
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
+        opacity: tappable ? 1 : 0.55,
       }}
     >
       <View style={{ flex: 1, gap: 6 }}>

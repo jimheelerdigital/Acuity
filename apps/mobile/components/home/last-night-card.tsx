@@ -66,6 +66,9 @@ export function LastNightCard({
         backgroundColor: tokens.cardBg,
         borderWidth: 0.5,
         borderColor: tokens.line,
+        // Issue A (v1.3.3): faded when not tappable — parent passes
+        // onPress=undefined while the entry is still processing.
+        opacity: onPress ? 1 : 0.55,
       }}
     >
       <View

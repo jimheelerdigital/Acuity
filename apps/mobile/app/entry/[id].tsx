@@ -659,7 +659,7 @@ export default function EntryDetailScreen() {
               borderRadius: 14,
               borderWidth: 1,
               borderColor: tokens.line,
-              backgroundColor: tokens.bgSub,
+              backgroundColor: tokens.cardBg,
               overflow: "hidden",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
@@ -681,9 +681,9 @@ export default function EntryDetailScreen() {
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
-                gap: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
+                gap: 14,
+                paddingHorizontal: 20,
+                paddingVertical: 16,
                 backgroundColor: pressed
                   ? `${tokens.bad}1F`
                   : "transparent",

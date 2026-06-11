@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   MOOD_LABELS,
   formatRelativeDate,
+  isEntryTappable,
 } from "@acuity/shared";
 import type { Entry } from "@prisma/client";
 import type { Mood } from "@acuity/shared";
@@ -28,16 +29,9 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
   const date = formatRelativeDate(entry.createdAt);
   const moodKey = entry.mood as Mood | null;
   const isFailed = entry.status === "FAILED";
-  // v1.3.3 async pipeline statuses (QUEUED/TRANSCRIBING/EXTRACTING/
-  // PERSISTING) + the legacy PENDING/PROCESSING all read as in-progress.
-  const isProcessing = [
-    "PROCESSING",
-    "PENDING",
-    "QUEUED",
-    "TRANSCRIBING",
-    "EXTRACTING",
-    "PERSISTING",
-  ].includes(entry.status ?? "");
+  // Shared single source of truth (Fix 1 refactor) — same lock/processing
+  // set as Home + mobile, so they can't drift.
+  const isProcessing = !isEntryTappable(entry.status);
   const processingLabel =
     entry.status === "TRANSCRIBING"
       ? "Transcribing…"
