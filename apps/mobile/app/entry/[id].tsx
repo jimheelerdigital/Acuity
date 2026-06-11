@@ -685,9 +685,6 @@ export default function EntryDetailScreen() {
               accessibilityRole="menuitem"
               accessibilityLabel="Delete entry"
               style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 14,
                 paddingHorizontal: 20,
                 paddingVertical: 16,
                 backgroundColor: pressed
@@ -695,17 +692,27 @@ export default function EntryDetailScreen() {
                   : "transparent",
               })}
             >
-              <Ionicons name="trash-outline" size={18} color={tokens.bad} />
-              <Text
-                style={{
-                  color: tokens.bad,
-                  fontFamily: tokens.fontSans,
-                  fontSize: 15,
-                  fontWeight: "600",
-                }}
+              {/* Issue C (stacked-menu fix): row layout lives on a plain
+                  static-style View, NOT the Pressable's function style. The
+                  hypothesis is that flexDirection from the function form
+                  wasn't applying, so the item fell back to RN's default
+                  column + alignItems:center stacked the icon ABOVE the text.
+                  A static View can't fall back — it forces the row. */}
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 14 }}
               >
-                Delete entry
-              </Text>
+                <Ionicons name="trash-outline" size={18} color={tokens.bad} />
+                <Text
+                  style={{
+                    color: tokens.bad,
+                    fontFamily: tokens.fontSans,
+                    fontSize: 15,
+                    fontWeight: "600",
+                  }}
+                >
+                  Delete entry
+                </Text>
+              </View>
             </Pressable>
           </View>
         </Pressable>
