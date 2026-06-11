@@ -19,6 +19,7 @@ import {
   BRANCH_QUESTIONS,
   SHARED_QUESTIONS,
   buildMirrorLines,
+  buildGapContent,
   PROCESSING_STAGES,
   getSnapshotInsight,
   SNAPSHOT_PREVIEWS,
@@ -41,6 +42,7 @@ type Step =
   | "branch-q2" | "branch-q3" | "branch-q4"
   | "shared-q5" | "shared-q6" | "shared-q7" | "shared-q8" | "shared-q9"
   | "mirror"
+  | "gap"
   | "mechanism"
   | "commit"
   | "processing"
@@ -53,7 +55,7 @@ type Step =
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
-  "mirror", "mechanism", "commit", "processing", "snapshot", "timeline",
+  "mirror", "gap", "mechanism", "commit", "processing", "snapshot", "timeline",
   "create-account", "savings", "download",
 ];
 
@@ -145,7 +147,7 @@ function useFunnelTracker() {
   const utmRef = useRef<UtmParams>({});
   useEffect(() => { utmRef.current = captureUtmParams(); }, []);
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v2", ...props });
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v3", ...props });
   }, []);
 }
 
@@ -178,6 +180,13 @@ export function OnboardingFunnel() {
   const [step, setStepRaw] = useState<Step>(saved?.step ?? "entry");
   const [branch, setBranch] = useState<Branch | null>(saved?.branch ?? null);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>(saved?.answers ?? {});
+  // ?p= param for ad deep-link pre-highlighting (Change 6)
+  const [adMatchBranch] = useState<Branch | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const p = new URLSearchParams(window.location.search).get("p");
+    if (p && (["blur","patterns","rumination","graveyard","mask","drift"] as string[]).includes(p)) return p as Branch;
+    return undefined;
+  });
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "monthly");
@@ -354,6 +363,7 @@ export function OnboardingFunnel() {
       "shared-q8": "funnel_shared_q8_viewed",
       "shared-q9": "funnel_shared_q9_viewed",
       mirror: "funnel_mirror_viewed",
+      gap: "funnel_gap_viewed",
       mechanism: "funnel_mechanism_viewed",
       commit: "funnel_commit_viewed",
       processing: "funnel_processing_viewed",
@@ -364,7 +374,7 @@ export function OnboardingFunnel() {
       download: "funnel_download_viewed",
     };
     if (eventMap[step]) {
-      track(eventMap[step]);
+      track(eventMap[step], step === "entry" && adMatchBranch ? { value: `ad_match:${adMatchBranch}` } : undefined);
       // Lead fires on the timeline step — a mid-funnel signal showing the
       // user reached the value-reveal screens. Moved from create-account
       // (which inflated Lead count for users who merely saw the form).
@@ -521,11 +531,15 @@ export function OnboardingFunnel() {
             questionLarge={isEntry ? q.text : undefined}
             options={q.options}
             normalization={q.normalization}
+            highlightBranch={isEntry ? adMatchBranch : undefined}
             onSelect={(opt) => {
               if (isEntry && opt.branch) {
                 setBranch(opt.branch);
                 handleAnswer("entry", opt.label, "funnel_entry_selected");
                 track("funnel_entry_selected", { value: opt.branch });
+                if (adMatchBranch) {
+                  track("funnel_ad_match", { value: opt.branch === adMatchBranch ? "matched" : "different" });
+                }
               } else {
                 handleAnswer(answerKey, opt.label, `${eventBase}_selected`);
               }
@@ -541,11 +555,16 @@ export function OnboardingFunnel() {
           key="mirror"
           branch={branch}
           answers={answers}
-          onContinue={() => setStep("mechanism")}
+          onContinue={() => setStep("gap")}
         />
       )}
 
-      {/* ── Mechanism / Product Explainer (Screen 10.5) ── */}
+      {/* ── Gap (Screen 10.5 — amplify + imagine) ── */}
+      {step === "gap" && branch && (
+        <GapScreen key="gap" branch={branch} answers={answers} onContinue={() => setStep("mechanism")} />
+      )}
+
+      {/* ── Mechanism / Product Explainer (Screen 11) ── */}
       {step === "mechanism" && branch && (
         <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={() => setStep("commit")} />
       )}
@@ -621,12 +640,13 @@ export function OnboardingFunnel() {
 
 // ─── Single Select Question Screen ──────────────────────────────────────────
 
-function SingleSelectScreen({ question, questionLarge, options, normalization, onSelect }: {
+function SingleSelectScreen({ question, questionLarge, options, normalization, onSelect, highlightBranch }: {
   question?: string;
   questionLarge?: string;
   options: { label: string; branch?: Branch }[];
   normalization?: string;
   onSelect: (opt: { label: string; branch?: Branch }) => void;
+  highlightBranch?: Branch;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -646,14 +666,18 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 funnel-screen">{question}</h2>
         ) : null}
         <div className="space-y-3" style={{ minHeight: `${options.length * 64}px` }}>
-          {options.map((opt, i) => (
+          {options.map((opt, i) => {
+            const isHighlighted = !selected && highlightBranch && opt.branch === highlightBranch;
+            return (
             <button key={opt.label} onClick={() => handleTap(opt)}
               className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
                 selected === opt.label
                   ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900 animate-[funnel-pulse-select_0.2s_ease-out]"
                   : selected
                     ? "border-zinc-200 bg-zinc-50 text-zinc-700 opacity-40"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                    : isHighlighted
+                      ? "border-acuity-primary/40 bg-acuity-primary/5 text-zinc-900 hover:bg-acuity-primary/10"
+                      : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
               }`}
               style={{ animationDelay: `${i * 100}ms` }}
               disabled={!!selected}
@@ -661,7 +685,8 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
               {selected === opt.label && <span className="mr-2 text-acuity-primary">&#10003;</span>}
               {opt.label}
             </button>
-          ))}
+            );
+          })}
         </div>
         {normalization && (
           <p className="mt-6 text-center text-xs italic text-zinc-400 funnel-screen" style={{ animationDelay: `${options.length * 100 + 200}ms` }}>
@@ -789,6 +814,53 @@ function MirrorScreen({ branch, answers, onContinue }: {
   );
 }
 
+// ─── Gap Screen (Amplify + Imagine — between Mirror and Mechanism) ──────────
+
+function GapScreen({ branch, answers, onContinue }: {
+  branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
+}) {
+  const content = buildGapContent(branch, answers);
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(setTimeout(() => setPhase(1), 300));
+    timers.push(setTimeout(() => setPhase(2), 900));
+    timers.push(setTimeout(() => setPhase(3), 1500));
+    timers.push(setTimeout(() => setPhase(4), 1800));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+      <div className="max-w-md w-full">
+        {/* Part 1 — Amplify */}
+        <div className={`mb-8 transition-all duration-[600ms] ease-out ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{content.amplify}</p>
+        </div>
+
+        {/* Part 2 — Imagine */}
+        <div className={`mb-8 transition-all duration-[600ms] ease-out ${phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <p className="text-[15px] text-zinc-600 leading-relaxed italic">{content.imagine}</p>
+        </div>
+
+        {/* Part 3 — The promise */}
+        <div className={`mb-10 transition-all duration-[400ms] ease-out ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
+          <p className="text-base font-bold text-zinc-900 text-center">{content.promise}</p>
+        </div>
+
+        {/* CTA — visible within 2s of mount */}
+        <div className={`text-center transition-all duration-500 ${phase >= 4 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <button onClick={onContinue}
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            Show me how it works
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Mechanism Screen (Product Explainer — branch-personalized) ─────────────
 
 const MECHANISM_WAVE_HEIGHTS = [12,20,28,16,32,24,30,14,22,34,18,26,20,30,14,24,18,28];
@@ -803,11 +875,11 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
   blur: {
     cards: () => [
       { text: "Block 30 minutes for the thing you keep postponing", icon: "\u25A1" },
-      { text: "Build a record of my days \u2014 0% this week", icon: "\u25B2" },
+      { text: "Notice what actually mattered \u2014 Day 1", icon: "\u25B2" },
       { text: "Foggy \u2192 Aware", icon: "\u25CF" },
       { text: "You described 3 days as \u2018fine\u2019 but couldn\u2019t name a single highlight", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity shows you where your days actually go \u2014 not where you think they go. Patterns across weeks and months that explain the fog.",
+    step3Sub: "",
     insight: "Your \u2018fine\u2019 days had zero unstructured time. Your best day had 2 hours of nothing planned.",
   },
   patterns: {
@@ -816,55 +888,55 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
       const cycle = q2.replace(/^The same /i, "").replace(/ with.*/, "").toLowerCase();
       return [
         { text: `Talk to ${who} about what happened Tuesday`, icon: "\u25A1" },
-        { text: `Break the ${cycle || "cycle"} cycle \u2014 0% this week`, icon: "\u25B2" },
+        { text: `Break the ${cycle || "cycle"} cycle \u2014 Day 1`, icon: "\u25B2" },
         { text: "Frustrated \u2192 Aware", icon: "\u25CF" },
         { text: "The tension started 2 days before the argument \u2014 every time", icon: "\u25C6" },
       ];
     },
-    step3Sub: "Over time, Acuity maps the cycle \u2014 what triggers it, when it starts, and why it keeps repeating. The pattern becomes visible.",
+    step3Sub: "",
     insight: "The argument happened Tuesday. The tension started Sunday. Same pattern, 3 weeks in a row.",
   },
   rumination: {
     cards: () => [
       { text: "Write down the 3 thoughts that keep looping", icon: "\u25A1" },
-      { text: "Process my day before bed \u2014 0% this week", icon: "\u25B2" },
+      { text: "Process what\u2019s on my mind \u2014 Day 1", icon: "\u25B2" },
       { text: "Racing \u2192 Settled", icon: "\u25CF" },
-      { text: "Your 11pm spiral starts with something that happened at 2pm", icon: "\u25C6" },
+      { text: "Your spiral starts with something that happened 8 hours earlier", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity catches what your brain is processing before it reaches your pillow. The backlog shrinks because it finally has somewhere to go.",
-    insight: "You slept best on Wednesday \u2014 the only day you processed out loud before 6pm.",
+    step3Sub: "",
+    insight: "You were calmest on the day you processed out loud before the evening.",
   },
   graveyard: {
     cards: (q2) => {
       const tool = q2 || "what hasn\u2019t worked";
       return [
-        { text: `Try Acuity for 7 days instead of ${tool.charAt(0).toLowerCase() + tool.slice(1)}`, icon: "\u25A1" },
-        { text: "Stick with one thing for 30 days \u2014 0% this week", icon: "\u25B2" },
+        { text: `Give this 7 days before deciding \u2014 instead of ${tool.charAt(0).toLowerCase() + tool.slice(1)}`, icon: "\u25A1" },
+        { text: "Show up for 60 seconds \u2014 Day 1", icon: "\u25B2" },
         { text: "Skeptical \u2192 Curious", icon: "\u25CF" },
         { text: "You\u2019ve quit every tool on Day 4. There\u2019s a reason for that.", icon: "\u25C6" },
       ];
     },
-    step3Sub: "Over time, Acuity becomes the record you\u2019ve never been able to keep. Not because you\u2019re more disciplined \u2014 because 60 seconds is all it asks.",
+    step3Sub: "",
     insight: "Day 4 is when you almost quit. Every tool. Every time. Now you know when to push through.",
   },
   mask: {
     cards: () => [
-      { text: "Tell one person how you actually feel this week", icon: "\u25A1" },
-      { text: "Check in with myself daily \u2014 0% this week", icon: "\u25B2" },
+      { text: "Tell one person how you actually feel", icon: "\u25A1" },
+      { text: "Check in with how I actually feel \u2014 Day 1", icon: "\u25B2" },
       { text: "Performing \u2192 Honest", icon: "\u25CF" },
       { text: "You said \u2018I\u2019m fine\u2019 on your lowest days. Every time.", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity sees what nobody else does \u2014 the gap between how you perform and how you actually feel. Tracked daily, visible weekly.",
+    step3Sub: "",
     insight: "Your energy for everyone else averaged 8/10. For yourself: 3/10. Every single day.",
   },
   drift: {
     cards: () => [
       { text: "Name one thing you used to care about", icon: "\u25A1" },
-      { text: "Reconnect with what matters \u2014 0% this week", icon: "\u25B2" },
+      { text: "Reconnect with what matters \u2014 Day 1", icon: "\u25B2" },
       { text: "Numb \u2192 Present", icon: "\u25CF" },
       { text: "You talked about who you used to be twice. Who you want to become \u2014 zero times.", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity tracks who you\u2019re becoming \u2014 so you notice before another year disappears without you choosing it.",
+    step3Sub: "",
     insight: "Your highest energy was Sunday morning. By Monday evening, gone. The reset happens every week.",
   },
 };
@@ -911,7 +983,7 @@ function MechanismScreen({ branch, answers, onContinue }: {
       <div className="mb-8" style={fadeUp(800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 1</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">Talk for 60 seconds.</p>
-        <p className="mb-4 text-sm leading-5 text-zinc-500">About your day. Your stress. Your wins. Whatever&rsquo;s on your mind.</p>
+        <p className="mb-4 text-sm leading-5 text-zinc-500">About whatever&rsquo;s on your mind &mdash; and get it out of your head, where it&rsquo;s been costing you sleep and patience.</p>
         <div className="flex items-end gap-[4px]" style={{ height: 40 }}>
           {MECHANISM_WAVE_HEIGHTS.map((h, i) => (
             <div key={i} className="w-[3px] origin-bottom rounded-full bg-acuity-primary-hi"
@@ -923,8 +995,8 @@ function MechanismScreen({ branch, answers, onContinue }: {
       {/* ── STEP 2: WE EXTRACT (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(2200)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 2</p>
-        <p className="mb-1.5 text-xl font-bold text-zinc-900">We pull out what matters.</p>
-        <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, mood shifts, and patterns &mdash; extracted from your own words.</p>
+        <p className="mb-1.5 text-xl font-bold text-zinc-900">Acuity pulls out what matters.</p>
+        <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, moods, patterns &mdash; so nothing you said falls through the cracks, and nothing sits on your shoulders alone.</p>
         <div className="space-y-2">
           {cards.map((c, i) => (
             <div key={i} className="flex items-center rounded-xl border-l-[3px] border-acuity-primary bg-white px-3.5 py-3 shadow-sm"
@@ -939,8 +1011,8 @@ function MechanismScreen({ branch, answers, onContinue }: {
       {/* ── STEP 3: YOUR PICTURE (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(3800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 3</p>
-        <p className="mb-1.5 text-xl font-bold text-zinc-900">A living picture of your life.</p>
-        <p className="mb-5 text-sm leading-5 text-zinc-500">{content.step3Sub}</p>
+        <p className="mb-1.5 text-xl font-bold text-zinc-900">See the patterns running your weeks.</p>
+        <p className="mb-5 text-sm leading-5 text-zinc-500">Within a few debriefs, Acuity starts showing you the patterns you can&rsquo;t see from inside them. Seeing them is how they finally change.</p>
         <div className="mb-4 flex items-center justify-between px-2">
           {["M","T","W","T","F","S","S"].map((d, i) => {
             const filled = i < 5;
@@ -1055,7 +1127,7 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900 select-none">
       <div className="max-w-md text-center">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit to one minute a day.</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit &mdash; not to an app. To 60 seconds a day of finally keeping track of YOU.</h2>
         <div className="relative inline-flex items-center justify-center">
           <svg className="h-40 w-40" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="54" fill="none" stroke="#d4d4d8" strokeWidth="4" />

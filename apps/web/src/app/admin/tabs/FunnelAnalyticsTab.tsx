@@ -10,15 +10,16 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
+  const [flowVersion, setFlowVersion] = useState<"v3" | "v2" | "v1" | "all">("v3");
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/metrics?tab=funnel-analytics&start=${start}&end=${end}&flow=all`)
+    fetch(`/api/admin/metrics?tab=funnel-analytics&start=${start}&end=${end}&flow=${flowVersion}`)
       .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then((d) => { setData(d); setLoading(false); })
       .catch((e) => { setError(e.message); setLoading(false); });
-  }, [start, end]);
+  }, [start, end, flowVersion]);
 
   if (loading) return <div style={{ color: "#888", padding: 40, textAlign: "center" }}>Loading funnel data...</div>;
   if (error) return (
@@ -88,8 +89,20 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "right" }}>
-        {new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", gap: 4 }}>
+          {(["v3", "v2", "v1", "all"] as const).map((v) => (
+            <button key={v} onClick={() => setFlowVersion(v)}
+              style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
+                background: flowVersion === v ? "#7C5CFC" : "rgba(255,255,255,0.06)",
+                color: flowVersion === v ? "#fff" : "rgba(255,255,255,0.35)" }}>
+              {v === "all" ? "All" : v.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
+          {new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </div>
       </div>
 
       {/* Account → Paid summary */}
@@ -169,6 +182,33 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           </div>
         ))}
       </div>
+
+      {/* Commit Completion % (7c) */}
+      {(diag.commitViewedSessions ?? 0) > 0 && (
+        <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Commit Screen:</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{diag.commitViewedSessions}</span>
+          <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Held to Commit:</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{diag.commitCompletedSessions}</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
+            ({diag.commitCompletionRate ?? 0}% completion)
+          </span>
+        </div>
+      )}
+
+      {/* Ad-match breakdown (7d) */}
+      {(data.adMatchStats?.total ?? 0) > 0 && (
+        <div style={{ ...S, padding: "14px 20px" }}>
+          <div style={{ ...H, marginBottom: 8 }}>Banner-to-Buyer Attribution</div>
+          <div style={{ display: "flex", gap: 20, fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+            <span>Sessions with ad-match: <strong style={{ color: "#fff" }}>{data.adMatchStats.total}</strong></span>
+            <span>Selected highlighted: <strong style={{ color: "#22c55e" }}>{data.adMatchStats.matched}</strong> ({data.adMatchStats.total > 0 ? Math.round((data.adMatchStats.matched / data.adMatchStats.total) * 100) : 0}%)</span>
+            <span>Selected different: <strong style={{ color: "#f59e0b" }}>{data.adMatchStats.different}</strong></span>
+            <span>Without param: <strong style={{ color: "rgba(255,255,255,0.4)" }}>{data.adMatchStats.withoutParam}</strong></span>
+          </div>
+        </div>
+      )}
 
       {/* Conversion Funnel */}
       <div style={S}>

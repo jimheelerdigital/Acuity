@@ -293,14 +293,14 @@ export const SHARED_QUESTIONS: Question[] = [
   },
   {
     id: "shared_q9",
-    text: "If something could show you one pattern about yourself this week, you\u2019d want to know\u2026",
+    text: "What\u2019s one pattern you\u2019d like to stop?",
     options: [
-      { label: "Why I keep repeating the same mistakes" },
-      { label: "What\u2019s actually stressing me out" },
-      { label: "Where my time and energy go" },
-      { label: "What I really want but won\u2019t admit" },
+      { label: "Snapping at people I love, then feeling guilty" },
+      { label: "Putting everyone else first until I have nothing left" },
+      { label: "Starting things and watching them fizzle" },
+      { label: "Replaying the same worries on a loop" },
     ],
-    normalization: "This is exactly what Acuity is built to show you.",
+    normalization: "Naming it is the first step to breaking it.",
   },
 ];
 
@@ -331,7 +331,7 @@ const PATTERNS_LINE1: Record<string, string> = {
   "The same frustration at work":
     "The same frustration keeps showing up at work. Different meeting, different day, same feeling in your chest. You\u2019ve tried to let it go. It keeps coming back because you keep not seeing why.",
   "The same cycle with family":
-    "The family dynamic that\u2019s been running since you were a kid is still running. You thought you\u2019d outgrow it. You didn\u2019t. You just got better at performing through it.",
+    "The family dynamic has been running for longer than you\u2019d like to admit. Maybe since you were a kid. Maybe it crept in later. Either way \u2014 you thought you\u2019d outgrow it. You didn\u2019t. You just got better at performing through it.",
   "The same dynamic in every relationship":
     "It\u2019s not one relationship. It\u2019s the pattern underneath all of them \u2014 the thing you keep doing that you can\u2019t quite see, even though everyone around you probably can.",
 };
@@ -349,15 +349,15 @@ const RUMINATION_LINE1: Record<string, string> = {
 
 const GRAVEYARD_LINE1: Record<string, (q3: string) => string> = {
   "A journaling app": (q3) =>
-    `You downloaded a journaling app because you read somewhere that writing helps. You used it for ${lc(q3)}. Then you stopped \u2014 not because it was bad, but because staring at a blank screen felt like one more thing to fail at.`,
+    `Maybe you downloaded a journaling app because someone said writing helps. Maybe you found it yourself. Either way \u2014 you used it for ${lc(q3)}. Then you stopped. Not because it was bad, but because staring at a blank screen felt like one more thing to fail at.`,
   "Therapy or coaching": (_q3) =>
-    "You tried therapy. It helped when you were in the room. But the insights faded by Wednesday, and you couldn\u2019t justify the cost for something that evaporated between sessions.",
+    "Maybe therapy helped while you were in the room. Maybe coaching gave you a framework. Either way \u2014 the insights faded between sessions, and you couldn\u2019t justify the cost for something that evaporated by midweek.",
   "A productivity system": (_q3) =>
-    "You built a system. You organized your life into apps and dashboards and lists. Then you spent more time maintaining the system than actually living. The system became the problem.",
+    "Maybe you built a system \u2014 apps, dashboards, lists. Maybe someone built it for you. Either way, you spent more time maintaining the system than actually living. The system became the problem.",
   "Meditation or mindfulness": (_q3) =>
-    "Someone told you to meditate. You tried. Sitting still with your own thoughts felt like being locked in a room with the one person you were trying to get away from \u2014 yourself.",
+    "Maybe someone told you to meditate. Maybe you found it yourself. Either way \u2014 sitting alone with your thoughts wasn\u2019t the relief they promised. It felt like being locked in a room with the one person you were trying to get away from.",
   "A self-help book": (_q3) =>
-    "You read the book. You highlighted the passages. You felt something shift for about three days. Then the book went on the shelf next to the others. And you went back to exactly where you were.",
+    "Maybe you read the book. Maybe you highlighted the passages. Either way \u2014 something shifted for about three days. Then it faded. And you went back to exactly where you were.",
 };
 
 const MASK_LINE1: Record<string, string> = {
@@ -442,14 +442,14 @@ const BRAIN_REWRITES: Record<string, string> = {
 // ─── Line 5: Desire (emotionally loaded) ────────────────────────────────────
 
 const DESIRE_REWRITES: Record<string, string> = {
-  "Why I keep repeating the same mistakes":
-    "You told us the thing you\u2019d most want to see is why you keep ending up here. The same mistakes. The same patterns. The same version of stuck. That\u2019s the pattern Acuity tracks.",
-  "What\u2019s actually stressing me out":
-    "You said you\u2019d want to know what\u2019s actually stressing you out \u2014 not the surface reasons, but the real thing underneath. Your other answers point to where it might be hiding.",
-  "Where my time and energy go":
-    "You said you\u2019d want to know where it all goes. The time. The energy. Your answers describe someone who starts every week with plans and ends every week wondering what happened to them.",
-  "What I really want but won\u2019t admit":
-    "You said there\u2019s something you want but won\u2019t admit. Your other answers paint a picture of someone holding back. That tension between what you said and what you didn\u2019t is exactly what shows up in the data.",
+  "Snapping at people I love, then feeling guilty":
+    "You said the pattern you\u2019d most want to stop is snapping at the people you love \u2014 then carrying the guilt after. Your other answers suggest the snap isn\u2019t the problem. It\u2019s what\u2019s building up before it.",
+  "Putting everyone else first until I have nothing left":
+    "You said you\u2019d want to stop putting everyone else first until there\u2019s nothing left for you. Your answers paint someone who gives everything away and then wonders why they\u2019re running on empty. The pattern isn\u2019t generosity. It\u2019s erasure.",
+  "Starting things and watching them fizzle":
+    "You said you\u2019d want to stop starting things and watching them fizzle. Your answers suggest it\u2019s not discipline you\u2019re missing \u2014 it\u2019s something about the moment you stop that nobody\u2019s ever helped you see.",
+  "Replaying the same worries on a loop":
+    "You said you\u2019d want to stop the replay loop. The same worries, the same scenarios, running on repeat. Your answers suggest the loop isn\u2019t random \u2014 it\u2019s processing something your day didn\u2019t give you space to finish.",
 };
 
 // ─── Build Mirror Lines ─────────────────────────────────────────────────────
@@ -495,20 +495,20 @@ export function getSnapshotInsight(branch: Branch, a: Record<string, string | st
   const q2 = lc(String(a.branch_q2 ?? ""));
   const q3 = lc(String(a.branch_q3 ?? ""));
   const q4 = lc(String(a.branch_q4 ?? ""));
-  const q9 = lc(String(a.shared_q9 ?? "what\u2019s driving this"));
+  const q9 = lc(String(a.shared_q9 ?? "the pattern running underneath"));
   switch (branch) {
     case "blur":
-      return `You described your days as ${q2}. But you also said you want to know ${q9}. That gap \u2014 between how you\u2019re living and what you\u2019re looking for \u2014 is the pattern. Acuity tracks it daily until you can see it yourself.`;
+      return `You described your days as ${q2}. The pattern you\u2019d most want to stop \u2014 ${q9} \u2014 is connected. That gap between how you\u2019re living and what you\u2019re trying to change is visible within a few debriefs.`;
     case "patterns":
       return `You said ${q2} keeps repeating. You described the feeling as ${q3}. There\u2019s a trigger hiding in the 48 hours before it happens \u2014 your answers suggest a pattern worth tracking.`;
     case "rumination":
-      return `Your brain turns on ${q2}. It runs through ${q3}. There\u2019s a pattern in WHEN it starts \u2014 a specific moment earlier in your day that lights the fuse. Acuity catches that moment.`;
+      return `Your brain turns on ${q2}. It runs through ${q3}. There\u2019s a pattern in WHEN it starts \u2014 a specific moment earlier in your day that lights the fuse. A few debriefs surface that moment.`;
     case "graveyard":
-      return `${String(a.branch_q2 ?? "What you tried")} lasted ${q3} before you stopped. It failed because ${q4}. Acuity works because it asks for 60 seconds of talking \u2014 not discipline, not structure, not a blank page.`;
+      return `${String(a.branch_q2 ?? "What you tried")} lasted ${q3} before you stopped. It failed because ${q4}. This works because it asks for 60 seconds of talking \u2014 not discipline, not structure, not a blank page.`;
     case "mask":
-      return `You said you need ${q4}. But you\u2019ve been saying \u201c${lc(String(a.branch_q3 ?? "\u2018fine\u2019"))}\u201d when people ask. The distance between those two answers is exactly what Acuity measures \u2014 every day, without you performing.`;
+      return `You said you need ${q4}. But you\u2019ve been saying \u201c${lc(String(a.branch_q3 ?? "\u2018fine\u2019"))}\u201d when people ask. The distance between those two answers is exactly what becomes visible \u2014 every day, without you performing.`;
     case "drift":
-      return `${String(a.branch_q4 ?? "What matters most")} slipped the most. You\u2019ve known for ${q2}. Every week that passes without tracking it is another week of evidence you\u2019ll never get back. Acuity starts collecting it today.`;
+      return `${String(a.branch_q4 ?? "What matters most")} slipped the most. You\u2019ve known for ${q2}. Every week without visibility is another week of drift. A few debriefs start making it visible.`;
   }
 }
 
@@ -558,6 +558,77 @@ export const SNAPSHOT_BOTTOM: Record<Branch, string> = {
   drift: "You don\u2019t need motivation. You need a mirror. Acuity shows you who you\u2019re actually becoming, one day at a time.",
 };
 
+// ─── Gap Screen Content (between Mirror and Mechanism) ─────────────────────
+
+export interface GapContent {
+  amplify: string;
+  imagine: string;
+  promise: string;
+}
+
+function formatCostShort(costs: string[]): string {
+  if (costs.length === 0) return "more than you realize";
+  const SHORT: Record<string, string> = {
+    "My energy": "your energy",
+    "My relationships": "your relationships",
+    "My health": "your health",
+    "My career": "your career",
+    "My sense of self": "your sense of self",
+    "Time I can\u2019t get back": "time you can\u2019t get back",
+  };
+  const mapped = costs.map((c) => SHORT[c] ?? c.toLowerCase());
+  if (mapped.length === 1) return mapped[0];
+  if (mapped.length === 2) return `${mapped[0]} and ${mapped[1]}`;
+  return `${mapped.slice(0, -1).join(", ")}, and ${mapped[mapped.length - 1]}`;
+}
+
+export function buildGapContent(branch: Branch, answers: Record<string, string | string[]>): GapContent {
+  const costRaw = answers.shared_q6;
+  const costs = Array.isArray(costRaw) ? costRaw : costRaw ? [costRaw] : [];
+  const costStr = formatCostShort(costs);
+
+  const PROMISE = "You\u2019re not 30 days of discipline away from that. You\u2019re one debrief away from starting.";
+
+  switch (branch) {
+    case "blur":
+      return {
+        amplify: `Right now, the fog is costing you ${costStr}. Left alone, fog doesn\u2019t lift. It thickens.`,
+        imagine: "Now imagine the other version: You talk for 60 seconds. The blur sharpens into detail. And for the first time, you can actually name what happened today \u2014 which means you can start choosing what happens tomorrow.",
+        promise: PROMISE,
+      };
+    case "patterns":
+      return {
+        amplify: `Right now, the cycle is costing you ${costStr}. Left alone, cycles don\u2019t break. They dig deeper.`,
+        imagine: "Now imagine the other version: You talk for 60 seconds. The pattern leaves your chest and lands somewhere visible. And for the first time, you can see the trigger \u2014 which means you can finally get ahead of it.",
+        promise: PROMISE,
+      };
+    case "rumination":
+      return {
+        amplify: `Right now, the loop is costing you ${costStr}. Left alone, loops don\u2019t loosen. They tighten.`,
+        imagine: "Now imagine the other version: You talk for 60 seconds. The noise leaves your head and lands somewhere safe. And for the first time, you can actually see the pattern \u2014 which means you can finally break it.",
+        promise: PROMISE,
+      };
+    case "graveyard":
+      return {
+        amplify: `Right now, the quitting is costing you ${costStr}. Left alone, the next thing you try ends the same way.`,
+        imagine: "Now imagine the other version: You talk for 60 seconds. No blank page. No discipline required. And for the first time, something sticks \u2014 because it was built for how your brain actually works.",
+        promise: PROMISE,
+      };
+    case "mask":
+      return {
+        amplify: `Right now, the mask is costing you ${costStr}. Left alone, the gap between who you perform and who you are just keeps widening.`,
+        imagine: "Now imagine the other version: You talk for 60 seconds. You say what\u2019s actually true. And for the first time, something sees you clearly \u2014 without you having to hold it together.",
+        promise: PROMISE,
+      };
+    case "drift":
+      return {
+        amplify: `Right now, the drift is costing you ${costStr}. Left alone, drift doesn\u2019t reverse. It accelerates.`,
+        imagine: "Now imagine the other version: You talk for 60 seconds. The day gets a name. And for the first time, you\u2019re paying attention \u2014 which means the next year doesn\u2019t disappear like the last one.",
+        promise: PROMISE,
+      };
+  }
+}
+
 // ─── Timeline Templates (Screen 14) ─────────────────────────────────────────
 
 export interface TimelineWeek {
@@ -572,7 +643,7 @@ export function getTimelineWeeks(branch: Branch, answers: Record<string, string 
   const WEEK_3_ALL = "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words. For the first time, you can see where your life actually goes. Not where you think it goes. Where it actually goes.";
 
   const w1: Record<Branch, string> = {
-    blur: "For the first time, your days have a record. You\u2019ll look back at this week and actually remember it.",
+    blur: "For the first time, your days have shape. You\u2019ll look back at this week and actually remember it.",
     patterns: "The cycle gets named. Not fixed yet \u2014 named. That\u2019s the part nobody else could do for you.",
     rumination: "Your brain has somewhere to put it. The 11pm replay starts losing its power because the backlog is shrinking.",
     graveyard: `You\u2019re still here on Day 7. That\u2019s already further than ${lc(q2)} got you. And it took 60 seconds a day.`,
