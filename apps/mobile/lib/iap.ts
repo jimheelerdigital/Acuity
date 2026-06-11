@@ -277,8 +277,13 @@ export interface IapProduct {
   description: string;
   /** Localized price string (e.g. "$4.99"). */
   localizedPrice: string;
-  /** Currency code from the user's App Store account. */
+  /** Currency code from the user's store account. */
   currency: string;
+  /**
+   * Android only: the Play Billing base-plan offer token, required to launch
+   * a subscription purchase. Null/undefined on iOS.
+   */
+  offerTokenAndroid?: string | null;
 }
 
 /**
@@ -309,6 +314,17 @@ export async function getProducts(): Promise<{
       // v15 uses `id` instead of `productId` at the field level.
       const id = stringField(p.id);
       if (!id || !isIapProductId(id)) continue;
+      // Android subs carry the purchase offer token in
+      // subscriptionOfferDetailsAndroid[].offerToken — required by
+      // requestPurchase. iOS has no offer token (stays null).
+      const androidOfferToken =
+        stringField(
+          (
+            p.subscriptionOfferDetailsAndroid as
+              | Array<Record<string, unknown>>
+              | undefined
+          )?.[0]?.offerToken
+        ) ?? null;
       byId.set(id, {
         productId: id,
         title: stringField(p.title) ?? "Acuity Pro",
@@ -316,6 +332,7 @@ export async function getProducts(): Promise<{
         // v15 uses `displayPrice` instead of `localizedPrice`.
         localizedPrice: stringField(p.displayPrice) ?? "",
         currency: stringField(p.currency) ?? "USD",
+        offerTokenAndroid: androidOfferToken,
       });
     }
     return {
@@ -379,7 +396,9 @@ let purchaseInFlight = false;
 const PURCHASE_LISTENER_TIMEOUT_MS = 90_000;
 
 export async function purchaseProduct(
-  productId: IapProductId
+  productId: IapProductId,
+  /** Android Play Billing base-plan offer token (from getProducts). */
+  offerTokenAndroid?: string | null
 ): Promise<PurchaseResult> {
   if (purchaseInFlight) {
     // Concurrent attempt — silent bail. Apple's UX prevents real
@@ -515,8 +534,24 @@ export async function purchaseProduct(
       // the error listener — they reject this promise directly. The
       // .catch() handles those. .then() is intentionally absent —
       // we don't process the returned value at all.
+      // v15's unified requestPurchase request type omits Android
+      // subscriptionOffers, but the native layer reads it (index.d.ts §271:
+      // "request.google.subscriptionOffers: [{ sku, offerToken }]"). Cast to
+      // satisfy TS while passing the offer token the Play flow requires.
+      const purchaseRequest = (
+        Platform.OS === "android"
+          ? {
+              google: {
+                skus: [productId],
+                subscriptionOffers: offerTokenAndroid
+                  ? [{ sku: productId, offerToken: offerTokenAndroid }]
+                  : [],
+              },
+            }
+          : { apple: { sku: productId } }
+      ) as { apple?: { sku: string }; google?: { skus: string[] } };
       RNIap.requestPurchase({
-        request: { apple: { sku: productId } },
+        request: purchaseRequest,
         type: "subs",
       }).catch((err) => {
         const c = classifyPurchaseError(err as never);
@@ -561,11 +596,19 @@ export async function verifyAndFinish(input: {
     const res = await fetch(`${api.baseUrl()}/api/iap/verify-receipt`, {
       method: "POST",
       headers: await iapPostHeaders(),
-      body: JSON.stringify({
-        receipt: input.receipt,
-        productId: input.productId,
-        transactionId: input.transactionId,
-      }),
+      body: JSON.stringify(
+        Platform.OS === "android"
+          ? {
+              // Android: server verifies the Play purchase token (== receipt).
+              productId: input.productId,
+              purchaseToken: input.receipt,
+            }
+          : {
+              receipt: input.receipt,
+              productId: input.productId,
+              transactionId: input.transactionId,
+            }
+      ),
     });
     status = res.status;
     // Cast via the named type instead of `as typeof body` — the
