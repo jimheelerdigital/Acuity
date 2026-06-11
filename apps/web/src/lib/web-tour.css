@@ -1,0 +1,68 @@
+/**
+ * Mobile-safe overrides for the driver.js product tour popover.
+ *
+ * Bug (Keenan, mobile-web): the Next button was invisible on phones. The
+ * default driver.js footer is a single non-wrapping flex row holding the
+ * injected "Skip tour" button (margin-right:auto), the progress text, and
+ * the Back/Next buttons. At narrow widths that row overflows the popover
+ * and the rightmost control (Next) is clipped off the edge — worsened by
+ * side:"right" anchoring pushing the popover toward the screen edge.
+ *
+ * These rules (scoped to our popoverClass) cap the popover to the viewport,
+ * let the footer wrap so the nav buttons drop to their own row instead of
+ * clipping, and give Next/Back/Skip >=44px tap targets down to 320px.
+ */
+
+.driver-popover.acuity-web-tour {
+  /* Never wider than the viewport (with a 12px gutter each side). */
+  max-width: min(320px, calc(100vw - 24px));
+}
+
+/* Footer wraps: nav buttons drop to their own row before they ever clip. */
+.driver-popover.acuity-web-tour .driver-popover-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 10px;
+}
+
+/* Keep Back+Next together, hugging the right; they wrap as a unit. */
+.driver-popover.acuity-web-tour .driver-popover-navigation-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* 44pt tap targets for Next / Back. */
+.driver-popover.acuity-web-tour .driver-popover-prev-btn,
+.driver-popover.acuity-web-tour .driver-popover-next-btn {
+  min-height: 44px;
+  min-width: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 999px;
+  text-shadow: none;
+}
+
+.driver-popover.acuity-web-tour .driver-popover-next-btn {
+  background: var(--acuity-primary, #7c5cfc);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.driver-popover.acuity-web-tour .driver-popover-prev-btn {
+  background: transparent;
+}
+
+/* The injected "Skip tour" button — match the 44pt tap target. */
+.driver-popover.acuity-web-tour .acuity-web-tour-skip {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
