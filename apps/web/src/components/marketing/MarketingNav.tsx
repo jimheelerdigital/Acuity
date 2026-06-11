@@ -38,7 +38,7 @@ export function MarketingNav() {
           </span>
         </a>
 
-        <div className="flex items-center gap-7">
+        <div className="flex items-center gap-4 min-[900px]:gap-7">
           <div className="hidden items-center gap-[26px] min-[900px]:flex">
             {LINKS.map(([label, href]) => (
               <a
@@ -70,9 +70,20 @@ export function MarketingNav() {
             )}
           </button>
 
+          {/* Secondary login — text link, full-contrast so it's clearly
+              visible top-right next to the primary CTA. Routes to the real
+              login page (/auth/signin; there is no /login route). Inline on
+              mobile too (whitespace-nowrap + tightened mobile gap). */}
+          <a
+            href="/auth/signin"
+            className="font-sans text-[14.5px] font-semibold text-acuity-text transition-colors hover:text-acuity-primary whitespace-nowrap"
+          >
+            Log in
+          </a>
+
           <a
             href="/start"
-            className="rounded-acuity-pill bg-acuity-grad-primary px-[18px] py-2.5 font-sans text-[14.5px] font-bold text-white shadow-acuity-glow-soft"
+            className="rounded-acuity-pill bg-acuity-grad-primary px-[18px] py-2.5 font-sans text-[14.5px] font-bold text-white shadow-acuity-glow-soft whitespace-nowrap"
           >
             Start free trial
           </a>
