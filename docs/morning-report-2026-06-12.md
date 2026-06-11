@@ -22,7 +22,7 @@ Phase 2 + 3 are complete across all three platforms: **iOS** full push + tap-rou
 
 ## 2. WHAT'S ON TESTFLIGHT
 
-- **Build 80** (`v1.3.3`, id `7f251a3e`, commit `b4edb4e`, profile `testflight-async`) — carries Phase 2/3 + Issues A/C + v1.3.3 background processing + tour 50pt fix + silence guard. **Building when this was written; I auto-submit to TestFlight on completion** (monitor running). It will be in TestFlight by the time you read this — confirm at **https://appstoreconnect.apple.com/apps/6762633410/testflight/ios** . If §2 still shows "building" when you check, the build or submit hung — see §4.
+- **Build 80** (`v1.3.3`, id `7f251a3e`, commit `b4edb4e`, profile `testflight-async`) — carries Phase 2/3 + Issues A/C + v1.3.3 background processing + tour 50pt fix + silence guard. **Build FINISHED + submitted to TestFlight** (Apple processing ~5–10 min, then installable). Install: **https://appstoreconnect.apple.com/apps/6762633410/testflight/ios** .
 - Builds 78 + 79 already there.
 - **NOT submitted to App Store** (TestFlight only, per your instruction).
 
