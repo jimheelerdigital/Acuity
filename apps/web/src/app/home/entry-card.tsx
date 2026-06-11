@@ -48,7 +48,10 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
   return (
     <Link
       href={`/entries/${entry.id}`}
-      className="block rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 dark:border-white/10 dark:bg-acuity-card-bg dark:shadow-none dark:ring-1 dark:ring-white/5 dark:hover:bg-[#24243A]"
+      aria-disabled={isProcessing}
+      className={`block rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] transition-all duration-200 hover:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 dark:border-white/10 dark:bg-acuity-card-bg dark:shadow-none dark:ring-1 dark:ring-white/5 dark:hover:bg-[#24243A]${
+        isProcessing ? " pointer-events-none opacity-60" : ""
+      }`}
     >
       <div className="px-4 sm:px-5 py-4 flex items-start justify-between gap-3 min-h-[44px]">
         <div className="flex-1 min-w-0">
@@ -97,7 +100,7 @@ export function EntryCard({ entry, taskCount }: EntryCardProps) {
             </div>
           )}
         </div>
-        <ChevronRight />
+        {!isProcessing && <ChevronRight />}
       </div>
     </Link>
   );

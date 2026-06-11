@@ -383,6 +383,9 @@ function EntryRow({
   const date = new Date(entry.createdAt);
   const dateLabel = formatRelativeDate(date);
   const swipeRef = useRef<Swipeable | null>(null);
+  // Issue A (v1.3.3): lock the row while processing — not tappable + faded.
+  // Swipe + long-press (delete) stay available so a stuck entry is removable.
+  const isLocked = PROCESSING_STATUSES.has(entry.status);
 
   const renderRightActions = () => (
     <Pressable
@@ -418,13 +421,14 @@ function EntryRow({
       overshootRight={false}
     >
     <Pressable
-      onPress={onPress}
+      onPress={isLocked ? undefined : onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
       className="rounded-2xl border px-4 py-3"
       style={{
         borderColor: tokens.line,
         backgroundColor: tokens.cardBg,
+        opacity: isLocked ? 0.55 : 1,
       }}
     >
       <View className="flex-row items-center gap-2 flex-wrap mb-1">
