@@ -84,6 +84,24 @@ export const processEntryFn = inngest.createFunction(
           where: { id: entryId },
           data: { status: "FAILED", errorMessage: message },
         });
+        // Phase 3 (v1.3.3): failure push. No-op without a pushToken →
+        // web/Android fall back to the in-app toast. Tap routes to the
+        // entry detail where the retry CTA lives.
+        const failUserId = originalData?.userId;
+        if (failUserId) {
+          try {
+            const { sendEntryPush } = await import("@/lib/entry-push");
+            await sendEntryPush({
+              userId: failUserId,
+              entryId,
+              kind: "failure",
+              title: "We couldn't finish your recording",
+              body: "Your audio is saved — tap to try again.",
+            });
+          } catch {
+            // non-fatal
+          }
+        }
       }
     },
   },
@@ -1185,6 +1203,44 @@ export const processEntryFn = inngest.createFunction(
       .catch((err) => {
         logger.error(
           "[process-entry] check-achievements failed (non-fatal)",
+          { err }
+        );
+      });
+
+    // Phase 2 (v1.3.3): completion push. Fires at the end so a late
+    // downgrade to PARTIAL (memory/lifemap step failure) doesn't trigger a
+    // false "insights ready". No-op without a pushToken → web/Android fall
+    // back to the in-app toast + Entries badge. Fail-soft.
+    await step
+      .run("send-completion-push", async () => {
+        const entryRow = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { status: true, createdAt: true },
+        });
+        if (entryRow?.status !== "COMPLETE") return; // downgraded → skip
+        const userRow = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        });
+        const { sendEntryPush, buildCompletionBody } = await import(
+          "@/lib/entry-push"
+        );
+        await sendEntryPush({
+          userId,
+          entryId,
+          kind: "completion",
+          title: "Your insights are ready",
+          body: buildCompletionBody(
+            entryRow.createdAt,
+            userRow?.timezone ?? null,
+            extraction.tasks?.length ?? 0,
+            extraction.goals?.length ?? 0
+          ),
+        });
+      })
+      .catch((err) => {
+        logger.error(
+          "[process-entry] send-completion-push failed (non-fatal)",
           { err }
         );
       });
