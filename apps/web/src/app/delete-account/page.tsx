@@ -82,6 +82,38 @@ export default function DeleteAccountPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-acuity-text">
+              Delete individual entries, tasks, or goals
+            </h2>
+            <p className="mt-3">
+              You don&rsquo;t need to delete your account to remove specific
+              data. From within Acuity:
+            </p>
+            <ul className="mt-3 list-disc space-y-1.5 pl-5 text-acuity-text-sec">
+              <li>
+                <span className="text-acuity-text">Delete an entry:</span> open
+                the entry, tap the 3-dot menu in the top-right, then tap{" "}
+                <strong>Delete entry</strong>.
+              </li>
+              <li>
+                <span className="text-acuity-text">Delete a task:</span>{" "}
+                long-press the task in your task list, then tap{" "}
+                <strong>Delete</strong>.
+              </li>
+              <li>
+                <span className="text-acuity-text">Delete a goal:</span> open
+                the goal and tap <strong>Delete goal</strong> at the bottom,
+                then confirm.
+              </li>
+            </ul>
+            <p className="mt-3">
+              Removed items are permanently deleted from our servers. Audio
+              files associated with deleted entries are also removed from
+              storage.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-acuity-text">
               Option 2 — Request deletion by email
             </h2>
             <p className="mt-3">
