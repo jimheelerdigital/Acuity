@@ -111,7 +111,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Total Accounts:</span>
           <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{km.totalAccounts}</span>
           <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Paid (Stripe):</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Paid (Stripe, all versions):</span>
           <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{km.totalPaid}</span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
             ({km.paidConversion ?? 0}% of new accounts have paid)

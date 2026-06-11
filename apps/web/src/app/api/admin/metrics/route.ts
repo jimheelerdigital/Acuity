@@ -1720,13 +1720,23 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
 
   const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
 
-  // Fetch all funnel events in range (exclude bots unless showBots is true)
+  // flowVersion filter — v1/v2/v3 filter strictly on the column.
+  // "all" returns everything. v1 events have flowVersion=null or "v1".
+  // For v1 we need OR logic for null; Prisma requires AND+OR nesting.
+  const flowVersionWhere =
+    flowVersion === "v3" ? { flowVersion: "v3" as const }
+    : flowVersion === "v2" ? { flowVersion: "v2" as const }
+    : flowVersion === "v1" ? { OR: [{ flowVersion: null }, { flowVersion: "v1" }] }
+    : {}; // "all" — no filter
+
+  // Fetch funnel events in range, filtered by version
   const events = await prisma.onboardingEvent.findMany({
     where: {
       event: { startsWith: "funnel_" },
       createdAt: { gte: effectiveStart, lte: effectiveEnd },
       sessionToken: { not: null },
       ...(showBots ? {} : { isBot: false }),
+      ...flowVersionWhere,
     },
     orderBy: { createdAt: "asc" },
     take: 50000,
