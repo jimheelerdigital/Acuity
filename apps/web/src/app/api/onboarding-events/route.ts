@@ -119,6 +119,11 @@ const VALID_EVENTS = new Set([
   "funnel_recording_started",
   "funnel_recording_completed",
   "funnel_inapp_browser_detected",
+  // ─── Review gate (v1.3.3 Issue B) ───
+  "review_gate_shown",
+  "review_gate_confirmed",
+  "review_gate_dismissed",
+  "backstop_committed",
 ]);
 
 const BOT_PATTERNS = /facebookexternalhit|Facebot|FacebookBot|WhatsApp|Twitterbot|LinkedInBot|Googlebot|AdsBot-Google|AdsBot|Google-Ads|Google-Safety|Mediapartners-Google|APIs-Google|FeedFetcher-Google|Google-Read-Aloud|DuplexWeb-Google|Storebot-Google|bingbot|Bytespider|Amazonbot|prefetch|prerender|HeadlessChrome|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|ia_archiver|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|bot\/|crawler|spider/i;

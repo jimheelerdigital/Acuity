@@ -696,13 +696,14 @@ export const processEntryFn = inngest.createFunction(
             blockers: extraction.blockers,
             rawAnalysis: extraction as unknown as object,
             status: "COMPLETE",
-            // Auto-commit (2026-06-08): extraction now materializes tasks
-            // + goals into rows immediately (see commitExtractedItems
-            // below), so the entry is extracted + committed in the same
-            // write. The `extracted` flag was previously never set by this
-            // pipeline — only try-claim + backfill set it.
-            extracted: true,
-            extractionCommittedAt: new Date(),
+            // Issue B (v1.3.3): background-processed entries are NOT
+            // auto-committed. Tasks/goals stay in rawAnalysis until the
+            // user confirms via the review gate (commit-extraction
+            // endpoint) OR the 7-day backstop cron fires. So `extracted`
+            // + `extractionCommittedAt` are deliberately left unset here
+            // (extracted defaults false, committedAt null = "pending
+            // review"). To revert to auto-commit: restore both fields +
+            // the commitExtractedItems call below.
             // W-B (2026-05-03): persist which prompt produced
             // this entry's themes so theme-distribution.ts can
             // split V5 vs legacy cohorts. Read from the closure
@@ -727,22 +728,10 @@ export const processEntryFn = inngest.createFunction(
           extraction.themesDetailed
         );
 
-        // Auto-commit (2026-06-08): materialize extracted tasks + goals
-        // into Task/Goal rows immediately. The old review gate (park in
-        // rawAnalysis.tasks until the user manually commits) broke the
-        // core promise — 80% of extractions never got committed. The
-        // helper creates tasks, bumps existing goals, and creates new
-        // ones. Users edit/delete unwanted items from the lists post-hoc.
-        const { commitExtractedItems } = await import(
-          "@/lib/commit-extraction"
-        );
-        await commitExtractedItems(
-          tx,
-          userId,
-          entryId,
-          extraction.tasks,
-          extraction.goals
-        );
+        // Issue B (v1.3.3): tasks/goals are NOT committed here — they stay
+        // in rawAnalysis for the review gate. commitExtractedItems now runs
+        // on review-confirm (/api/entries/[id]/commit-extraction) or via
+        // the 7-day backstop cron (commit-extraction-backstop).
 
         // Anchor-goal bump — when the user recorded "Add a reflection" on
         // a specific goal, Entry.goalId is set. The extraction.goals loop

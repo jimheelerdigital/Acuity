@@ -21,6 +21,7 @@ import {
 } from "@/components/acuity";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 
 type ReviewTask = {
   tempId: string;
@@ -91,6 +92,9 @@ export function ExtractionReview({
         setGoals(
           (res.goals ?? []).map((g) => ({ ...g, selected: false }))
         );
+        if ((res.tasks?.length ?? 0) > 0 || (res.goals?.length ?? 0) > 0) {
+          void trackOnboardingEvent("review_gate_shown");
+        }
       } catch {
         // silent
       } finally {
@@ -127,6 +131,7 @@ export function ExtractionReview({
             lifeArea: g.lifeArea,
           })),
       });
+      void trackOnboardingEvent("review_gate_confirmed");
       setHidden(true);
       onCommitted?.();
     } catch {
@@ -142,6 +147,7 @@ export function ExtractionReview({
       await api.post(`/api/entries/${encodeURIComponent(entryId)}/extraction`, {
         action: "skip",
       });
+      void trackOnboardingEvent("review_gate_dismissed");
       setHidden(true);
       onCommitted?.();
     } catch {

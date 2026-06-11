@@ -58,7 +58,11 @@ export type OnboardingEventName =
   | "tour_started"
   | "tour_step_viewed"
   | "tour_skipped"
-  | "tour_completed";
+  | "tour_completed"
+  // v1.3.3 Issue B — review gate
+  | "review_gate_shown"
+  | "review_gate_confirmed"
+  | "review_gate_dismissed";
 
 export interface TrackOptions {
   /** Single-select answer key, signup method, error code, etc. */
