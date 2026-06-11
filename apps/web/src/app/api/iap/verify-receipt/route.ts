@@ -38,6 +38,11 @@ import {
   fetchTransactionInfo,
   readAppleApiConfig,
 } from "@/lib/apple-iap";
+import {
+  decideGoogleReceiptVerify,
+  fetchGoogleSubscription,
+  readGooglePlayApiConfig,
+} from "@/lib/google-iap";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { safeLog } from "@/lib/safe-log";
 
@@ -48,6 +53,8 @@ interface Body {
   receipt?: unknown;
   productId?: unknown;
   transactionId?: unknown;
+  // Android (Play Billing) path: purchase token from react-native-iap.
+  purchaseToken?: unknown;
 }
 
 export async function POST(req: NextRequest) {
@@ -63,6 +70,15 @@ export async function POST(req: NextRequest) {
   const productId = typeof body.productId === "string" ? body.productId : null;
   const transactionId =
     typeof body.transactionId === "string" ? body.transactionId : null;
+  const purchaseToken =
+    typeof body.purchaseToken === "string" ? body.purchaseToken : null;
+
+  // Platform branch: a purchaseToken means Android / Google Play Billing;
+  // a transactionId means iOS / Apple. The Apple path below is unchanged.
+  if (purchaseToken) {
+    return handleGoogleVerify(userId, productId, purchaseToken);
+  }
+
   if (!productId || !transactionId) {
     return NextResponse.json(
       { error: "Missing required fields: productId, transactionId" },
@@ -220,5 +236,162 @@ export async function POST(req: NextRequest) {
     ok: true,
     subscriptionStatus: "PRO",
     expiresDate: apple.info.expiresDate,
+  });
+}
+
+// ─── Google Play Billing verify (Android IAP parity) ──────────────────────
+// Mirrors the Apple flow above: fetch → cross-check productId → decide →
+// conflict/idempotent/write. Writes subscriptionSource "google_play".
+async function handleGoogleVerify(
+  userId: string,
+  productId: string | null,
+  purchaseToken: string
+): Promise<NextResponse> {
+  if (!productId) {
+    return NextResponse.json(
+      { error: "Missing required field: productId" },
+      { status: 400 }
+    );
+  }
+
+  let config: ReturnType<typeof readGooglePlayApiConfig>;
+  try {
+    config = readGooglePlayApiConfig();
+  } catch (err) {
+    safeLog.error(
+      "iap.verify-receipt.google-config-error",
+      err instanceof Error ? err : new Error("config"),
+      { userId }
+    );
+    return NextResponse.json(
+      { error: "Google Play verification not configured" },
+      { status: 500 }
+    );
+  }
+
+  const google = await fetchGoogleSubscription(purchaseToken, config);
+  if (!google.ok) {
+    safeLog.error(
+      "iap.verify-receipt.google-error",
+      new Error(google.diagnostic),
+      { userId, code: google.code }
+    );
+    const status = google.code === "TOKEN_NOT_FOUND" ? 400 : 502;
+    return NextResponse.json(
+      { error: "Google verification failed", code: google.code },
+      { status }
+    );
+  }
+
+  // Cross-check the body productId against what Google reports.
+  if (google.info.productId !== productId) {
+    safeLog.warn("iap.verify-receipt.google-product-mismatch", {
+      userId,
+      bodyProductId: productId,
+      googleProductId: google.info.productId,
+    });
+    return NextResponse.json(
+      { error: "Product mismatch", code: "BAD_PRODUCT" },
+      { status: 400 }
+    );
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+  const [currentUser, otherOwner] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        subscriptionStatus: true,
+        subscriptionSource: true,
+        googlePurchaseToken: true,
+        stripeSubscriptionId: true,
+      },
+    }),
+    prisma.user.findUnique({
+      where: { googlePurchaseToken: google.info.purchaseToken },
+      select: { id: true },
+    }),
+  ]);
+  if (!currentUser) {
+    return NextResponse.json({ error: "User not found" }, { status: 401 });
+  }
+
+  const decision = decideGoogleReceiptVerify(
+    google.info,
+    currentUser,
+    otherOwner && otherOwner.id !== currentUser.id ? otherOwner : null
+  );
+
+  if (decision.action === "conflict") {
+    if (decision.code === "ANOTHER_USER_OWNS_TRANSACTION") {
+      safeLog.error(
+        "iap.verify-receipt.google-token-collision",
+        new Error(decision.reason),
+        { userId, otherUserId: otherOwner?.id ?? null }
+      );
+    } else {
+      safeLog.warn("iap.verify-receipt.google-conflict", {
+        userId,
+        code: decision.code,
+        reason: decision.reason,
+      });
+    }
+    const status =
+      decision.code === "BAD_PRODUCT" || decision.code === "EXPIRED_RECEIPT"
+        ? 400
+        : 409;
+    return NextResponse.json(
+      {
+        error:
+          decision.code === "ACTIVE_STRIPE_SUB"
+            ? "You already have an active subscription via web. Manage it on the web."
+            : decision.code === "ANOTHER_USER_OWNS_TRANSACTION"
+              ? "This Google Play subscription is already attached to another account."
+              : decision.code === "BAD_PRODUCT"
+                ? "Unrecognized product."
+                : "This subscription is not active.",
+        code: decision.code,
+      },
+      { status }
+    );
+  }
+
+  if (decision.action === "idempotent-noop") {
+    safeLog.info("iap.verify-receipt.google-idempotent", { userId });
+    return NextResponse.json({
+      ok: true,
+      subscriptionStatus: "PRO",
+      expiresDate: google.info.expiryDate,
+      idempotent: true,
+    });
+  }
+
+  // action === "write"
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      subscriptionStatus: "PRO",
+      subscriptionSource: "google_play",
+      googlePurchaseToken: google.info.purchaseToken,
+      googleProductId: google.info.productId,
+      googleLatestReceiptInfo: google.info.rawPayload as unknown as object,
+      // Google sub bypasses the trial clock — user paid, we honor it.
+      trialEndsAt: null,
+      stripeCurrentPeriodEnd: null,
+    },
+  });
+
+  safeLog.info("iap.verify-receipt.google-success", {
+    userId,
+    productId: google.info.productId,
+    state: google.info.state,
+    expiresDate: google.info.expiryDate,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    subscriptionStatus: "PRO",
+    expiresDate: google.info.expiryDate,
   });
 }
