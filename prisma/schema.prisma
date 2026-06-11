@@ -126,6 +126,17 @@ model User {
   // StoreKit versions; replay-debugging benefits from keeping the
   // raw structure rather than projecting it column-by-column.
   appleLatestReceiptInfo        Json?
+
+  // ─── Google Play Billing (Android IAP parity, 2026-06-11) ────
+  // Mirrors the apple* fields above. Verified via the Google Play
+  // Developer API (purchases.subscriptionsv2.get) in /api/iap/
+  // verify-receipt (google path) + the RTDN webhook. subscriptionSource
+  // = "google_play" for these rows. @unique on the purchase token is the
+  // idempotency / race-defense gate — same role appleOriginalTransactionId
+  // plays for Apple.
+  googlePurchaseToken           String?              @unique
+  googleProductId               String? // e.g. "acuity_pro_monthly"
+  googleLatestReceiptInfo       Json?
   timezone                      String               @default("America/Chicago")
   // Slice v1.3.x (2026-06-03) — biometric auto-lock threshold.
   // Encoding: 0 = lock immediately on background, 1/2/5/15 = minutes
