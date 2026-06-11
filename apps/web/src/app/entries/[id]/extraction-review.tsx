@@ -42,6 +42,15 @@ type ReviewGoal = {
  * On Skip all: same endpoint with {action:"skip"} — marks reviewed
  * with zero commits.
  */
+// Issue B (v1.3.3) analytics — fire-and-forget review-gate events.
+function fireReviewEvent(event: string, entryId: string): void {
+  void fetch("/api/onboarding-events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event, value: entryId }),
+  }).catch(() => {});
+}
+
 export function ExtractionReview({ entryId }: { entryId: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -74,6 +83,9 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
         // to affirmatively tick what to keep. Matches mobile behavior.
         setTasks(data.tasks.map((t) => ({ ...t, selected: false })));
         setGoals(data.goals.map((g) => ({ ...g, selected: false })));
+        if (data.tasks.length > 0 || data.goals.length > 0) {
+          fireReviewEvent("review_gate_shown", entryId);
+        }
       } catch {
         // silent — banner just doesn't render if the endpoint fails
       } finally {
@@ -130,6 +142,7 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
         }
       );
       if (res.ok) {
+        fireReviewEvent("review_gate_confirmed", entryId);
         setHidden(true);
         router.refresh();
         return;
@@ -160,6 +173,7 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
         }
       );
       if (res.ok) {
+        fireReviewEvent("review_gate_dismissed", entryId);
         setHidden(true);
         router.refresh();
         return;
