@@ -9,6 +9,11 @@ import {
   extensionForMimeType,
   mimeTypeFromAudioPath,
 } from "@/lib/audio";
+import {
+  CONNECTION_MESSAGE,
+  NO_SPEECH_MESSAGE,
+  isConnectionError,
+} from "@/lib/recording-errors";
 
 type ProcessEntryEventData = {
   entryId: string;
@@ -266,7 +271,13 @@ export const processEntryFn = inngest.createFunction(
           return { transcriptLength: -1 };
         }
 
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        // P0: bound the Whisper call. The async client previously had NO
+        // timeout (SDK default 600s) — a hung connection tied up the
+        // function for 10 minutes. 30s matches the sync pipeline.
+        const openai = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
+          timeout: 30_000,
+        });
         // Derive filename from the canonical MIME rather than the
         // storage path. Pre-2026-04-20-afternoon entries were stored as
         // `userId/entryId.mp4`; Whisper's MP4 demuxer trips on those
@@ -276,18 +287,30 @@ export const processEntryFn = inngest.createFunction(
         const filename = `recording.${extensionForMimeType(mimeType)}`;
         const file = await toFile(buffer, filename, { type: mimeType });
 
-        const res = await openai.audio.transcriptions.create({
-          file,
-          model: WHISPER_MODEL,
-          language: WHISPER_LANGUAGE,
-          response_format: "text",
-        });
-        const transcript = (res as unknown as string).trim();
+        let res: unknown;
+        try {
+          res = await openai.audio.transcriptions.create({
+            file,
+            model: WHISPER_MODEL,
+            language: WHISPER_LANGUAGE,
+            response_format: "text",
+          });
+        } catch (err) {
+          // P0: classify OpenAI APIConnectionError ("Connection error.") as
+          // RETRYABLE — a plain Error lets Inngest retry. The friendly copy
+          // becomes the stored errorMessage if all retries are exhausted
+          // (web sanitizer passes it through; mobile renders it raw).
+          if (isConnectionError(err)) {
+            throw new Error(CONNECTION_MESSAGE);
+          }
+          throw err;
+        }
+        const transcript = (res as string).trim();
 
         if (transcript.length < 10) {
-          throw new NonRetriableError(
-            "Transcript too short — no speech detected"
-          );
+          // Genuine silence — non-retryable (retrying silent audio is
+          // pointless + burns Whisper spend). Friendly, Bluetooth-aware copy.
+          throw new NonRetriableError(NO_SPEECH_MESSAGE);
         }
 
         await prisma.entry.update({

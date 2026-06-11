@@ -20,6 +20,8 @@ import {
   type Priority,
 } from "@acuity/shared";
 
+import { NO_SPEECH_MESSAGE } from "@/lib/recording-errors";
+
 import { extensionForMimeType } from "./audio";
 import { LIFE_AREA_EXTRACTION_SCHEMA } from "./prompts/lifemap";
 
@@ -526,7 +528,7 @@ export async function processEntry({
     const transcript = await transcribeAudio(audioBuffer, mimeType);
 
     if (transcript.trim().length < 10) {
-      throw new Error("Transcript too short — no speech detected");
+      throw new Error(NO_SPEECH_MESSAGE);
     }
 
     // ── FREE / PRO branch ─────────────────────────────────────────────────
