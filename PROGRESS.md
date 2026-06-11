@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-06-10] — Recording reliability P1: block silent uploads client-side (iOS + Android + web)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (PR on branch fix/p1-silence-validation — held for review)
+
+### In plain English (for Keenan)
+
+Stops the silent-recording problem at the source. If your mic captured no sound (Bluetooth not actually routing, muted, wrong input), the app now catches it the instant you stop recording and says "We didn't capture any sound. Please check your mic and try again." — instead of uploading silence and failing minutes later. Same behavior on iPhone, Android, and the web app.
+
+### Technical changes (for Jimmy)
+
+- `packages/shared/src/constants.ts`: `SILENCE_PEAK_THRESHOLD` (0.15, normalized 0..1), `NO_SOUND_CAPTURED_MESSAGE`, `isEffectivelySilentPeak(peak)` — single source of truth across platforms.
+- `apps/mobile/app/record.tsx` (iOS + Android): track the peak normalized level across the WHOLE recording via the existing expo-av metering callback (`peakLevelRef`, reset on start — the `levels` array only retains an 18-sample window); in `stopRecording`, block the upload + Alert if `isEffectivelySilentPeak`.
+- `apps/web/src/app/home/record-button.tsx` + `apps/web/src/components/record-sheet.tsx`: add a Web Audio `AnalyserNode` on the MediaStream, track peak RMS mapped -60..0 dB → 0..1 (matches mobile), tear it down on stop; block the upload + show the message if silent. Feature-detected — if Web Audio is unavailable the guard is skipped, never blocking recording.
+
+### Manual steps needed
+
+- [ ] **Jimmy: review PR, merge** `fix/p1-silence-validation` → main (web auto-deploys ~3 min).
+- [ ] **Cut a mobile build** to ship the iOS/Android guard (bundle with v1.3.3 build 79).
+- [ ] No schema/env change.
+
+### Notes
+
+- Threshold 0.15 ≈ −51 dB peak. Speech peaks ~0.5–0.8 normalized; floored silence ~0.05 — wide margin. Tune `SILENCE_PEAK_THRESHOLD` in `@acuity/shared` if false positives surface.
+- The unauthenticated try-flow recorder (`try-debrief-flow.tsx`) is **not yet covered** — lower priority (pre-signup, already mic-gated); follow-up.
+- Pairs with P0 (server-side connection hardening + friendly copy, already live in prod). **P2** (visible live meter for web parity + 5s in-recording silence warning) and **P3** (web `enumerateDevices` Bluetooth hint) are next.
+- Parity: iOS + Android (shared RN) + web, one slice; shared threshold/copy in `@acuity/shared`.
+
+---
+
 ## [2026-06-10] — Web app light theme default + funnel fix + orange record button
 
 **Requested by:** Keenan

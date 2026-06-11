@@ -9,6 +9,23 @@ export const APP_TAGLINE = "The daily debrief that turns chaos into clarity.";
 
 export const MAX_RECORDING_SECONDS = 600; // 10 minutes
 export const MIN_RECORDING_SECONDS = 5;
+
+// Pre-upload silence guard (P1, iOS/Android/web). Recording levels are
+// normalized 0..1 from device metering (mobile: expo-av dBFS; web: Web Audio
+// AnalyserNode RMS) — both mapped -60..0 dB → 0..1. If a recording's PEAK
+// level never crossed this threshold, the mic captured nothing meaningful
+// (Bluetooth not routing input, muted, wrong device). The client blocks the
+// upload so silent audio can't reach Whisper + fail after the fact.
+export const SILENCE_PEAK_THRESHOLD = 0.15;
+
+export const NO_SOUND_CAPTURED_MESSAGE =
+  "We didn't capture any sound. Please check your mic and try again.";
+
+/** True if the recording's peak normalized level never crossed the speech
+ *  threshold — i.e. the recording was effectively silent. */
+export function isEffectivelySilentPeak(peak: number): boolean {
+  return peak < SILENCE_PEAK_THRESHOLD;
+}
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // 25 MB (Whisper limit)
 export const SUPPORTED_AUDIO_TYPES = [
   "audio/webm",

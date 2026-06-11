@@ -5,6 +5,10 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  isEffectivelySilentPeak,
+  NO_SOUND_CAPTURED_MESSAGE,
+} from "@acuity/shared";
+import {
   Alert,
   AppState,
   type AppStateStatus,
@@ -123,6 +127,7 @@ export default function RecordScreen() {
   const [interrupted, setInterrupted] = useState(false);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const peakLevelRef = useRef(0); // P1: loudest normalized level this recording
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appState = useRef(AppState.currentState);
   // Per-upload cancellation flag (Slice Q5 polish 10, 2026-05-20).
@@ -315,12 +320,19 @@ export default function RecordScreen() {
         // Map -60..0 dB → 0..1. Apple's dB range is roughly -60 silent
         // to 0 peak; clamp + normalize.
         const normalized = Math.max(0, Math.min(1, (meteringDb + 60) / 60));
+        // P1: track the loudest level across the WHOLE recording (the
+        // `levels` window only retains the last 18 samples) so stopRecording
+        // can block a silent upload.
+        if (normalized > peakLevelRef.current) {
+          peakLevelRef.current = normalized;
+        }
         setLevels((prev) => {
           const next = prev.slice(1);
           next.push(Math.max(0.05, normalized));
           return next;
         });
       });
+      peakLevelRef.current = 0; // P1: reset peak for this recording
       await recording.startAsync();
       recordingRef.current = recording;
       setElapsed(0);
@@ -393,6 +405,15 @@ export default function RecordScreen() {
     const uri = recording.getURI();
     if (!uri) {
       Alert.alert("Error", "No audio was captured.");
+      setState("idle");
+      return;
+    }
+    // P1: block silent uploads. If the peak level never crossed the speech
+    // threshold, the mic captured nothing (Bluetooth not routing, muted, or
+    // wrong input) — surface it now instead of a wasted Whisper call + an
+    // after-the-fact "no speech" failure.
+    if (isEffectivelySilentPeak(peakLevelRef.current)) {
+      Alert.alert("No sound detected", NO_SOUND_CAPTURED_MESSAGE);
       setState("idle");
       return;
     }

@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import {
+  isEffectivelySilentPeak,
   MOOD_LABELS,
+  NO_SOUND_CAPTURED_MESSAGE,
   PRIORITY_COLOR,
   type ExtractionResult,
   type RecordResponse,
@@ -40,6 +42,11 @@ export function RecordButton() {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
+  // P1 silence guard — Web Audio peak tracking during recording.
+  const peakRef = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   // Polling hook — always called; `null` entryId is a no-op idle state.
   const poll = useEntryPolling(polledEntryId);
@@ -73,6 +80,37 @@ export function RecordButton() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // P1: peak-level tracking to block a silent upload (mirrors record-sheet
+      // + the mobile expo-av metering guard). Feature-detected.
+      peakRef.current = 0;
+      try {
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        const ctx = new Ctx();
+        audioCtxRef.current = ctx;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        ctx.createMediaStreamSource(stream).connect(analyser);
+        analyserRef.current = analyser;
+        const buf = new Float32Array(analyser.fftSize);
+        const tick = () => {
+          const a = analyserRef.current;
+          if (!a) return;
+          a.getFloatTimeDomainData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+          const rms = Math.sqrt(sum / buf.length);
+          const db = rms > 0 ? 20 * Math.log10(rms) : -60;
+          const normalized = Math.max(0, Math.min(1, (db + 60) / 60));
+          if (normalized > peakRef.current) peakRef.current = normalized;
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch {
+        // Web Audio unsupported — skip the guard, don't block recording.
+      }
       const mr = new MediaRecorder(stream, { mimeType: bestMimeType() });
       mediaRecorderRef.current = mr;
 
@@ -85,6 +123,20 @@ export function RecordButton() {
         const baseMime = mr.mimeType.split(";")[0] || "audio/webm";
         const blob = new Blob(chunksRef.current, { type: baseMime });
         const duration = Math.round((Date.now() - startTimeRef.current) / 1000);
+        const silent = isEffectivelySilentPeak(peakRef.current);
+        // P1: tear down the analyser + block silent uploads.
+        if (rafRef.current != null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        analyserRef.current = null;
+        void audioCtxRef.current?.close().catch(() => {});
+        audioCtxRef.current = null;
+        if (silent) {
+          setError(NO_SOUND_CAPTURED_MESSAGE);
+          setPhase("idle");
+          return;
+        }
         upload(blob, duration, baseMime);
       };
 
