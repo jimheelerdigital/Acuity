@@ -84,6 +84,10 @@ paths = [
   '''yarn\.lock$''',
   '''pnpm-lock\.yaml$''',
   '''\.gitleaks\.toml$''',
+  # Firebase Android client config (FCM). The api_key is a CLIENT key,
+  # restricted by package name + SHA-1 and shipped inside the APK — not a
+  # secret. Committed so EAS cloud builds (git-only upload) include it.
+  '''apps/mobile/google-services\.json$''',
 ]
 
 regexes = [
