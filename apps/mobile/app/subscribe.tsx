@@ -93,6 +93,8 @@ export default function SubscribeScreen() {
 
   const flagOn = isIapEnabled();
   const isIos = Platform.OS === "ios";
+  // Native IAP now ships on iOS + Android (Play Billing). Web stays Stripe.
+  const supportsIap = isIos || Platform.OS === "android";
 
   const selectedProduct =
     selectedTier === "monthly" ? products.monthly : products.annual;
@@ -134,12 +136,12 @@ export default function SubscribeScreen() {
   }, []);
 
   useEffect(() => {
-    if (!flagOn || !isIos) return;
+    if (!flagOn || !supportsIap) return;
     void loadProducts();
   }, [flagOn, isIos, loadProducts]);
 
   useEffect(() => {
-    if (!flagOn || !isIos) return;
+    if (!flagOn || !supportsIap) return;
     if (user?.subscriptionStatus === "PRO") return;
     let cancelled = false;
     (async () => {
@@ -195,7 +197,10 @@ export default function SubscribeScreen() {
       return;
     }
     try {
-      const result = await purchaseProduct(productId);
+      const result = await purchaseProduct(
+        productId,
+        selectedProduct.offerTokenAndroid
+      );
       if (result.kind === "error") {
         if (result.message) setErrorMsg(result.message);
         return;
@@ -262,7 +267,7 @@ export default function SubscribeScreen() {
     }
   };
 
-  if (!flagOn || !isIos) {
+  if (!flagOn || !supportsIap) {
     return (
       <UnavailableScreen
         tokens={tokens}
