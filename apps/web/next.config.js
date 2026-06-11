@@ -207,6 +207,16 @@ const nextConfig = {
         destination: "/start",
         permanent: true,
       },
+      {
+        // /login alias → the real sign-in page. /login has no page of its
+        // own; this future-proofs links to it (incl. the magic-link
+        // branch's /login?e=… error params, which Next preserves to the
+        // destination). Temporary (not hard-cached) in case /login
+        // becomes a real page later.
+        source: "/login",
+        destination: "/auth/signin",
+        permanent: false,
+      },
     ];
   },
 };
