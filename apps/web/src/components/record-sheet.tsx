@@ -7,6 +7,8 @@ import {
   NO_SOUND_CAPTURED_MESSAGE,
 } from "@acuity/shared";
 
+import { usePendingEntries } from "@/contexts/pending-entries-context";
+
 /**
  * Universal record-about-this modal. Slides up from the bottom of the
  * screen, records audio, uploads with optional context (goalId or
@@ -58,6 +60,7 @@ export function RecordSheet({
   onRecordComplete,
 }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
+  const { trackEntry } = usePendingEntries();
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -284,6 +287,9 @@ export function RecordSheet({
           // processing (async path) but the parent component gets
           // the entry id and can show its own "processing..." state
           // or just refresh its list.
+          // Phase 2/3: track app-wide so a toast fires on COMPLETE/FAILED
+          // once the sheet has closed and the user has moved on.
+          trackEntry(body.entryId);
           onRecordComplete(body.entryId);
           onClose();
           return;

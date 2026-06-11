@@ -18,6 +18,7 @@ import {
   type PolledEntry,
 } from "@/hooks/use-entry-polling";
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
+import { usePendingEntries } from "@/contexts/pending-entries-context";
 
 type Phase =
   | "idle"
@@ -32,6 +33,7 @@ const MAX_SECONDS = 120;
 
 export function RecordButton() {
   const router = useRouter();
+  const { trackEntry } = usePendingEntries();
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -198,6 +200,9 @@ export function RecordButton() {
       if (res.status === 202 && body.entryId) {
         setPhase("processing");
         setPolledEntryId(body.entryId as string);
+        // Phase 2/3: also track app-wide so a toast fires if the user
+        // navigates away before the inline poll lands.
+        trackEntry(body.entryId as string);
         return;
       }
 
