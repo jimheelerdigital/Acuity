@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "322800126004",
+    "project_id": "acuity-9595a",
+    "storage_bucket": "acuity-9595a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:322800126004:android:22e1346ca219c9cc1f2261",
+        "android_client_info": {
+          "package_name": "com.heelerdigital.acuity"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuVCaaB2uSOx1umQOOXlHh4GcZDd-cz4M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

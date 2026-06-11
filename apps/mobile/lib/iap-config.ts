@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 /**
  * Compile-time gate for the iOS in-app purchase surface.
@@ -40,16 +41,42 @@ export function isIapEnabled(): boolean {
  * client only knows the SKU. Default fallback strings in subscribe.tsx
  * exist only for the brief StoreKit-loading window.
  */
-export const IAP_MONTHLY_PRODUCT_ID = "com.heelerdigital.acuity.pro.monthly";
-export const IAP_ANNUAL_PRODUCT_ID = "com.heelerdigital.acuity.pro.annual";
+// Apple uses reverse-DNS product IDs; Google Play uses flat lowercase IDs.
+// The ACTIVE pair (queried + purchased on THIS platform) resolves at runtime;
+// IapProductId + isIapProductId accept all four so server-bound values
+// typecheck + validate regardless of platform.
+const IOS_MONTHLY_PRODUCT_ID = "com.heelerdigital.acuity.pro.monthly";
+const IOS_ANNUAL_PRODUCT_ID = "com.heelerdigital.acuity.pro.annual";
+const ANDROID_MONTHLY_PRODUCT_ID = "acuity_pro_monthly";
+const ANDROID_ANNUAL_PRODUCT_ID = "acuity_pro_annual";
+
+const IS_ANDROID = Platform.OS === "android";
+
+export const IAP_MONTHLY_PRODUCT_ID = IS_ANDROID
+  ? ANDROID_MONTHLY_PRODUCT_ID
+  : IOS_MONTHLY_PRODUCT_ID;
+export const IAP_ANNUAL_PRODUCT_ID = IS_ANDROID
+  ? ANDROID_ANNUAL_PRODUCT_ID
+  : IOS_ANNUAL_PRODUCT_ID;
 
 export const IAP_ALL_PRODUCT_IDS = [
   IAP_MONTHLY_PRODUCT_ID,
   IAP_ANNUAL_PRODUCT_ID,
 ] as const;
 
-export type IapProductId = (typeof IAP_ALL_PRODUCT_IDS)[number];
+export type IapProductId =
+  | typeof IOS_MONTHLY_PRODUCT_ID
+  | typeof IOS_ANNUAL_PRODUCT_ID
+  | typeof ANDROID_MONTHLY_PRODUCT_ID
+  | typeof ANDROID_ANNUAL_PRODUCT_ID;
+
+const ALL_KNOWN_PRODUCT_IDS: readonly string[] = [
+  IOS_MONTHLY_PRODUCT_ID,
+  IOS_ANNUAL_PRODUCT_ID,
+  ANDROID_MONTHLY_PRODUCT_ID,
+  ANDROID_ANNUAL_PRODUCT_ID,
+];
 
 export function isIapProductId(value: string): value is IapProductId {
-  return (IAP_ALL_PRODUCT_IDS as readonly string[]).includes(value);
+  return ALL_KNOWN_PRODUCT_IDS.includes(value);
 }
