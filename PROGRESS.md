@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-06-10] — Web app light theme default + funnel fix + orange record button
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0516a83
+
+### In plain English (for Keenan)
+The web app was following your Mac's dark mode setting, which caused the "how it works" screen in the start funnel to show up with a dark background and orange text instead of matching the rest of the light funnel. The "hold to commit" circle was also nearly invisible (white on white). Both are fixed. The record button in the recording modal is now orange instead of purple. The entire web app now defaults to light theme regardless of OS preference.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/layout.tsx`: changed `DEFAULT_APPEARANCE.preference` from `"system"` to `"light"`
+- `apps/web/src/contexts/appearance-context.tsx`: changed fallback `themePreference` from `"system"` to `"light"` for unauthenticated routes
+- `apps/web/src/components/onboarding-funnel.tsx`: added `bg-white text-zinc-900` to MechanismScreen container; commitment circle track stroke changed from CSS variable to solid `#d4d4d8`; inner button border increased to `border-2 border-zinc-300` with stronger `bg-acuity-primary/10`
+- `apps/web/src/components/record-sheet.tsx`: record button idle state changed from `bg-violet-600` to `bg-orange-500`, box-shadow ring updated to orange
+
+### Manual steps needed
+None
+
+### Notes
+- Users who previously set their theme to dark via the theme toggle will still get dark mode — the cookie-based blocking script preserves their preference. This only changes the default for new/unauthenticated users.
+- The driver.js build error is pre-existing and unrelated to these changes.
+
+---
+
 ## [2026-06-10] — Fix: web product tour Next button invisible on mobile + 44pt native tour buttons
 
 - **Requested by:** Keenan
