@@ -20,7 +20,12 @@ out/
 *.key
 credentials.json
 token.json
-google-services.json
+# google-services.json (apps/mobile) is intentionally COMMITTED — the Firebase
+# Android client config (FCM), restricted by package + SHA-1 and shipped in the
+# APK. It must NOT be gitignored: EAS Build filters .gitignore patterns out of
+# the build archive even for tracked files (caused
+# EAS_BUILD_MISSING_GOOGLE_SERVICES_JSON_ERROR on AAB #2). Allowlisted in
+# .gitleaks.toml.
 GoogleService-Info.plist
 # Per-app secret stashes — never commit any file under apps/*/secrets/.
 # Currently used by apps/mobile/secrets/play-service-account.json
