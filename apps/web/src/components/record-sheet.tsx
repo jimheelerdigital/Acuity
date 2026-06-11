@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  isEffectivelySilentPeak,
+  NO_SOUND_CAPTURED_MESSAGE,
+} from "@acuity/shared";
+
 /**
  * Universal record-about-this modal. Slides up from the bottom of the
  * screen, records audio, uploads with optional context (goalId or
@@ -60,6 +65,11 @@ export function RecordSheet({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // P1 silence guard — Web Audio peak-level tracking during recording.
+  const peakRef = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
   // Screen Wake Lock — keeps the screen from locking mid-recording on
   // mobile web (parity with the iOS keep-awake fix). Released on stop /
   // close; re-acquired on tab re-show (wake locks auto-release when the
@@ -109,11 +119,57 @@ export function RecordSheet({
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [phase, requestWakeLock]);
 
+  const teardownAnalyser = useCallback(() => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    analyserRef.current = null;
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+  }, []);
+
   const startRecording = useCallback(async () => {
     try {
       setError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+
+      // P1: tap the stream with an AnalyserNode to track the peak input
+      // level across the recording — used to block a silent upload onstop
+      // (mirrors the mobile expo-av metering guard). Feature-detected;
+      // if Web Audio is unavailable we skip the guard rather than block.
+      peakRef.current = 0;
+      try {
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        const ctx = new Ctx();
+        audioCtxRef.current = ctx;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        ctx.createMediaStreamSource(stream).connect(analyser);
+        analyserRef.current = analyser;
+        const buf = new Float32Array(analyser.fftSize);
+        const tick = () => {
+          const a = analyserRef.current;
+          if (!a) return;
+          a.getFloatTimeDomainData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+          const rms = Math.sqrt(sum / buf.length);
+          const db = rms > 0 ? 20 * Math.log10(rms) : -60;
+          const normalized = Math.max(0, Math.min(1, (db + 60) / 60));
+          if (normalized > peakRef.current) peakRef.current = normalized;
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch {
+        // Web Audio unsupported — skip the guard, don't block recording.
+      }
 
       const mime = pickMime();
       const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
@@ -135,6 +191,14 @@ export function RecordSheet({
           streamRef.current = null;
         }
         releaseWakeLock();
+        const silent = isEffectivelySilentPeak(peakRef.current);
+        teardownAnalyser();
+        // P1: block silent uploads — same guard + copy as mobile.
+        if (silent) {
+          setError(NO_SOUND_CAPTURED_MESSAGE);
+          setPhase("idle");
+          return;
+        }
         await upload(blob, duration, mimeType);
       };
 
