@@ -5,6 +5,11 @@ import { useEffect, useState } from "react";
 
 import { useEntryPolling } from "@/hooks/use-entry-polling";
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
+import {
+  CONNECTION_MESSAGE,
+  FRIENDLY_RECORDING_MESSAGES,
+  NO_SPEECH_MESSAGE,
+} from "@/lib/recording-errors";
 
 /**
  * Client-side gate for the /entries/[id] page when the entry isn't
@@ -66,7 +71,26 @@ function sanitizeError(
   if (reason === "backfill-extract-failed") {
     return "We couldn't run the extraction during backfill. Try reprocessing.";
   }
+  // P0: pass our own friendly copy through untouched (new failures store it
+  // directly), and map the legacy raw provider strings on existing entries
+  // (e.g. the 2026-05-28 "Connection error." cohort).
+  if (errorMessage && FRIENDLY_RECORDING_MESSAGES.has(errorMessage)) {
+    return errorMessage;
+  }
   const msg = (errorMessage ?? "").toLowerCase();
+  if (
+    msg.includes("connection error") ||
+    msg.includes("econnreset") ||
+    msg.includes("fetch failed")
+  ) {
+    return CONNECTION_MESSAGE;
+  }
+  if (
+    msg.includes("no speech") ||
+    (msg.includes("transcript") && msg.includes("short"))
+  ) {
+    return NO_SPEECH_MESSAGE;
+  }
   if (msg.includes("401") || msg.includes("authentication_error")) {
     return "We had trouble reaching the AI service. Try again in a moment.";
   }

@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-06-10] — Recording reliability P0: admin reprocess endpoint + Whisper connection hardening + friendlier errors
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (PR on branch fix/recording-reliability-p0 — held for Jimmy's diff review before merge)
+
+### In plain English (for Keenan)
+
+Two paying users (and likely others) recorded but got a cryptic "Connection error" and never saw a working entry — it was the transcription service briefly failing to connect, with no friendly message and no clean way to retry them. This ships: (1) an admin-only "reprocess this entry" button/endpoint so we can re-run any stuck recording (their audio was saved the whole time); (2) a tighter, retry-on-blip transcription call so a momentary network hiccup self-heals instead of dying; and (3) human error messages — "We couldn't detect speech… if you were on Bluetooth, try your built-in mic" and "We had trouble reaching transcription — your audio is saved, tap retry" — instead of scary jargon. The two affected users will be recovered once this deploys.
+
+### Technical changes (for Jimmy) — first part of the recording-reliability work
+
+- **`apps/web/src/app/api/admin/entries/[id]/reprocess/route.ts`** (new): admin-gated (Bearer **or** cookie → `isAdmin`, so it's curl-triggerable) reprocess. Idempotent (only PARTIAL/FAILED; re-queues → 409 on repeat). Logs admin id + entry id + outcome. Re-fires `entry/process.requested` — runs on Vercel so it has the integration-injected `INNGEST_EVENT_KEY` (a local script does not — see Notes).
+- **`apps/web/src/inngest/functions/process-entry.ts`**: async OpenAI client now `timeout: 30_000` (was unset → SDK default 600s, the aggravator); try/catch around the Whisper call classifies `APIConnectionError` ("Connection error.") as **retryable** (plain Error → Inngest retries) and stores the friendly `CONNECTION_MESSAGE`; too-short now throws the friendly `NO_SPEECH_MESSAGE` (NonRetriableError — don't retry silence).
+- **`apps/web/src/lib/recording-errors.ts`** (new): shared `NO_SPEECH_MESSAGE` / `CONNECTION_MESSAGE` (both < 160 chars for the onFailure truncate) + `isConnectionError()` + `FRIENDLY_RECORDING_MESSAGES`.
+- **`apps/web/src/app/entries/[id]/entry-status-gate.tsx`**: sanitizer passes our friendly copy through + maps legacy raw `connection error` / `no speech` / `transcript … short` → friendly (retroactively fixes the 4 existing entries' web display).
+- **`apps/web/src/lib/pipeline.ts`** (sync path): too-short throws `NO_SPEECH_MESSAGE` for consistency.
+- Confirmed root cause via prod DB: the 4 entries (2 users) all `FAILED` / "Connection error." with audio present, durations 11–120s, clustered 2026-05-28/29 → OpenAI egress blip on the async path.
+
+### Manual steps needed
+
+- [ ] **Jimmy: review this PR diff, then merge** `fix/recording-reliability-p0` → main (web auto-deploys ~3 min). HIGH-RISK-adjacent (touches the transcription path + adds an auth'd endpoint) — your review gate.
+- [ ] **After deploy: trigger the 4 reprocesses** via the admin endpoint (Claude will curl them with an admin token once it's live), confirm each lands COMPLETE, report back.
+- [ ] No schema change, no new env var.
+
+### Notes
+
+- **Why the admin endpoint vs. a local script:** `INNGEST_EVENT_KEY` is injected at runtime by the Vercel↔Inngest integration — it's blank in `.env.local` AND in `vercel env pull`, so events can only be sent from inside a Vercel function. The earlier local reprocess attempt failed for exactly this reason; the 4 rows were reset then **reverted to their original FAILED state** (no mess left).
+- Parity: this part is server-side (all platforms benefit). P1 (pre-upload silence validation) is the iOS+Android+web lockstep slice next; P2/P3 after.
+- Mobile renders `Entry.errorMessage` raw, so making the **stored** message friendly (not just the web sanitizer) is what fixes mobile copy going forward.
+
+---
+
 ## [2026-06-10] — Fix: web product tour Next button invisible on mobile + 44pt native tour buttons
 
 - **Requested by:** Keenan
