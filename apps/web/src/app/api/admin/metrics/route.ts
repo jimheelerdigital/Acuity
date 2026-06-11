@@ -144,8 +144,8 @@ export async function GET(req: NextRequest) {
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
-          const flow = req.nextUrl.searchParams.get("flow") as "v2" | "v1" | "all" | null;
-          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v2");
+          const flow = req.nextUrl.searchParams.get("flow") as "v3" | "v2" | "v1" | "all" | null;
+          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v3");
         }
         case "guide":
           return getGuide();
@@ -1627,7 +1627,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
 const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v2" | "v1" | "all" = "v2") {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v3" | "v2" | "v1" | "all" = "v3") {
  try {
   // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
   // and "all" (floor at v2 epoch to exclude ancient v1 diagnostic events).
@@ -1644,7 +1644,33 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     if (effectiveStart < epoch) effectiveStart = epoch;
   }
 
-  // v3 funnel steps — account-first flow (no fallbacks — clean separation)
+  // v3 funnel steps — gap screen + identity commit (2026-06-10 copy upgrade)
+  const FUNNEL_STEPS_V3_COPY = [
+    { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
+    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
+    { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
+    { key: "branch_q4", event: "funnel_branch_q4_viewed", label: "Q4" },
+    { key: "shared_q5", event: "funnel_shared_q5_viewed", label: "Q5" },
+    { key: "shared_q6", event: "funnel_shared_q6_viewed", label: "Q6 (Cost)" },
+    { key: "shared_q7", event: "funnel_shared_q7_viewed", label: "Q7" },
+    { key: "shared_q8", event: "funnel_shared_q8_viewed", label: "Q8" },
+    { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9 (Pattern)" },
+    { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
+    { key: "gap", event: "funnel_gap_viewed", label: "Gap" },
+    { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
+    { key: "commit", event: "funnel_commit_viewed", label: "Commit" },
+    { key: "commit_completed", event: "funnel_commit_completed", label: "Committed" },
+    { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
+    { key: "snapshot", event: "funnel_snapshot_viewed", label: "Snapshot" },
+    { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline" },
+    { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account" },
+    { key: "account_created", event: "funnel_account_created", label: "Account Created" },
+    { key: "savings_offered", event: "funnel_savings_viewed", label: "Savings Offered" },
+    { key: "trial_continued", event: "funnel_trial_continued", label: "Trial Continued" },
+    { key: "download", event: "funnel_download_viewed", label: "Download" },
+  ];
+
+  // v2 funnel steps — account-first flow (pre-gap, pre-identity commit)
   const FUNNEL_STEPS_V3 = [
     { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
     { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
@@ -1692,7 +1718,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
 
-  const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : FUNNEL_STEPS_V3;
+  const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
 
   // Fetch all funnel events in range (exclude bots unless showBots is true)
   const events = await prisma.onboardingEvent.findMany({
@@ -1779,12 +1805,12 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     // Flow-aware paid detection: v2 only counts savings_locked_in, v1 only counts payment_completed
     const paid = flowVersion === "v1"
       ? eventNames.has("funnel_payment_completed")
-      : flowVersion === "v2"
+      : (flowVersion === "v2" || flowVersion === "v3")
         ? eventNames.has("funnel_savings_locked_in")
         : eventNames.has("funnel_payment_completed") || eventNames.has("funnel_savings_locked_in");
     const signedup = flowVersion === "v1"
       ? eventNames.has("funnel_signup_completed")
-      : flowVersion === "v2"
+      : (flowVersion === "v2" || flowVersion === "v3")
         ? eventNames.has("funnel_account_created")
         : eventNames.has("funnel_signup_completed") || eventNames.has("funnel_account_created");
     const click: string | null = clickedAppStore ? "App Store" : clickedWebApp ? "Web App" : null;
@@ -1873,7 +1899,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     shared_q8: "Too many questions before mirror. Test skipping.",
     shared_q9: "Last question before mirror. Low intent users leave.",
     mirror: "Mirror didn\u2019t resonate. Review emotional copy.",
+    gap: "Gap screen not converting. Review amplify/imagine copy per branch.",
     mechanism: "Product explainer not converting. Simplify or shorten slides.",
+    commit_completed: "Users viewing commit but not holding. Check copy or touch handling.",
     commit: "Hold-to-commit friction. Check mobile touch handling.",
     processing: "Processing theater drop. Users leaving during wait.",
     snapshot: "Snapshot not compelling. Personalize more.",
@@ -2015,16 +2043,18 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     branchMap.get(b)!.push(s);
   }
 
+  // Helper: check if a session has a specific event
+  const sessHasEvent = (sess: typeof sessions[number], event: string) => sess.events.some((e) => e.event === event);
+
   const branchBreakdown = [...branchMap.entries()]
     .filter(([key]) => BRANCH_KEYS.includes(key))
     .map(([branchKey, bSessions]) => {
       const total = bSessions.length;
-      const entryToQ4 = bSessions.filter((s) => s.stepNumber >= 4).length;
-      const q4ToMirror = bSessions.filter((s) => s.stepNumber >= 10).length;
-      const mirrorToMechanism = bSessions.filter((s) => s.stepNumber >= 11).length;
-      const mechanismToCommit = bSessions.filter((s) => s.stepNumber >= 12).length;
-      // In v3: step 16 = Create Account; in v1: step 16 = Paywall
-      const commitToAccount = bSessions.filter((s) => s.stepNumber >= 16).length;
+      const entryToQ4 = bSessions.filter((s) => sessHasEvent(s, "funnel_branch_q4_viewed")).length;
+      const q4ToMirror = bSessions.filter((s) => sessHasEvent(s, "funnel_mirror_viewed")).length;
+      const mirrorToMechanism = bSessions.filter((s) => sessHasEvent(s, "funnel_mechanism_viewed")).length;
+      const mechanismToCommit = bSessions.filter((s) => sessHasEvent(s, "funnel_commit_viewed")).length;
+      const commitToAccount = bSessions.filter((s) => sessHasEvent(s, "funnel_create_account_viewed") || sessHasEvent(s, "funnel_paywall_viewed")).length;
       const accountToPaid = bSessions.filter((s) => s.status === "paid" || s.status === "completed" || s.status === "signed_up").length;
       return {
         branch: branchKey,
@@ -2086,7 +2116,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { event: "funnel_shared_q6_selected", label: "Q6: What\u2019s it costing?" },
     { event: "funnel_shared_q7_selected", label: "Q7: Imagine change" },
     { event: "funnel_shared_q8_selected", label: "Q8: Brain state" },
-    { event: "funnel_shared_q9_selected", label: "Q9: Pattern to see" },
+    { event: "funnel_shared_q9_selected", label: "Q9: Pattern to stop" },
   ];
   for (const ae of ANSWER_EVENTS) answerBuckets[ae.event] = {};
   for (const e of events) {
@@ -2191,6 +2221,27 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     select: { id: true, email: true, createdAt: true, signupMethod: true },
   });
 
+  // ── Commit completion rate (7c) ──
+  const commitViewedSessions = stepReach["commit"]?.size ?? 0;
+  const commitCompletedSessions = stepReach["commit_completed"]?.size ?? 0;
+  const commitCompletionRate = commitViewedSessions > 0
+    ? Math.round((commitCompletedSessions / commitViewedSessions) * 100) : 0;
+
+  // ── Ad-match breakdown (7d) ──
+  const adMatchSessions = interactedSessionsList.filter((s) =>
+    s.events.some((e) => e.event === "funnel_ad_match")
+  );
+  const adMatchStats = {
+    total: adMatchSessions.length,
+    matched: adMatchSessions.filter((s) =>
+      s.events.some((e) => e.event === "funnel_ad_match" && e.value === "matched")
+    ).length,
+    different: adMatchSessions.filter((s) =>
+      s.events.some((e) => e.event === "funnel_ad_match" && e.value === "different")
+    ).length,
+    withoutParam: interactedSessionsList.length - adMatchSessions.length,
+  };
+
   // Diagnostic: raw event counts for page loads vs taps
   const entryViewedCount = events.filter((e) => e.event === "funnel_entry_viewed").length;
   const entrySelectedCount = events.filter((e) => e.event === "funnel_entry_selected").length;
@@ -2222,7 +2273,11 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       entrySelectedEvents: entrySelectedCount,
       tapRate: entryViewedCount > 0 ? Math.round((entrySelectedCount / entryViewedCount) * 100) : 0,
       totalEventsInRange: events.length,
+      commitCompletionRate,
+      commitViewedSessions,
+      commitCompletedSessions,
     },
+    adMatchStats,
     funnelSteps,
     alerts,
     campaignFunnels,

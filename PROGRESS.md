@@ -7,6 +7,179 @@
 
 ---
 
+## [2026-06-10] — Funnel v3: Gap screen, identity commit, benefit copy, admin instrumentation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4d7b4c0
+
+### In plain English (for Keenan)
+The start funnel now has a stronger persuasion architecture. After the Mirror shows her what she told us, a new "Gap" screen amplifies the cost she selected and paints a sensory picture of what changes — before showing how the product works. The "how it works" steps now sell the benefit she'll feel, not just the feature. The commit screen says "hold to commit — not to an app, to 60 seconds a day of finally keeping track of YOU." All six branches have personalized Gap copy. Ads can now deep-link to the matching pain option (?p=rumination), which pre-highlights it on the entry screen. The admin Funnel Analytics tab has a v3 toggle so you can compare old copy vs new copy cleanly, plus commit completion rate and ad-match attribution.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: rewrote shared_q9 ("What's one pattern you'd like to stop?" with 4 new options); softened all graveyard Mirror absolutes to maybe-framing; softened patterns-family Mirror absolute; updated DESIRE_REWRITES keys/values for new q9; updated getSnapshotInsight; removed "record" framing from timeline w1 blur; added buildGapContent() with 6-branch amplify/imagine/promise copy; added GapContent type
+- `apps/web/src/components/onboarding-funnel.tsx`: added "gap" step between mirror and mechanism in Step type + STEP_ORDER; added GapScreen component (CTA at 1.8s); rewrote Mechanism step 1/2/3 titles + subtitles with benefit clauses; unified step3Sub to single non-branch copy; updated MECH_CONTENT cards to remove record-keeping/nightly/discipline framing ("0% this week" → "Day 1"); identity rewrite on CommitmentScreen; added ?p= URL param support with adMatchBranch state; added highlightBranch prop to SingleSelectScreen; bumped flowVersion to v3; fires funnel_ad_match event
+- `apps/web/src/app/api/admin/metrics/route.ts`: added FUNNEL_STEPS_V3_COPY with gap + commit_completed steps; v3 flow version support; commit completion rate calc; ad-match stats breakdown; updated Q9 label to "Pattern to stop"; added gap/commit_completed to SUGGESTED_FIXES; fixed branch breakdown to use event-based checks instead of fragile step-number indices
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: added v1/v2/v3/all flow version toggle buttons; commit completion % row; banner-to-buyer attribution panel
+
+### Manual steps needed
+None — no schema changes required. All event types are additive string-based and don't require Prisma migration.
+
+### Notes
+- flowVersion "v3" tags all new sessions. Historical v1/v2 data is untouched — the admin tab renders them exactly as before when toggled.
+- The ?p= param is purely additive — when absent, entry screen behaves exactly as before. When present, the matching option gets a subtle purple tint border but is NOT auto-selected.
+- Commit completion tracking reuses the existing `funnel_commit_completed` event that was already fired but never surfaced in the admin bar chart. Now it's a distinct step in the v3 funnel visualization.
+- Mirror absolutes fixed: all 5 graveyard entries ("Someone told you to meditate" → "Maybe someone told you to meditate...") and 1 patterns entry ("since you were a kid" → "Maybe since you were a kid").
+- Gap screen total copy is ~50-60 words per branch, under the 60-word target.
+
+---
+
+## [2026-06-10] — Recording reliability P1: block silent uploads client-side (iOS + Android + web)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (PR on branch fix/p1-silence-validation — held for review)
+
+### In plain English (for Keenan)
+
+Stops the silent-recording problem at the source. If your mic captured no sound (Bluetooth not actually routing, muted, wrong input), the app now catches it the instant you stop recording and says "We didn't capture any sound. Please check your mic and try again." — instead of uploading silence and failing minutes later. Same behavior on iPhone, Android, and the web app.
+
+### Technical changes (for Jimmy)
+
+- `packages/shared/src/constants.ts`: `SILENCE_PEAK_THRESHOLD` (0.15, normalized 0..1), `NO_SOUND_CAPTURED_MESSAGE`, `isEffectivelySilentPeak(peak)` — single source of truth across platforms.
+- `apps/mobile/app/record.tsx` (iOS + Android): track the peak normalized level across the WHOLE recording via the existing expo-av metering callback (`peakLevelRef`, reset on start — the `levels` array only retains an 18-sample window); in `stopRecording`, block the upload + Alert if `isEffectivelySilentPeak`.
+- `apps/web/src/app/home/record-button.tsx` + `apps/web/src/components/record-sheet.tsx`: add a Web Audio `AnalyserNode` on the MediaStream, track peak RMS mapped -60..0 dB → 0..1 (matches mobile), tear it down on stop; block the upload + show the message if silent. Feature-detected — if Web Audio is unavailable the guard is skipped, never blocking recording.
+
+### Manual steps needed
+
+- [ ] **Jimmy: review PR, merge** `fix/p1-silence-validation` → main (web auto-deploys ~3 min).
+- [ ] **Cut a mobile build** to ship the iOS/Android guard (bundle with v1.3.3 build 79).
+- [ ] No schema/env change.
+
+### Notes
+
+- Threshold 0.15 ≈ −51 dB peak. Speech peaks ~0.5–0.8 normalized; floored silence ~0.05 — wide margin. Tune `SILENCE_PEAK_THRESHOLD` in `@acuity/shared` if false positives surface.
+- The unauthenticated try-flow recorder (`try-debrief-flow.tsx`) is **not yet covered** — lower priority (pre-signup, already mic-gated); follow-up.
+- Pairs with P0 (server-side connection hardening + friendly copy, already live in prod). **P2** (visible live meter for web parity + 5s in-recording silence warning) and **P3** (web `enumerateDevices` Bluetooth hint) are next.
+- Parity: iOS + Android (shared RN) + web, one slice; shared threshold/copy in `@acuity/shared`.
+
+---
+
+## [2026-06-10] — Web app light theme default + funnel fix + orange record button
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0516a83
+
+### In plain English (for Keenan)
+The web app was following your Mac's dark mode setting, which caused the "how it works" screen in the start funnel to show up with a dark background and orange text instead of matching the rest of the light funnel. The "hold to commit" circle was also nearly invisible (white on white). Both are fixed. The record button in the recording modal is now orange instead of purple. The entire web app now defaults to light theme regardless of OS preference.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/layout.tsx`: changed `DEFAULT_APPEARANCE.preference` from `"system"` to `"light"`
+- `apps/web/src/contexts/appearance-context.tsx`: changed fallback `themePreference` from `"system"` to `"light"` for unauthenticated routes
+- `apps/web/src/components/onboarding-funnel.tsx`: added `bg-white text-zinc-900` to MechanismScreen container; commitment circle track stroke changed from CSS variable to solid `#d4d4d8`; inner button border increased to `border-2 border-zinc-300` with stronger `bg-acuity-primary/10`
+- `apps/web/src/components/record-sheet.tsx`: record button idle state changed from `bg-violet-600` to `bg-orange-500`, box-shadow ring updated to orange
+
+### Manual steps needed
+None
+
+### Notes
+- Users who previously set their theme to dark via the theme toggle will still get dark mode — the cookie-based blocking script preserves their preference. This only changes the default for new/unauthenticated users.
+- The driver.js build error is pre-existing and unrelated to these changes.
+
+---
+
+## [2026-06-10] — Recording reliability P0: admin reprocess endpoint + Whisper connection hardening + friendlier errors
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (PR on branch fix/recording-reliability-p0 — held for Jimmy's diff review before merge)
+
+### In plain English (for Keenan)
+
+Two paying users (and likely others) recorded but got a cryptic "Connection error" and never saw a working entry — it was the transcription service briefly failing to connect, with no friendly message and no clean way to retry them. This ships: (1) an admin-only "reprocess this entry" button/endpoint so we can re-run any stuck recording (their audio was saved the whole time); (2) a tighter, retry-on-blip transcription call so a momentary network hiccup self-heals instead of dying; and (3) human error messages — "We couldn't detect speech… if you were on Bluetooth, try your built-in mic" and "We had trouble reaching transcription — your audio is saved, tap retry" — instead of scary jargon. The two affected users will be recovered once this deploys.
+
+### Technical changes (for Jimmy) — first part of the recording-reliability work
+
+- **`apps/web/src/app/api/admin/entries/[id]/reprocess/route.ts`** (new): admin-gated (Bearer **or** cookie → `isAdmin`, so it's curl-triggerable) reprocess. Idempotent (only PARTIAL/FAILED; re-queues → 409 on repeat). Logs admin id + entry id + outcome. Re-fires `entry/process.requested` — runs on Vercel so it has the integration-injected `INNGEST_EVENT_KEY` (a local script does not — see Notes).
+- **`apps/web/src/inngest/functions/process-entry.ts`**: async OpenAI client now `timeout: 30_000` (was unset → SDK default 600s, the aggravator); try/catch around the Whisper call classifies `APIConnectionError` ("Connection error.") as **retryable** (plain Error → Inngest retries) and stores the friendly `CONNECTION_MESSAGE`; too-short now throws the friendly `NO_SPEECH_MESSAGE` (NonRetriableError — don't retry silence).
+- **`apps/web/src/lib/recording-errors.ts`** (new): shared `NO_SPEECH_MESSAGE` / `CONNECTION_MESSAGE` (both < 160 chars for the onFailure truncate) + `isConnectionError()` + `FRIENDLY_RECORDING_MESSAGES`.
+- **`apps/web/src/app/entries/[id]/entry-status-gate.tsx`**: sanitizer passes our friendly copy through + maps legacy raw `connection error` / `no speech` / `transcript … short` → friendly (retroactively fixes the 4 existing entries' web display).
+- **`apps/web/src/lib/pipeline.ts`** (sync path): too-short throws `NO_SPEECH_MESSAGE` for consistency.
+- Confirmed root cause via prod DB: the 4 entries (2 users) all `FAILED` / "Connection error." with audio present, durations 11–120s, clustered 2026-05-28/29 → OpenAI egress blip on the async path.
+
+### Manual steps needed
+
+- [ ] **Jimmy: review this PR diff, then merge** `fix/recording-reliability-p0` → main (web auto-deploys ~3 min). HIGH-RISK-adjacent (touches the transcription path + adds an auth'd endpoint) — your review gate.
+- [ ] **After deploy: trigger the 4 reprocesses** via the admin endpoint (Claude will curl them with an admin token once it's live), confirm each lands COMPLETE, report back.
+- [ ] No schema change, no new env var.
+
+### Notes
+
+- **Why the admin endpoint vs. a local script:** `INNGEST_EVENT_KEY` is injected at runtime by the Vercel↔Inngest integration — it's blank in `.env.local` AND in `vercel env pull`, so events can only be sent from inside a Vercel function. The earlier local reprocess attempt failed for exactly this reason; the 4 rows were reset then **reverted to their original FAILED state** (no mess left).
+- Parity: this part is server-side (all platforms benefit). P1 (pre-upload silence validation) is the iOS+Android+web lockstep slice next; P2/P3 after.
+- Mobile renders `Entry.errorMessage` raw, so making the **stored** message friendly (not just the web sanitizer) is what fixes mobile copy going forward.
+
+---
+
+## [2026-06-10] — Fix: web product tour Next button invisible on mobile + 44pt native tour buttons
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit — branch fix/web-tour-mobile-next-button, not merged; held for Keenan's mobile QA)
+
+### In plain English (for Keenan)
+
+The product tour was unusable on phones — the "Next" arrow was getting cut off, so you couldn't advance past the first step. The tour popover now resizes to fit any phone screen (down to the smallest, 320px wide), and the Next/Back/Skip buttons wrap onto their own line when space is tight so they're always visible and big enough to tap. While in there we also made the in-app (iOS/Android) tour buttons bigger tap targets for small iPhones like the SE, where they were a touch under the comfortable size.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/web-tour.css` (new): overrides scoped to the `.acuity-web-tour` driver.js popover — cap width to `min(320px, calc(100vw - 24px))`, `flex-wrap` the footer so the nav buttons drop to their own row instead of clipping, and 44px min tap targets on Next/Back/Skip. **Root cause:** the injected "Skip tour" button (`margin-right:auto`) + progress text + Back/Next overflowed the default non-wrapping footer at narrow widths, clipping Next off the edge (worsened by `side:"right"` anchoring pushing the popover toward the screen edge).
+- `apps/web/src/lib/web-tour.ts`: import the new CSS after `driver.css`.
+- `apps/mobile/components/tour/TourTooltip.tsx`: Next + Back Pressables → `minHeight/minWidth: 44` + centered (were ~34–36px tall); Skip → `hitSlop {top/bottom: 16}` for a ~44pt effective target. Parity fix for small iPhones (SE).
+
+### Manual steps needed
+
+- [ ] **Keenan: QA on real mobile Safari + Chrome (iPhone, ≤375px)** — confirm Next/Back/Skip visible + tappable across all 7 steps. (Branch preview is Vercel-SSO-gated; log into Vercel to view, or say the word and I'll merge to main.)
+- [ ] **Jimmy: cut a mobile build** to ship the native TourTooltip tap-target fix to TestFlight (web deploys on merge; native needs a build).
+- [ ] On QA pass: merge `fix/web-tour-mobile-next-button` → main.
+
+### Notes
+
+- Could not test on real devices from here (dev-tools mobile mode doesn't always match real Safari/Chrome) — the fix is defensive (width cap + footer wrap + min sizes) so it covers the clipping/overflow regardless of exact device.
+- Parity: web (driver.js) + native (`react-native-spotlight-tour`, iOS + Android shared code) fixed in one slice per the iOS/Android/web rule. Web bug = Next clipped; native = sub-44pt tap target.
+
+---
+
+## [2026-06-10] — Fix marketing header nav links broken on blog pages
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 6dbe1ac7
+
+### In plain English (for Keenan)
+
+When you're reading a blog post (e.g. getacuity.io/blog/the-best-voice-journaling-apps-in-2026...) and click "Features", "How it works", or "Pricing" in the top nav, it now takes you to the homepage and scrolls to that section. Before this fix, clicking those links did nothing — they just added a hash to the current blog URL. The Acuity logo in the header also now takes you home instead of doing nothing on blog pages.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/marketing/MarketingNav.tsx`: Changed nav link hrefs from bare hashes (`#features`, `#how`, `#pricing`) to root-relative paths (`/#features`, `/#how`, `/#pricing`). Changed logo href from `#top` to `/`.
+- Same `MarketingNav` component renders on homepage, `/blog` index, and `/blog/[slug]` post pages (via shared blog layout). Only one component needed fixing.
+- Homepage section IDs confirmed matching: `id="features"`, `id="how"`, `id="pricing"` — no changes needed there.
+- Blog link (`/blog`), Start free trial (`/start`), and Back to blog (`/blog`) links were already correct and unchanged.
+- No schema change. No new dependencies.
+
+### Manual steps needed
+
+None — deploys automatically on push. Keenan to verify nav works from a blog post page before push.
+
+### Notes
+
+- A previous style migration commit (8e6f71e5) fixed the CTA from `#start` to `/start` but left all other nav links as bare hashes. This commit completes that fix.
+- The `/for/*` persona pages use a separate `LandingNav` component (in `landing-shared.tsx`) which also has bare-hash links (`#how-it-works`, `#pricing`), but those pages have their own matching section IDs so the anchors work correctly in that context.
+
+---
+
 ## [2026-06-09] — Show user first name in admin Users table
 
 - **Requested by:** Keenan

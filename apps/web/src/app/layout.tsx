@@ -103,7 +103,7 @@ const DEFAULT_APPEARANCE: {
   preference: ThemePreference;
   palette: Palette;
   resolved: ResolvedTheme;
-} = { preference: "system", palette: "coral", resolved: "light" };
+} = { preference: "light", palette: "coral", resolved: "light" };
 
 export default function RootLayout({
   children,
