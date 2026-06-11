@@ -732,8 +732,8 @@ function UnavailableScreen({
           style={{ color: tokens.textTer }}
         >
           Full debriefs, weekly reports, calendar sync, and more.
-          Subscribe on the web — your access works on iOS the same
-          way.
+          Subscribe on the web — your Pro access syncs straight to the
+          app.
         </Text>
 
         <View className="mt-auto pt-10 gap-3">

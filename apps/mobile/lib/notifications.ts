@@ -109,6 +109,17 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Android (v1.3.3 baseline): a notification channel is required for remote
+// (FCM) push + local reminders to render on Android 8+. iOS has no channels
+// (no-op there). Idempotent — safe to call at module load.
+if (Platform.OS === "android") {
+  void Notifications.setNotificationChannelAsync("default", {
+    name: "Acuity",
+    importance: Notifications.AndroidImportance.DEFAULT,
+    lightColor: "#7C3AED",
+  });
+}
+
 export type PermissionStatus = "granted" | "denied" | "undetermined";
 
 /**

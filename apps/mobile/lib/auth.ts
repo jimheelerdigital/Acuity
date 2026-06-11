@@ -25,6 +25,7 @@ import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo } from "react";
+import { Platform } from "react-native";
 
 // Required for expo-auth-session on web + some Expo Go edge cases.
 // No-op on native iOS but safe to call anywhere.
@@ -447,6 +448,20 @@ function googleIosClientId(): string | undefined {
   );
 }
 
+function googleAndroidClientId(): string | undefined {
+  const extra = Constants.expoConfig?.extra as
+    | { googleAndroidClientId?: string }
+    | undefined;
+  // `||` (not `??`) so an empty placeholder in app.json reads as absent —
+  // Android Google Sign-In stays disabled (email auth still works) until
+  // Jim pastes the real client ID from Google Cloud Console.
+  return (
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+    extra?.googleAndroidClientId ||
+    undefined
+  );
+}
+
 function apiBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as
     | { apiUrl?: string }
@@ -518,6 +533,7 @@ export type SignInResult =
  */
 export function useGoogleSignIn() {
   const iosClientId = googleIosClientId();
+  const androidClientId = googleAndroidClientId();
 
   // Google's iOS OAuth clients only accept the reversed-client-ID scheme
   // as a redirect URI at the token-exchange endpoint. expo-auth-session's
@@ -560,8 +576,15 @@ export function useGoogleSignIn() {
   // Google token-endpoint errors.
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId,
-    clientId: iosClientId,
-    redirectUri,
+    // Android baseline (v1.3.3): route to the Android OAuth client. This
+    // config resolves IDENTICALLY on iOS (androidClientId is ignored there;
+    // clientId + redirectUri are unchanged), so the live iOS flow is
+    // preserved. Android uses expo-auth-session's default package-based
+    // redirect, NOT the iOS reversed-client-ID scheme. ⚠️ AUTH-CRITICAL —
+    // verify iOS Google sign-in on the next iOS build + Android on the AAB QA.
+    androidClientId,
+    clientId: Platform.OS === "android" ? androidClientId : iosClientId,
+    redirectUri: Platform.OS === "ios" ? redirectUri : undefined,
     shouldAutoExchangeCode: false,
   });
 

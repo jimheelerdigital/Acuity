@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Sentry from "@sentry/react-native";
-import { Audio, InterruptionModeIOS } from "expo-av";
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -211,6 +211,10 @@ export default function RecordScreen() {
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
       interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+      // Android (v1.3.3 baseline): explicit interruption handling so a
+      // call/alarm pauses cleanly instead of the OS deciding ad hoc.
+      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+      shouldDuckAndroid: false,
     }).catch(() => {
       // Some older iOS versions + Expo Go can reject the mode; not
       // fatal, recording will still start, just without clean

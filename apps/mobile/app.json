@@ -165,7 +165,8 @@
       "versionCode": 1,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "intentFilters": [
         {
@@ -232,6 +233,7 @@
       },
       "apiUrl": "https://getacuity.io",
       "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
+      "googleAndroidClientId": "",
       "iapEnabled": true,
       "facebookPixelId": "869829585445303",
       "eas": {
