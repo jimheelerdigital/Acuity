@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-06-10] — Tour: bigger, better-spaced Next/Back buttons on mobile (web + native)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The product-tour Next and Back buttons felt cramped on phones. They're now bigger (50pt) with a 20pt gap between them, so they're comfortable to tap. Web is live immediately; the native (iOS/Android) version rides the next app build.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/web-tour.css`: `.driver-popover-navigation-btns` gap 8px → 20px; Next/Back `min-height` 44px → 50px.
+- `apps/mobile/components/tour/TourTooltip.tsx`: nav-button row `gap` 8 → 20; Next + Back `minHeight/minWidth` 44 → 50. Skip unchanged (separate, smaller).
+
+### Manual steps needed
+- [ ] Native change ships with the next EAS build (rides v1.3.x build 80 — no separate cut).
+
+### Notes
+- Pure UI tweak; parity (web driver.js + native spotlight-tour) per the iOS/Android/web rule.
+
+---
+
 ## [2026-06-10] — Fix: Funnel Analytics v3 toggle was not filtering on flowVersion
 
 **Requested by:** Keenan
