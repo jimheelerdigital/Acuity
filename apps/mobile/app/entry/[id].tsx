@@ -657,15 +657,21 @@ export default function EntryDetailScreen() {
               right: 12,
               minWidth: 200,
               borderRadius: 14,
+              // Issue C contrast fix (v1.3.3): a clearly-layered popup. The
+              // old cardBg (L≈0.245) sat too close to the page bg + a faint
+              // shadow read as "embedded". Raised surface (cardBgRaised
+              // L≈0.27) + a stronger border (lineStrong) + a real drop
+              // shadow lift it off the page; iOS uses the shadow*, Android
+              // the elevation.
               borderWidth: 1,
-              borderColor: tokens.line,
-              backgroundColor: tokens.cardBg,
+              borderColor: tokens.lineStrong,
+              backgroundColor: tokens.cardBgRaised,
               overflow: "hidden",
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowRadius: 12,
-              shadowOpacity: 0.18,
-              elevation: 6,
+              shadowOffset: { width: 0, height: 12 },
+              shadowRadius: 24,
+              shadowOpacity: 0.45,
+              elevation: 16,
             }}
           >
             <Pressable
