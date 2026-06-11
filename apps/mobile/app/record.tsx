@@ -78,6 +78,7 @@ type State =
   | "idle"
   | "recording"
   | "uploading"
+  | "saved" // async fire-and-forget (v1.3.3): brief confirmation, then leave
   | "processing" // async path; polling driven by useEntryPolling
   | "error"
   | "timeout";
@@ -458,9 +459,19 @@ export default function RecordScreen() {
 
       while (attempt < UPLOAD_RETRY_SCHEDULE_MS.length + 1) {
         try {
+          // v1.3.3: opt into the async (Inngest) pipeline per-request when
+          // this build sets EXPO_PUBLIC_PIPELINE_ASYNC=1 (the TestFlight /
+          // Play validation build — iOS + Android share this code). Prod
+          // builds omit the header → server stays on the sync path until
+          // the global flag flips.
+          const reqHeaders: Record<string, string> = {};
+          if (token) reqHeaders.Authorization = `Bearer ${token}`;
+          if (process.env.EXPO_PUBLIC_PIPELINE_ASYNC === "1") {
+            reqHeaders["x-acuity-pipeline"] = "async";
+          }
           const res = await fetch(`${api.baseUrl()}/api/record`, {
             method: "POST",
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            headers: reqHeaders,
             body: form,
             // Intentionally no AbortController signal: the prior cut
             // aborted the read, but the server still committed the
@@ -529,10 +540,25 @@ export default function RecordScreen() {
             return;
           }
 
-          // Async path — poll for completion.
+          // Async path (v1.3.3) — fire-and-forget. Show a brief "saved"
+          // confirmation, ask for push on the 2nd recording, then let the
+          // user leave. No polling here: the entry lands in Entries with
+          // an in-progress badge, and (Phase 2) a push fires on
+          // completion. iOS + Android share this path.
           if (res.status === 202 && responseEntryId) {
-            setState("processing");
-            setPolledEntryId(responseEntryId);
+            setState("saved");
+            void (async () => {
+              try {
+                const meRes = await api.get<{
+                  user?: { totalRecordings?: number };
+                }>("/api/user/me");
+                await registerPushTokenAfterRecording(
+                  meRes.user?.totalRecordings ?? 0
+                );
+              } catch {
+                // non-fatal
+              }
+            })();
             return;
           }
 
@@ -843,6 +869,18 @@ export default function RecordScreen() {
     });
   }, [state, handleBackPress, navigation, tokens.textSec]);
 
+  // v1.3.3 fire-and-forget: once the "saved" confirmation shows, auto-
+  // dismiss back to where the user came from so they go about their day
+  // (they can also tap Done). ~2.4s read time.
+  useEffect(() => {
+    if (state !== "saved") return;
+    const t = setTimeout(() => {
+      if (router.canGoBack()) router.back();
+      else router.replace("/(tabs)");
+    }, 2400);
+    return () => clearTimeout(t);
+  }, [state, router]);
+
   // ────────────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────────────
@@ -877,6 +915,34 @@ export default function RecordScreen() {
               <Text className="text-sm text-zinc-600 dark:text-zinc-300">
                 {canceling ? "Canceling…" : "Cancel"}
               </Text>
+            </Pressable>
+          </View>
+        ) : state === "saved" ? (
+          <View className="items-center gap-4 px-4">
+            <View
+              className="h-16 w-16 items-center justify-center rounded-full"
+              style={{ backgroundColor: `${tokens.good}22` }}
+            >
+              <Ionicons name="checkmark" size={36} color={tokens.good} />
+            </View>
+            <Text className="text-zinc-800 dark:text-zinc-100 text-lg font-semibold text-center">
+              Saved — extracting in the background
+            </Text>
+            <Text
+              className="text-zinc-400 dark:text-zinc-500 text-sm text-center"
+              style={{ maxWidth: 280 }}
+            >
+              We&rsquo;ll have your reflection ready in a moment. You can
+              leave — find it in Entries anytime.
+            </Text>
+            <Pressable
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+                else router.replace("/(tabs)");
+              }}
+              className="mt-2 rounded-2xl bg-violet-600 px-6 py-3"
+            >
+              <Text className="text-sm font-semibold text-white">Done</Text>
             </Pressable>
           </View>
         ) : state === "error" ? (

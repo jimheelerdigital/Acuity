@@ -192,7 +192,15 @@ export async function POST(req: NextRequest) {
 
   const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
 
-  const useInngest = process.env.ENABLE_INNGEST_PIPELINE === "1";
+  // Async (Inngest) pipeline runs when the global prod flag is on OR the
+  // client opts in per-request via the `x-acuity-pipeline: async` header
+  // (set by builds with EXPO_PUBLIC_PIPELINE_ASYNC=1). The header lets us
+  // validate async on a TestFlight build (v1.3.3) WITHOUT flipping the
+  // prod env var — App Store clients send no header → stay on the sync
+  // path. Prod flip (step 8) is the global flag.
+  const useInngest =
+    process.env.ENABLE_INNGEST_PIPELINE === "1" ||
+    req.headers.get("x-acuity-pipeline") === "async";
 
   // ── 3a. Async path — upload, create Entry QUEUED, dispatch event ────────
   if (useInngest) {

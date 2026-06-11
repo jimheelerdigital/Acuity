@@ -33,6 +33,18 @@ import { WARN_AMBER } from "@/lib/tone-colors";
 
 const ENTRIES_CACHE_KEY = "/api/entries";
 
+// Non-terminal entry statuses — drive the "Processing" badge (v1.3.3
+// background processing) + the Entries tab dot. Terminal: COMPLETE /
+// PARTIAL / FAILED.
+export const PROCESSING_STATUSES = new Set([
+  "QUEUED",
+  "PENDING",
+  "PROCESSING",
+  "TRANSCRIBING",
+  "EXTRACTING",
+  "PERSISTING",
+]);
+
 /**
  * Entries tab — full-screen chronological list with search + mood
  * filter. Distinct from Home (which shows the 10 most recent inline
@@ -371,6 +383,9 @@ function EntryRow({
   const date = new Date(entry.createdAt);
   const dateLabel = formatRelativeDate(date);
   const swipeRef = useRef<Swipeable | null>(null);
+  // Issue A (v1.3.3): lock the row while processing — not tappable + faded.
+  // Swipe + long-press (delete) stay available so a stuck entry is removable.
+  const isLocked = PROCESSING_STATUSES.has(entry.status);
 
   const renderRightActions = () => (
     <Pressable
@@ -406,13 +421,14 @@ function EntryRow({
       overshootRight={false}
     >
     <Pressable
-      onPress={onPress}
+      onPress={isLocked ? undefined : onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
       className="rounded-2xl border px-4 py-3"
       style={{
         borderColor: tokens.line,
         backgroundColor: tokens.cardBg,
+        opacity: isLocked ? 0.55 : 1,
       }}
     >
       <View className="flex-row items-center gap-2 flex-wrap mb-1">
@@ -436,6 +452,25 @@ function EntryRow({
               style={{ color: tokens.textSec }}
             >
               {MOOD_LABELS[entry.mood as Mood] ?? ""}
+            </Text>
+          </View>
+        )}
+        {/* In-progress badge (v1.3.3): non-terminal entries show their
+            phase so a still-processing recording is visible in the list. */}
+        {PROCESSING_STATUSES.has(entry.status) && (
+          <View
+            className="rounded-full px-2 py-0.5"
+            style={{ backgroundColor: `${tokens.primary}22` }}
+          >
+            <Text
+              className="text-[10px] font-semibold"
+              style={{ color: tokens.primary }}
+            >
+              {entry.status === "TRANSCRIBING"
+                ? "Transcribing"
+                : entry.status === "EXTRACTING"
+                  ? "Extracting"
+                  : "Processing"}
             </Text>
           </View>
         )}

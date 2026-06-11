@@ -84,6 +84,24 @@ export const processEntryFn = inngest.createFunction(
           where: { id: entryId },
           data: { status: "FAILED", errorMessage: message },
         });
+        // Phase 3 (v1.3.3): failure push. No-op without a pushToken →
+        // web/Android fall back to the in-app toast. Tap routes to the
+        // entry detail where the retry CTA lives.
+        const failUserId = originalData?.userId;
+        if (failUserId) {
+          try {
+            const { sendEntryPush } = await import("@/lib/entry-push");
+            await sendEntryPush({
+              userId: failUserId,
+              entryId,
+              kind: "failure",
+              title: "We couldn't finish your recording",
+              body: "Your audio is saved — tap to try again.",
+            });
+          } catch {
+            // non-fatal
+          }
+        }
       }
     },
   },
@@ -490,13 +508,22 @@ export const processEntryFn = inngest.createFunction(
     //   - readDispositionalFlag: V5 theme prompt-variant gate. Lifted
     //     out of step.run("extract") W-B 2026-05-03 so persist can
     //     write Entry.themePromptVersion without re-reading.
+    // Path B (v1.3.3): trim prompt context for very short entries. A
+    // sub-~25-word transcript almost never references a calendar event
+    // and doesn't need deep memory grounding — skip those reads + their
+    // prompt blocks (saves a Google Calendar call + a UserMemory read +
+    // tokens) with no quality loss on one-liners.
+    const SHORT_ENTRY_CHARS = 140;
+    const isShortEntry = transcriptLength < SHORT_ENTRY_CHARS;
     const [memoryContext, calendarContext, useDispositional] =
       await Promise.all([
         step.run("build-memory-context", async () => {
+          if (isShortEntry) return "";
           const { buildMemoryContext } = await import("@/lib/memory");
           return buildMemoryContext(userId);
         }),
         step.run("fetch-calendar-context", async () => {
+          if (isShortEntry) return { events: [], promptBlock: "" };
           const { fetchCalendarContext } = await import(
             "@/lib/calendar/context"
           );
@@ -1176,6 +1203,44 @@ export const processEntryFn = inngest.createFunction(
       .catch((err) => {
         logger.error(
           "[process-entry] check-achievements failed (non-fatal)",
+          { err }
+        );
+      });
+
+    // Phase 2 (v1.3.3): completion push. Fires at the end so a late
+    // downgrade to PARTIAL (memory/lifemap step failure) doesn't trigger a
+    // false "insights ready". No-op without a pushToken → web/Android fall
+    // back to the in-app toast + Entries badge. Fail-soft.
+    await step
+      .run("send-completion-push", async () => {
+        const entryRow = await prisma.entry.findUnique({
+          where: { id: entryId },
+          select: { status: true, createdAt: true },
+        });
+        if (entryRow?.status !== "COMPLETE") return; // downgraded → skip
+        const userRow = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        });
+        const { sendEntryPush, buildCompletionBody } = await import(
+          "@/lib/entry-push"
+        );
+        await sendEntryPush({
+          userId,
+          entryId,
+          kind: "completion",
+          title: "Your insights are ready",
+          body: buildCompletionBody(
+            entryRow.createdAt,
+            userRow?.timezone ?? null,
+            extraction.tasks?.length ?? 0,
+            extraction.goals?.length ?? 0
+          ),
+        });
+      })
+      .catch((err) => {
+        logger.error(
+          "[process-entry] send-completion-push failed (non-fatal)",
           { err }
         );
       });

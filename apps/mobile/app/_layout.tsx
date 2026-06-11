@@ -36,6 +36,10 @@ import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
+import {
+  handleColdStartNotificationTap,
+  registerNotificationTapRouting,
+} from "@/lib/notification-routing";
 import { initSentry, setSentryUser } from "@/lib/sentry";
 
 // Sentry init at module scope — idempotent on re-import.
@@ -125,6 +129,11 @@ function AuthGate() {
       // authenticated render so the ATT prompt appears with context.
       // Idempotent — subsequent calls are no-ops.
       void initMetaSdk();
+      // Phase 2/3 (v1.3.3): if the app was cold-launched by tapping an
+      // entry completion/failure push, route to it now that auth resolved.
+      void handleColdStartNotificationTap((entryId) =>
+        router.push(`/entry/${entryId}`)
+      );
     }
     setMetaUserId(userId);
     const sub = AppState.addEventListener("change", (next) => {
@@ -136,6 +145,15 @@ function AuthGate() {
       sub.remove();
     };
   }, [user, loading]);
+
+  // Phase 2/3 (v1.3.3): route taps on entry completion/failure pushes to
+  // the entry detail. Registered once; cold-start taps are handled in the
+  // boot effect above.
+  useEffect(() => {
+    return registerNotificationTapRouting((entryId) =>
+      router.push(`/entry/${entryId}`)
+    );
+  }, [router]);
 
   useEffect(() => {
     if (loading) return;

@@ -2,8 +2,10 @@
 
 import { SessionProvider } from "next-auth/react";
 import { type ReactNode } from "react";
+import { Toaster } from "sonner";
 
 import { PostHogProvider } from "@/components/posthog-provider";
+import { PendingEntriesProvider } from "@/contexts/pending-entries-context";
 import {
   AppearanceProvider,
   type Palette,
@@ -44,7 +46,10 @@ export function Providers({
         initialPalette={initialPalette}
         initialResolvedTheme={initialResolvedTheme}
       >
-        <PostHogProvider>{children}</PostHogProvider>
+        <PostHogProvider>
+          <PendingEntriesProvider>{children}</PendingEntriesProvider>
+          <Toaster position="top-center" richColors closeButton />
+        </PostHogProvider>
       </AppearanceProvider>
     </SessionProvider>
   );
