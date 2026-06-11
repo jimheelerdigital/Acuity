@@ -1,5 +1,6 @@
 import { driver, type DriveStep, type PopoverDOM } from "driver.js";
 import "driver.js/dist/driver.css";
+import "./web-tour.css"; // mobile-safe popover overrides (Next-button clip fix)
 
 /**
  * Web product tour (driver.js) — web equivalent of the iOS 7-step tour.

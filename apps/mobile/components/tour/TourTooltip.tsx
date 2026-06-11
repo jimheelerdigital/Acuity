@@ -96,7 +96,7 @@ export function TourTooltip(
           onPress={() => stop()}
           accessibilityRole="button"
           accessibilityLabel="Skip tour"
-          hitSlop={6}
+          hitSlop={{ top: 16, bottom: 16, left: 12, right: 16 }}
         >
           <Text
             style={{
@@ -116,8 +116,11 @@ export function TourTooltip(
               accessibilityRole="button"
               accessibilityLabel="Previous step"
               style={({ pressed }) => ({
+                minHeight: 44,
+                minWidth: 44,
                 paddingHorizontal: 14,
-                paddingVertical: 8,
+                alignItems: "center",
+                justifyContent: "center",
                 borderRadius: 999,
                 borderWidth: 1,
                 borderColor: tokens.line,
@@ -133,8 +136,11 @@ export function TourTooltip(
             accessibilityRole="button"
             accessibilityLabel={isLast ? "Finish tour" : "Next step"}
             style={({ pressed }) => ({
+              minHeight: 44,
+              minWidth: 44,
               paddingHorizontal: 18,
-              paddingVertical: 9,
+              alignItems: "center",
+              justifyContent: "center",
               borderRadius: 999,
               backgroundColor: tokens.primary,
               opacity: pressed ? 0.85 : 1,

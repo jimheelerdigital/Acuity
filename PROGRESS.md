@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-10] — Fix: web product tour Next button invisible on mobile + 44pt native tour buttons
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit — branch fix/web-tour-mobile-next-button, not merged; held for Keenan's mobile QA)
+
+### In plain English (for Keenan)
+
+The product tour was unusable on phones — the "Next" arrow was getting cut off, so you couldn't advance past the first step. The tour popover now resizes to fit any phone screen (down to the smallest, 320px wide), and the Next/Back/Skip buttons wrap onto their own line when space is tight so they're always visible and big enough to tap. While in there we also made the in-app (iOS/Android) tour buttons bigger tap targets for small iPhones like the SE, where they were a touch under the comfortable size.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/web-tour.css` (new): overrides scoped to the `.acuity-web-tour` driver.js popover — cap width to `min(320px, calc(100vw - 24px))`, `flex-wrap` the footer so the nav buttons drop to their own row instead of clipping, and 44px min tap targets on Next/Back/Skip. **Root cause:** the injected "Skip tour" button (`margin-right:auto`) + progress text + Back/Next overflowed the default non-wrapping footer at narrow widths, clipping Next off the edge (worsened by `side:"right"` anchoring pushing the popover toward the screen edge).
+- `apps/web/src/lib/web-tour.ts`: import the new CSS after `driver.css`.
+- `apps/mobile/components/tour/TourTooltip.tsx`: Next + Back Pressables → `minHeight/minWidth: 44` + centered (were ~34–36px tall); Skip → `hitSlop {top/bottom: 16}` for a ~44pt effective target. Parity fix for small iPhones (SE).
+
+### Manual steps needed
+
+- [ ] **Keenan: QA on real mobile Safari + Chrome (iPhone, ≤375px)** — confirm Next/Back/Skip visible + tappable across all 7 steps. (Branch preview is Vercel-SSO-gated; log into Vercel to view, or say the word and I'll merge to main.)
+- [ ] **Jimmy: cut a mobile build** to ship the native TourTooltip tap-target fix to TestFlight (web deploys on merge; native needs a build).
+- [ ] On QA pass: merge `fix/web-tour-mobile-next-button` → main.
+
+### Notes
+
+- Could not test on real devices from here (dev-tools mobile mode doesn't always match real Safari/Chrome) — the fix is defensive (width cap + footer wrap + min sizes) so it covers the clipping/overflow regardless of exact device.
+- Parity: web (driver.js) + native (`react-native-spotlight-tour`, iOS + Android shared code) fixed in one slice per the iOS/Android/web rule. Web bug = Next clipped; native = sub-44pt tap target.
+
+---
+
 ## [2026-06-10] — Fix marketing header nav links broken on blog pages
 
 - **Requested by:** Keenan
