@@ -7,6 +7,51 @@
 
 ---
 
+## [2026-06-10] — Tour: bigger, better-spaced Next/Back buttons on mobile (web + native)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The product-tour Next and Back buttons felt cramped on phones. They're now bigger (50pt) with a 20pt gap between them, so they're comfortable to tap. Web is live immediately; the native (iOS/Android) version rides the next app build.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/web-tour.css`: `.driver-popover-navigation-btns` gap 8px → 20px; Next/Back `min-height` 44px → 50px.
+- `apps/mobile/components/tour/TourTooltip.tsx`: nav-button row `gap` 8 → 20; Next + Back `minHeight/minWidth` 44 → 50. Skip unchanged (separate, smaller).
+
+### Manual steps needed
+- [ ] Native change ships with the next EAS build (rides v1.3.x build 80 — no separate cut).
+
+### Notes
+- Pure UI tweak; parity (web driver.js + native spotlight-tour) per the iOS/Android/web rule.
+
+---
+
+## [2026-06-10] — Fix: Funnel Analytics v3 toggle was not filtering on flowVersion
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 501eaa7
+
+### In plain English (for Keenan)
+The V3/V2/V1 toggle you added in the Funnel Analytics tab was broken — switching between versions showed identical numbers because the database query never actually filtered by version. Now V3 shows only v3-tagged sessions (~25 so far), V2 shows only the v2 historical data (~476 events), and they display clearly different numbers. The Stripe paid count is labeled "(all versions)" since it comes from the User table, not from funnel events.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/metrics/route.ts`: added `flowVersionWhere` filter to the Prisma `findMany` query in `getFunnelAnalytics()`. V3 filters `flowVersion="v3"`, V2 filters `flowVersion="v2"`, V1 filters `flowVersion=null OR "v1"`, All returns everything. Uses the existing `[flowVersion, createdAt]` composite index.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: labeled Stripe paid count as "(all versions)" to avoid silently mixing version-filtered funnel data with version-agnostic account data.
+- Write side verified: all funnel events flow through `useFunnelTracker` which stamps `flowVersion: "v3"` from a single constant at line 150 of `onboarding-funnel.tsx`.
+
+### Manual steps needed
+None — no schema changes. The `flowVersion` column and `[flowVersion, createdAt]` index already exist.
+
+### Notes
+- Root cause: the `flowVersion` parameter was only used to select which FUNNEL_STEPS array to display (bar chart labels) and for date epoch clamping. The actual Prisma query had zero filtering on the `flowVersion` column — it fetched all events regardless of version.
+- V3 epoch is implicit: events are filtered by `flowVersion="v3"` column value, not by date. No backfill, no re-stamping.
+- 25 v3 events confirm the write side was already working correctly since the v3 copy changes shipped.
+
+---
+
 ## [2026-06-10] — Funnel v3: Gap screen, identity commit, benefit copy, admin instrumentation
 
 **Requested by:** Keenan

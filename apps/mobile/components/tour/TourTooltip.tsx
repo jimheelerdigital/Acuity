@@ -109,15 +109,15 @@ export function TourTooltip(
           </Text>
         </Pressable>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 20 }}>
           {!isFirst && (
             <Pressable
               onPress={() => previous()}
               accessibilityRole="button"
               accessibilityLabel="Previous step"
               style={({ pressed }) => ({
-                minHeight: 44,
-                minWidth: 44,
+                minHeight: 50,
+                minWidth: 50,
                 paddingHorizontal: 14,
                 alignItems: "center",
                 justifyContent: "center",
@@ -136,8 +136,8 @@ export function TourTooltip(
             accessibilityRole="button"
             accessibilityLabel={isLast ? "Finish tour" : "Next step"}
             style={({ pressed }) => ({
-              minHeight: 44,
-              minWidth: 44,
+              minHeight: 50,
+              minWidth: 50,
               paddingHorizontal: 18,
               alignItems: "center",
               justifyContent: "center",

@@ -31,14 +31,14 @@
 .driver-popover.acuity-web-tour .driver-popover-navigation-btns {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 20px;
   margin-left: auto;
 }
 
-/* 44pt tap targets for Next / Back. */
+/* 50pt tap targets for Next / Back (bumped from 44 — felt cramped on mobile). */
 .driver-popover.acuity-web-tour .driver-popover-prev-btn,
 .driver-popover.acuity-web-tour .driver-popover-next-btn {
-  min-height: 44px;
+  min-height: 50px;
   min-width: 64px;
   display: inline-flex;
   align-items: center;
