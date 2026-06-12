@@ -351,8 +351,9 @@ export function OnboardingFunnel() {
   }, [authStatus]);
 
   // Track step views
-  // ⚠️  Every event name here MUST also be in VALID_EVENTS in
-  //     app/api/onboarding-events/route.ts or the server silently drops it.
+  // All funnel_* events are accepted by the server via prefix rule
+  // (FUNNEL_EVENT_RE in app/api/onboarding-events/route.ts).
+  // No allowlist update needed when adding new funnel events.
   useEffect(() => {
     const eventMap: Record<string, string> = {
       entry: "funnel_entry_viewed",
