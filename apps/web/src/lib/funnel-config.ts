@@ -304,24 +304,32 @@ export const SHARED_QUESTIONS: Question[] = [
   },
 ];
 
-// ─── Tally Counter Phrase Mapping (Q9 → natural counter phrase) ────────────
+// ─── Tally Counter: per-option full headers + mirror echo phrases ──────────
 
-const COUNTER_PHRASES: Record<string, string> = {
-  "Snapping at people I love, then feeling guilty": "snapping at someone you love",
-  "Putting everyone else first until I have nothing left": "putting everyone else first",
-  "Starting things and watching them fizzle": "something you started fizzling out",
-  "Replaying the same worries on a loop": "the same worry replaying",
+// Full natural-language tally headers — each passes a read-aloud test
+const TALLY_HEADERS: Record<string, string> = {
+  "Snapping at people I love, then feeling guilty": "How many times did you snap at someone you love last week?",
+  "Putting everyone else first until I have nothing left": "How many times did you put yourself last this week?",
+  "Starting things and watching them fizzle": "How many things fizzled out on you this week?",
+  "Replaying the same worries on a loop": "How many times did the same worry replay last week?",
 };
 
-const COUNTER_PHRASE_FALLBACK = "it";
-
-export function getTallyPhrase(q9Answer: string): string {
-  return COUNTER_PHRASES[q9Answer] || COUNTER_PHRASE_FALLBACK;
-}
+const TALLY_HEADER_FALLBACK = "How many times did it happen this week?";
 
 export function getTallyHeader(q9Answer: string): string {
-  const phrase = getTallyPhrase(q9Answer);
-  return `How many times did ${phrase} happen last week?`;
+  return TALLY_HEADERS[q9Answer] || TALLY_HEADER_FALLBACK;
+}
+
+// Shorter phrases for Mirror Beat 2 echo: "You said you want to stop ___."
+const MIRROR_ECHO_PHRASES: Record<string, string> = {
+  "Snapping at people I love, then feeling guilty": "snapping at the people you love",
+  "Putting everyone else first until I have nothing left": "putting yourself last",
+  "Starting things and watching them fizzle": "watching things fizzle",
+  "Replaying the same worries on a loop": "the replay loop",
+};
+
+export function getTallyPhrase(q9Answer: string): string {
+  return MIRROR_ECHO_PHRASES[q9Answer] || "the pattern";
 }
 
 // ─── Tally Echo for Gap 1 ──────────────────────────────────────────────────
