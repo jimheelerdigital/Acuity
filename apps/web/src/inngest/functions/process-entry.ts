@@ -353,7 +353,11 @@ export const processEntryFn = inngest.createFunction(
     const entitlement = await step.run("compute-entitlement", async () => {
       const user = await prisma.user.findUniqueOrThrow({
         where: { id: userId },
-        select: { subscriptionStatus: true, trialEndsAt: true },
+        select: {
+          subscriptionStatus: true,
+          trialEndsAt: true,
+          stripeFirstFailureAt: true,
+        },
       });
       const { entitlementsFor } = await import("@/lib/entitlements");
       const e = entitlementsFor(user);

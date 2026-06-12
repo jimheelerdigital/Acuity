@@ -274,6 +274,9 @@ export async function POST(req: NextRequest) {
           data: {
             subscriptionStatus: "PRO",
             subscriptionSource: "stripe",
+            // Recovery — clear the dunning anchor so a future failure starts
+            // a fresh grace window.
+            stripeFirstFailureAt: null,
             ...(sub ? { stripeSubscriptionId: sub } : {}),
             ...(invoice.lines.data[0]?.period?.end
               ? {
@@ -340,6 +343,19 @@ export async function POST(req: NextRequest) {
           data: { subscriptionStatus: "PAST_DUE" },
         });
 
+        // Anchor the grace window at the FIRST failure only — set
+        // stripeFirstFailureAt where it's still null so Stripe's subsequent
+        // retry failures don't keep pushing the window out. Cleared on
+        // recovery (payment_succeeded) or cancel.
+        await prisma.user.updateMany({
+          where: {
+            stripeCustomerId: customerId,
+            subscriptionStatus: { not: "FREE" },
+            stripeFirstFailureAt: null,
+          },
+          data: { stripeFirstFailureAt: new Date() },
+        });
+
         // Best-effort email nudge so the user knows to update their
         // payment method before Stripe's dunning period ends. Only
         // sent to users we actually downgraded — canceled users
@@ -379,12 +395,20 @@ export async function POST(req: NextRequest) {
 
       const status = sub.status;
       // Map Stripe's granular statuses onto our 4-value vocab.
-      // active/trialing → PRO. past_due/unpaid → PAST_DUE.
-      // canceled/incomplete_expired → FREE.
+      //   active/trialing            → PRO
+      //   past_due                   → PAST_DUE (Smart Retries running = grace)
+      //   unpaid/canceled/incomplete → FREE (retries exhausted = terminal)
+      // NOTE (2026-06-12): unpaid now maps to FREE (was PAST_DUE). Stripe
+      // moves a sub to `unpaid` only AFTER Smart Retries are exhausted, so
+      // it's terminal-no-access, not grace.
       let nextStatus: string | null = null;
       if (status === "active" || status === "trialing") nextStatus = "PRO";
-      else if (status === "past_due" || status === "unpaid") nextStatus = "PAST_DUE";
-      else if (status === "canceled" || status === "incomplete_expired")
+      else if (status === "past_due") nextStatus = "PAST_DUE";
+      else if (
+        status === "unpaid" ||
+        status === "canceled" ||
+        status === "incomplete_expired"
+      )
         nextStatus = "FREE";
 
       if (nextStatus) {
@@ -406,6 +430,12 @@ export async function POST(req: NextRequest) {
               subscriptionStatus: nextStatus,
               subscriptionSource: "stripe",
               stripeSubscriptionId: sub.id,
+              // Clear the dunning anchor on recovery (PRO) or terminal (FREE);
+              // on PAST_DUE leave it — invoice.payment_failed sets it at the
+              // first failure.
+              ...(nextStatus === "PAST_DUE"
+                ? {}
+                : { stripeFirstFailureAt: null }),
               ...(sub.current_period_end
                 ? {
                     stripeCurrentPeriodEnd: new Date(
@@ -448,6 +478,7 @@ export async function POST(req: NextRequest) {
             subscriptionStatus: "FREE",
             stripeSubscriptionId: null,
             stripeCurrentPeriodEnd: null,
+            stripeFirstFailureAt: null,
           },
         });
       } catch (err) {

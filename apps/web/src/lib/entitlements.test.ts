@@ -73,6 +73,67 @@ describe("entitlementsFor — PRO", () => {
   });
 });
 
+describe("entitlementsFor — PAST_DUE (grace window)", () => {
+  it("within grace (first failure 10 days ago) → full access", () => {
+    const e = entitlementsFor(
+      {
+        subscriptionStatus: "PAST_DUE",
+        trialEndsAt: null,
+        stripeFirstFailureAt: day(-10),
+      },
+      NOW
+    );
+    expectActive(e);
+    expect(e.isPastDue).toBe(true);
+  });
+
+  it("at the grace boundary (first failure exactly 21 days ago) → still full access", () => {
+    const e = entitlementsFor(
+      {
+        subscriptionStatus: "PAST_DUE",
+        trialEndsAt: null,
+        stripeFirstFailureAt: day(-21),
+      },
+      NOW
+    );
+    expectActive(e);
+  });
+
+  it("beyond grace (first failure 22 days ago, no recovery) → drops to post-trial FREE", () => {
+    const e = entitlementsFor(
+      {
+        subscriptionStatus: "PAST_DUE",
+        trialEndsAt: null,
+        stripeFirstFailureAt: day(-22),
+      },
+      NOW
+    );
+    expectLocked(e);
+    expect(e.isPostTrialFree).toBe(true);
+    expect(e.isPastDue).toBe(false);
+  });
+
+  it("null anchor (timestamp not yet set) → treated as in-grace (fail-open)", () => {
+    const e = entitlementsFor(
+      {
+        subscriptionStatus: "PAST_DUE",
+        trialEndsAt: null,
+        stripeFirstFailureAt: null,
+      },
+      NOW
+    );
+    expectActive(e);
+  });
+
+  it("field omitted entirely (lenient UI caller) → in-grace", () => {
+    const e = entitlementsFor(
+      { subscriptionStatus: "PAST_DUE", trialEndsAt: null },
+      NOW
+    );
+    expectActive(e);
+  });
+});
+
 describe("entitlementsFor — active TRIAL", () => {
   it("trialEndsAt === null (brand-new account before hook fires) → active, no countdown", () => {
     const e = entitlementsFor(
