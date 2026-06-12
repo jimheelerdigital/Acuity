@@ -308,10 +308,10 @@ export const SHARED_QUESTIONS: Question[] = [
 
 // Full natural-language tally headers — each passes a read-aloud test
 const TALLY_HEADERS: Record<string, string> = {
-  "Snapping at people I love, then feeling guilty": "How many times did you snap at someone you love last week?",
+  "Snapping at people I love, then feeling guilty": "How many times did you snap at someone you love this week?",
   "Putting everyone else first until I have nothing left": "How many times did you put yourself last this week?",
   "Starting things and watching them fizzle": "How many things fizzled out on you this week?",
-  "Replaying the same worries on a loop": "How many times did the same worry replay last week?",
+  "Replaying the same worries on a loop": "How many times did the same worry replay this week?",
 };
 
 const TALLY_HEADER_FALLBACK = "How many times did it happen this week?";
@@ -343,7 +343,7 @@ export function getTallyEcho(tallyValue: string): string {
   if (n === 1) return "Even once a week is 52 times a year.";
   const yearly = Math.round((n * 52) / 10) * 10; // round to clean 10s
   const display = n > 20 ? "20+" : String(n);
-  return `${display} times last week. At that pace, that\u2019s roughly ${yearly} times a year.`;
+  return `${display} times this week. At that pace, that\u2019s roughly ${yearly} times a year.`;
 }
 
 // ─── Time-Math Mapping (duration answer → evening count) ────────────────────
