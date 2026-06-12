@@ -254,6 +254,41 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         )}
       </div>
 
+      {/* Signup Failure Breakdown */}
+      {(data.signupFailures?.total > 0) && (
+        <div style={S}>
+          <div style={H}>Signup Failures</div>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+              <span style={{ color: "#ef4444", fontWeight: 700, fontSize: 14 }}>{data.signupFailures.total}</span> failed attempt{data.signupFailures.total !== 1 ? "s" : ""}
+              {data.signupFailures.topReason && (
+                <span> — top reason: <span style={{ color: "#f59e0b", fontWeight: 600 }}>{data.signupFailures.topReason}</span></span>
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {Object.entries(data.signupFailures.reasons as Record<string, number>)
+              .sort(([, a], [, b]) => (b as number) - (a as number))
+              .map(([reason, count]) => (
+                <div key={reason} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+                  <span style={{ color: "rgba(255,255,255,0.35)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>{reason}</span>
+                </div>
+              ))}
+          </div>
+          {data.signupFailures.started && Object.keys(data.signupFailures.started).length > 0 && (
+            <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 8 }}>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 4 }}>Attempts by method</div>
+              {Object.entries(data.signupFailures.started as Record<string, number>).map(([method, count]) => (
+                <span key={method} style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginRight: 12 }}>
+                  {method}: <span style={{ fontWeight: 600 }}>{count as number}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Drop-off Analysis */}
       {dropOffs.length > 0 && (
         <div style={S}>

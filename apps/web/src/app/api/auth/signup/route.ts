@@ -63,11 +63,13 @@ export async function POST(req: NextRequest) {
       : null;
 
   if (!email || !EMAIL_RE.test(email)) {
+    console.warn("[SIGNUP_FAIL]", JSON.stringify({ reason: "InvalidEmail", method: "email", timestamp: new Date().toISOString() }));
     return NextResponse.json({ error: "InvalidEmail" }, { status: 400 });
   }
 
   const pw = validatePassword(password);
   if (!pw.ok) {
+    console.warn("[SIGNUP_FAIL]", JSON.stringify({ reason: "WeakPassword", method: "email", timestamp: new Date().toISOString() }));
     return NextResponse.json(
       { error: "WeakPassword", message: pw.message },
       { status: 400 }
@@ -82,9 +84,15 @@ export async function POST(req: NextRequest) {
     limiters.signupByIp,
     identifierFromRequest(req, "signup")
   );
-  if (!rlIp.success) return rateLimitedResponse(rlIp);
+  if (!rlIp.success) {
+    console.warn("[SIGNUP_FAIL]", JSON.stringify({ reason: "RateLimited", source: "ip", method: "email", timestamp: new Date().toISOString() }));
+    return rateLimitedResponse(rlIp);
+  }
   const rl = await checkRateLimit(limiters.authByEmail, `signup:${email}`);
-  if (!rl.success) return rateLimitedResponse(rl);
+  if (!rl.success) {
+    console.warn("[SIGNUP_FAIL]", JSON.stringify({ reason: "RateLimited", source: "email", method: "email", timestamp: new Date().toISOString() }));
+    return rateLimitedResponse(rl);
+  }
 
   const { prisma } = await import("@/lib/prisma");
 
@@ -100,6 +108,7 @@ export async function POST(req: NextRequest) {
     // but the error code here is fine because the user had to
     // supply a valid password to get this far (we hashed it, and
     // a login attempt with that password would succeed separately).
+    console.warn("[SIGNUP_FAIL]", JSON.stringify({ reason: "AlreadyRegistered", method: "email", timestamp: new Date().toISOString() }));
     return NextResponse.json({ error: "AlreadyRegistered" }, { status: 409 });
   }
 

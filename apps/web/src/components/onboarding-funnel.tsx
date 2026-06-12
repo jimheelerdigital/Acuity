@@ -1323,14 +1323,32 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
   const headline = branch ? getCreateAccountHeadline(branch) : "Your patterns are already forming. Create your free account to see them.";
 
+  // Track whether account was created but signIn failed (Fix 2)
+  const [accountCreatedButSigninFailed, setAccountCreatedButSigninFailed] = useState(false);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignupError(null);
+    setAccountCreatedButSigninFailed(false);
 
-    if (!signupName.trim()) { setSignupError("Please enter your name."); return; }
-    if (!signupEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim())) { setSignupError("Please enter a valid email."); return; }
-    if (signupPassword.length < 8) { setSignupError("Password must be at least 8 characters."); return; }
+    // Client-side validation — fire funnel_signup_failed for each so admin sees it
+    if (!signupName.trim()) {
+      setSignupError("Please enter your name.");
+      track("funnel_signup_failed", { value: "validation:name_empty", method: "email" });
+      return;
+    }
+    if (!signupEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim())) {
+      setSignupError("Please enter a valid email address.");
+      track("funnel_signup_failed", { value: "validation:invalid_email", method: "email" });
+      return;
+    }
+    if (signupPassword.length < 8) {
+      setSignupError("Password must be at least 8 characters.");
+      track("funnel_signup_failed", { value: "validation:password_short", method: "email" });
+      return;
+    }
 
+    track("funnel_signup_started", { value: "email" });
     setSignupLoading("email");
     try {
       let funnelUtm: Record<string, string> = {};
@@ -1349,12 +1367,19 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        if (body.error === "AlreadyRegistered") {
-          setSignupError("This email already has an account. Sign in instead.");
+        const errorCode = body.error || "unknown";
+        if (errorCode === "AlreadyRegistered") {
+          setSignupError("Looks like you already have an account.");
+        } else if (errorCode === "RateLimited") {
+          setSignupError("Too many attempts. Please wait a few minutes and try again.");
+        } else if (errorCode === "WeakPassword") {
+          setSignupError(body.message || "Your password doesn\u2019t meet our requirements. Please try a stronger one.");
+        } else if (errorCode === "InvalidEmail") {
+          setSignupError("That email address doesn\u2019t look right. Please check and try again.");
         } else {
-          setSignupError(body.message || "Something went wrong. Please try again.");
+          setSignupError("Something went wrong. Please try again.");
         }
-        track("funnel_signup_failed", { value: body.error || "unknown" });
+        track("funnel_signup_failed", { value: `server:${errorCode}`, method: "email" });
         setSignupLoading(null);
         return;
       }
@@ -1373,10 +1398,23 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       if (result?.ok) {
         onAccountCreated();
       } else {
-        window.location.href = "/start?step=savings";
+        // Fix 2: Account was created but credential signin failed. Fire the
+        // account_created event (account exists), show recoverable message,
+        // and fire a failure event for observability.
+        onAccountCreated();
+        track("funnel_signup_failed", { value: "signin_after_creation_failed", method: "email" });
+        setAccountCreatedButSigninFailed(true);
+        setSignupError("Your account was created! Tap below to sign in.");
+        // Log server-side for observability
+        fetch("/api/auth/log-signup-issue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "credentials_signin_failed_after_creation", email: signupEmail.trim() }),
+        }).catch(() => {});
       }
     } catch {
-      setSignupError("Something went wrong. Please try again.");
+      setSignupError("Connection issue \u2014 your info is saved. Please try again.");
+      track("funnel_signup_failed", { value: "network_error", method: "email" });
     } finally {
       setSignupLoading(null);
     }
@@ -1445,12 +1483,21 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
           </div>
 
           {signupError && (
-            <p className="text-xs text-red-500 px-1">
-              {signupError}
-              {signupError.includes("Sign in") && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-acuity-primary font-semibold ml-1 underline">Sign in</button>
+            <div className={`text-xs px-1 rounded-lg ${accountCreatedButSigninFailed ? "bg-green-50 border border-green-200 p-3 text-green-700" : "text-red-500"}`}>
+              <p>{signupError}</p>
+              {signupError.includes("already have an account") && (
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })}
+                  className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
+                  Sign in to your existing account
+                </button>
               )}
-            </p>
+              {accountCreatedButSigninFailed && (
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })}
+                  className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
+                  Tap here to sign in
+                </button>
+              )}
+            </div>
           )}
 
           <button type="submit" disabled={signupLoading !== null}

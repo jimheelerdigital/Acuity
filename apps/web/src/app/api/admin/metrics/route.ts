@@ -2237,6 +2237,26 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const commitCompletionRate = commitViewedSessions > 0
     ? Math.round((commitCompletedSessions / commitViewedSessions) * 100) : 0;
 
+  // ── Signup failure breakdown (Fix 4) ──
+  // Count funnel_signup_failed events grouped by reason (value field)
+  const signupFailEvents = events.filter((e) => e.event === "funnel_signup_failed");
+  const signupFailReasons: Record<string, number> = {};
+  for (const e of signupFailEvents) {
+    const reason = e.value || "unknown";
+    signupFailReasons[reason] = (signupFailReasons[reason] ?? 0) + 1;
+  }
+  const signupFailTotal = signupFailEvents.length;
+  const signupFailTopReason = Object.entries(signupFailReasons)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+  // Count funnel_signup_started events for attempt tracking
+  const signupStartedEvents = events.filter((e) => e.event === "funnel_signup_started");
+  const signupStartedByMethod: Record<string, number> = {};
+  for (const e of signupStartedEvents) {
+    const method = e.value || "unknown";
+    signupStartedByMethod[method] = (signupStartedByMethod[method] ?? 0) + 1;
+  }
+
   // ── Ad-match breakdown (7d) ──
   const adMatchSessions = interactedSessionsList.filter((s) =>
     s.events.some((e) => e.event === "funnel_ad_match")
@@ -2288,6 +2308,12 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       commitCompletedSessions,
     },
     adMatchStats,
+    signupFailures: {
+      total: signupFailTotal,
+      topReason: signupFailTopReason,
+      reasons: signupFailReasons,
+      started: signupStartedByMethod,
+    },
     funnelSteps,
     alerts,
     campaignFunnels,
