@@ -585,7 +585,7 @@ export function buildGapContent(branch: Branch, answers: Record<string, string |
 
 // ── Gap 1: "What it\u2019s costing you" (loss, personalized) ──
 
-export interface Gap1Content { line1: string; line2: string; line3: string; }
+export interface Gap1Content { line1: string; costWords: string[]; line2: string; line3: string; }
 
 export function buildGap1Content(branch: Branch, answers: Record<string, string | string[]>): Gap1Content {
   const costRaw = answers.shared_q6;
@@ -610,8 +610,18 @@ export function buildGap1Content(branch: Branch, answers: Record<string, string 
     drift: "Left alone, drift doesn\u2019t reverse. It accelerates.",
   };
 
+  const costWords = costs.map((c) => {
+    const SHORT: Record<string, string> = {
+      "My energy": "your energy", "My relationships": "your relationships",
+      "My health": "your health", "My career": "your career",
+      "My sense of self": "your sense of self",
+      "Time I can\u2019t get back": "time you can\u2019t get back",
+    };
+    return SHORT[c] ?? c.toLowerCase();
+  });
   return {
     line1: `Right now, this is costing you ${costStr}.`,
+    costWords,
     line2: LINE2[branch],
     line3: LINE3[branch],
   };
@@ -647,18 +657,20 @@ export function getGap2Header(branch: Branch, answers: Record<string, string | s
 
 // ── Gap 3: "Your future self" (dynamic animated payoff) ──
 
-const GAP3_FEELING_LINES: Record<string, string> = {
-  lighter: "You talk for 60 seconds, and the weight actually leaves. Not because the problems disappeared \u2014 but because you finally put them somewhere.",
-  clear: "The mental noise settles. For the first time in months, you can hear yourself think \u2014 because the backlog has somewhere to go.",
-  proud: "You kept a promise to yourself. Seven days in a row. Not because of discipline \u2014 because 60 seconds was always doable.",
-  present: "You\u2019re at dinner, and you\u2019re THERE. The mental tabs are closed because you already processed them \u2014 earlier, in your own voice.",
-  control: "Your days have shape. You know what happened, why it mattered, and what to do next \u2014 because something is finally keeping track.",
-  rested: "The midnight replay is quieter. Not because the thoughts stopped \u2014 but because they already have somewhere to go.",
+const GAP3_FEELING_LINES: Record<string, { text: string; bold: string }> = {
+  lighter: { text: "You talk for 60 seconds, and the weight actually leaves. Not because the problems disappeared \u2014 but because you finally put them somewhere.", bold: "the weight actually leaves" },
+  clear: { text: "The mental noise settles. For the first time in months, you can hear yourself think \u2014 because the backlog has somewhere to go.", bold: "you can hear yourself think" },
+  proud: { text: "You kept a promise to yourself. Seven days in a row. Not because of discipline \u2014 because 60 seconds was always doable.", bold: "kept a promise to yourself" },
+  present: { text: "You\u2019re at dinner, and you\u2019re THERE. The mental tabs are closed because you already processed them \u2014 earlier, in your own voice.", bold: "you\u2019re THERE" },
+  control: { text: "Your days have shape. You know what happened, why it mattered, and what to do next \u2014 because something is finally keeping track.", bold: "finally keeping track" },
+  rested: { text: "The midnight replay is quieter. Not because the thoughts stopped \u2014 but because they already have somewhere to go.", bold: "they already have somewhere to go" },
 };
 
-export function buildGap3Lines(selectedFeelings: string[]): string[] {
+export interface Gap3Line { text: string; bold: string; }
+
+export function buildGap3Lines(selectedFeelings: string[]): Gap3Line[] {
   // Cap at 3 to keep it tight
-  return selectedFeelings.slice(0, 3).map((f) => GAP3_FEELING_LINES[f] ?? "").filter(Boolean);
+  return selectedFeelings.slice(0, 3).map((f) => GAP3_FEELING_LINES[f]).filter(Boolean);
 }
 
 export const GAP3_DISMISS_COPY = "That\u2019s okay. The patterns will wait \u2014 they always do. But if 60 seconds feels doable, the door\u2019s open.";

@@ -23,6 +23,7 @@ import {
   GAP2_FEELINGS,
   getGap2Header,
   buildGap3Lines,
+  type Gap3Line,
   GAP3_DISMISS_COPY,
   PROCESSING_STAGES,
   getSnapshotInsight,
@@ -482,11 +483,36 @@ export function OnboardingFunnel() {
           from { height: 0; }
           to { height: 100%; }
         }
+        @keyframes funnel-highlight-sweep {
+          from { background-size: 0% 40%; }
+          to { background-size: 100% 40%; }
+        }
+        @keyframes funnel-settle {
+          0% { opacity: 0; transform: translateY(12px) scale(1.03); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes funnel-soft-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.04); }
+        }
+        @keyframes funnel-check-pop {
+          0% { transform: scale(0); }
+          60% { transform: scale(1.15); }
+          100% { transform: scale(1); }
+        }
+        .gap-highlight {
+          background-image: linear-gradient(to right, var(--acuity-primary-lo, oklch(0.85 0.12 38)), var(--acuity-primary-lo, oklch(0.85 0.12 38)));
+          background-repeat: no-repeat;
+          background-position: left bottom;
+          background-size: 0% 40%;
+        }
+        .gap-highlight.sweep { animation: funnel-highlight-sweep 350ms ease-out forwards; }
         .funnel-screen { animation: funnel-slide-up 0.4s ease-out both; }
         .funnel-card-stagger { animation: funnel-card-in 0.35s ease-out both; }
         .funnel-bounce { animation: funnel-bounce-in 0.4s ease-out both; }
         @media (prefers-reduced-motion: reduce) {
           .funnel-screen, .funnel-card-stagger, .funnel-bounce { animation: none !important; opacity: 1 !important; transform: none !important; }
+          .gap-highlight { background-size: 100% 40% !important; animation: none !important; }
           * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
         }
       `}} />
@@ -840,37 +866,82 @@ function MirrorScreen({ branch, answers, onContinue }: {
   );
 }
 
-// ─── Gap 1: "What it's costing you" (loss, personalized) ────────────────────
+// ─── Gap 1: "The weight stacking up" (loss, personalized) ──────────────────
 
 function Gap1Screen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
   const content = buildGap1Content(branch, answers);
   const [phase, setPhase] = useState(0);
+  const [highlightPhase, setHighlightPhase] = useState(0);
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => setPhase(1), 300));
-    timers.push(setTimeout(() => setPhase(2), 900));
-    timers.push(setTimeout(() => setPhase(3), 1500));
-    timers.push(setTimeout(() => setPhase(4), 1800));
-    return () => timers.forEach(clearTimeout);
-  }, []);
+    if (prefersReduced) { setPhase(4); setHighlightPhase(content.costWords.length); return; }
+    const t: ReturnType<typeof setTimeout>[] = [];
+    // Beat 1: line 1 fades in
+    t.push(setTimeout(() => setPhase(1), 0));
+    // Highlight sweep on cost words, 400ms after line 1 lands
+    content.costWords.forEach((_, i) => {
+      t.push(setTimeout(() => setHighlightPhase(i + 1), 500 + 400 + i * 250));
+    });
+    // Beat 2: line 2 at +1400ms from line 1
+    t.push(setTimeout(() => setPhase(2), 1400));
+    // Beat 3: line 3 (settle) at +2600ms
+    t.push(setTimeout(() => setPhase(3), 2600));
+    // Beat 4: CTA at +3400ms
+    t.push(setTimeout(() => setPhase(4), 3400));
+    return () => t.forEach(clearTimeout);
+  }, [prefersReduced, content.costWords.length]);
+
+  // Tap-to-skip: any tap on the container completes all beats
+  const skip = () => { setPhase(4); setHighlightPhase(content.costWords.length); };
+
+  // Render line1 with highlighted cost words
+  const renderLine1 = () => {
+    if (content.costWords.length === 0) return content.line1;
+    let text = content.line1;
+    const parts: (string | { word: string; idx: number })[] = [];
+    let remaining = text;
+    content.costWords.forEach((word, i) => {
+      const idx = remaining.indexOf(word);
+      if (idx >= 0) {
+        if (idx > 0) parts.push(remaining.slice(0, idx));
+        parts.push({ word, idx: i });
+        remaining = remaining.slice(idx + word.length);
+      }
+    });
+    if (remaining) parts.push(remaining);
+    return parts.map((p, i) =>
+      typeof p === "string" ? <span key={i}>{p}</span> : (
+        <span key={i} className={`gap-highlight ${highlightPhase > p.idx ? "sweep" : ""}`}
+          style={highlightPhase > p.idx ? { animationDelay: `${p.idx * 250}ms` } : undefined}>
+          {p.word}
+        </span>
+      )
+    );
+  };
+
+  const beat = (n: number) => phase >= n
+    ? "opacity-100 translate-y-0"
+    : "opacity-0 translate-y-[12px]";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
+      onClick={phase < 4 ? skip : undefined}>
       <div className="max-w-md w-full">
-        <div className={`mb-8 transition-all duration-[600ms] ease-out ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <p className="text-[17px] font-semibold text-zinc-900 leading-relaxed">{content.line1}</p>
+        <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
+          <p className="text-[17px] font-semibold text-zinc-900 leading-[1.7]">{renderLine1()}</p>
         </div>
-        <div className={`mb-8 transition-all duration-[600ms] ease-out ${phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        <div className={`mb-10 transition-all duration-500 ease-out ${beat(2)}`} style={{ opacity: phase >= 2 ? 0.75 : 0 }}>
           <p className="text-[15px] text-zinc-600 leading-relaxed">{content.line2}</p>
         </div>
-        <div className={`mb-10 transition-all duration-[600ms] ease-out ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-          <p className="text-base font-bold text-zinc-900 text-center">{content.line3}</p>
+        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 3 ? "opacity-100" : "opacity-0"}`}
+          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
+          <p className="text-[17px] font-bold text-zinc-900 text-center">{content.line3}</p>
         </div>
-        <div className={`text-center transition-all duration-500 ${phase >= 4 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <button onClick={onContinue}
+        <div className={`text-center transition-all duration-500 ${beat(4)}`}>
+          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Keep going
           </button>
@@ -889,11 +960,17 @@ function Gap2Screen({ branch, answers, track, onContinue }: {
 }) {
   const header = getGap2Header(branch, answers);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pulseCta, setPulseCta] = useState(false);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
+      // Pulse the CTA on first selection
+      if (prev.size === 0 && next.size === 1) {
+        setPulseCta(true);
+        setTimeout(() => setPulseCta(false), 400);
+      }
       return next;
     });
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
@@ -901,25 +978,39 @@ function Gap2Screen({ branch, answers, track, onContinue }: {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
-      <div className="max-w-md w-full funnel-screen">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 leading-snug">{header}</h2>
-        <div className="flex flex-wrap gap-2.5 justify-center mb-10">
-          {GAP2_FEELINGS.map((f, i) => (
-            <button key={f.id} onClick={() => toggle(f.id)}
-              className={`rounded-full px-4 py-2.5 text-[14px] transition-all duration-200 border funnel-card-stagger ${
-                selected.has(f.id)
-                  ? "bg-acuity-primary text-white border-acuity-primary scale-[1.04] shadow-acuity-glow-soft"
-                  : "bg-white/80 text-zinc-700 border-zinc-200 hover:border-acuity-primary/40 hover:bg-acuity-primary/5"
-              }`}
-              style={{ animationDelay: `${i * 80}ms` }}>
-              {f.label}
-            </button>
-          ))}
+      <div className="max-w-md w-full">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 leading-snug funnel-screen">{header}</h2>
+        {/* Full-width option cards matching quiz style */}
+        <div className="space-y-3 mb-4">
+          {GAP2_FEELINGS.map((f, i) => {
+            const isSelected = selected.has(f.id);
+            return (
+              <button key={f.id} onClick={() => toggle(f.id)}
+                className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
+                  isSelected
+                    ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900"
+                    : "border-zinc-200 bg-white/70 text-zinc-700 hover:bg-zinc-100/80"
+                }`}
+                style={{ animationDelay: `${i * 80}ms` }}>
+                <span className="flex items-center justify-between">
+                  <span>{f.label}</span>
+                  {isSelected && (
+                    <span className="ml-2 text-acuity-primary flex-shrink-0"
+                      style={{ animation: "funnel-check-pop 250ms ease-out both" }}>
+                      &#10003;
+                    </span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        <p className="text-xs text-zinc-400 text-center mb-4 italic">Select all that resonate.</p>
+        <p className="text-xs text-zinc-400 text-center mb-5">
+          {selected.size > 0 ? `${selected.size} selected` : "Select all that resonate."}
+        </p>
         <div className="text-center">
           <button onClick={() => onContinue([...selected])} disabled={selected.size === 0}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className={`rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed animate-[funnel-glow_2s_ease-in-out_infinite] ${pulseCta ? "animate-[funnel-soft-pulse_400ms_ease-out]" : ""}`}>
             That&rsquo;s what I want
           </button>
         </div>
@@ -928,7 +1019,7 @@ function Gap2Screen({ branch, answers, track, onContinue }: {
   );
 }
 
-// ─── Gap 3: "Your future self" (dynamic animated payoff) ────────────────────
+// ─── Gap 3: "Your future self" (time-lapse, not an essay) ──────────────────
 
 function Gap3Screen({ answers, track, onContinue }: {
   answers: Record<string, string | string[]>;
@@ -939,16 +1030,46 @@ function Gap3Screen({ answers, track, onContinue }: {
   const lines = buildGap3Lines(feelings);
   const [phase, setPhase] = useState(0);
   const [showDismiss, setShowDismiss] = useState(false);
+  const [dismissPhase, setDismissPhase] = useState(0);
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  // Total phases: 0=nothing, 1=kicker, 2..N+1=scene beats, N+2=ask, N+3=yes CTA, N+4=no button
+  const askPhase = lines.length + 2;
+  const yesPhase = lines.length + 3;
+  const noPhase = lines.length + 4;
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    if (prefersReduced) { setPhase(noPhase); return; }
+    const t: ReturnType<typeof setTimeout>[] = [];
+    // Kicker: 0ms
+    t.push(setTimeout(() => setPhase(1), 0));
+    // Scene beats: 700ms for kicker to land, then 1600ms per beat
     for (let i = 0; i < lines.length; i++) {
-      timers.push(setTimeout(() => setPhase(i + 1), 600 + i * 1200));
+      t.push(setTimeout(() => setPhase(i + 2), 700 + i * 1600));
     }
-    // Show the ask after all lines
-    timers.push(setTimeout(() => setPhase(lines.length + 1), 600 + lines.length * 1200 + 600));
-    return () => timers.forEach(clearTimeout);
-  }, [lines.length]);
+    // Ask: 500ms pause after last beat
+    t.push(setTimeout(() => setPhase(askPhase), 700 + lines.length * 1600 + 500));
+    // Yes CTA: immediately after ask settles
+    t.push(setTimeout(() => setPhase(yesPhase), 700 + lines.length * 1600 + 1100));
+    // No button: 400ms after yes
+    t.push(setTimeout(() => setPhase(noPhase), 700 + lines.length * 1600 + 1500));
+    return () => t.forEach(clearTimeout);
+  }, [lines.length, prefersReduced, askPhase, yesPhase, noPhase]);
+
+  const skip = () => setPhase(noPhase);
+
+  // Render a line with the bold key phrase in semibold
+  const renderLine = (line: Gap3Line) => {
+    const idx = line.text.indexOf(line.bold);
+    if (idx < 0) return line.text;
+    return (
+      <>
+        {line.text.slice(0, idx)}
+        <span className="font-semibold text-zinc-900">{line.bold}</span>
+        {line.text.slice(idx + line.bold.length)}
+      </>
+    );
+  };
 
   const handleYes = () => {
     track("funnel_gap3_answered", { value: "yes" });
@@ -957,47 +1078,79 @@ function Gap3Screen({ answers, track, onContinue }: {
   const handleNo = () => {
     track("funnel_gap3_answered", { value: "no" });
     setShowDismiss(true);
+    setTimeout(() => setDismissPhase(1), 100);
   };
 
   if (showDismiss) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
-        <div className="max-w-md w-full text-center funnel-screen">
-          <p className="text-[15px] text-zinc-600 leading-relaxed mb-8">{GAP3_DISMISS_COPY}</p>
-          <button onClick={onContinue}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Okay, show me how it works
-          </button>
+        <div className="max-w-md w-full text-center">
+          <div className={`transition-all duration-500 ease-out ${dismissPhase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
+            <p className="text-[15px] text-zinc-600 leading-relaxed mb-8">{GAP3_DISMISS_COPY}</p>
+            <button onClick={onContinue}
+              className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+              Okay, show me how it works
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Determine if ask is showing — dim all scene beats
+  const askVisible = phase >= askPhase;
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
+      onClick={phase < noPhase ? skip : undefined}>
       <div className="max-w-md w-full">
-        <p className={`text-xs uppercase tracking-[0.15em] text-zinc-400 text-center mb-6 transition-all duration-500 ${phase >= 1 ? "opacity-100" : "opacity-0"}`}>
+        {/* Kicker — film title card */}
+        <p className={`text-[11px] uppercase tracking-[0.2em] text-zinc-400 text-center mb-8 transition-all duration-[700ms] ease-out ${phase >= 1 ? "opacity-100" : "opacity-0"}`}>
           Three weeks from now
         </p>
-        {lines.map((line, i) => (
-          <div key={i} className={`mb-6 transition-all duration-[800ms] ease-out ${phase >= i + 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <p className="text-[15px] text-zinc-700 leading-relaxed italic">{line}</p>
-          </div>
-        ))}
 
-        {/* The ask */}
-        <div className={`mt-4 text-center transition-all duration-500 ${phase >= lines.length + 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        {/* Scene beats — dim-cascade */}
+        {lines.map((line, i) => {
+          const beatPhase = i + 2;
+          const isCurrentBeat = phase === beatPhase || (phase === beatPhase && !askVisible);
+          const isBright = phase >= beatPhase && !askVisible && phase <= beatPhase;
+          // Current beat is bright, past beats dim to 45%, all dim to 35% when ask shows
+          let opacity: number;
+          if (phase < beatPhase) opacity = 0;
+          else if (askVisible) opacity = 0.35;
+          else if (phase === beatPhase) opacity = 1;
+          else opacity = 0.45; // past beat
+
+          return (
+            <div key={i}
+              className={`mb-6 transition-all duration-[800ms] ease-out ${phase >= beatPhase ? "translate-y-0" : "translate-y-[12px]"}`}
+              style={{ opacity }}>
+              <p className="text-[15px] text-zinc-700 leading-relaxed">{renderLine(line)}</p>
+            </div>
+          );
+        })}
+
+        {/* The ask — with heavier settle animation */}
+        <div className={`mt-6 text-center transition-all duration-500 ${askVisible ? "opacity-100" : "opacity-0"}`}
+          style={askVisible ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
           <p className="text-lg font-bold text-zinc-900 mb-6">Are you ready to make a lasting change?</p>
-          <div className="flex flex-col items-center gap-3">
-            <button onClick={handleYes}
-              className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-              Yes &mdash; how does it work?
-            </button>
-            <button onClick={handleNo}
-              className="text-sm text-zinc-400 hover:text-zinc-600 transition py-2">
-              No, maybe next year
-            </button>
-          </div>
+        </div>
+
+        {/* Yes CTA with soft pulse */}
+        <div className={`text-center transition-all duration-500 ${phase >= yesPhase ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}
+          style={phase === yesPhase ? { animation: "funnel-soft-pulse 400ms ease-out" } : undefined}>
+          <button onClick={(e) => { e.stopPropagation(); handleYes(); }}
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            Yes &mdash; how does it work?
+          </button>
+        </div>
+
+        {/* No button — 400ms after yes */}
+        <div className={`text-center mt-3 transition-all duration-500 ${phase >= noPhase ? "opacity-100" : "opacity-0"}`}>
+          <button onClick={(e) => { e.stopPropagation(); handleNo(); }}
+            className="text-sm text-zinc-400 hover:text-zinc-600 transition py-2">
+            No, maybe next year
+          </button>
         </div>
       </div>
     </div>

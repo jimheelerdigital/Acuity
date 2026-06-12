@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-06-12] — Gap 1/2/3 visual + motion rework: sequenced choreography, option cards, dim-cascade
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The three Gap screens between Mirror and Mechanism now feel alive instead of flat. Gap 1 animates each cost word with an orange highlight sweep, then the final line ("Left alone, loops don't loosen") settles with physical weight. Gap 2 swapped the small pill chips for full-width option cards matching every other quiz screen, with an animated checkmark on select and a count that updates live ("3 selected"). Gap 3 plays like a film time-lapse: each future-self scene arrives bright, then dims as the next one takes over, and the final question owns the screen alone. Tapping anywhere skips the animation on all three screens. All motion respects accessibility settings.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: `Gap1Content` now includes `costWords: string[]` for highlight targeting. `buildGap3Lines` returns `Gap3Line` objects with `{ text, bold }` for key-phrase semibolding.
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - Gap 1: 4-beat choreography (line 1 + highlight sweep on cost words at 250ms stagger, line 2 at 0.75 opacity, line 3 with `funnel-settle` scale(1.03->1) animation, CTA at +3.4s). Tap-to-skip on container. `prefers-reduced-motion` shows all immediately.
+  - Gap 2: Replaced pill chips with full-width `rounded-xl border px-5 py-4` cards (same as SingleSelectScreen). Animated checkmark via `funnel-check-pop` keyframe (scale 0->1.15->1, 250ms). CTA pulses once on first selection. Microcopy switches to "{N} selected" after first pick.
+  - Gap 3: Film-title kicker (700ms slow fade). Scene beats arrive at 1600ms stagger, each dimming to 45% as the next arrives. All scenes dim to 35% when the ask appears. Ask uses `funnel-settle` animation. Yes CTA gets `funnel-soft-pulse`. No button fades in 400ms later. Dismiss micro-moment now animates in (one beat) instead of appearing instantly. Key phrases rendered in semibold via `Gap3Line.bold` matching.
+  - New keyframes: `funnel-highlight-sweep`, `funnel-settle`, `funnel-soft-pulse`, `funnel-check-pop`. `.gap-highlight` class for cost-word underline effect. All respect `prefers-reduced-motion`.
+  - Increased vertical spacing between beats (mb-8 -> mb-10/mb-12).
+- Zero changes to: events, flowVersion, answer storage, yes/no fork logic, auth, signup, paywall, or any non-Gap screen.
+
+### Manual steps needed
+None.
+
+### Notes
+- Animations use only `transform` and `opacity` for 60fps on mobile. No layout-shifting animations.
+- Tap-to-skip: clicking anywhere on Gap 1 or Gap 3 container completes all beats instantly and reveals CTA. Button clicks use `stopPropagation` to avoid double-action.
+- Total un-skipped sequence: Gap 1 ~3.4s, Gap 2 ~0.5s (cards cascade), Gap 3 ~5.4s (3 selections) or ~3.8s (1 selection). All under 6s cap.
+- All 5 gap events confirmed firing (204) via local dev server test.
+
+---
+
 ## [2026-06-12] — Funnel v4: three-screen Gap sequence, signup social proof, paywall urgency, unified gradient
 
 **Requested by:** Keenan
