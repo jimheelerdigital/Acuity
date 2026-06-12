@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-06-12] — Tap counter, time-math screen, and Mirror 60% cut
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three additions to the v4 funnel. (1) After the "what pattern would you like to stop?" question, users now TAP to count how many times it happened last week — a big number they increment with each tap. The count echoes in Gap 1: "7 times last week. At that pace, that's roughly 360 times a year." If she can't count, "Honestly, I've lost count" is also powerful copy. (2) After the "how long" question, a time-math screen translates her duration into evenings — if she said "over a year," she sees a large animated count-up to 365 with the label "evenings." Short durations ("a few weeks") skip this screen entirely since the numbers aren't impactful. (3) The Mirror was cut from 5 dense paragraphs (~200 words) to 3 choreographed beats (~50 words) — the sharpest pain reflection, her Q9 echo, and "You don't have to keep living like this." The original copy is preserved in comments for future use.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`:
+  - `COUNTER_PHRASES` mapping: Q9 option → natural counter phrase for tally header.
+  - `getTallyHeader(q9)`, `getTallyEcho(tallyValue)` — tally screen header and Gap 1 echo.
+  - `getTimeMathContent(duration)` — maps duration answers to evening counts; returns `{ show: false }` for "A few weeks".
+  - `buildMirrorLines()` rebuilt: returns 2 lines (beat 1: branch pain, beat 2: Q9 echo + closer). Beat 3 rendered by component. Original 5-paragraph copy preserved in archived comment block.
+  - `MIRROR_BEAT1` per-branch pain reflections (best 1-2 sentences from original bank).
+  - `MIRROR_Q9_CLOSER` per-branch closer lines.
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - New steps: `tally` (after Q9), `timemath` (after Q5). STEP_ORDER updated.
+  - `TallyScreen`: large tappable counter (scale-pop animation), caps at 20+, "lost count" link, CTA after first tap, "Keep going. Count them all." after 2+ taps.
+  - `TimeMathScreen`: 3-beat choreography with odometer count-up (ease-out cubic, 1.2s). Auto-skips for short durations (fires no event, calls onSkip immediately). "Thousands" word treatment for "can't remember" answers.
+  - `MirrorScreen` rebuilt: 3-beat choreography (header + 2 mirror lines + settle closer + CTA). ~4.8s un-skipped. Tap-to-skip. prefers-reduced-motion supported.
+  - `Gap1Screen`: prepends tally echo as new first beat when tally data exists. Phase offsets shifted.
+  - eventMap: added `tally: "funnel_tally_viewed"`, `timemath: "funnel_timemath_viewed"`.
+- `apps/web/src/app/api/admin/metrics/route.ts`: Added `tally` and `timemath` steps to `FUNNEL_STEPS_V4`. Time Math labeled with asterisk "(skipped for short durations)". `tallyDistribution` computed from `funnel_tally_set` events. Added to return object.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: Tally Distribution panel with count breakdown and "lost count" highlight.
+- Zero changes to: auth, signup, paywall, Gap 2/3, or events outside scope.
+
+### Manual steps needed
+- [ ] Keenan: After deploy, run through /start, count taps, then verify: `SELECT event, COUNT(*) FROM "OnboardingEvent" WHERE event IN ('funnel_tally_viewed','funnel_tally_set','funnel_timemath_viewed') AND "flowVersion"='v4' GROUP BY event;`
+
+### Notes
+- Time Math legitimately shows fewer events than its neighbors because "A few weeks" sessions skip it. The admin chart bar is labeled "Time Math*" and the suggested fix note explains this.
+- Tally count stored in answers dict as `tally_count` (string: "1"–"20+", or "lost_count"). No schema change.
+- Mirror word count per branch verified ≤70 words (beat 1 + beat 2 + "You don't have to keep living like this." = ~45-65 words depending on branch).
+- Original 5-paragraph Mirror copy preserved in a comment block in funnel-config.ts — not deleted, just unshipped.
+- Counter phrases all verified reading naturally in full sentence context.
+
+---
+
 ## [2026-06-12] — Gap 1/2/3 visual + motion rework: sequenced choreography, option cards, dim-cascade
 
 **Requested by:** Keenan

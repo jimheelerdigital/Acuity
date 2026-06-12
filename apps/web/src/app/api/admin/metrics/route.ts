@@ -1644,17 +1644,19 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     if (effectiveStart < epoch) effectiveStart = epoch;
   }
 
-  // v4 funnel steps — three-screen gap sequence, unified gradient (2026-06-12)
+  // v4 funnel steps — tally counter, time math, 3-beat mirror, 3-screen gap (2026-06-12)
   const FUNNEL_STEPS_V4 = [
     { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
     { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
     { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
     { key: "branch_q4", event: "funnel_branch_q4_viewed", label: "Q4" },
     { key: "shared_q5", event: "funnel_shared_q5_viewed", label: "Q5" },
+    { key: "timemath", event: "funnel_timemath_viewed", label: "Time Math*" },
     { key: "shared_q6", event: "funnel_shared_q6_viewed", label: "Q6 (Cost)" },
     { key: "shared_q7", event: "funnel_shared_q7_viewed", label: "Q7" },
     { key: "shared_q8", event: "funnel_shared_q8_viewed", label: "Q8" },
     { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9 (Pattern)" },
+    { key: "tally", event: "funnel_tally_viewed", label: "Tally" },
     { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
     { key: "gap1", event: "funnel_gap1_viewed", label: "Gap 1" },
     { key: "gap2", event: "funnel_gap2_viewed", label: "Gap 2" },
@@ -1939,6 +1941,8 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     shared_q9: "Last question before mirror. Low intent users leave.",
     mirror: "Mirror didn\u2019t resonate. Review emotional copy.",
     gap: "Gap screen not converting. Review amplify/imagine copy per branch.",
+    tally: "Tally counter drop. Users not engaging with the count. Check header phrasing.",
+    timemath: "Time Math drop (note: legitimately skipped for short-duration answers).",
     gap1: "Gap 1 (loss screen) not converting. Review cost copy per branch.",
     gap2: "Gap 2 (feelings multi-select) not converting. Check CTA gate or option resonance.",
     gap3: "Gap 3 (future self) not converting. Check if \u2018no\u2019 path dead-ends.",
@@ -2325,6 +2329,14 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     }
   }
 
+  // ── Tally distribution ──
+  const tallyEvents = events.filter((e) => e.event === "funnel_tally_set" && e.value);
+  const tallyDistribution: Record<string, number> = {};
+  for (const e of tallyEvents) {
+    const v = e.value ?? "unknown";
+    tallyDistribution[v] = (tallyDistribution[v] ?? 0) + 1;
+  }
+
   // Diagnostic: raw event counts for page loads vs taps
   const entryViewedCount = events.filter((e) => e.event === "funnel_entry_viewed").length;
   const entrySelectedCount = events.filter((e) => e.event === "funnel_entry_selected").length;
@@ -2363,6 +2375,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     adMatchStats,
     readyForChange,
     feelingsDistribution,
+    tallyDistribution,
     signupFailures: {
       total: signupFailTotal,
       topReason: signupFailTopReason,

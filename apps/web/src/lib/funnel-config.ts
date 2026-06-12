@@ -304,7 +304,65 @@ export const SHARED_QUESTIONS: Question[] = [
   },
 ];
 
-// ─── Mirror Templates (Screen 10) ──────────────────────────────────────────
+// ─── Tally Counter Phrase Mapping (Q9 → natural counter phrase) ────────────
+
+const COUNTER_PHRASES: Record<string, string> = {
+  "Snapping at people I love, then feeling guilty": "snapping at someone you love",
+  "Putting everyone else first until I have nothing left": "putting everyone else first",
+  "Starting things and watching them fizzle": "something you started fizzling out",
+  "Replaying the same worries on a loop": "the same worry replaying",
+};
+
+const COUNTER_PHRASE_FALLBACK = "it";
+
+export function getTallyPhrase(q9Answer: string): string {
+  return COUNTER_PHRASES[q9Answer] || COUNTER_PHRASE_FALLBACK;
+}
+
+export function getTallyHeader(q9Answer: string): string {
+  const phrase = getTallyPhrase(q9Answer);
+  return `How many times did ${phrase} happen last week?`;
+}
+
+// ─── Tally Echo for Gap 1 ──────────────────────────────────────────────────
+
+export function getTallyEcho(tallyValue: string): string {
+  if (tallyValue === "lost_count") {
+    return "So many times you\u2019ve stopped counting. That\u2019s the loudest answer there is.";
+  }
+  const n = parseInt(tallyValue, 10);
+  if (isNaN(n) || n < 1) return "";
+  if (n === 1) return "Even once a week is 52 times a year.";
+  const yearly = Math.round((n * 52) / 10) * 10; // round to clean 10s
+  const display = n > 20 ? "20+" : String(n);
+  return `${display} times last week. At that pace, that\u2019s roughly ${yearly} times a year.`;
+}
+
+// ─── Time-Math Mapping (duration answer → evening count) ────────────────────
+
+export interface TimeMathContent {
+  show: boolean;
+  herDuration: string;
+  count: number | null;  // null means "thousands"
+  label: string;
+}
+
+export function getTimeMathContent(durationAnswer: string): TimeMathContent {
+  switch (durationAnswer) {
+    case "A few weeks":
+      return { show: false, herDuration: "", count: null, label: "" }; // skip — numbers too small
+    case "A few months":
+      return { show: true, herDuration: "a few months", count: 90, label: "evenings" };
+    case "Over a year":
+      return { show: true, herDuration: "over a year", count: 365, label: "evenings" };
+    case "I can\u2019t remember when it started":
+      return { show: true, herDuration: "longer than you can remember", count: null, label: "of evenings" };
+    default:
+      return { show: false, herDuration: "", count: null, label: "" };
+  }
+}
+
+// ─── Mirror Templates (Screen 10) — v4: 3-beat, ≤70 words ────────────────
 
 function lc(s: string): string {
   // lowercase first char for mid-sentence embedding
@@ -452,41 +510,88 @@ const DESIRE_REWRITES: Record<string, string> = {
     "You said you\u2019d want to stop the replay loop. The same worries, the same scenarios, running on repeat. Your answers suggest the loop isn\u2019t random \u2014 it\u2019s processing something your day didn\u2019t give you space to finish.",
 };
 
-// ─── Build Mirror Lines ─────────────────────────────────────────────────────
+// ─── Build Mirror Lines (v4: 3 beats, ≤70 words total) ─────────────────────
+//
+// v3 mirror was 5 dense paragraphs. v4 cuts to 3 beats:
+//   Beat 1: sharpest pain reflection (1-2 sentences, branch-specific)
+//   Beat 2: Q9 echo using counter-phrase + branch closer
+//   Beat 3 (settle): "You don't have to keep living like this."
+//
+// Original 5-paragraph copy preserved below for reference / future use.
+
+/* ── ARCHIVED FULL MIRROR COPY (unshipped as of v4) ──────────────────────
+ * Line 1 (branch pain): see BLUR_LINE1, PATTERNS_LINE1, etc. above
+ * Line 2 (duration): DURATION_LINES
+ * Line 3 (cost): COST_REWRITES — "It's draining your energy — the kind of tired that sleep doesn't fix."
+ * Line 4 (brain state): BRAIN_REWRITES — "By the time the day ends, your brain is scattered..."
+ * Line 5 (desire/Q9): DESIRE_REWRITES — "You said the pattern you'd most want to stop..."
+ * ──────────────────────────────────────────────────────────────────────── */
+
+// Best 1-2 sentence pain reflection per branch (cut from the full Line 1 bank)
+const MIRROR_BEAT1: Record<Branch, (answers: Record<string, string | string[]>) => string> = {
+  blur: (a) => {
+    const q2 = String(a.branch_q2 ?? "");
+    if (q2.includes("Autopilot")) return "Your days run on autopilot. You get to the end of the week and can\u2019t name a single moment that mattered.";
+    if (q2.includes("Busy")) return "Full calendar. Nothing to show for it. That\u2019s what you told us.";
+    if (q2.includes("Fine")) return "Fine on the surface. Foggy underneath. Your answers suggest it\u2019s been building for a while.";
+    return "Going through the motions. Present but not there. And nobody around you sees it.";
+  },
+  patterns: (a) => {
+    const q2 = String(a.branch_q2 ?? "");
+    if (q2.includes("partner")) return "You already know how the fight ends. The words change but the feeling is exactly the same.";
+    if (q2.includes("work")) return "Different meeting, different day, same feeling in your chest.";
+    if (q2.includes("family")) return "The family dynamic has been running longer than you\u2019d like to admit. You thought you\u2019d outgrow it.";
+    return "It\u2019s not one relationship. It\u2019s the pattern underneath all of them.";
+  },
+  rumination: (a) => {
+    const q2 = String(a.branch_q2 ?? "");
+    if (q2.includes("lie down")) return "The second your head hits the pillow, your brain turns on. Conversations replay. Decisions get second-guessed.";
+    if (q2.includes("quiet")) return "Silence isn\u2019t peaceful for you. It\u2019s when the noise starts.";
+    if (q2.includes("driving")) return "You do your deepest thinking behind the wheel \u2014 not because you choose to, but because that\u2019s when your brain can ambush you.";
+    return "It\u2019s not that your brain gets loud sometimes. It\u2019s that it never fully stops.";
+  },
+  graveyard: (a) => {
+    const q2 = String(a.branch_q2 ?? "");
+    if (q2.includes("journaling")) return "Maybe you downloaded a journaling app. You stopped \u2014 not because it was bad, but because staring at a blank screen felt like one more thing to fail at.";
+    if (q2.includes("Therapy")) return "Maybe therapy helped while you were in the room. The insights faded between sessions.";
+    if (q2.includes("productivity")) return "Maybe you built a system. You spent more time maintaining it than actually living.";
+    if (q2.includes("Meditation")) return "Maybe someone told you to meditate. Sitting alone with your thoughts wasn\u2019t the relief they promised.";
+    return "Something shifted for about three days. Then it faded. And you went back to exactly where you were.";
+  },
+  mask: (a) => {
+    const q2 = String(a.branch_q2 ?? "");
+    if (q2.includes("partner")) return "Your partner thinks you\u2019re fine because you\u2019ve made sure they think you\u2019re fine. So you carry it.";
+    if (q2.includes("kids")) return "Your kids see someone who has it all handled. What they don\u2019t see is what it takes to hold that together every single day.";
+    if (q2.includes("work")) return "At work, you\u2019re the reliable one. Nobody asks how you\u2019re doing because you\u2019ve made it so nobody needs to.";
+    if (q2 === "Everyone") return "You\u2019re holding it together for everyone. The one person you\u2019re not holding it together for is yourself.";
+    return "You\u2019re performing for yourself \u2014 maintaining the fiction that you\u2019re fine.";
+  },
+  drift: (a) => {
+    const q2 = String(a.branch_q2 ?? "");
+    if (q2.includes("Recently")) return "Something woke you up recently. The gap between who you are and who you meant to be opened up \u2014 and you can\u2019t unsee it.";
+    if (q2.includes("building")) return "It\u2019s been creeping in for months. Not a crisis \u2014 more like a slow leak.";
+    if (q2.includes("Years")) return "You\u2019ve known for years. You just didn\u2019t want to name it.";
+    return "The drift happened so gradually there\u2019s no clear before and after. Just a slow fade.";
+  },
+};
+
+// Branch-specific Q9 closer (the strongest single line from DESIRE_REWRITES)
+const MIRROR_Q9_CLOSER: Record<Branch, string> = {
+  blur: "The pattern isn\u2019t the fog. It\u2019s what\u2019s hiding inside it.",
+  patterns: "The pattern isn\u2019t the fight. It\u2019s what builds up before it.",
+  rumination: "The loop isn\u2019t random. It\u2019s processing something your day didn\u2019t give you space to finish.",
+  graveyard: "It\u2019s not discipline you\u2019re missing. It\u2019s that nobody\u2019s helped you see the moment you stop.",
+  mask: "The pattern isn\u2019t generosity. It\u2019s erasure.",
+  drift: "The drift isn\u2019t laziness. It\u2019s invisible momentum in the wrong direction.",
+};
 
 export function buildMirrorLines(branch: Branch, answers: Record<string, string | string[]>): string[] {
-  const lines: string[] = [];
-
-  // Line 1: core pain from branch (answer-specific)
-  lines.push(getLine1(branch, answers));
-
-  // Line 2: duration (emotionally weighted)
-  const dur = String(answers.shared_q5 ?? "");
-  lines.push(DURATION_LINES[dur] ?? DURATION_LINES["Over a year"]!);
-
-  // Line 3: cost (multi-select, emotionally specific)
-  const costRaw = answers.shared_q6;
-  const costs = Array.isArray(costRaw) ? costRaw : costRaw ? [costRaw] : ["My energy"];
-  if (costs.length === 1) {
-    const rewrite = COST_REWRITES[costs[0]];
-    lines.push(rewrite ? `It\u2019s draining ${rewrite}.` : `It\u2019s costing you ${lc(costs[0])}.`);
-  } else {
-    const rewritten = costs.map((c) => COST_REWRITES[c] ?? lc(c));
-    const joined = rewritten.length === 2
-      ? `${rewritten[0]} and ${rewritten[1]}`
-      : `${rewritten.slice(0, -1).join(", ")}, and ${rewritten[rewritten.length - 1]}`;
-    lines.push(`It\u2019s draining ${joined}.`);
-  }
-
-  // Line 4: brain state (sensory, specific)
-  const brain = String(answers.shared_q8 ?? "");
-  lines.push(BRAIN_REWRITES[brain] ?? BRAIN_REWRITES["Scattered \u2014 too many tabs open"]!);
-
-  // Line 5: desire (emotionally loaded)
-  const desire = String(answers.shared_q9 ?? "");
-  lines.push(DESIRE_REWRITES[desire] ?? DESIRE_REWRITES["Why I keep repeating the same mistakes"]!);
-
-  return lines;
+  const q9 = String(answers.shared_q9 ?? "");
+  const counterPhrase = getTallyPhrase(q9);
+  const beat1 = MIRROR_BEAT1[branch](answers);
+  const beat2 = `You said you want to stop ${counterPhrase}. ${MIRROR_Q9_CLOSER[branch]}`;
+  return [beat1, beat2];
+  // Beat 3 ("You don't have to keep living like this.") is rendered by the MirrorScreen component
 }
 
 // ─── Snapshot: Pattern Insight (Screen 13, Section 1) ────────────────────────

@@ -20,6 +20,9 @@ import {
   SHARED_QUESTIONS,
   buildMirrorLines,
   buildGap1Content,
+  getTallyHeader,
+  getTallyEcho,
+  getTimeMathContent,
   GAP2_FEELINGS,
   getGap2Header,
   buildGap3Lines,
@@ -47,6 +50,8 @@ type Step =
   | "entry"
   | "branch-q2" | "branch-q3" | "branch-q4"
   | "shared-q5" | "shared-q6" | "shared-q7" | "shared-q8" | "shared-q9"
+  | "tally"
+  | "timemath"
   | "mirror"
   | "gap1" | "gap2" | "gap3"
   | "mechanism"
@@ -60,8 +65,8 @@ type Step =
 
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
-  "shared-q5", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
-  "mirror", "gap1", "gap2", "gap3", "mechanism", "commit", "processing", "snapshot", "timeline",
+  "shared-q5", "timemath", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
+  "tally", "mirror", "gap1", "gap2", "gap3", "mechanism", "commit", "processing", "snapshot", "timeline",
   "create-account", "savings", "download",
 ];
 
@@ -371,6 +376,8 @@ export function OnboardingFunnel() {
       "shared-q7": "funnel_shared_q7_viewed",
       "shared-q8": "funnel_shared_q8_viewed",
       "shared-q9": "funnel_shared_q9_viewed",
+      tally: "funnel_tally_viewed",
+      timemath: "funnel_timemath_viewed",
       mirror: "funnel_mirror_viewed",
       gap1: "funnel_gap1_viewed",
       gap2: "funnel_gap2_viewed",
@@ -584,6 +591,22 @@ export function OnboardingFunnel() {
           />
         );
       })()}
+
+      {/* ── Time Math (after Q5 duration — skipped for short durations) ── */}
+      {step === "timemath" && (
+        <TimeMathScreen key="timemath" answers={answers} onContinue={() => setStep("shared-q6")} onSkip={() => setStep("shared-q6")} />
+      )}
+
+      {/* ── Tally Counter (after Q9, before Mirror) ── */}
+      {step === "tally" && (
+        <TallyScreen key="tally" answers={answers} track={track}
+          onContinue={(count) => {
+            setAnswers((a) => ({ ...a, tally_count: count }));
+            track("funnel_tally_set", { value: count });
+            setStep("mirror");
+          }}
+        />
+      )}
 
       {/* ── Mirror (Screen 10) ── */}
       {step === "mirror" && branch && (
@@ -808,55 +831,218 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
   );
 }
 
-// ─── Mirror Screen (Screen 10) ──────────────────────────────────────────────
+// ─── Tally Counter Screen (after Q9, before Mirror) ─────────────────────────
+
+function TallyScreen({ answers, track, onContinue }: {
+  answers: Record<string, string | string[]>;
+  track: (event: string, props?: Record<string, unknown>) => void;
+  onContinue: (count: string) => void;
+}) {
+  const q9 = String(answers.shared_q9 ?? "");
+  const header = getTallyHeader(q9);
+  const [count, setCount] = useState(0);
+  const [popKey, setPopKey] = useState(0);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  const increment = () => {
+    if (count >= 20) return; // cap at 20
+    setCount((c) => c + 1);
+    setPopKey((k) => k + 1);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+  };
+
+  // Show "Keep going" prompt after 2 taps
+  useEffect(() => {
+    if (count >= 2 && !showPrompt) setShowPrompt(true);
+  }, [count, showPrompt]);
+
+  const handleLostCount = () => onContinue("lost_count");
+  const handleContinue = () => onContinue(count > 20 ? "20+" : String(count));
+
+  const display = count > 20 ? "20+" : String(count);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+      <div className="max-w-md w-full text-center funnel-screen">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight leading-snug mb-12">{header}</h2>
+
+        {/* The big tappable counter */}
+        <button onClick={increment} className="inline-block mb-4 select-none active:scale-95 transition-transform" aria-label="Tap to count">
+          <span key={popKey} className="text-[72px] sm:text-[96px] font-extrabold text-acuity-primary tabular-nums"
+            style={!prefersReduced && popKey > 0 ? { animation: "funnel-check-pop 150ms ease-out" } : undefined}>
+            {display}
+          </span>
+        </button>
+
+        {/* Prompt after 2+ taps */}
+        <p className={`text-xs text-zinc-400 mb-8 transition-all duration-500 ${showPrompt ? "opacity-100" : "opacity-0"}`}>
+          Keep going. Count them all.
+        </p>
+
+        {/* Lost count link */}
+        <button onClick={handleLostCount} className="text-sm text-zinc-400 hover:text-zinc-600 underline transition mb-8 block mx-auto">
+          Honestly, I&rsquo;ve lost count
+        </button>
+
+        {/* CTA — visible after first tap */}
+        <div className={`transition-all duration-500 ${count > 0 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
+          <button onClick={handleContinue}
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Time-Math Screen (after Q5 duration) ───────────────────────────────────
+
+function TimeMathScreen({ answers, onContinue, onSkip }: {
+  answers: Record<string, string | string[]>;
+  onContinue: () => void;
+  onSkip: () => void;
+}) {
+  const dur = String(answers.shared_q5 ?? "");
+  const content = getTimeMathContent(dur);
+  const [phase, setPhase] = useState(0);
+  const [displayNum, setDisplayNum] = useState(0);
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  // Skip for short durations — immediately advance, fire no event
+  useEffect(() => {
+    if (!content.show) { onSkip(); return; }
+    if (prefersReduced) { setPhase(4); setDisplayNum(content.count ?? 0); return; }
+    const t: ReturnType<typeof setTimeout>[] = [];
+    // Beat 1: her duration
+    t.push(setTimeout(() => setPhase(1), 0));
+    // Beat 2: count-up number at +1200ms
+    t.push(setTimeout(() => setPhase(2), 1200));
+    // Beat 3: closer at +3400ms (1200 + 1200 count-up + 1000 pause)
+    t.push(setTimeout(() => setPhase(3), 3400));
+    // CTA at +4200ms
+    t.push(setTimeout(() => setPhase(4), 4200));
+    return () => t.forEach(clearTimeout);
+  }, [content.show, prefersReduced, onSkip]);
+
+  // Odometer count-up animation
+  useEffect(() => {
+    if (phase < 2 || content.count === null || prefersReduced) return;
+    const target = content.count;
+    const duration = 1200;
+    const start = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - pct, 3); // ease-out cubic
+      setDisplayNum(Math.round(eased * target));
+      if (pct < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [phase, content.count, prefersReduced]);
+
+  // Skip handler
+  const skip = () => setPhase(4);
+
+  if (!content.show) return null;
+
+  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
+      onClick={phase < 4 ? skip : undefined}>
+      <div className="max-w-md w-full text-center">
+        <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
+          <p className="text-[15px] text-zinc-600">You said this has been running for {content.herDuration}.</p>
+        </div>
+
+        <div className={`mb-10 transition-all duration-500 ease-out ${beat(2)}`}>
+          {content.count !== null ? (
+            <div className="flex items-baseline justify-center gap-3">
+              <span className="text-[64px] sm:text-[80px] font-extrabold text-zinc-900 tabular-nums leading-none">
+                {phase >= 2 ? displayNum.toLocaleString() : 0}
+              </span>
+              <span className="text-xl text-zinc-500 font-medium">{content.label}</span>
+            </div>
+          ) : (
+            <div className="flex items-baseline justify-center gap-3">
+              <span className="text-[48px] sm:text-[64px] font-extrabold text-zinc-900 leading-none">Thousands</span>
+              <span className="text-xl text-zinc-500 font-medium">{content.label}</span>
+            </div>
+          )}
+        </div>
+
+        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 3 ? "opacity-100" : "opacity-0"}`}
+          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
+          <p className="text-[17px] font-bold text-zinc-900">Evenings you don&rsquo;t get back. The next ones are still up for grabs.</p>
+        </div>
+
+        <div className={`transition-all duration-500 ${beat(4)}`}>
+          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mirror Screen (v4: 3-beat, ≤70 words) ──────────────────────────────────
 
 function MirrorScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
   const lines = buildMirrorLines(branch, answers);
-  const [visibleLines, setVisibleLines] = useState(0);
-  const [showClosing, setShowClosing] = useState(false);
-  const [showBtn, setShowBtn] = useState(false);
+  const [phase, setPhase] = useState(0);
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  // Slow, deliberate timing: header 600ms fade → 1s pause → each line 800ms fade
-  // + 1.2s pause → 2s pause → closing → 1.5s → button. Total ~15s.
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const LINE_INTERVAL = 2000; // 800ms fade + 1200ms pause
-    const firstLineAt = 1600; // 600ms header fade + 1000ms pause
-    lines.forEach((_, i) => {
-      timers.push(setTimeout(() => setVisibleLines(i + 1), firstLineAt + i * LINE_INTERVAL));
-    });
-    const lastLineAt = firstLineAt + (lines.length - 1) * LINE_INTERVAL;
-    timers.push(setTimeout(() => setShowClosing(true), lastLineAt + 2000));
-    timers.push(setTimeout(() => setShowBtn(true), lastLineAt + 2000 + 1500));
-    return () => timers.forEach(clearTimeout);
-  }, [lines.length]);
+    if (prefersReduced) { setPhase(4); return; }
+    const t: ReturnType<typeof setTimeout>[] = [];
+    // Header at 0ms (via funnel-slide-up class)
+    // Beat 1 at +800ms
+    t.push(setTimeout(() => setPhase(1), 800));
+    // Beat 2 at +2400ms
+    t.push(setTimeout(() => setPhase(2), 2400));
+    // Beat 3 (settle) at +4000ms
+    t.push(setTimeout(() => setPhase(3), 4000));
+    // CTA at +4800ms
+    t.push(setTimeout(() => setPhase(4), 4800));
+    return () => t.forEach(clearTimeout);
+  }, [prefersReduced]);
+
+  const skip = () => setPhase(4);
+  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
+      onClick={phase < 4 ? skip : undefined}>
       <div className="max-w-md w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10"
-          style={{ animation: "funnel-slide-up 0.6s ease-out both" }}>
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10 funnel-screen">
           We heard you.
         </h2>
-        <div className="space-y-6">
-          {lines.map((line, i) => (
-            <div
-              key={i}
-              className={`border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[800ms] ease-out ${
-                i < visibleLines ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[15px]"
-              }`}
-            >
-              <p className="text-[15px] text-zinc-700 leading-relaxed">{line}</p>
-            </div>
-          ))}
+
+        {/* Beat 1: sharpest pain reflection */}
+        <div className={`mb-8 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-500 ease-out ${beat(1)}`}>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{lines[0]}</p>
         </div>
-        <div className={`mt-10 text-center transition-all duration-[800ms] ease-out ${showClosing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
+
+        {/* Beat 2: Q9 echo + closer */}
+        <div className={`mb-10 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-500 ease-out ${beat(2)}`}>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{lines[1]}</p>
+        </div>
+
+        {/* Beat 3 (settle): the closer */}
+        <div className={`mb-10 text-center transition-all duration-[600ms] ${phase >= 3 ? "opacity-100" : "opacity-0"}`}
+          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
           <p className="text-lg font-bold text-zinc-900">You don&rsquo;t have to keep living like this.</p>
         </div>
-        <div className={`mt-8 text-center transition-all duration-500 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <button onClick={onContinue}
+
+        {/* CTA */}
+        <div className={`text-center transition-all duration-500 ${beat(4)}`}>
+          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
           </button>
@@ -872,37 +1058,47 @@ function Gap1Screen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
   const content = buildGap1Content(branch, answers);
+  const tallyValue = String(answers.tally_count ?? "");
+  const tallyEcho = getTallyEcho(tallyValue);
+  const hasTallyEcho = tallyEcho.length > 0;
+  // Phases: 0=tally echo (if present), 1=line1, 2=line2, 3=line3 settle, 4=CTA, 5=done
+  const maxPhase = 5;
   const [phase, setPhase] = useState(0);
   const [highlightPhase, setHighlightPhase] = useState(0);
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
-    if (prefersReduced) { setPhase(4); setHighlightPhase(content.costWords.length); return; }
+    if (prefersReduced) { setPhase(maxPhase); setHighlightPhase(content.costWords.length); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
+    let offset = 0;
+    // Beat 0 (tally echo): if present, fades in first
+    if (hasTallyEcho) {
+      t.push(setTimeout(() => setPhase(1), 0)); // tally echo
+      offset = 1400;
+    }
     // Beat 1: line 1 fades in
-    t.push(setTimeout(() => setPhase(1), 0));
+    t.push(setTimeout(() => setPhase(2), offset));
     // Highlight sweep on cost words, 400ms after line 1 lands
     content.costWords.forEach((_, i) => {
-      t.push(setTimeout(() => setHighlightPhase(i + 1), 500 + 400 + i * 250));
+      t.push(setTimeout(() => setHighlightPhase(i + 1), offset + 500 + 400 + i * 250));
     });
     // Beat 2: line 2 at +1400ms from line 1
-    t.push(setTimeout(() => setPhase(2), 1400));
+    t.push(setTimeout(() => setPhase(3), offset + 1400));
     // Beat 3: line 3 (settle) at +2600ms
-    t.push(setTimeout(() => setPhase(3), 2600));
+    t.push(setTimeout(() => setPhase(4), offset + 2600));
     // Beat 4: CTA at +3400ms
-    t.push(setTimeout(() => setPhase(4), 3400));
+    t.push(setTimeout(() => setPhase(maxPhase), offset + 3400));
     return () => t.forEach(clearTimeout);
-  }, [prefersReduced, content.costWords.length]);
+  }, [prefersReduced, content.costWords.length, hasTallyEcho]);
 
   // Tap-to-skip: any tap on the container completes all beats
-  const skip = () => { setPhase(4); setHighlightPhase(content.costWords.length); };
+  const skip = () => { setPhase(maxPhase); setHighlightPhase(content.costWords.length); };
 
   // Render line1 with highlighted cost words
   const renderLine1 = () => {
     if (content.costWords.length === 0) return content.line1;
-    let text = content.line1;
     const parts: (string | { word: string; idx: number })[] = [];
-    let remaining = text;
+    let remaining = content.line1;
     content.costWords.forEach((word, i) => {
       const idx = remaining.indexOf(word);
       if (idx >= 0) {
@@ -922,25 +1118,33 @@ function Gap1Screen({ branch, answers, onContinue }: {
     );
   };
 
-  const beat = (n: number) => phase >= n
-    ? "opacity-100 translate-y-0"
-    : "opacity-0 translate-y-[12px]";
+  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
-      onClick={phase < 4 ? skip : undefined}>
+      onClick={phase < maxPhase ? skip : undefined}>
       <div className="max-w-md w-full">
-        <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
+        {/* Beat 0: Tally echo (if present) */}
+        {hasTallyEcho && (
+          <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
+            <p className="text-[17px] font-bold text-acuity-primary leading-relaxed">{tallyEcho}</p>
+          </div>
+        )}
+        {/* Beat 1: Cost line with highlight sweep */}
+        <div className={`mb-10 transition-all duration-500 ease-out ${beat(2)}`}>
           <p className="text-[17px] font-semibold text-zinc-900 leading-[1.7]">{renderLine1()}</p>
         </div>
-        <div className={`mb-10 transition-all duration-500 ease-out ${beat(2)}`} style={{ opacity: phase >= 2 ? 0.75 : 0 }}>
+        {/* Beat 2: Compounding cost (undertone) */}
+        <div className={`mb-10 transition-all duration-500 ease-out ${beat(3)}`} style={{ opacity: phase >= 3 ? 0.75 : 0 }}>
           <p className="text-[15px] text-zinc-600 leading-relaxed">{content.line2}</p>
         </div>
-        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 3 ? "opacity-100" : "opacity-0"}`}
-          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
+        {/* Beat 3: Projection (settle) */}
+        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 4 ? "opacity-100" : "opacity-0"}`}
+          style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
           <p className="text-[17px] font-bold text-zinc-900 text-center">{content.line3}</p>
         </div>
-        <div className={`text-center transition-all duration-500 ${beat(4)}`}>
+        {/* CTA */}
+        <div className={`text-center transition-all duration-500 ${beat(maxPhase)}`}>
           <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Keep going

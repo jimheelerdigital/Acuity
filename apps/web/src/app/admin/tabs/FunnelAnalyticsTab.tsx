@@ -319,6 +319,29 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         </div>
       )}
 
+      {/* Tally Distribution */}
+      {data.tallyDistribution && Object.keys(data.tallyDistribution).length > 0 && (
+        <div style={S}>
+          <div style={H}>Tally Distribution (ad hooks)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {Object.entries(data.tallyDistribution as Record<string, number>)
+              .sort(([a], [b]) => {
+                if (a === "lost_count") return 1;
+                if (b === "lost_count") return -1;
+                return parseInt(b) - parseInt(a);
+              })
+              .map(([value, count]) => (
+                <div key={value} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+                  <span style={{ color: "rgba(255,255,255,0.35)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
+                  <span style={{ color: value === "lost_count" ? "#f59e0b" : "rgba(255,255,255,0.5)", fontWeight: value === "lost_count" ? 600 : 400 }}>
+                    {value === "lost_count" ? "lost count" : `${value}x per week`}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Drop-off Analysis */}
       {dropOffs.length > 0 && (
         <div style={S}>
