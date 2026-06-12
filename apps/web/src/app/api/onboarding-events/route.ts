@@ -58,8 +58,9 @@ const VALID_EVENTS = new Set([
   "funnel_shared_q8_selected",
   "funnel_shared_q9_viewed",
   "funnel_shared_q9_selected",
-  // Mirror + Mechanism + Commit
+  // Mirror + Gap + Mechanism + Commit
   "funnel_mirror_viewed",
+  "funnel_gap_viewed",
   "funnel_mechanism_viewed",
   "funnel_commit_viewed",
   "funnel_commit_completed",
@@ -86,6 +87,8 @@ const VALID_EVENTS = new Set([
   "funnel_download_screen_viewed",
   "funnel_continue_web_app_clicked",
   "funnel_web_app_clicked", // legacy — kept for historical queries
+  "funnel_ad_match",
+  "funnel_copy_app_link_clicked",
   // ─── Legacy v1 events (kept for historical queries) ───
   "funnel_pain_hook_viewed",
   "funnel_diagnostic_loop_viewed",
