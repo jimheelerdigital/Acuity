@@ -10,7 +10,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
-  const [flowVersion, setFlowVersion] = useState<"v3" | "v2" | "v1" | "all">("v3");
+  const [flowVersion, setFlowVersion] = useState<"v4" | "v3" | "v2" | "v1" | "all">("v4");
 
   useEffect(() => {
     setLoading(true);
@@ -91,7 +91,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 4 }}>
-          {(["v3", "v2", "v1", "all"] as const).map((v) => (
+          {(["v4", "v3", "v2", "v1", "all"] as const).map((v) => (
             <button key={v} onClick={() => setFlowVersion(v)}
               style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
                 background: flowVersion === v ? "#7C5CFC" : "rgba(255,255,255,0.06)",
@@ -286,6 +286,36 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Ready for Change (Gap 3 yes/no) */}
+      {(data.readyForChange?.total > 0) && (
+        <div style={S}>
+          <div style={H}>Ready for Change (Gap 3)</div>
+          <div style={{ display: "flex", gap: 16, alignItems: "baseline" }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: "#22c55e" }}>{data.readyForChange.yesPct}% yes</span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+              {data.readyForChange.yes} yes / {data.readyForChange.no} no ({data.readyForChange.total} total)
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Gap 2 Feelings Distribution */}
+      {data.feelingsDistribution && Object.keys(data.feelingsDistribution).length > 0 && (
+        <div style={S}>
+          <div style={H}>Gap 2 Feelings (future ad angles)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {Object.entries(data.feelingsDistribution as Record<string, number>)
+              .sort(([, a], [, b]) => (b as number) - (a as number))
+              .map(([feeling, count]) => (
+                <div key={feeling} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+                  <span style={{ color: "rgba(255,255,255,0.35)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>{feeling}</span>
+                </div>
+              ))}
+          </div>
         </div>
       )}
 

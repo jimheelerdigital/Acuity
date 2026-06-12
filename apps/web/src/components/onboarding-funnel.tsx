@@ -19,7 +19,11 @@ import {
   BRANCH_QUESTIONS,
   SHARED_QUESTIONS,
   buildMirrorLines,
-  buildGapContent,
+  buildGap1Content,
+  GAP2_FEELINGS,
+  getGap2Header,
+  buildGap3Lines,
+  GAP3_DISMISS_COPY,
   PROCESSING_STAGES,
   getSnapshotInsight,
   SNAPSHOT_PREVIEWS,
@@ -33,6 +37,7 @@ import {
   getSavingsCostRecap,
   SAVINGS_TIMELINE,
   PAYWALL_TESTIMONIALS_V2,
+  getPaywallLossRecap,
 } from "@/lib/funnel-config";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -42,7 +47,7 @@ type Step =
   | "branch-q2" | "branch-q3" | "branch-q4"
   | "shared-q5" | "shared-q6" | "shared-q7" | "shared-q8" | "shared-q9"
   | "mirror"
-  | "gap"
+  | "gap1" | "gap2" | "gap3"
   | "mechanism"
   | "commit"
   | "processing"
@@ -55,7 +60,7 @@ type Step =
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
-  "mirror", "gap", "mechanism", "commit", "processing", "snapshot", "timeline",
+  "mirror", "gap1", "gap2", "gap3", "mechanism", "commit", "processing", "snapshot", "timeline",
   "create-account", "savings", "download",
 ];
 
@@ -147,7 +152,7 @@ function useFunnelTracker() {
   const utmRef = useRef<UtmParams>({});
   useEffect(() => { utmRef.current = captureUtmParams(); }, []);
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v3", ...props });
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v4", ...props });
   }, []);
 }
 
@@ -366,7 +371,9 @@ export function OnboardingFunnel() {
       "shared-q8": "funnel_shared_q8_viewed",
       "shared-q9": "funnel_shared_q9_viewed",
       mirror: "funnel_mirror_viewed",
-      gap: "funnel_gap_viewed",
+      gap1: "funnel_gap1_viewed",
+      gap2: "funnel_gap2_viewed",
+      gap3: "funnel_gap3_viewed",
       mechanism: "funnel_mechanism_viewed",
       commit: "funnel_commit_viewed",
       processing: "funnel_processing_viewed",
@@ -440,7 +447,7 @@ export function OnboardingFunnel() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-acuity-hero-grad">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes funnel-glow {
           0%, 100% { box-shadow: 0 4px 16px var(--acuity-glow-soft); }
@@ -558,13 +565,29 @@ export function OnboardingFunnel() {
           key="mirror"
           branch={branch}
           answers={answers}
-          onContinue={() => setStep("gap")}
+          onContinue={() => setStep("gap1")}
         />
       )}
 
-      {/* ── Gap (Screen 10.5 — amplify + imagine) ── */}
-      {step === "gap" && branch && (
-        <GapScreen key="gap" branch={branch} answers={answers} onContinue={() => setStep("mechanism")} />
+      {/* ── Gap 1: What it's costing you (Screen 10a) ── */}
+      {step === "gap1" && branch && (
+        <Gap1Screen key="gap1" branch={branch} answers={answers} onContinue={() => setStep("gap2")} />
+      )}
+
+      {/* ── Gap 2: How would it feel? (Screen 10b) ── */}
+      {step === "gap2" && branch && (
+        <Gap2Screen key="gap2" branch={branch} answers={answers} track={track}
+          onContinue={(feelings) => {
+            setAnswers((a) => ({ ...a, gap2_feelings: feelings }));
+            track("funnel_gap2_selected", { value: feelings.join(", ") });
+            setStep("gap3");
+          }}
+        />
+      )}
+
+      {/* ── Gap 3: Your future self (Screen 10c) ── */}
+      {step === "gap3" && branch && (
+        <Gap3Screen key="gap3" answers={answers} track={track} onContinue={() => setStep("mechanism")} />
       )}
 
       {/* ── Mechanism / Product Explainer (Screen 11) ── */}
@@ -661,7 +684,7 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full">
         {questionLarge ? (
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10 funnel-screen">{questionLarge}</h1>
@@ -721,7 +744,7 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 funnel-screen">{question}</h2>
         <div className="space-y-3" style={{ minHeight: `${options.length * 64}px` }}>
@@ -785,7 +808,7 @@ function MirrorScreen({ branch, answers, onContinue }: {
   }, [lines.length]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10"
           style={{ animation: "funnel-slide-up 0.6s ease-out both" }}>
@@ -817,12 +840,12 @@ function MirrorScreen({ branch, answers, onContinue }: {
   );
 }
 
-// ─── Gap Screen (Amplify + Imagine — between Mirror and Mechanism) ──────────
+// ─── Gap 1: "What it's costing you" (loss, personalized) ────────────────────
 
-function GapScreen({ branch, answers, onContinue }: {
+function Gap1Screen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  const content = buildGapContent(branch, answers);
+  const content = buildGap1Content(branch, answers);
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -835,29 +858,146 @@ function GapScreen({ branch, answers, onContinue }: {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full">
-        {/* Part 1 — Amplify */}
         <div className={`mb-8 transition-all duration-[600ms] ease-out ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{content.amplify}</p>
+          <p className="text-[17px] font-semibold text-zinc-900 leading-relaxed">{content.line1}</p>
         </div>
-
-        {/* Part 2 — Imagine */}
         <div className={`mb-8 transition-all duration-[600ms] ease-out ${phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <p className="text-[15px] text-zinc-600 leading-relaxed italic">{content.imagine}</p>
+          <p className="text-[15px] text-zinc-600 leading-relaxed">{content.line2}</p>
         </div>
-
-        {/* Part 3 — The promise */}
-        <div className={`mb-10 transition-all duration-[400ms] ease-out ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-          <p className="text-base font-bold text-zinc-900 text-center">{content.promise}</p>
+        <div className={`mb-10 transition-all duration-[600ms] ease-out ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
+          <p className="text-base font-bold text-zinc-900 text-center">{content.line3}</p>
         </div>
-
-        {/* CTA — visible within 2s of mount */}
         <div className={`text-center transition-all duration-500 ${phase >= 4 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <button onClick={onContinue}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Show me how it works
+            Keep going
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Gap 2: "How would it feel?" (interactive multi-select) ─────────────────
+
+function Gap2Screen({ branch, answers, track, onContinue }: {
+  branch: Branch; answers: Record<string, string | string[]>;
+  track: (event: string, props?: Record<string, unknown>) => void;
+  onContinue: (feelings: string[]) => void;
+}) {
+  const header = getGap2Header(branch, answers);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+      <div className="max-w-md w-full funnel-screen">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 leading-snug">{header}</h2>
+        <div className="flex flex-wrap gap-2.5 justify-center mb-10">
+          {GAP2_FEELINGS.map((f, i) => (
+            <button key={f.id} onClick={() => toggle(f.id)}
+              className={`rounded-full px-4 py-2.5 text-[14px] transition-all duration-200 border funnel-card-stagger ${
+                selected.has(f.id)
+                  ? "bg-acuity-primary text-white border-acuity-primary scale-[1.04] shadow-acuity-glow-soft"
+                  : "bg-white/80 text-zinc-700 border-zinc-200 hover:border-acuity-primary/40 hover:bg-acuity-primary/5"
+              }`}
+              style={{ animationDelay: `${i * 80}ms` }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-zinc-400 text-center mb-4 italic">Select all that resonate.</p>
+        <div className="text-center">
+          <button onClick={() => onContinue([...selected])} disabled={selected.size === 0}
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed animate-[funnel-glow_2s_ease-in-out_infinite]">
+            That&rsquo;s what I want
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Gap 3: "Your future self" (dynamic animated payoff) ────────────────────
+
+function Gap3Screen({ answers, track, onContinue }: {
+  answers: Record<string, string | string[]>;
+  track: (event: string, props?: Record<string, unknown>) => void;
+  onContinue: () => void;
+}) {
+  const feelings = Array.isArray(answers.gap2_feelings) ? answers.gap2_feelings : [];
+  const lines = buildGap3Lines(feelings);
+  const [phase, setPhase] = useState(0);
+  const [showDismiss, setShowDismiss] = useState(false);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      timers.push(setTimeout(() => setPhase(i + 1), 600 + i * 1200));
+    }
+    // Show the ask after all lines
+    timers.push(setTimeout(() => setPhase(lines.length + 1), 600 + lines.length * 1200 + 600));
+    return () => timers.forEach(clearTimeout);
+  }, [lines.length]);
+
+  const handleYes = () => {
+    track("funnel_gap3_answered", { value: "yes" });
+    onContinue();
+  };
+  const handleNo = () => {
+    track("funnel_gap3_answered", { value: "no" });
+    setShowDismiss(true);
+  };
+
+  if (showDismiss) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+        <div className="max-w-md w-full text-center funnel-screen">
+          <p className="text-[15px] text-zinc-600 leading-relaxed mb-8">{GAP3_DISMISS_COPY}</p>
+          <button onClick={onContinue}
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            Okay, show me how it works
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+      <div className="max-w-md w-full">
+        <p className={`text-xs uppercase tracking-[0.15em] text-zinc-400 text-center mb-6 transition-all duration-500 ${phase >= 1 ? "opacity-100" : "opacity-0"}`}>
+          Three weeks from now
+        </p>
+        {lines.map((line, i) => (
+          <div key={i} className={`mb-6 transition-all duration-[800ms] ease-out ${phase >= i + 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <p className="text-[15px] text-zinc-700 leading-relaxed italic">{line}</p>
+          </div>
+        ))}
+
+        {/* The ask */}
+        <div className={`mt-4 text-center transition-all duration-500 ${phase >= lines.length + 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <p className="text-lg font-bold text-zinc-900 mb-6">Are you ready to make a lasting change?</p>
+          <div className="flex flex-col items-center gap-3">
+            <button onClick={handleYes}
+              className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+              Yes &mdash; how does it work?
+            </button>
+            <button onClick={handleNo}
+              className="text-sm text-zinc-400 hover:text-zinc-600 transition py-2">
+              No, maybe next year
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1128,9 +1268,9 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
   useEffect(() => { return () => cancelAnimationFrame(rafRef.current); }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900 select-none">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900 select-none">
       <div className="max-w-md text-center">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit &mdash; not to an app. To 60 seconds a day of finally keeping track of YOU.</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit to 60 seconds a day</h2>
         <div className="relative inline-flex items-center justify-center">
           <svg className="h-40 w-40" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="54" fill="none" stroke="#d4d4d8" strokeWidth="4" />
@@ -1174,7 +1314,7 @@ function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
   const pct = Math.min(100, (elapsed / 10) * 100);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full text-center funnel-screen">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-8">Building your insight profile&hellip;</h2>
         <div className="mx-auto w-64 mb-6">
@@ -1210,7 +1350,7 @@ function SnapshotScreen({ branch, answers, onContinue }: {
   const show = (at: number) => vis >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4";
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-6 py-16 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center px-6 py-16 text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-10 funnel-screen">
           In 60 seconds, you said more than you realize.
@@ -1269,7 +1409,7 @@ function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answe
   }, [weeks.length]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-10 funnel-screen">
           This is what changes.
@@ -1430,12 +1570,26 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full funnel-screen">
         <section className="text-center mb-8">
+          {/* App Store rating badge */}
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/70 py-1.5 pl-2.5 pr-3.5 shadow-sm">
+            <span className="inline-flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <svg key={i} className="h-3 w-3 text-acuity-primary" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+            </span>
+            <span className="text-[12px] font-semibold text-zinc-500">5.0 on the App Store</span>
+          </div>
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">{headline}</h2>
           <p className="text-sm text-zinc-500 mt-3">Free. No credit card required. Takes 10 seconds.</p>
         </section>
+
+        {/* Social proof — auto-rotating testimonials */}
+        <SignupTestimonialStrip />
 
         <div className="space-y-3 mb-6">
           <button
@@ -1518,7 +1672,28 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
           Already have an account?{" "}
           <button onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-acuity-primary font-semibold underline">Sign in</button>
         </p>
+        <p className="text-[11px] text-zinc-400 text-center mt-3 flex items-center justify-center gap-1.5">
+          <svg className="h-3 w-3 text-zinc-300" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+          Private by design. Your debriefs are yours alone.
+        </p>
       </div>
+    </div>
+  );
+}
+
+// ── Signup Testimonial Strip (auto-rotating, doesn't push form below fold) ──
+
+function SignupTestimonialStrip() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => (i + 1) % PAYWALL_TESTIMONIALS_V2.length), 4000);
+    return () => clearInterval(t);
+  }, []);
+  const t = PAYWALL_TESTIMONIALS_V2[idx];
+  return (
+    <div className="mb-5 rounded-xl bg-white/60 border border-zinc-100 px-4 py-3 text-center transition-all duration-300 funnel-card-stagger">
+      <p className="text-[13px] text-zinc-600 italic leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+      <p className="text-[11px] text-zinc-400 font-semibold mt-1.5">&mdash; {t.name}</p>
     </div>
   );
 }
@@ -1536,7 +1711,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   const costRecap = branch ? getSavingsCostRecap(branch) : null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 pb-32">
+    <div className="min-h-screen text-zinc-900 pb-32">
       <div className="max-w-lg mx-auto px-6 pt-10">
 
         {/* Section 1 — Confirmation header */}
@@ -1549,12 +1724,10 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <p className="text-sm text-zinc-500 mt-2">As a founding member, you get Acuity at a price we&rsquo;ll never offer again.</p>
         </section>
 
-        {/* Section 2 — Cost of inaction recap */}
-        {costRecap && (
-          <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "80ms" }}>
-            <p className="text-sm text-zinc-600 text-center italic leading-relaxed">{costRecap}</p>
-          </section>
-        )}
+        {/* Section 2 — Loss-aversion recap (v4) */}
+        <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "80ms" }}>
+          <p className="text-sm text-zinc-700 text-center leading-relaxed font-medium">{getPaywallLossRecap(branch)}</p>
+        </section>
 
         {/* Section 3 — Your first 30 days timeline */}
         <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "140ms" }}>
@@ -1605,16 +1778,14 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             </button>
           </div>
 
-          {/* Scarcity counter */}
-          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5">
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-xs text-emerald-800 font-semibold">Founding member pricing</p>
-              <p className="text-xs text-emerald-700 font-bold">47 of 100 spots left</p>
-            </div>
-            <div className="w-full h-1.5 bg-emerald-200 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: "53%" }} />
-            </div>
+          {/* Founding rate urgency (honest — no fake countdown or spots) */}
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-center">
+            <p className="text-xs text-emerald-800 font-semibold">Founding rate &mdash; locked in for life if you start today.</p>
+            <p className="text-[10px] text-emerald-600 mt-0.5">This price rises as we grow.</p>
           </div>
+
+          {/* Micro-testimonial */}
+          <p className="text-[12px] text-zinc-500 text-center italic mt-3">&ldquo;{PAYWALL_TESTIMONIALS_V2[0].quote.slice(0, 80)}&hellip;&rdquo; &mdash; {PAYWALL_TESTIMONIALS_V2[0].name}</p>
         </section>
       </div>
 
@@ -1676,7 +1847,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   const planPrice = selectedPlan === "yearly" ? formatDollars(ANNUAL_PRICE_CENTS) + "/yr" : formatDollars(MONTHLY_PRICE_CENTS) + "/mo";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-white text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-sm w-full text-center funnel-screen">
         {paymentConfirmed ? (
           <>

@@ -558,13 +558,7 @@ export const SNAPSHOT_BOTTOM: Record<Branch, string> = {
   drift: "You don\u2019t need motivation. You need a mirror. Acuity shows you who you\u2019re actually becoming, one day at a time.",
 };
 
-// ─── Gap Screen Content (between Mirror and Mechanism) ─────────────────────
-
-export interface GapContent {
-  amplify: string;
-  imagine: string;
-  promise: string;
-}
+// ─── Gap Screen Content (between Mirror and Mechanism) — v4 three-screen sequence ─
 
 function formatCostShort(costs: string[]): string {
   if (costs.length === 0) return "more than you realize";
@@ -582,51 +576,106 @@ function formatCostShort(costs: string[]): string {
   return `${mapped.slice(0, -1).join(", ")}, and ${mapped[mapped.length - 1]}`;
 }
 
+// kept for any legacy callers
+export interface GapContent { amplify: string; imagine: string; promise: string; }
 export function buildGapContent(branch: Branch, answers: Record<string, string | string[]>): GapContent {
+  const g1 = buildGap1Content(branch, answers);
+  return { amplify: g1.line1, imagine: g1.line2, promise: g1.line3 };
+}
+
+// ── Gap 1: "What it\u2019s costing you" (loss, personalized) ──
+
+export interface Gap1Content { line1: string; line2: string; line3: string; }
+
+export function buildGap1Content(branch: Branch, answers: Record<string, string | string[]>): Gap1Content {
   const costRaw = answers.shared_q6;
   const costs = Array.isArray(costRaw) ? costRaw : costRaw ? [costRaw] : [];
   const costStr = formatCostShort(costs);
 
-  const PROMISE = "You\u2019re not 30 days of discipline away from that. You\u2019re one debrief away from starting.";
+  const LINE2: Record<Branch, string> = {
+    blur: "And the longer the fog runs, the more it takes \u2014 your patience, your evenings, your sense of who you are.",
+    patterns: "And the longer the cycle runs, the more it takes \u2014 your patience, your evenings, your sense of who you are.",
+    rumination: "And the longer the loop runs, the more it takes \u2014 your patience, your evenings, your sense of who you are.",
+    graveyard: "And every tool you abandon takes a little more with it \u2014 your patience, your confidence, your belief that anything will work.",
+    mask: "And every day the mask stays on, the gap widens \u2014 between who you perform and who you actually are.",
+    drift: "And every week you drift, the distance grows \u2014 between who you are and who you meant to become.",
+  };
 
-  switch (branch) {
-    case "blur":
-      return {
-        amplify: `Right now, the fog is costing you ${costStr}. Left alone, fog doesn\u2019t lift. It thickens.`,
-        imagine: "Now imagine the other version: You talk for 60 seconds. The blur sharpens into detail. And for the first time, you can actually name what happened today \u2014 which means you can start choosing what happens tomorrow.",
-        promise: PROMISE,
-      };
-    case "patterns":
-      return {
-        amplify: `Right now, the cycle is costing you ${costStr}. Left alone, cycles don\u2019t break. They dig deeper.`,
-        imagine: "Now imagine the other version: You talk for 60 seconds. The pattern leaves your chest and lands somewhere visible. And for the first time, you can see the trigger \u2014 which means you can finally get ahead of it.",
-        promise: PROMISE,
-      };
-    case "rumination":
-      return {
-        amplify: `Right now, the loop is costing you ${costStr}. Left alone, loops don\u2019t loosen. They tighten.`,
-        imagine: "Now imagine the other version: You talk for 60 seconds. The noise leaves your head and lands somewhere safe. And for the first time, you can actually see the pattern \u2014 which means you can finally break it.",
-        promise: PROMISE,
-      };
-    case "graveyard":
-      return {
-        amplify: `Right now, the quitting is costing you ${costStr}. Left alone, the next thing you try ends the same way.`,
-        imagine: "Now imagine the other version: You talk for 60 seconds. No blank page. No discipline required. And for the first time, something sticks \u2014 because it was built for how your brain actually works.",
-        promise: PROMISE,
-      };
-    case "mask":
-      return {
-        amplify: `Right now, the mask is costing you ${costStr}. Left alone, the gap between who you perform and who you are just keeps widening.`,
-        imagine: "Now imagine the other version: You talk for 60 seconds. You say what\u2019s actually true. And for the first time, something sees you clearly \u2014 without you having to hold it together.",
-        promise: PROMISE,
-      };
-    case "drift":
-      return {
-        amplify: `Right now, the drift is costing you ${costStr}. Left alone, drift doesn\u2019t reverse. It accelerates.`,
-        imagine: "Now imagine the other version: You talk for 60 seconds. The day gets a name. And for the first time, you\u2019re paying attention \u2014 which means the next year doesn\u2019t disappear like the last one.",
-        promise: PROMISE,
-      };
-  }
+  const LINE3: Record<Branch, string> = {
+    blur: "Left alone, fog doesn\u2019t lift. It thickens.",
+    patterns: "Left alone, cycles don\u2019t break. They dig deeper.",
+    rumination: "Left alone, loops don\u2019t loosen. They tighten.",
+    graveyard: "Left alone, the next thing you try ends the same way.",
+    mask: "Left alone, the mask doesn\u2019t crack. It calcifies.",
+    drift: "Left alone, drift doesn\u2019t reverse. It accelerates.",
+  };
+
+  return {
+    line1: `Right now, this is costing you ${costStr}.`,
+    line2: LINE2[branch],
+    line3: LINE3[branch],
+  };
+}
+
+// ── Gap 2: "How would it feel?" (interactive multi-select) ──
+
+export const GAP2_FEELINGS = [
+  { id: "lighter", label: "Lighter \u2014 like I put something heavy down" },
+  { id: "clear", label: "Clear \u2014 I\u2019d finally hear myself think" },
+  { id: "proud", label: "Proud \u2014 I kept a promise to myself" },
+  { id: "present", label: "Present \u2014 actually THERE with the people I love" },
+  { id: "control", label: "In control \u2014 my life isn\u2019t running me" },
+  { id: "rested", label: "Rested \u2014 not carrying it all at midnight" },
+];
+
+export function getGap2Header(branch: Branch, answers: Record<string, string | string[]>): string {
+  const costRaw = answers.shared_q6;
+  const costs = Array.isArray(costRaw) ? costRaw : costRaw ? [costRaw] : [];
+  const costStr = costs.length > 0 ? formatCostShort(costs.slice(0, 1)) : "what it\u2019s taking from you";
+
+  const PAIN: Record<Branch, string> = {
+    blur: "the fog",
+    patterns: "the cycle",
+    rumination: "the mental noise",
+    graveyard: "the pattern of quitting",
+    mask: "the mask",
+    drift: "the drift",
+  };
+
+  return `If ${PAIN[branch]} and ${costStr} were completely solved \u2014 how would you feel?`;
+}
+
+// ── Gap 3: "Your future self" (dynamic animated payoff) ──
+
+const GAP3_FEELING_LINES: Record<string, string> = {
+  lighter: "You talk for 60 seconds, and the weight actually leaves. Not because the problems disappeared \u2014 but because you finally put them somewhere.",
+  clear: "The mental noise settles. For the first time in months, you can hear yourself think \u2014 because the backlog has somewhere to go.",
+  proud: "You kept a promise to yourself. Seven days in a row. Not because of discipline \u2014 because 60 seconds was always doable.",
+  present: "You\u2019re at dinner, and you\u2019re THERE. The mental tabs are closed because you already processed them \u2014 earlier, in your own voice.",
+  control: "Your days have shape. You know what happened, why it mattered, and what to do next \u2014 because something is finally keeping track.",
+  rested: "The midnight replay is quieter. Not because the thoughts stopped \u2014 but because they already have somewhere to go.",
+};
+
+export function buildGap3Lines(selectedFeelings: string[]): string[] {
+  // Cap at 3 to keep it tight
+  return selectedFeelings.slice(0, 3).map((f) => GAP3_FEELING_LINES[f] ?? "").filter(Boolean);
+}
+
+export const GAP3_DISMISS_COPY = "That\u2019s okay. The patterns will wait \u2014 they always do. But if 60 seconds feels doable, the door\u2019s open.";
+
+// ── Paywall loss-aversion recap (v4) ──
+
+export function getPaywallLossRecap(branch: Branch | null): string {
+  if (!branch) return "You\u2019ve already mapped your pattern. Walking away now means the loop keeps running \u2014 and it\u2019s been running long enough.";
+  const RECAPS: Record<Branch, string> = {
+    blur: "You\u2019ve already seen the fog for what it is. Walking away now means the days keep blurring \u2014 and they\u2019ve been blurring long enough.",
+    patterns: "You\u2019ve already seen the cycle for what it is. Walking away now means it keeps running \u2014 and it\u2019s been running long enough.",
+    rumination: "You\u2019ve already seen the loop for what it is. Walking away now means it keeps tightening \u2014 and it\u2019s been tightening long enough.",
+    graveyard: "You\u2019ve already gotten further than last time. Walking away now means the next thing you try ends the same way.",
+    mask: "You\u2019ve already let something real slip through. Walking away now means the mask goes back on \u2014 and it\u2019s been on long enough.",
+    drift: "You\u2019ve already started paying attention. Walking away now means the drift wins another year.",
+  };
+  return RECAPS[branch];
 }
 
 // ─── Timeline Templates (Screen 14) ─────────────────────────────────────────
