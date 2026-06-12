@@ -43,6 +43,7 @@ import { downloadReminderEmailFn } from "@/inngest/functions/download-reminder-e
 import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly";
 import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twice-daily";
 import { commitExtractionBackstopFn } from "@/inngest/functions/commit-extraction-backstop";
+import { stripeWebhookHealthFn } from "@/inngest/functions/stripe-webhook-health";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -60,6 +61,7 @@ const handler = serve({
     refreshLifeMapFn,
     day14AuditCronFn,
     commitExtractionBackstopFn,
+    stripeWebhookHealthFn,
     generateLifeAuditFn,
     generateContentFn,
     snapshotLifemapHistoryFn,
