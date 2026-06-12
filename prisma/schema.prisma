@@ -68,6 +68,13 @@ model User {
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?
   stripeCurrentPeriodEnd DateTime?
+  // First failed Stripe charge in the current dunning episode — set by the
+  // webhook on the first invoice.payment_failed, cleared on recovery/cancel.
+  // Anchors the PAST_DUE grace window in entitlements.ts (NOT
+  // current_period_end: for annual subs whose first post-trial charge fails,
+  // that period end is ~a year out). See
+  // docs/incidents/2026-06-12-stripe-webhook-down.md.
+  stripeFirstFailureAt   DateTime?
   subscriptionStatus     String    @default("TRIAL")
   trialEndsAt            DateTime?
   // Stamped by the trialExpiration Inngest cron when it transitions

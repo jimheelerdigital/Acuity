@@ -11,9 +11,24 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// PAST_DUE grace window — keep full access this long after the first failed
+// charge while Stripe Smart Retries run (~2-3 weeks). Beyond it, with no
+// recovery, the gate drops to FREE (also the missed-webhook safety net;
+// cf. docs/incidents/2026-06-12-stripe-webhook-down.md).
+const PAST_DUE_GRACE_MS = 21 * DAY_MS;
+
 export interface UserEntitlementInput {
   subscriptionStatus: string;
   trialEndsAt: Date | null;
+  /**
+   * First failed Stripe charge in the current dunning episode, or null.
+   * Anchors the PAST_DUE grace window (see the PAST_DUE branch). Optional:
+   * a missing value is treated as "just failed / in grace" (fail-open — we'd
+   * rather not lock out a paying customer mid-retry over a missing field).
+   * Enforcement callers (process-entry, paywall, entitlements-fetch) DO pass
+   * it so the grace window is enforced where access actually gates.
+   */
+  stripeFirstFailureAt?: Date | null;
 }
 
 export interface Entitlement {
@@ -153,11 +168,22 @@ export function entitlementsFor(
     return entitlementSet({ isActive: true });
   }
 
-  // ── PAST_DUE: card declined and Stripe is retrying. Don't punish
-  //    the user — they keep full access during the retry window.
-  //    The UI surfaces an "Update payment method" banner separately.
+  // ── PAST_DUE: card declined, Stripe Smart Retries running. Keep full
+  //    access during the grace window, anchored to the FIRST failure — NOT
+  //    current_period_end (for annual subs whose first post-trial charge
+  //    fails, that's ~a year out). A recovery flips status back to PRO via
+  //    webhook; a cancel/unpaid flips to FREE. Beyond the grace window with
+  //    neither, fall through to FREE — also the safety net if a cancel/unpaid
+  //    webhook is missed (cf. 2026-06-12 outage). A null timestamp (shouldn't
+  //    happen post-webhook-change) is treated as "just failed" → in grace.
   if (status === "PAST_DUE") {
-    return entitlementSet({ isPastDue: true });
+    const firstFailureMs = user.stripeFirstFailureAt?.getTime() ?? nowMs;
+    if (nowMs - firstFailureMs <= PAST_DUE_GRACE_MS) {
+      return entitlementSet({ isPastDue: true });
+    }
+    // Grace expired — drop to full FREE tier (keep recording + history;
+    // lose extraction, calendar, reports).
+    return entitlementSet({ isPostTrialFree: true });
   }
 
   // ── Active TRIAL: full access + countdown.

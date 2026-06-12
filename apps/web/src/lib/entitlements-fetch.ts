@@ -21,7 +21,11 @@ export async function getUserEntitlement(
   const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { subscriptionStatus: true, trialEndsAt: true },
+    select: {
+      subscriptionStatus: true,
+      trialEndsAt: true,
+      stripeFirstFailureAt: true,
+    },
   });
   if (!user) return null;
   return entitlementsFor(user);
