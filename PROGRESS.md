@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-06-13] — Tally tap affordance + Gap 1 N=0 copy, highlight sweep, and layout fix
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e92fac43
+
+### In plain English (for Keenan)
+Two fixes to the funnel tally and Gap 1 screens. (1) The counter that asks "how many times did it happen" now looks obviously tappable — it's wrapped in a large circular button with an instruction line ("Tap once for each time it happened") and a gentle pulsing invitation before the first tap. The "I've lost count" link is spaced further from the counter so it can't be accidentally tapped. (2) If someone taps zero times and continues, Gap 1 no longer shows the false "52 times a year" math — it skips straight to the cost beat. The orange highlight on cost words now sweeps across like someone drawing with a highlighter instead of appearing as a flat block. The Gap 1 screen is better centered vertically with more breathing room between lines, and the final settle animation ("Left alone, loops don't loosen. They tighten.") now plays correctly.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - TallyScreen: counter wrapped in 140×140px (160 on sm) `rounded-full border-2 bg-zinc-50/80` button. Added instruction `<p>` below header. New `funnel-invite-pulse` keyframe (scale 1→1.05→1, 1.5s ease-in-out, 3 iterations, stops after first tap). Lost-count link gets `py-2 mb-10` for tap separation.
+  - Gap1Screen: container gets `flex flex-col justify-center` with `min-height: 60vh` for vertical centering. Beat spacing increased from `mb-10` to `mb-12`/`mb-14`. Settle beat's `transition-all duration-[600ms]` class removed (was competing with the `funnel-settle` animation) — now uses only the keyframe animation when `phase >= 4`.
+  - `.gap-highlight` CSS: changed from opaque `var(--acuity-primary-lo)` at 40% height to translucent `oklch(0.88 0.10 38 / 0.55)` at 30% height with `padding-bottom: 1px` — reads as an underline sweep, not a redaction bar.
+  - N=0 case: `getTallyEcho` already returns `""` for n<1, `hasTallyEcho` is false, echo beat skipped, phase offsets start at cost beat. No logic change needed.
+- Zero changes to: funnel-config.ts, auth, signup, paywall, Gap 2/3, Mirror, Time Math, events, flowVersion.
+
+### Manual steps needed
+- [ ] Keenan: After deploy, walk the funnel with 0 taps, 1 tap, 5 taps, and lost-count. Verify Gap 1 opens correctly for each. Run: `SELECT event, COUNT(*) FROM "OnboardingEvent" WHERE event IN ('funnel_tally_viewed','funnel_tally_set') AND "flowVersion"='v4' GROUP BY event;` — both should show ≥1 row.
+
+### Notes
+- Event proof SQL could not be run from this machine — Supabase port 5432 is blocked (same issue noted in previous sessions). Keenan must run from home network.
+- Dev server confirmed /start returns 200 after changes. Build errors (missing `sonner`/`driver.js` deps) are pre-existing and unrelated — installed locally to test but did not commit package changes.
+- "last week" search confirmed zero instances in tally or Gap 1 — "this week" is consistent throughout (per the normalization commit 2fa8ce02).
+- The `getTallyEcho` function already handled N=0 correctly (returns empty string for n<1), so no config change was needed — only the Gap1Screen needed the layout/animation fixes.
+
+---
+
 ## [2026-06-12] — Tap counter, time-math screen, and Mirror 60% cut
 
 **Requested by:** Keenan
