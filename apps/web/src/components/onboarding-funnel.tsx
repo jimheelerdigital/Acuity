@@ -21,7 +21,7 @@ import {
   buildMirrorLines,
   buildGap1Content,
   getTallyHeader,
-  getTallyEcho,
+  getTallyKicker,
   getTimeMathContent,
   GAP2_FEELINGS,
   getGap2Header,
@@ -1092,9 +1092,9 @@ function Gap1Screen({ branch, answers, onContinue }: {
 }) {
   const content = buildGap1Content(branch, answers);
   const tallyValue = String(answers.tally_count ?? "");
-  const tallyEcho = getTallyEcho(tallyValue);
-  const hasTallyEcho = tallyEcho.length > 0;
-  // Phases: 0=tally echo (if present), 1=line1, 2=line2, 3=line3 settle, 4=CTA, 5=done
+  const kicker = getTallyKicker(tallyValue);
+  const hasKicker = kicker.length > 0;
+  // Phases: 1=kicker (if present), 2=hero, 3=undertone, 4=settle, 5=CTA
   const maxPhase = 5;
   const [phase, setPhase] = useState(0);
   const [highlightPhase, setHighlightPhase] = useState(0);
@@ -1104,31 +1104,31 @@ function Gap1Screen({ branch, answers, onContinue }: {
     if (prefersReduced) { setPhase(maxPhase); setHighlightPhase(content.costWords.length); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
     let offset = 0;
-    // Beat 0 (tally echo): if present, fades in first
-    if (hasTallyEcho) {
-      t.push(setTimeout(() => setPhase(1), 0)); // tally echo
-      offset = 1400;
+    // Beat 1: kicker (if present)
+    if (hasKicker) {
+      t.push(setTimeout(() => setPhase(1), 0));
+      offset = 1200;
     }
-    // Beat 1: line 1 fades in
+    // Beat 2: hero line
     t.push(setTimeout(() => setPhase(2), offset));
-    // Highlight sweep on cost words, 400ms after line 1 lands
+    // Highlight sweep on cost words, 400ms after hero lands
     content.costWords.forEach((_, i) => {
       t.push(setTimeout(() => setHighlightPhase(i + 1), offset + 500 + 400 + i * 250));
     });
-    // Beat 2: line 2 at +1400ms from line 1
-    t.push(setTimeout(() => setPhase(3), offset + 1400));
-    // Beat 3: line 3 (settle) at +2600ms
-    t.push(setTimeout(() => setPhase(4), offset + 2600));
-    // Beat 4: CTA at +3400ms
-    t.push(setTimeout(() => setPhase(maxPhase), offset + 3400));
+    // Beat 3: undertone at +1600ms from hero
+    t.push(setTimeout(() => setPhase(3), offset + 1600));
+    // Beat 4: settle closer at +2800ms
+    t.push(setTimeout(() => setPhase(4), offset + 2800));
+    // Beat 5: CTA at +3600ms
+    t.push(setTimeout(() => setPhase(maxPhase), offset + 3600));
     return () => t.forEach(clearTimeout);
-  }, [prefersReduced, content.costWords.length, hasTallyEcho]);
+  }, [prefersReduced, content.costWords.length, hasKicker]);
 
   // Tap-to-skip: any tap on the container completes all beats
   const skip = () => { setPhase(maxPhase); setHighlightPhase(content.costWords.length); };
 
-  // Render line1 with highlighted cost words
-  const renderLine1 = () => {
+  // Render hero line with highlighted cost words
+  const renderHero = () => {
     if (content.costWords.length === 0) return content.line1;
     const parts: (string | { word: string; idx: number })[] = [];
     let remaining = content.line1;
@@ -1156,22 +1156,24 @@ function Gap1Screen({ branch, answers, onContinue }: {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
       onClick={phase < maxPhase ? skip : undefined}>
-      <div className="max-w-md w-full flex flex-col justify-center" style={{ minHeight: "60vh" }}>
-        {/* Beat 0: Tally echo (if present) */}
-        {hasTallyEcho && (
-          <div className={`mb-12 transition-all duration-500 ease-out ${beat(1)}`}>
-            <p className="text-[17px] font-bold text-acuity-primary leading-relaxed">{tallyEcho}</p>
+      <div className="max-w-md w-full flex flex-col items-center justify-center" style={{ minHeight: "70vh" }}>
+        {/* KICKER: condensed tally count — uppercase, letter-spaced, small */}
+        {hasKicker && (
+          <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
+            <p className="text-[11px] sm:text-xs font-semibold tracking-[0.2em] text-zinc-400 text-center">
+              {kicker}
+            </p>
           </div>
         )}
-        {/* Beat 1: Cost line with highlight sweep */}
+        {/* HERO: the main cost statement — largest text, centered */}
         <div className={`mb-12 transition-all duration-500 ease-out ${beat(2)}`}>
-          <p className="text-[17px] font-semibold text-zinc-900 leading-[1.7]">{renderLine1()}</p>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900 leading-[1.5] text-center">{renderHero()}</p>
         </div>
-        {/* Beat 2: Compounding cost (undertone) */}
-        <div className={`mb-12 transition-all duration-500 ease-out ${beat(3)}`} style={{ opacity: phase >= 3 ? 0.75 : 0 }}>
-          <p className="text-[15px] text-zinc-600 leading-relaxed">{content.line2}</p>
+        {/* UNDERTONE: compounding cost — smaller, reduced opacity */}
+        <div className={`mb-12 transition-all duration-500 ease-out ${beat(3)}`} style={{ opacity: phase >= 3 ? 0.7 : 0 }}>
+          <p className="text-[15px] text-zinc-500 leading-relaxed text-center">{content.line2}</p>
         </div>
-        {/* Beat 3: Projection (settle) */}
+        {/* SETTLE CLOSER: weighted final line */}
         <div className={`mb-14 ${phase >= 4 ? "" : "opacity-0"}`}
           style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
           <p className="text-[17px] font-bold text-zinc-900 text-center">{content.line3}</p>

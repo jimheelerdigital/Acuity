@@ -346,6 +346,18 @@ export function getTallyEcho(tallyValue: string): string {
   return `${display} times this week. At that pace, that\u2019s roughly ${yearly} times a year.`;
 }
 
+// ─── Tally Kicker for Gap 1 (condensed format for uppercase kicker line) ────
+
+export function getTallyKicker(tallyValue: string): string {
+  if (tallyValue === "lost_count") return "TOO MANY TO COUNT";
+  const n = parseInt(tallyValue, 10);
+  if (isNaN(n) || n < 1) return "";
+  if (n === 1) return "ONCE A WEEK · 52 A YEAR";
+  const yearly = Math.round((n * 52) / 10) * 10;
+  const display = n > 20 ? "20+" : String(n);
+  return `${display} TIMES THIS WEEK · ~${yearly} A YEAR`;
+}
+
 // ─── Time-Math Mapping (duration answer → evening count) ────────────────────
 
 export interface TimeMathContent {
