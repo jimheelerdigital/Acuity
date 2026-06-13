@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-06-13] — Fix Time-Math count-up replaying multiple times
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b74e83d
+
+### In plain English (for Keenan)
+The big number animation on the Time-Math screen (e.g. counting up to "365 evenings") was playing multiple times instead of once. Now it counts up exactly once when the screen appears, settles on the final number, and stays there. Tap-to-skip still jumps straight to the final number.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: Added `useRef` flag (`countUpStarted`) in `TimeMathScreen` to guard the count-up animation effect. The effect had `phase` in its dependency array, so it re-fired on every phase transition (2→3→4) and on React 18 StrictMode double-invoke in dev. The ref ensures the animation runs exactly once when `phase` first reaches 2. Skip handler also sets `displayNum` to the final target and marks the ref to prevent a late restart.
+- Zero changes to: copy, events, other screens, auth, or flow logic.
+
+### Manual steps needed
+None.
+
+### Notes
+- Root cause was `[phase, content.count, prefersReduced]` in the useEffect dependency array. `phase` changes 4 times during the choreography sequence, and each change past phase 2 restarted the animation. The `useRef` guard is the correct fix (vs. removing `phase` from deps, which would break the trigger).
+- React 18 StrictMode double-invoke compounds the issue in development — the ref guard handles both production re-renders and StrictMode double-invoke.
+
+---
+
 ## [2026-06-13] — Remove app-download banners from /start funnel
 
 **Requested by:** Keenan
