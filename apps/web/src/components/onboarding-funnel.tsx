@@ -2121,9 +2121,9 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <p className="text-sm text-zinc-700 text-center leading-relaxed font-medium">{getPaywallLossRecap(branch)}</p>
         </section>
 
-        {/* Section 3 — Your first 30 days timeline */}
+        {/* Section 3 — The next few weeks timeline */}
         <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "140ms" }}>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3 text-center">Your first 30 days</p>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3 text-center">The next few weeks</p>
           <div className="space-y-3">
             {SAVINGS_TIMELINE.map((item, i) => (
               <div key={i} className="flex items-start gap-3">
@@ -2138,14 +2138,15 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               </div>
             ))}
           </div>
+          <p className="text-sm font-semibold text-zinc-800 text-center mt-4">Less in your head. More in your hands.</p>
         </section>
 
         {/* Section 4 — Cost comparison */}
         <section className="mb-6 text-center funnel-card-stagger" style={{ animationDelay: "200ms" }}>
           <p className="text-sm text-zinc-600 font-semibold">
             <span className="text-zinc-400">Therapy: $150/session.</span>{" "}
-            <span className="text-zinc-400">A life coach: $200/month.</span>{" "}
-            <span className="text-zinc-900">Acuity: less than a coffee.</span>
+            <span className="text-zinc-400">A coach: $200/month.</span>{" "}
+            <span className="text-zinc-900">Acuity: less than a coffee a week.</span>
           </p>
         </section>
 

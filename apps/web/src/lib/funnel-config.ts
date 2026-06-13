@@ -985,10 +985,10 @@ export function getSavingsCostRecap(branch: Branch): string {
 }
 
 export const SAVINGS_TIMELINE = [
-  { week: "Week 1", text: "Tasks extracted, mood tracked daily" },
-  { week: "Week 2", text: "First patterns surface in your weekly report" },
-  { week: "Week 3", text: "Life Matrix maps 6 domains of your life" },
-  { week: "Week 4", text: "Your first monthly memoir arrives" },
+  { week: "Week 1", text: "The noise has somewhere to go. Your head feels lighter at the end of the day." },
+  { week: "Week 2", text: "You start seeing the why \u2014 the loops that run you on autopilot become visible." },
+  { week: "Week 3", text: "Your life comes into focus. You can see what\u2019s thriving and what\u2019s slipping." },
+  { week: "Week 4", text: "You\u2019re running your weeks, not chasing them. Less scramble, more steadiness." },
 ] as const;
 
 // ─── Paywall Comparison (Section 2 — what didn't work vs Acuity) ────────────
