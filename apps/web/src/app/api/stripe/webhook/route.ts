@@ -340,7 +340,7 @@ export async function POST(req: NextRequest) {
             stripeCustomerId: customerId,
             subscriptionStatus: { not: "FREE" },
           },
-          data: { subscriptionStatus: "PAST_DUE" },
+          data: { subscriptionStatus: "FREE" },
         });
 
         // Anchor the grace window at the FIRST failure only — set
@@ -394,17 +394,15 @@ export async function POST(req: NextRequest) {
       }
 
       const status = sub.status;
-      // Map Stripe's granular statuses onto our 4-value vocab.
-      //   active/trialing            → PRO
-      //   past_due                   → PAST_DUE (Smart Retries running = grace)
-      //   unpaid/canceled/incomplete → FREE (retries exhausted = terminal)
-      // NOTE (2026-06-12): unpaid now maps to FREE (was PAST_DUE). Stripe
-      // moves a sub to `unpaid` only AFTER Smart Retries are exhausted, so
-      // it's terminal-no-access, not grace.
+      // Map Stripe's granular statuses onto our vocab. NO grace (2026-06-12
+      // spec): active/trialing → PRO; any non-active state (past_due, unpaid,
+      // canceled, incomplete_expired) → FREE immediately. The recovery banner
+      // is driven by stripeFirstFailureAt (set by invoice.payment_failed), not
+      // by a PAST_DUE status.
       let nextStatus: string | null = null;
       if (status === "active" || status === "trialing") nextStatus = "PRO";
-      else if (status === "past_due") nextStatus = "PAST_DUE";
       else if (
+        status === "past_due" ||
         status === "unpaid" ||
         status === "canceled" ||
         status === "incomplete_expired"
@@ -430,12 +428,13 @@ export async function POST(req: NextRequest) {
               subscriptionStatus: nextStatus,
               subscriptionSource: "stripe",
               stripeSubscriptionId: sub.id,
-              // Clear the dunning anchor on recovery (PRO) or terminal (FREE);
-              // on PAST_DUE leave it — invoice.payment_failed sets it at the
-              // first failure.
-              ...(nextStatus === "PAST_DUE"
-                ? {}
-                : { stripeFirstFailureAt: null }),
+              // Clear the failure anchor on recovery (PRO). On FREE, leave it
+              // — invoice.payment_failed sets it on a failed renewal and it
+              // drives the recovery banner's 30-day window. (A clean cancel
+              // never set it → no banner.)
+              ...(nextStatus === "PRO"
+                ? { stripeFirstFailureAt: null }
+                : {}),
               ...(sub.current_period_end
                 ? {
                     stripeCurrentPeriodEnd: new Date(

@@ -11,12 +11,6 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// PAST_DUE grace window — keep full access this long after the first failed
-// charge while Stripe Smart Retries run (~2-3 weeks). Beyond it, with no
-// recovery, the gate drops to FREE (also the missed-webhook safety net;
-// cf. docs/incidents/2026-06-12-stripe-webhook-down.md).
-const PAST_DUE_GRACE_MS = 21 * DAY_MS;
-
 export interface UserEntitlementInput {
   subscriptionStatus: string;
   trialEndsAt: Date | null;
@@ -168,21 +162,13 @@ export function entitlementsFor(
     return entitlementSet({ isActive: true });
   }
 
-  // ── PAST_DUE: card declined, Stripe Smart Retries running. Keep full
-  //    access during the grace window, anchored to the FIRST failure — NOT
-  //    current_period_end (for annual subs whose first post-trial charge
-  //    fails, that's ~a year out). A recovery flips status back to PRO via
-  //    webhook; a cancel/unpaid flips to FREE. Beyond the grace window with
-  //    neither, fall through to FREE — also the safety net if a cancel/unpaid
-  //    webhook is missed (cf. 2026-06-12 outage). A null timestamp (shouldn't
-  //    happen post-webhook-change) is treated as "just failed" → in grace.
+  // ── PAST_DUE: NO grace. A failed payment drops to FREE-tier access
+  //    immediately (the webhooks now set status=FREE directly on failure;
+  //    this handles any lingering PAST_DUE row the same way). The
+  //    *FirstFailureAt timestamps are audit-only + drive the recovery
+  //    banner's 30-day window — they no longer gate access. (2026-06-12
+  //    spec: end of trial = end of trial, no free Pro ride.)
   if (status === "PAST_DUE") {
-    const firstFailureMs = user.stripeFirstFailureAt?.getTime() ?? nowMs;
-    if (nowMs - firstFailureMs <= PAST_DUE_GRACE_MS) {
-      return entitlementSet({ isPastDue: true });
-    }
-    // Grace expired — drop to full FREE tier (keep recording + history;
-    // lose extraction, calendar, reports).
     return entitlementSet({ isPostTrialFree: true });
   }
 

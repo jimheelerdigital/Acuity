@@ -75,6 +75,13 @@ model User {
   // that period end is ~a year out). See
   // docs/incidents/2026-06-12-stripe-webhook-down.md.
   stripeFirstFailureAt   DateTime?
+  // Apple / Google failure anchors — mirror stripeFirstFailureAt. Set by the
+  // App Store Server Notifications + Google RTDN webhooks on a failed renewal.
+  // AUDIT-ONLY (no longer gates access — failed payment drops to FREE
+  // immediately, no grace). Also drives the 30-day "payment failed" recovery
+  // banner window (see /api/user/me paymentFailed).
+  appleFirstFailureAt    DateTime?
+  googleFirstFailureAt   DateTime?
   subscriptionStatus     String    @default("TRIAL")
   trialEndsAt            DateTime?
   // Stamped by the trialExpiration Inngest cron when it transitions

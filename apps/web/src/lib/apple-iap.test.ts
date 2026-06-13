@@ -247,25 +247,23 @@ describe("decideNotificationAction", () => {
     });
   });
 
-  describe("DID_FAIL_TO_RENEW", () => {
-    it("PRO Apple user → set-status PAST_DUE", () => {
+  describe("DID_FAIL_TO_RENEW / GRACE_PERIOD_EXPIRED (no grace → FREE)", () => {
+    it("PRO Apple user, DID_FAIL_TO_RENEW → set-status FREE", () => {
       const d = decideNotificationAction("DID_FAIL_TO_RENEW", userNotif());
       expect(d.action).toBe("set-status");
-      if (d.action === "set-status") expect(d.nextStatus).toBe("PAST_DUE");
+      if (d.action === "set-status") expect(d.nextStatus).toBe("FREE");
     });
 
-    it("FREE user (already expired) → ignore (no resurrection)", () => {
+    it("PRO Apple user, GRACE_PERIOD_EXPIRED → set-status FREE", () => {
+      const d = decideNotificationAction("GRACE_PERIOD_EXPIRED", userNotif());
+      expect(d.action).toBe("set-status");
+      if (d.action === "set-status") expect(d.nextStatus).toBe("FREE");
+    });
+
+    it("already-FREE user → ignore (idempotent, no resurrection)", () => {
       const d = decideNotificationAction(
         "DID_FAIL_TO_RENEW",
         userNotif({ subscriptionStatus: "FREE" })
-      );
-      expect(d.action).toBe("ignore");
-    });
-
-    it("PAST_DUE user → ignore (already in dunning)", () => {
-      const d = decideNotificationAction(
-        "DID_FAIL_TO_RENEW",
-        userNotif({ subscriptionStatus: "PAST_DUE" })
       );
       expect(d.action).toBe("ignore");
     });

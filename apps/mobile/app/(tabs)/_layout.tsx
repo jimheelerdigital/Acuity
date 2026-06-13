@@ -8,6 +8,7 @@ import { AttachStep } from "react-native-spotlight-tour";
 
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { TourTarget } from "@/components/tour/TourTarget";
+import { PastDueBanner } from "@/components/past-due-banner";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
@@ -55,20 +56,27 @@ export default function TabsLayout() {
   const isDark = resolved === "dark";
 
   return (
-    <Tabs
-      screenOptions={{ headerShown: false }}
-      tabBar={(props) => (
-        <CustomTabBar {...props} isDark={isDark} tokens={tokens} />
-      )}
-    >
-      <Tabs.Screen name="goals" options={{ title: "Goals" }} />
-      <Tabs.Screen name="tasks" options={{ title: "Tasks" }} />
-      <Tabs.Screen name="record-placeholder" options={{ title: "Home" }} />
-      <Tabs.Screen name="insights" options={{ title: "Insights" }} />
-      <Tabs.Screen name="entries" options={{ title: "Entries" }} />
-      <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      {/* Persistent PAST_DUE banner above all tabs — self-gates (renders
+          only for PAST_DUE users). Parity with the web global banner. */}
+      <PastDueBanner />
+      <View style={{ flex: 1 }}>
+        <Tabs
+          screenOptions={{ headerShown: false }}
+          tabBar={(props) => (
+            <CustomTabBar {...props} isDark={isDark} tokens={tokens} />
+          )}
+        >
+          <Tabs.Screen name="goals" options={{ title: "Goals" }} />
+          <Tabs.Screen name="tasks" options={{ title: "Tasks" }} />
+          <Tabs.Screen name="record-placeholder" options={{ title: "Home" }} />
+          <Tabs.Screen name="insights" options={{ title: "Insights" }} />
+          <Tabs.Screen name="entries" options={{ title: "Entries" }} />
+          <Tabs.Screen name="index" options={{ href: null }} />
+          <Tabs.Screen name="profile" options={{ href: null }} />
+        </Tabs>
+      </View>
+    </View>
   );
 }
 
