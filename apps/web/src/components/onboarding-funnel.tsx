@@ -397,6 +397,11 @@ export function OnboardingFunnel() {
       // user reached the value-reveal screens. Moved from create-account
       // (which inflated Lead count for users who merely saw the form).
       if (step === "timeline") fireFbq("Lead", { content_name: "Funnel Timeline Reached" });
+      // Signal to the cookie consent banner that the user has progressed
+      // far enough for consent to be shown without competing with content.
+      if (step === "create-account") {
+        window.dispatchEvent(new CustomEvent("acuity:funnel-consent-ready"));
+      }
     }
   }, [step, track]);
 
