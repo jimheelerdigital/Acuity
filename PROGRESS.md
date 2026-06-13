@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-06-13] — Gap 1 layout rework: kicker/hero/undertone/settle hierarchy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5b8bbc2d
+
+### In plain English (for Keenan)
+Gap 1 now matches the visual format of Gap 3 and Time-Math. Instead of four text blocks at varying sizes with no hierarchy, the screen reads as a clear progression: a small uppercase kicker at the top with the tally count (e.g. "4 TIMES THIS WEEK · ~210 A YEAR"), then a large centered hero statement about what it's costing her (with the animated highlight sweep on cost words), then a smaller undertone line about the pattern compounding, then a bold settle closer. If she tapped zero on the counter, the kicker is omitted and the screen opens directly on the hero. The overall feel now matches the other screens — clear hierarchy, generous spacing, content centered vertically.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: new `getTallyKicker()` function. Returns condensed uppercase kicker strings: N=1 → "ONCE A WEEK · 52 A YEAR", N≥2 → "{N} TIMES THIS WEEK · ~{yearly} A YEAR", lost_count → "TOO MANY TO COUNT", N=0 → "" (empty, kicker omitted).
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - `Gap1Screen` rewritten with 5-zone layout: kicker (11px, tracking-[0.2em], zinc-400) → hero (text-xl/2xl, font-bold, centered, highlight sweep) → undertone (15px, opacity 0.7, zinc-500) → settle (17px, bold, funnel-settle animation) → CTA.
+  - All text centered. Container uses `min-height: 70vh` with flexbox centering.
+  - Beat spacing: mb-10 (kicker) → mb-12 (hero, undertone) → mb-14 (settle).
+  - Phase timing adjusted: kicker offset 1200ms, hero-to-undertone 1600ms, undertone-to-settle 2800ms, CTA at 3600ms.
+  - Removed `getTallyEcho` import (replaced by `getTallyKicker`). `getTallyEcho` remains exported from funnel-config.ts for any other callers.
+- Zero changes to: count logic, events, copy content, other screens, auth.
+
+### Manual steps needed
+None.
+
+### Notes
+- The kicker format condenses the existing tally echo sentence into a tight uppercase line. This is formatting only — the same numbers are displayed.
+- `getTallyEcho()` is no longer used in the component but is kept in funnel-config.ts as it may be used by the admin metrics tab or future screens.
+
+---
+
 ## [2026-06-13] — Fix Time-Math count-up replaying multiple times
 
 **Requested by:** Keenan
