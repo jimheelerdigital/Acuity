@@ -3,29 +3,38 @@
 import { useEffect, useState } from "react";
 
 /**
- * Global PAST_DUE banner — persistent across every authenticated screen
- * (rendered once in AppShell). Self-gating: fetches /api/user/me and only
- * renders when subscriptionStatus === "PAST_DUE" (a 401 / any other status
- * renders nothing, so it's safe on marketing + auth pages too).
+ * Global "payment failed" recovery banner — persistent across every
+ * authenticated screen (rendered once in AppShell). Self-gating: fetches
+ * /api/user/me and renders only when `paymentFailed` is true (FREE because a
+ * recent charge failed, within the 30-day window; computed server-side per
+ * subscriptionSource). Action-only, no dismiss.
  *
- * Action-only (no dismiss X): "Update payment" opens the Stripe Customer
- * Portal via POST /api/stripe/portal. Parity with the iOS/Android banner.
- * Server gate (entitlements.ts) keeps access during the 21-day grace; this is
- * the user-facing signal to fix the card before it lapses.
+ * No grace (2026-06-12 spec): a failed payment drops the user to FREE
+ * immediately — so the copy says "get Pro back", not "nothing's cut off".
+ * The action routes to the right place per source:
+ *   stripe       → POST /api/stripe/portal (Customer Portal)
+ *   apple        → App Store subscriptions
+ *   google_play  → Play Store subscriptions
  */
 export function PastDueBanner() {
-  const [pastDue, setPastDue] = useState(false);
+  const [show, setShow] = useState(false);
+  const [source, setSource] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/user/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { user?: { subscriptionStatus?: string } } | null) => {
-        if (!cancelled && d?.user?.subscriptionStatus === "PAST_DUE") {
-          setPastDue(true);
+      .then(
+        (
+          d: { user?: { paymentFailed?: boolean; subscriptionSource?: string } } | null
+        ) => {
+          if (!cancelled && d?.user?.paymentFailed) {
+            setShow(true);
+            setSource(d.user.subscriptionSource ?? null);
+          }
         }
-      })
+      )
       .catch(() => {
         /* not signed in / network — show nothing */
       });
@@ -34,9 +43,19 @@ export function PastDueBanner() {
     };
   }, []);
 
-  if (!pastDue) return null;
+  if (!show) return null;
 
   const updatePayment = async () => {
+    if (source === "apple") {
+      window.location.href = "https://apps.apple.com/account/subscriptions";
+      return;
+    }
+    if (source === "google_play") {
+      window.location.href =
+        "https://play.google.com/store/account/subscriptions";
+      return;
+    }
+    // stripe (default): open the Customer Portal.
     setSubmitting(true);
     try {
       const res = await fetch("/api/stripe/portal", { method: "POST" });
@@ -82,8 +101,7 @@ export function PastDueBanner() {
           Your payment didn&rsquo;t go through
         </p>
         <p className="text-xs text-acuity-text-sec">
-          Update your card to keep your insights. Nothing&rsquo;s cut off right
-          away — Stripe retries over the next couple of weeks.
+          Update your payment method to get Acuity Pro back.
         </p>
       </div>
       <button

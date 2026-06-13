@@ -230,6 +230,16 @@ export async function POST(req: NextRequest) {
     // case the row's source flipped between the read and the write.
     data: {
       subscriptionStatus: decision.nextStatus,
+      // Stamp the failure anchor on a failed renewal (drives the recovery
+      // banner's 30-day window); clear it on a successful renewal. Audit-only
+      // — it no longer gates access (no grace).
+      ...(notificationType === "DID_FAIL_TO_RENEW" ||
+      notificationType === "GRACE_PERIOD_EXPIRED"
+        ? { appleFirstFailureAt: new Date() }
+        : {}),
+      ...(notificationType === "DID_RENEW"
+        ? { appleFirstFailureAt: null }
+        : {}),
       // On EXPIRED/REFUND/REVOKE we leave the appleOriginalTransactionId
       // and appleLatestReceiptInfo in place for forensic purposes —
       // a refund-then-resubscribe needs the prior receipt to compute

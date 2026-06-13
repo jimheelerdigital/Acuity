@@ -8,12 +8,21 @@ import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 
+const APPLE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
+const PLAY_SUBSCRIPTIONS_URL =
+  "https://play.google.com/store/account/subscriptions";
+
 /**
- * Persistent PAST_DUE banner for the authenticated tab shell (iOS + Android).
- * Parity with the web global banner (components/past-due-banner.tsx). Renders
- * only when the user's subscriptionStatus === "PAST_DUE". Action-only (no
- * dismiss): "Update payment" opens the Stripe Customer Portal via
- * POST /api/stripe/portal in an in-app browser.
+ * "Payment failed" recovery banner for the authenticated tab shell (iOS +
+ * Android). Parity with the web banner. Renders only when
+ * user.paymentFailed (FREE due to a recent failed charge, server-computed,
+ * 30-day window). Action-only, no dismiss.
+ *
+ * No grace (2026-06-12 spec): the user is already on FREE, so the copy is
+ * "get Pro back". The action routes by subscriptionSource:
+ *   apple        → App Store subscriptions
+ *   google_play  → Play Store subscriptions
+ *   stripe       → Stripe Customer Portal (POST /api/stripe/portal)
  */
 export function PastDueBanner() {
   const { user } = useAuth();
@@ -21,9 +30,18 @@ export function PastDueBanner() {
   const insets = useSafeAreaInsets();
   const [submitting, setSubmitting] = useState(false);
 
-  if (user?.subscriptionStatus !== "PAST_DUE") return null;
+  if (!user?.paymentFailed) return null;
 
   const updatePayment = async () => {
+    if (user.subscriptionSource === "apple") {
+      await WebBrowser.openBrowserAsync(APPLE_SUBSCRIPTIONS_URL);
+      return;
+    }
+    if (user.subscriptionSource === "google_play") {
+      await WebBrowser.openBrowserAsync(PLAY_SUBSCRIPTIONS_URL);
+      return;
+    }
+    // stripe (default): open the Customer Portal.
     setSubmitting(true);
     try {
       const res = await api.post<{ url?: string; redirect?: string }>(
@@ -74,7 +92,7 @@ export function PastDueBanner() {
             marginTop: 2,
           }}
         >
-          Update your card to keep your insights.
+          Update your payment method to get Acuity Pro back.
         </Text>
       </View>
       <Pressable

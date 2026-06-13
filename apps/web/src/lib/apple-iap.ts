@@ -520,6 +520,7 @@ function numberField(v: unknown): number | null {
 export type AppleNotificationType =
   | "DID_RENEW"
   | "DID_FAIL_TO_RENEW"
+  | "GRACE_PERIOD_EXPIRED"
   | "EXPIRED"
   | "DID_CHANGE_RENEWAL_STATUS"
   | "REFUND"
@@ -587,19 +588,21 @@ export function decideNotificationAction(
       };
 
     case "DID_FAIL_TO_RENEW":
-      // Apple's billing-retry window. Mirror to PAST_DUE only if we
-      // were PRO; if already FREE, leave alone (user has been
-      // EXPIRED'd already).
-      if (user.subscriptionStatus === "PRO") {
+    case "GRACE_PERIOD_EXPIRED":
+      // No grace (2026-06-12 spec): a failed renewal drops to FREE
+      // immediately. Apple's billing retry continues server-side; we show
+      // FREE + the recovery banner. Idempotent no-op if already FREE. The
+      // webhook stamps appleFirstFailureAt for the banner's 30d window.
+      if (user.subscriptionStatus === "FREE") {
         return {
-          action: "set-status",
-          nextStatus: "PAST_DUE",
-          reason: "renewal failed; entering Apple billing-retry window",
+          action: "ignore",
+          reason: `${type} on already-FREE user (idempotent)`,
         };
       }
       return {
-        action: "ignore",
-        reason: `DID_FAIL_TO_RENEW on non-PRO user (status=${user.subscriptionStatus})`,
+        action: "set-status",
+        nextStatus: "FREE",
+        reason: `${type} → FREE (no grace)`,
       };
 
     case "EXPIRED":

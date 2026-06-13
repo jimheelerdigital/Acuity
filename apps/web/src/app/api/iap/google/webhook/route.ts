@@ -269,6 +269,14 @@ export async function POST(req: NextRequest) {
       googlePurchaseToken: purchaseToken,
       googleProductId: result.info.productId,
       googleLatestReceiptInfo: result.info.rawPayload as unknown as object,
+      // Failure anchor for the recovery banner's 30-day window: stamp on the
+      // ON_HOLD state (payment failed, Google's grace exhausted) — it persists
+      // into EXPIRED. Cleared on recovery (PRO). A clean cancel never hits
+      // ON_HOLD, so it never shows the "payment failed" banner. Audit-only.
+      ...(result.info.state === "SUBSCRIPTION_STATE_ON_HOLD"
+        ? { googleFirstFailureAt: new Date() }
+        : {}),
+      ...(nextStatus === "PRO" ? { googleFirstFailureAt: null } : {}),
     },
   });
 

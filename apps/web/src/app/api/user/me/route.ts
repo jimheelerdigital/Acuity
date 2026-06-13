@@ -51,6 +51,11 @@ export async function GET(req: NextRequest) {
       // subscriptionStatus flips to PRO. Exposed so the account-page
       // polling can render "Renews [date]" without a second fetch.
       stripeCurrentPeriodEnd: true,
+      // Failure anchors — flattened to the `paymentFailed` boolean below
+      // (not returned raw). Drive the recovery banner's 30-day window.
+      stripeFirstFailureAt: true,
+      appleFirstFailureAt: true,
+      googleFirstFailureAt: true,
       // Raw customer ID is NOT sent — flattened to a boolean below.
       // Callers use this to decide whether to show "Manage subscription"
       // vs "Upgrade" without needing the underlying id.
@@ -172,21 +177,45 @@ export async function GET(req: NextRequest) {
   // callers only need to know whether the user has a Stripe customer
   // row (to decide "Upgrade" vs "Manage subscription" UI). Replaced
   // with a boolean `hasStripeCustomer` before send.
+  // Recovery-banner gate: FREE *because* a payment failed (source anchor set
+  // + within the 30-day nag window), keyed to subscriptionSource. The raw
+  // anchors are audit-only and flattened to this boolean, not returned.
+  const FAILED_BANNER_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  const failureAnchor =
+    user.subscriptionSource === "apple"
+      ? user.appleFirstFailureAt
+      : user.subscriptionSource === "google_play"
+        ? user.googleFirstFailureAt
+        : user.stripeFirstFailureAt;
+  const paymentFailed =
+    user.subscriptionStatus === "FREE" &&
+    failureAnchor != null &&
+    Date.now() - failureAnchor.getTime() <= FAILED_BANNER_WINDOW_MS;
+
   const {
     onboarding,
     createdAt,
     stripeCustomerId,
+    stripeFirstFailureAt: _sf,
+    appleFirstFailureAt: _af,
+    googleFirstFailureAt: _gf,
     appFirstOpenedAt: _appFirst,
     ...rest
   } = user;
   void onboarding;
   void _appFirst; // only used for write-once check above
+  void _sf;
+  void _af;
+  void _gf;
   const flat = {
     ...rest,
     createdAt: createdAt.toISOString(),
     onboardingCompleted: Boolean(effectiveCompletedAt),
     onboardingStep: user.onboarding?.currentStep ?? 1,
     hasStripeCustomer: Boolean(stripeCustomerId),
+    // True when the user is FREE due to a recent failed payment → drives the
+    // source-aware recovery banner (web + mobile).
+    paymentFailed,
   };
 
   return NextResponse.json(

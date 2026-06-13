@@ -73,38 +73,15 @@ describe("entitlementsFor — PRO", () => {
   });
 });
 
-describe("entitlementsFor — PAST_DUE (grace window)", () => {
-  it("within grace (first failure 10 days ago) → full access", () => {
+describe("entitlementsFor — PAST_DUE (no grace → FREE)", () => {
+  // 2026-06-12 spec: a failed payment drops to FREE-tier access IMMEDIATELY.
+  // No grace window; *FirstFailureAt is audit-only and does NOT gate access.
+  it("recent failure → FREE tier (locked)", () => {
     const e = entitlementsFor(
       {
         subscriptionStatus: "PAST_DUE",
         trialEndsAt: null,
-        stripeFirstFailureAt: day(-10),
-      },
-      NOW
-    );
-    expectActive(e);
-    expect(e.isPastDue).toBe(true);
-  });
-
-  it("at the grace boundary (first failure exactly 21 days ago) → still full access", () => {
-    const e = entitlementsFor(
-      {
-        subscriptionStatus: "PAST_DUE",
-        trialEndsAt: null,
-        stripeFirstFailureAt: day(-21),
-      },
-      NOW
-    );
-    expectActive(e);
-  });
-
-  it("beyond grace (first failure 22 days ago, no recovery) → drops to post-trial FREE", () => {
-    const e = entitlementsFor(
-      {
-        subscriptionStatus: "PAST_DUE",
-        trialEndsAt: null,
-        stripeFirstFailureAt: day(-22),
+        stripeFirstFailureAt: day(-1),
       },
       NOW
     );
@@ -113,24 +90,36 @@ describe("entitlementsFor — PAST_DUE (grace window)", () => {
     expect(e.isPastDue).toBe(false);
   });
 
-  it("null anchor (timestamp not yet set) → treated as in-grace (fail-open)", () => {
-    const e = entitlementsFor(
-      {
-        subscriptionStatus: "PAST_DUE",
-        trialEndsAt: null,
-        stripeFirstFailureAt: null,
-      },
-      NOW
+  it("old failure → FREE tier (locked)", () => {
+    expectLocked(
+      entitlementsFor(
+        {
+          subscriptionStatus: "PAST_DUE",
+          trialEndsAt: null,
+          stripeFirstFailureAt: day(-90),
+        },
+        NOW
+      )
     );
-    expectActive(e);
   });
 
-  it("field omitted entirely (lenient UI caller) → in-grace", () => {
-    const e = entitlementsFor(
-      { subscriptionStatus: "PAST_DUE", trialEndsAt: null },
-      NOW
+  it("null / omitted anchor → still FREE tier (anchor doesn't gate)", () => {
+    expectLocked(
+      entitlementsFor(
+        {
+          subscriptionStatus: "PAST_DUE",
+          trialEndsAt: null,
+          stripeFirstFailureAt: null,
+        },
+        NOW
+      )
     );
-    expectActive(e);
+    expectLocked(
+      entitlementsFor(
+        { subscriptionStatus: "PAST_DUE", trialEndsAt: null },
+        NOW
+      )
+    );
   });
 });
 
@@ -263,28 +252,8 @@ describe("entitlementsFor — FREE", () => {
   });
 });
 
-describe("entitlementsFor — PAST_DUE", () => {
-  it("grants full access (Stripe grace window)", () => {
-    const e = entitlementsFor(
-      { subscriptionStatus: "PAST_DUE", trialEndsAt: null },
-      NOW
-    );
-    expectActive(e);
-    expect(e.isPastDue).toBe(true);
-    expect(e.isActive).toBe(false); // distinct flag from isActive
-    expect(e.isTrialing).toBe(false);
-    expect(e.isPostTrialFree).toBe(false);
-  });
-
-  it("ignores trialEndsAt", () => {
-    const e = entitlementsFor(
-      { subscriptionStatus: "PAST_DUE", trialEndsAt: day(-3) },
-      NOW
-    );
-    expectActive(e);
-    expect(e.isPastDue).toBe(true);
-  });
-});
+// (The old "PAST_DUE grants full access" tests were removed — PAST_DUE now
+// drops to FREE immediately. See the "PAST_DUE (no grace → FREE)" block above.)
 
 describe("entitlementsFor — CANCELED + unknown statuses", () => {
   it("CANCELED → treated as FREE (post-trial free)", () => {
