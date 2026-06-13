@@ -950,9 +950,14 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
     return () => t.forEach(clearTimeout);
   }, [content.show, prefersReduced, onSkip]);
 
-  // Odometer count-up animation
+  // Odometer count-up animation — runs exactly once when phase first reaches 2.
+  // useRef guard prevents re-fire on subsequent phase changes (3, 4) and
+  // React 18 StrictMode double-invoke in development.
+  const countUpStarted = useRef(false);
   useEffect(() => {
     if (phase < 2 || content.count === null || prefersReduced) return;
+    if (countUpStarted.current) return;
+    countUpStarted.current = true;
     const target = content.count;
     const duration = 1200;
     const start = Date.now();
@@ -966,8 +971,12 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
     requestAnimationFrame(tick);
   }, [phase, content.count, prefersReduced]);
 
-  // Skip handler
-  const skip = () => setPhase(4);
+  // Skip handler — jump to final state including the final number
+  const skip = () => {
+    setPhase(4);
+    if (content.count !== null) setDisplayNum(content.count);
+    countUpStarted.current = true;
+  };
 
   if (!content.show) return null;
 
