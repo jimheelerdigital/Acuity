@@ -574,16 +574,23 @@ export function useGoogleSignIn() {
   // internal exchange) and perform the exchange explicitly below with
   // AuthSession.exchangeCodeAsync. That gives us visibility into any
   // Google token-endpoint errors.
+  // Placeholder so expo-auth-session's invariantClientId can't THROW at render
+  // when the platform's real client ID is missing (Android before the OAuth
+  // client exists — 2026-06-13 launch-crash fix). The Google button is gated
+  // on `hasClientId`, so signIn() is never invoked with this placeholder and
+  // the request stays inert. On iOS, iosClientId is always set, so every `??`
+  // below falls through to the real value — the live iOS flow is unchanged.
+  const PLACEHOLDER_CLIENT_ID = "unconfigured.apps.googleusercontent.com";
   const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId,
-    // Android baseline (v1.3.3): route to the Android OAuth client. This
-    // config resolves IDENTICALLY on iOS (androidClientId is ignored there;
-    // clientId + redirectUri are unchanged), so the live iOS flow is
-    // preserved. Android uses expo-auth-session's default package-based
-    // redirect, NOT the iOS reversed-client-ID scheme. ⚠️ AUTH-CRITICAL —
-    // verify iOS Google sign-in on the next iOS build + Android on the AAB QA.
-    androidClientId,
-    clientId: Platform.OS === "android" ? androidClientId : iosClientId,
+    iosClientId: iosClientId ?? PLACEHOLDER_CLIENT_ID,
+    // Android baseline (v1.3.3): route to the Android OAuth client. iOS
+    // ignores androidClientId; clientId + redirectUri are unchanged on iOS,
+    // so the live iOS flow is preserved. Android uses expo-auth-session's
+    // default package-based redirect, NOT the iOS reversed-client-ID scheme.
+    androidClientId: androidClientId ?? PLACEHOLDER_CLIENT_ID,
+    clientId:
+      (Platform.OS === "android" ? androidClientId : iosClientId) ??
+      PLACEHOLDER_CLIENT_ID,
     redirectUri: Platform.OS === "ios" ? redirectUri : undefined,
     shouldAutoExchangeCode: false,
   });
@@ -758,6 +765,9 @@ export function useGoogleSignIn() {
   return {
     signIn,
     ready: Boolean(request) && Boolean(iosClientId),
-    hasClientId: Boolean(iosClientId),
+    hasClientId:
+      Platform.OS === "android"
+        ? Boolean(androidClientId)
+        : Boolean(iosClientId),
   };
 }

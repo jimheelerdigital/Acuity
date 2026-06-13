@@ -304,7 +304,10 @@ export default function SignInScreen() {
           </View>
         )}
 
-        {/* Google */}
+        {/* Google — hidden when the platform's OAuth client ID isn't
+            configured (e.g. Android before the client ID is set). Apple +
+            email/password stay available so the screen still works. */}
+        {hasClientId && (
         <Pressable
           onPress={handleGoogle}
           disabled={loading !== null}
@@ -327,8 +330,12 @@ export default function SignInScreen() {
             {loading === "google" ? "Signing in…" : "Continue with Google"}
           </Text>
         </Pressable>
+        )}
 
-        {/* Divider */}
+        {/* Divider — only when there's a social button above it (Google or
+            Apple). On Android with no Google client + no Apple, this hides so
+            the "or" doesn't float above the email field with nothing above. */}
+        {(hasClientId || appleAvailable) && (
         <View className="flex-row items-center gap-3 my-3">
           <View
             className="h-px flex-1"
@@ -345,6 +352,7 @@ export default function SignInScreen() {
             style={{ backgroundColor: tokens.line }}
           />
         </View>
+        )}
 
         {/* Email + password */}
         <TextInput
@@ -454,7 +462,7 @@ export default function SignInScreen() {
           </Link>
         </View>
 
-        {!hasClientId && (
+        {__DEV__ && !hasClientId && (
           // WARN_AMBER from lib/tone-colors — single source of truth
           // for the warning-amber accent (palette has no warning token).
           <Text
