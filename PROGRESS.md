@@ -7,6 +7,62 @@
 
 ---
 
+## [2026-06-13] — Remove app-download banners from /start funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3144740c
+
+### In plain English (for Keenan)
+The "Get app / Download Acuity for iPhone" banner was showing at the top of the funnel Entry screen. This was sending high-intent ad traffic straight to the App Store before they even answered the first question — bypassing the entire web funnel and web recording flow. Both the Apple Smart App Banner (the native Safari one) and our custom orange banner are now suppressed on the /start funnel. They still appear on the standalone signup and upgrade pages where they make sense. The Download screen at the end of the funnel still handles the app download as the intended reward.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/start/page.tsx`: removed `MobileAppBanner` import and both render instances (SSR and step-return branches).
+- `apps/web/src/app/layout.tsx`: removed static `<meta name="apple-itunes-app">` tag from `<head>`. Replaced with `<AppleSmartBanner />` client component mounted inside `<Providers>`.
+- `apps/web/src/components/apple-smart-banner.tsx`: new client component. Uses `usePathname()` to check if route starts with `/start` — if so, returns null. Otherwise injects the meta tag into `<head>` via DOM append on mount, removes on unmount.
+- `MobileAppBanner` remains on `/auth/signup` and `/upgrade` — those are non-funnel pages where the banner is appropriate.
+
+### Manual steps needed
+None.
+
+### Notes
+- The Apple Smart App Banner is a native Safari feature triggered by the `<meta name="apple-itunes-app">` tag. It can't be conditionally rendered via Next.js metadata API when the tag is in the root layout's raw `<head>`, so we moved it to a client component that manages the DOM directly.
+- The custom `MobileAppBanner` component (`mobile-app-banner.tsx`) is unchanged — just no longer imported on /start.
+
+---
+
+## [2026-06-13] — Defer consent banner on funnel + gate Meta Pixel behind consent
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b4a7c56a
+
+### In plain English (for Keenan)
+The cookie consent banner was covering the answer options on the funnel Entry screen and clashing visually. It now waits until the user reaches the Create Account step before appearing — by that point she's already committed and the banner doesn't compete with content. The banner is also restyled to be slimmer and visually match the funnel when it does appear. On non-funnel pages (homepage, dashboard, etc.), the existing 5-second delay is unchanged.
+
+Separately, the Meta Pixel was loading before users consented to cookies — which is technically non-compliant for EU/UK visitors under GDPR. It's now properly gated behind the "marketing" consent choice, matching how GA4 and Contentsquare already work. Users who accept cookies still get full pixel tracking. Users who reject don't get tracked. The pixel events (`fireFbq`) already check if `window.fbq` exists before firing, so they silently do nothing when the pixel hasn't loaded.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/cookie-consent.tsx`:
+  - Added `usePathname()` hook to detect `/start` routes.
+  - On `/start`: banner deferred until `acuity:funnel-consent-ready` custom event (instead of 5s timer).
+  - On other pages: 5s timer unchanged.
+  - Funnel styling: slimmer container (`py-3`), smaller text (`text-xs`), lighter border. Non-funnel pages keep existing dark-mode-aware styling.
+- `apps/web/src/components/consent-gated-trackers.tsx`: Meta Pixel `<Script>` now wrapped in `{marketing && (...)}` guard. Was previously unconditional despite the docstring claiming it was gated (the docstring was aspirational, the code didn't follow through). Now matches GA4 and Contentsquare.
+- `apps/web/src/components/onboarding-funnel.tsx`: dispatches `acuity:funnel-consent-ready` custom event when step reaches `create-account` (inside the existing step-tracking useEffect).
+- `fireFbq()` and `MetaPixelAdvancedMatching` already guard on `window.fbq` existence — with the pixel gated, these silently no-op for users who haven't consented. No changes needed to those functions.
+
+### Manual steps needed
+- [ ] Keenan: After deploy, walk /start on mobile — verify no cookie banner on Entry screen. Proceed to Create Account — banner should appear. Accept → verify pixel fires (check Meta Events Manager). Reject → verify no pixel (check browser dev tools Network tab for `fbevents.js`).
+
+### Notes
+- The consent banner docstring (v1.4) already claimed Meta Pixel was gated, but the code had a comment explicitly saying "always loaded." The docstring was aspirational; this commit makes it true.
+- `fireFbq()` uses a `typeof window.fbq === "function"` guard, so all pixel event calls throughout the funnel (Lead, StartTrial, CompleteRegistration) silently no-op when the pixel hasn't loaded. No changes needed to those callsites.
+- Consent choice persists in `localStorage` (`acuity_consent`) and mirrors to `User.cookieConsent` for logged-in users — no re-prompt on subsequent screens or visits.
+- CAPI server-side events (if configured) fire independently via API routes and are unaffected by browser consent state.
+
+---
+
 ## [2026-06-13] — Tally tap affordance + Gap 1 N=0 copy, highlight sweep, and layout fix
 
 **Requested by:** Keenan
