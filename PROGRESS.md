@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-06-13] — Paywall 30-days block reframed from feature-output to felt-outcome
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0a83f6c2
+
+### In plain English (for Keenan)
+The paywall's "YOUR FIRST 30 DAYS" timeline was listing what the app produces (tasks extracted, weekly report, Life Matrix, monthly memoir). Rewritten to describe how she feels: Week 1 her head feels lighter, Week 2 she starts seeing the loops that run her on autopilot, Week 3 her life comes into focus, Week 4 she's running her weeks instead of chasing them. Zero feature names — all transformation language. The kicker changed from "YOUR FIRST 30 DAYS" to "THE NEXT FEW WEEKS." Added a settle closer: "Less in your head. More in your hands." Price anchor tightened slightly ("A coach" instead of "A life coach", "less than a coffee a week" instead of "less than a coffee"). Pricing, Stripe, checkout all untouched.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: `SAVINGS_TIMELINE` — all 4 `text` strings rewritten. Week labels unchanged.
+- `apps/web/src/components/onboarding-funnel.tsx`: Section 3 kicker text changed ("The next few weeks"), settle closer `<p>` added after timeline, Section 4 price anchor wording tightened.
+- Pricing logic, Stripe price IDs, monthly-as-default selection, founding-rate anchor, 14-day trial, checkout flow: all byte-identical (confirmed via diff).
+
+### Manual steps needed
+None.
+
+### Notes
+- The price comparison ("Therapy: $150/session. A coach: $200/month. Acuity: less than a coffee a week.") is kept as instructed — it reframes the price against alternatives and is doing real conversion work.
+- No branch-specific personalization was needed in the timeline block — the felt-outcome framing works universally across all six branches.
+
+---
+
 ## [2026-06-13] — Gap 1 layout rework: kicker/hero/undertone/settle hierarchy
 
 **Requested by:** Keenan
