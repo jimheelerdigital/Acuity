@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { MobileAppBanner } from "@/components/mobile-app-banner";
 import { StartPageClient } from "./client";
 import { ENTRY_QUESTION } from "@/lib/funnel-config";
 
@@ -29,7 +28,6 @@ export default async function StartPage({
   if (step) {
     return (
       <>
-        <MobileAppBanner />
         <StartPageClient skipSSR />
       </>
     );
@@ -40,7 +38,6 @@ export default async function StartPage({
 
   return (
     <>
-      <MobileAppBanner />
       {/* Critical inline CSS — styles Screen 1 before the CSS bundle loads */}
       <style dangerouslySetInnerHTML={{ __html: `
         .ssr-entry{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;background:#fff;color:#18181b;position:relative}
