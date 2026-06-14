@@ -1,0 +1,12 @@
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
+index 127c1d6..513792a 100644
+--- a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
++++ b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
+@@ -186,6 +186,7 @@ export const TourOverlay = forwardRef<TourOverlayRef, TourOverlayProps>((props,
+       presentationStyle="overFullScreen"
+       supportedOrientations={["portrait", "landscape", "landscape-left", "landscape-right", "portrait-upside-down"]}
+       transparent={true}
++      statusBarTranslucent={true}
+       visible={current !== undefined}
+     >
+       <View testID="Overlay View" style={Css.overlayView}>
