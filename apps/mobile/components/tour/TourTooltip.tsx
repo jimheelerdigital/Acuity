@@ -1,7 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as Sentry from "@sentry/react-native";
 import { type RenderProps } from "react-native-spotlight-tour";
 import { Pressable, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 import { useTheme } from "@/contexts/theme-context";
 import { type TourStepContent } from "./steps";
@@ -23,6 +23,37 @@ let tooltipRenderLogged = false;
  * `total` count. (Copilot read this via useCopilot(); spotlight passes
  * it as props instead.)
  */
+/**
+ * Chevron rendered as an SVG path rather than an @expo/vector-icons glyph.
+ * Icon-FONT glyphs intermittently fail to render inside spotlight-tour's
+ * Android <Modal> (the icon font isn't flushed to the Modal's separate
+ * window), which dropped the Next/Back arrows on Android while iOS showed
+ * them with identical code. SVG has no font dependency and renders in this
+ * exact overlay on both platforms — spotlight-tour draws its own spotlight
+ * cutout with react-native-svg in the same Modal.
+ */
+function Chevron({
+  direction,
+  size,
+  color,
+}: {
+  direction: "left" | "right";
+  size: number;
+  color: string;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d={direction === "right" ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"}
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function TourTooltip(
   props: RenderProps & { content: TourStepContent; total: number }
 ) {
@@ -127,7 +158,7 @@ export function TourTooltip(
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Ionicons name="chevron-back" size={18} color={tokens.textSec} />
+              <Chevron direction="left" size={18} color={tokens.textSec} />
             </Pressable>
           )}
 
@@ -158,7 +189,7 @@ export function TourTooltip(
                 Get started
               </Text>
             ) : (
-              <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+              <Chevron direction="right" size={18} color="#FFFFFF" />
             )}
           </Pressable>
         </View>
