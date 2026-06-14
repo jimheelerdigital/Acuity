@@ -609,12 +609,16 @@ export function useGoogleSignIn() {
     // surface a readable diagnostic. Temporary debug aid.
     const debug: AuthDebug = { redirectUri };
 
-    if (!iosClientId) {
+    // Platform-aware: Android must exchange the code against androidClientId
+    // (the code was issued to it), iOS keeps iosClientId. iosClientId is
+    // always set, so iOS behaviour is unchanged.
+    const platformClientId =
+      Platform.OS === "android" ? androidClientId : iosClientId;
+    if (!platformClientId) {
       return {
         ok: false,
         reason: "server_error",
-        detail:
-          "Google iOS client id not configured. See docs/iOS_LAUNCH_CHECKLIST.md.",
+        detail: "Google client id not configured for this platform.",
         debug,
       };
     }
@@ -685,9 +689,13 @@ export function useGoogleSignIn() {
     try {
       const tokenResult = await AuthSession.exchangeCodeAsync(
         {
-          clientId: iosClientId,
+          clientId: platformClientId,
           code,
-          redirectUri: redirectUri ?? "",
+          // request.redirectUri is the redirect the auth request actually
+          // used (Android: com.heelerdigital.acuity:/oauthredirect; iOS: the
+          // reverse-DNS value === redirectUri memo). Must match the auth
+          // request or Google rejects the exchange with invalid_grant.
+          redirectUri: request?.redirectUri ?? redirectUri ?? "",
           extraParams: { code_verifier: request.codeVerifier },
         },
         { tokenEndpoint: "https://oauth2.googleapis.com/token" }
