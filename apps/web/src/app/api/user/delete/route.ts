@@ -34,6 +34,7 @@ import {
   limiters,
   rateLimitedResponse,
 } from "@/lib/rate-limit";
+import { cancelSubscriptionOnDelete } from "@/lib/cancel-subscription-on-delete";
 import { stripe } from "@/lib/stripe";
 import { supabase } from "@/lib/supabase.server";
 
@@ -92,6 +93,9 @@ export async function POST(req: NextRequest) {
       id: true,
       email: true,
       stripeCustomerId: true,
+      stripeSubscriptionId: true,
+      subscriptionStatus: true,
+      subscriptionSource: true,
       createdAt: true,
       trialEndsAt: true,
     },
@@ -111,20 +115,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 3. Stripe cancellation (best-effort) ────────────────────────────────
-  // Deleting the Stripe customer also cancels any active subscription,
-  // per Stripe docs. We log + proceed on failure rather than blocking
-  // the privacy delete.
-  if (user.stripeCustomerId) {
-    try {
-      await stripe.customers.del(user.stripeCustomerId);
-    } catch (err) {
-      console.error(
-        `[user/delete] Stripe customer ${user.stripeCustomerId} cancellation failed (proceeding):`,
-        err
-      );
-    }
-  }
+  // ── 3. Subscription cancellation (best-effort, source-aware) ────────────
+  // Cancel the active subscription BEFORE the purge so deletion can't leave
+  // an orphaned Stripe sub that converts + bills the user post-deletion
+  // (incident 2026-06-13 — orphan subscriptions after deletion). The helper
+  // resolves the sub by id → customer → email, so it also catches
+  // webhook-outage rows whose local Stripe ids were never written. Apple /
+  // Google Play subs are store-owned (can't cancel server-side); the delete
+  // UI warns the user to cancel in iOS / Play settings. Never throws — the
+  // deletion proceeds regardless; we record the outcome on the tombstone.
+  const stripeCancellationStatus = await cancelSubscriptionOnDelete(stripe, {
+    email: user.email,
+    subscriptionStatus: user.subscriptionStatus,
+    subscriptionSource: user.subscriptionSource,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    stripeCustomerId: user.stripeCustomerId,
+  });
 
   // ── 4. DB delete (transactional) ────────────────────────────────────────
   // VerificationToken has no FK to User — it's keyed on identifier (email)
@@ -159,11 +165,17 @@ export async function POST(req: NextRequest) {
           email: normalizedEmail,
           originalCreatedAt: user.createdAt,
           originalTrialEndedAt: user.trialEndsAt ?? null,
+          subscriptionSource: user.subscriptionSource ?? null,
+          stripeSubscriptionId: user.stripeSubscriptionId ?? null,
+          stripeCancellationStatus,
         },
         update: {
           deletedAt: new Date(),
           originalCreatedAt: user.createdAt,
           originalTrialEndedAt: user.trialEndsAt ?? null,
+          subscriptionSource: user.subscriptionSource ?? null,
+          stripeSubscriptionId: user.stripeSubscriptionId ?? null,
+          stripeCancellationStatus,
         },
       });
       stage = "verification-tokens";

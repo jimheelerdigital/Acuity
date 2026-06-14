@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_ACTIONS, logAdminAction } from "@/lib/admin-audit";
 import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
+import { cancelSubscriptionOnDelete } from "@/lib/cancel-subscription-on-delete";
 import { stripe } from "@/lib/stripe";
 import { supabase } from "@/lib/supabase.server";
 
@@ -150,6 +151,9 @@ export async function DELETE(
       createdAt: true,
       trialEndsAt: true,
       stripeCustomerId: true,
+      stripeSubscriptionId: true,
+      subscriptionStatus: true,
+      subscriptionSource: true,
     },
   });
   if (!target) {
@@ -164,13 +168,15 @@ export async function DELETE(
     );
   }
 
-  if (target.stripeCustomerId) {
-    try {
-      await stripe.customers.del(target.stripeCustomerId);
-    } catch (err) {
-      console.error("[admin/users.delete] Stripe cancel failed (proceeding):", err);
-    }
-  }
+  // Cancel any active subscription before the purge (incident 2026-06-13 —
+  // same source-aware, id→customer→email resolution as the self-delete path).
+  const stripeCancellationStatus = await cancelSubscriptionOnDelete(stripe, {
+    email: target.email,
+    subscriptionStatus: target.subscriptionStatus,
+    subscriptionSource: target.subscriptionSource,
+    stripeSubscriptionId: target.stripeSubscriptionId,
+    stripeCustomerId: target.stripeCustomerId,
+  });
 
   try {
     const { canonicalizeEmail } = await import("@/lib/bootstrap-user");
@@ -182,11 +188,17 @@ export async function DELETE(
           email: normalizedEmail,
           originalCreatedAt: target.createdAt,
           originalTrialEndedAt: target.trialEndsAt ?? null,
+          subscriptionSource: target.subscriptionSource ?? null,
+          stripeSubscriptionId: target.stripeSubscriptionId ?? null,
+          stripeCancellationStatus,
         },
         update: {
           deletedAt: new Date(),
           originalCreatedAt: target.createdAt,
           originalTrialEndedAt: target.trialEndsAt ?? null,
+          subscriptionSource: target.subscriptionSource ?? null,
+          stripeSubscriptionId: target.stripeSubscriptionId ?? null,
+          stripeCancellationStatus,
         },
       });
       await tx.verificationToken.deleteMany({

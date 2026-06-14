@@ -523,6 +523,12 @@ model DeletedUser {
   deletedAt            DateTime  @default(now())
   originalCreatedAt    DateTime
   originalTrialEndedAt DateTime?
+  // Incident 2026-06-13 (orphan subscriptions after deletion) audit trail —
+  // preserve what plan the user had at deletion + whether we cancelled their
+  // Stripe subscription, so orphaned post-deletion billing can be reconciled.
+  subscriptionSource       String? // "stripe" | "apple" | "google_play"
+  stripeSubscriptionId     String?
+  stripeCancellationStatus String? // "success" | "failed" | "not_applicable"
 }
 
 // 8-step post-signup onboarding flow. One row per user; survives
