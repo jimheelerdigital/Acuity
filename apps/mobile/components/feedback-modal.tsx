@@ -1,4 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Bug,
+  Lightbulb,
+  type LucideIcon,
+  MessageSquare,
+  Palette,
+  X,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -33,12 +40,12 @@ interface Props {
 const TYPES: Array<{
   value: FeedbackType;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
 }> = [
-  { value: "bug", label: "Bug", icon: "bug-outline" },
-  { value: "feature", label: "Feature idea", icon: "bulb-outline" },
-  { value: "ux", label: "UX / design", icon: "color-palette-outline" },
-  { value: "other", label: "Other", icon: "chatbox-outline" },
+  { value: "bug", label: "Bug", icon: Bug },
+  { value: "feature", label: "Feature idea", icon: Lightbulb },
+  { value: "ux", label: "UX / design", icon: Palette },
+  { value: "other", label: "Other", icon: MessageSquare },
 ];
 
 const MAX_CHARS = 4000;
@@ -118,7 +125,7 @@ export function FeedbackModal({ visible, onClose }: Props) {
               style={{ backgroundColor: tokens.bgInset }}
               accessibilityLabel="Close feedback"
             >
-              <Ionicons name="close" size={18} color={tokens.textTer} />
+              <X size={18} color={tokens.textTer} />
             </Pressable>
           </View>
 
@@ -159,8 +166,7 @@ export function FeedbackModal({ visible, onClose }: Props) {
                         : "transparent",
                     }}
                   >
-                    <Ionicons
-                      name={t.icon}
+                    <t.icon
                       size={16}
                       color={active ? tokens.primary : tokens.textTer}
                     />

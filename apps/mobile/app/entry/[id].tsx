@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Trash2 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -689,7 +690,7 @@ export default function EntryDetailScreen() {
                   : "transparent",
               })}
             >
-              <Ionicons name="trash-outline" size={18} color={tokens.bad} />
+              <Trash2 size={18} color={tokens.bad} />
               <Text
                 style={{
                   color: tokens.bad,

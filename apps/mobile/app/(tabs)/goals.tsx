@@ -39,6 +39,7 @@ import {
   Users,
   UsersRound,
   Wallet,
+  X,
 } from "lucide-react-native";
 
 import { GradientCheckbox } from "@/components/acuity";
@@ -1374,7 +1375,7 @@ function SuggestionsSheet({
               Review suggestions
             </Text>
             <Pressable onPress={onClose} hitSlop={8} className="p-1">
-              <Ionicons name="close" size={20} color={tokens.textTer} />
+              <X size={20} color={tokens.textTer} />
             </Pressable>
           </View>
           <ScrollView

@@ -11,7 +11,7 @@
  * dark navy backdrop with the Skia confetti burst behind it.
  */
 
-import { Ionicons } from "@expo/vector-icons";
+import { ArrowRight } from "lucide-react-native";
 import { Manrope_700Bold, Manrope_800ExtraBold } from "@expo-google-fonts/manrope";
 import { GeistMono_500Medium } from "@expo-google-fonts/geist-mono";
 import { LinearGradient } from "expo-linear-gradient";
@@ -144,7 +144,7 @@ export function CelebrationModal({
               style={styles.continueGradient}
             >
               <Text style={styles.continueText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={16} color="#2A1206" />
+              <ArrowRight size={16} color="#2A1206" />
             </LinearGradient>
           </Pressable>
         </Animated.View>

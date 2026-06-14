@@ -14,7 +14,9 @@ These rules are enforced in code review. Add to them as new divergences are foun
 > Icon-font glyphs (`@expo/vector-icons`, `react-native-vector-icons`) rendered
 > inside Modal/Portal/overlay components are an Android render risk — Android's
 > separate Modal window may not flush the icon font registration. Default to
-> `react-native-svg` for any glyph inside such components.
+> `lucide-react-native` (SVG-based icon components, already a dependency) or
+> `react-native-svg` paths for any glyph inside such components. A lint rule or
+> PR-template check would catch future cases.
 
 - **Confirmed 2026-06-14:** the product-tour Next/Back chevrons
   (`react-native-spotlight-tour`'s `<Modal>`) rendered blank on Android while
@@ -23,6 +25,10 @@ These rules are enforced in code review. Add to them as new divergences are foun
 - spotlight-tour itself draws its spotlight cutout with `react-native-svg` in
   the same Modal — proof SVG renders reliably in that overlay on both platforms.
 - Verify on-device when adding any glyph inside a Modal/Portal/BottomSheet.
+- **2026-06-14 (v11):** swept the codebase and pre-emptively converted all 5
+  remaining sibling cases (delete-account, feedback, celebration, entry-detail,
+  goals modals) to `lucide-react-native` so the whole risk class is eliminated,
+  not just the confirmed tour failure.
 
 ## 2. Don't zero-out Android values — use `Platform.select` with an Android branch
 

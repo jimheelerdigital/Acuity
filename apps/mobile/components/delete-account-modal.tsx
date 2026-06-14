@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { AlertCircle, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -173,7 +174,7 @@ export function DeleteAccountModal({
                 marginBottom: 16,
               }}
             >
-              <Ionicons name="trash-outline" size={28} color={tokens.bad} />
+              <Trash2 size={28} color={tokens.bad} />
             </View>
             <Text
               style={{
@@ -246,8 +247,7 @@ export function DeleteAccountModal({
               }}
             >
               <View style={{ flexDirection: "row", gap: 12 }}>
-                <Ionicons
-                  name="alert-circle-outline"
+                <AlertCircle
                   size={20}
                   color={WARN_AMBER}
                   style={{ marginTop: 1 }}
