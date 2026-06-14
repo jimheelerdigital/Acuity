@@ -346,6 +346,18 @@ export function getTallyEcho(tallyValue: string): string {
   return `${display} times this week. At that pace, that\u2019s roughly ${yearly} times a year.`;
 }
 
+// ─── Tally Kicker for Gap 1 (condensed format for uppercase kicker line) ────
+
+export function getTallyKicker(tallyValue: string): string {
+  if (tallyValue === "lost_count") return "TOO MANY TO COUNT";
+  const n = parseInt(tallyValue, 10);
+  if (isNaN(n) || n < 1) return "";
+  if (n === 1) return "ONCE A WEEK · 52 A YEAR";
+  const yearly = Math.round((n * 52) / 10) * 10;
+  const display = n > 20 ? "20+" : String(n);
+  return `${display} TIMES THIS WEEK · ~${yearly} A YEAR`;
+}
+
 // ─── Time-Math Mapping (duration answer → evening count) ────────────────────
 
 export interface TimeMathContent {
@@ -973,10 +985,10 @@ export function getSavingsCostRecap(branch: Branch): string {
 }
 
 export const SAVINGS_TIMELINE = [
-  { week: "Week 1", text: "Tasks extracted, mood tracked daily" },
-  { week: "Week 2", text: "First patterns surface in your weekly report" },
-  { week: "Week 3", text: "Life Matrix maps 6 domains of your life" },
-  { week: "Week 4", text: "Your first monthly memoir arrives" },
+  { week: "Week 1", text: "The noise has somewhere to go. Your head feels lighter at the end of the day." },
+  { week: "Week 2", text: "You start seeing the why \u2014 the loops that run you on autopilot become visible." },
+  { week: "Week 3", text: "Your life comes into focus. You can see what\u2019s thriving and what\u2019s slipping." },
+  { week: "Week 4", text: "You\u2019re running your weeks, not chasing them. Less scramble, more steadiness." },
 ] as const;
 
 // ─── Paywall Comparison (Section 2 — what didn't work vs Acuity) ────────────

@@ -43,7 +43,11 @@ export type User = {
   // Phase 4 dual-source: "stripe" | "apple" | null. Drives the
   // Profile-tab routing for Manage-subscription (Stripe Customer
   // Portal on web vs iOS Settings → Subscriptions for Apple users).
-  subscriptionSource?: "stripe" | "apple" | null;
+  subscriptionSource?: "stripe" | "apple" | "google_play" | null;
+  // True when the user is FREE due to a recent failed payment (server-computed
+  // in /api/user/me, 30-day window) → drives the recovery banner. The raw
+  // failure anchors stay server-side (audit-only).
+  paymentFailed?: boolean;
   // ISO-8601 string — matches what /api/user/me returns. Null for
   // freshly-created users before the createUser event writes it,
   // or for users who existed before the 2026-04-20 backfill.

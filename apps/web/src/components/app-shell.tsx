@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { PastDueBanner } from "./past-due-banner";
 import { RecordSheet } from "./record-sheet";
 import { SessionUserMenu } from "./user-menu";
 
@@ -377,6 +378,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar onOpenRecord={() => setRecordOpen(true)} />
       <div className="lg:pl-[272px] 2xl:pl-[288px]">
         <DesktopTopbar />
+        {/* Global PAST_DUE banner — self-gates (only renders for PAST_DUE
+            users). Sits above all authenticated content. */}
+        <PastDueBanner />
         {/* 2xl: shell cap bumped 1600 → 2240 (2026-04-29 wide-desktop
             polish). Past 2240 the page sits centered with neutral
             black gutters — past that width, content gets too wide for

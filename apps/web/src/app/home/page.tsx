@@ -208,39 +208,9 @@ export default async function DashboardPage() {
             an empty slot. */}
         <PeopleThisWeekSection userId={userId} />
 
-        {user?.subscriptionStatus === "PAST_DUE" && (
-          <section
-            className="mb-6 flex items-start gap-3 rounded-acuity-lg px-5 py-4"
-            style={{
-              borderWidth: 1,
-              borderStyle: "solid",
-              borderColor: "var(--acuity-warn)",
-              backgroundColor: "color-mix(in oklch, var(--acuity-warn), transparent 88%)",
-            }}
-            role="alert"
-          >
-            <span className="text-lg leading-none" aria-hidden="true">
-              ⚠️
-            </span>
-            <div className="flex-1">
-              <p className="font-display text-sm font-semibold" style={{ color: "var(--acuity-warn)" }}>
-                Stripe couldn&apos;t charge your card
-              </p>
-              <p className="mt-1 text-xs text-acuity-text-sec">
-                Update your payment method to keep your subscription active.
-                Nothing gets cut off right away — Stripe retries over the next
-                couple of weeks.
-              </p>
-              <a
-                href="/account"
-                className="mt-2 inline-block text-xs font-semibold underline"
-                style={{ color: "var(--acuity-warn)" }}
-              >
-                Update in Account settings →
-              </a>
-            </div>
-          </section>
-        )}
+        {/* PAST_DUE banner moved to the global AppShell banner
+            (components/past-due-banner.tsx) so it shows on every
+            authenticated screen, not just /home. */}
 
         {/* First-login web product tour — auto-fires when tourCompletedAt
             is null, replayable via ?replayTour=1 from Settings. Renders

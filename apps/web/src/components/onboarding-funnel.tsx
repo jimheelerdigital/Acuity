@@ -21,7 +21,7 @@ import {
   buildMirrorLines,
   buildGap1Content,
   getTallyHeader,
-  getTallyEcho,
+  getTallyKicker,
   getTimeMathContent,
   GAP2_FEELINGS,
   getGap2Header,
@@ -397,6 +397,11 @@ export function OnboardingFunnel() {
       // user reached the value-reveal screens. Moved from create-account
       // (which inflated Lead count for users who merely saw the form).
       if (step === "timeline") fireFbq("Lead", { content_name: "Funnel Timeline Reached" });
+      // Signal to the cookie consent banner that the user has progressed
+      // far enough for consent to be shown without competing with content.
+      if (step === "create-account") {
+        window.dispatchEvent(new CustomEvent("acuity:funnel-consent-ready"));
+      }
     }
   }, [step, track]);
 
@@ -491,8 +496,8 @@ export function OnboardingFunnel() {
           to { height: 100%; }
         }
         @keyframes funnel-highlight-sweep {
-          from { background-size: 0% 40%; }
-          to { background-size: 100% 40%; }
+          from { background-size: 0% 30%; }
+          to { background-size: 100% 30%; }
         }
         @keyframes funnel-settle {
           0% { opacity: 0; transform: translateY(12px) scale(1.03); }
@@ -507,11 +512,16 @@ export function OnboardingFunnel() {
           60% { transform: scale(1.15); }
           100% { transform: scale(1); }
         }
+        @keyframes funnel-invite-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
         .gap-highlight {
-          background-image: linear-gradient(to right, var(--acuity-primary-lo, oklch(0.85 0.12 38)), var(--acuity-primary-lo, oklch(0.85 0.12 38)));
+          background-image: linear-gradient(to right, oklch(0.88 0.10 38 / 0.55), oklch(0.85 0.12 38 / 0.45));
           background-repeat: no-repeat;
           background-position: left bottom;
-          background-size: 0% 40%;
+          background-size: 0% 30%;
+          padding-bottom: 1px;
         }
         .gap-highlight.sweep { animation: funnel-highlight-sweep 350ms ease-out forwards; }
         .funnel-screen { animation: funnel-slide-up 0.4s ease-out both; }
@@ -519,7 +529,7 @@ export function OnboardingFunnel() {
         .funnel-bounce { animation: funnel-bounce-in 0.4s ease-out both; }
         @media (prefers-reduced-motion: reduce) {
           .funnel-screen, .funnel-card-stagger, .funnel-bounce { animation: none !important; opacity: 1 !important; transform: none !important; }
-          .gap-highlight { background-size: 100% 40% !important; animation: none !important; }
+          .gap-highlight { background-size: 100% 30% !important; animation: none !important; }
           * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
         }
       `}} />
@@ -844,6 +854,7 @@ function TallyScreen({ answers, track, onContinue }: {
   const [popKey, setPopKey] = useState(0);
   const [showPrompt, setShowPrompt] = useState(false);
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const hasTapped = count > 0;
 
   const increment = () => {
     if (count >= 20) return; // cap at 20
@@ -862,31 +873,44 @@ function TallyScreen({ answers, track, onContinue }: {
 
   const display = count > 20 ? "20+" : String(count);
 
+  // Invitation pulse: 3 cycles × 1.5s = 4.5s, then stops. Only before first tap.
+  const pulseStyle = !prefersReduced && !hasTapped
+    ? { animation: "funnel-invite-pulse 1.5s ease-in-out 3" }
+    : undefined;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full text-center funnel-screen">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight leading-snug mb-12">{header}</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight leading-snug mb-3">{header}</h2>
 
-        {/* The big tappable counter */}
-        <button onClick={increment} className="inline-block mb-4 select-none active:scale-95 transition-transform" aria-label="Tap to count">
-          <span key={popKey} className="text-[72px] sm:text-[96px] font-extrabold text-acuity-primary tabular-nums"
+        {/* Instruction line — fades in with the question */}
+        <p className="text-sm text-zinc-400 mb-10 funnel-screen">Tap once for each time it happened.</p>
+
+        {/* The big tappable counter — circular container */}
+        <button
+          onClick={increment}
+          className="relative mx-auto mb-4 flex items-center justify-center w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] rounded-full border-2 border-zinc-200 bg-zinc-50/80 select-none active:scale-95 transition-transform"
+          style={pulseStyle}
+          aria-label="Tap to count"
+        >
+          <span key={popKey} className="text-[72px] sm:text-[96px] font-extrabold text-acuity-primary tabular-nums leading-none"
             style={!prefersReduced && popKey > 0 ? { animation: "funnel-check-pop 150ms ease-out" } : undefined}>
             {display}
           </span>
         </button>
 
         {/* Prompt after 2+ taps */}
-        <p className={`text-xs text-zinc-400 mb-8 transition-all duration-500 ${showPrompt ? "opacity-100" : "opacity-0"}`}>
+        <p className={`text-xs text-zinc-400 mb-12 transition-all duration-500 ${showPrompt ? "opacity-100" : "opacity-0"}`}>
           Keep going. Count them all.
         </p>
 
-        {/* Lost count link */}
-        <button onClick={handleLostCount} className="text-sm text-zinc-400 hover:text-zinc-600 underline transition mb-8 block mx-auto">
+        {/* Lost count link — generous vertical separation */}
+        <button onClick={handleLostCount} className="text-sm text-zinc-400 hover:text-zinc-600 underline transition mb-10 block mx-auto py-2">
           Honestly, I&rsquo;ve lost count
         </button>
 
-        {/* CTA — visible after first tap */}
-        <div className={`transition-all duration-500 ${count > 0 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
+        {/* CTA — visible after first tap or lost-count */}
+        <div className={`transition-all duration-500 ${hasTapped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
           <button onClick={handleContinue}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
@@ -926,9 +950,14 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
     return () => t.forEach(clearTimeout);
   }, [content.show, prefersReduced, onSkip]);
 
-  // Odometer count-up animation
+  // Odometer count-up animation — runs exactly once when phase first reaches 2.
+  // useRef guard prevents re-fire on subsequent phase changes (3, 4) and
+  // React 18 StrictMode double-invoke in development.
+  const countUpStarted = useRef(false);
   useEffect(() => {
     if (phase < 2 || content.count === null || prefersReduced) return;
+    if (countUpStarted.current) return;
+    countUpStarted.current = true;
     const target = content.count;
     const duration = 1200;
     const start = Date.now();
@@ -942,8 +971,12 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
     requestAnimationFrame(tick);
   }, [phase, content.count, prefersReduced]);
 
-  // Skip handler
-  const skip = () => setPhase(4);
+  // Skip handler — jump to final state including the final number
+  const skip = () => {
+    setPhase(4);
+    if (content.count !== null) setDisplayNum(content.count);
+    countUpStarted.current = true;
+  };
 
   if (!content.show) return null;
 
@@ -1059,9 +1092,9 @@ function Gap1Screen({ branch, answers, onContinue }: {
 }) {
   const content = buildGap1Content(branch, answers);
   const tallyValue = String(answers.tally_count ?? "");
-  const tallyEcho = getTallyEcho(tallyValue);
-  const hasTallyEcho = tallyEcho.length > 0;
-  // Phases: 0=tally echo (if present), 1=line1, 2=line2, 3=line3 settle, 4=CTA, 5=done
+  const kicker = getTallyKicker(tallyValue);
+  const hasKicker = kicker.length > 0;
+  // Phases: 1=kicker (if present), 2=hero, 3=undertone, 4=settle, 5=CTA
   const maxPhase = 5;
   const [phase, setPhase] = useState(0);
   const [highlightPhase, setHighlightPhase] = useState(0);
@@ -1071,31 +1104,31 @@ function Gap1Screen({ branch, answers, onContinue }: {
     if (prefersReduced) { setPhase(maxPhase); setHighlightPhase(content.costWords.length); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
     let offset = 0;
-    // Beat 0 (tally echo): if present, fades in first
-    if (hasTallyEcho) {
-      t.push(setTimeout(() => setPhase(1), 0)); // tally echo
-      offset = 1400;
+    // Beat 1: kicker (if present)
+    if (hasKicker) {
+      t.push(setTimeout(() => setPhase(1), 0));
+      offset = 1200;
     }
-    // Beat 1: line 1 fades in
+    // Beat 2: hero line
     t.push(setTimeout(() => setPhase(2), offset));
-    // Highlight sweep on cost words, 400ms after line 1 lands
+    // Highlight sweep on cost words, 400ms after hero lands
     content.costWords.forEach((_, i) => {
       t.push(setTimeout(() => setHighlightPhase(i + 1), offset + 500 + 400 + i * 250));
     });
-    // Beat 2: line 2 at +1400ms from line 1
-    t.push(setTimeout(() => setPhase(3), offset + 1400));
-    // Beat 3: line 3 (settle) at +2600ms
-    t.push(setTimeout(() => setPhase(4), offset + 2600));
-    // Beat 4: CTA at +3400ms
-    t.push(setTimeout(() => setPhase(maxPhase), offset + 3400));
+    // Beat 3: undertone at +1600ms from hero
+    t.push(setTimeout(() => setPhase(3), offset + 1600));
+    // Beat 4: settle closer at +2800ms
+    t.push(setTimeout(() => setPhase(4), offset + 2800));
+    // Beat 5: CTA at +3600ms
+    t.push(setTimeout(() => setPhase(maxPhase), offset + 3600));
     return () => t.forEach(clearTimeout);
-  }, [prefersReduced, content.costWords.length, hasTallyEcho]);
+  }, [prefersReduced, content.costWords.length, hasKicker]);
 
   // Tap-to-skip: any tap on the container completes all beats
   const skip = () => { setPhase(maxPhase); setHighlightPhase(content.costWords.length); };
 
-  // Render line1 with highlighted cost words
-  const renderLine1 = () => {
+  // Render hero line with highlighted cost words
+  const renderHero = () => {
     if (content.costWords.length === 0) return content.line1;
     const parts: (string | { word: string; idx: number })[] = [];
     let remaining = content.line1;
@@ -1123,23 +1156,25 @@ function Gap1Screen({ branch, answers, onContinue }: {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
       onClick={phase < maxPhase ? skip : undefined}>
-      <div className="max-w-md w-full">
-        {/* Beat 0: Tally echo (if present) */}
-        {hasTallyEcho && (
+      <div className="max-w-md w-full flex flex-col items-center justify-center" style={{ minHeight: "70vh" }}>
+        {/* KICKER: condensed tally count — uppercase, letter-spaced, small */}
+        {hasKicker && (
           <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
-            <p className="text-[17px] font-bold text-acuity-primary leading-relaxed">{tallyEcho}</p>
+            <p className="text-[11px] sm:text-xs font-semibold tracking-[0.2em] text-zinc-400 text-center">
+              {kicker}
+            </p>
           </div>
         )}
-        {/* Beat 1: Cost line with highlight sweep */}
-        <div className={`mb-10 transition-all duration-500 ease-out ${beat(2)}`}>
-          <p className="text-[17px] font-semibold text-zinc-900 leading-[1.7]">{renderLine1()}</p>
+        {/* HERO: the main cost statement — largest text, centered */}
+        <div className={`mb-12 transition-all duration-500 ease-out ${beat(2)}`}>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900 leading-[1.5] text-center">{renderHero()}</p>
         </div>
-        {/* Beat 2: Compounding cost (undertone) */}
-        <div className={`mb-10 transition-all duration-500 ease-out ${beat(3)}`} style={{ opacity: phase >= 3 ? 0.75 : 0 }}>
-          <p className="text-[15px] text-zinc-600 leading-relaxed">{content.line2}</p>
+        {/* UNDERTONE: compounding cost — smaller, reduced opacity */}
+        <div className={`mb-12 transition-all duration-500 ease-out ${beat(3)}`} style={{ opacity: phase >= 3 ? 0.7 : 0 }}>
+          <p className="text-[15px] text-zinc-500 leading-relaxed text-center">{content.line2}</p>
         </div>
-        {/* Beat 3: Projection (settle) */}
-        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 4 ? "opacity-100" : "opacity-0"}`}
+        {/* SETTLE CLOSER: weighted final line */}
+        <div className={`mb-14 ${phase >= 4 ? "" : "opacity-0"}`}
           style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
           <p className="text-[17px] font-bold text-zinc-900 text-center">{content.line3}</p>
         </div>
@@ -2086,9 +2121,9 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <p className="text-sm text-zinc-700 text-center leading-relaxed font-medium">{getPaywallLossRecap(branch)}</p>
         </section>
 
-        {/* Section 3 — Your first 30 days timeline */}
+        {/* Section 3 — The next few weeks timeline */}
         <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "140ms" }}>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3 text-center">Your first 30 days</p>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3 text-center">The next few weeks</p>
           <div className="space-y-3">
             {SAVINGS_TIMELINE.map((item, i) => (
               <div key={i} className="flex items-start gap-3">
@@ -2103,14 +2138,15 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               </div>
             ))}
           </div>
+          <p className="text-sm font-semibold text-zinc-800 text-center mt-4">Less in your head. More in your hands.</p>
         </section>
 
         {/* Section 4 — Cost comparison */}
         <section className="mb-6 text-center funnel-card-stagger" style={{ animationDelay: "200ms" }}>
           <p className="text-sm text-zinc-600 font-semibold">
             <span className="text-zinc-400">Therapy: $150/session.</span>{" "}
-            <span className="text-zinc-400">A life coach: $200/month.</span>{" "}
-            <span className="text-zinc-900">Acuity: less than a coffee.</span>
+            <span className="text-zinc-400">A coach: $200/month.</span>{" "}
+            <span className="text-zinc-900">Acuity: less than a coffee a week.</span>
           </p>
         </section>
 

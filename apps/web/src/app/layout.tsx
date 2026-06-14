@@ -15,6 +15,7 @@ import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
 import { CrisisFooter } from "@/components/crisis-footer";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { MetaPixelAdvancedMatching } from "@/components/meta-pixel-events";
+import { AppleSmartBanner } from "@/components/apple-smart-banner";
 import {
   type Palette,
   type ResolvedTheme,
@@ -160,7 +161,10 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredDataJsonLd) }}
         />
-        <meta name="apple-itunes-app" content="app-id=6762633410" />
+        {/* Apple Smart App Banner — moved to client component
+            (apple-smart-banner.tsx) to suppress on /start funnel.
+            The banner was sending high-intent traffic into the lossy
+            App Store handoff before the web funnel could convert. */}
         {GOOGLE_SITE_VERIFICATION && (
           <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
         )}
@@ -199,6 +203,7 @@ export default function RootLayout({
           <CelebrationMount />
           <CrisisFooter />
           <CookieConsentBanner />
+          <AppleSmartBanner />
         </Providers>
       </body>
     </html>

@@ -7,6 +7,163 @@
 
 ---
 
+## [2026-06-13] — Paywall 30-days block reframed from feature-output to felt-outcome
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0a83f6c2
+
+### In plain English (for Keenan)
+The paywall's "YOUR FIRST 30 DAYS" timeline was listing what the app produces (tasks extracted, weekly report, Life Matrix, monthly memoir). Rewritten to describe how she feels: Week 1 her head feels lighter, Week 2 she starts seeing the loops that run her on autopilot, Week 3 her life comes into focus, Week 4 she's running her weeks instead of chasing them. Zero feature names — all transformation language. The kicker changed from "YOUR FIRST 30 DAYS" to "THE NEXT FEW WEEKS." Added a settle closer: "Less in your head. More in your hands." Price anchor tightened slightly ("A coach" instead of "A life coach", "less than a coffee a week" instead of "less than a coffee"). Pricing, Stripe, checkout all untouched.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: `SAVINGS_TIMELINE` — all 4 `text` strings rewritten. Week labels unchanged.
+- `apps/web/src/components/onboarding-funnel.tsx`: Section 3 kicker text changed ("The next few weeks"), settle closer `<p>` added after timeline, Section 4 price anchor wording tightened.
+- Pricing logic, Stripe price IDs, monthly-as-default selection, founding-rate anchor, 14-day trial, checkout flow: all byte-identical (confirmed via diff).
+
+### Manual steps needed
+None.
+
+### Notes
+- The price comparison ("Therapy: $150/session. A coach: $200/month. Acuity: less than a coffee a week.") is kept as instructed — it reframes the price against alternatives and is doing real conversion work.
+- No branch-specific personalization was needed in the timeline block — the felt-outcome framing works universally across all six branches.
+
+---
+
+## [2026-06-13] — Gap 1 layout rework: kicker/hero/undertone/settle hierarchy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5b8bbc2d
+
+### In plain English (for Keenan)
+Gap 1 now matches the visual format of Gap 3 and Time-Math. Instead of four text blocks at varying sizes with no hierarchy, the screen reads as a clear progression: a small uppercase kicker at the top with the tally count (e.g. "4 TIMES THIS WEEK · ~210 A YEAR"), then a large centered hero statement about what it's costing her (with the animated highlight sweep on cost words), then a smaller undertone line about the pattern compounding, then a bold settle closer. If she tapped zero on the counter, the kicker is omitted and the screen opens directly on the hero. The overall feel now matches the other screens — clear hierarchy, generous spacing, content centered vertically.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: new `getTallyKicker()` function. Returns condensed uppercase kicker strings: N=1 → "ONCE A WEEK · 52 A YEAR", N≥2 → "{N} TIMES THIS WEEK · ~{yearly} A YEAR", lost_count → "TOO MANY TO COUNT", N=0 → "" (empty, kicker omitted).
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - `Gap1Screen` rewritten with 5-zone layout: kicker (11px, tracking-[0.2em], zinc-400) → hero (text-xl/2xl, font-bold, centered, highlight sweep) → undertone (15px, opacity 0.7, zinc-500) → settle (17px, bold, funnel-settle animation) → CTA.
+  - All text centered. Container uses `min-height: 70vh` with flexbox centering.
+  - Beat spacing: mb-10 (kicker) → mb-12 (hero, undertone) → mb-14 (settle).
+  - Phase timing adjusted: kicker offset 1200ms, hero-to-undertone 1600ms, undertone-to-settle 2800ms, CTA at 3600ms.
+  - Removed `getTallyEcho` import (replaced by `getTallyKicker`). `getTallyEcho` remains exported from funnel-config.ts for any other callers.
+- Zero changes to: count logic, events, copy content, other screens, auth.
+
+### Manual steps needed
+None.
+
+### Notes
+- The kicker format condenses the existing tally echo sentence into a tight uppercase line. This is formatting only — the same numbers are displayed.
+- `getTallyEcho()` is no longer used in the component but is kept in funnel-config.ts as it may be used by the admin metrics tab or future screens.
+
+---
+
+## [2026-06-13] — Fix Time-Math count-up replaying multiple times
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b74e83d
+
+### In plain English (for Keenan)
+The big number animation on the Time-Math screen (e.g. counting up to "365 evenings") was playing multiple times instead of once. Now it counts up exactly once when the screen appears, settles on the final number, and stays there. Tap-to-skip still jumps straight to the final number.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: Added `useRef` flag (`countUpStarted`) in `TimeMathScreen` to guard the count-up animation effect. The effect had `phase` in its dependency array, so it re-fired on every phase transition (2→3→4) and on React 18 StrictMode double-invoke in dev. The ref ensures the animation runs exactly once when `phase` first reaches 2. Skip handler also sets `displayNum` to the final target and marks the ref to prevent a late restart.
+- Zero changes to: copy, events, other screens, auth, or flow logic.
+
+### Manual steps needed
+None.
+
+### Notes
+- Root cause was `[phase, content.count, prefersReduced]` in the useEffect dependency array. `phase` changes 4 times during the choreography sequence, and each change past phase 2 restarted the animation. The `useRef` guard is the correct fix (vs. removing `phase` from deps, which would break the trigger).
+- React 18 StrictMode double-invoke compounds the issue in development — the ref guard handles both production re-renders and StrictMode double-invoke.
+
+---
+
+## [2026-06-13] — Remove app-download banners from /start funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3144740c
+
+### In plain English (for Keenan)
+The "Get app / Download Acuity for iPhone" banner was showing at the top of the funnel Entry screen. This was sending high-intent ad traffic straight to the App Store before they even answered the first question — bypassing the entire web funnel and web recording flow. Both the Apple Smart App Banner (the native Safari one) and our custom orange banner are now suppressed on the /start funnel. They still appear on the standalone signup and upgrade pages where they make sense. The Download screen at the end of the funnel still handles the app download as the intended reward.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/start/page.tsx`: removed `MobileAppBanner` import and both render instances (SSR and step-return branches).
+- `apps/web/src/app/layout.tsx`: removed static `<meta name="apple-itunes-app">` tag from `<head>`. Replaced with `<AppleSmartBanner />` client component mounted inside `<Providers>`.
+- `apps/web/src/components/apple-smart-banner.tsx`: new client component. Uses `usePathname()` to check if route starts with `/start` — if so, returns null. Otherwise injects the meta tag into `<head>` via DOM append on mount, removes on unmount.
+- `MobileAppBanner` remains on `/auth/signup` and `/upgrade` — those are non-funnel pages where the banner is appropriate.
+
+### Manual steps needed
+None.
+
+### Notes
+- The Apple Smart App Banner is a native Safari feature triggered by the `<meta name="apple-itunes-app">` tag. It can't be conditionally rendered via Next.js metadata API when the tag is in the root layout's raw `<head>`, so we moved it to a client component that manages the DOM directly.
+- The custom `MobileAppBanner` component (`mobile-app-banner.tsx`) is unchanged — just no longer imported on /start.
+
+---
+
+## [2026-06-13] — Defer consent banner on funnel + gate Meta Pixel behind consent
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b4a7c56a
+
+### In plain English (for Keenan)
+The cookie consent banner was covering the answer options on the funnel Entry screen and clashing visually. It now waits until the user reaches the Create Account step before appearing — by that point she's already committed and the banner doesn't compete with content. The banner is also restyled to be slimmer and visually match the funnel when it does appear. On non-funnel pages (homepage, dashboard, etc.), the existing 5-second delay is unchanged.
+
+Separately, the Meta Pixel was loading before users consented to cookies — which is technically non-compliant for EU/UK visitors under GDPR. It's now properly gated behind the "marketing" consent choice, matching how GA4 and Contentsquare already work. Users who accept cookies still get full pixel tracking. Users who reject don't get tracked. The pixel events (`fireFbq`) already check if `window.fbq` exists before firing, so they silently do nothing when the pixel hasn't loaded.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/cookie-consent.tsx`:
+  - Added `usePathname()` hook to detect `/start` routes.
+  - On `/start`: banner deferred until `acuity:funnel-consent-ready` custom event (instead of 5s timer).
+  - On other pages: 5s timer unchanged.
+  - Funnel styling: slimmer container (`py-3`), smaller text (`text-xs`), lighter border. Non-funnel pages keep existing dark-mode-aware styling.
+- `apps/web/src/components/consent-gated-trackers.tsx`: Meta Pixel `<Script>` now wrapped in `{marketing && (...)}` guard. Was previously unconditional despite the docstring claiming it was gated (the docstring was aspirational, the code didn't follow through). Now matches GA4 and Contentsquare.
+- `apps/web/src/components/onboarding-funnel.tsx`: dispatches `acuity:funnel-consent-ready` custom event when step reaches `create-account` (inside the existing step-tracking useEffect).
+- `fireFbq()` and `MetaPixelAdvancedMatching` already guard on `window.fbq` existence — with the pixel gated, these silently no-op for users who haven't consented. No changes needed to those functions.
+
+### Manual steps needed
+- [ ] Keenan: After deploy, walk /start on mobile — verify no cookie banner on Entry screen. Proceed to Create Account — banner should appear. Accept → verify pixel fires (check Meta Events Manager). Reject → verify no pixel (check browser dev tools Network tab for `fbevents.js`).
+
+### Notes
+- The consent banner docstring (v1.4) already claimed Meta Pixel was gated, but the code had a comment explicitly saying "always loaded." The docstring was aspirational; this commit makes it true.
+- `fireFbq()` uses a `typeof window.fbq === "function"` guard, so all pixel event calls throughout the funnel (Lead, StartTrial, CompleteRegistration) silently no-op when the pixel hasn't loaded. No changes needed to those callsites.
+- Consent choice persists in `localStorage` (`acuity_consent`) and mirrors to `User.cookieConsent` for logged-in users — no re-prompt on subsequent screens or visits.
+- CAPI server-side events (if configured) fire independently via API routes and are unaffected by browser consent state.
+
+---
+
+## [2026-06-13] — Tally tap affordance + Gap 1 N=0 copy, highlight sweep, and layout fix
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e92fac43
+
+### In plain English (for Keenan)
+Two fixes to the funnel tally and Gap 1 screens. (1) The counter that asks "how many times did it happen" now looks obviously tappable — it's wrapped in a large circular button with an instruction line ("Tap once for each time it happened") and a gentle pulsing invitation before the first tap. The "I've lost count" link is spaced further from the counter so it can't be accidentally tapped. (2) If someone taps zero times and continues, Gap 1 no longer shows the false "52 times a year" math — it skips straight to the cost beat. The orange highlight on cost words now sweeps across like someone drawing with a highlighter instead of appearing as a flat block. The Gap 1 screen is better centered vertically with more breathing room between lines, and the final settle animation ("Left alone, loops don't loosen. They tighten.") now plays correctly.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - TallyScreen: counter wrapped in 140×140px (160 on sm) `rounded-full border-2 bg-zinc-50/80` button. Added instruction `<p>` below header. New `funnel-invite-pulse` keyframe (scale 1→1.05→1, 1.5s ease-in-out, 3 iterations, stops after first tap). Lost-count link gets `py-2 mb-10` for tap separation.
+  - Gap1Screen: container gets `flex flex-col justify-center` with `min-height: 60vh` for vertical centering. Beat spacing increased from `mb-10` to `mb-12`/`mb-14`. Settle beat's `transition-all duration-[600ms]` class removed (was competing with the `funnel-settle` animation) — now uses only the keyframe animation when `phase >= 4`.
+  - `.gap-highlight` CSS: changed from opaque `var(--acuity-primary-lo)` at 40% height to translucent `oklch(0.88 0.10 38 / 0.55)` at 30% height with `padding-bottom: 1px` — reads as an underline sweep, not a redaction bar.
+  - N=0 case: `getTallyEcho` already returns `""` for n<1, `hasTallyEcho` is false, echo beat skipped, phase offsets start at cost beat. No logic change needed.
+- Zero changes to: funnel-config.ts, auth, signup, paywall, Gap 2/3, Mirror, Time Math, events, flowVersion.
+
+### Manual steps needed
+- [ ] Keenan: After deploy, walk the funnel with 0 taps, 1 tap, 5 taps, and lost-count. Verify Gap 1 opens correctly for each. Run: `SELECT event, COUNT(*) FROM "OnboardingEvent" WHERE event IN ('funnel_tally_viewed','funnel_tally_set') AND "flowVersion"='v4' GROUP BY event;` — both should show ≥1 row.
+
+### Notes
+- Event proof SQL could not be run from this machine — Supabase port 5432 is blocked (same issue noted in previous sessions). Keenan must run from home network.
+- Dev server confirmed /start returns 200 after changes. Build errors (missing `sonner`/`driver.js` deps) are pre-existing and unrelated — installed locally to test but did not commit package changes.
+- "last week" search confirmed zero instances in tally or Gap 1 — "this week" is consistent throughout (per the normalization commit 2fa8ce02).
+- The `getTallyEcho` function already handled N=0 correctly (returns empty string for n<1), so no config change was needed — only the Gap1Screen needed the layout/animation fixes.
+
+---
+
 ## [2026-06-12] — Tap counter, time-math screen, and Mirror 60% cut
 
 **Requested by:** Keenan
