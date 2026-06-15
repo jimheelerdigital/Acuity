@@ -503,6 +503,10 @@ export function OnboardingFunnel() {
           0% { opacity: 0; transform: translateY(12px) scale(1.03); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes funnel-scramble-resolve {
+          0% { filter: blur(3px); transform: scale(1.04); opacity: 0.6; }
+          100% { filter: blur(0); transform: scale(1); opacity: 1; }
+        }
         @keyframes funnel-soft-pulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.04); }
@@ -930,28 +934,41 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
 }) {
   const dur = String(answers.shared_q5 ?? "");
   const content = getTimeMathContent(dur);
+  const isThousands = content.count === null && content.show;
+  // Phases: 0=hidden, 1=kicker, 2=hero-anim-start, 3=label, 4=closer, 5=CTA
   const [phase, setPhase] = useState(0);
   const [displayNum, setDisplayNum] = useState(0);
+  const [scrambleDisplay, setScrambleDisplay] = useState("");
+  const [scrambleResolved, setScrambleResolved] = useState(false);
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   // Skip for short durations — immediately advance, fire no event
   useEffect(() => {
     if (!content.show) { onSkip(); return; }
-    if (prefersReduced) { setPhase(4); setDisplayNum(content.count ?? 0); return; }
+    if (prefersReduced) { setPhase(5); setDisplayNum(content.count ?? 0); setScrambleResolved(true); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
-    // Beat 1: her duration
-    t.push(setTimeout(() => setPhase(1), 0));
-    // Beat 2: count-up number at +1200ms
-    t.push(setTimeout(() => setPhase(2), 1200));
-    // Beat 3: closer at +3400ms (1200 + 1200 count-up + 1000 pause)
-    t.push(setTimeout(() => setPhase(3), 3400));
-    // CTA at +4200ms
-    t.push(setTimeout(() => setPhase(4), 4200));
-    return () => t.forEach(clearTimeout);
-  }, [content.show, prefersReduced, onSkip]);
 
-  // Odometer count-up animation — runs exactly once when phase first reaches 2.
-  // useRef guard prevents re-fire on subsequent phase changes (3, 4) and
+    if (isThousands) {
+      // Thousands timeline: kicker → scramble → label → closer → CTA
+      t.push(setTimeout(() => setPhase(1), 0));        // kicker fades in (500ms CSS)
+      t.push(setTimeout(() => setPhase(2), 800));       // scramble starts (+300ms after kicker settles)
+      t.push(setTimeout(() => setPhase(3), 2250));      // "of evenings" (+200ms after resolve at ~2050)
+      t.push(setTimeout(() => setPhase(4), 3050));      // closer
+      t.push(setTimeout(() => setPhase(5), 3850));      // CTA
+    } else {
+      // Numeric timeline: kicker → count-up → label → closer → CTA
+      t.push(setTimeout(() => setPhase(1), 0));        // kicker fades in (500ms CSS)
+      t.push(setTimeout(() => setPhase(2), 800));       // count-up starts
+      t.push(setTimeout(() => setPhase(3), 2200));      // "evenings" (+200ms after 1200ms count finishes)
+      t.push(setTimeout(() => setPhase(4), 3000));      // closer
+      t.push(setTimeout(() => setPhase(5), 3800));      // CTA
+    }
+
+    return () => t.forEach(clearTimeout);
+  }, [content.show, prefersReduced, onSkip, isThousands]);
+
+  // Odometer count-up animation — numeric variant only.
+  // useRef guard prevents re-fire on subsequent phase changes and
   // React 18 StrictMode double-invoke in development.
   const countUpStarted = useRef(false);
   useEffect(() => {
@@ -960,9 +977,9 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
     countUpStarted.current = true;
     const target = content.count;
     const duration = 1200;
-    const start = Date.now();
-    const tick = () => {
-      const elapsed = Date.now() - start;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - start;
       const pct = Math.min(1, elapsed / duration);
       const eased = 1 - Math.pow(1 - pct, 3); // ease-out cubic
       setDisplayNum(Math.round(eased * target));
@@ -971,11 +988,56 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
     requestAnimationFrame(tick);
   }, [phase, content.count, prefersReduced]);
 
-  // Skip handler — jump to final state including the final number
+  // Digit scramble animation — thousands variant only.
+  // Rapid random 4-digit numbers (~50ms/frame) for ~900ms, decelerating
+  // in the final ~300ms, then resolves to the word "Thousands".
+  const scrambleStarted = useRef(false);
+  useEffect(() => {
+    if (phase < 2 || content.count !== null || prefersReduced) return;
+    if (scrambleStarted.current) return;
+    scrambleStarted.current = true;
+
+    const SCRAMBLE_DURATION = 900;
+    const DECEL_START = 600;
+    const startTime = performance.now();
+    let lastFrameTime = 0;
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+
+      if (elapsed >= SCRAMBLE_DURATION) {
+        setScrambleDisplay("");
+        setScrambleResolved(true);
+        return;
+      }
+
+      // Frame interval: 50ms base, easing to ~200ms in final 300ms
+      let interval = 50;
+      if (elapsed > DECEL_START) {
+        const decelPct = (elapsed - DECEL_START) / (SCRAMBLE_DURATION - DECEL_START);
+        interval = 50 + decelPct * 150;
+      }
+
+      if (now - lastFrameTime >= interval) {
+        // Always 4-digit for stable width with tabular-nums
+        const n = 1000 + Math.floor(Math.random() * 9000);
+        setScrambleDisplay(n.toLocaleString());
+        lastFrameTime = now;
+      }
+
+      requestAnimationFrame(tick);
+    };
+
+    requestAnimationFrame(tick);
+  }, [phase, content.count, prefersReduced]);
+
+  // Tap-to-skip — jump to resolved final state
   const skip = () => {
-    setPhase(4);
+    setPhase(5);
     if (content.count !== null) setDisplayNum(content.count);
     countUpStarted.current = true;
+    scrambleStarted.current = true;
+    setScrambleResolved(true);
   };
 
   if (!content.show) return null;
@@ -984,34 +1046,52 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
-      onClick={phase < 4 ? skip : undefined}>
+      onClick={phase < 5 ? skip : undefined}>
       <div className="max-w-md w-full text-center">
+        {/* Kicker */}
         <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
           <p className="text-[15px] text-zinc-600">You said this has been running for {content.herDuration}.</p>
         </div>
 
-        <div className={`mb-10 transition-all duration-500 ease-out ${beat(2)}`}>
+        {/* Hero */}
+        <div className="mb-10">
           {content.count !== null ? (
-            <div className="flex items-baseline justify-center gap-3">
+            /* Numeric variant — ease-out count-up */
+            <div className={`transition-all duration-500 ease-out ${beat(2)}`}>
               <span className="text-[64px] sm:text-[80px] font-extrabold text-zinc-900 tabular-nums leading-none">
-                {phase >= 2 ? displayNum.toLocaleString() : 0}
+                {phase >= 2 ? displayNum.toLocaleString() : "0"}
               </span>
-              <span className="text-xl text-zinc-500 font-medium">{content.label}</span>
             </div>
           ) : (
-            <div className="flex items-baseline justify-center gap-3">
-              <span className="text-[48px] sm:text-[64px] font-extrabold text-zinc-900 leading-none">Thousands</span>
-              <span className="text-xl text-zinc-500 font-medium">{content.label}</span>
+            /* Thousands variant — rapid scramble then word resolve */
+            <div className={`transition-all duration-500 ease-out ${beat(2)}`}>
+              {!scrambleResolved ? (
+                <span className="text-[64px] sm:text-[80px] font-extrabold text-zinc-900 tabular-nums leading-none inline-block min-w-[4ch]">
+                  {scrambleDisplay || "\u00A0"}
+                </span>
+              ) : (
+                <span className="text-[48px] sm:text-[64px] font-extrabold text-zinc-900 leading-none inline-block"
+                  style={{ animation: prefersReduced ? "none" : "funnel-scramble-resolve 350ms ease-out both" }}>
+                  Thousands
+                </span>
+              )}
             </div>
           )}
+
+          {/* Label — staggered after hero resolves */}
+          <div className={`mt-2 transition-all duration-300 ease-out ${beat(3)}`}>
+            <span className="text-xl text-zinc-500 font-medium">{content.label}</span>
+          </div>
         </div>
 
-        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 3 ? "opacity-100" : "opacity-0"}`}
-          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
+        {/* Closer */}
+        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 4 ? "opacity-100" : "opacity-0"}`}
+          style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
           <p className="text-[17px] font-bold text-zinc-900">Evenings you don&rsquo;t get back. The next ones are still up for grabs.</p>
         </div>
 
-        <div className={`transition-all duration-500 ${beat(4)}`}>
+        {/* CTA */}
+        <div className={`transition-all duration-500 ${beat(5)}`}>
           <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
