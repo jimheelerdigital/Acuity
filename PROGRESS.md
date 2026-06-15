@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-06-15] — Gap 1 highlight fix: vertical alignment, line-wrap, and target trimming
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 71998388
+
+### In plain English (for Keenan)
+The peach highlighter effect on the Gap 1 "what it's costing you" screen was broken — it sat too high and clipped the tops of letters, bled across line wraps, and looked ragged on long phrases like "time you can't get back." Now the highlight sits cleanly behind the lower half of the text like a real marker pen, wraps cleanly across lines, and only highlights the core cost noun ("health", "career", "time", "sense of self") instead of long clauses. Looks intentional now, not glitchy.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: `.gap-highlight` CSS reworked — `background-position` changed from `left bottom` to `0% 85%`, `background-size` height from `30%` to `40%`, removed `padding-bottom: 1px`, added `padding-inline: 3px` and `box-decoration-break: clone` / `-webkit-box-decoration-break: clone`. Keyframe `funnel-highlight-sweep` and `prefers-reduced-motion` fallback updated to match `40%` height.
+- `apps/web/src/lib/funnel-config.ts`: `costWords` highlight targets trimmed from full phrases ("your energy", "your sense of self", "time you can't get back") to concise nouns ("energy", "sense of self", "time") across all six cost options. Sentence text (`formatCostShort`) unchanged — full phrases still display, but only the core noun gets the highlight.
+
+### Manual steps needed
+None.
+
+### Notes
+- The `box-decoration-break: clone` ensures multi-word highlights that wrap across lines get a clean per-line highlight fragment instead of one ragged rectangle spanning the gap.
+- Background-position `0% 85%` with `40%` height = the highlight band covers roughly from 65% to 100% of the line box height, which visually sits behind the lower ~60% of letter forms (x-height through baseline). This is the "marker pen behind text" look.
+- Sweep animation timing unchanged (350ms ease-out per word, 250ms stagger between words).
+
+---
+
 ## [2026-06-13] — Paywall 30-days block reframed from feature-output to felt-outcome
 
 **Requested by:** Keenan
