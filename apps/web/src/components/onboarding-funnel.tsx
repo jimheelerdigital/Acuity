@@ -496,8 +496,8 @@ export function OnboardingFunnel() {
           to { height: 100%; }
         }
         @keyframes funnel-highlight-sweep {
-          from { background-size: 0% 30%; }
-          to { background-size: 100% 30%; }
+          from { background-size: 0% 40%; }
+          to { background-size: 100% 40%; }
         }
         @keyframes funnel-settle {
           0% { opacity: 0; transform: translateY(12px) scale(1.03); }
@@ -523,9 +523,11 @@ export function OnboardingFunnel() {
         .gap-highlight {
           background-image: linear-gradient(to right, oklch(0.88 0.10 38 / 0.55), oklch(0.85 0.12 38 / 0.45));
           background-repeat: no-repeat;
-          background-position: left bottom;
-          background-size: 0% 30%;
-          padding-bottom: 1px;
+          background-position: 0% 85%;
+          background-size: 0% 40%;
+          padding-inline: 3px;
+          -webkit-box-decoration-break: clone;
+          box-decoration-break: clone;
         }
         .gap-highlight.sweep { animation: funnel-highlight-sweep 350ms ease-out forwards; }
         .funnel-screen { animation: funnel-slide-up 0.4s ease-out both; }
@@ -533,7 +535,7 @@ export function OnboardingFunnel() {
         .funnel-bounce { animation: funnel-bounce-in 0.4s ease-out both; }
         @media (prefers-reduced-motion: reduce) {
           .funnel-screen, .funnel-card-stagger, .funnel-bounce { animation: none !important; opacity: 1 !important; transform: none !important; }
-          .gap-highlight { background-size: 100% 30% !important; animation: none !important; }
+          .gap-highlight { background-size: 100% 40% !important; animation: none !important; }
           * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
         }
       `}} />

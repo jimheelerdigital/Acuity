@@ -735,14 +735,15 @@ export function buildGap1Content(branch: Branch, answers: Record<string, string 
     drift: "Left alone, drift doesn\u2019t reverse. It accelerates.",
   };
 
+  // Highlight targets: concise cost nouns only (not full clauses) for clean marker-style highlighting
   const costWords = costs.map((c) => {
-    const SHORT: Record<string, string> = {
-      "My energy": "your energy", "My relationships": "your relationships",
-      "My health": "your health", "My career": "your career",
-      "My sense of self": "your sense of self",
-      "Time I can\u2019t get back": "time you can\u2019t get back",
+    const HIGHLIGHT: Record<string, string> = {
+      "My energy": "energy", "My relationships": "relationships",
+      "My health": "health", "My career": "career",
+      "My sense of self": "sense of self",
+      "Time I can\u2019t get back": "time",
     };
-    return SHORT[c] ?? c.toLowerCase();
+    return HIGHLIGHT[c] ?? c.toLowerCase();
   });
   return {
     line1: `Right now, this is costing you ${costStr}.`,
