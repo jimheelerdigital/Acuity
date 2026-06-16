@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-06-16] — Gap 1 highlight vertical coverage fix (bottom-half → full word)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d7995a73
+
+### In plain English (for Keenan)
+The peach highlighter on the Gap 1 "what it's costing you" screen was only covering the bottom half of words like "health" and "time" — it looked like the highlight was cutting through the middle of the letters. Now it covers the full word cleanly, like a real highlighter drawn over text. The sweep animation still plays the same way.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: `.gap-highlight` CSS — `background-position` changed from `0% 85%` to `0% 50%` (vertically centered), `background-size` height changed from `40%` to `100%` (covers full line height). Same changes applied to `funnel-highlight-sweep` keyframe and `prefers-reduced-motion` fallback.
+
+### Manual steps needed
+None.
+
+### Notes
+- Previous fix (71998388) had `background-position: 0% 85%` with `background-size: 40%`. CSS background-position percentage formula places the top of the 40%-height band at `(100% - 40%) * 85% = 51%` from the top, meaning the highlight covered only 51%–91% of the line box — the bottom half of glyphs. Changing to `50%` position with `100%` height centers the highlight over the full text.
+- Sweep animation (350ms ease-out, 250ms stagger) and `box-decoration-break: clone` for line wraps are unchanged.
+
+---
+
 ## [2026-06-15] — Gap 1 highlight fix: vertical alignment, line-wrap, and target trimming
 
 **Requested by:** Keenan
