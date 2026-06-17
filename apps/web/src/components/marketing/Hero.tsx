@@ -65,7 +65,7 @@ export function Hero() {
               </a>
             </div>
             <div className="mt-[18px] font-sans text-[14px] text-acuity-text-ter">
-              No credit card · 14-day free trial · iPhone
+              No credit card · 7-day free trial · iPhone
             </div>
           </div>
         </Reveal>

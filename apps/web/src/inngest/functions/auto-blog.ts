@@ -1244,7 +1244,7 @@ PRODUCT CONTEXT:
 - Weekly report every Sunday: 400-word narrative of the user's week
 - Life Matrix: 6 life domains tracked over time
 - Monthly memoir PDF
-- Pricing: $4.99/month after 14-day free trial, no card required
+- Pricing: $4.99/month after 7-day free trial, no card required
 - First 100 users are Founding Members (${spotsLeft} spots left)
 
 VOICE RULES:
@@ -1274,7 +1274,7 @@ ${
 4. Section "Where Acuity wins" — highlight voice-first input, 60-second brain dumps, automatic task extraction, weekly narrative report, Life Matrix, pattern detection.
 5. Section "Who should choose [Competitor]" — be genuine about their strengths
 6. Section "Who should choose Acuity" — people who quit journaling because writing felt like work, people who want patterns surfaced automatically
-7. CTA at bottom: "Try Acuity free for 14 days — no card required" with link to /start
+7. CTA at bottom: "Try Acuity free for 7 days — no card required" with link to /start
 8. FAQ section with 3-4 comparison questions
 IMPORTANT: Do NOT fabricate competitor features or pricing. If unsure, say "check their website for current pricing." Be fair and honest — readers respect balanced comparisons.`
       : topic.searchIntent === "informational" ||

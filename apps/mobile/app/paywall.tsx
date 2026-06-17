@@ -111,7 +111,7 @@ export default function PaywallScreen() {
           style={{ color: tokens.textTer }}
         >
           Your trial reached its end. Your entries, your Life Matrix, and
-          your Day 14 Audit are still right where you left them — they
+          your Day 7 Audit are still right where you left them — they
           don&rsquo;t go anywhere.
         </Text>
 

@@ -53,7 +53,7 @@ export function Step10Ready() {
         }}
       >
         <Text className="text-xs" style={{ color: tokens.primary }}>
-          Your Day 14 Life Audit is already scheduled.
+          Your Day 7 Life Audit is already scheduled.
         </Text>
       </View>
     </View>

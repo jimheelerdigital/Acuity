@@ -380,18 +380,23 @@ export const WHISPER_LANGUAGE = "en"; // set to undefined for auto-detect
 
 // Sonnet-4-6 is the current default for extraction, weekly synthesis, memory
 // compression, and life-map insights — the "everything else" model per the
-// 2026-04-19 decision. Flagship work (Day 14 Life Audit, Quarterly audits —
+// 2026-04-19 decision. Flagship work (Day 7 Life Audit, Quarterly audits —
 // not yet built) uses claude-opus-4-7 and should reference a separate
 // CLAUDE_FLAGSHIP_MODEL constant when those land.
 export const CLAUDE_MODEL = "claude-sonnet-4-6";
 export const CLAUDE_MAX_TOKENS = 2048;
 
+// Free-trial length (days) for NEW signups. 2026-06-17: 14 → 7. Single source
+// of truth — imported by the bootstrap trial grant + Stripe checkout. Existing
+// trials are never changed retroactively; only signups after this ships.
+export const TRIAL_DAYS = 7;
+
 // Opus-4-7 is reserved for flagship long-form outputs where quality
-// matters more than cost: Day 14 Life Audit, Quarterly audits, Annual
+// matters more than cost: Day 7 Life Audit, Quarterly audits, Annual
 // memoir. Sonnet handles the per-entry extraction + weekly synthesis
 // + memory compression + lifemap insights.
 export const CLAUDE_FLAGSHIP_MODEL = "claude-opus-4-7";
-// Long-form Claude output budget. Day 14 Life Audit target is ~1000
+// Long-form Claude output budget. Day 7 Life Audit target is ~1000
 // words of narrative + a few hundred tokens of metadata; 4096 tokens
 // leaves headroom. Don't raise without measuring — longer tokens =
 // longer wall-clock = tighter per-step Hobby ceiling.

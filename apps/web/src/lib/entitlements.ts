@@ -43,7 +43,7 @@ export interface Entitlement {
   canExtractEntries: boolean;
   /** Can generate a new weekly report (gates POST /api/weekly). */
   canGenerateNewWeeklyReport: boolean;
-  /** Can generate a new Day 14 / Quarterly / Annual life audit. */
+  /** Can generate a new Day 7 / Quarterly / Annual life audit. */
   canGenerateNewLifeAudit: boolean;
   /** Can generate a new monthly memoir. */
   canGenerateMonthlyMemoir: boolean;

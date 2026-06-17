@@ -34,7 +34,7 @@ const jsonLd = {
         price: "4.99",
         priceCurrency: "USD",
         name: "Pro",
-        description: "14-day free trial. Unlimited voice entries, AI analysis, weekly reports, and Life Matrix.",
+        description: "7-day free trial. Unlimited voice entries, AI analysis, weekly reports, and Life Matrix.",
       },
       // Re-added 2026-06-09 with REAL App Store data (4 × 5-star). sameAs
       // + the rating url point Google at the verifiable source. Bump
@@ -73,7 +73,7 @@ const jsonLd = {
           name: "How much does Acuity cost?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity costs $4.99/month with a 14-day free trial. No card required. Quick setup.",
+            text: "Acuity costs $4.99/month with a 7-day free trial. No card required. Quick setup.",
           },
         },
         {

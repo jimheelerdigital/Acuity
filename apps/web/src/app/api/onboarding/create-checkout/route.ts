@@ -6,10 +6,11 @@
  * (which starts paid immediately), this uses Stripe's native trial so
  * the card is collected but not charged until the trial ends.
  *
- * Trial length: 14 days for all users.
+ * Trial length: TRIAL_DAYS (7) for all users.
  */
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { TRIAL_DAYS } from "@acuity/shared";
 
 import { getAuthOptions } from "@/lib/auth";
 import { PRICING } from "@/lib/pricing";
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     select: { stripeCustomerId: true, email: true },
   });
 
-  const trialDays = 14;
+  const trialDays = TRIAL_DAYS;
 
   try {
     console.log("[onboarding/create-checkout] Creating session:", {

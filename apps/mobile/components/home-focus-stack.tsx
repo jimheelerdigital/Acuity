@@ -83,7 +83,7 @@ const UNLOCK_TITLES: Record<UnlockKey, string> = {
   patternInsights: "Pattern Insights unlocked",
   themeMap: "Your Theme Map is ready",
   weeklyReport: "Your first Weekly Report is queued",
-  lifeAudit: "Your Day 14 Life Audit is ready",
+  lifeAudit: "Your Day 7 Life Audit is ready",
 };
 
 const UNLOCK_BODIES: Record<UnlockKey, string> = {

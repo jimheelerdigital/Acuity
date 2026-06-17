@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const metadata = {
-  title: "Your Day 14 Life Audit — Acuity",
-  description: "The pattern that showed up across your first fourteen days.",
+  title: "Your Day 7 Life Audit — Acuity",
+  description: "The pattern that showed up across your first seven days.",
   robots: { index: false, follow: false },
 };
 
@@ -106,10 +106,10 @@ export default async function LifeAuditPage({
 
         <header className="mt-8 mb-10">
           <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary">
-            Day 14 Life Audit
+            Day 7 Life Audit
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-            Your first fourteen days
+            Your first seven days
           </h1>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
             {periodLabel} &middot; {audit.entryCount} entries
@@ -136,7 +136,7 @@ export default async function LifeAuditPage({
         {(starting.length > 0 || emerging.length > 0 || fading.length > 0) && (
           <section className="mt-12 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-              Themes across the fourteen days
+              Themes across the seven days
             </h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-3">
               <ThemeGroup label="Starting" themes={starting} />
@@ -260,7 +260,7 @@ function PendingAuditView({ status }: { status: string }) {
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAF7] px-6">
       <div className="mx-auto max-w-md text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary">
-          Day 14 Life Audit
+          Day 7 Life Audit
         </p>
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {isFailed

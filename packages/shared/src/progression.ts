@@ -1,5 +1,5 @@
 /**
- * "Getting to know Acuity" 14-day discovery checklist. Surfaces as a
+ * "Getting to know Acuity" 7-day discovery checklist. Surfaces as a
  * small card on Home for new users. Items unlock progressively (by
  * days-since-signup) — cheap-to-detect items auto-complete from
  * server state; the rest require a manual tap to mark.
@@ -39,7 +39,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   },
   {
     key: "day2",
-    unlockAfterDays: 1,
+    unlockAfterDays: 0,
     title: "Review your first transcript",
     description: "See what Acuity pulled from your words.",
     href: "/entries",
@@ -47,7 +47,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   },
   {
     key: "day3",
-    unlockAfterDays: 2,
+    unlockAfterDays: 1,
     title: "Check your Life Matrix",
     description: "Six areas, scored from your own words.",
     href: "/insights",
@@ -55,7 +55,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   },
   {
     key: "day5",
-    unlockAfterDays: 4,
+    unlockAfterDays: 2,
     title: "Set your first goal",
     description: "Something you'd like Acuity to help you track.",
     href: "/goals",
@@ -63,7 +63,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   },
   {
     key: "day7",
-    unlockAfterDays: 6,
+    unlockAfterDays: 3,
     title: "Read your first weekly report",
     description: "The pattern of your first week.",
     href: "/insights",
@@ -71,7 +71,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   },
   {
     key: "day10",
-    unlockAfterDays: 9,
+    unlockAfterDays: 4,
     title: "Explore a theme",
     description: "Click a recurring theme on Insights.",
     href: "/insights",
@@ -79,7 +79,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   },
   {
     key: "day14",
-    unlockAfterDays: 13,
+    unlockAfterDays: 6,
     title: "Take your Life Audit",
     description: "A long-form letter from your own entries.",
     href: "/insights",
@@ -87,7 +87,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
   },
 ];
 
-export const PROGRESSION_HIDE_AFTER_DAYS = 14;
+export const PROGRESSION_HIDE_AFTER_DAYS = 7;
 
 /** Stored JSON shape on UserOnboarding.progressionChecklist. */
 export interface ProgressionState {

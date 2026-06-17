@@ -1011,7 +1011,7 @@ export function getComparisonLeft(branch: Branch, answers: Record<string, string
 
 export const PAYWALL_FAQ = [
   { q: "Will the price go up?", a: "Yes. The founding rate of $4.99/month is for early members only. When we raise prices, your rate stays locked as long as your subscription is active. Cancel and rejoin later, and you\u2019ll pay the standard rate." },
-  { q: "What happens during the free trial?", a: "Full access for 14 days. Record daily, get your first weekly report on Sunday, see your patterns emerge. Cancel anytime before day 14 and pay nothing." },
+  { q: "What happens during the free trial?", a: "Full access for 7 days. Record daily, get your first weekly report on Sunday, see your patterns emerge. Cancel anytime before day 7 and pay nothing." },
   { q: "How does it actually work?", a: "Open the app. Talk for 60 seconds about whatever\u2019s on your mind. AI extracts your tasks, goals, mood, and themes. Every Sunday, you get a 400-word report connecting the dots across your week." },
   { q: "Is it actually worth $4.99/month?", a: "One therapy session costs $150. One month of Acuity costs $4.99 and catches things therapists miss \u2014 because it listens every single day, not once a week. Your patterns don\u2019t wait for your next appointment." },
   { q: "Is my data private?", a: "Your recordings are transcribed and deleted within 24 hours. Data is encrypted, never sold, never shared. This is your space." },

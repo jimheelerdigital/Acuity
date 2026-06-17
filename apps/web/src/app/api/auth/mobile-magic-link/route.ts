@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     // Bootstrap at create time — matches /api/auth/signup's flow so
     // the user's trial clock starts the moment they request the link,
     // not when they first click it. Two-request delay between email
-    // send and click would otherwise eat into the 14-day trial.
+    // send and click would otherwise eat into the 7-day trial.
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
     await bootstrapNewUser({ userId: user.id, email, signupMethod: "magic-link" });
   }

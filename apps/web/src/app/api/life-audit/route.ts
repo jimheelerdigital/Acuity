@@ -1,5 +1,5 @@
 /**
- * POST /api/life-audit  — queue a Day 14 Life Audit generation for
+ * POST /api/life-audit  — queue a Day 7 Life Audit generation for
  *                         the signed-in user (if entitled).
  * GET  /api/life-audit  — return the user's most recent COMPLETE
  *                         Life Audit (for the view page to render).
@@ -9,12 +9,12 @@
  * there is no sync fallback. If `ENABLE_INNGEST_PIPELINE !== "1"`,
  * POST returns 503. IMPLEMENTATION_PLAN_PAYWALL §1.1 / §5.1.
  *
- * The Day 14 cron (`day14AuditCronFn`) is the canonical entry point
+ * The Day 7 cron (`day7AuditCronFn`) is the canonical entry point
  * for audit creation — it seeds the row + dispatches the event the
  * night before `trialEndsAt`. This HTTP POST route exists for:
  *   - manual on-demand generation (debug + QA)
  *   - future user-triggered audits (e.g. "regenerate" button)
- *   - the "user signs in on Day 14 without the cron having fired"
+ *   - the "user signs in on Day 7 without the cron having fired"
  *     edge case
  */
 

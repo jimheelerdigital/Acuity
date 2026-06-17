@@ -2275,7 +2275,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <button onClick={onSkip} className="w-full py-3 text-sm text-zinc-500 hover:text-zinc-700 transition font-medium">
             Continue without paying &rarr;
           </button>
-          <p className="text-[10px] text-zinc-400 text-center">14-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
+          <p className="text-[10px] text-zinc-400 text-center">7-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
         </div>
       </div>
     </div>
@@ -2332,7 +2332,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
         ) : (
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is active.</h2>
-            <p className="text-sm text-zinc-500 mb-2">You have 14 days to explore everything Acuity offers.</p>
+            <p className="text-sm text-zinc-500 mb-2">You have 7 days to explore everything Acuity offers.</p>
             <p className="text-sm text-zinc-500 mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         )}

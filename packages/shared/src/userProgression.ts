@@ -1,5 +1,5 @@
 /**
- * userProgression — single source of truth for the guided 14-day
+ * userProgression — single source of truth for the guided 7-day
  * first-experience on Acuity. Pure function; no DB access. Callers
  * (web lib + mobile via API) fetch the user + entries + themes +
  * goals, then pipe them in.
@@ -136,7 +136,7 @@ export interface UserProgressionInput {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const TRIAL_DAYS = 14;
+const TRIAL_DAYS = 7;
 
 // Priority order when multiple unlocks are equidistant — matches the
 // natural product flow (first data artifacts → insight layers → the
@@ -160,7 +160,7 @@ const UNLOCK_LABELS: Record<UnlockKey, string> = {
   patternInsights: "Pattern Insights",
   themeMap: "Theme Map",
   weeklyReport: "Weekly Report",
-  lifeAudit: "Day 14 Life Audit",
+  lifeAudit: "Day 7 Life Audit",
 };
 
 export function userProgression(input: UserProgressionInput): UserProgression {
@@ -196,7 +196,7 @@ export function userProgression(input: UserProgressionInput): UserProgression {
     patternInsights: entriesCount >= 7,
     themeMap: entriesCount >= 10 && themesDetected >= 3,
     weeklyReport: dayOfTrial >= 7 && entriesInLast7Days >= 3,
-    lifeAudit: dayOfTrial >= 14 && entriesCount >= 1,
+    lifeAudit: dayOfTrial >= 7 && entriesCount >= 1,
   };
 
   // ─── What's next ──────────────────────────────────────────────
@@ -494,14 +494,14 @@ function pickNextUnlock(args: {
   }
 
   if (!unlocked.lifeAudit) {
-    const dayGap = Math.max(0, 14 - dayOfTrial);
+    const dayGap = Math.max(0, 7 - dayOfTrial);
     candidates.push({
       key: "lifeAudit",
       condition:
         dayGap > 0
           ? `${dayGap} day${dayGap === 1 ? "" : "s"} until your Life Audit`
           : recordMore(1),
-      progress: { current: dayOfTrial, target: 14 },
+      progress: { current: dayOfTrial, target: 7 },
       distance: dayGap,
     });
   }
@@ -592,7 +592,7 @@ export function lockedFeatureCopy(
         headline: "Your first Weekly Report lands on day 7.",
         body:
           dayGap > 0
-            ? `You're on day ${progression.dayOfTrial} of 14. Your first report will arrive in ${dayGap} day${dayGap === 1 ? "" : "s"} — assuming at least 3 entries in the past week.`
+            ? `You're on day ${progression.dayOfTrial} of 7. Your first report will arrive in ${dayGap} day${dayGap === 1 ? "" : "s"} — assuming at least 3 entries in the past week.`
             : `You're on day ${progression.dayOfTrial}. Acuity needs 3 entries in the past 7 days to write your report. You have ${progression.entriesInLast7Days}.`,
         progress:
           dayGap > 0
@@ -601,14 +601,14 @@ export function lockedFeatureCopy(
       };
     }
     case "lifeAudit": {
-      const dayGap = Math.max(0, 14 - progression.dayOfTrial);
+      const dayGap = Math.max(0, 7 - progression.dayOfTrial);
       return {
-        headline: "Your Day 14 Life Audit is coming.",
+        headline: "Your Day 7 Life Audit is coming.",
         body:
           dayGap > 0
-            ? `This is the long-form letter Acuity writes about your first two weeks. It lands in ${dayGap} day${dayGap === 1 ? "" : "s"}.`
+            ? `This is the long-form letter Acuity writes about your first week. It lands in ${dayGap} day${dayGap === 1 ? "" : "s"}.`
             : `You're on day ${progression.dayOfTrial}. Your Life Audit should be generating — if it hasn't appeared, try recording one more entry.`,
-        progress: { current: progression.dayOfTrial, target: 14 },
+        progress: { current: progression.dayOfTrial, target: 7 },
       };
     }
   }

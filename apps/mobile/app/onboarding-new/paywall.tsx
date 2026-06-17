@@ -384,7 +384,7 @@ export default function PaywallScreen() {
               marginBottom: 28,
             }}
           >
-            14-day free trial. Cancel anytime.{"\n"}You won&apos;t be charged
+            7-day free trial. Cancel anytime.{"\n"}You won&apos;t be charged
             today.
           </Text>
 
@@ -422,7 +422,7 @@ export default function PaywallScreen() {
                 textAlign: "center",
               }}
             >
-              {formatDollars(MONTHLY_PRICE_CENTS)}/month after your 14-day
+              {formatDollars(MONTHLY_PRICE_CENTS)}/month after your 7-day
               trial. Cancel anytime.
             </Text>
           </Animated.View>

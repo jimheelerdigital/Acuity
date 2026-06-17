@@ -1,6 +1,6 @@
 /**
- * Day 14 Life Audit cron. Fires daily at 22:00 UTC; finds every user
- * whose trial ends in the next 24h and doesn't already have a Day 14
+ * Day 7 Life Audit cron. Fires daily at 22:00 UTC; finds every user
+ * whose trial ends in the next 24h and doesn't already have a Day 7
  * audit in a non-terminal or COMPLETE state; seeds a LifeAudit row
  * with status=QUEUED and dispatches the per-user generation event.
  *
@@ -20,10 +20,10 @@ import { safeLog } from "@/lib/safe-log";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-export const day14AuditCronFn = inngest.createFunction(
+export const day7AuditCronFn = inngest.createFunction(
   {
-    id: "day-14-audit-cron",
-    name: "Day 14 Life Audit dispatcher",
+    id: "day-7-audit-cron",
+    name: "Day 7 Life Audit dispatcher",
     triggers: [{ cron: "0 22 * * *" }],
     retries: 3,
   },
@@ -47,7 +47,7 @@ export const day14AuditCronFn = inngest.createFunction(
       },
     });
 
-    safeLog.info("day-14-audit-cron.tick", {
+    safeLog.info("day-7-audit-cron.tick", {
       now: now.toISOString(),
       windowEnd: expiresBy.toISOString(),
       candidateCount: candidates.length,
@@ -101,7 +101,7 @@ export const day14AuditCronFn = inngest.createFunction(
         data: { lifeAuditId: audit.id, userId: user.id },
       });
 
-      safeLog.info("day-14-audit-cron.dispatched", {
+      safeLog.info("day-7-audit-cron.dispatched", {
         userId: user.id,
         email: user.email,
         lifeAuditId: audit.id,

@@ -45,9 +45,9 @@ export function waitlistReactivation1Html(opts: {
       `What it does: you just open the app and talk, any time of day. Acuity catches the tasks you mentioned, the goals you keep circling, and by Sunday morning, writes you a 400-word narrative of your week that reads like someone was paying attention.`
     )}
     ${p(
-      `Because you signed up early, you get 14 days free. No card required. If you don't love it, delete it and I'll buy your next coffee.`
+      `Because you signed up early, you get 7 days free. No card required. If you don't love it, delete it and I'll buy your next coffee.`
     )}
-    <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Claim Your 14-Day Trial")}</td></tr>
+    <tr><td style="padding-bottom:24px;">${trialButton(opts.signupUrl, "Claim Your 7-Day Trial")}</td></tr>
     ${sig()}
     ${p(
       `<span style="font-size:14px;color:#9ca3af;">P.S. Founding Members get early access and locked-in pricing. There are still spots left, but they're going fast.</span>`
@@ -57,7 +57,7 @@ export function waitlistReactivation1Html(opts: {
   return trialLayout({
     content,
     unsubscribeUrl: opts.unsubscribeUrl,
-    preheader: "The wait is over — your 14-day free trial is ready.",
+    preheader: "The wait is over — your 7-day free trial is ready.",
   });
 }
 

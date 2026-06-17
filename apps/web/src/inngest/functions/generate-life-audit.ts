@@ -25,7 +25,7 @@ function truncateForUi(message: string, max = 200): string {
 export const generateLifeAuditFn = inngest.createFunction(
   {
     id: "generate-life-audit",
-    name: "Generate Day 14 Life Audit",
+    name: "Generate Day 7 Life Audit",
     triggers: [{ event: "life-audit/generation.requested" }],
     // BACKGROUND tier (Decisions 2026-04-19 #3): the user isn't watching.
     // Audit runs the night before trialEndsAt; up to ~14 min of retry

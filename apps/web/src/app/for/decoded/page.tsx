@@ -81,7 +81,7 @@ export default function DecodedPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <p className="text-2xl sm:text-4xl font-bold text-white leading-snug tracking-tight">
-              After 14 days, most Acuity users discover something that surprises
+              After 7 days, most Acuity users discover something that surprises
               them.
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
@@ -295,7 +295,7 @@ export default function DecodedPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline="14 days. That's all it takes to see yourself clearly."
+        headline="7 days. That's all it takes to see yourself clearly."
         subheadline="One plan. Everything included. Cancel anytime."
         utmCampaign={UTM}
       />
