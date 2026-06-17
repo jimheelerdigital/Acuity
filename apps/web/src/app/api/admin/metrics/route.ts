@@ -184,7 +184,7 @@ export async function GET(req: NextRequest) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type P = any; // Prisma client type shorthand
 
-async function getOverview(
+export async function getOverview(
   prisma: P,
   start: Date,
   end: Date,
@@ -925,7 +925,7 @@ async function getAICosts(
   };
 }
 
-async function getRedFlags(prisma: P) {
+export async function getRedFlags(prisma: P) {
   const flags = await prisma.redFlag
     .findMany({
       where: { resolved: false },
@@ -949,7 +949,7 @@ function getGuide() {
 
 // ─── Growth Metrics (new tab) ──────────────────────────────────────
 
-async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
+export async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
   const epochFilter = DASHBOARD_EPOCH ? `AND u."createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'` : "";
   const epochFilterEntry = DASHBOARD_EPOCH ? `AND e."createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'` : "";
 
@@ -1207,7 +1207,7 @@ async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
 // Of users who activated (1+ entry) in range, what % engaged each feature.
 // User-driven features are the real signal; auto-seeded rows (Life Map row,
 // Achievements) are shown muted because their existence ≠ engagement.
-async function getFeatureAdoption(prisma: P, start: Date, end: Date) {
+export async function getFeatureAdoption(prisma: P, start: Date, end: Date) {
   const [row] = await prisma.$queryRaw<
     Array<{
       total_activated: number;
@@ -1273,7 +1273,7 @@ async function getFeatureAdoption(prisma: P, start: Date, end: Date) {
 
 // ── Engagement distribution (analytics dashboard, 2026-06-16) ──────────────
 // Of users who activated, how deep does usage go — one-and-done vs habit.
-async function getEngagementDistribution(prisma: P, start: Date, end: Date) {
+export async function getEngagementDistribution(prisma: P, start: Date, end: Date) {
   const [row] = await prisma.$queryRaw<
     Array<{
       total_activated: number;
@@ -1324,7 +1324,7 @@ async function getEngagementDistribution(prisma: P, start: Date, end: Date) {
   };
 }
 
-async function getBusinessMetrics(prisma: P, monthStart: Date) {
+export async function getBusinessMetrics(prisma: P, monthStart: Date) {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
   const [
@@ -1585,7 +1585,7 @@ async function countDistinctSessions(prisma: P, event: string, start: Date, end:
   return bySession.length + byUser.length;
 }
 
-async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVersion: "v2" | "v1" | "all" = "v2") {
+export async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVersion: "v2" | "v1" | "all" = "v2") {
   try {
     let effectiveStart = start;
     let effectiveEnd = end;

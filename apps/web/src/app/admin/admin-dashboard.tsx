@@ -18,6 +18,7 @@ const GrowthMetricsTab = dynamic(() => import("./tabs/GrowthMetricsTab"));
 const BusinessMetricsTab = dynamic(() => import("./tabs/BusinessMetricsTab"));
 const SettingsTab = dynamic(() => import("./tabs/SettingsTab"));
 const FunnelAnalyticsTab = dynamic(() => import("./tabs/FunnelAnalyticsTab"));
+const MRITab = dynamic(() => import("./tabs/MRITab"));
 const FeatureAdoptionTab = dynamic(() => import("./tabs/FeatureAdoptionTab"));
 const EngagementDistributionTab = dynamic(
   () => import("./tabs/EngagementDistributionTab")
@@ -25,6 +26,7 @@ const EngagementDistributionTab = dynamic(
 
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "mri", label: "🧠 MRI" },
   { key: "funnel-analytics", label: "Funnel" },
   { key: "users", label: "Users" },
   { key: "ads", label: "Ads" },
@@ -195,6 +197,7 @@ export default function AdminDashboard() {
           {activeTab === "overview" && (
             <OverviewTab start={startStr} end={endStr} />
           )}
+          {activeTab === "mri" && <MRITab start={startStr} end={endStr} />}
           {activeTab === "users" && <UsersTab />}
           {activeTab === "ads" && (
             <AdsTab start={startStr} end={endStr} />
