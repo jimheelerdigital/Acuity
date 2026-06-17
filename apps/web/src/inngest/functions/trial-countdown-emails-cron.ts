@@ -1,14 +1,17 @@
 /**
  * Trial countdown email cron — slice 4 (2026-05-25).
  *
- * Hourly cron that finds users in each of the five cohorts and
+ * Hourly cron that finds users in each of the four cohorts and
  * fires the matching email via `sendCountdownEmail`. Idempotent on
  * the dedicated SentAt columns Jim added in slice 3.
  *
- * Cohort gating:
- *   - T-7:  trialEndsAt ∈ [now + 6.5d, now + 7.5d], status=TRIAL, T7SentAt null
- *   - T-3:  trialEndsAt ∈ [now + 2.5d, now + 3.5d], status=TRIAL, T3SentAt null
- *   - T-1:  trialEndsAt ∈ [now + 0.5d, now + 1.5d], status=TRIAL, T1SentAt null
+ * Cohort gating (7-day trial cadence; windows are relative to
+ * trialEndsAt, so grandfathered 14-day trials still get each touch at
+ * the right remaining-time offset):
+ *   - mid-trial (Day 3 ≈ T-4): trialEndsAt ∈ [now + 3.5d, now + 4.5d],
+ *           status=TRIAL, trialT7EmailSentAt null (legacy column reused)
+ *   - urgency  (Day 5 ≈ T-2): trialEndsAt ∈ [now + 1.5d, now + 2.5d],
+ *           status=TRIAL, trialT3EmailSentAt null (legacy column reused)
  *   - T+0:  trialExpiredAt ∈ [now − 24h, now], EndedSentAt null
  *           (only fires after the expiration cron flips status to FREE
  *            and stamps trialExpiredAt; gate naturally excludes still-
@@ -23,8 +26,8 @@
  * First-deploy note: existing TRIAL users in the field may match
  * multiple cohorts on the very first run (e.g., a user 2 days from
  * trial end matches T-3 immediately). Cron sends only that one
- * email; users who PASSED the T-7 mark before this code shipped
- * won't get a backfilled T-7 send. That's intentional — the catch-
+ * email; users who PASSED the mid-trial mark before this code shipped
+ * won't get a backfilled mid-trial send. That's intentional — the catch-
  * up email is the soonest applicable cohort, not the whole history.
  */
 
@@ -36,7 +39,6 @@ import {
 } from "@/lib/trial-countdown-emails";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const HALF_DAY_MS = 12 * 60 * 60 * 1000;
 
 interface CohortDef {
   key: CountdownEmailKey;
@@ -49,9 +51,8 @@ interface CohortDef {
 }
 
 const COHORTS: CohortDef[] = [
-  { key: "trial_countdown_t7", sentAtField: "trialT7EmailSentAt" },
-  { key: "trial_countdown_t3", sentAtField: "trialT3EmailSentAt" },
-  { key: "trial_countdown_t1", sentAtField: "trialT1EmailSentAt" },
+  { key: "trial_midtrial", sentAtField: "trialT7EmailSentAt" },
+  { key: "trial_urgency", sentAtField: "trialT3EmailSentAt" },
   { key: "trial_ended_t0", sentAtField: "trialEndedEmailSentAt" },
   { key: "trial_reengagement_t3", sentAtField: "trialT3PostEmailSentAt" },
 ];
@@ -59,7 +60,7 @@ const COHORTS: CohortDef[] = [
 export const trialCountdownEmailsCronFn = inngest.createFunction(
   {
     id: "trial-countdown-emails-cron",
-    name: "Trial countdown emails (T-7 / T-3 / T-1 / T+0 / T+3)",
+    name: "Trial countdown emails (mid-trial / urgency / ended / re-engage)",
     triggers: [{ cron: "0 * * * *" }],
     retries: 2,
   },
@@ -67,17 +68,18 @@ export const trialCountdownEmailsCronFn = inngest.createFunction(
     const { prisma } = await import("@/lib/prisma");
     const now = new Date();
     const tally: Record<CountdownEmailKey, number> = {
-      trial_countdown_t7: 0,
-      trial_countdown_t3: 0,
-      trial_countdown_t1: 0,
+      trial_midtrial: 0,
+      trial_urgency: 0,
       trial_ended_t0: 0,
       trial_reengagement_t3: 0,
     };
 
-    // T-7 cohort
-    await step.run("send-t7", async () => {
-      const lower = new Date(now.getTime() + 6.5 * ONE_DAY_MS);
-      const upper = new Date(now.getTime() + 7.5 * ONE_DAY_MS);
+    // Mid-trial cohort — Day 3 on a 7-day trial (≈ T-4). Reuses the
+    // legacy trialT7EmailSentAt column (see FIELD map in
+    // trial-countdown-emails.ts) to avoid a migration.
+    await step.run("send-midtrial", async () => {
+      const lower = new Date(now.getTime() + 3.5 * ONE_DAY_MS);
+      const upper = new Date(now.getTime() + 4.5 * ONE_DAY_MS);
       const users = await prisma.user.findMany({
         where: {
           subscriptionStatus: "TRIAL",
@@ -87,16 +89,18 @@ export const trialCountdownEmailsCronFn = inngest.createFunction(
         select: { id: true },
       });
       for (const u of users) {
-        const r = await sendCountdownEmail(u.id, "trial_countdown_t7");
-        if (r.sent) tally.trial_countdown_t7 += 1;
+        const r = await sendCountdownEmail(u.id, "trial_midtrial");
+        if (r.sent) tally.trial_midtrial += 1;
       }
-      return { count: tally.trial_countdown_t7, candidates: users.length };
+      return { count: tally.trial_midtrial, candidates: users.length };
     });
 
-    // T-3 cohort
-    await step.run("send-t3", async () => {
-      const lower = new Date(now.getTime() + 2.5 * ONE_DAY_MS);
-      const upper = new Date(now.getTime() + 3.5 * ONE_DAY_MS);
+    // Urgency cohort — Day 5 on a 7-day trial (≈ T-2). Reuses the
+    // legacy trialT3EmailSentAt column. The old T-1 "last day" email
+    // is dropped in the 7-day cadence (it would land ~1 day after this).
+    await step.run("send-urgency", async () => {
+      const lower = new Date(now.getTime() + 1.5 * ONE_DAY_MS);
+      const upper = new Date(now.getTime() + 2.5 * ONE_DAY_MS);
       const users = await prisma.user.findMany({
         where: {
           subscriptionStatus: "TRIAL",
@@ -106,29 +110,10 @@ export const trialCountdownEmailsCronFn = inngest.createFunction(
         select: { id: true },
       });
       for (const u of users) {
-        const r = await sendCountdownEmail(u.id, "trial_countdown_t3");
-        if (r.sent) tally.trial_countdown_t3 += 1;
+        const r = await sendCountdownEmail(u.id, "trial_urgency");
+        if (r.sent) tally.trial_urgency += 1;
       }
-      return { count: tally.trial_countdown_t3, candidates: users.length };
-    });
-
-    // T-1 cohort
-    await step.run("send-t1", async () => {
-      const lower = new Date(now.getTime() + HALF_DAY_MS);
-      const upper = new Date(now.getTime() + 1.5 * ONE_DAY_MS);
-      const users = await prisma.user.findMany({
-        where: {
-          subscriptionStatus: "TRIAL",
-          trialEndsAt: { gte: lower, lt: upper },
-          trialT1EmailSentAt: null,
-        },
-        select: { id: true },
-      });
-      for (const u of users) {
-        const r = await sendCountdownEmail(u.id, "trial_countdown_t1");
-        if (r.sent) tally.trial_countdown_t1 += 1;
-      }
-      return { count: tally.trial_countdown_t1, candidates: users.length };
+      return { count: tally.trial_urgency, candidates: users.length };
     });
 
     // T+0 cohort — only after expiration cron has flipped them.

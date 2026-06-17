@@ -126,7 +126,7 @@ export default function TermsPage() {
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
                 <strong className="text-acuity-text">Free trial.</strong>{" "}
-                New accounts get a 14-day free trial of the full
+                New accounts get a 7-day free trial of the full
                 product. No payment information required to start the
                 trial. The trial ends automatically; if you don&rsquo;t
                 subscribe, your access shifts to read-only on existing

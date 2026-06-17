@@ -1,6 +1,6 @@
 /**
  * Pricing — single plan card. Ported from the handoff
- * (`marketing.jsx → Pricing`). $4.99/mo, 14-day trial (matches live).
+ * (`marketing.jsx → Pricing`). $4.99/mo, 7-day trial (matches live).
  * "12-axis Life Matrix" corrected to "Life Matrix" (live is 10 axes —
  * see PRODUCT_DRIFT_AUDIT.md; no axis-count claim in marketing).
  */
@@ -39,7 +39,7 @@ export function Pricing() {
                 <span className="font-display text-[56px] font-extrabold tracking-[-2px] text-acuity-text">$4.99</span>
                 <span className="font-sans text-[17px] text-acuity-text-sec">/ month</span>
               </div>
-              <div className="mb-7 font-sans text-[15px] text-acuity-text-ter">14-day free trial · cancel anytime</div>
+              <div className="mb-7 font-sans text-[15px] text-acuity-text-ter">7-day free trial · cancel anytime</div>
 
               <div className="mb-[30px] flex flex-col gap-[13px]">
                 {FEATURES.map((f) => (

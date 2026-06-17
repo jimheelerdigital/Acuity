@@ -1,7 +1,7 @@
 /**
  * Step 7 — How the trial works.
  *
- * Sets expectation for the 14-day trial + Day 14 Life Audit + Month 2
+ * Sets expectation for the 7-day trial + Day 7 Life Audit + Month 2
  * transition. Tone comes from IMPLEMENTATION_PLAN_PAYWALL §4.2 —
  * continuation-not-gate language, the paywall is soft, your entries
  * and insights remain visible regardless of whether you subscribe.
@@ -22,11 +22,11 @@ export function Step7TrialExplanation() {
       </h1>
 
       <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        Fourteen days on us. Talk at it whenever. Miss a few nights —
+        Seven days on us. Talk at it whenever. Miss a few nights —
         that&rsquo;s fine too. We&rsquo;re not trying to trap you in a streak.
       </p>
 
-      {/* Three-beat timeline: today / day 14 / beyond. Each one a small
+      {/* Three-beat timeline: today / day 7 / beyond. Each one a small
           card with a subtle left border, reading like a receipt. */}
       <div className="mt-10 space-y-4">
         <TimelineRow
@@ -35,9 +35,9 @@ export function Step7TrialExplanation() {
           body="Night one — thirty seconds is fine. Tomorrow the dashboard will already have a little bit of the shape of you on it."
         />
         <TimelineRow
-          marker="Day 14"
+          marker="Day 7"
           title="You get a Life Audit."
-          body="A long-form letter. Not a summary. Written from your own entries by our flagship model — the one we save for the moments that deserve the extra thought. Names the pattern that showed up. Hard to produce any other way than by sitting with two weeks of honest notes."
+          body="A long-form letter. Not a summary. Written from your own entries by our flagship model — the one we save for the moments that deserve the extra thought. Names the pattern that showed up. Hard to produce any other way than by sitting with a week of honest notes."
         />
         <TimelineRow
           marker="After"

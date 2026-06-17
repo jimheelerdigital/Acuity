@@ -1,19 +1,19 @@
 /**
  * Trial countdown push cron — slice 9 (2026-05-25).
  *
- * Hourly cron that mirrors the T-3 and T+0 email cohorts as push
+ * Hourly cron that mirrors the urgency (T-2) and T+0 email cohorts as push
  * notifications. Idempotent on the dedicated User.trialT3PushSentAt
  * + User.trialEndedPushSentAt columns Jim added in slice 3.
  *
  * Cohort gating (parallel to trial-countdown-emails-cron):
- *   - T-3 push: trialEndsAt ∈ [now + 2.5d, now + 3.5d], status=TRIAL,
- *               trialT3PushSentAt null, pushToken NOT null
+ *   - T-2 push: trialEndsAt ∈ [now + 1.5d, now + 2.5d], status=TRIAL,
+ *               trialT3PushSentAt null, pushToken NOT null (legacy column)
  *   - T+0 push: trialExpiredAt ∈ [now − 24h, now],
  *               trialEndedPushSentAt null, pushToken NOT null
  *
- * Why only T-3 and T+0 (not the full email sequence): push is more
- * disruptive than email. The two most actionable moments are "you
- * have three days" + "your trial just ended". The other emails do
+ * Why only urgency (T-2) and T+0 (not the full email sequence): push
+ * is more disruptive than email. The two most actionable moments are
+ * "you have two days left" + "your trial just ended". The other emails do
  * the work of warming the user up + handling re-engagement.
  *
  * ⚠️ HIGH RISK gating: this cron does nothing today because no user
@@ -35,7 +35,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export const trialCountdownPushCronFn = inngest.createFunction(
   {
     id: "trial-countdown-push-cron",
-    name: "Trial countdown push (T-3 / T+0)",
+    name: "Trial countdown push (T-2 / T+0)",
     triggers: [{ cron: "0 * * * *" }],
     retries: 2,
   },
@@ -47,10 +47,12 @@ export const trialCountdownPushCronFn = inngest.createFunction(
       trial_ended_t0_push: 0,
     };
 
-    // T-3 cohort
+    // Urgency cohort — Day 5 on a 7-day trial (≈ T-2). Step label +
+    // key kept as the legacy "t3" name to reuse trialT3PushSentAt
+    // without a migration; only the window shifted T-3 → T-2.
     await step.run("push-t3", async () => {
-      const lower = new Date(now.getTime() + 2.5 * ONE_DAY_MS);
-      const upper = new Date(now.getTime() + 3.5 * ONE_DAY_MS);
+      const lower = new Date(now.getTime() + 1.5 * ONE_DAY_MS);
+      const upper = new Date(now.getTime() + 2.5 * ONE_DAY_MS);
       const users = await prisma.user.findMany({
         where: {
           subscriptionStatus: "TRIAL",

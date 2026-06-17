@@ -20,7 +20,7 @@ export const powerDeepen: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-            ${v.totalRecordings} debriefs in. You've already done more than most trial users do in the full 14 days. Skipping ahead.
+            ${v.totalRecordings} debriefs in. You've already done more than most trial users do in the full 7 days. Skipping ahead.
           </p>
         </td>
       </tr>

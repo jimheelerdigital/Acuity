@@ -332,7 +332,7 @@ function email4(rawName: string): string {
                       Founding member benefits:
                     </p>
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
-                      ${bullet("14-day free trial — no credit card required to start")}
+                      ${bullet("7-day free trial — no credit card required to start")}
                       ${bullet("Lock in $4.99/month — the lowest price Acuity will ever be")}
                       ${bullet("This price goes up after the first 100 members. Your rate stays forever.")}
                       ${bullet("Founding Member status — permanently on your account")}

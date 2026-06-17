@@ -16,12 +16,12 @@ import { DEFAULT_LIFE_AREAS, TRIAL_DAYS } from "@acuity/shared";
  * Trial-reset protection (pentest T-07 / docs/SECURITY_AUDIT.md F-24):
  * Before setting trialEndsAt we consult the DeletedUser table. Users
  * who deleted their account recently get a shorter "welcome back"
- * trial instead of another full 14 days, to prevent farming fresh
+ * trial instead of another full 7 days, to prevent farming fresh
  * trials via delete+recreate cycles.
  *
  * Retention policy:
- *   - Never seen           → 14-day trial (first-timer; most users)
- *   - Deleted > 90d ago    → 14-day trial (welcome back, genuine return)
+ *   - Never seen           → 7-day trial (first-timer; most users)
+ *   - Deleted > 90d ago    → 7-day trial (welcome back, genuine return)
  *   - Deleted ≤ 90d ago    → 3-day trial (clearly hopping)
  *
  * Idempotent on LifeMapArea + UserMemory — both use createMany /
@@ -77,7 +77,7 @@ export async function bootstrapNewUser(params: {
     referredById = await resolveReferrerByCode(prisma, referralCodeFromSignup);
   }
 
-  // First 100 signups are Founding Members — same 14-day trial, locked-in pricing.
+  // First 100 signups are Founding Members — same 7-day trial, locked-in pricing.
   // Count existing founding members to determine eligibility and number.
   const FOUNDING_MEMBER_CAP = 100;
   const FOUNDING_MEMBER_TRIAL_DAYS = 14;
@@ -87,7 +87,7 @@ export async function bootstrapNewUser(params: {
   const isFoundingMember = foundingCount < FOUNDING_MEMBER_CAP;
   const foundingMemberNumber = isFoundingMember ? foundingCount + 1 : null;
 
-  // All users get 14-day trial. Referral bonus stacks on top.
+  // All users get 7-day trial. Referral bonus stacks on top.
   const effectiveBaseDays = isFoundingMember
     ? FOUNDING_MEMBER_TRIAL_DAYS
     : baseTrialDays;
@@ -289,7 +289,7 @@ export async function bootstrapNewUser(params: {
  * collapse to a single identity. `alice+spam@gmail.com` and
  * `alice@gmail.com` route to the same Gmail inbox, so they must hash
  * to the same DeletedUser key — otherwise an attacker can farm fresh
- * 14-day trials by signing up with `alice+1@`, `alice+2@`, etc., each
+ * 7-day trials by signing up with `alice+1@`, `alice+2@`, etc., each
  * of which evades the tombstone lookup.
  *
  * Applied to all email addresses (not just Gmail) — every major

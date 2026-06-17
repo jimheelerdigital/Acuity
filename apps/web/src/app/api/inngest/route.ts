@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { inngest } from "@/inngest/client";
 import { generateContentFn } from "@/inngest/functions/content-factory";
 import { backfillExtractionsFn } from "@/inngest/functions/backfill-extractions";
-import { day14AuditCronFn } from "@/inngest/functions/day-14-audit-cron";
+import { day7AuditCronFn } from "@/inngest/functions/day-7-audit-cron";
 import { drainPendingCalendarTasksFn } from "@/inngest/functions/drain-pending-calendar-tasks";
 import { freeCapEvaluatorFn } from "@/inngest/functions/free-cap-evaluator";
 import { generateLifeAuditFn } from "@/inngest/functions/generate-life-audit";
@@ -59,7 +59,7 @@ const handler = serve({
     processEntryFn,
     generateWeeklyReportFn,
     refreshLifeMapFn,
-    day14AuditCronFn,
+    day7AuditCronFn,
     commitExtractionBackstopFn,
     stripeWebhookHealthFn,
     generateLifeAuditFn,

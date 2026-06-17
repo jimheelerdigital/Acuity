@@ -263,7 +263,7 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
   },
   14: {
     title: "Two weeks of showing up.",
-    body: "This is where most people quit. You didn't. Your Day 14 Life Audit is ready whenever you are.",
+    body: "This is where most people quit. You didn't. Your Day 7 Life Audit is ready whenever you are.",
   },
   30: {
     title: "A month of daily debriefs.",

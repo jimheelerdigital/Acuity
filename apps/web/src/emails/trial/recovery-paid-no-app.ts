@@ -31,7 +31,7 @@ export const recoveryPaidNoApp: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(`Hey ${name},`)}
-      ${para(`Your 14-day trial is live. Here\u2019s your first step:`)}
+      ${para(`Your 7-day trial is live. Here\u2019s your first step:`)}
       <tr>
         <td style="padding-bottom:20px;">
           <table role="presentation" cellpadding="0" cellspacing="0" width="100%">

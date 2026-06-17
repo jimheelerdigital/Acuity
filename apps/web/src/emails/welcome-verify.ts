@@ -42,7 +42,7 @@ export function welcomeVerifyEmail(
   const verifyUrl = escapeHtml(opts.verifyUrl);
   const fmLine = opts.foundingMemberNumber
     ? `You're Founding Member #${opts.foundingMemberNumber}. 14 days free, no card. If you're not into it in a week, delete the app and I'll buy your next coffee.`
-    : `14 days free, no card required. If you're not into it in a week, delete the app and I'll buy your next coffee.`;
+    : `7 days free, no card required. If you're not into it in a week, delete the app and I'll buy your next coffee.`;
 
   const para = (text: string) =>
     `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;

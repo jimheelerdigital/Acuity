@@ -10,9 +10,9 @@ import { api } from "@/lib/api";
 
 /**
  * Mobile counterpart to apps/web/src/components/progression-checklist.tsx.
- * Same server endpoint (/api/progression), same 7-item 14-day schedule,
+ * Same server endpoint (/api/progression), same 7-item 7-day schedule,
  * same progress-bar + collapse + hide affordances. Rendered on Home
- * for users in their first 14 days.
+ * for users in their first 7 days.
  */
 
 interface Item {
@@ -76,7 +76,7 @@ export function ProgressionChecklist({
             className="mt-1 text-xs"
             style={{ color: tokens.textSec }}
           >
-            {done} of {items.length} complete · unlocks over two weeks
+            {done} of {items.length} complete · unlocks over one week
           </Text>
         </View>
         <View className="flex-row gap-1">

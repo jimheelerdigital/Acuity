@@ -46,7 +46,7 @@ export default function AdCopyPreview({ piece }: { piece: PreviewPiece }) {
             )}
           </div>
           <button className="shrink-0 rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white">
-            Try free for 14 days
+            Try free for 7 days
           </button>
         </div>
       </div>

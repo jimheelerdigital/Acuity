@@ -182,7 +182,7 @@ export const generateDataExportFn = inngest.createFunction(
           `  themes.json            — per-theme mention records`,
           `  lifematrix.json        — current scores + weekly history`,
           `  weekly-reports.json    — every synthesized weekly report`,
-          `  life-audits.json       — flagship audits (Day 14, quarterly, annual)`,
+          `  life-audits.json       — flagship audits (Day 7, quarterly, annual)`,
           `  user-insights.json     — auto-flagged observations`,
           `  audio/                 — original recordings when retained (.m4a / .webm)`,
           ``,

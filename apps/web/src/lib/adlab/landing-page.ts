@@ -85,7 +85,7 @@ Generate a landing page with these exact JSON fields:
   "valueProps": ["3-4 benefits starting with action verbs, ending with specific outcomes"],
   "testimonialQuote": "realistic testimonial with a specific detail (number, day, feature name)",
   "testimonialName": "First name + last initial",
-  "ctaText": "Start Free Trial — 14 Days Free",
+  "ctaText": "Start Free Trial — 7 Days Free",
   "closingHeadline": "emotional closer — warm direct challenge, not a sales pitch",
   "metaTitle": "SEO title — angle keyword + Acuity (max 60 chars)",
   "metaDescription": "SEO description (max 155 chars) — problem + solution + CTA"
@@ -126,7 +126,7 @@ Return ONLY valid JSON, no markdown fences.`;
       valueProps: generated.valueProps ?? [],
       testimonialQuote: generated.testimonialQuote ?? null,
       testimonialName: generated.testimonialName ?? null,
-      ctaText: generated.ctaText ?? "Start Free Trial — 14 Days Free",
+      ctaText: generated.ctaText ?? "Start Free Trial — 7 Days Free",
       closingHeadline: generated.closingHeadline ?? null,
       metaTitle: generated.metaTitle ?? "Acuity — Start Your Free Trial",
       metaDescription: generated.metaDescription ?? "The AI voice journal that turns your daily debrief into action.",

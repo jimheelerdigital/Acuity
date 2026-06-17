@@ -138,7 +138,7 @@ export default function SignUpScreen() {
           className="text-sm mb-8 text-center"
           style={{ color: tokens.textTer }}
         >
-          14-day free trial. No credit card.
+          7-day free trial. No credit card.
         </Text>
 
         <TextInput

@@ -27,7 +27,7 @@ NEVER use these words/phrases:
 
 Always include specific numbers, specific examples, specific experiences — never vague benefits.
 
-Pricing: $4.99/month after 14-day free trial, no card required.`;
+Pricing: $4.99/month after 7-day free trial, no card required.`;
 
 // ─── Few-shot loader ─────────────────────────────────────────────────────────
 

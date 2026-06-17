@@ -6,14 +6,21 @@
  * (welcome_day0, reactivation, power-user pings, value recap, etc.)
  * via the TrialEmailLog table.
  *
- * This module is the COUNTDOWN sequence — five emails fired
- * relative to the user's trial-end timestamp:
- *   - T-7 : "Your trial ends in a week"
- *   - T-3 : "3 days left in your trial"
- *   - T-1 : "Last day"
- *   - T+0 : "Your trial ended" (fires after the expiration cron
- *           sets trialExpiredAt)
+ * This module is the COUNTDOWN sequence — four emails fired
+ * relative to the user's trial-end timestamp. Tuned for the 7-day
+ * trial (migrated from 14 days 2026-06): all windows are relative
+ * to trialEndsAt, so the change is grandfathering-safe.
+ *   - T-4 (Day 3) : mid-trial value reminder ("patterns are
+ *                   surfacing")
+ *   - T-2 (Day 5) : "2 days left" urgency
+ *   - T+0 (Day 7) : "Your trial ended" (fires after the expiration
+ *                   cron sets trialExpiredAt)
  *   - T+3 : "Come back when you're ready"
+ *
+ * The old T-7 (would land on signup day at a 7-day trial) and T-1
+ * ("Last day") emails were dropped. The DB column names are legacy
+ * slot names (trialT7/T3/T1...) — they no longer correspond to the
+ * day offsets in their names; see the FIELD map below.
  *
  * Tracking uses the dedicated User.trial*EmailSentAt columns Jim
  * added in slice 3, NOT the TrialEmailLog table. Keeps the
@@ -44,9 +51,8 @@ import { safeLog } from "@/lib/safe-log";
 const DEFAULT_APP_URL = "https://www.getacuity.io";
 
 export type CountdownEmailKey =
-  | "trial_countdown_t7"
-  | "trial_countdown_t3"
-  | "trial_countdown_t1"
+  | "trial_midtrial"
+  | "trial_urgency"
   | "trial_ended_t0"
   | "trial_reengagement_t3";
 
@@ -156,9 +162,9 @@ function statsLine(v: CountdownVars): string {
 
 // ─── Template renderers ─────────────────────────────────────────
 
-function renderT7(v: CountdownVars): { subject: string; html: string } {
+function renderMidtrial(v: CountdownVars): { subject: string; html: string } {
   const name = escapeHtml(v.firstName);
-  const subject = "Your trial ends in a week";
+  const subject = "Your patterns are starting to surface";
   const themesBit = v.topThemeName
     ? v.secondThemeName
       ? `${escapeHtml(v.topThemeName)} and ${escapeHtml(v.secondThemeName)}`
@@ -168,16 +174,16 @@ function renderT7(v: CountdownVars): { subject: string; html: string } {
   const content = `
     <tr><td style="padding-bottom:24px;">
       <h1 style="margin:0;font-size:26px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:-0.4px;">
-        Your trial ends in a week, ${name}.
+        You're hitting your stride, ${name}.
       </h1>
     </td></tr>
     <tr><td style="padding-bottom:20px;">
       <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-        You've recorded ${escapeHtml(String(v.totalRecordings))} ${v.totalRecordings === 1 ? "entry" : "entries"} so far. Your themes are starting to surface — ${themesBit}. The next week is when patterns really show up. Then your trial wraps and Life Matrix, Theme Map, and weekly insights move to Pro.
+        You've recorded ${escapeHtml(String(v.totalRecordings))} ${v.totalRecordings === 1 ? "entry" : "entries"} so far. Your themes are starting to surface — ${themesBit}. This next stretch is where the patterns really settle. Keep going and watch Life Matrix, Theme Map, and weekly insights come into focus.
       </p>
     </td></tr>
     <tr><td style="padding-bottom:8px;">
-      ${trialButton(v.upgradeUrl("trial_t7"), "Keep building →")}
+      ${trialButton(v.upgradeUrl("trial_midtrial"), "Keep building →")}
     </td></tr>
     <tr><td style="padding-top:24px;">
       <p style="margin:0;font-size:15px;color:#A0A0B8;line-height:1.7;">
@@ -190,24 +196,24 @@ function renderT7(v: CountdownVars): { subject: string; html: string } {
     html: trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "A week left in your trial. Patterns are about to settle.",
+      preheader: "Your patterns are surfacing. The next stretch is where they settle.",
     }),
   };
 }
 
-function renderT3(v: CountdownVars): { subject: string; html: string } {
+function renderUrgency(v: CountdownVars): { subject: string; html: string } {
   const name = escapeHtml(v.firstName);
-  const subject = "3 days left in your trial";
+  const subject = "2 days left in your trial";
 
   const content = `
     <tr><td style="padding-bottom:24px;">
       <h1 style="margin:0;font-size:26px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:-0.4px;">
-        3 days left, ${name}.
+        2 days left, ${name}.
       </h1>
     </td></tr>
     <tr><td style="padding-bottom:20px;">
       <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-        Three days before your insights move to Pro. Here's what you've built:
+        Two days before your insights move to Pro. Here's what you've built:
       </p>
     </td></tr>
     <tr><td style="padding-bottom:24px;">
@@ -223,7 +229,7 @@ function renderT3(v: CountdownVars): { subject: string; html: string } {
       </p>
     </td></tr>
     <tr><td style="padding-bottom:8px;">
-      ${trialButton(v.upgradeUrl("trial_t3"), "Keep your insights →")}
+      ${trialButton(v.upgradeUrl("trial_urgency"), "Keep your insights →")}
     </td></tr>
     <tr><td style="padding-top:24px;">
       <p style="margin:0;font-size:15px;color:#A0A0B8;line-height:1.7;">
@@ -236,41 +242,7 @@ function renderT3(v: CountdownVars): { subject: string; html: string } {
     html: trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "3 days before Life Matrix + Theme Map move to Pro.",
-    }),
-  };
-}
-
-function renderT1(v: CountdownVars): { subject: string; html: string } {
-  const name = escapeHtml(v.firstName);
-  const subject = "Last day";
-
-  const content = `
-    <tr><td style="padding-bottom:24px;">
-      <h1 style="margin:0;font-size:26px;font-weight:800;color:#FFFFFF;line-height:1.3;letter-spacing:-0.4px;">
-        Last day, ${name}.
-      </h1>
-    </td></tr>
-    <tr><td style="padding-bottom:20px;">
-      <p style="margin:0;font-size:16px;color:#D8D8E8;line-height:1.7;">
-        Your trial ends tomorrow. Recording stays free. Life Matrix, Theme Map, and your weekly report lock unless you continue on web.
-      </p>
-    </td></tr>
-    <tr><td style="padding-bottom:8px;">
-      ${trialButton(v.upgradeUrl("trial_t1"), "Keep going →")}
-    </td></tr>
-    <tr><td style="padding-top:24px;">
-      <p style="margin:0;font-size:15px;color:#A0A0B8;line-height:1.7;">
-        — Jim &amp; Keenan
-      </p>
-    </td></tr>
-  `;
-  return {
-    subject,
-    html: trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "One more day to lock in Pro at your trial rate.",
+      preheader: "2 days before Life Matrix + Theme Map move to Pro.",
     }),
   };
 }
@@ -347,9 +319,8 @@ const RENDERERS: Record<
   CountdownEmailKey,
   (v: CountdownVars) => { subject: string; html: string }
 > = {
-  trial_countdown_t7: renderT7,
-  trial_countdown_t3: renderT3,
-  trial_countdown_t1: renderT1,
+  trial_midtrial: renderMidtrial,
+  trial_urgency: renderUrgency,
   trial_ended_t0: renderT0,
   trial_reengagement_t3: renderT3Post,
 };
@@ -415,10 +386,14 @@ export async function sendCountdownEmail(
     // "IS NULL" — defends against two concurrent cron ticks racing
     // on the same user (Inngest retries can occasionally fire
     // overlapping invocations).
+    // Column names are LEGACY slot names from the 14-day cadence —
+    // they no longer match the day offsets in their names. We reuse
+    // the existing columns to avoid a migration: trialT7EmailSentAt
+    // now backs the mid-trial (T-4) email, trialT3EmailSentAt backs
+    // the urgency (T-2) email. trialT1EmailSentAt is now unused.
     const FIELD: Record<CountdownEmailKey, string> = {
-      trial_countdown_t7: "trialT7EmailSentAt",
-      trial_countdown_t3: "trialT3EmailSentAt",
-      trial_countdown_t1: "trialT1EmailSentAt",
+      trial_midtrial: "trialT7EmailSentAt",
+      trial_urgency: "trialT3EmailSentAt",
       trial_ended_t0: "trialEndedEmailSentAt",
       trial_reengagement_t3: "trialT3PostEmailSentAt",
     };

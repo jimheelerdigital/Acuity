@@ -41,7 +41,7 @@ export const recoveryDownloadReminder: TrialEmailTemplate = {
         ${trialButton("https://getacuity.io/home", "Use the web app")}
       </td></tr>
       ${para(
-        "Feel free to reach out with any questions! Make sure you use your 14 day trial \u2014 there\u2019s a ton of insights that you can get with Acuity, even in the first two weeks :)"
+        "Feel free to reach out with any questions! Make sure you use your 7 day trial \u2014 there\u2019s a ton of insights that you can get with Acuity, even in the first week :)"
       )}
       <tr><td style="padding-top:8px;">
         <p style="margin:0;font-size:16px;color:#1a1a1a;">Kindly,</p>
