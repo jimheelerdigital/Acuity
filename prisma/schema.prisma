@@ -2581,3 +2581,22 @@ model UserAchievement {
   @@index([userId, shownToUser])
   @@index([userId, earnedAt])
 }
+
+// Admin MRI diagnostic dashboard — Claude-generated insight snapshots.
+// Table created via Supabase migration create_admin_insight (2026-06-16);
+// this model mirrors it for typed Prisma access. Additive, read-by-admin only.
+model AdminInsight {
+  id           String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  generatedAt  DateTime @default(now())
+  snapshotData Json
+  insights     Json
+  summary      String
+  modelUsed    String
+  tokensIn     Int
+  tokensOut    Int
+  costCents    Int
+  rangeUsed    String
+  generatedBy  String?
+
+  @@index([generatedAt(sort: Desc)])
+}
