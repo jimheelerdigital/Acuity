@@ -4,7 +4,9 @@ export type TimeRange =
   | "today"
   | "7d"
   | "30d"
+  | "60d"
   | "90d"
+  | "all"
   | "mtd"
   | "custom";
 
@@ -12,7 +14,9 @@ const OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "today", label: "Today" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
+  { value: "60d", label: "Last 60 days" },
   { value: "90d", label: "Last 90 days" },
+  { value: "all", label: "All time" },
   { value: "mtd", label: "Month-to-date" },
   { value: "custom", label: "Custom" },
 ];
@@ -91,6 +95,14 @@ export function getDateRange(range: TimeRange, customStart?: string, customEnd?:
     case "30d":
       start = new Date(end);
       start.setDate(start.getDate() - 30);
+      break;
+    case "60d":
+      start = new Date(end);
+      start.setDate(start.getDate() - 60);
+      break;
+    case "all":
+      // Far-past start; the metrics API clamps to DASHBOARD_EPOCH anyway.
+      start = new Date("2020-01-01T00:00:00.000Z");
       break;
     case "90d":
       start = new Date(end);

@@ -18,6 +18,10 @@ const GrowthMetricsTab = dynamic(() => import("./tabs/GrowthMetricsTab"));
 const BusinessMetricsTab = dynamic(() => import("./tabs/BusinessMetricsTab"));
 const SettingsTab = dynamic(() => import("./tabs/SettingsTab"));
 const FunnelAnalyticsTab = dynamic(() => import("./tabs/FunnelAnalyticsTab"));
+const FeatureAdoptionTab = dynamic(() => import("./tabs/FeatureAdoptionTab"));
+const EngagementDistributionTab = dynamic(
+  () => import("./tabs/EngagementDistributionTab")
+);
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -28,6 +32,8 @@ const TABS = [
   { key: "ai-costs", label: "AI Costs" },
   { key: "growth-metrics", label: "Growth" },
   { key: "business-metrics", label: "Business" },
+  { key: "feature-adoption", label: "Features" },
+  { key: "engagement-distribution", label: "Engagement" },
   { key: "settings", label: "Settings" },
 ] as const;
 
@@ -202,6 +208,12 @@ export default function AdminDashboard() {
           )}
           {activeTab === "business-metrics" && (
             <BusinessMetricsTab start={startStr} end={endStr} />
+          )}
+          {activeTab === "feature-adoption" && (
+            <FeatureAdoptionTab start={startStr} end={endStr} />
+          )}
+          {activeTab === "engagement-distribution" && (
+            <EngagementDistributionTab start={startStr} end={endStr} />
           )}
           {activeTab === "funnel-analytics" && (
             <FunnelAnalyticsTab start={startStr} end={endStr} />

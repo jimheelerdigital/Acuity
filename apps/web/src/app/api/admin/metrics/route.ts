@@ -141,6 +141,10 @@ export async function GET(req: NextRequest) {
           return safe("growth-metrics", () => getGrowthMetrics(prisma, start, end), {});
         case "business-metrics":
           return safe("business-metrics", () => getBusinessMetrics(prisma, monthStart), {});
+        case "feature-adoption":
+          return safe("feature-adoption", () => getFeatureAdoption(prisma, start, end), {});
+        case "engagement-distribution":
+          return safe("engagement-distribution", () => getEngagementDistribution(prisma, start, end), {});
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
@@ -1151,6 +1155,127 @@ async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
 }
 
 // ─── Business Metrics (new tab) ────────────────────────────────────
+
+// ── Feature adoption (analytics dashboard, 2026-06-16) ────────────────────
+// Of users who activated (1+ entry) in range, what % engaged each feature.
+// User-driven features are the real signal; auto-seeded rows (Life Map row,
+// Achievements) are shown muted because their existence ≠ engagement.
+async function getFeatureAdoption(prisma: P, start: Date, end: Date) {
+  const [row] = await prisma.$queryRaw<
+    Array<{
+      total_activated: number;
+      used_tasks: number;
+      used_goals: number;
+      used_insights: number;
+      used_life_audit: number;
+      got_weekly_report: number;
+      got_state_of_me: number;
+      set_reminder: number;
+      connected_calendar: number;
+      life_map_moved: number;
+      life_map_row: number;
+      got_achievement: number;
+    }>
+  >`
+    WITH activated_users AS (
+      SELECT DISTINCT u.id
+      FROM "User" u
+      WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+        AND EXISTS (SELECT 1 FROM "Entry" e WHERE e."userId" = u.id)
+    )
+    SELECT
+      (SELECT COUNT(*)::int FROM activated_users) AS total_activated,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "Task" WHERE "userId" IN (SELECT id FROM activated_users)) AS used_tasks,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "Goal" WHERE "userId" IN (SELECT id FROM activated_users)) AS used_goals,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "UserInsight" WHERE "userId" IN (SELECT id FROM activated_users)) AS used_insights,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "LifeAudit" WHERE "userId" IN (SELECT id FROM activated_users)) AS used_life_audit,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "WeeklyReport" WHERE "userId" IN (SELECT id FROM activated_users)) AS got_weekly_report,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "StateOfMeReport" WHERE "userId" IN (SELECT id FROM activated_users)) AS got_state_of_me,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "UserReminder" WHERE "userId" IN (SELECT id FROM activated_users)) AS set_reminder,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "CalendarConnection" WHERE "userId" IN (SELECT id FROM activated_users)) AS connected_calendar,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "LifeMapArea" WHERE "userId" IN (SELECT id FROM activated_users) AND score != "baselineScore") AS life_map_moved,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "LifeMapArea" WHERE "userId" IN (SELECT id FROM activated_users)) AS life_map_row,
+      (SELECT COUNT(DISTINCT "userId")::int FROM "UserAchievement" WHERE "userId" IN (SELECT id FROM activated_users)) AS got_achievement
+  `;
+  const total = row?.total_activated ?? 0;
+  const pct = (n: number) => (total > 0 ? Math.round((1000 * n) / total) / 10 : 0);
+  const mk = (key: string, label: string, users: number, type: "user-driven" | "auto-seeded") => ({
+    key,
+    label,
+    users,
+    pct: pct(users),
+    type,
+  });
+  return {
+    totalActivated: total,
+    features: [
+      mk("tasks", "Tasks", row?.used_tasks ?? 0, "user-driven"),
+      mk("goals", "Goals", row?.used_goals ?? 0, "user-driven"),
+      mk("insights", "Insights", row?.used_insights ?? 0, "user-driven"),
+      mk("lifeAudit", "Life Audit (matrix)", row?.used_life_audit ?? 0, "user-driven"),
+      mk("weeklyReport", "Weekly Report", row?.got_weekly_report ?? 0, "user-driven"),
+      mk("stateOfMe", "State of Me", row?.got_state_of_me ?? 0, "user-driven"),
+      mk("reminders", "Reminders", row?.set_reminder ?? 0, "user-driven"),
+      mk("calendar", "Calendar", row?.connected_calendar ?? 0, "user-driven"),
+      mk("lifeMapMoved", "Life Map engagement (score moved)", row?.life_map_moved ?? 0, "user-driven"),
+      mk("lifeMapRow", "Life Map (row exists)", row?.life_map_row ?? 0, "auto-seeded"),
+      mk("achievements", "Achievements", row?.got_achievement ?? 0, "auto-seeded"),
+    ],
+  };
+}
+
+// ── Engagement distribution (analytics dashboard, 2026-06-16) ──────────────
+// Of users who activated, how deep does usage go — one-and-done vs habit.
+async function getEngagementDistribution(prisma: P, start: Date, end: Date) {
+  const [row] = await prisma.$queryRaw<
+    Array<{
+      total_activated: number;
+      one_and_done: number;
+      dabbled_2_to_4: number;
+      engaged_5_to_14: number;
+      habit_15_plus: number;
+      recorded_3plus_days: number;
+      recorded_7plus_days: number;
+      avg_entries_per_user: number;
+      avg_days_with_entries: number;
+    }>
+  >`
+    WITH activated AS (
+      SELECT
+        u.id,
+        COUNT(e.id)::int AS entry_count,
+        COUNT(DISTINCT DATE(e."createdAt"))::int AS days_with_entries
+      FROM "User" u
+      JOIN "Entry" e ON e."userId" = u.id
+      WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+      GROUP BY u.id
+    )
+    SELECT
+      COUNT(*)::int AS total_activated,
+      (COUNT(*) FILTER (WHERE entry_count = 1))::int AS one_and_done,
+      (COUNT(*) FILTER (WHERE entry_count BETWEEN 2 AND 4))::int AS dabbled_2_to_4,
+      (COUNT(*) FILTER (WHERE entry_count BETWEEN 5 AND 14))::int AS engaged_5_to_14,
+      (COUNT(*) FILTER (WHERE entry_count >= 15))::int AS habit_15_plus,
+      (COUNT(*) FILTER (WHERE days_with_entries >= 3))::int AS recorded_3plus_days,
+      (COUNT(*) FILTER (WHERE days_with_entries >= 7))::int AS recorded_7plus_days,
+      COALESCE(ROUND(AVG(entry_count)::numeric, 1), 0)::float8 AS avg_entries_per_user,
+      COALESCE(ROUND(AVG(days_with_entries)::numeric, 1), 0)::float8 AS avg_days_with_entries
+    FROM activated
+  `;
+  return {
+    totalActivated: row?.total_activated ?? 0,
+    cohorts: {
+      oneAndDone: row?.one_and_done ?? 0,
+      dabbled: row?.dabbled_2_to_4 ?? 0,
+      engaged: row?.engaged_5_to_14 ?? 0,
+      habit: row?.habit_15_plus ?? 0,
+    },
+    recorded3PlusDays: row?.recorded_3plus_days ?? 0,
+    recorded7PlusDays: row?.recorded_7plus_days ?? 0,
+    avgEntriesPerUser: row?.avg_entries_per_user ?? 0,
+    avgDaysWithEntries: row?.avg_days_with_entries ?? 0,
+  };
+}
 
 async function getBusinessMetrics(prisma: P, monthStart: Date) {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
