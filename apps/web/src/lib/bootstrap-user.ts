@@ -1,6 +1,6 @@
 import "server-only";
 
-import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
+import { DEFAULT_LIFE_AREAS, TRIAL_DAYS } from "@acuity/shared";
 
 /**
  * One-time bootstrap for a newly-created User row. Writes the trial
@@ -139,7 +139,7 @@ export async function bootstrapNewUser(params: {
   await track(userId, "trial_started", {
     trialEndsAt: trialEndsAt.toISOString(),
     trialDays,
-    reducedTrial: trialDays < 14,
+    reducedTrial: trialDays < TRIAL_DAYS,
     isFoundingMember,
     foundingMemberNumber,
     email,
@@ -316,8 +316,8 @@ export function canonicalizeEmail(email: string): string {
 export async function trialDaysForEmail(
   email: string | null
 ): Promise<number> {
-  const STANDARD_TRIAL_DAYS = 14;
-  const REDUCED_TRIAL_DAYS = 3;
+  const STANDARD_TRIAL_DAYS = TRIAL_DAYS;
+  const REDUCED_TRIAL_DAYS = 2;
   const LOOKBACK_DAYS = 90;
 
   if (!email) return STANDARD_TRIAL_DAYS;

@@ -386,6 +386,11 @@ export const WHISPER_LANGUAGE = "en"; // set to undefined for auto-detect
 export const CLAUDE_MODEL = "claude-sonnet-4-6";
 export const CLAUDE_MAX_TOKENS = 2048;
 
+// Free-trial length (days) for NEW signups. 2026-06-17: 14 → 7. Single source
+// of truth — imported by the bootstrap trial grant + Stripe checkout. Existing
+// trials are never changed retroactively; only signups after this ships.
+export const TRIAL_DAYS = 7;
+
 // Opus-4-7 is reserved for flagship long-form outputs where quality
 // matters more than cost: Day 14 Life Audit, Quarterly audits, Annual
 // memoir. Sonnet handles the per-entry extraction + weekly synthesis
