@@ -1128,6 +1128,44 @@ async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
     }
   }
 
+  // Platform-dimension acquisition (analytics, 2026-06-16): source × platform
+  // activation funnel — surfaces e.g. meta→web vs meta→iOS activation gaps.
+  const platformAcquisition = await prisma.$queryRaw<
+    Array<{
+      source: string;
+      platform: string | null;
+      signups: number;
+      activated: number;
+      activation_pct: number;
+      opened_no_record: number;
+      never_opened: number;
+    }>
+  >`
+    WITH cohort AS (
+      SELECT
+        u.id,
+        COALESCE(u."signupUtmSource", 'direct') AS source,
+        u."devicePlatform" AS platform,
+        (u."lastSeenAt" IS NOT NULL) AS opened_app,
+        COUNT(e.id) AS entries_count
+      FROM "User" u
+      LEFT JOIN "Entry" e ON e."userId" = u.id
+      WHERE u."createdAt" >= ${start} AND u."createdAt" <= ${end}
+      GROUP BY u.id
+    )
+    SELECT
+      source,
+      platform,
+      COUNT(*)::int AS signups,
+      (COUNT(*) FILTER (WHERE entries_count >= 1))::int AS activated,
+      COALESCE(ROUND(100.0 * COUNT(*) FILTER (WHERE entries_count >= 1) / NULLIF(COUNT(*), 0), 1), 0)::float8 AS activation_pct,
+      (COUNT(*) FILTER (WHERE opened_app AND entries_count = 0))::int AS opened_no_record,
+      (COUNT(*) FILTER (WHERE NOT opened_app))::int AS never_opened
+    FROM cohort
+    GROUP BY source, platform
+    ORDER BY signups DESC
+  `.catch(() => []);
+
   return {
     weeklySignups: weeklySignups.map((r) => ({ week: r.week, count: Number(r.count) })),
     cumulativeUsers: cumulativeUsers.map((r) => ({ week: r.week, total: Number(r.total) })),
@@ -1149,6 +1187,15 @@ async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
         week3: Number(r.week3) || 0, week4: Number(r.week4) || 0,
         week8: Number(r.week8) || 0, week12: Number(r.week12) || 0,
       },
+    })),
+    platformAcquisition: platformAcquisition.map((r) => ({
+      source: r.source,
+      platform: r.platform ?? "web", // null devicePlatform = web
+      signups: r.signups,
+      activated: r.activated,
+      activationPct: r.activation_pct,
+      openedNoRecord: r.opened_no_record,
+      neverOpened: r.never_opened,
     })),
     projections,
   };
@@ -1368,6 +1415,45 @@ async function getBusinessMetrics(prisma: P, monthStart: Date) {
     : 0;
   const runwayMonths = netProfitCents < 0 ? null : null; // No cash tracking yet
 
+  // Stripe reconciliation (analytics, 2026-06-16): every Stripe PRO user by
+  // last-seen — compare against the Stripe Dashboard to catch stale "DB says
+  // PRO but Stripe canceled" records. + PAST_DUE recovery candidates. PII is
+  // admin-gated. Current-state snapshots, so not range-scoped.
+  const staleStripeRecords = await prisma.$queryRaw<
+    Array<{
+      email: string;
+      name: string | null;
+      subscriptionStatus: string;
+      stripeSubscriptionId: string | null;
+      stripeFirstFailureAt: Date | null;
+      createdAt: Date;
+      lastSeenAt: Date | null;
+      days_inactive: number | null;
+    }>
+  >`
+    SELECT email, name, "subscriptionStatus", "stripeSubscriptionId",
+      "stripeFirstFailureAt", "createdAt", "lastSeenAt",
+      EXTRACT(DAY FROM NOW() - "lastSeenAt")::int AS days_inactive
+    FROM "User"
+    WHERE "subscriptionSource" = 'stripe' AND "subscriptionStatus" = 'PRO'
+    ORDER BY "lastSeenAt" ASC NULLS FIRST
+  `.catch(() => []);
+
+  const pastDueRecovery = await prisma.$queryRaw<
+    Array<{
+      email: string;
+      name: string | null;
+      subscriptionSource: string | null;
+      stripeFirstFailureAt: Date | null;
+      createdAt: Date;
+    }>
+  >`
+    SELECT email, name, "subscriptionSource", "stripeFirstFailureAt", "createdAt"
+    FROM "User"
+    WHERE "subscriptionStatus" = 'PAST_DUE'
+    ORDER BY "stripeFirstFailureAt" DESC NULLS LAST
+  `.catch(() => []);
+
   return {
     mrrCents,
     totalRevenueCents: mrrCents, // placeholder — will be more accurate with Stripe data
@@ -1392,6 +1478,23 @@ async function getBusinessMetrics(prisma: P, monthStart: Date) {
     profitTrend: [{ month: new Date().toISOString().slice(0, 7), revenue: mrrCents, costs: totalCostsCents, net: netProfitCents }],
     breakEvenUsers,
     runwayMonths,
+    staleStripeRecords: staleStripeRecords.map((r) => ({
+      email: r.email,
+      name: r.name,
+      subscriptionStatus: r.subscriptionStatus,
+      stripeSubscriptionId: r.stripeSubscriptionId,
+      stripeFirstFailureAt: r.stripeFirstFailureAt,
+      createdAt: r.createdAt,
+      lastSeenAt: r.lastSeenAt,
+      daysInactive: r.days_inactive ?? null,
+    })),
+    pastDueRecovery: pastDueRecovery.map((r) => ({
+      email: r.email,
+      name: r.name,
+      subscriptionSource: r.subscriptionSource,
+      stripeFirstFailureAt: r.stripeFirstFailureAt,
+      createdAt: r.createdAt,
+    })),
   };
 }
 
