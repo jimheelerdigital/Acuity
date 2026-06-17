@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-06-17] — Free trial cut 14→7 days (full migration) + demo account reseed
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hash:** 269809f (trial-7 → main via PR #12) · b180282 (demo reseed script)
+
+### In plain English (for Keenan)
+New users now get a **7-day free trial** instead of 14. Existing trials are never touched — only people who sign up from here on get the shorter window. The whole trial experience was retuned around the shorter clock: the AI "Life Audit" letter now arrives on **Day 7** (it used to land on Day 14), the trial-reminder emails follow a tighter schedule, the "Getting to know Acuity" checklist unlocks features earlier so people see the good stuff sooner, and every "14-day" mention across the app, website, ads, and emails now reads "7-day." Founding members keep their 14 days, and referrers still get their +14-day bonus. Apple's and Google's store-level free-trial settings were switched to 1 week / 7 days, and a fresh **v1.3.4** build went to both app stores. Separately, the demo account (`demo@example.com`) was filled with a realistic month of journaling so the app looks alive in screenshots and demos.
+
+### Technical changes (for Jimmy)
+- **Constant:** `TRIAL_DAYS = 7` added to `@acuity/shared` (`packages/shared/src/constants.ts`); `bootstrap-user.ts` + `onboarding/create-checkout` (Stripe `trial_period_days`) now source it. Web + mobile signup `defaultTrialEnd` already derive from `trialDaysForEmail()`, so they inherit 7 transitively.
+- **Reduced re-signup trial:** `REDUCED_TRIAL_DAYS` 3→2 in `bootstrap-user.ts` (proportional anti-farm); threshold flag now `trialDays < TRIAL_DAYS`.
+- **Unchanged by decision:** `FOUNDING_MEMBER_TRIAL_DAYS = 14` (absolute), referral bonus `+14` (additive → 21 total).
+- **Life Audit cron:** `day-14-audit-cron.ts` → `day-7-audit-cron.ts` (`day14AuditCronFn` → `day7AuditCronFn`, registered in `api/inngest/route.ts`). Timing logic unchanged — it already selects by `trialEndsAt ∈ [now, now+24h]`, so it's grandfathering-safe. `LifeAudit.kind = "TRIAL_DAY_14"` **preserved** (internal String tag; renaming would orphan existing rows). Prompt + all "Day 14 Life Audit" labels → "Day 7".
+- **Email cadence:** `trial-countdown-emails.ts` + `trial-countdown-emails-cron.ts` retuned to Day 0 welcome (orchestrator, existing) / mid-trial **T-4** / urgency **T-2** / ended **T-0** / re-engage **T+3**; dropped **T-7** and **T-1**. Keys renamed at TS level (`trial_midtrial`, `trial_urgency`) but reuse existing `trialT7EmailSentAt`/`trialT3EmailSentAt` columns via the `FIELD` map — **no migration** (`trialT1EmailSentAt` now unused). Push cron shifted T-3→T-2.
+- **Discovery checklist:** `packages/shared/src/progression.ts` `unlockAfterDays` scaled ×0.5 rounded down (0,0,1,2,3,4,6), `PROGRESSION_HIDE_AFTER_DAYS` 14→7; item keys preserved (stored in JSON). `userProgression.ts` timing + copy updated.
+- **Copy sweep:** ~40 surfaces across mobile + web + AI-prompt templates (auto-blog, content-factory, adlab) → "7-day"/"Day 7"/"one week". Founding (14), referral (+14), legal/GDPR, testimonials, insight-digest window, streak milestones deliberately left.
+- **Store config (manual, by Jimmy):** Apple ASC introductory offer = **1 week** on monthly + annual (first time an Apple-billed trial existed). Google Play offer = **7 days** on both products, eligibility "Never had any subscription."
+- **Builds (v1.3.4):** marketing version bumped `1.3.3 → 1.3.4` (`apps/mobile/app.json`); EAS remote `autoIncrement` → iOS buildNumber **85**, Android versionCode **14**. `eas submit`: iOS → App Store Connect (TestFlight), Android → Play Console internal track (DRAFT).
+- **Commits on main:** `292553a` (Step-1 audit) → `d20c8eb` (TRIAL_DAYS constant) → `471e072` (cron/emails/discovery/copy) → `269809f` (PR #12 merge) → `ff8fed3` (v1.3.4 bump) → `b180282` (reseed script).
+- **Demo reseed:** `scripts/reseed-demo-user.ts` (committed `b180282`) — wipes + recreates `demo@example.com`'s Entry/Theme/ThemeMention/Task/TaskGroup/Goal/UserInsight/UserAchievement/LifeMapArea/History; identity + PRO subscription untouched (only `passwordHash`, `currentStreak`, `totalRecordings` set). Seeded: 27 entries (30-day spread, latest today, 10-day streak), 11 themes / 49 mentions, 10 life areas (avg 64, up/down/stable trends + 50 weekly history points), 7 tasks (3 done), 4 goals, 4 insights, 7 achievements. Password via `--password` flag (no plaintext in git). Login verified against prod: `POST getacuity.io/api/auth/mobile-login` → **200**, PRO, valid session token.
+
+### Manual steps needed
+- [ ] **iOS:** in App Store Connect, attach build 85 to a 1.3.4 version, set "What's New" → "Bug fixes and small improvements", **Submit for Review** (Jimmy)
+- [ ] **Android:** in Play Console, **roll out** versionCode 14 from the internal DRAFT (and promote internal → production if this is a public release), set "What's New" → "Bug fixes and small improvements" (Jimmy)
+- No Prisma migration / `db push` required — `TRIAL_DAYS` is code-only and the cron is `trialEndsAt`-relative.
+
+### Notes
+- **Grandfathering held with zero DB writes:** every trial-lifecycle cron reads `trialEndsAt` directly, so in-flight 14-day trials run to their original dates and get correctly-timed (remaining-time-relative) emails + audit. No `User` UPDATE, no `stripe.subscriptions.update`, no migration anywhere.
+- The copy surface was ~3× the original audit's estimate (~40 files vs "~7 pages") — found via a repo-wide sweep, not the audit list.
+- Email cadence intentionally avoided a column migration by repurposing the legacy `trialT7`/`trialT3` SentAt columns; their names are now semantic mismatches (documented in-file).
+- `funnel-config.ts:844` graveyard testimonial ("12 out of 14 days" + a "60 seconds" duration claim) left for a Keenan copy rewrite — flagged, not mechanically swapped.
+- Demo reseed script is safe to re-run: asserts `email === demo@example.com` before any write and scopes every delete to the single `userId`.
+- Play Store phone screenshots (1080×1920, Home / Life Matrix / Theme Map) were rendered headlessly from the design mockups and committed under `docs/play-store-listing/phone-screenshots-v1.3.4/` (`5d20e3b`); `scripts/render-store-screenshots.ts` re-renders them (depends on the untracked `marketing_handoff/`).
+
+---
+
 ## [2026-06-16] — Gap 1 highlight vertical coverage fix (bottom-half → full word)
 
 **Requested by:** Keenan
