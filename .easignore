@@ -1,0 +1,74 @@
+# .easignore — governs the EAS Build upload archive.
+#
+# This monorepo is archived from the GIT ROOT (the 76 MB tarball that kept
+# failing to upload included root-level docs/, PROGRESS.md, apps/web/ — so
+# the ignore must take effect here). EAS uses this file INSTEAD of
+# .gitignore for the upload, so the .gitignore patterns are replicated
+# first (otherwise node_modules etc. would *balloon* the tarball), then
+# build-irrelevant paths are excluded to shrink it.
+#
+# Added 2026-06-18 after the project tarball repeatedly dropped mid-upload
+# on a degraded connection (38MB → 14MB → 3MB).
+
+# ── git history (not needed in the build archive) ──
+.git/
+
+# ── replicated from .gitignore (must stay OUT of the upload) ──
+node_modules/
+.pnp
+.pnp.js
+.next/
+dist/
+build/
+out/
+.env
+.env.*
+!.env.example
+.env*.local
+*.pem
+*.p12
+*.key
+credentials.json
+token.json
+apps/*/secrets/
+*.tfvars
+prisma/migrations/
+.turbo/
+.vercel
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+*.tsbuildinfo
+.expo/
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/dist/
+.vscode/
+.idea/
+*.swp
+expo-env.d.ts
+# NOTE: apps/mobile/google-services.json is intentionally NOT excluded —
+# EAS Build needs it in the archive (FCM config), and EAS filters
+# .easignore patterns out of the archive even for tracked files.
+
+# ── extra: shrink the upload (none of these are used by the Android build) ──
+docs/
+.github/
+marketing_handoff/
+.tmp/
+/*.md
+**/*.test.*
+**/*.spec.*
+**/__tests__/
+**/__snapshots__/
+**/*.snap
+
+# apps/web is web-only (Vercel) and the mobile/shared packages don't depend
+# on it. Exclude its source but KEEP package.json so the npm workspace +
+# root lockfile stay consistent for the EAS `npm install` step (its
+# postinstall runs `prisma generate` against prisma/schema.prisma, which
+# is still uploaded).
+apps/web/*
+!apps/web/package.json
