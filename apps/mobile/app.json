@@ -223,6 +223,7 @@
           "userTrackingPermission": "Acuity uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes."
         }
       ],
+      "./plugins/with-remove-ad-id.js",
       "./plugins/with-folly-mobile-flag.js"
     ],
     "experiments": {
