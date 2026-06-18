@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-06-18] — Remaining 14-day trial copy → 7-day (copy-only sweep)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 626eb508
+
+### In plain English (for Keenan)
+Every place a user could still read "14 days" or "two weeks" when referring to the free trial now says "7 days" or "one week." This covers the graveyard testimonial on the signup funnel, the Life Audit unlock message on both web and mobile, the founding-member drip email, the waitlist activation email, the Play Store and App Store listing descriptions, and the brand/positioning reference docs that guide all future copy. Legal references to a "14-day cancellation right" were left alone — those are a separate EU consumer protection right, not the trial.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts:844`: graveyard testimonial "Two weeks / 12 out of 14 days" → "One week / 6 out of 7 days"
+- `apps/web/src/components/home-focus-stack.tsx:126` + `apps/mobile/components/home-focus-stack.tsx:101`: Life Audit unlock copy "Two weeks in" → "One week in"
+- `apps/web/src/lib/drip-emails.ts:432`: founding-member email "14-day free trial" → "7-day free trial"
+- `emails/waitlist-activation.tsx:89`: "14-day free trial" → "7-day free trial"
+- `docs/play-store-listing/full-description.md:17,37`: "Day 14" → "Day 7", "two weeks" → "first week"
+- `docs/APP_STORE_METADATA.md:37,94`: "Day 14" → "Day 7", "14-day" → "7-day"
+- `docs/acuity-positioning.md:76`, `CLAUDE.md:128`: "14-day free trial" → "7-day free trial"
+- `docs/TIER_STRUCTURE.md:17`, `docs/PRO_TIER_SPEC.md:3,9,18`: "14-day" → "7-day"
+
+### Manual steps needed
+None — this is copy-only. No build, no migration, no store submission required.
+
+### Notes
+- **Trial clock/logic is NOT in this commit.** Jimmy owns all timing logic, constants, and Stripe config changes separately. This commit only changes user-facing text and documentation.
+- The `waitlist-activation.tsx` email still says "$12.99/month" — stale pricing (should be $4.99). Flagged but not changed since it's outside the scope of this task.
+- **Milestone card "Two weeks of showing up" (`milestone-card.tsx:265`)** left alone — that's a 14-day *streak* achievement, not the trial. Its body already references "Day 7 Life Audit."
+- **Referral bonus copy** (`account-client.tsx:995` — "14 days on their trial, and you get 14 days added") left alone — referral +14 was intentionally preserved by Jimmy's migration.
+- **Legal 14-day withdrawal** references in terms, privacy, consent.ts, subscribe.tsx, upgrade-plan-picker.tsx are EU Consumer Contracts Regulations — NOT the trial period. Untouched.
+- **Blog/testimonial "two weeks"** references (blog-posts.ts, persona-pages.ts, testimonial-carousel.tsx, voice-journaling/page.tsx) are about journaling habits and user stories, not the trial. Untouched.
+- **Historical v1.1 docs** (app-store-whats-new.md, v1-1-submission-checklist.md, app-review-notes-v1-1.md) describe what was shipped at that version. Left as historical record.
+
+---
+
 ## [2026-06-17] — Free trial cut 14→7 days (full migration) + demo account reseed
 
 **Requested by:** Both
