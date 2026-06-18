@@ -73,6 +73,6 @@ These apply to all customer-facing copy — site, ads, app, emails, blog, push n
 - ✅ "Life Matrix"  ❌ "Life Map"
 - ✅ multi-surface value  ❌ framing the weekly report as the sole conversion moment
 - ❌ no recording-duration claims ("60-second," "90-second," etc.)
-- Pricing: **$4.99/month** (default) and $39.99/year, 14-day free trial. Never lead with annual; never use stale $12.99.
+- Pricing: **$4.99/month** (default) and $39.99/year, 7-day free trial. Never lead with annual; never use stale $12.99.
 - Voice: a **mirror, not a coach** — reflect, don't advise.
 - Keep "4.9 stars from 127+ users" social proof as-is.

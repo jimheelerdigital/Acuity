@@ -14,7 +14,7 @@ Acuity turns a sixty-second voice brain dump into the patterns hiding in your ow
 WHAT IT DOES
 Talk for a minute each night about whatever's on your mind — your day, your worries, the thing you can't stop chewing on. Acuity transcribes what you said, pulls out the tasks you mentioned, scores your mood, tracks your goals, and watches for the themes that keep coming back.
 
-On Day 14 you get a Life Audit — a long-form letter written from your own words about what showed up across the two weeks. On Sunday of every week you get a Weekly Report: a 400-word read about what the pattern looks like right now.
+On Day 7 you get a Life Audit — a long-form letter written from your own words about what showed up across your first week. On Sunday of every week you get a Weekly Report: a 400-word read about what the pattern looks like right now.
 
 WHO IT'S FOR
 People who can't shut their brain off at night. Founders tracking their own bandwidth. Shift workers who want a record of which weeks land hard. Anyone who's ever Googled "how to stop overthinking before bed" and got a list of affirmations instead of a record.
@@ -34,7 +34,7 @@ FEATURES
 • Theme detection — surfaces the things you keep returning to
 • Life Matrix across 10 life areas, scored over time
 • Weekly Report every Sunday — 400 words about your week's pattern
-• Day-14 Life Audit — a long-form letter from your first two weeks
+• Day-7 Life Audit — a long-form letter from your first week
 • Reminders at 9 AM and 8 PM in your local time zone
 • Biometric app lock for entry privacy
 

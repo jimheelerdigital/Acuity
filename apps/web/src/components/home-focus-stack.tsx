@@ -123,7 +123,7 @@ const UNLOCK_BODIES: Record<UnlockKey, string> = {
   patternInsights: "Acuity starts calling out patterns it sees across your entries. Find them on the Insights page.",
   themeMap: "Your recurring themes now render as a constellation. Open the Theme Map from Insights.",
   weeklyReport: "A week of entries + day 7 means your first report is on the way.",
-  lifeAudit: "Two weeks in. Acuity has generated a long-form letter from your own entries.",
+  lifeAudit: "One week in. Acuity has generated a long-form letter from your own entries.",
 };
 
 const UNLOCK_HREFS: Record<UnlockKey, string> = {

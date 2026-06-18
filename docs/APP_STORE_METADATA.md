@@ -34,7 +34,7 @@ Acuity turns a sixty-second voice brain dump into the patterns hiding in your ow
 WHAT IT DOES
 Talk for a minute each night about whatever's on your mind — your day, your worries, the thing you can't stop chewing on. Acuity transcribes what you said, pulls out the tasks you mentioned, scores your mood, tracks your goals, and watches for the themes that keep coming back.
 
-On Day 14 you get a Life Audit — a long-form letter written from your own words about what showed up across the two weeks. On Sunday of every week you get a Weekly Report: a short read about what the pattern looks like right now.
+On Day 7 you get a Life Audit — a long-form letter written from your own words about what showed up across your first week. On Sunday of every week you get a Weekly Report: a short read about what the pattern looks like right now.
 
 WHO IT'S FOR
 People who find journaling-by-writing too slow and therapy-only too infrequent. Founders tracking their own bandwidth. Shift workers who want a record of which weeks land hard. Anyone who's been told "you should journal" and never stuck with it.
@@ -91,7 +91,7 @@ All three are live and indexable. Confirmed 2026-04-20 post-support-page-refresh
 
 ### Reviewer notes
 
-> Acuity Daily is a voice-journaling app. The user records a short voice note each night; the app transcribes it and extracts tasks, mood, and themes. Subscription is 14-day free trial then paid monthly, **managed entirely on the web at getacuity.io/upgrade — not through Apple IAP**. The mobile app is a companion that makes the same Acuity account accessible on the phone; it does not sell digital goods directly. See §5 below re: guideline 3.1.3(b) Multiplatform Services, which is the applicable carve-out.
+> Acuity Daily is a voice-journaling app. The user records a short voice note each night; the app transcribes it and extracts tasks, mood, and themes. Subscription is 7-day free trial then paid monthly, **managed entirely on the web at getacuity.io/upgrade — not through Apple IAP**. The mobile app is a companion that makes the same Acuity account accessible on the phone; it does not sell digital goods directly. See §5 below re: guideline 3.1.3(b) Multiplatform Services, which is the applicable carve-out.
 >
 > The app requires sign-in via Google OAuth. For review, please use the demo account below — it has two weeks of seeded entries and an active Pro subscription so the reviewer can see every screen including the post-trial state and the Life Audit.
 

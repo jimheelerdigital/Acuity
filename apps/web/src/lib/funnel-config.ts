@@ -841,7 +841,7 @@ export function getTimelineWeeks(branch: Branch, answers: Record<string, string 
     blur: "Your weekly report arrives Sunday. 400 words about YOUR week. You read it and think: \u2018That\u2019s exactly what happened, but I couldn\u2019t have said it myself.\u2019",
     patterns: "The report shows you the trigger. Not the fight \u2014 what happened 48 hours before it. For the first time, you\u2019re ahead of the cycle instead of inside it.",
     rumination: "The thoughts that used to ambush you at night are in your report now. Seeing them on paper takes away their power.",
-    graveyard: "Two weeks. You opened the app 12 out of 14 days. Not because of discipline \u2014 because it only takes 60 seconds and the output actually matters.",
+    graveyard: "One week. You opened the app 6 out of 7 days. Not because of discipline \u2014 because the output actually matters.",
     mask: "The weekly report says something nobody in your life has ever said to you: \u2018Here\u2019s what\u2019s actually going on with you.\u2019 And it\u2019s right.",
     drift: "You can feel the difference between a week you paid attention to and the years you didn\u2019t. The contrast is uncomfortable. That means it\u2019s working.",
   };

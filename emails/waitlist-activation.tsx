@@ -86,7 +86,7 @@ export function buildWaitlistActivationEmail(
                 <tr>
                   <td style="background-color:#F9FAFB;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;border:1px solid #E5E7EB;border-left:4px solid #7C5CFC;">
                     <p style="margin:0 0 8px;font-size:15px;color:#1a1a1a;line-height:1.7;">
-                      <strong>14-day free trial</strong>
+                      <strong>7-day free trial</strong>
                     </p>
                     <p style="margin:0 0 8px;font-size:15px;color:#1a1a1a;line-height:1.7;">
                       <strong>$12.99/month locked in forever</strong> (price goes up after the first 100)

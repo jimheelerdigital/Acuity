@@ -14,7 +14,7 @@ This doc captures the open questions so the next person designing tiers doesn't 
 
 | Value      | Meaning                                                                     |
 |------------|-----------------------------------------------------------------------------|
-| `TRIAL`    | Inside the 14-day free trial window (`trialEndsAt` future).                 |
+| `TRIAL`    | Inside the 7-day free trial window (`trialEndsAt` future).                 |
 | `PRO`      | Paying subscriber.                                                          |
 | `FREE`     | Post-trial, not subscribed. Retains trial-history read access; no new outputs. |
 | `PAST_DUE` | Stripe invoice failed; retries ongoing. Treated as PRO-access-grace until Stripe gives up. |

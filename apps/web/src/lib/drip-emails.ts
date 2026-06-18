@@ -429,7 +429,7 @@ function email5(rawName: string): string {
                 <tr>
                   <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
-                      As a founding member, you get a 14-day free trial and lock in $4.99/month — the lowest price Acuity will ever be.
+                      As a founding member, you get a 7-day free trial and lock in $4.99/month — the lowest price Acuity will ever be.
                     </p>
                   </td>
                 </tr>

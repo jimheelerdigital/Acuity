@@ -98,7 +98,7 @@ const UNLOCK_BODIES: Record<UnlockKey, string> = {
   weeklyReport:
     "A week of entries + day 7 means your first report is on the way.",
   lifeAudit:
-    "Two weeks in. Acuity has generated a long-form letter from your own entries.",
+    "One week in. Acuity has generated a long-form letter from your own entries.",
 };
 
 const UNLOCK_HREFS: Record<UnlockKey, string> = {

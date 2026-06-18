@@ -1,12 +1,12 @@
 # PRO Tier — Post-Trial Feature Gating
 
-**Status:** SPEC ONLY — not implemented. This document defines the gating contract for when PRO enforcement lands after the 14-day trial.
+**Status:** SPEC ONLY — not implemented. This document defines the gating contract for when PRO enforcement lands after the 7-day trial.
 **Owner:** Jim (schedule) + Keenan (pricing + copy).
 **Last updated:** 2026-04-21.
 
 ## The rule
 
-Users get full access during the 14-day trial. PRO gating activates only after `trialEndsAt` passes and the user has not subscribed. Gated endpoints return 402 (paywall-redirect), gated routes render the paywall interstitial, and the existing `entitlements.ts` helper is the single source of truth — no gating check should live in a route handler outside that module.
+Users get full access during the 7-day trial. PRO gating activates only after `trialEndsAt` passes and the user has not subscribed. Gated endpoints return 402 (paywall-redirect), gated routes render the paywall interstitial, and the existing `entitlements.ts` helper is the single source of truth — no gating check should live in a route handler outside that module.
 
 See also:
 - `apps/web/src/lib/entitlements.ts` — the evaluator (already tested, full-matrix Vitest suite per 2026-04-17 decisions).
@@ -15,7 +15,7 @@ See also:
 
 ## Gated post-trial (PRO required)
 
-All of the below should be wrapped in entitlement checks at the route/handler level. Trial users (14-day window) + PRO subscribers get access; free-tier post-trial users get a 402 / paywall interstitial.
+All of the below should be wrapped in entitlement checks at the route/handler level. Trial users (7-day window) + PRO subscribers get access; free-tier post-trial users get a 402 / paywall interstitial.
 
 | Feature | Surface | Endpoint / Route | Notes |
 |---|---|---|---|
