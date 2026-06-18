@@ -11,22 +11,27 @@
  *   form declares we do NOT use the advertising ID, so Play rejects the
  *   upload ("This release includes the AD_ID permission…").
  *
- * Two layers (the first alone proved insufficient — build 18 / commit
- * fad0e0c still shipped AD_ID despite the manifest remove, so we also
- * strip the dependency that contributes it):
+ * TWO ad-ID permissions trigger Play's AD_ID data-safety check and BOTH must
+ * go (confirmed by decoding the built AAB with bundletool):
+ *   - com.google.android.gms.permission.AD_ID    (legacy GMS; contributed by
+ *     play-services-ads-identifier)
+ *   - android.permission.ACCESS_ADSERVICES_AD_ID  (Android 13+ AdServices;
+ *     contributed by Firebase play-services-measurement-api)
+ * Play's rejection error generically names the GMS permission even when the
+ * AdServices one is the actual remaining trigger — build 18 had the GMS perm
+ * already removed yet was still rejected for ACCESS_ADSERVICES_AD_ID.
  *
- *   1. AndroidManifest: add `<uses-permission AD_ID tools:node="remove"/>`
- *      (+ declare the tools namespace).
- *   2. app/build.gradle: exclude the `play-services-ads-identifier` module
- *      from all configurations, so nothing contributes the permission.
- *      Safe here — release builds don't run R8
- *      (android.enableMinifyInReleaseBuilds=false), so the now-absent
- *      AdvertisingIdClient references don't fail the build, and nothing
- *      invokes them at runtime.
+ * Fix layers:
+ *   1. AndroidManifest: `<uses-permission … tools:node="remove"/>` for BOTH
+ *      permissions (+ declare the tools namespace). Primary fix — confirmed
+ *      working (build 18's AAB had the GMS perm stripped by this alone).
+ *   2. app/build.gradle: also exclude the `play-services-ads-identifier`
+ *      module (belt-and-suspenders for the GMS perm). Safe — release builds
+ *      don't run R8 (android.enableMinifyInReleaseBuilds=false) and nothing
+ *      invokes AdvertisingIdClient.
  *
- * Verify after prebuild: android/app/src/main/AndroidManifest.xml has the
- * remove directive, and android/app/build.gradle has the
- * configurations.all { exclude … } block.
+ * Verify after prebuild: AndroidManifest has BOTH remove directives + the
+ * tools namespace, and app/build.gradle has the configurations.all { exclude }.
  */
 
 const {
@@ -34,7 +39,10 @@ const {
   withAppBuildGradle,
 } = require("expo/config-plugins");
 
-const AD_ID = "com.google.android.gms.permission.AD_ID";
+const REMOVE_PERMISSIONS = [
+  "com.google.android.gms.permission.AD_ID",
+  "android.permission.ACCESS_ADSERVICES_AD_ID",
+];
 const TOOLS_NS = "http://schemas.android.com/tools";
 
 const GRADLE_SENTINEL =
@@ -66,11 +74,12 @@ function withManifestRemove(config) {
     const perms = manifest["uses-permission"];
 
     for (let i = perms.length - 1; i >= 0; i--) {
-      if (perms[i] && perms[i].$ && perms[i].$["android:name"] === AD_ID) {
-        perms.splice(i, 1);
-      }
+      const name = perms[i] && perms[i].$ && perms[i].$["android:name"];
+      if (REMOVE_PERMISSIONS.includes(name)) perms.splice(i, 1);
     }
-    perms.push({ $: { "android:name": AD_ID, "tools:node": "remove" } });
+    for (const name of REMOVE_PERMISSIONS) {
+      perms.push({ $: { "android:name": name, "tools:node": "remove" } });
+    }
 
     return cfg;
   });
@@ -95,7 +104,7 @@ const withRemoveAdId = (config) => {
   // Logged so the EAS prebuild output confirms the plugin ran.
   // eslint-disable-next-line no-console
   console.warn(
-    "[with-remove-ad-id] applying: AndroidManifest tools:node=remove + gradle exclude of play-services-ads-identifier"
+    "[with-remove-ad-id] applying: manifest remove of GMS + AdServices AD_ID perms + gradle exclude of play-services-ads-identifier"
   );
   config = withManifestRemove(config);
   config = withGradleExclude(config);
