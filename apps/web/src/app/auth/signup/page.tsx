@@ -18,7 +18,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Suspense, useEffect, useRef, useState } from "react";
 
-import { MobileAppBanner } from "@/components/mobile-app-banner";
 import { SOCIAL_PROOF } from "@/lib/social-proof";
 
 const PASSWORD_MIN = 8;
@@ -232,10 +231,9 @@ function SignUpForm() {
 
   return (
     <div className="min-h-screen bg-white">
-      <MobileAppBanner />
       {/* ─── MOBILE STICKY CTA (appears after scrolling past form) ─── */}
       <div
-        className={`fixed top-0 inset-x-0 z-50 lg:hidden transition-transform duration-300 ${showStickyCta ? "translate-y-0" : "-translate-y-full"}`}
+        className={`fixed top-[var(--install-banner-h)] inset-x-0 z-50 lg:hidden transition-transform duration-300 ${showStickyCta ? "translate-y-0" : "-translate-y-full"}`}
       >
         <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm border-b border-zinc-100 px-4 py-2.5">
           <span className="text-sm font-semibold text-zinc-900">Start your free trial</span>

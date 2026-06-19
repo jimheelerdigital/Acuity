@@ -541,7 +541,7 @@ export function OnboardingFunnel() {
       `}} />
 
       {/* Progress bar */}
-      <div className="fixed top-0 inset-x-0 z-50 h-[2px] bg-zinc-200/50">
+      <div className="fixed top-[var(--install-banner-h)] inset-x-0 z-50 h-[2px] bg-zinc-200/50">
         <div className="h-full bg-acuity-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
       </div>
 

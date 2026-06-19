@@ -1030,7 +1030,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-[#181614] text-white pb-24 sm:pb-0 overflow-x-hidden">
       {/* ───── NAVBAR (fixed) ───── */}
-      <div className="fixed top-0 inset-x-0 z-50">
+      <div className="fixed top-[var(--install-banner-h)] inset-x-0 z-50">
         <nav className="bg-[#181614] sm:bg-[#181614]/80 sm:backdrop-blur-md border-b border-white/[0.04]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
