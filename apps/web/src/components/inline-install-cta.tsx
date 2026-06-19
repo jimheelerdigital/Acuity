@@ -100,44 +100,31 @@ export function InlineInstallCTA({
         )}
 
         {desktop ? (
-          <div className="mt-1 flex flex-col items-center gap-3">
+          <div className="mt-1 flex flex-col items-center gap-4">
             <p className="text-[14px] font-semibold text-acuity-text">
-              Scan to download Acuity on your phone
+              Scan to download the Acuity app
             </p>
             <InstallQR src={`inline_${location}`} location={`inline_${location}`} />
-            <p className="text-[12px] text-acuity-text-ter">— or get it on —</p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <a
-                href={APP_VERSION_CONFIG.ios.appStoreUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => handleClick("app_store")}
-                aria-label="Download on the App Store"
-                className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/badges/apple-app-store.svg"
-                  alt="Download on the App Store"
-                  style={{ height: 40, width: "auto", display: "block" }}
-                />
-              </a>
+            {/* Non-clickable store badges — a visual label marketing that the
+                QR installs the real native app. NOT a link: clicking a store
+                badge on a desktop is a dead-end; the QR is the action. */}
+            <div
+              className="flex flex-wrap items-center justify-center gap-3"
+              aria-hidden="true"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/badges/apple-app-store.svg"
+                alt=""
+                style={{ height: 34, width: "auto", display: "block" }}
+              />
               {PLAY_STORE_LIVE && (
-                <a
-                  href={APP_VERSION_CONFIG.android.appStoreUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => handleClick("play_store")}
-                  aria-label="Get it on Google Play"
-                  className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/badges/google-play.svg"
-                    alt="Get it on Google Play"
-                    style={{ height: 40, width: "auto", display: "block" }}
-                  />
-                </a>
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src="/badges/google-play.svg"
+                  alt=""
+                  style={{ height: 34, width: "auto", display: "block" }}
+                />
               )}
             </div>
           </div>
