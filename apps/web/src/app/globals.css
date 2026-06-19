@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Install banner (components/install-banner.tsx): the fixed top banner sets
+   --install-banner-h to its height while visible (0 otherwise). body padding
+   pushes normal-flow content below it; fixed top-navs offset via the same var
+   so they sit below the banner instead of being covered. */
+:root {
+  --install-banner-h: 0px;
+}
+body {
+  padding-top: var(--install-banner-h);
+  transition: padding-top 280ms ease;
+}
+
 /*
  * Slice 1 (2026-05-22): canonical motion utilities now live in
  * `src/lib/theme/tokens.css` under `.acuity-fade-up`, `.acuity-fade-in`,

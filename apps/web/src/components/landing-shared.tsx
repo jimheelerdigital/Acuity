@@ -534,7 +534,7 @@ function LandingWhoItsFor() {
 export function LandingNav() {
   const ctaHref = useCtaHref();
   return (
-    <div className="fixed top-0 inset-x-0 z-50">
+    <div className="fixed top-[var(--install-banner-h)] inset-x-0 z-50">
       <nav className="bg-acuity-bg/80 backdrop-blur-md border-b border-acuity-line">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
