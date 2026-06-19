@@ -38,6 +38,9 @@ export function MarketingHome() {
       <Hero />
       <HowItWorks />
 
+      {/* First install CTA high on the page — desktop QR within one scroll. */}
+      <InlineInstallCTA location="hero" />
+
       <div id="features" />
 
       {/* Feature 1 — Home (dark). Reuses the corrected HomeDashboard. */}

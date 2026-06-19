@@ -1,29 +1,45 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 
 import { APP_VERSION_CONFIG } from "@/lib/app-version-config";
 import { trackClient } from "@/lib/analytics-client";
 
 /**
- * Inline install CTA — a marketing-page content section (NOT the sticky
- * banner) that gives scrolling readers a second/third chance to install
- * after they've absorbed the value props. Renders both official store
- * badges (Play gated behind NEXT_PUBLIC_PLAY_STORE_LIVE), on desktop + mobile
- * since it's page content, not a device-targeted bar.
+ * Inline install CTA — a marketing-page content section giving scrolling
+ * readers a chance to install. Platform-aware action:
+ *   - Mobile → tappable official store badges (Play gated by the flag).
+ *   - Desktop → a brand QR that bridges to the phone (scan → /install →
+ *     store). Desktop visitors otherwise hit a dead-end badge (opens the App
+ *     Store web page, can't install on a computer).
  *
  * Visual language per _design/DESIGN_SYSTEM.md: mono eyebrow, display
- * headline (tight negative tracking), brand tokens, no glow. Badges are the
- * focal point.
+ * headline, brand tokens, no glow. Badge / QR is the focal point.
  *
- * Analytics: install_banner_inline_shown fires once when the block scrolls
- * into view (IntersectionObserver); install_banner_inline_clicked on a badge
- * tap. Both carry `location` (hero | mid_page | footer) for placement context.
+ * Analytics: install_banner_inline_shown (section in view) + _clicked (badge
+ * tap); the desktop QR fires install_qr_shown from InstallQR itself. All carry
+ * `location` (hero | mid_page | footer).
  */
 
 const PLAY_STORE_LIVE = process.env.NEXT_PUBLIC_PLAY_STORE_LIVE === "true";
 
+// Lazy — qrcode.react never reaches the mobile bundle (QR is desktop-only).
+const InstallQR = dynamic(
+  () => import("@/components/install-qr").then((m) => m.InstallQR),
+  { ssr: false }
+);
+
 type InlineLocation = "hero" | "mid_page" | "footer";
+
+function isDesktopUA(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const mobile =
+    /iPhone|iPad|iPod|Android/i.test(ua) ||
+    (/Macintosh/.test(ua) && (navigator.maxTouchPoints ?? 0) > 1);
+  return !mobile;
+}
 
 export function InlineInstallCTA({
   location,
@@ -38,6 +54,12 @@ export function InlineInstallCTA({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const seen = useRef(false);
+  // Default false (SSR + mobile show badges); desktop swaps to QR post-mount.
+  const [desktop, setDesktop] = useState(false);
+
+  useEffect(() => {
+    setDesktop(isDesktopUA());
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
@@ -76,40 +98,50 @@ export function InlineInstallCTA({
             {sub}
           </p>
         )}
-        <div className="mt-1 flex flex-wrap items-center justify-center gap-3">
-          <a
-            href={APP_VERSION_CONFIG.ios.appStoreUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => handleClick("app_store")}
-            aria-label="Download on the App Store"
-            className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/badges/apple-app-store.svg"
-              alt="Download on the App Store"
-              style={{ height: 48, width: "auto", display: "block" }}
-            />
-          </a>
-          {PLAY_STORE_LIVE && (
+
+        {desktop ? (
+          <div className="mt-1 flex flex-col items-center gap-3">
+            <InstallQR src={`inline_${location}`} location={`inline_${location}`} />
+            <p className="text-[13px] text-acuity-text-ter">
+              Point your phone&rsquo;s camera here to install
+            </p>
+          </div>
+        ) : (
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-3">
             <a
-              href={APP_VERSION_CONFIG.android.appStoreUrl}
+              href={APP_VERSION_CONFIG.ios.appStoreUrl}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => handleClick("play_store")}
-              aria-label="Get it on Google Play"
+              onClick={() => handleClick("app_store")}
+              aria-label="Download on the App Store"
               className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/badges/google-play.svg"
-                alt="Get it on Google Play"
+                src="/badges/apple-app-store.svg"
+                alt="Download on the App Store"
                 style={{ height: 48, width: "auto", display: "block" }}
               />
             </a>
-          )}
-        </div>
+            {PLAY_STORE_LIVE && (
+              <a
+                href={APP_VERSION_CONFIG.android.appStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => handleClick("play_store")}
+                aria-label="Get it on Google Play"
+                className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/badges/google-play.svg"
+                  alt="Get it on Google Play"
+                  style={{ height: 48, width: "auto", display: "block" }}
+                />
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

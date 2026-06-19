@@ -42,6 +42,7 @@
     "openai": "^4.55.0",
     "posthog-js": "^1.369.3",
     "posthog-node": "^5.29.2",
+    "qrcode.react": "^4.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-force-graph-2d": "^1.29.1",
