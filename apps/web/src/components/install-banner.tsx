@@ -18,9 +18,10 @@ import { trackClient } from "@/lib/analytics-client";
  * layout; all gating lives here.
  *
  * Gating:
- *   - Route whitelist (acquisition + funnel surface): home, /for/* ad
- *     landers, /start, /onboarding, /auth/signup, /upgrade. Logged-in app
- *     pages deliberately get nothing.
+ *   - All public marketing surfaces (home, /blog, /for ad landers,
+ *     /voice-journaling, /try, /shared, /support, legal) + conversion pages
+ *     (/start, /onboarding, /auth/signup, /upgrade). Excluded: /admin, /api,
+ *     authenticated app pages, and /auth/* except /auth/signup.
  *   - Platform: iOS → App Store; Android → Play Store. Desktop → nothing.
  *   - Android is gated behind NEXT_PUBLIC_PLAY_STORE_LIVE (our Play
  *     submission is pending Google approval). While false, the Android
@@ -39,20 +40,37 @@ const COOKIE_DAYS = 7;
 
 const PLAY_STORE_LIVE = process.env.NEXT_PUBLIC_PLAY_STORE_LIVE === "true";
 
-// Acquisition + funnel surface. Mobile sees the banner here (incl. the
-// funnel — /start + /onboarding); everything else (dashboard, entries,
-// blog, admin, …) renders nothing.
-const ALLOWED_PREFIXES = [
-  "/for",
-  "/start",
-  "/onboarding",
-  "/auth/signup",
-  "/upgrade",
+// Exclusion-based: the banner mounts on ALL public marketing surfaces
+// (home, /blog, /for ad landers, /voice-journaling, /try, /shared, /support,
+// legal) + conversion pages (/start, /onboarding, /auth/signup, /upgrade),
+// and stays off authenticated/private routes. Exclusion-based (not a
+// whitelist) so new marketing/SEO pages are covered automatically — the
+// Apple native banner this replaced was sitewide, so a whitelist would leak
+// install conversion from organic traffic.
+const EXCLUDED_PREFIXES = [
+  "/admin",
+  "/api",
+  "/dashboard",
+  "/home", // authenticated home (redirects to signin)
+  "/account",
+  "/entries",
+  "/goals",
+  "/tasks",
+  "/insights",
+  "/life-matrix",
+  "/achievements",
+  "/actions",
+  "/delete-account",
 ];
 
-function isAllowedRoute(pathname: string): boolean {
-  if (pathname === "/") return true;
-  return ALLOWED_PREFIXES.some((p) => pathname.startsWith(p));
+function isEligibleRoute(pathname: string): boolean {
+  // /auth/* is private EXCEPT the signup conversion page (+ its success step).
+  if (pathname === "/auth" || pathname.startsWith("/auth/")) {
+    return pathname === "/auth/signup" || pathname.startsWith("/auth/signup/");
+  }
+  return !EXCLUDED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
 }
 
 type Platform = "ios" | "android";
@@ -123,7 +141,7 @@ export function InstallBanner() {
   useEffect(() => {
     setVisible(false);
     if (typeof navigator === "undefined") return;
-    if (!isAllowedRoute(pathname)) return;
+    if (!isEligibleRoute(pathname)) return;
 
     const p = detectPlatform(navigator.userAgent);
     if (!p) return; // desktop
