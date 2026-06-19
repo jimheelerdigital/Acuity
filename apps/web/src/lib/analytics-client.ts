@@ -30,7 +30,10 @@ export type ClientAnalyticsEvent =
   | "install_banner_shown"
   | "install_banner_clicked"
   | "install_banner_dismissed"
-  | "install_banner_render_skipped";
+  | "install_banner_render_skipped"
+  // Inline install CTAs in marketing content — components/inline-install-cta.tsx
+  | "install_banner_inline_shown"
+  | "install_banner_inline_clicked";
 
 export function trackClient(
   event: ClientAnalyticsEvent,

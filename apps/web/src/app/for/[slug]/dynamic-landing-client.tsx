@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+
+import { InlineInstallCTA } from "@/components/inline-install-cta";
 import {
   LandingNav,
   Footer,
@@ -137,6 +139,8 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
         reflectActions={["Block mornings for deep work", "No meetings after 5pm", "Exercise before noon"]}
       />
 
+      <InlineInstallCTA location="mid_page" />
+
       {/* Value Props */}
       <section className="px-6 py-14 sm:py-18">
         <div className="mx-auto max-w-4xl">
@@ -202,6 +206,7 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
         </Reveal>
       </section>
 
+      <InlineInstallCTA location="footer" />
       <Footer />
     </div>
   );

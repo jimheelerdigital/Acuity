@@ -13,6 +13,8 @@
  */
 import { makeAcuityTokens } from "@acuity/shared";
 
+import { InlineInstallCTA } from "@/components/inline-install-cta";
+
 import { Consistency } from "./Consistency";
 import { FeatureRow } from "./FeatureRow";
 import { FinalCTA } from "./FinalCTA";
@@ -56,6 +58,8 @@ export function MarketingHome() {
         }
       />
 
+      <InlineInstallCTA location="mid_page" />
+
       {/* Feature 2 — Theme Map (dark, flipped). */}
       <FeatureRow
         flip
@@ -97,6 +101,7 @@ export function MarketingHome() {
       <Consistency />
       <Pricing />
       <FinalCTA />
+      <InlineInstallCTA location="footer" />
       <Footer />
     </div>
   );

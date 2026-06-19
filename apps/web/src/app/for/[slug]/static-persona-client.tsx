@@ -13,6 +13,7 @@ import {
   FAQSection,
   useCtaHref,
 } from "@/components/landing-shared";
+import { InlineInstallCTA } from "@/components/inline-install-cta";
 import { type PersonaPage } from "@/lib/persona-pages";
 import {
   TestimonialCarousel,
@@ -94,6 +95,8 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
       <SimpleHowItWorks />
       <TrustStrip />
 
+      <InlineInstallCTA location="mid_page" />
+
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-4xl">
           <Reveal><h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-14">Built for you</h2></Reveal>
@@ -128,6 +131,7 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
         </Reveal>
       </section>
 
+      <InlineInstallCTA location="footer" />
       <Footer />
     </div>
   );
