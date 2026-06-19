@@ -15,7 +15,7 @@ import { ConsentGatedTrackers } from "@/components/consent-gated-trackers";
 import { CrisisFooter } from "@/components/crisis-footer";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { MetaPixelAdvancedMatching } from "@/components/meta-pixel-events";
-import { AppleSmartBanner } from "@/components/apple-smart-banner";
+import { InstallBanner } from "@/components/install-banner";
 import {
   type Palette,
   type ResolvedTheme,
@@ -161,10 +161,9 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredDataJsonLd) }}
         />
-        {/* Apple Smart App Banner — moved to client component
-            (apple-smart-banner.tsx) to suppress on /start funnel.
-            The banner was sending high-intent traffic into the lossy
-            App Store handoff before the web funnel could convert. */}
+        {/* App-install promotion is a body component now (<InstallBanner />,
+            components/install-banner.tsx) — replaced the apple-itunes-app
+            Smart Banner meta tag with a tracked, cross-platform banner. */}
         {GOOGLE_SITE_VERIFICATION && (
           <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
         )}
@@ -203,7 +202,10 @@ export default function RootLayout({
           <CelebrationMount />
           <CrisisFooter />
           <CookieConsentBanner />
-          <AppleSmartBanner />
+          {/* Cross-platform install banner (App Store / Play Store). Replaces
+              Apple's native Smart App Banner for iOS + Android reach +
+              click/impression tracking. Self-gates by route + platform. */}
+          <InstallBanner />
         </Providers>
       </body>
     </html>

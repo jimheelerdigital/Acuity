@@ -19,13 +19,18 @@ import posthog from "posthog-js";
  * in.
  */
 
-// Narrow to the onboarding subset — the only client-side events today.
-// Kept as a literal union so a typo is a compile error.
+// Client-side analytics events. Kept as a literal union so a typo is a
+// compile error.
 export type ClientAnalyticsEvent =
   | "onboarding_started"
   | "onboarding_step_completed"
   | "onboarding_completed"
-  | "onboarding_skipped";
+  | "onboarding_skipped"
+  // Install banner (web → native activation) — components/install-banner.tsx
+  | "install_banner_shown"
+  | "install_banner_clicked"
+  | "install_banner_dismissed"
+  | "install_banner_render_skipped";
 
 export function trackClient(
   event: ClientAnalyticsEvent,

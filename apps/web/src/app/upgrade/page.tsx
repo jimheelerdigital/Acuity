@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getAuthOptions } from "@/lib/auth";
 import { PLAN_PRO_NAME } from "@acuity/shared";
 import { Card, HeroCard } from "@/components/acuity";
-import { MobileAppBanner } from "@/components/mobile-app-banner";
 import { UpgradePlanPicker } from "./upgrade-plan-picker";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +38,6 @@ export default async function UpgradePage({
 
   return (
     <div className="min-h-screen bg-acuity-bg text-acuity-text">
-      <MobileAppBanner />
       <div className="flex min-h-screen items-center justify-center px-6 py-12">
         <div className="acuity-fade-up w-full max-w-md">
           <div className="mb-6 text-center">
