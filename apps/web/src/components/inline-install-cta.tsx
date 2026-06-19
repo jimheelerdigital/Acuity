@@ -101,10 +101,45 @@ export function InlineInstallCTA({
 
         {desktop ? (
           <div className="mt-1 flex flex-col items-center gap-3">
-            <InstallQR src={`inline_${location}`} location={`inline_${location}`} />
-            <p className="text-[13px] text-acuity-text-ter">
-              Point your phone&rsquo;s camera here to install
+            <p className="text-[14px] font-semibold text-acuity-text">
+              Scan to download Acuity on your phone
             </p>
+            <InstallQR src={`inline_${location}`} location={`inline_${location}`} />
+            <p className="text-[12px] text-acuity-text-ter">— or get it on —</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={APP_VERSION_CONFIG.ios.appStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => handleClick("app_store")}
+                aria-label="Download on the App Store"
+                className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/badges/apple-app-store.svg"
+                  alt="Download on the App Store"
+                  style={{ height: 40, width: "auto", display: "block" }}
+                />
+              </a>
+              {PLAY_STORE_LIVE && (
+                <a
+                  href={APP_VERSION_CONFIG.android.appStoreUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => handleClick("play_store")}
+                  aria-label="Get it on Google Play"
+                  className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/badges/google-play.svg"
+                    alt="Get it on Google Play"
+                    style={{ height: 40, width: "auto", display: "block" }}
+                  />
+                </a>
+              )}
+            </div>
           </div>
         ) : (
           <div className="mt-1 flex flex-wrap items-center justify-center gap-3">
