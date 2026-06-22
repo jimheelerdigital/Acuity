@@ -2293,6 +2293,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const celebratedRef = useRef(false);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
 
   // Diagnostic context string for download-step events (PII-safe: UA only, no email/name)
@@ -2308,6 +2309,18 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
     track("funnel_download_screen_viewed", { value: diagContext });
     if (browserEnv.isWebView) {
       track("funnel_inapp_browser_detected", { value: browserEnv.label });
+      // Auto-copy App Store link to clipboard for webview users
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(APP_STORE_URL)
+          .then(() => { setCopied(true); track("funnel_autocopy_success", { value: diagContext }); })
+          .catch((err) => {
+            setCopyFailed(true);
+            track("funnel_autocopy_failed", { value: `${err instanceof Error ? err.message : String(err)}|${diagContext}` });
+          });
+      } else {
+        setCopyFailed(true);
+        track("funnel_autocopy_failed", { value: `no_clipboard_api|${diagContext}` });
+      }
     }
   }, [track, browserEnv.isWebView, browserEnv.label, diagContext]);
 
@@ -2346,56 +2359,56 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </>
         )}
 
-        <button
-          onClick={() => {
-            track("funnel_download_tap", { value: diagContext });
-            try {
-              if (browserEnv.isWebView) {
-                // In Facebook/Instagram WebView: try itms-apps:// first (opens App Store app directly),
-                // then fall back to https:// with _blank, then window.location as last resort
-                const itmsUrl = APP_STORE_URL.replace("https://", "itms-apps://");
-                window.location.href = itmsUrl;
-                setTimeout(() => {
-                  try {
-                    const w = window.open(APP_STORE_URL, "_blank");
-                    if (!w) {
-                      track("funnel_download_blocked", { value: `popup_blocked|${diagContext}` });
-                    }
-                  } catch (fallbackErr) {
-                    track("funnel_download_error", { value: `fallback_open|${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}|${diagContext}` });
-                  }
-                }, 1000);
-              } else {
-                const w = window.open(APP_STORE_URL, "_blank");
-                if (!w) {
-                  track("funnel_download_blocked", { value: `popup_blocked|${diagContext}` });
-                }
-              }
-            } catch (err) {
-              track("funnel_download_error", { value: `${err instanceof Error ? err.message : String(err)}|${diagContext}` });
-            }
-          }}
-          className="relative w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-          style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
-          <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
-          <span className="relative">Download on the App Store</span>
-        </button>
+        {browserEnv.isWebView ? (
+          <>
+            {/* ── Webview path: native anchor + prominent breakout instructions ── */}
+            <a
+              href={APP_STORE_URL}
+              onClick={() => track("funnel_download_tap", { value: diagContext })}
+              className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
+              style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
+              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
+              <span className="relative">Download on the App Store</span>
+            </a>
 
-        {browserEnv.isWebView && (
-          <p className="mt-3 text-xs text-zinc-400 text-center">
-            Didn&rsquo;t work?{" "}
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch((err) => {
-                  track("funnel_copy_link_error", { value: `${err instanceof Error ? err.message : String(err)}|${diagContext}` });
-                });
-                track("funnel_copy_app_link_clicked", { value: diagContext });
-              }}
-              className="text-acuity-primary font-medium underline"
-            >
-              {copied ? "Link copied! Paste in Safari." : "Copy link and open in Safari"}
-            </button>
-          </p>
+            {/* ── Prominent breakout instruction — this is the reliable path ── */}
+            <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-left">
+              <p className="text-[13px] font-semibold text-zinc-800 mb-2">
+                If the button above didn&rsquo;t open the App Store:
+              </p>
+              <ol className="text-[13px] text-zinc-600 space-y-1.5 list-decimal list-inside">
+                <li>Tap the <span className="inline-flex items-center font-semibold text-zinc-800">&nbsp;&#8943;&nbsp;</span> or <span className="inline-flex items-center font-semibold text-zinc-800">&nbsp;&#8226;&#8226;&#8226;&nbsp;</span> menu {browserEnv.label === "instagram" ? "at the bottom-right" : "in the top-right corner"}</li>
+                <li>Choose <span className="font-semibold text-zinc-800">&ldquo;Open in {/Android/i.test(browserEnv.ua) ? "Chrome" : "Safari"}&rdquo;</span></li>
+                <li>The App Store will open automatically</li>
+              </ol>
+              <div className="mt-3 pt-3 border-t border-zinc-200">
+                {copied ? (
+                  <p className="text-[12px] text-green-600 font-medium">&#10003; Link copied to clipboard &mdash; paste in {/Android/i.test(browserEnv.ua) ? "Chrome" : "Safari"} if needed</p>
+                ) : copyFailed ? (
+                  <div>
+                    <p className="text-[12px] text-zinc-500 mb-1">Long-press to copy this link:</p>
+                    <p className="text-[12px] text-acuity-primary font-mono break-all select-all">{APP_STORE_URL}</p>
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-zinc-400">Copying link&hellip;</p>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* ── Regular browser path: unchanged ── */}
+            <a
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("funnel_download_tap", { value: diagContext })}
+              className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
+              style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
+              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
+              <span className="relative">Download on the App Store</span>
+            </a>
+          </>
         )}
 
         <button disabled
