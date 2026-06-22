@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-06-22] — Download step diagnostic instrumentation (capture-only, no behavior change)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c6b252d7
+
+### In plain English (for Keenan)
+Users coming from Meta/Instagram ads are hitting an error when they tap "Download" at the end of the signup funnel — but we couldn't see what the error actually was, because nothing was being captured. This change adds invisible diagnostic tracking to the download screen so that the next time a webview user hits the problem, we'll see exactly what failed (popup blocked? scheme error? something else?) in our existing analytics data. Nothing about what the user sees or how the button works has changed — this is capture-only so we can find the real root cause.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: `DownloadScreen` component updated:
+  - Added `diagContext` string that captures webview type, OS (ios/android/other), standalone mode, and window.open availability — PII-safe (no email/name/audio).
+  - `funnel_download_screen_viewed` event now includes `diagContext` in the `value` field so every screen mount is tagged with browser environment.
+  - Renamed `funnel_app_store_clicked` → `funnel_download_tap` with full `diagContext` in value.
+  - New `funnel_download_blocked` event fires when `window.open()` returns null (popup blocked by webview).
+  - New `funnel_download_error` event fires on any thrown error during download action, capturing error message + stack + browser context.
+  - New `funnel_copy_link_error` event fires if clipboard API fails in webview.
+  - `funnel_copy_app_link_clicked` and `funnel_continue_web_app_clicked` now include `diagContext` in value.
+- All events go through existing `trackOnboardingEvent()` → `POST /api/onboarding-events` → `OnboardingEvent` table. No new API routes, no schema changes, no new dependencies.
+- Download button behavior is byte-identical for working users — same itms-apps:// → https:// fallback logic, same timing.
+
+### Manual steps needed
+None — this is instrumentation-only. No build, no migration, no store submission required.
+
+### Notes
+- **This is a DIAGNOSIS step.** Root cause and fix come after we see real webview error data from Meta/Instagram users. Do not guess at a fix until we have data.
+- **Top suspicion:** Instagram/Facebook in-app webviews block `window.open()` (popup blocker) AND may not support `itms-apps://` scheme navigation. The 1-second fallback fires `window.open(APP_STORE_URL, "_blank")` which likely returns `null` in those webviews → user sees nothing happen. The new `funnel_download_blocked` event will confirm or deny this.
+- **What to look for in the data:** Query `OnboardingEvent` for events matching `funnel_download_blocked`, `funnel_download_error`, or `funnel_download_tap` where `value` contains `webview:true`. The `value` field is pipe-delimited: `webview:true|label:instagram|os:ios|standalone:false|windowOpen:true`. The `browser` column already captures the full user-agent from the request header.
+- **No existing error UI on this screen.** The download screen has zero error states or error messages rendered to the user. If users are "seeing an error," it's either the App Store failing to load (Apple-side) or the webview showing its own "can't open this link" interstitial (browser-side) — NOT our code rendering an error.
+- The old `funnel_app_store_clicked` event name is retired. The new `funnel_download_tap` event captures the same moment with richer context.
+
+---
+
 ## [2026-06-18] — Remaining 14-day trial copy → 7-day (copy-only sweep)
 
 **Requested by:** Keenan
