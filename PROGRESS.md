@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-22] — Webview download screen rebuilt: native anchor + Open-in-Safari breakout + auto-copy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ec7cde55
+
+### In plain English (for Keenan)
+When someone taps a Meta/Instagram ad and finishes the signup funnel, the "Download" button at the end was silently failing — tapping it did nothing because Instagram's built-in browser blocks app-opening links. Now webview users see: (1) a real download link that the browser handles natively instead of through JavaScript tricks, (2) a clear, prominent instruction card saying "Tap the ⋯ menu → Open in Safari" with step-by-step directions customized for Instagram vs Facebook, and (3) the App Store link is automatically copied to their clipboard with a visible confirmation (or if that fails, a plain-text URL they can long-press to copy). There is no longer any path where the user taps something and nothing happens. Users in normal browsers (Safari, Chrome) see the same button as before — only the webview experience changed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: `DownloadScreen` rewritten with webview/browser split:
+  - **Webview path:** Download button is now a real `<a href="https://apps.apple.com/...">` (no `target="_blank"`, no `itms-apps://`, no `window.open`). Added breakout instruction card (`rounded-2xl border bg-zinc-50`) with numbered steps, platform-aware menu location (Instagram: "bottom-right" vs Facebook: "top-right corner"), and browser name (Safari on iOS, Chrome on Android).
+  - **Auto-copy on mount:** `navigator.clipboard.writeText()` called in useEffect for webview users. Success → green checkmark confirmation. Failure → new `copyFailed` state renders the raw URL in `select-all font-mono` so user can long-press to copy. No silent `.catch`.
+  - **Regular browser path:** Same button but now a real `<a>` with `target="_blank" rel="noopener noreferrer"` instead of `window.open`.
+  - **Removed:** `itms-apps://` scheme, `window.open()` in webview branch, `setTimeout` 1-second fallback, silent clipboard `.catch(() => {})`.
+  - **New events:** `funnel_autocopy_success`, `funnel_autocopy_failed` (with error reason in value). Existing diagnostic events (`funnel_download_tap`, `funnel_download_screen_viewed`, `funnel_inapp_browser_detected`) preserved.
+  - Old `funnel_download_blocked` / `funnel_download_error` events are no longer generated (the code paths that fired them are removed) — if they still appear in data, something unexpected is happening.
+
+### Manual steps needed
+None — no build, no migration, no store submission required. Deploys automatically on push.
+
+### Notes
+- **The `<a href>` in a webview will load the App Store WEB PAGE inside the webview, not the native App Store app.** Meta's webview sandbox prevents deep-linking to native apps. This is a known Meta platform constraint, not a bug. The anchor is still better than `window.open` (which returned null/blocked), but the real reliable path is "Open in Safari" from the ⋯ menu — that's why the instruction card is prominent and not small helper text.
+- **We cannot force webview ejection.** Meta deliberately sandboxes this. The durable long-term fix for activation from paid Meta traffic is the in-funnel web debrief (the "Continue in the Web App" button, which already works in webviews). The breakout instructions are a bridge.
+- **Clipboard auto-copy may fail** in some webview configurations (permissions, secure context). The fallback renders a `select-all` URL the user can manually copy. This is tracked via `funnel_autocopy_failed`.
+- The breakout instruction card uses platform-aware copy: Instagram users are told "bottom-right" (where the ⋯ menu is in Instagram's webview), Facebook users are told "top-right corner" (where Facebook puts its menu).
+
+---
+
 ## [2026-06-22] — Download step diagnostic instrumentation (capture-only, no behavior change)
 
 **Requested by:** Keenan
