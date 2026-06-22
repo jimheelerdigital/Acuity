@@ -2295,12 +2295,21 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   const [copied, setCopied] = useState(false);
   const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
 
+  // Diagnostic context string for download-step events (PII-safe: UA only, no email/name)
+  const diagContext = typeof window !== "undefined" ? [
+    `webview:${browserEnv.isWebView}`,
+    `label:${browserEnv.label}`,
+    `os:${/iPhone|iPad|iPod/i.test(browserEnv.ua) ? "ios" : /Android/i.test(browserEnv.ua) ? "android" : "other"}`,
+    `standalone:${typeof navigator !== "undefined" && ("standalone" in navigator ? (navigator as Record<string, unknown>).standalone : false)}`,
+    `windowOpen:${typeof window.open === "function"}`,
+  ].join("|") : "ssr";
+
   useEffect(() => {
-    track("funnel_download_screen_viewed");
+    track("funnel_download_screen_viewed", { value: diagContext });
     if (browserEnv.isWebView) {
       track("funnel_inapp_browser_detected", { value: browserEnv.label });
     }
-  }, [track, browserEnv.isWebView, browserEnv.label]);
+  }, [track, browserEnv.isWebView, browserEnv.label, diagContext]);
 
   useEffect(() => {
     if (paymentConfirmed && !celebratedRef.current) {
@@ -2339,15 +2348,31 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 
         <button
           onClick={() => {
-            track("funnel_app_store_clicked", { value: browserEnv.isWebView ? "webview" : "browser" });
-            if (browserEnv.isWebView) {
-              // In Facebook/Instagram WebView: try itms-apps:// first (opens App Store app directly),
-              // then fall back to https:// with _blank, then window.location as last resort
-              const itmsUrl = APP_STORE_URL.replace("https://", "itms-apps://");
-              window.location.href = itmsUrl;
-              setTimeout(() => { window.open(APP_STORE_URL, "_blank"); }, 1000);
-            } else {
-              window.open(APP_STORE_URL, "_blank");
+            track("funnel_download_tap", { value: diagContext });
+            try {
+              if (browserEnv.isWebView) {
+                // In Facebook/Instagram WebView: try itms-apps:// first (opens App Store app directly),
+                // then fall back to https:// with _blank, then window.location as last resort
+                const itmsUrl = APP_STORE_URL.replace("https://", "itms-apps://");
+                window.location.href = itmsUrl;
+                setTimeout(() => {
+                  try {
+                    const w = window.open(APP_STORE_URL, "_blank");
+                    if (!w) {
+                      track("funnel_download_blocked", { value: `popup_blocked|${diagContext}` });
+                    }
+                  } catch (fallbackErr) {
+                    track("funnel_download_error", { value: `fallback_open|${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}|${diagContext}` });
+                  }
+                }, 1000);
+              } else {
+                const w = window.open(APP_STORE_URL, "_blank");
+                if (!w) {
+                  track("funnel_download_blocked", { value: `popup_blocked|${diagContext}` });
+                }
+              }
+            } catch (err) {
+              track("funnel_download_error", { value: `${err instanceof Error ? err.message : String(err)}|${diagContext}` });
             }
           }}
           className="relative w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
@@ -2361,8 +2386,10 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
             Didn&rsquo;t work?{" "}
             <button
               onClick={() => {
-                navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch(() => {});
-                track("funnel_copy_app_link_clicked");
+                navigator.clipboard.writeText(APP_STORE_URL).then(() => setCopied(true)).catch((err) => {
+                  track("funnel_copy_link_error", { value: `${err instanceof Error ? err.message : String(err)}|${diagContext}` });
+                });
+                track("funnel_copy_app_link_clicked", { value: diagContext });
               }}
               className="text-acuity-primary font-medium underline"
             >
@@ -2378,7 +2405,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 
         <button
           onClick={async () => {
-            track("funnel_continue_web_app_clicked");
+            track("funnel_continue_web_app_clicked", { value: diagContext });
 
             // Mark web onboarding complete so /home doesn't bounce them into
             // the 10-step web onboarding flow. This user just finished the
