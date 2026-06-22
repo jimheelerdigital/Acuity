@@ -78,7 +78,9 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
     key: "task_reminder",
     label: "Task reminders",
     description: "A reminder about a task you've been meaning to get to.",
-    defaultOn: true,
+    // Opt-in: tasks are AI-extracted from voice (not typed), so quoting a
+    // specific extracted task back to the user is opt-in. See the spec.
+    defaultOn: false,
     group: "activity",
   },
   {
