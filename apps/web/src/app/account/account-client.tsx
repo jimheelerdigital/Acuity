@@ -12,6 +12,7 @@ import {
   type CalendarConnectionSummary,
 } from "./integrations-section";
 import { LifeDimensionsSection } from "./life-dimensions-section";
+import { NotificationPreferencesSection } from "./notification-preferences-section";
 import { BackfillOlderEntriesCard } from "./backfill-older-card";
 
 interface Props {
@@ -175,6 +176,14 @@ export default function AccountClient({
             initialWeekly={weeklyEmailEnabled}
             initialMonthly={monthlyEmailEnabled}
           />
+        </div>
+
+        {/* Notifications — smart-notifications prefs (email channel
+            on web). Sits next to the email digest prefs since email
+            is the only delivery surface here. Self-fetches its own
+            state from /api/account/notification-preferences. */}
+        <div id="notifications" className="scroll-mt-24">
+          <NotificationPreferencesSection />
         </div>
 
         {/* Integrations — calendar slice C5b + slice 5 connection
@@ -1318,6 +1327,7 @@ const SETTINGS_NAV = [
   { href: "#dimensions", label: "Life dimensions" },
   { href: "#referrals", label: "Referrals" },
   { href: "#email", label: "Email" },
+  { href: "#notifications", label: "Notifications" },
   { href: "#integrations", label: "Integrations" },
   { href: "#export", label: "Data export" },
   { href: "#support", label: "Support" },

@@ -342,6 +342,10 @@ model User {
   // After the next ~2 mobile-build cycles, the legacy fields can be
   // dropped in a follow-up cleanup slice.
   reminders                     UserReminder[]
+  // Smart-notifications engagement prefs (1:1). Lazily created with
+  // default-ON categories on first read; see
+  // docs/specs/smart-notifications-spec.md.
+  notificationPreferences       UserNotificationPreferences?
   // Apple Health connection state. True once the user accepts the
   // iOS HealthKit permission prompt; cleared when they revoke in
   // Settings or toggle off from Profile → Connected apps. Null on
@@ -536,6 +540,62 @@ model DeletedUser {
 // `completedAt != null` — the dashboard uses this to decide whether
 // to redirect new users into the flow. See apps/web/src/app/onboarding/
 // for the UI scaffold.
+
+// Smart-notifications engagement preferences (1:1 with User). The engine
+// (email-only in v1; push deferred) reads this row before composing any
+// notification. Category keys, defaults, caps, and the client shape are
+// defined in @acuity/shared (packages/shared/src/notifications.ts) so web +
+// iOS + Android stay in lockstep. See docs/specs/smart-notifications-spec.md.
+model UserNotificationPreferences {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Channels. v1 is email-only — pushEnabled stays false until the mobile
+  // push-token registration slice ships (deferred PR).
+  pushEnabled       Boolean   @default(false)
+  emailEnabled      Boolean   @default(true)
+
+  // Per-category opt in/out. Seeded with the default-ON set
+  // (DEFAULT_ENABLED_CATEGORIES) on first create; keys validated against
+  // @acuity/shared isNotificationCategory().
+  enabledCategories String[]  @default([])
+
+  // Copy voice — "caring" | "direct". Never advice; mirror, not coach.
+  tone              String    @default("caring")
+
+  // Quiet hours in the user's local time ("HH:MM"). No sends inside the
+  // window. Wraps midnight when end < start (e.g. 21:00 → 09:00).
+  quietHoursStart   String    @default("21:00")
+  quietHoursEnd     String    @default("09:00")
+  // IANA tz (e.g. "America/New_York"). Null → fall back to a sensible
+  // default at send time.
+  timezone          String?
+
+  // Frequency caps. The scheduler enforces by plan: free → maxPerWeek,
+  // Pro → maxPerDay. Stored per-user so a future per-user override is
+  // possible without a migration.
+  maxPerDay         Int       @default(1)
+  maxPerWeek        Int       @default(1)
+
+  // Snooze-all. Notifications are suppressed until this instant.
+  pausedUntil       DateTime?
+
+  // Last time ANY engagement notification fired — drives the
+  // NOTIFICATION_MIN_GAP_HOURS (18h) hard floor between sends.
+  lastNotifiedAt    DateTime?
+
+  // EU behavioral-profiling consent. ConsentRecord
+  // (kind="behavioral_notifications") is the legal source of truth; this
+  // is a denormalized mirror for fast scheduler reads.
+  behavioralConsent Boolean   @default(false)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([pausedUntil])
+}
+
 model UserOnboarding {
   id                     String    @id @default(cuid())
   userId                 String    @unique
