@@ -102,7 +102,7 @@ No existing classification, so build a **3-layer gate** that every content-refer
 ### 6. User controls UI (Settings → Notifications)
 - Master push + email toggles · per-category toggles · quiet-hours picker · **Snooze** (pause-until) · tone selector.
 - Each delivered notification carries **"Why did I get this?"** → deep-links to the relevant category in prefs, + inline **"Stop notifications like this"** (one-tap category opt-out).
-- Shared categories/labels live in `packages/shared` (iOS + Android + web read the same source).
+- Shared categories/labels **and section groupings/headings** live in `packages/shared` (`NOTIFICATION_GROUPS`); iOS + Android + web render identical copy. Two sections: **"Stay on track"** (default-on activity signals) and **"Personalized from your entries — off by default"** (opt-in, AI-inferred from speech) — the opt-in heading *is* the privacy rule, self-explanatory with no help link.
 
 ### 7. Tracking + measurement
 - Events: `notification_scheduled` / `notification_sent` / `notification_opened` / `notification_dismissed` / `notification_caused_entry` (entry within 24h of send) — all with `category`, `channel` (push/email), `tone`.

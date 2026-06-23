@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
   NOTIFICATION_CATEGORIES,
+  NOTIFICATION_GROUPS,
   NOTIFICATION_TONES,
   defaultNotificationPreferences,
   type NotificationCategory,
@@ -47,13 +48,6 @@ import type { AcuityTokens } from "@/lib/theme/tokens";
  *
  * Voice: mirror, not coach. No fixed-time language, no duration claims.
  */
-
-const ACTIVITY_CATEGORIES = NOTIFICATION_CATEGORIES.filter(
-  (c) => c.group === "activity"
-);
-const REFLECTION_CATEGORIES = NOTIFICATION_CATEGORIES.filter(
-  (c) => c.group === "reflections"
-);
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -199,46 +193,37 @@ export default function NotificationPreferencesScreen() {
           style={{ opacity: dim }}
           pointerEvents={channelOn ? "auto" : "none"}
         >
-          {/* Your activity — concrete items the user owns. */}
-          <SectionHeader tokens={tokens} title="Your activity" />
-          <View style={{ gap: 8 }}>
-            {ACTIVITY_CATEGORIES.map((c) => (
-              <SwitchRow
-                key={c.key}
-                tokens={tokens}
-                label={c.label}
-                description={c.description}
-                value={prefs.enabledCategories.includes(c.key)}
-                onToggle={() => toggleCategory(c.key)}
-              />
-            ))}
-          </View>
-
-          {/* Reflections & patterns — inferred content, off by default. */}
-          <SectionHeader tokens={tokens} title="Reflections & patterns" />
-          <Text
-            style={{
-              color: tokens.textQuiet,
-              fontSize: 13,
-              lineHeight: 19,
-              marginBottom: 12,
-            }}
-          >
-            These reference patterns Acuity notices in your entries — off by
-            default.
-          </Text>
-          <View style={{ gap: 8 }}>
-            {REFLECTION_CATEGORIES.map((c) => (
-              <SwitchRow
-                key={c.key}
-                tokens={tokens}
-                label={c.label}
-                description={c.description}
-                value={prefs.enabledCategories.includes(c.key)}
-                onToggle={() => toggleCategory(c.key)}
-              />
-            ))}
-          </View>
+          {/* Sections + headings come from @acuity/shared so the privacy
+              rule (the opt-in group's heading) stays identical to web. */}
+          {NOTIFICATION_GROUPS.map((g) => (
+            <View key={g.key}>
+              <SectionHeader tokens={tokens} title={g.heading} />
+              <Text
+                style={{
+                  color: tokens.textQuiet,
+                  fontSize: 13,
+                  lineHeight: 19,
+                  marginBottom: 12,
+                }}
+              >
+                {g.subheading}
+              </Text>
+              <View style={{ gap: 8 }}>
+                {NOTIFICATION_CATEGORIES.filter((c) => c.group === g.key).map(
+                  (c) => (
+                    <SwitchRow
+                      key={c.key}
+                      tokens={tokens}
+                      label={c.label}
+                      description={c.description}
+                      value={prefs.enabledCategories.includes(c.key)}
+                      onToggle={() => toggleCategory(c.key)}
+                    />
+                  )
+                )}
+              </View>
+            </View>
+          ))}
 
           {/* Tone — voice of the copy the engine generates. */}
           <SectionHeader tokens={tokens} title="Tone" />

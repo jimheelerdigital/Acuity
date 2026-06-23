@@ -23,11 +23,12 @@ export type NotificationCategory =
 export type NotificationTone = "caring" | "direct";
 
 /**
- * Grouping for the settings UI:
- *  - "activity"     → the user's own concrete items (default ON, calendar-like)
- *  - "reflections"  → inferred content (opt-in globally; safety filter applies)
+ * Grouping for the settings UI — the grouping IS the privacy rule, made
+ * visible to the user via the group headings (NOTIFICATION_GROUPS):
+ *  - "stay_on_track" → activity signals (default ON; nothing inferred from speech)
+ *  - "personalized"  → inferred/extracted from entries (opt-in globally; safety filter applies)
  */
-export type NotificationCategoryGroup = "activity" | "reflections";
+export type NotificationCategoryGroup = "stay_on_track" | "personalized";
 
 export interface NotificationCategoryDef {
   key: NotificationCategory;
@@ -41,9 +42,9 @@ export interface NotificationCategoryDef {
 }
 
 /**
- * Ordered for display. default-ON = the user's own concrete items
- * (streak/habit/milestone/goal/task); opt-in = inferred content
- * (theme follow-ups, life-area check-ins).
+ * Ordered for display. default-ON = activity signals only
+ * (streak/habit/milestone); opt-in = everything inferred or extracted from
+ * entries (goal/task/theme/life-area). Single rule: inferred from speech => opt-in.
  */
 export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
   {
@@ -51,21 +52,21 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
     label: "Streak reminders",
     description: "A nudge when your recording streak is about to slip.",
     defaultOn: true,
-    group: "activity",
+    group: "stay_on_track",
   },
   {
     key: "habit_reminder",
     label: "Gentle reminders",
     description: "A reminder to debrief around when you usually do.",
     defaultOn: true,
-    group: "activity",
+    group: "stay_on_track",
   },
   {
     key: "milestone_celebration",
     label: "Milestones",
     description: "A note when you reach a meaningful milestone.",
     defaultOn: true,
-    group: "activity",
+    group: "stay_on_track",
   },
   {
     key: "goal_nudge",
@@ -75,7 +76,7 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
     // references something Acuity inferred from your speech. Single rule —
     // anything inferred from speech is opt-in. See the spec.
     defaultOn: false,
-    group: "activity",
+    group: "personalized",
   },
   {
     key: "task_reminder",
@@ -84,21 +85,50 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
     // Opt-in: tasks are AI-extracted from voice (not typed), so quoting a
     // specific extracted task back to the user is opt-in. See the spec.
     defaultOn: false,
-    group: "activity",
+    group: "personalized",
   },
   {
     key: "theme_followup",
     label: "Theme follow-ups",
     description: "A follow-up on something that's been on your mind lately.",
     defaultOn: false,
-    group: "reflections",
+    group: "personalized",
   },
   {
     key: "life_area_check",
     label: "Life-area check-ins",
     description: "A check-in when an area of your life seems to be slipping.",
     defaultOn: false,
-    group: "reflections",
+    group: "personalized",
+  },
+];
+
+export interface NotificationGroupDef {
+  key: NotificationCategoryGroup;
+  /** Section heading — written so the privacy rule is self-explanatory. */
+  heading: string;
+  /** One-line plain-language reinforcement under the heading. */
+  subheading: string;
+}
+
+/**
+ * Settings-screen sections, in display order. The headings carry the privacy
+ * rule in plain language so no help link is needed — the opt-in group's
+ * heading literally says "off by default". Web + mobile both render from this
+ * so the copy can't drift.
+ */
+export const NOTIFICATION_GROUPS: readonly NotificationGroupDef[] = [
+  {
+    key: "stay_on_track",
+    heading: "Stay on track",
+    subheading:
+      "Gentle nudges based on how you use Acuity — never on what you talked about.",
+  },
+  {
+    key: "personalized",
+    heading: "Personalized from your entries — off by default",
+    subheading:
+      "Anything Acuity picked up from what you said — goals, tasks, themes, life areas. Always your choice to turn on.",
   },
 ];
 

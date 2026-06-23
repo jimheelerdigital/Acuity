@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 
 import {
   NOTIFICATION_CATEGORIES,
+  NOTIFICATION_GROUPS,
   NOTIFICATION_TONES,
   defaultNotificationPreferences,
   type NotificationCategory,
-  type NotificationCategoryGroup,
   type NotificationPreferences,
   type NotificationTone,
 } from "@acuity/shared";
@@ -110,15 +110,6 @@ export function NotificationPreferencesSection() {
   const isPaused =
     pausedUntilDate !== null && pausedUntilDate.getTime() > Date.now();
 
-  const groups: { group: NotificationCategoryGroup; heading: string; sub?: string }[] = [
-    { group: "activity", heading: "Your activity" },
-    {
-      group: "reflections",
-      heading: "Reflections & patterns",
-      sub: "These reference patterns Acuity notices in your entries — off by default.",
-    },
-  ];
-
   return (
     <section className="mt-8 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-6">
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -142,18 +133,16 @@ export function NotificationPreferencesSection() {
 
       {/* Category groups */}
       <div className={`mt-6 space-y-7 transition-opacity ${dimmed}`}>
-        {groups.map(({ group, heading, sub }) => {
-          const cats = NOTIFICATION_CATEGORIES.filter((c) => c.group === group);
+        {NOTIFICATION_GROUPS.map((g) => {
+          const cats = NOTIFICATION_CATEGORIES.filter((c) => c.group === g.key);
           return (
-            <div key={group}>
+            <div key={g.key}>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                {heading}
+                {g.heading}
               </h3>
-              {sub && (
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  {sub}
-                </p>
-              )}
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                {g.subheading}
+              </p>
               <div className="mt-3 space-y-4">
                 {cats.map((c) => (
                   <ToggleRow
