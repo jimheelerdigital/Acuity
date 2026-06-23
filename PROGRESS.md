@@ -7,6 +7,57 @@
 
 ---
 
+## [2026-06-23] — Notifications settings (foundation) + account-deletion data-integrity fix
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** a34c542
+
+### In plain English (for Keenan)
+Two things shipped together in one release.
+
+First, a new **Notifications** settings screen — on both the iPhone app and the website — where people choose what Acuity reaches out about. The rule is simple and privacy-first: by default Acuity only sends gentle "stay on track" nudges (recording streaks, habit reminders, milestone celebrations). Anything that references what someone actually talked about — goal check-ins, task reminders, themes, life-area check-ins — is **off by default** and only turns on if the person opts in. The settings screen says this in plain language so it explains itself. Important: **no notifications are being sent yet** — this is the control panel and the plumbing; the sending engine comes in later releases (and the first version will be email, not push).
+
+Second, we fixed a behind-the-scenes cleanup problem with account deletion. When someone deleted their account, a few records were being left behind — including their privacy-consent records — instead of being fully removed. We cleaned up 83 leftover records from accounts that were already deleted, and changed the system so deletion now cleans up automatically going forward. In plain terms: **when a user deletes their account, their consent records are deleted along with everything else.**
+
+### Technical changes (for Jimmy)
+Merged PR #15 (merge commit a34c542; branch feat/smart-notifications-prefs), five commits.
+
+Notifications preferences foundation (email-only v1):
+- New Prisma model `UserNotificationPreferences` (1:1 User): pushEnabled, emailEnabled, enabledCategories String[], tone, quietHoursStart/End, timezone, maxPerDay/maxPerWeek, pausedUntil, lastNotifiedAt, behavioralConsent. `onDelete: Cascade`.
+- `packages/shared/src/notifications.ts`: canonical NotificationCategory keys + copy, NOTIFICATION_GROUPS (section headings), DEFAULT_ENABLED_CATEGORIES, tones, caps, NotificationPreferences client shape; exported via index.
+- Web API `apps/web/src/app/api/account/notification-preferences/route.ts` (GET lazy-creates defaults, PUT validates + upserts).
+- Web UI `apps/web/src/app/account/notification-preferences-section.tsx` mounted in account-client.tsx (`#notifications`).
+- Mobile screen `apps/mobile/app/notification-preferences.tsx` + Profile entry row in `app/(tabs)/profile.tsx`.
+- Final defaults — ON: streak_preservation, habit_reminder, milestone_celebration; opt-in (global): goal_nudge, task_reminder, theme_followup, life_area_check. Rule: anything inferred/extracted from speech is opt-in. UI sections: "Stay on track" + "Personalized from your entries — off by default".
+- Spec: `docs/specs/smart-notifications-spec.md` (incl. deferred PR 2–6 breakdown).
+
+Data-integrity / cascade fix:
+- Root cause: ConsentRecord declared a User relation but had no FK in the DB; the account-delete handler's manual cascade-gap cleanup omitted consentRecord → orphan consent rows accrued for deleted users, which blocked `prisma db push` from adding the ConsentRecord FK.
+- `prisma/schema.prisma`: added `onDelete: Cascade` to ConsentRecord + 5 scalar-userId tables (LifeMapAreaHistory, GoalSuggestion, FounderNotificationLog, ExperimentAssignment, UserFeatureOverride) + 5 reverse relation fields on User.
+- `apps/web/src/app/api/user/delete/route.ts`: removed the now-redundant manual cascade-gap `deleteMany` block (DB cascade handles it).
+- One-time prod cleanup: deleted 83 orphan rows (ConsentRecord 8, LifeMapAreaHistory 46, FounderNotificationLog 29) — all referencing already-deleted users.
+- Ran `npx prisma db push` against prod: created UserNotificationPreferences + added 7 cascade FKs.
+
+RLS:
+- `prisma/rls-allowlist.txt`: `UserNotificationPreferences rls`.
+- `supabase/migrations/2026-06-23_user_notification_preferences_rls.sql`: ENABLE RLS + RESTRICTIVE "Deny all for non-service" policy (applied to prod).
+
+### Manual steps needed
+- [x] `prisma db push` to prod — done this session (table + 7 cascade FKs live)
+- [x] One-time orphan cleanup on prod — done (83 rows)
+- [x] RLS enabled + deny-all policy on UserNotificationPreferences — done + verified
+- [ ] None outstanding. Future engine work tracked in the spec: PR 2 (scheduling + email send), PR 3 (AI generation + 3-layer safety filter), PR 4 (analytics + MRI), PR 5 (mobile push-token registration — HIGH RISK, post-launch), PR 6 (post-onboarding opt-in funnel prompt).
+
+### Notes
+- **Cascade decision (legal/Keenan):** deleting an account now deletes its consent records too (GDPR Art.17); the DeletedUser tombstone keeps the minimal deletion audit. If legal ever wants anonymized proof-of-consent retained instead, switch `ConsentRecord.userId` to nullable + `onDelete: SetNull` (one-line). Documented in spec §8.
+- The 5 non-consent cascade additions are behavior-preserving — the delete handler already deleted those tables; cascade just moves enforcement to the DB FK and let us drop the fragile manual block. The admin delete route (which had no manual block) now also cleans them via cascade for free.
+- RLS pattern here is deny-all RESTRICTIVE (service-role Prisma + cron bypass), NOT `auth.uid()` — Acuity has no Supabase-Auth end-users, nothing connects to the DB directly except the service role. The prod table came out of `db push` with RLS already enabled but 0 policies (deny-all by default), so there was no exposure window; the explicit policy was added for pattern-consistency + the daily rls-audit cron.
+- `task_reminder` and `goal_nudge` are opt-in because tasks AND goals are AI-extracted/auto-created from voice entries (not typed) — so referencing them is "inferred from speech," same class as themes/areas.
+- v1 is email-only by design; mobile push-token registration is deferred (HIGH RISK to touch mobile auth/launch mid-launch).
+
+---
+
 ## [2026-06-22] — Webview download screen rebuilt: native anchor + Open-in-Safari breakout + auto-copy
 
 **Requested by:** Keenan
