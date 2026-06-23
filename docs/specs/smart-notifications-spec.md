@@ -69,12 +69,12 @@ Categories use an explicit `enabledCategories` list seeded with the default-ON l
 | `streak_preservation` | "5-day streak — one entry keeps it going" | **ON** | conservative: ≥3, not recorded today, capped |
 | `habit_reminder` | generic time-based, no content | **ON** | lowest risk |
 | `milestone_celebration` | achievement unlock | **ON** | celebrates the user's own win |
-| `goal_nudge` | "How's your reading goal going?" | **ON** | goals are user-set targets |
+| `goal_nudge` | "How's your reading goal going?" | **opt-in** | references a goal Acuity *inferred* from entries |
 | `task_reminder` | "Still planning to call mom this week?" | **opt-in** | surfaces a task Acuity *extracted* from entries — not typed by the user |
 | `theme_followup` | "You mentioned work stress a few days ago — anything new?" | **opt-in** | references inferred themes — safety filter applies |
 | `life_area_check` | "Fitness has been dipping. Anything to talk about?" | **opt-in** | references inferred area scores |
 
-Default-ON = activity signals (streak/habit/milestone) + broad goal check-ins. Opt-in (global, not just EU) = anything that surfaces a *specific* item Acuity extracted or inferred from entries — task reminders (a specific extracted task), theme follow-ups + life-area checks (inferred). Rationale: tasks are AI-extracted from voice, not typed, so quoting a specific one back is opt-in. (Goals are also auto-created, but a goal check-in references a broad user-tracked target rather than quoting a granular extracted item — see the open consideration in Locked decisions §1.)
+**The single rule users see: anything Acuity inferred or extracted from your speech requires opt-in.** Default-ON = activity signals only — streak, habit, milestone (facts about your usage; nothing inferred from what you said). Opt-in (global, not just EU) = everything Acuity inferred or extracted from entries — goal check-ins, task reminders, theme follow-ups, life-area checks. Clean privacy story, one rule.
 
 ### 3. Scheduling + frequency
 - Hourly Inngest cron (reuse the push-cron pattern). Per eligible user: pick the single highest-value candidate notification, gated by:
@@ -110,14 +110,14 @@ No existing classification, so build a **3-layer gate** that every content-refer
 - Surface in the **admin MRI dashboard** (PR #10 infra exists).
 
 ### 8. Compliance
-- **GDPR:** content-referencing categories are **opt-in for everyone** (locked) — which also satisfies EU behavioral-consent. For EU users, record the opt-in as a `ConsentRecord` (`behavioral_notifications`); `behavioralConsent` on prefs is the fast-read mirror. The default-ON categories (habit/streak/milestone/goal) carry no behavioral targeting.
+- **GDPR:** content-referencing categories are **opt-in for everyone** (locked) — which also satisfies EU behavioral-consent. For EU users, record the opt-in as a `ConsentRecord` (`behavioral_notifications`); `behavioralConsent` on prefs is the fast-read mirror. The default-ON categories (habit/streak/milestone) carry no behavioral targeting — they reference usage facts, nothing inferred from speech.
 - **First-launch:** notification opt-in prompt fires **after the first record**, never before (matches onboarding strategy).
 - **Transparency:** an in-app explainer of exactly what data is referenced (goals/tasks/themes/areas — never private content, never sensitive topics).
 
 ---
 
 ## Locked decisions (2026-06-22)
-1. **Category defaults:** default-**ON** — `streak_preservation`, `habit_reminder`, `milestone_celebration`, `goal_nudge`. **Opt-in, globally** (not just EU) — `task_reminder`, `theme_followup`, `life_area_check`. `task_reminder` is opt-in because tasks are AI-extracted from voice (not typed), so quoting a specific extracted task back to the user is opt-in. Cleaner privacy story. *(Open consideration: goals are also auto-created from entries; `goal_nudge` stays ON on the basis that it references a broad user-tracked target rather than quoting a granular extracted item — revisit if we want it to follow the same logic as tasks.)*
+1. **Category defaults:** default-**ON** — `streak_preservation`, `habit_reminder`, `milestone_celebration` (activity signals; nothing inferred from speech). **Opt-in, globally** (not just EU) — `goal_nudge`, `task_reminder`, `theme_followup`, `life_area_check`. **Single rule:** anything Acuity inferred or extracted from the user's speech (goals + tasks are auto-created from entries; themes + areas are inferred) requires opt-in. Clean privacy story.
 2. **Favorite/leave-alone topics:** v2, not v1.
 3. **Tone:** global `caring` (default) / `direct`. No "playful".
 4. **Streak:** conservative — streak ≥ 3, no entry today, within the evening window, counts against the cap, one-tap off.
@@ -137,7 +137,7 @@ Engine + prefs + safety filter + scheduling + UI + analytics = **L**. The HIGH-R
 - **PR 3 — AI content gen + safety filter:** `callClaude` copy gen + the 3-layer sensitive-content filter + copy rules + tone A/B + caching. **Everything routes through the filter** before send.
 - **PR 4 — Analytics + measurement:** the event set + per-category engagement/opt-out + MRI surfacing.
 - **PR 5 — (deferred, ~2–3 weeks post-launch, HIGH RISK):** mobile Expo push-token registration → `User.pushToken`, then flip push on (send code already exists).
-- **PR 6 — (post-launch) opt-in funnel prompt:** a gentle, post-onboarding prompt (after the first record, never before) that surfaces the **opt-in** categories with one-line value props — e.g. "Want a reminder about tasks Acuity found in your entries? Turn on task reminders." Grows opt-in adoption for `task_reminder` / `theme_followup` / `life_area_check` without dark-patterning: plainly described, one-tap on, easy to dismiss, never pre-checked. Measure opt-in rate per category.
+- **PR 6 — (post-launch) opt-in funnel prompt:** a gentle, post-onboarding prompt (after the first record, never before) that surfaces the **opt-in** categories with one-line value props. `goal_nudge` + `task_reminder` are the **top-value prompts** — e.g. "Want a reminder about goals Acuity found in your entries?" and "Want a reminder about tasks Acuity found in your entries?" Grows opt-in adoption for `goal_nudge` / `task_reminder` / `theme_followup` / `life_area_check` without dark-patterning: plainly described, one-tap on, easy to dismiss, never pre-checked. Measure opt-in rate per category.
 
 ## Parity
 Push = iOS + Android (Expo). Web = **email fallback only** (no web push). Shared preferences + category definitions in `packages/shared` so all three read one source — per parity-by-default.

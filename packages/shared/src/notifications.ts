@@ -71,7 +71,10 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
     key: "goal_nudge",
     label: "Goal check-ins",
     description: "An occasional check-in on a goal you've set.",
-    defaultOn: true,
+    // Opt-in: goals are auto-created from voice entries, so a goal check-in
+    // references something Acuity inferred from your speech. Single rule —
+    // anything inferred from speech is opt-in. See the spec.
+    defaultOn: false,
     group: "activity",
   },
   {
