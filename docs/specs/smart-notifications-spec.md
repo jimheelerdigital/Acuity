@@ -114,6 +114,13 @@ No existing classification, so build a **3-layer gate** that every content-refer
 - **First-launch:** notification opt-in prompt fires **after the first record**, never before (matches onboarding strategy).
 - **Transparency:** an in-app explainer of exactly what data is referenced (goals/tasks/themes/areas — never private content, never sensitive topics).
 
+#### Decision (2026-06-23): `ConsentRecord` is `onDelete: Cascade`
+When a user deletes their account, **their consent records are deleted too** (along with the rest of their data), consistent with GDPR Art.17 erasure. The `DeletedUser` tombstone (email + dates) is the minimal retained audit trail. This was chosen over retaining anonymized proof-of-consent.
+
+- **Why:** the prior state had `ConsentRecord` with a declared `User` relation but **no FK in the DB** + the account-delete handler never cleaned it → orphan consent rows accrued for deleted users (found: 8 across 7 users), which blocked `prisma db push` from adding the FK. Cascade makes deletion self-cleaning so this can't re-emerge.
+- **Scope:** the same fix was applied to the other cascade-gap tables (`LifeMapAreaHistory`, `GoalSuggestion`, `FounderNotificationLog`, `ExperimentAssignment`, `UserFeatureOverride`) — all now `onDelete: Cascade`, replacing the manual cleanup block in `apps/web/src/app/api/user/delete/route.ts`. Behavior-preserving (those were already deleted on user-delete).
+- **For Keenan / legal (NOT blocking):** if we ever need to retain *anonymized* proof-of-consent for deleted users (defensibility), it's a one-line schema change — make `ConsentRecord.userId` nullable + `onDelete: SetNull`, so the ledger row survives de-linked from the erased account. Revisit only if legal requires it.
+
 ---
 
 ## Locked decisions (2026-06-22)

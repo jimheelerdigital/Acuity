@@ -335,6 +335,15 @@ model User {
   referralConversionsAsReferred ReferralConversion[] @relation("ReferredConversions")
   dataExports                   DataExport[]
   healthSnapshots               HealthSnapshot[]
+  // Cascade-gap FK fix (2026-06-23): these were scalar-userId tables
+  // cleaned manually in the account-delete handler. Now DB-enforced via
+  // onDelete: Cascade so a user delete can't leave orphans. See
+  // docs/specs/smart-notifications-spec.md §8.
+  experimentAssignments         ExperimentAssignment[]
+  featureOverrides              UserFeatureOverride[]
+  lifeMapAreaHistory            LifeMapAreaHistory[]
+  goalSuggestions               GoalSuggestion[]
+  founderNotificationLogs       FounderNotificationLog[]
   // Multi-reminder support (2026-05-09 Slice C). Replaces the single-
   // time `notificationTime` + `notificationDays` + `notificationsEnabled`
   // pattern. Legacy fields kept for backwards compat with not-yet-
@@ -1470,6 +1479,7 @@ model UserDemographics {
 model LifeMapAreaHistory {
   id        String   @id @default(cuid())
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Which area (CAREER|HEALTH|...) — same vocabulary as LifeMapArea.area.
   area      String
   score     Int
@@ -1566,6 +1576,7 @@ model ThemeMention {
 model GoalSuggestion {
   id            String   @id @default(cuid())
   userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // null when the suggestion is free-floating. Non-null anchors it to
   // a specific parent goal. onDelete: SetNull so deleting a parent goal
   // doesn't lose the suggestion — it becomes a top-level proposal.
@@ -1730,6 +1741,7 @@ enum FlagSeverity {
 model FounderNotificationLog {
   id              String   @id @default(cuid())
   userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   recipientEmails String[]
   success         Boolean
   errorMessage    String?
@@ -1951,6 +1963,9 @@ model FeatureFlag {
 model ExperimentAssignment {
   id         String   @id @default(cuid())
   userId     String?
+  // onDelete: Cascade — assignment is erased with the user (GDPR). Optional
+  // relation: anonymous (sessionId-only) rows have null userId + no FK.
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessionId  String?
   flagKey    String
   variant    String
@@ -1966,13 +1981,16 @@ model ExperimentAssignment {
 // on my own row" workflows and for rapidly un-blocking a single
 // affected user without flipping the global switch.
 //
-// No @relation to User — we want overrides to survive a Prisma
-// cascade on User delete because audit history should reference
-// the userId even after the account is gone. In practice the
-// admin UI cleans stale rows.
+// onDelete: Cascade — overrides are erased with the user (GDPR Art.17).
+// Supersedes the earlier "preserve for audit" design: the account-delete
+// path already hard-deleted these for Art.17, so the row never actually
+// outlived the account. Cascade just moves that enforcement from app code
+// to the DB FK (and lets us drop the manual cleanup). See
+// docs/specs/smart-notifications-spec.md §8.
 model UserFeatureOverride {
   id        String   @id @default(cuid())
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   flagKey   String
   enabled   Boolean
   // Short human note — required by the admin UI — so we have a
@@ -2440,7 +2458,12 @@ model OnboardingEvent {
 model ConsentRecord {
   id             String   @id @default(cuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id])
+  // onDelete: Cascade — consent records are erased with the user (GDPR
+  // Art.17); the DeletedUser tombstone retains the minimal deletion audit.
+  // If legal later wants anonymized proof-of-consent retained instead,
+  // switch to a nullable userId + onDelete: SetNull (one-line change).
+  // See docs/specs/smart-notifications-spec.md §8.
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // 'special_category_processing' | 'distance_contract_immediate_performance' | 'marketing' | 'cookies'
   consentType    String
   granted        Boolean // true = grant, false = withdrawal/decline
