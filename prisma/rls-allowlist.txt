@@ -47,6 +47,7 @@ LifeAudit rls
 LifeMapArea rls
 LifeMapAreaHistory rls
 MetaSpend rls
+NotificationLog rls    # smart-notifications send log (PR 2); has userId, written only via service-role Prisma
 OnboardingEvent rls    # funnel analytics rows; nullable userId for pre-auth funnel + bound userId post-signup
 Person rls    # people the user mentions across entries; has userId
 ProgressSuggestion rls
