@@ -308,6 +308,16 @@ export default function ProfileTab() {
             sublabel="When to nudge you to journal"
             onPress={() => router.push("/reminders")}
           />
+          {/* Notifications — server-driven engagement notifications
+              (streaks, milestones, goal/task nudges, reflections),
+              channel + tone + quiet hours + snooze. Distinct from the
+              OS-local journaling Reminders row above. */}
+          <MenuItem
+            icon="notifications-outline"
+            label="Notifications"
+            sublabel="What Acuity reaches out about, and how"
+            onPress={() => router.push("/notification-preferences" as never)}
+          />
           {/* Replay product tour — clears User.tourCompletedAt + the
               local AsyncStorage marker, then bounces to home so the
               tour fires on the next mount. Keeps the guided_start

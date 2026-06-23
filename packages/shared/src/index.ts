@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./constants";
 export * from "./relative-date";
 export * from "./daily-prompts";
+export * from "./notifications";
 export * from "./progression";
 export * from "./userProgression";
 export * from "./copy/free-tier";

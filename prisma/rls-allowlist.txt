@@ -69,6 +69,7 @@ UserFeatureOverride rls
 UserInsight rls
 UserLifeDimension rls
 UserMemory rls
+UserNotificationPreferences rls    # smart-notifications prefs (PR #15); has userId, written only via service-role Prisma
 UserOnboarding rls
 UserReminder rls
 VerificationToken rls
