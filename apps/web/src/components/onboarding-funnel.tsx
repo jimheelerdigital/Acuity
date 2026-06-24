@@ -29,7 +29,6 @@ import {
   type Gap3Line,
   GAP3_DISMISS_COPY,
   PROCESSING_STAGES,
-  getSnapshotInsight,
   SNAPSHOT_PREVIEWS,
   SNAPSHOT_BOTTOM,
   getTimelineWeeks,
@@ -42,6 +41,7 @@ import {
   SAVINGS_TIMELINE,
   PAYWALL_TESTIMONIALS_V2,
   getPaywallLossRecap,
+  getPatternLabels,
 } from "@/lib/funnel-config";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ type Step =
   | "mechanism"
   | "commit"
   | "processing"
-  | "snapshot"
+  | "pattern-result"
   | "timeline"
   | "create-account"
   | "savings"
@@ -66,7 +66,7 @@ type Step =
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "timemath", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
-  "tally", "mirror", "gap1", "gap2", "gap3", "mechanism", "commit", "processing", "snapshot", "timeline",
+  "tally", "mirror", "gap1", "gap2", "gap3", "mechanism", "commit", "processing", "pattern-result", "timeline",
   "create-account", "savings", "download",
 ];
 
@@ -385,7 +385,7 @@ export function OnboardingFunnel() {
       mechanism: "funnel_mechanism_viewed",
       commit: "funnel_commit_viewed",
       processing: "funnel_processing_viewed",
-      snapshot: "funnel_snapshot_viewed",
+      "pattern-result": "funnel_pattern_result_viewed",
       timeline: "funnel_timeline_viewed",
       "create-account": "funnel_create_account_viewed",
       savings: "funnel_savings_viewed",
@@ -667,15 +667,15 @@ export function OnboardingFunnel() {
 
       {/* ── Processing Theater (Screen 12) ── */}
       {step === "processing" && (
-        <ProcessingTheater key="processing" onComplete={() => setStep("snapshot")} />
+        <ProcessingTheater key="processing" onComplete={() => setStep("pattern-result")} />
       )}
 
-      {/* ── Personalized Snapshot (Screen 13) ── */}
-      {step === "snapshot" && branch && (
-        <SnapshotScreen key="snapshot" branch={branch} answers={answers} onContinue={() => setStep("timeline")} />
+      {/* ── Pattern Result (Screen 13 — deterministic label reveal) ── */}
+      {step === "pattern-result" && branch && (
+        <PatternResultScreen key="pattern-result" branch={branch} answers={answers} track={track} onContinue={() => setStep("timeline")} />
       )}
 
-      {/* ── Personalized Timeline (Screen 14) ── */}
+      {/* ── Personalized Timeline (Screen 14 — includes weekly-report previews) ── */}
       {step === "timeline" && branch && (
         <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("create-account")} />
       )}
@@ -1805,19 +1805,36 @@ function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-// ─── Personalized Snapshot (Screen 13) ───────────────────────────────────────
+// ─── Pattern Result (Screen 13 — deterministic label reveal) ─────────────────
 
-function SnapshotScreen({ branch, answers, onContinue }: {
-  branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
+function PatternResultScreen({ branch, answers, track, onContinue }: {
+  branch: Branch; answers: Record<string, string | string[]>;
+  track: (event: string, props?: Record<string, unknown>) => void;
+  onContinue: () => void;
 }) {
-  const insight = getSnapshotInsight(branch, answers);
-  const previews = SNAPSHOT_PREVIEWS[branch];
-  const bottomLine = SNAPSHOT_BOTTOM[branch];
+  const labels = getPatternLabels(branch, answers);
   const [vis, setVis] = useState(0);
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    // Fire analytics event once
+    if (!firedRef.current) {
+      firedRef.current = true;
+      track("funnel_pattern_assigned", {
+        primary: labels.primary,
+        secondary: labels.secondary,
+        area: labels.area,
+        branch,
+        duration: String(answers.shared_q5 ?? ""),
+        stuck_deep_override: labels.stuckDeepOverride,
+        collision_suppressed: labels.collisionSuppressed,
+      });
+    }
+  }, [labels, branch, answers, track]);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 1; i <= 6; i++) timers.push(setTimeout(() => setVis(i), 600 + i * 800));
+    for (let i = 1; i <= 6; i++) timers.push(setTimeout(() => setVis(i), 400 + i * 600));
     return () => timers.forEach(clearTimeout);
   }, []);
 
@@ -1826,39 +1843,61 @@ function SnapshotScreen({ branch, answers, onContinue }: {
   return (
     <div className="min-h-screen flex flex-col items-center px-6 py-16 text-zinc-900">
       <div className="max-w-md w-full">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-10 funnel-screen">
-          In 60 seconds, you said more than you realize.
-        </h2>
+        {/* Labels section */}
+        <div className={`mb-8 transition-all duration-[800ms] ${show(1)}`}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-2">Your pattern</p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 mb-4">{labels.primary}</h2>
 
-        {/* Section 1 — The Pattern You Can't See */}
-        <div className={`mb-10 rounded-2xl border-2 border-acuity-primary/30 bg-white p-6 transition-all duration-[800ms] ${show(1)}`}
-          style={{ boxShadow: vis >= 1 ? "var(--acuity-glow-soft)" : "none" }}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-3">The pattern you can&rsquo;t see</p>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{insight}</p>
-        </div>
+          {labels.secondaryVisible && labels.secondary && (
+            <div className="mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1">Secondary signal</p>
+              <p className="text-base font-semibold text-zinc-600">{labels.secondary}</p>
+            </div>
+          )}
 
-        {/* Section 2 — What One Week Reveals */}
-        <div className={`mb-10 transition-all duration-[800ms] ${show(2)}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">What one week reveals</p>
-          <div className="space-y-3">
-            {previews.map((p, i) => (
-              <div key={i} className={`rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3 transition-all duration-500 ${vis >= 3 + i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
-                style={{ borderLeft: "3px solid var(--acuity-primary)" }}>
-                <p className="text-xs text-zinc-600 leading-relaxed font-mono">{p}</p>
-              </div>
-            ))}
+          <div className="mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1">Most affected area</p>
+            <span className="inline-block rounded-full bg-acuity-primary/10 border border-acuity-primary/20 px-3 py-1 text-sm font-medium text-acuity-primary">
+              {labels.area}
+            </span>
           </div>
         </div>
 
-        {/* Section 3 — Bottom Line */}
-        <div className={`mb-8 text-center transition-all duration-[800ms] ${show(5)}`}>
-          <p className="text-base font-semibold text-zinc-900 leading-relaxed">{bottomLine}</p>
+        {/* Divider */}
+        <div className={`mb-6 border-t border-zinc-200 transition-all duration-500 ${show(2)}`} />
+
+        {/* Loop line — italic, emotionally resonant */}
+        <div className={`mb-6 transition-all duration-[800ms] ${show(2)}`}>
+          <p className="text-[15px] italic text-zinc-600 leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
         </div>
 
+        {/* Body copy — anti-Barnum, pattern-specific */}
+        <div className={`mb-8 transition-all duration-[800ms] ${show(3)}`}>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{labels.bodyCopy}</p>
+        </div>
+
+        {/* Divider */}
+        <div className={`mb-6 border-t border-zinc-200 transition-all duration-500 ${show(4)}`} />
+
+        {/* What Acuity tracks */}
+        <div className={`mb-10 transition-all duration-[800ms] ${show(4)}`}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3">What Acuity tracks for you</p>
+          <ul className="space-y-2">
+            {["Recurring thoughts", "Avoided tasks", "Life-area trends", "Weekly patterns"].map((item, i) => (
+              <li key={i} className={`flex items-center gap-2 text-sm text-zinc-700 transition-all duration-500 ${vis >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
+                style={{ transitionDelay: `${i * 100}ms` }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-acuity-primary flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* CTA */}
         <div className={`text-center transition-all duration-500 ${show(6)}`}>
           <button onClick={onContinue}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Continue
+            See what Acuity finds &rarr;
           </button>
         </div>
       </div>
@@ -1866,11 +1905,15 @@ function SnapshotScreen({ branch, answers, onContinue }: {
   );
 }
 
-// ─── Personalized Timeline (Screen 14) ──────────────────────────────────────
+// ─── Personalized Timeline (Screen 14 — includes weekly-report previews) ────
 
 function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void }) {
   const weeks = getTimelineWeeks(branch, answers);
+  const previews = SNAPSHOT_PREVIEWS[branch];
+  const bottomLine = SNAPSHOT_BOTTOM[branch];
   const [visibleNodes, setVisibleNodes] = useState(0);
+  const [showPreviews, setShowPreviews] = useState(false);
+  const [showBottom, setShowBottom] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
 
   useEffect(() => {
@@ -1878,17 +1921,25 @@ function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answe
     weeks.forEach((_, i) => {
       timers.push(setTimeout(() => setVisibleNodes(i + 1), 600 + i * 900));
     });
-    timers.push(setTimeout(() => setShowBtn(true), 600 + weeks.length * 900 + 600));
+    const timelineEnd = 600 + weeks.length * 900;
+    // Weekly-report previews appear after timeline completes
+    timers.push(setTimeout(() => setShowPreviews(true), timelineEnd + 400));
+    // Bottom line after previews settle
+    timers.push(setTimeout(() => setShowBottom(true), timelineEnd + 400 + previews.length * 400 + 400));
+    // CTA after bottom line
+    timers.push(setTimeout(() => setShowBtn(true), timelineEnd + 400 + previews.length * 400 + 1000));
     return () => timers.forEach(clearTimeout);
-  }, [weeks.length]);
+  }, [weeks.length, previews.length]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center px-6 py-16 text-zinc-900">
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-10 funnel-screen">
           This is what changes.
         </h2>
-        <div className="relative">
+
+        {/* Week-by-week timeline */}
+        <div className="relative mb-10">
           <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-zinc-200 overflow-hidden">
             <div className="w-full bg-acuity-primary transition-all duration-700" style={{ height: `${(visibleNodes / weeks.length) * 100}%` }} />
           </div>
@@ -1912,7 +1963,26 @@ function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answe
             ))}
           </div>
         </div>
-        <div className={`mt-10 text-center transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+
+        {/* Weekly-report previews — migrated from snapshot, the critical proof beat */}
+        <div className={`mb-8 transition-all duration-[800ms] ${showPreviews ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">What one week actually looks like</p>
+          <div className="space-y-3">
+            {previews.map((p, i) => (
+              <div key={i} className={`rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3 transition-all duration-500 ${showPreviews ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+                style={{ borderLeft: "3px solid var(--acuity-primary)", transitionDelay: showPreviews ? `${i * 400}ms` : "0ms" }}>
+                <p className="text-xs text-zinc-600 leading-relaxed font-mono">{p}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom line — branch-specific closer */}
+        <div className={`mb-8 text-center transition-all duration-[800ms] ${showBottom ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <p className="text-base font-semibold text-zinc-900 leading-relaxed">{bottomLine}</p>
+        </div>
+
+        <div className={`text-center transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <button onClick={onContinue}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
             Continue
@@ -2194,8 +2264,8 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
             <span className="text-sm font-medium text-emerald-700">Account created</span>
           </div>
-          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">You&rsquo;re in. Now lock in a rate that won&rsquo;t last.</h2>
-          <p className="text-sm text-zinc-500 mt-2">As a founding member, you get Acuity at a price we&rsquo;ll never offer again.</p>
+          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">Your personal clarity system is ready.</h2>
+          <p className="text-sm text-zinc-500 mt-2">Stop losing track of what your own life is trying to tell you.</p>
         </section>
 
         {/* Section 2 — Loss-aversion recap (v4) */}

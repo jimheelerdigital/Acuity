@@ -256,7 +256,7 @@ export const SHARED_QUESTIONS: Question[] = [
   },
   {
     id: "shared_q6",
-    text: "What\u2019s it costing you?",
+    text: "What\u2019s it costing you most?",
     options: [
       { label: "My energy" },
       { label: "My relationships" },
@@ -265,8 +265,7 @@ export const SHARED_QUESTIONS: Question[] = [
       { label: "My sense of self" },
       { label: "Time I can\u2019t get back" },
     ],
-    multiSelect: true,
-    normalization: "On average, people select 3 of these.",
+    normalization: "Naming the cost makes it real.",
   },
   {
     id: "shared_q7",
@@ -614,30 +613,111 @@ export function buildMirrorLines(branch: Branch, answers: Record<string, string 
   // Beat 3 ("You don't have to keep living like this.") is rendered by the MirrorScreen component
 }
 
-// ─── Snapshot: Pattern Insight (Screen 13, Section 1) ────────────────────────
+// ─── Pattern Labels (deterministic mapping — taxonomy v2) ──────────────────
 
-export function getSnapshotInsight(branch: Branch, a: Record<string, string | string[]>): string {
-  const q2 = lc(String(a.branch_q2 ?? ""));
-  const q3 = lc(String(a.branch_q3 ?? ""));
-  const q4 = lc(String(a.branch_q4 ?? ""));
-  const q9 = lc(String(a.shared_q9 ?? "the pattern running underneath"));
-  switch (branch) {
-    case "blur":
-      return `You described your days as ${q2}. The pattern you\u2019d most want to stop \u2014 ${q9} \u2014 is connected. That gap between how you\u2019re living and what you\u2019re trying to change is visible within a few debriefs.`;
-    case "patterns":
-      return `You said ${q2} keeps repeating. You described the feeling as ${q3}. There\u2019s a trigger hiding in the 48 hours before it happens \u2014 your answers suggest a pattern worth tracking.`;
-    case "rumination":
-      return `Your brain turns on ${q2}. It runs through ${q3}. There\u2019s a pattern in WHEN it starts \u2014 a specific moment earlier in your day that lights the fuse. A few debriefs surface that moment.`;
-    case "graveyard":
-      return `${String(a.branch_q2 ?? "What you tried")} lasted ${q3} before you stopped. It failed because ${q4}. This works because it asks for 60 seconds of talking \u2014 not discipline, not structure, not a blank page.`;
-    case "mask":
-      return `You said you need ${q4}. But you\u2019ve been saying \u201c${lc(String(a.branch_q3 ?? "\u2018fine\u2019"))}\u201d when people ask. The distance between those two answers is exactly what becomes visible \u2014 every day, without you performing.`;
-    case "drift":
-      return `${String(a.branch_q4 ?? "What matters most")} slipped the most. You\u2019ve known for ${q2}. Every week without visibility is another week of drift. A few debriefs start making it visible.`;
-  }
+export interface PatternLabels {
+  primary: string;
+  secondary: string | null;
+  area: string;
+  bodyCopy: string;
+  loopLine: string;
+  secondaryVisible: boolean;
+  stuckDeepOverride: boolean;
+  collisionSuppressed: boolean;
 }
 
-// ─── Snapshot: Weekly Report Previews (Screen 13, Section 2) ────────────────
+const PRIMARY_PATTERN: Record<Branch, string> = {
+  blur: "Mental Overload",
+  patterns: "Relational Looping",
+  rumination: "Racing Mind",
+  graveyard: "System Fatigue",
+  mask: "Invisible Load",
+  drift: "Drifted Off-Course",
+};
+
+const LOOP_LINES: Record<Branch, string> = {
+  blur: "Your days run together without registering \u2014 not because nothing happens, but because nothing lands.",
+  patterns: "The same conversations keep cycling without resolving \u2014 different words, same feeling.",
+  rumination: "Your brain keeps processing a backlog it never gets to clear \u2014 so it replays instead.",
+  graveyard: "You\u2019ve tried the right things \u2014 they just weren\u2019t built for how your mind actually works.",
+  mask: "You\u2019re carrying everything for everyone \u2014 and nobody sees the cost because you\u2019ve made sure they don\u2019t.",
+  drift: "You know what you want \u2014 it just never converts into motion, and another month slips by.",
+};
+
+const BODY_COPY: Record<Branch, string> = {
+  blur: "You\u2019re not lacking memory \u2014 you\u2019re lacking a surface for your days to land on. When nothing captures what happened, everything flattens into noise.",
+  patterns: "You\u2019re not lacking communication skills \u2014 you\u2019re missing the 48-hour view. The trigger isn\u2019t the fight. It\u2019s what built up in the days before it.",
+  rumination: "You\u2019re not lacking calm \u2014 you\u2019re carrying a processing backlog. Your brain replays at night because your day never gave it space to finish.",
+  graveyard: "You\u2019re not lacking discipline \u2014 you\u2019ve been using tools that ask too much. Blank pages, daily prompts, meditation timers \u2014 none of them met you where you actually are.",
+  mask: "You\u2019re not lacking strength \u2014 you\u2019re spending all of it on everyone else. The mask works so well that nobody thinks to ask what\u2019s underneath.",
+  drift: "You\u2019re not lacking ambition \u2014 you\u2019re lacking a mirror. The gap between who you are and who you meant to be grows invisibly, one week at a time.",
+};
+
+const SECONDARY_PATTERN: Record<string, string> = {
+  "Snapping at people I love, then feeling guilty": "Overflow",
+  "Putting everyone else first until I have nothing left": "Last on the List",
+  "Starting things and watching them fizzle": "Follow-Through Decay",
+  "Replaying the same worries on a loop": "Rumination Spiral",
+};
+
+const AREA_MAP: Record<string, string> = {
+  "My energy": "Energy",
+  "My relationships": "Relationships",
+  "My health": "Health",
+  "My career": "Career",
+  "My sense of self": "Identity",
+  "Time I can\u2019t get back": "Time",
+};
+
+// Explicit collision pairs: primary+secondary combos that restate each other.
+// Extend this set if new patterns are added.
+const COLLISION_PAIRS: [string, string][] = [
+  ["Racing Mind", "Rumination Spiral"],
+];
+
+function isCollision(primary: string, secondary: string): boolean {
+  return COLLISION_PAIRS.some(([p, s]) => p === primary && s === secondary);
+}
+
+export function getPatternLabels(branch: Branch, answers: Record<string, string | string[]>): PatternLabels {
+  const primary = PRIMARY_PATTERN[branch];
+  const loopLine = LOOP_LINES[branch];
+  const bodyCopy = BODY_COPY[branch];
+
+  // Area — single-select, clean 1:1
+  const costAnswer = String(answers.shared_q6 ?? "");
+  const area = AREA_MAP[costAnswer] ?? "Energy";
+
+  // Secondary — from shared_q9
+  const q9 = String(answers.shared_q9 ?? "");
+  let secondary: string | null = SECONDARY_PATTERN[q9] ?? null;
+
+  // Duration override → "Stuck Deep"
+  const duration = String(answers.shared_q5 ?? "");
+  const isLongDuration = duration === "Over a year" || duration === "I can\u2019t remember when it started";
+  let stuckDeepOverride = false;
+  let collisionSuppressed = false;
+  let secondaryVisible = true;
+
+  if (isLongDuration) {
+    stuckDeepOverride = true;
+    secondary = "Stuck Deep";
+  } else if (secondary && isCollision(primary, secondary)) {
+    // Collision: primary and secondary restate each other
+    collisionSuppressed = true;
+    secondary = null;
+    secondaryVisible = false;
+  }
+
+  // If no secondary was resolved at all, hide the row
+  if (!secondary) {
+    secondaryVisible = false;
+  }
+
+  return { primary, secondary, area, bodyCopy, loopLine, secondaryVisible, stuckDeepOverride, collisionSuppressed };
+}
+
+// ─── Snapshot: Weekly Report Previews (used by Timeline screen) ────────────
 
 export const SNAPSHOT_PREVIEWS: Record<Branch, string[]> = {
   blur: [
@@ -685,8 +765,8 @@ export const SNAPSHOT_BOTTOM: Record<Branch, string> = {
 
 // ─── Gap Screen Content (between Mirror and Mechanism) — v4 three-screen sequence ─
 
-function formatCostShort(costs: string[]): string {
-  if (costs.length === 0) return "more than you realize";
+function formatCostShort(cost: string): string {
+  if (!cost) return "more than you realize";
   const SHORT: Record<string, string> = {
     "My energy": "your energy",
     "My relationships": "your relationships",
@@ -695,10 +775,7 @@ function formatCostShort(costs: string[]): string {
     "My sense of self": "your sense of self",
     "Time I can\u2019t get back": "time you can\u2019t get back",
   };
-  const mapped = costs.map((c) => SHORT[c] ?? c.toLowerCase());
-  if (mapped.length === 1) return mapped[0];
-  if (mapped.length === 2) return `${mapped[0]} and ${mapped[1]}`;
-  return `${mapped.slice(0, -1).join(", ")}, and ${mapped[mapped.length - 1]}`;
+  return SHORT[cost] ?? cost.toLowerCase();
 }
 
 // kept for any legacy callers
@@ -713,9 +790,8 @@ export function buildGapContent(branch: Branch, answers: Record<string, string |
 export interface Gap1Content { line1: string; costWords: string[]; line2: string; line3: string; }
 
 export function buildGap1Content(branch: Branch, answers: Record<string, string | string[]>): Gap1Content {
-  const costRaw = answers.shared_q6;
-  const costs = Array.isArray(costRaw) ? costRaw : costRaw ? [costRaw] : [];
-  const costStr = formatCostShort(costs);
+  const cost = String(answers.shared_q6 ?? "");
+  const costStr = formatCostShort(cost);
 
   const LINE2: Record<Branch, string> = {
     blur: "And the longer the fog runs, the more it takes \u2014 your patience, your evenings, your sense of who you are.",
@@ -735,16 +811,14 @@ export function buildGap1Content(branch: Branch, answers: Record<string, string 
     drift: "Left alone, drift doesn\u2019t reverse. It accelerates.",
   };
 
-  // Highlight targets: concise cost nouns only (not full clauses) for clean marker-style highlighting
-  const costWords = costs.map((c) => {
-    const HIGHLIGHT: Record<string, string> = {
-      "My energy": "energy", "My relationships": "relationships",
-      "My health": "health", "My career": "career",
-      "My sense of self": "sense of self",
-      "Time I can\u2019t get back": "time",
-    };
-    return HIGHLIGHT[c] ?? c.toLowerCase();
-  });
+  // Highlight target: concise cost noun for marker-style highlighting
+  const HIGHLIGHT: Record<string, string> = {
+    "My energy": "energy", "My relationships": "relationships",
+    "My health": "health", "My career": "career",
+    "My sense of self": "sense of self",
+    "Time I can\u2019t get back": "time",
+  };
+  const costWords = cost ? [HIGHLIGHT[cost] ?? cost.toLowerCase()] : [];
   return {
     line1: `Right now, this is costing you ${costStr}.`,
     costWords,
@@ -765,9 +839,8 @@ export const GAP2_FEELINGS = [
 ];
 
 export function getGap2Header(branch: Branch, answers: Record<string, string | string[]>): string {
-  const costRaw = answers.shared_q6;
-  const costs = Array.isArray(costRaw) ? costRaw : costRaw ? [costRaw] : [];
-  const costStr = costs.length > 0 ? formatCostShort(costs.slice(0, 1)) : "what it\u2019s taking from you";
+  const cost = String(answers.shared_q6 ?? "");
+  const costStr = cost ? formatCostShort(cost) : "what it\u2019s taking from you";
 
   const PAIN: Record<Branch, string> = {
     blur: "the fog",

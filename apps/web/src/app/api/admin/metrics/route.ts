@@ -1281,7 +1281,7 @@ const WEB_FUNNEL_STEPS_V3 = [
   { event: "funnel_branch_q2_viewed", label: "Branch Q2" },
   { event: "funnel_mirror_viewed", label: "Mirror viewed" },
   { event: "funnel_commit_completed", label: "Commit completed" },
-  { event: "funnel_snapshot_viewed", label: "Snapshot viewed" },
+  { event: "funnel_pattern_result_viewed", label: "Pattern Result viewed" },
   { event: "funnel_create_account_viewed", label: "Create Account" },
   { event: "funnel_account_created", label: "Account Created" },
   { event: "funnel_savings_viewed", label: "Savings Offered" },
@@ -1295,7 +1295,7 @@ const WEB_FUNNEL_STEPS_V1 = [
   { event: "funnel_branch_q2_viewed", label: "Branch Q2" },
   { event: "funnel_mirror_viewed", label: "Mirror viewed" },
   { event: "funnel_commit_completed", label: "Commit completed" },
-  { event: "funnel_snapshot_viewed", label: "Snapshot viewed" },
+  { event: "funnel_pattern_result_viewed", label: "Pattern Result viewed" },
   { event: "funnel_paywall_viewed", label: "Paywall" },
   { event: "funnel_signup_completed", label: "Signup" },
   { event: "funnel_payment_completed", label: "Payment" },
@@ -1308,7 +1308,7 @@ const WEB_FUNNEL_STEPS_ALL = [
   { event: "funnel_branch_q2_viewed", label: "Branch Q2" },
   { event: "funnel_mirror_viewed", label: "Mirror viewed" },
   { event: "funnel_commit_completed", label: "Commit completed" },
-  { event: "funnel_snapshot_viewed", label: "Snapshot viewed" },
+  { event: "funnel_pattern_result_viewed", label: "Pattern Result viewed" },
   { event: "funnel_create_account_viewed", label: "Create Account (v3)" },
   { event: "funnel_account_created", label: "Account Created (v3)" },
   { event: "funnel_savings_viewed", label: "Savings Offered (v3)" },
@@ -1935,7 +1935,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     branch_q3: "Branch questions too many. Consider reducing.",
     branch_q4: "Fatigue at Q4. Shorten or rephrase.",
     shared_q5: "Drop after branch. Shared questions feel generic.",
-    shared_q6: "Multi-select friction. Simplify cost question.",
+    shared_q6: "Now single-select ('What's it costing you most?'). Monitor post-change.",
     shared_q7: "Skepticism question causing drop. Review placement.",
     shared_q8: "Too many questions before mirror. Test skipping.",
     shared_q9: "Last question before mirror. Low intent users leave.",
@@ -2167,8 +2167,8 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   for (const ae of ANSWER_EVENTS) answerBuckets[ae.event] = {};
   for (const e of events) {
     if (e.value && answerBuckets[e.event]) {
-      // Q6 is multi-select — split comma-separated values
-      const vals = e.event === "funnel_shared_q6_selected" ? e.value.split(", ") : [e.value];
+      // Q6 is now single-select (changed 2026-06-23); legacy multi-select data still has commas
+      const vals = [e.value];
       for (const v of vals) {
         answerBuckets[e.event][v] = (answerBuckets[e.event][v] ?? 0) + 1;
       }
