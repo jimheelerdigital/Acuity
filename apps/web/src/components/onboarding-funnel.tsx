@@ -2282,6 +2282,29 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
       : "e.g. 'The argument happened Tuesday. The tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.'",
   },
   {
+    name: "Ask your past self",
+    description: "Search your own history \u2014 ask what you were thinking, feeling, or avoiding at any point.",
+    duringTrial: true,
+    afterTrial: false,
+    example: () => "e.g. 'What was I stressed about in March?' \u2014 Acuity pulls the answer from your own words, not a generic summary.",
+  },
+  {
+    name: "Smart insights",
+    description: "AI-generated observations about you that you\u2019d never notice on your own.",
+    duringTrial: true,
+    afterTrial: false,
+    example: (p) => p === "Mental Overload"
+      ? "e.g. 'Your mood is 2 points higher on days you mention your kids. You never mention them on your lowest days.'"
+      : "e.g. 'You use the word \u2018fine\u2019 most often on days your mood score is lowest. Your language and your feelings are telling different stories.'",
+  },
+  {
+    name: "Theme map",
+    description: "Advanced view of your recurring life themes and subconscious patterns over time.",
+    duringTrial: true,
+    afterTrial: false,
+    example: () => "Visualize how themes like \u2018work pressure,\u2019 \u2018family tension,\u2019 and \u2018self-worth\u2019 rise and fall across weeks \u2014 and how they connect to each other.",
+  },
+  {
     name: "Streaks and milestones",
     description: "Progress tracking that reinforces the habit.",
     duringTrial: true,
