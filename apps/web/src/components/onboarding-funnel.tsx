@@ -64,7 +64,7 @@ type Step =
 
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
-  "shared-q5", "timemath", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
+  "shared-q5", "shared-q6", "timemath", "shared-q7", "shared-q8", "shared-q9",
   "pain", "gap2", "gap3", "mechanism", "value", "commit", "processing", "pattern-result", "timeline",
   "savings", "create-account", "download",
 ];
@@ -667,9 +667,9 @@ export function OnboardingFunnel() {
         );
       })()}
 
-      {/* ── Time Math (after Q5 duration — skipped for short durations) ── */}
+      {/* ── Time Math (after Q6 cost — duration drives the number, branch+cost drive the framing) ── */}
       {step === "timemath" && (
-        <TimeMathScreen key="timemath" answers={answers} onContinue={() => setStep("shared-q6")} onSkip={() => setStep("shared-q6")} />
+        <TimeMathScreen key="timemath" branch={branch} answers={answers} onContinue={() => setStep("shared-q7")} onSkip={() => setStep("shared-q7")} />
       )}
 
       {/* ── Pain (merged mirror + gap1 — sequential build) ── */}
@@ -909,13 +909,14 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
 
 // ─── Time-Math Screen (after Q5 duration) ───────────────────────────────────
 
-function TimeMathScreen({ answers, onContinue, onSkip }: {
+function TimeMathScreen({ branch, answers, onContinue, onSkip }: {
+  branch: Branch | null;
   answers: Record<string, string | string[]>;
   onContinue: () => void;
   onSkip: () => void;
 }) {
   const dur = String(answers.shared_q5 ?? "");
-  const content = getTimeMathContent(dur);
+  const content = getTimeMathContent(dur, branch, String(answers.shared_q6 ?? ""));
   const isThousands = content.count === null && content.show;
   // Phases: 0=hidden, 1=kicker, 2=hero-anim-start, 3=label, 4=closer, 5=CTA
   const [phase, setPhase] = useState(0);
@@ -1048,6 +1049,9 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
 
         {/* Hero — number inside a ring */}
         <div className={`mb-8 transition-all duration-500 ease-out ${beat(2)}`}>
+          {content.atLeast && (
+            <p className={`text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1 transition-opacity duration-300 ${phase >= 3 ? "opacity-100" : "opacity-0"}`}>At least</p>
+          )}
           <div className="relative inline-flex items-center justify-center w-[180px] h-[180px] sm:w-[200px] sm:h-[200px]">
             {/* Background ring */}
             <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 160 160">
@@ -1088,6 +1092,9 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
           {/* Label — staggered after hero resolves */}
           <div className={`mt-3 transition-all duration-300 ease-out ${beat(3)}`}>
             <span className="text-lg text-zinc-500 font-medium">{content.label}</span>
+            {content.costLine && (
+              <p className="text-[14px] text-zinc-500 mt-2 max-w-xs mx-auto leading-snug">{content.costLine}</p>
+            )}
           </div>
         </div>
 
@@ -1097,8 +1104,8 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
         {/* Closer */}
         <div className={`mb-12 transition-all duration-[600ms] ${phase >= 4 ? "opacity-100" : "opacity-0"}`}
           style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-[17px] font-bold text-zinc-900 leading-snug">Evenings you don&rsquo;t get back.</p>
-          <p className="text-[15px] text-zinc-500 mt-2">The next ones are still up for grabs.</p>
+          <p className="text-[17px] font-bold text-zinc-900 leading-snug">{content.headline}</p>
+          <p className="text-[15px] text-zinc-500 mt-2">{content.closer}</p>
         </div>
 
         {/* CTA */}

@@ -362,22 +362,66 @@ export function getTallyKicker(tallyValue: string): string {
 export interface TimeMathContent {
   show: boolean;
   herDuration: string;
-  count: number | null;  // null means "thousands"
-  label: string;
+  count: number | null;  // null = legacy "thousands" path (no live duration returns it)
+  atLeast: boolean;      // "can't remember" → conservative "at least" framing
+  label: string;         // branch unit noun shown under the number (days/evenings/nights)
+  headline: string;      // branch-aware bold "what it cost" line
+  costLine: string;      // q6-derived single line naming the stakes she chose
+  closer: string;        // agency turn — "the next ones are still yours…"
 }
 
-export function getTimeMathContent(durationAnswer: string): TimeMathContent {
+// Branch unit + framing, so the number reads as HER pattern, not a generic
+// "evenings" formula. All units are daily-cadence (one per day) so a single
+// day-count works across branches; only the noun changes.
+const TIME_MATH_VOICE: Record<Branch, { unit: string; headline: string; closer: string }> = {
+  blur:       { unit: "days",     headline: "Days that blurred past you.",                       closer: "The next ones are still yours to actually be there for." },
+  patterns:   { unit: "evenings", headline: "Evenings the cycle took from you.",                 closer: "The next ones are still yours to keep." },
+  rumination: { unit: "nights",   headline: "Nights your mind wouldn\u2019t quiet.",             closer: "The next ones are still yours to rest in." },
+  graveyard:  { unit: "days",     headline: "Days you spent trying tools that didn\u2019t fit.", closer: "The next ones are still yours \u2014 this is the one that sticks." },
+  mask:       { unit: "days",     headline: "Days you held it together for everyone but you.",   closer: "The next ones are still yours to stop performing through." },
+  drift:      { unit: "days",     headline: "Days that slipped by while you drifted.",           closer: "The next ones are still yours to steer." },
+};
+
+// One short cost line per shared_q6 answer, tying the number to the stakes
+// she named. Falls back to the universal "time" line if q6 is missing.
+const TIME_MATH_COST: Record<string, string> = {
+  "My energy": "That\u2019s a lot of running on empty.",
+  "My relationships": "Time you weren\u2019t fully there for the people who matter.",
+  "My health": "Time your body\u2019s been asking you to listen.",
+  "My career": "Focus that went somewhere other than what you\u2019re building.",
+  "My sense of self": "Time you spent feeling less like yourself.",
+  "Time I can\u2019t get back": "Time you can\u2019t get back.",
+};
+
+export function getTimeMathContent(
+  durationAnswer: string,
+  branch: Branch | null,
+  costAnswer: string,
+): TimeMathContent {
+  const voice = (branch && TIME_MATH_VOICE[branch]) || TIME_MATH_VOICE.patterns;
+  const costLine = TIME_MATH_COST[costAnswer] ?? "Time you can\u2019t get back.";
+  const base = {
+    count: null as number | null,
+    atLeast: false,
+    label: voice.unit,
+    headline: voice.headline,
+    costLine,
+    closer: voice.closer,
+  };
+
   switch (durationAnswer) {
     case "A few weeks":
-      return { show: false, herDuration: "", count: null, label: "" }; // skip — numbers too small
+      // ~3 weeks of daily cadence — honest, modest, not inflated.
+      return { show: true, herDuration: "a few weeks", ...base, count: 21 };
     case "A few months":
-      return { show: true, herDuration: "a few months", count: 90, label: "evenings" };
+      return { show: true, herDuration: "a few months", ...base, count: 90 };
     case "Over a year":
-      return { show: true, herDuration: "over a year", count: 365, label: "evenings" };
+      return { show: true, herDuration: "over a year", ...base, count: 365 };
     case "I can\u2019t remember when it started":
-      return { show: true, herDuration: "longer than you can remember", count: null, label: "of evenings" };
+      // Conservative: at least a year, framed "at least" rather than inflating.
+      return { show: true, herDuration: "longer than you can remember", ...base, count: 365, atLeast: true };
     default:
-      return { show: false, herDuration: "", count: null, label: "" };
+      return { show: false, herDuration: "", ...base };
   }
 }
 
