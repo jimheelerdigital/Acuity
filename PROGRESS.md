@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-06-24] — Bold the loop-line quote on the pattern-result screen
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d735790a
+
+### In plain English (for Keenan)
+On the "this is your pattern" results screen, the quoted line in the grey box (e.g. "The same conversations keep cycling without resolving…") is now bold so it stands out more as the line that makes the user nod.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` → `PatternResultScreen` loop-line: added `font-semibold` and bumped the text color from `text-zinc-600` to `text-zinc-700`. Style-only; the quote content (`labels.loopLine`) is unchanged.
+
+### Manual steps needed
+- [ ] None — deploys on push. (Push still pending — waiting on Keenan's "push it".)
+
+### Notes
+- Pattern-result was deliberately left free of social proof in the earlier change; this is purely an emphasis tweak to the user's own personalized line.
+
+---
+
 ## [2026-06-24] — Paywall CTA reframe + no-card skip demoted to a text link
 
 **Requested by:** Keenan
