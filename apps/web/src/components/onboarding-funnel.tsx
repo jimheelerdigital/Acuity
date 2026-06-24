@@ -52,6 +52,7 @@ type Step =
   | "pain"
   | "gap2" | "gap3"
   | "mechanism"
+  | "value"
   | "commit"
   | "processing"
   | "pattern-result"
@@ -63,7 +64,7 @@ type Step =
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "timemath", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
-  "pain", "gap2", "gap3", "mechanism", "commit", "processing", "pattern-result", "timeline",
+  "pain", "gap2", "gap3", "mechanism", "value", "commit", "processing", "pattern-result", "timeline",
   "savings", "create-account", "download",
 ];
 
@@ -402,6 +403,7 @@ export function OnboardingFunnel() {
       gap2: "funnel_gap2_viewed",
       gap3: "funnel_gap3_viewed",
       mechanism: "funnel_mechanism_viewed",
+      value: "funnel_value_viewed",
       commit: "funnel_commit_viewed",
       processing: "funnel_processing_viewed",
       "pattern-result": "funnel_pattern_result_viewed",
@@ -655,7 +657,12 @@ export function OnboardingFunnel() {
 
       {/* ── Mechanism / Product Explainer (Screen 11) ── */}
       {step === "mechanism" && branch && (
-        <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={() => setStep("commit")} />
+        <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={() => setStep("value")} />
+      )}
+
+      {/* ── What It Gives You (Screen 11b — value surfaces) ── */}
+      {step === "value" && (
+        <ValueScreen key="value" onContinue={() => setStep("commit")} />
       )}
 
       {/* ── Hold-to-Commit (Screen 12) ── */}
@@ -1556,6 +1563,83 @@ function MechanismScreen({ branch, answers, onContinue }: {
 
       {/* ── Continue button — always visible from mount, never gated behind animations ── */}
       <div className="text-center">
+        <button onClick={onContinue}
+          className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── What It Gives You (Screen 11b — value surfaces) ────────────────────────
+
+const VALUE_FEATURES = [
+  {
+    icon: "\u2611",
+    title: "Active task tracking",
+    description: "Tasks pulled from your words, tracked until done. Your life stops falling through the cracks.",
+  },
+  {
+    icon: "\u25CE",
+    title: "Life Matrix",
+    description: "Six life domains scored by your own words. See where you\u2019re thriving and where you\u2019re slipping \u2014 every week.",
+  },
+  {
+    icon: "\u2B06",
+    title: "Habit tracking and goal achievement",
+    description: "Goals you mention get tracked without you managing them. Streaks and milestones reinforce the habit.",
+  },
+  {
+    icon: "\u25A8",
+    title: "Weekly report",
+    description: "A written narrative of your week \u2014 the throughline you\u2019d never assemble yourself. Delivered every Sunday.",
+  },
+  {
+    icon: "\u25C6",
+    title: "Signals",
+    description: "Next-step guidance that monitors the patterns running underneath \u2014 the ones you can\u2019t see from inside them.",
+  },
+];
+
+function ValueScreen({ onContinue }: { onContinue: () => void }) {
+  const [vis, setVis] = useState(0);
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  useEffect(() => {
+    if (prefersReduced) { setVis(VALUE_FEATURES.length + 1); return; }
+    const t: ReturnType<typeof setTimeout>[] = [];
+    VALUE_FEATURES.forEach((_, i) => {
+      t.push(setTimeout(() => setVis(i + 1), 400 + i * 350));
+    });
+    // CTA after all features
+    t.push(setTimeout(() => setVis(VALUE_FEATURES.length + 1), 400 + VALUE_FEATURES.length * 350 + 300));
+    return () => t.forEach(clearTimeout);
+  }, [prefersReduced]);
+
+  return (
+    <div className="min-h-[100dvh] overflow-y-auto px-6 py-10 bg-white text-zinc-900">
+      <h2 className="mb-2 text-center text-[26px] font-bold leading-[33px] tracking-tight text-zinc-900 funnel-screen">
+        What it gives you.
+      </h2>
+      <p className="mb-8 text-center text-sm text-zinc-500">Every debrief builds a clearer picture of your life.</p>
+
+      <div className="max-w-md mx-auto space-y-4 mb-10">
+        {VALUE_FEATURES.map((f, i) => (
+          <div key={i}
+            className={`rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm transition-all duration-500 ${vis > i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            <div className="flex items-start gap-3">
+              <span className="text-lg text-acuity-primary mt-0.5 flex-shrink-0">{f.icon}</span>
+              <div>
+                <p className="text-[14px] font-bold text-zinc-900 leading-tight">{f.title}</p>
+                <p className="text-[13px] text-zinc-500 leading-snug mt-1">{f.description}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className={`text-center transition-all duration-500 ${vis > VALUE_FEATURES.length ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         <button onClick={onContinue}
           className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
           Continue
