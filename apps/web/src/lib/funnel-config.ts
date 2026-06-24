@@ -899,40 +899,25 @@ export interface TimelineWeek {
   badge?: string;
 }
 
-export function getTimelineWeeks(branch: Branch, answers: Record<string, string | string[]>): TimelineWeek[] {
-  const q2 = String(answers.branch_q2 ?? "what you tried");
-  const q5 = lc(String(answers.shared_q5 ?? "too long"));
-  const WEEK_3_ALL = "Your Life Matrix takes shape. Six domains \u2014 Health, Career, Relationships, Growth, Fun, Purpose \u2014 each scored by your own words. For the first time, you can see where your life actually goes. Not where you think it goes. Where it actually goes.";
-
-  const w1: Record<Branch, string> = {
-    blur: "For the first time, your days have shape. You\u2019ll look back at this week and actually remember it.",
-    patterns: "The cycle gets named. Not fixed yet \u2014 named. That\u2019s the part nobody else could do for you.",
-    rumination: "Your brain has somewhere to put it. The 11pm replay starts losing its power because the backlog is shrinking.",
-    graveyard: `You\u2019re still here on Day 7. That\u2019s already further than ${lc(q2)} got you. And it took 60 seconds a day.`,
-    mask: "You said how you actually feel. Seven times. Nobody judged. Nobody worried. Something shifted.",
-    drift: "You paid attention for one week straight. The fog is already thinner. You\u2019re starting to recognize yourself.",
-  };
-  const w2: Record<Branch, string> = {
-    blur: "Your weekly report arrives Sunday. 400 words about YOUR week. You read it and think: \u2018That\u2019s exactly what happened, but I couldn\u2019t have said it myself.\u2019",
-    patterns: "The report shows you the trigger. Not the fight \u2014 what happened 48 hours before it. For the first time, you\u2019re ahead of the cycle instead of inside it.",
-    rumination: "The thoughts that used to ambush you at night are in your report now. Seeing them on paper takes away their power.",
-    graveyard: "One week. You opened the app 6 out of 7 days. Not because of discipline \u2014 because the output actually matters.",
-    mask: "The weekly report says something nobody in your life has ever said to you: \u2018Here\u2019s what\u2019s actually going on with you.\u2019 And it\u2019s right.",
-    drift: "You can feel the difference between a week you paid attention to and the years you didn\u2019t. The contrast is uncomfortable. That means it\u2019s working.",
-  };
-  const w4: Record<Branch, string> = {
-    blur: `Your first monthly memoir arrives. A story of your month. You read it and realize \u2014 you remember every week. That hasn\u2019t happened in ${q5}.`,
-    patterns: "Your memoir documents the pattern from the outside. You can see the cycle on paper. You can show it to someone. You can choose differently next month.",
-    rumination: "30 days of processed thoughts. Your brain is quieter. Not because the thoughts stopped \u2014 because they have somewhere to go now.",
-    graveyard: "30 days. The longest you\u2019ve stuck with anything. Not because you\u2019re more disciplined \u2014 because this is the first thing that was built for how your brain actually works.",
-    mask: "A month of honesty with yourself. The memoir reads like a letter from someone who finally knows you. Because it does. It\u2019s you.",
-    drift: `One month of paying attention. The memoir shows you: you\u2019re not the person from ${lc(String(answers.branch_q2 ?? "before"))} anymore. You\u2019re the person who stopped drifting.`,
-  };
+// Three escalating milestones — immediate (Week 1), compounding (Month 1),
+// long-term transformation (Year 1). Old four weeks consolidated: old Week 1
+// stays; old Week 2 (trigger) + Life Matrix fold into Month 1; old Week 4
+// memoir folds into Year 1.
+export function getTimelineWeeks(_branch: Branch, _answers: Record<string, string | string[]>): TimelineWeek[] {
   return [
-    { week: "Week 1", text: w1[branch], badge: "Starting now" },
-    { week: "Week 2", text: w2[branch] },
-    { week: "Week 3", text: WEEK_3_ALL },
-    { week: "Week 4", text: w4[branch] },
+    {
+      week: "Week 1",
+      badge: "Starting now",
+      text: "The cycle gets named. Not fixed yet \u2014 named. That\u2019s the part nobody else could do for you, and it happens in the first few debriefs.",
+    },
+    {
+      week: "Month 1",
+      text: "The pattern becomes undeniable. Your weekly reports start connecting dots across weeks \u2014 the trigger that keeps showing up, the Life Matrix taking shape across your six domains. You stop reacting to your life and start seeing the shape of it.",
+    },
+    {
+      week: "Year 1",
+      text: "You have a record of yourself nobody else could write. A year of patterns, turning points, and quiet wins \u2014 documented from the outside. You can see the cycle on paper, show it to someone, and choose differently. Not because the problems vanished, but because you finally have the whole picture.",
+    },
   ];
 }
 
