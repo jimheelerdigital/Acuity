@@ -2245,6 +2245,77 @@ function SignupTestimonialStrip() {
 
 // ─── Lock In Your Savings (Screen 17 — optional paywall) ──────────────────
 
+// ─── Paywall Feature Comparison Data ─────────────────────────────────────────
+
+interface PaywallFeature {
+  name: string;
+  description: string;
+  duringTrial: boolean;
+  afterTrial: boolean;
+  /** Pattern-aware example shown on tap — personalized if branch available */
+  example: (primary: string | null) => string;
+}
+
+const PAYWALL_FEATURES: PaywallFeature[] = [
+  {
+    name: "Voice debrief",
+    description: "Talk instead of type. The entry point to everything.",
+    duringTrial: true,
+    afterTrial: true,
+    example: () => "Record whenever something is on your mind. Acuity transcribes it and pulls out what matters.",
+  },
+  {
+    name: "Task extraction",
+    description: "Action items pulled from your words automatically.",
+    duringTrial: true,
+    afterTrial: true,
+    example: () => "You said 'I need to call the school about Tuesday.' Acuity created the task before you finished the sentence.",
+  },
+  {
+    name: "Signals",
+    description: "Next-step guidance based on what you actually said.",
+    duringTrial: true,
+    afterTrial: false,
+    example: (p) => p === "Relational Looping"
+      ? "e.g. 'You\u2019ve mentioned the same tension with your partner 3 times this week and keep deferring the conversation \u2014 schedule it.'"
+      : p === "Mental Overload"
+      ? "e.g. 'You described 4 days as \u2018fine\u2019 but named zero highlights \u2014 block 30 minutes for something that matters to you.'"
+      : "e.g. 'You\u2019ve mentioned the Marcus conversation 3 times and keep deferring it \u2014 schedule it this week.'",
+  },
+  {
+    name: "Pattern detection",
+    description: "Recurring themes surfaced across your entries.",
+    duringTrial: true,
+    afterTrial: false,
+    example: (p) => p === "Racing Mind"
+      ? "e.g. 'Your calmest day was the only day you processed out loud before 6pm. The evening replay correlates with unprocessed afternoons.'"
+      : "e.g. 'You bring up your workload every Monday and your energy drops every Thursday \u2014 there\u2019s a pattern worth examining.'",
+  },
+  {
+    name: "Life Matrix",
+    description: "Six life domains tracked over time so you see where you\u2019re thriving and where you\u2019re slipping.",
+    duringTrial: true,
+    afterTrial: false,
+    example: () => "Health: 7.2 \u2192 Career: 4.1 \u2192 Relationships: 6.8. You can see which areas get your energy and which ones don\u2019t.",
+  },
+  {
+    name: "Weekly report",
+    description: "A written narrative of your week \u2014 the throughline you\u2019d never assemble yourself.",
+    duringTrial: true,
+    afterTrial: false,
+    example: (p) => p === "Invisible Load"
+      ? "e.g. 'You gave 8/10 energy to everyone else and 3/10 to yourself \u2014 every single day this week.'"
+      : "e.g. 'The argument happened Tuesday. The tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.'",
+  },
+  {
+    name: "Streaks and milestones",
+    description: "Progress tracking that reinforces the habit.",
+    duringTrial: true,
+    afterTrial: true,
+    example: () => "7-day streak. 30 entries. Your consistency is part of why the patterns become visible.",
+  },
+];
+
 function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
   branch: Branch | null;
   answers: Record<string, string | string[]>;
@@ -2253,13 +2324,18 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
-  const costRecap = branch ? getSavingsCostRecap(branch) : null;
+  const labels = branch ? getPatternLabels(branch, answers) : null;
+  const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
+
+  const toggleFeature = (name: string) => {
+    setExpandedFeature((prev) => prev === name ? null : name);
+  };
 
   return (
     <div className="min-h-screen text-zinc-900 pb-32">
       <div className="max-w-lg mx-auto px-6 pt-10">
 
-        {/* Section 1 — Confirmation header */}
+        {/* Section 1 — Positioning header */}
         <section className="text-center mb-6 funnel-screen">
           <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 mb-4">
             <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
@@ -2269,29 +2345,62 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <p className="text-sm text-zinc-500 mt-2">Stop losing track of what your own life is trying to tell you.</p>
         </section>
 
-        {/* Section 2 — Loss-aversion recap (v4) */}
+        {/* Section 2 — Loss-aversion recap */}
         <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "80ms" }}>
           <p className="text-sm text-zinc-700 text-center leading-relaxed font-medium">{getPaywallLossRecap(branch)}</p>
         </section>
 
-        {/* Section 3 — The next few weeks timeline */}
-        <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "140ms" }}>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3 text-center">The next few weeks</p>
-          <div className="space-y-3">
-            {SAVINGS_TIMELINE.map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="flex flex-col items-center shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-acuity-primary mt-1" />
-                  {i < SAVINGS_TIMELINE.length - 1 && <div className="w-px h-6 bg-zinc-200" />}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-zinc-700">{item.week}</p>
-                  <p className="text-xs text-zinc-500">{item.text}</p>
-                </div>
-              </div>
-            ))}
+        {/* Section 3 — Trial vs. After Trial comparison */}
+        <section className="mb-6 rounded-xl bg-white border border-zinc-200 shadow-sm overflow-hidden funnel-card-stagger" style={{ animationDelay: "140ms" }}>
+          {/* Column headers */}
+          <div className="grid grid-cols-[1fr_auto_auto] items-center px-4 py-3 border-b border-zinc-100 bg-zinc-50/50">
+            <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-400">Feature</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-600 w-[72px] text-center">Your trial</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-400 w-[72px] text-center">Without Pro</span>
           </div>
-          <p className="text-sm font-semibold text-zinc-800 text-center mt-4">Less in your head. More in your hands.</p>
+
+          {/* Feature rows — tappable for examples */}
+          {PAYWALL_FEATURES.map((f, i) => {
+            const isExpanded = expandedFeature === f.name;
+            return (
+              <div key={f.name} className={`border-b border-zinc-100 last:border-b-0 ${i % 2 === 0 ? "" : "bg-zinc-50/30"}`}>
+                <button
+                  onClick={() => { toggleFeature(f.name); track("funnel_paywall_feature_tap", { value: f.name }); }}
+                  className="w-full grid grid-cols-[1fr_auto_auto] items-center px-4 py-3 text-left transition-colors hover:bg-zinc-50/80 active:bg-zinc-100/60"
+                >
+                  <div className="pr-2">
+                    <p className="text-[13px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
+                    <p className="text-[11px] text-zinc-500 leading-snug mt-0.5">{f.description}</p>
+                  </div>
+                  <div className="w-[72px] flex justify-center">
+                    <span className="text-emerald-500 text-sm">&#10003;</span>
+                  </div>
+                  <div className="w-[72px] flex justify-center">
+                    {f.afterTrial ? (
+                      <span className="text-emerald-500 text-sm">&#10003;</span>
+                    ) : (
+                      <span className="text-[11px] font-medium text-red-400">Locked</span>
+                    )}
+                  </div>
+                </button>
+                {/* Expandable example */}
+                {isExpanded && (
+                  <div className="px-4 pb-3 pt-0">
+                    <div className="rounded-lg bg-acuity-primary/5 border border-acuity-primary/10 px-3 py-2.5">
+                      <p className="text-[11px] text-zinc-600 leading-relaxed">{f.example(labels?.primary ?? null)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Summary line */}
+          <div className="px-4 py-3 bg-zinc-50/50">
+            <p className="text-[12px] text-zinc-500 text-center">
+              Everything is unlocked during your trial. Without Pro, you keep basic recording but lose the surfaces that show you what it means.
+            </p>
+          </div>
         </section>
 
         {/* Section 4 — Cost comparison */}
@@ -2335,7 +2444,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         </section>
       </div>
 
-      {/* Sticky CTA + skip */}
+      {/* Sticky CTA + skip + crisis line */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-3 safe-area-pb">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
@@ -2347,6 +2456,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             Continue without paying &rarr;
           </button>
           <p className="text-[10px] text-zinc-400 text-center">7-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
+          <p className="text-[9px] text-zinc-300 text-center mt-2">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>
       </div>
     </div>
