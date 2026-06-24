@@ -975,50 +975,79 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
 
   const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
 
+  // Ring fill percentage — animates alongside the count-up
+  const ringPct = content.count !== null && content.count > 0
+    ? Math.min(1, displayNum / content.count)
+    : (scrambleResolved ? 1 : 0);
+  const ringCircumference = 2 * Math.PI * 72; // r=72 for the SVG ring
+  const ringOffset = ringCircumference * (1 - ringPct);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
       onClick={phase < 5 ? skip : undefined}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes tm-ring-pulse { 0%, 100% { opacity: 0.15; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.04); } }
+      `}} />
       <div className="max-w-md w-full text-center">
         {/* Kicker */}
-        <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
-          <p className="text-[15px] text-zinc-600">You said this has been running for {content.herDuration}.</p>
+        <div className={`mb-8 transition-all duration-500 ease-out ${beat(1)}`}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1">Your answers show</p>
+          <p className="text-[15px] text-zinc-600">This has been running for {content.herDuration}.</p>
         </div>
 
-        {/* Hero */}
-        <div className="mb-10">
-          {content.count !== null ? (
-            /* Numeric variant — ease-out count-up */
-            <div className={`transition-all duration-500 ease-out ${beat(2)}`}>
-              <span className="text-[64px] sm:text-[80px] font-extrabold text-zinc-900 tabular-nums leading-none">
-                {phase >= 2 ? displayNum.toLocaleString() : "0"}
-              </span>
-            </div>
-          ) : (
-            /* Thousands variant — rapid scramble then word resolve */
-            <div className={`transition-all duration-500 ease-out ${beat(2)}`}>
-              {!scrambleResolved ? (
-                <span className="text-[64px] sm:text-[80px] font-extrabold text-zinc-900 tabular-nums leading-none inline-block min-w-[4ch]">
-                  {scrambleDisplay || "\u00A0"}
+        {/* Hero — number inside a ring */}
+        <div className={`mb-8 transition-all duration-500 ease-out ${beat(2)}`}>
+          <div className="relative inline-flex items-center justify-center w-[180px] h-[180px] sm:w-[200px] sm:h-[200px]">
+            {/* Background ring */}
+            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="72" fill="none" stroke="currentColor" strokeWidth="3" className="text-zinc-100" />
+              {/* Fill ring — draws as count-up progresses */}
+              <circle cx="80" cy="80" r="72" fill="none" stroke="currentColor" strokeWidth="3"
+                className="text-acuity-primary transition-all duration-200"
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={ringOffset}
+                strokeLinecap="round" />
+            </svg>
+            {/* Pulse ring — appears when count lands */}
+            {phase >= 3 && !prefersReduced && (
+              <div className="absolute inset-0 rounded-full border-2 border-acuity-primary"
+                style={{ animation: "tm-ring-pulse 2s ease-in-out 2" }} />
+            )}
+            {/* Number */}
+            <div className="relative z-10">
+              {content.count !== null ? (
+                <span className="text-[56px] sm:text-[72px] font-extrabold text-zinc-900 tabular-nums leading-none">
+                  {phase >= 2 ? displayNum.toLocaleString() : "0"}
                 </span>
               ) : (
-                <span className="text-[48px] sm:text-[64px] font-extrabold text-zinc-900 leading-none inline-block"
-                  style={{ animation: prefersReduced ? "none" : "funnel-scramble-resolve 350ms ease-out both" }}>
-                  Thousands
-                </span>
+                !scrambleResolved ? (
+                  <span className="text-[56px] sm:text-[72px] font-extrabold text-zinc-900 tabular-nums leading-none inline-block min-w-[4ch]">
+                    {scrambleDisplay || "\u00A0"}
+                  </span>
+                ) : (
+                  <span className="text-[36px] sm:text-[48px] font-extrabold text-zinc-900 leading-none inline-block"
+                    style={{ animation: prefersReduced ? "none" : "funnel-scramble-resolve 350ms ease-out both" }}>
+                    Thousands
+                  </span>
+                )
               )}
             </div>
-          )}
+          </div>
 
           {/* Label — staggered after hero resolves */}
-          <div className={`mt-2 transition-all duration-300 ease-out ${beat(3)}`}>
-            <span className="text-xl text-zinc-500 font-medium">{content.label}</span>
+          <div className={`mt-3 transition-all duration-300 ease-out ${beat(3)}`}>
+            <span className="text-lg text-zinc-500 font-medium">{content.label}</span>
           </div>
         </div>
+
+        {/* Divider */}
+        <div className={`mx-auto w-12 h-px bg-zinc-200 mb-8 transition-all duration-500 ${phase >= 4 ? "opacity-100" : "opacity-0"}`} />
 
         {/* Closer */}
         <div className={`mb-12 transition-all duration-[600ms] ${phase >= 4 ? "opacity-100" : "opacity-0"}`}
           style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-[17px] font-bold text-zinc-900">Evenings you don&rsquo;t get back. The next ones are still up for grabs.</p>
+          <p className="text-[17px] font-bold text-zinc-900 leading-snug">Evenings you don&rsquo;t get back.</p>
+          <p className="text-[15px] text-zinc-500 mt-2">The next ones are still up for grabs.</p>
         </div>
 
         {/* CTA */}
