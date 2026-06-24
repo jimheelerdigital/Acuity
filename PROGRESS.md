@@ -7,7 +7,43 @@
 
 ---
 
-## [2026-06-24] — Paywall now defaults to the annual plan
+## [2026-06-24] — Paused all marketing emails except 12 essential ones
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+
+We turned OFF almost every automated email Acuity sends to users, while keeping the 12 that are essential. The off switch is reversible — nothing was deleted, so when the email rebuild is ready we can switch each one back on with a single line of code. The 12 still sending are the ones we cannot live without: sign-in and password-reset links, the welcome/verify email at signup, payment-failed alerts, the data-export and quarterly State-of-Me ready emails, the weekly digest, the two founder alerts that tell us about new signups and payments, the day-zero welcome, and three short recovery nudges (download the app, you paid but have not opened it, you recorded once then stopped). Everything else — the long onboarding drip, the trial countdown sequence, reactivation emails, power-user nudges, the monthly digest, and the old waitlist drip — is paused. Nothing about billing, trials, or app logic changed; this only silences emails. We also generated review copies of all 12 kept emails so we can check their look and wording before the rebuild.
+
+### Technical changes (for Jimmy)
+
+- New `apps/web/src/lib/email-enabled.ts`: single `EMAIL_ENABLED` map keyed by email key + `isEmailEnabled(key)` helper (fails closed on unknown keys). This is the one place to flip emails back on.
+- `apps/web/src/lib/trial-emails.ts`: `sendTrialEmail` now early-returns `{ sent: false, reason: "disabled" }` before any DB/Resend work when `isEmailEnabled(emailKey)` is false. Added `"disabled"` to `SendResult.reason`. Covers ALL 21 registry emails (trial orchestrator + recovery orchestrator + download-reminder + inline welcome_day0).
+- `apps/web/src/lib/trial-countdown-emails.ts`: `sendCountdownEmail` early-returns `disabled` for all 4 countdown keys. Added `"disabled"` to `CountdownSendResult.reason`.
+- `apps/web/src/inngest/functions/monthly-digest.ts`: kill-switch guard (`isEmailEnabled("monthly_digest")`) added before the feature-flag check; cron stays registered + scanning.
+- No Inngest functions were unregistered from `serve()`. The trial-expiration state cron (TRIAL→FREE) was NOT touched — that is lifecycle logic, not email.
+- New `apps/web/scripts/preview-keep-emails.ts`: renders the 12 KEEP emails (13 HTML files; the data-export + State-of-Me item is two templates) to `.tmp/email-previews/` with sample data. No Resend calls.
+
+DISABLED (paused): onboarding/retention — first_debrief_replay, objection_60sec, pattern_tease, user_story, weekly_report_checkin, life_matrix_reveal, value_recap, trial_ending_day13, trial_ended_day14, reactivation_friction, reactivation_social, reactivation_final, power_deepen, power_referral_tease; recovery — recovery_checkout_abandoned, recovery_signup_no_checkout, recovery_day6_nudge; countdown (all) — trial_midtrial, trial_urgency, trial_ended_t0, trial_reengagement_t3; monthly_digest; waitlist drip (already a retired no-op cron).
+
+KEPT ON (12): welcome_day0, recovery_paid_no_app, recovery_recorded_once, recovery_download_reminder (registry); magic link, password reset, welcome+verify, payment failed, data-export-ready, state-of-me-ready, founder signup notify, founder payment notify, weekly digest (transactional/internal — never routed through the kill-switch, so untouched).
+
+### Manual steps needed
+
+- [ ] None required to deploy — pushes live on merge to main (Keenan to say "push it" first).
+- [ ] Decide whether the manual one-shot `waitlist-reactivation` campaign (admin-fired only) should also be paused — see Notes (Jimmy/Keenan).
+
+### Notes
+
+- Mechanism is fully reversible: flip a value in `email-enabled.ts` to `true` to re-enable one email, or set all to `true` to restore the full sequence. No templates or functions were deleted.
+- Admin manual resends (`/api/admin/trial-emails/resend`, force=true) of a DISABLED key are now also blocked by the guard. This is intentional — we do not want stale copy resent during the rebuild. The 12 KEEP keys still resend fine.
+- `waitlist-reactivation` (apps/web/src/inngest/functions/waitlist-reactivation.ts) sends two emails via direct `resend.emails.send` (NOT through the kill-switch) but only fires on a deliberate admin button press — zero risk of auto-sending. Left as-is and flagged for a scope decision rather than silently gated. The immediate waitlist-signup confirmation email is likewise outside this kill-switch.
+- Preview HTML files live in `.tmp/email-previews/` (disposable). Open `index.html` there to review all 12.
+- Copy/brand problems spotted while rendering (NOT fixed — for the rebuild): every kept email uses violet `#7C5CFC`, not the coral brand. welcome_day0 + welcome_verify P.S. say "14 days free" for founding members (should be 7-day trial). recovery_paid_no_app and recovery_recorded_once say "Talk for 60 seconds" / "60 seconds" (banned duration claim). emailLayout/trialLayout footers say "One minute a day" (duration claim). welcome_verify body and data-export-ready reference the trial layout's onboarding-unsubscribe footer even though they are transactional.
+
+
 
 **Requested by:** Keenan
 **Committed by:** Claude Code

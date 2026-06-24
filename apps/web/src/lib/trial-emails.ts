@@ -21,6 +21,7 @@ import type {
   TrialEmailKey,
   TrialVars,
 } from "@/emails/trial/registry";
+import { isEmailEnabled } from "@/lib/email-enabled";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
 import { safeLog } from "@/lib/safe-log";
 
@@ -129,7 +130,7 @@ export async function buildTrialVars(
 
 export interface SendResult {
   sent: boolean;
-  reason?: "already_sent" | "unsubscribed" | "send_failed";
+  reason?: "already_sent" | "unsubscribed" | "send_failed" | "disabled";
   resendId?: string;
 }
 
@@ -147,6 +148,13 @@ export async function sendTrialEmail(
   emailKey: TrialEmailKey,
   opts: { force?: boolean } = {}
 ): Promise<SendResult> {
+  // Kill-switch — lifecycle/marketing emails are paused per-key while we
+  // rebuild templates. Disabled keys early-return before any DB lookup or
+  // Resend dispatch. Flip the key in lib/email-enabled.ts to re-enable.
+  if (!isEmailEnabled(emailKey)) {
+    return { sent: false, reason: "disabled" };
+  }
+
   const { prisma } = await import("@/lib/prisma");
 
   const user = await prisma.user.findUnique({

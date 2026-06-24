@@ -9,6 +9,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { isEmailEnabled } from "@/lib/email-enabled";
 import { isEnabledForAnon } from "@/lib/feature-flags";
 
 const TWENTY_FIVE_DAYS_MS = 25 * 24 * 60 * 60 * 1000;
@@ -89,6 +90,15 @@ export const monthlyDigestFn = inngest.createFunction(
     retries: 2,
   },
   async ({ logger }) => {
+    // Kill-switch — monthly digest is paused while we rebuild lifecycle
+    // emails. Cron stays registered + scanning; flip "monthly_digest" in
+    // lib/email-enabled.ts to re-enable. Checked before the feature flag so
+    // the pause is unconditional regardless of flag state.
+    if (!isEmailEnabled("monthly_digest")) {
+      logger.info("monthly-digest.disabled_by_killswitch");
+      return { skipped: "killswitch-disabled" };
+    }
+
     if (!(await isEnabledForAnon("monthly_email_digest"))) {
       logger.info("monthly-digest.disabled_by_flag");
       return { skipped: "feature-flag-disabled" };

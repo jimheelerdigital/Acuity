@@ -44,6 +44,7 @@ import {
   trialCard,
   trialLayout,
 } from "@/emails/trial/layout";
+import { isEmailEnabled } from "@/lib/email-enabled";
 import { escapeHtml } from "@/lib/escape-html";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
 import { safeLog } from "@/lib/safe-log";
@@ -329,7 +330,7 @@ const RENDERERS: Record<
 
 export interface CountdownSendResult {
   sent: boolean;
-  reason?: "unsubscribed" | "no_user" | "send_failed";
+  reason?: "unsubscribed" | "no_user" | "send_failed" | "disabled";
   resendId?: string;
 }
 
@@ -344,6 +345,14 @@ export async function sendCountdownEmail(
   userId: string,
   key: CountdownEmailKey
 ): Promise<CountdownSendResult> {
+  // Kill-switch — the entire countdown sequence is paused while we
+  // rebuild templates. All four keys are disabled in lib/email-enabled.ts;
+  // flip a key back to re-enable. The cron stays registered + scanning so
+  // re-enabling is a one-line change here.
+  if (!isEmailEnabled(key)) {
+    return { sent: false, reason: "disabled" };
+  }
+
   const vars = await buildCountdownVars(userId);
   if (!vars) {
     return { sent: false, reason: "no_user" };
