@@ -235,7 +235,7 @@ export function OnboardingFunnel() {
   });
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "monthly");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "yearly");
   // Payment intent: set when user taps "Lock In My Savings" on the paywall.
   // After account creation, if true → route to Stripe checkout; if false → download.
   const [wantsPayment, setWantsPayment] = useState(false);
