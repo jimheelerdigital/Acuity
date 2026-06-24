@@ -12,6 +12,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { DEFAULT_ENABLED_CATEGORIES } from "@acuity/shared";
+
 import { verifyUnsubscribeToken } from "@/lib/email-tokens";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +46,19 @@ async function handle(req: NextRequest) {
       await prisma.waitlist.update({
         where: { id: parsed.userId },
         data: { unsubscribed: true },
+      });
+    } else if (parsed.kind === "engagement_notifications") {
+      // Smart-notification engagement emails. Turn off the email
+      // channel in the user's notification preferences, lazily creating
+      // the row with defaults if it doesn't exist yet.
+      await prisma.userNotificationPreferences.upsert({
+        where: { userId: parsed.userId },
+        create: {
+          userId: parsed.userId,
+          enabledCategories: [...DEFAULT_ENABLED_CATEGORIES],
+          emailEnabled: false,
+        },
+        update: { emailEnabled: false },
       });
     } else {
       await prisma.user.update({
@@ -98,7 +113,16 @@ a{color:#A78BFA;text-decoration:none;font-weight:500}
 <body><div class="card">${body}</div></body></html>`;
 }
 
-function confirmedPage(kind: "weekly" | "monthly" | "onboarding" | "waitlist"): string {
+function confirmedPage(
+  kind: "weekly" | "monthly" | "onboarding" | "waitlist" | "engagement_notifications"
+): string {
+  if (kind === "engagement_notifications") {
+    return pageShell(`
+      <div class="logo">✦</div>
+      <h1>You're off notification emails.</h1>
+      <p>We won't email you any more smart-notification nudges. Your weekly report and any transactional emails (password reset, payment receipts) will still reach you. You can turn these back on anytime from <a href="/account">Account settings</a>.</p>
+    `);
+  }
   if (kind === "waitlist") {
     return pageShell(`
       <div class="logo">✦</div>
