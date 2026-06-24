@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-06-24] — Timeline reworked: Week 1 / Month 1 / Year 1 escalating milestones
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 75acfcdf
+
+### In plain English (for Keenan)
+The "This is what changes." screen used to show four week-by-week steps (Week 1, 2, 3, 4). It now shows three milestones that stretch further into the future — Week 1, Month 1, and Year 1 — so the user sees the journey go from an immediate win, to the pattern becoming undeniable a month in, to having a whole year-long record of themselves. The copy escalates: Week 1 the cycle gets named, Month 1 the pattern becomes undeniable and the Life Matrix takes shape, Year 1 they have a record of themselves nobody else could write. Same look and same animation pace — just three steps instead of four. The proof section below it, the testimonial, and the button are unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts` → `getTimelineWeeks()` rewritten to return three fixed milestones instead of four branch-personalized weeks:
+  - Node 1: `Week 1` (badge "Starting now") — "The cycle gets named…"
+  - Node 2: `Month 1` — folds in the old Week 2 trigger/48-hour insight + the Life Matrix / six domains (old Week 3).
+  - Node 3: `Year 1` — folds in the old Week 4 memoir ("a record of yourself… documented from the outside").
+  - Removed the `w1`/`w2`/`w4` `Record<Branch, string>` maps, `WEEK_3_ALL`, and the `q2`/`q5` answer interpolation. The function is now branch-agnostic; params renamed `_branch`/`_answers` (kept for signature compatibility — `TimelineScreen` still calls it positionally).
+- `TimelineScreen` (`onboarding-funnel.tsx`) needed no changes: it maps over `weeks`, so node count, the sequential reveal timing (`600 + i*900` per node), and the progress-line height (`visibleNodes / weeks.length`) all adapt to three nodes automatically. Spacing (`space-y-6`) leaves no awkward gap since the list is generated, not slotted.
+- The "what one week actually looks like" weekly-report previews, the reused social-proof testimonial, the branch-specific bottom line, and the CTA are all untouched.
+
+### Manual steps needed
+- [ ] None — deploys on push. (Push still pending — waiting on Keenan's "push it".)
+
+### Notes
+- This makes the timeline copy a single canonical set for all branches (it was previously branch-personalized). If we later want branch-specific milestone copy again, re-add the `Record<Branch, string>` maps inside `getTimelineWeeks`.
+- Canonical terms kept verbatim: "debrief," "weekly report," "Life Matrix," "six domains."
+- `lc()` in funnel-config is still used by other generators (mirror/comparison copy), so it was left in place.
+
+---
+
 ## [2026-06-24] — Bold the loop-line quote on the pattern-result screen
 
 **Requested by:** Keenan
