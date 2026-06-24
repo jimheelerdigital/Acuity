@@ -2246,6 +2246,13 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
     example: () => "You said 'I need to call the school about Tuesday.' Acuity created the task before you finished the sentence.",
   },
   {
+    name: "Streaks and milestones",
+    description: "Progress tracking that reinforces the habit.",
+    duringTrial: true,
+    afterTrial: true,
+    example: () => "7-day streak. 30 entries. Your consistency is part of why the patterns become visible.",
+  },
+  {
     name: "Signals",
     description: "Next-step guidance based on what you actually said.",
     duringTrial: true,
@@ -2303,13 +2310,6 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
     duringTrial: true,
     afterTrial: false,
     example: () => "Visualize how themes like \u2018work pressure,\u2019 \u2018family tension,\u2019 and \u2018self-worth\u2019 rise and fall across weeks \u2014 and how they connect to each other.",
-  },
-  {
-    name: "Streaks and milestones",
-    description: "Progress tracking that reinforces the habit.",
-    duringTrial: true,
-    afterTrial: true,
-    example: () => "7-day streak. 30 entries. Your consistency is part of why the patterns become visible.",
   },
 ];
 
@@ -2387,7 +2387,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
                     {f.afterTrial ? (
                       <span className="text-emerald-500 text-sm">&#10003;</span>
                     ) : (
-                      <span className="text-[11px] font-medium text-red-400">Locked</span>
+                      <span className="text-[11px] font-bold bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Locked</span>
                     )}
                   </div>
                 </button>
@@ -2405,7 +2405,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
 
           {/* Summary line */}
           <div className="px-4 py-3 bg-zinc-50/50">
-            <p className="text-[12px] text-zinc-500 text-center">
+            <p className="text-[13px] text-zinc-700 text-center font-semibold">
               Everything is unlocked during your trial. Without Pro, you keep basic recording but lose the surfaces that show you what it means.
             </p>
           </div>
@@ -2414,10 +2414,10 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         {/* Section 4 — Cost comparison */}
         <section className="mb-6 rounded-xl border border-zinc-200 bg-white px-5 py-4 text-center funnel-card-stagger" style={{ animationDelay: "200ms" }}>
           <p className="text-[15px] font-semibold text-zinc-900 leading-relaxed">
-            <span className="text-zinc-400 font-normal">Therapy: $150/session.</span>{" "}
-            <span className="text-zinc-400 font-normal">A coach: $200/month.</span>
+            <span className="text-zinc-500 font-semibold">Therapy: $150/session.</span>{" "}
+            <span className="text-zinc-500 font-semibold">A coach: $200/month.</span>
           </p>
-          <p className="text-[17px] font-bold mt-1 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Acuity: less than a coffee a week.</p>
+          <p className="text-[17px] font-bold mt-1 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Acuity: less than a coffee a month.</p>
         </section>
 
         {/* Section 5 — Pricing cards with price-slash animation */}
