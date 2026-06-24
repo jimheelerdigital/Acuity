@@ -67,7 +67,7 @@ const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "timemath", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
   "tally", "mirror", "gap1", "gap2", "gap3", "mechanism", "commit", "processing", "pattern-result", "timeline",
-  "create-account", "savings", "download",
+  "savings", "create-account", "download",
 ];
 
 const TOTAL_STEPS = STEP_ORDER.length;
@@ -158,7 +158,7 @@ function useFunnelTracker() {
   const utmRef = useRef<UtmParams>({});
   useEffect(() => { utmRef.current = captureUtmParams(); }, []);
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v5", ...props });
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v6", ...props });
   }, []);
 }
 
@@ -201,6 +201,9 @@ export function OnboardingFunnel() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "monthly");
+  // Payment intent: set when user taps "Lock In My Savings" on the paywall.
+  // After account creation, if true → route to Stripe checkout; if false → download.
+  const [wantsPayment, setWantsPayment] = useState(false);
   const track = useFunnelTracker();
 
   // Wrap setStep to persist state + push browser history on every transition.
@@ -283,17 +286,38 @@ export function OnboardingFunnel() {
         resolvedStep = "download";
         setStepRaw("download");
       }
-    } else if (stepParam === "savings") {
+    } else if (stepParam === "post-signup") {
       // OAuth returnees land here after Google/Apple signup redirect.
+      // Account is now created — check if they intended to pay.
       track("funnel_account_created");
+      fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+      if (typeof window !== "undefined" && "gtag" in window) {
+        (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
+      }
+      let hadPaymentIntent = false;
+      try { hadPaymentIntent = sessionStorage.getItem("acuity_payment_intent") === "1"; } catch {}
+      if (hadPaymentIntent) {
+        // They tapped "Lock In My Savings" → account created via OAuth → proceed to checkout
+        resolvedStep = "create-account"; // briefly lands here while checkout triggers
+        setStepRaw("create-account");
+        // Trigger checkout after a tick so the component is mounted
+        setTimeout(() => handleCheckout(), 100);
+      } else {
+        // They tapped "Continue without paying" → account created → download
+        track("funnel_trial_continued");
+        resolvedStep = "download";
+        setStepRaw("download");
+      }
+    } else if (stepParam === "savings") {
+      // Legacy URL or direct link — show the paywall
       resolvedStep = "savings";
       setStepRaw("savings");
     } else if (stepParam === "create-account") {
       resolvedStep = "create-account";
       setStepRaw("create-account");
     } else if (stepParam === "paywall") {
-      resolvedStep = "create-account";
-      setStepRaw("create-account");
+      resolvedStep = "savings";
+      setStepRaw("savings");
     } else if (stepParam && STEP_SET.has(stepParam)) {
       resolvedStep = stepParam as Step;
       setStepRaw(stepParam as Step);
@@ -677,10 +701,37 @@ export function OnboardingFunnel() {
 
       {/* ── Personalized Timeline (Screen 14 — includes weekly-report previews) ── */}
       {step === "timeline" && branch && (
-        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("create-account")} />
+        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("savings")} />
       )}
 
-      {/* ── Create Account (Screen 16 — v3 account-first flow) ── */}
+      {/* ── Paywall (shown BEFORE account creation — price-anchor) ── */}
+      {step === "savings" && (
+        <SavingsScreen
+          key="savings"
+          branch={branch}
+          answers={answers}
+          track={track}
+          selectedPlan={selectedPlan}
+          onPlanChange={setSelectedPlan}
+          onCheckout={() => {
+            // User wants to pay — store intent, proceed to account creation
+            setWantsPayment(true);
+            try { sessionStorage.setItem("acuity_payment_intent", "1"); } catch {}
+            setStep("create-account");
+          }}
+          onSkip={() => {
+            // User skips payment — proceed to account creation (free trial)
+            setWantsPayment(false);
+            try { sessionStorage.removeItem("acuity_payment_intent"); } catch {}
+            setStep("create-account");
+          }}
+          loading={false}
+          error={null}
+        />
+      )}
+
+      {/* ── Create Account (after paywall — account must exist before any charge) ── */}
+      {step === "create-account" && <TrackCompleteRegistration />}
       {step === "create-account" && (
         <CreateAccountScreen
           key="create-account"
@@ -693,31 +744,15 @@ export function OnboardingFunnel() {
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
             }
-            setStep("savings");
+            if (wantsPayment) {
+              // They chose "Lock In My Savings" → account now exists → proceed to Stripe
+              handleCheckout();
+            } else {
+              // They chose "Continue without paying" → free trial → download
+              track("funnel_trial_continued");
+              setStep("download");
+            }
           }}
-        />
-      )}
-
-      {/* ── Lock In Your Savings (Screen 17 — optional paywall) ── */}
-      {/* TrackCompleteRegistration handles OAuth returnees who land here
-          after Google/Apple redirect. For email/password the sessionStorage
-          guard prevents double-fire. Component self-guards via CAPI 5-min check. */}
-      {step === "savings" && <TrackCompleteRegistration />}
-      {step === "savings" && (
-        <SavingsScreen
-          key="savings"
-          branch={branch}
-          answers={answers}
-          track={track}
-          selectedPlan={selectedPlan}
-          onPlanChange={setSelectedPlan}
-          onCheckout={handleCheckout}
-          onSkip={() => {
-            track("funnel_trial_continued");
-            setStep("download");
-          }}
-          loading={checkoutLoading}
-          error={apiError}
         />
       )}
 
@@ -2111,7 +2146,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   const handleOAuthSignup = async (provider: "google" | "apple") => {
     track("funnel_signup_started", { value: provider });
     setSignupLoading(provider);
-    await signIn(provider, { callbackUrl: "/start?step=savings" });
+    await signIn(provider, { callbackUrl: "/start?step=post-signup" });
   };
 
   return (
@@ -2188,13 +2223,13 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
             <div className={`text-xs px-1 rounded-lg ${accountCreatedButSigninFailed ? "bg-green-50 border border-green-200 p-3 text-green-700" : "text-red-500"}`}>
               <p>{signupError}</p>
               {signupError.includes("already have an account") && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })}
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=post-signup" })}
                   className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
                   Sign in to your existing account
                 </button>
               )}
               {accountCreatedButSigninFailed && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })}
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=post-signup" })}
                   className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
                   Tap here to sign in
                 </button>
@@ -2215,7 +2250,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
         <p className="text-xs text-zinc-400 text-center mt-6">
           Already have an account?{" "}
-          <button onClick={() => signIn(undefined, { callbackUrl: "/start?step=savings" })} className="text-acuity-primary font-semibold underline">Sign in</button>
+          <button onClick={() => signIn(undefined, { callbackUrl: "/start?step=post-signup" })} className="text-acuity-primary font-semibold underline">Sign in</button>
         </p>
         <p className="text-[11px] text-zinc-400 text-center mt-3 flex items-center justify-center gap-1.5">
           <svg className="h-3 w-3 text-zinc-300" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
@@ -2337,10 +2372,6 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
 
         {/* Section 1 — Positioning header */}
         <section className="text-center mb-6 funnel-screen">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 mb-4">
-            <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-            <span className="text-sm font-medium text-emerald-700">Account created</span>
-          </div>
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">Your personal clarity system is ready.</h2>
           <p className="text-sm text-zinc-500 mt-2">Stop losing track of what your own life is trying to tell you.</p>
         </section>

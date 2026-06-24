@@ -144,8 +144,8 @@ export async function GET(req: NextRequest) {
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
-          const flow = req.nextUrl.searchParams.get("flow") as "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
-          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v5");
+          const flow = req.nextUrl.searchParams.get("flow") as "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
+          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v6");
         }
         case "guide":
           return getGuide();
@@ -1627,7 +1627,7 @@ async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, flowVer
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
 const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v5") {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v6") {
  try {
   // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
   // and "all" (floor at v2 epoch to exclude ancient v1 diagnostic events).
@@ -1643,6 +1643,36 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     const epoch = resetAfter ? new Date(resetAfter) : FUNNEL_V2_EPOCH;
     if (effectiveStart < epoch) effectiveStart = epoch;
   }
+
+  // v6 funnel steps — paywall before account creation (2026-06-23)
+  const FUNNEL_STEPS_V6 = [
+    { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
+    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
+    { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
+    { key: "branch_q4", event: "funnel_branch_q4_viewed", label: "Q4" },
+    { key: "shared_q5", event: "funnel_shared_q5_viewed", label: "Q5" },
+    { key: "timemath", event: "funnel_timemath_viewed", label: "Time Math*" },
+    { key: "shared_q6", event: "funnel_shared_q6_viewed", label: "Q6 (Cost)" },
+    { key: "shared_q7", event: "funnel_shared_q7_viewed", label: "Q7" },
+    { key: "shared_q8", event: "funnel_shared_q8_viewed", label: "Q8" },
+    { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9 (Pattern)" },
+    { key: "tally", event: "funnel_tally_viewed", label: "Tally" },
+    { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
+    { key: "gap1", event: "funnel_gap1_viewed", label: "Gap 1" },
+    { key: "gap2", event: "funnel_gap2_viewed", label: "Gap 2" },
+    { key: "gap3", event: "funnel_gap3_viewed", label: "Gap 3" },
+    { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
+    { key: "commit", event: "funnel_commit_viewed", label: "Commit" },
+    { key: "commit_completed", event: "funnel_commit_completed", label: "Committed" },
+    { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
+    { key: "pattern_result", event: "funnel_pattern_result_viewed", label: "Pattern Result" },
+    { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline" },
+    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall" },
+    { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account" },
+    { key: "account_created", event: "funnel_account_created", label: "Account Created" },
+    { key: "trial_continued", event: "funnel_trial_continued", label: "Trial Continued" },
+    { key: "download", event: "funnel_download_viewed", label: "Download" },
+  ];
 
   // v5 funnel steps — pattern-result screen replaces snapshot, q6 single-select (2026-06-23)
   const FUNNEL_STEPS_V5 = [
@@ -1778,13 +1808,14 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
 
-  const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
+  const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
 
   // flowVersion filter — v1/v2/v3 filter strictly on the column.
   // "all" returns everything. v1 events have flowVersion=null or "v1".
   // For v1 we need OR logic for null; Prisma requires AND+OR nesting.
   const flowVersionWhere =
-    flowVersion === "v5" ? { flowVersion: "v5" as const }
+    flowVersion === "v6" ? { flowVersion: "v6" as const }
+    : flowVersion === "v5" ? { flowVersion: "v5" as const }
     : flowVersion === "v4" ? { flowVersion: "v4" as const }
     : flowVersion === "v3" ? { flowVersion: "v3" as const }
     : flowVersion === "v2" ? { flowVersion: "v2" as const }

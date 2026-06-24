@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
         metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
       },
       success_url: `${process.env.NEXTAUTH_URL}/start?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/start?step=savings`,
+      cancel_url: `${process.env.NEXTAUTH_URL}/start?step=download`,
       metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
     });
 
