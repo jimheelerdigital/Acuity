@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-06-23] — Tally deleted + mirror/gap1 merged into pain screen + gap3 restructured
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 13961bf8
+
+### In plain English (for Keenan)
+Three changes to the funnel screens between the quiz questions and the product explainer:
+
+1. **Deleted the tap counter.** The screen that said "How many times did you snap at someone you love this week? Tap once for each time" is gone. The annualized math ("3 times this week, roughly 160 a year") is also gone — the pain now comes from the user's own words, not a number.
+
+2. **Merged "We heard you" + "Right now, this is costing you…" into one screen.** Instead of two separate screens (one reflecting their answers, one showing the cost), it's now a single building sequence: first your pattern is reflected back, then the want you named, then the cost highlighted, then the stakes. Each block fades in one at a time, building the emotional weight without spreading it across two taps.
+
+3. **"Three weeks from now" screen text restructured.** Same content, same timing, same buttons — but each future-self beat is now its own visually distinct card instead of running together as paragraphs. Easier to read, clearer beats.
+
+### Technical changes (for Jimmy)
+- `onboarding-funnel.tsx`: removed `"tally"`, `"mirror"`, `"gap1"` from `Step` type and `STEP_ORDER`. Added `"pain"` in their place. Deleted `TallyScreen`, `MirrorScreen`, `Gap1Screen` components. Added `PainScreen` component (4-block sequential build: recognition, named want, cost with highlighted area word, stakes/closer; ~600ms stagger per block, tap-to-skip, reduced-motion fallback). Removed `getTallyHeader`/`getTallyKicker` imports. Fixed stale `"mirror"` fallback in nextStep to `"pain"`.
+- `Gap3Screen`: scene beats wrapped in `rounded-xl border border-zinc-100 bg-white/60 px-5 py-4` containers for visual separation. Same timing, same dim-cascade behavior, same CTAs.
+- `metrics/route.ts`: `FUNNEL_STEPS_V6` updated — `tally`/`mirror`/`gap1` replaced with single `pain` stage (24 total stages, down from 26). No version increment (v6 already covers these changes since they deploy together with the reorder).
+- Event: `funnel_pain_viewed` replaces `funnel_mirror_viewed` + `funnel_gap1_viewed`.
+
+### Manual steps needed
+None — deploys on push.
+
+### Notes
+- **Annualized tally math fully removed.** `getTallyKicker` and `getTallyEcho` remain in `funnel-config.ts` as dead code (no consumers). They can be cleaned up in a future pass — left for now to avoid touching funnel-config in the same commit.
+- **PainScreen reuses existing content generators.** `buildMirrorLines()` provides Blocks 1–2, `buildGap1Content()` provides Blocks 3–4. The content is the same answer-driven copy, just recomposed into one 4-block sequence.
+- **Gap3 timing unchanged.** The kicker (0ms), scene beats (700ms + 1600ms/beat), ask, and CTAs fire at the same delays as before. Only the visual container around each beat changed.
+
+---
+
 ## [2026-06-23] — Funnel reorder: paywall before account creation (v6)
 
 **Requested by:** Keenan
