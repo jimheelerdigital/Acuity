@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-06-24] — Paywall screen: honest free tier, reordered features, branch-matched proof
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c840a9b8
+
+### In plain English (for Keenan)
+Four refinements to the pricing screen, all about making it clearer and more relevant — no change to price, the trial, or how billing works. First, the comparison table used to label the second column "Without Pro," which made it sound like you'd lose the whole app. In reality there's a permanent free tier: after the trial, voice recording, task extraction, and streaks stay free forever, and only the insight features (weekly report, Life Matrix, patterns, etc.) need Pro. So the columns are now simply "Pro" and "Free," and the line under the table spells out exactly what stays free versus what Pro keeps — framed as keeping the layer that shows you what your life means, not losing the app. Second, the locked-feature list was long and led with weaker items; it now leads with the three biggest reasons to upgrade — Weekly report, Life Matrix, Pattern detection — so the most persuasive features catch the eye first. Third, the little testimonial on the pricing screen used to be a career/quitting-my-job story shown to everyone, which didn't fit people who came in about relationships, overthinking, or feeling lost; it now picks a real, fitting quote based on the path the person came in on. Fourth — already handled: the loss-aversion line above the table ("you've already seen the … for what it is") was confirmed to already speak in each branch's own voice, so it needed no change.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` → `SavingsScreen` comparison table header: `"Your trial"` → `"Pro"`, `"Without Pro"` → `"Free"` (both kept their existing colors; checkmark logic unchanged — left column always ✓ = everything Pro unlocks, right column = `afterTrial` = permanent free tier). The three always-free features (Voice debrief, Task extraction, Streaks) still show ✓ in both columns.
+- Bottom-line summary under the table reworded from "Everything is unlocked during your trial. Without Pro, you keep basic recording but lose the surfaces that show you what it means." → "After your trial, recording, task extraction, and streaks stay free forever. Pro keeps the insight layer — the weekly report, Life Matrix, and patterns that show you what it all means."
+- `PAYWALL_FEATURES` array reordered: the 3 always-free features stay first, then the locked group now leads with Weekly report → Life Matrix → Pattern detection, followed by Signals → Ask your past self → Smart insights → Theme map. Only array order changed; each feature's content/examples are identical.
+- New `getPaywallTestimonial(branch)` in `apps/web/src/lib/funnel-config.ts` returns a real existing quote from `PAYWALL_TESTIMONIALS_V2` (no fabrication): `patterns` → Priya R. (recurring relational trigger), every other branch + null → James K. (therapist-validation, most universal). `SavingsScreen` now computes `paywallTestimonial = getPaywallTestimonial(branch)` and uses it for the micro-testimonial (was hardcoded `PAYWALL_TESTIMONIALS_V2[0]`, the Sarah M. career quote). Imported the new helper.
+- `getPaywallLossRecap(branch)` (the Section 2 loss-aversion subheadline) was already branch-aware (blur→"the fog", patterns→"the cycle", rumination→"the loop", graveyard→general, mask→"the mask", drift→"the drift") — confirmed and left unchanged. FIX 4 required no code change.
+- Untouched: pricing, Stripe Price IDs, the price-slash animation, the $19.99/$199 strikethroughs (confirmed unchanged), the founding-rate line, the CTAs ("Start My 7 Days" + demoted skip link), the FAQ, and the 988 crisis footer.
+
+### Manual steps needed
+- [ ] None — deploys on push. (Push still pending — waiting on Keenan's "push it".)
+
+### Notes
+- FIX 4 was a no-op: the loss-aversion line was already wired to `getPaywallLossRecap(branch)`, so "the cycle" only ever showed to the patterns branch. Flagged here so we don't re-investigate it later.
+- The branch→testimonial map is deliberately conservative because there are only three real quotes. Sarah M. (career) is no longer shown on the paywall micro-testimonial but is still used elsewhere (mechanism screen). If we gather more real testimonials per branch, extend `getPaywallTestimonial`.
+- Checkmark/Locked rendering keys off each feature's `afterTrial` boolean, which mirrors the real entitlement model (debrief, task extraction, streaks free; everything else Pro). If entitlements change, update the `afterTrial` flags in `PAYWALL_FEATURES`.
+
+---
+
 ## [2026-06-24] — Timeline + paywall examples made branch-aware (fixes generic-voice regression)
 
 **Requested by:** Keenan
