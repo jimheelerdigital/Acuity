@@ -733,12 +733,14 @@ export function OnboardingFunnel() {
           onPlanChange={setSelectedPlan}
           onCheckout={() => {
             // User wants to pay — store intent, proceed to account creation
+            track("funnel_paywall_paid_selected", { value: selectedPlan });
             setWantsPayment(true);
             try { sessionStorage.setItem("acuity_payment_intent", "1"); } catch {}
             setStep("create-account");
           }}
           onSkip={() => {
             // User skips payment — proceed to account creation (free trial)
+            track("funnel_paywall_skip_selected");
             setWantsPayment(false);
             try { sessionStorage.removeItem("acuity_payment_intent"); } catch {}
             setStep("create-account");
@@ -2572,12 +2574,14 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
           <button onClick={onCheckout} disabled={loading}
             className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
-            {loading ? "Loading\u2026" : "Lock In My Savings"}
+            {loading ? "Loading\u2026" : "Start My 7 Days"}
           </button>
-          <button onClick={onSkip} className="w-full py-3 text-sm text-zinc-500 hover:text-zinc-700 transition font-medium">
-            Continue without paying &rarr;
-          </button>
-          <p className="text-[10px] text-zinc-400 text-center">7-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
+          <p className="text-[10px] text-zinc-400 text-center mt-2">7-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
+          <div className="text-center mt-2">
+            <button onClick={onSkip} className="text-xs text-zinc-400 hover:text-zinc-600 underline underline-offset-2 transition">
+              Continue without paying
+            </button>
+          </div>
           <p className="text-[9px] text-zinc-300 text-center mt-2">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>
       </div>
