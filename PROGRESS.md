@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-24] — Time-math screen now reflects the user's own answers
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 31544ad9
+
+### In plain English (for Keenan)
+
+The "time math" moment in onboarding (the big number in a ring that shows how long this has been weighing on someone) used to say the same thing for everyone — a fixed "evenings" count and a generic closing line. Now it speaks back the user's actual answers: the number comes honestly from how long they said this has been going on (no inflation), the wording matches their entry path (someone in the "racing mind" path sees "nights your mind wouldn't quiet," someone drifting sees "days that slipped by"), and it names what they told us it's been costing them (energy, relationships, health, etc.). It ends on a stronger, more personal note about the future still being theirs. For people who said they can't remember when it started, it now shows an honest "At least" before the number instead of pretending to scramble to a huge figure.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/funnel-config.ts`: rewrote `getTimeMathContent` — new `TimeMathContent` interface (added `atLeast`, `headline`, `costLine`, `closer`), `TIME_MATH_VOICE: Record<Branch, {unit, headline, closer}>` map, `TIME_MATH_COST` map keyed by the Q6 cost answer, new 3-arg signature `getTimeMathContent(durationAnswer, branch, costAnswer)`. Number mapping: a few weeks→21, a few months→90, over a year→365, can't remember→365 with `atLeast: true`.
+- `apps/web/src/components/onboarding-funnel.tsx`: `TimeMathScreen` now takes a `branch` prop and reads `shared_q6`; renders branch headline, branch closer, the Q6-derived cost line under the unit label, and an "At least" eyebrow gated by `content.atLeast`. Ring/number visual, count-up animation, and Continue CTA unchanged.
+- `STEP_ORDER` in onboarding-funnel.tsx: `timemath` moved from after `shared-q5` to after `shared-q6` (call-site `onContinue`/`onSkip` now target `shared-q7`).
+
+### Manual steps needed
+
+None.
+
+### Notes
+
+- **Flow/pacing change:** the time-math screen now appears one question later (after the Q6 "what is it costing you" question instead of right after the Q5 duration question). This was required — the cost line can only be populated once Q6 is answered. Net effect: duration question → cost question → time-math payoff, which actually reads as a tighter build.
+- All branch units are daily-cadence (days/evenings/nights) so a single day-count works across branches.
+- The old `isThousands`/scramble animation path is now inert (no duration maps to `count: null` anymore). Left in place intentionally — low risk, and removing it would touch the animation structure we were told to preserve.
+- No errors introduced in either funnel file on `tsc --noEmit` (the repo has ~167 pre-existing unrelated type errors).
+
+---
+
 ## [2026-06-24] — Paywall screen: honest free tier, reordered features, branch-matched proof
 
 **Requested by:** Keenan
