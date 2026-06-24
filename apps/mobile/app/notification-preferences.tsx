@@ -77,7 +77,22 @@ export default function NotificationPreferencesScreen() {
       const res = await api.get<{ preferences: NotificationPreferences }>(
         "/api/account/notification-preferences"
       );
-      if (res?.preferences) setPrefs(res.preferences);
+      if (res?.preferences) {
+        setPrefs(res.preferences);
+        // Silent device-timezone capture: quiet hours + smart timing need a
+        // correct IANA tz, but User.timezone defaults to America/Chicago and
+        // may never have been set. Persist the device tz if it differs.
+        try {
+          const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (device && device !== res.preferences.timezone) {
+            void api.put("/api/account/notification-preferences", {
+              timezone: device,
+            });
+          }
+        } catch {
+          // Intl unavailable — skip
+        }
+      }
     } catch {
       // silent — defaults already populated via useState
     } finally {

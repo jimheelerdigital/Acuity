@@ -32,11 +32,34 @@ export function NotificationPreferencesSection() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Silent device-timezone capture: quiet hours + smart timing depend on a
+    // correct IANA tz, but User.timezone defaults to America/Chicago and may
+    // never have been set for non-US users. Detect the device tz on load and
+    // persist it if it differs — fire-and-forget, no UI.
+    const captureTz = (stored: string | null) => {
+      try {
+        const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (device && device !== stored) {
+          void fetch("/api/account/notification-preferences", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ timezone: device }),
+          }).catch(() => {});
+        }
+      } catch {
+        /* Intl unavailable — skip */
+      }
+    };
     fetch("/api/account/notification-preferences", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.preferences) setPrefs(d.preferences as NotificationPreferences);
-        else setPrefs(defaultNotificationPreferences());
+        if (d?.preferences) {
+          setPrefs(d.preferences as NotificationPreferences);
+          captureTz((d.preferences.timezone as string | null) ?? null);
+        } else {
+          setPrefs(defaultNotificationPreferences());
+        }
         setLoaded(true);
       })
       .catch(() => {

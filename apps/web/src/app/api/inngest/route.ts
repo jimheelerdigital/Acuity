@@ -42,6 +42,7 @@ import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-
 import { downloadReminderEmailFn } from "@/inngest/functions/download-reminder-email";
 import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly";
 import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twice-daily";
+import { smartNotificationsCron } from "@/inngest/functions/smart-notifications-cron";
 import { commitExtractionBackstopFn } from "@/inngest/functions/commit-extraction-backstop";
 import { stripeWebhookHealthFn } from "@/inngest/functions/stripe-webhook-health";
 
@@ -93,6 +94,7 @@ const handler = serve({
     downloadReminderEmailFn,
     achievementsNightlyFn,
     notificationsTwiceDailyFn,
+    smartNotificationsCron,
   ],
 });
 

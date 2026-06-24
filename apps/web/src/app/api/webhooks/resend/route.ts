@@ -3,7 +3,9 @@
  *
  * Receives delivery events from Resend and mirrors `opened` / `clicked`
  * onto TrialEmailLog rows so the admin dashboard can surface live
- * per-emailKey engagement.
+ * per-emailKey engagement, and onto NotificationLog rows so the smart-
+ * notification engine can track engagement on its sends. Whichever
+ * table holds the row matching the Resend email_id gets updated.
  *
  * Security: Resend signs webhooks with the secret configured in the
  * Resend dashboard (svix-signature header). We verify that against
@@ -63,33 +65,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, note: "no email_id — ignored" });
   }
 
-  // Only mutate the trial log — transactional + digest sends don't
-  // use TrialEmailLog; they live in their own tables or are fire-
-  // and-forget. A missing row here is normal (not every Resend send
-  // is a trial email) so we upsert-by-id and skip if not found.
+  // Only `opened` / `clicked` carry engagement we mirror. Other event
+  // types (delivered, bounced, complained, etc.) are ignored for now —
+  // add as the product needs them.
+  if (type !== "email.opened" && type !== "email.clicked") {
+    return NextResponse.json({ ok: true, note: `ignored type: ${type}` });
+  }
+
+  // The same Resend email_id can match a TrialEmailLog row (trial drip)
+  // OR a NotificationLog row (smart-notification send). We check both;
+  // a missing row in either table is normal (not every Resend send is
+  // tracked there). Both reuse the same opened/clicked field shape.
+  const now = new Date();
+  const data =
+    type === "email.clicked"
+      ? { clicked: true, clickedAt: now, opened: true, openedAt: now }
+      : { opened: true, openedAt: now };
+
   const { prisma } = await import("@/lib/prisma");
-  const row = await prisma.trialEmailLog.findUnique({
+
+  const trialRow = await prisma.trialEmailLog.findUnique({
     where: { resendId: emailId },
     select: { id: true },
   });
-  if (!row) {
-    return NextResponse.json({ ok: true, note: "not a trial email" });
+  if (trialRow) {
+    await prisma.trialEmailLog.update({ where: { id: trialRow.id }, data });
   }
 
-  const now = new Date();
-  if (type === "email.opened") {
-    await prisma.trialEmailLog.update({
-      where: { id: row.id },
-      data: { opened: true, openedAt: now },
-    });
-  } else if (type === "email.clicked") {
-    await prisma.trialEmailLog.update({
-      where: { id: row.id },
-      data: { clicked: true, clickedAt: now, opened: true, openedAt: now },
-    });
+  const notifRow = await prisma.notificationLog.findUnique({
+    where: { resendId: emailId },
+    select: { id: true },
+  });
+  if (notifRow) {
+    await prisma.notificationLog.update({ where: { id: notifRow.id }, data });
   }
-  // Other event types (delivered, bounced, complained, etc.) are
-  // ignored for now — add as the product needs them.
+
+  if (!trialRow && !notifRow) {
+    return NextResponse.json({ ok: true, note: "no matching log row" });
+  }
 
   return NextResponse.json({ ok: true });
 }

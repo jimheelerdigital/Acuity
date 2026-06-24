@@ -355,6 +355,9 @@ model User {
   // default-ON categories on first read; see
   // docs/specs/smart-notifications-spec.md.
   notificationPreferences       UserNotificationPreferences?
+  // Smart-notifications send log (PR 2) — one row per engagement
+  // notification sent/skipped; drives idempotency + open/click tracking.
+  notificationLogs              NotificationLog[]
   // Apple Health connection state. True once the user accepts the
   // iOS HealthKit permission prompt; cleared when they revoke in
   // Settings or toggle off from Profile → Connected apps. Null on
@@ -594,6 +597,11 @@ model UserNotificationPreferences {
   // NOTIFICATION_MIN_GAP_HOURS (18h) hard floor between sends.
   lastNotifiedAt    DateTime?
 
+  // Smart-timing cache (PR 2): the user's typical engagement hour (0–23,
+  // user-local), = modal hour of Entry.createdAt over the last 30d.
+  // Recomputed ≤ once/day. Null → fall back to 19:00 local (see PR 2 spec).
+  preferredHourLocal Int?
+
   // EU behavioral-profiling consent. ConsentRecord
   // (kind="behavioral_notifications") is the legal source of truth; this
   // is a denormalized mirror for fast scheduler reads.
@@ -603,6 +611,40 @@ model UserNotificationPreferences {
   updatedAt         DateTime  @updatedAt
 
   @@index([pausedUntil])
+}
+
+// Smart-notifications send log (PR 2). One row per engagement notification
+// the scheduler sends (and, when useful, per skip). Serves three jobs:
+//   1. Idempotency — @@unique([userId, category, localDay]) makes it
+//      impossible to send the same category to a user twice in one local day.
+//   2. Frequency-cap accounting (maxPerDay / maxPerWeek) + the 18h floor.
+//   3. Open/click tracking — resendId ties the Resend webhook back to the row.
+// Stores the exact rendered subject + body so support can see precisely what a
+// user received. See docs/specs/smart-notifications-pr2-spec.md.
+model NotificationLog {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        String                       // NotificationCategory key (@acuity/shared)
+  channel         String    @default("email")  // "email" | (future) "push"
+  templateVariant String?                       // which rotated variant was sent
+  refId           String?                       // e.g. UserAchievement.id (milestone dedup)
+  localDay        String                        // "YYYY-MM-DD" in the user's tz at send time
+  status          String    @default("sent")    // "sent" | "skipped" | "failed"
+  skipReason      String?
+  // Exact content sent — for support lookups when a user reports a bad notif.
+  renderedSubject String?
+  renderedBody    String?                       // TEXT; full rendered HTML/text
+  resendId        String?   @unique             // maps the Resend open/click webhook to this row
+  opened          Boolean?
+  openedAt        DateTime?
+  clicked         Boolean?
+  clickedAt       DateTime?
+  sentAt          DateTime  @default(now())
+
+  @@unique([userId, category, localDay])
+  @@index([userId, sentAt])
+  @@index([userId, category, sentAt])
 }
 
 model UserOnboarding {
