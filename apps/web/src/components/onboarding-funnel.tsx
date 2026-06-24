@@ -158,7 +158,7 @@ function useFunnelTracker() {
   const utmRef = useRef<UtmParams>({});
   useEffect(() => { utmRef.current = captureUtmParams(); }, []);
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v4", ...props });
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v5", ...props });
   }, []);
 }
 

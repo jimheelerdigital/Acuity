@@ -10,7 +10,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
-  const [flowVersion, setFlowVersion] = useState<"v4" | "v3" | "v2" | "v1" | "all">("v4");
+  const [flowVersion, setFlowVersion] = useState<"v5" | "v4" | "v3" | "v2" | "v1" | "all">("v5");
 
   useEffect(() => {
     setLoading(true);
@@ -91,7 +91,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 4 }}>
-          {(["v4", "v3", "v2", "v1", "all"] as const).map((v) => (
+          {(["v5", "v4", "v3", "v2", "v1", "all"] as const).map((v) => (
             <button key={v} onClick={() => setFlowVersion(v)}
               style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
                 background: flowVersion === v ? "#7C5CFC" : "rgba(255,255,255,0.06)",
