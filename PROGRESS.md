@@ -7,6 +7,56 @@
 
 ---
 
+## [2026-06-23] — Funnel reorder: paywall before account creation (v6)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ade4e229
+
+### In plain English (for Keenan)
+The pricing screen now appears **before** the "Create your free account" screen instead of after it. This means users see the price, the founding rate, and the trial-vs-paid comparison BEFORE they're asked to create an account. Two paths: (1) "Lock In My Savings" → create account → Stripe checkout → download, or (2) "Continue without paying" → create account → download (free trial, no card). Either way, the account is always created before any charge happens — no one can be charged without having an account.
+
+### Technical changes (for Jimmy)
+**⚠️ ELEVATED RISK — payment/auth sequencing. Jimmy should review before merge.**
+
+Funnel reorder:
+- `STEP_ORDER` in `onboarding-funnel.tsx`: flipped from `create-account → savings → download` to `savings → create-account → download`.
+- New `wantsPayment` state (boolean) + `acuity_payment_intent` sessionStorage flag: set when user taps "Lock In My Savings" on paywall, persisted for OAuth redirect survival. After account creation, if `wantsPayment` → `handleCheckout()` (Stripe); else → download.
+- `TimelineScreen.onContinue` → now goes to `"savings"` (was `"create-account"`).
+- `SavingsScreen.onCheckout` → sets payment intent + goes to `"create-account"` (was calling `handleCheckout` directly, which required an existing account).
+- `SavingsScreen.onSkip` → clears payment intent + goes to `"create-account"` (was going to download, but account didn't exist yet).
+- `CreateAccountScreen.onAccountCreated` → checks `wantsPayment`: if true, calls `handleCheckout()`; if false, tracks `funnel_trial_continued` + goes to download.
+
+OAuth return flow:
+- OAuth `callbackUrl` changed from `?step=savings` to `?step=post-signup` across all 4 sign-in calls (Google, Apple, "Already have an account", credential-failed recovery).
+- New `post-signup` URL handler: reads `acuity_payment_intent` from sessionStorage → if set, triggers checkout; else goes to download.
+
+Stripe cancel URL:
+- `create-checkout/route.ts`: `cancel_url` changed from `?step=savings` to `?step=download`. Rationale: by the time Stripe opens, the account already exists, so canceling payment = free trial user → download is the right landing.
+
+**Critical safety property verified:** `handleCheckout()` calls `/api/onboarding/create-checkout` which reads `session.user.id` — this returns 401 if no session exists. The account is always created (via signup API or OAuth) before `handleCheckout` fires. Payment cannot precede account creation.
+
+Edge cases:
+- **A (bail after Lock In, before payment):** Account created, no charge → normal free-trial user. Stripe cancel_url lands on download.
+- **B (card declined):** `verify-payment` returns `paid: false` → routes to savings with error message + "continue with your free trial." User is a free-trial user.
+- **C (returning user):** "Already have an account? Sign in" on create-account screen → sign-in → `?step=post-signup` → checks payment intent → routes to checkout (if Lock In) or download (if skip).
+
+Metrics:
+- `FUNNEL_STEPS_V6` added to `metrics/route.ts`: same stages as v5 but with `savings_offered` (Paywall) before `create_account` (matching new order). v5 untouched.
+- `flowVersion: "v6"` in `useTrack` hook — all new sessions tagged v6.
+- Dashboard default changed to v6, selector includes v6.
+
+### Manual steps needed
+None — deploys on push. No migration needed.
+
+### Notes
+- **`bootstrapNewUser()` is unaffected.** It fires inside `/api/auth/signup` and OAuth callback routes — triggered by the account creation API, not by the funnel step position. Moving account creation later in the funnel doesn't change when or how it fires.
+- **`TrackCompleteRegistration` moved to create-account step** (was on savings). It fires after OAuth returnees land on the create-account step, matching the new flow.
+- **"Account created" badge removed from paywall header.** The paywall is now shown before account creation, so the badge was misleading. Header is now just "Your personal clarity system is ready."
+- **sessionStorage intent flag** (`acuity_payment_intent`) survives OAuth redirects (same origin, same tab). Cleared when user taps "Continue without paying."
+
+---
+
 ## [2026-06-23] — Paywall redesign: trial-vs-paid comparison + interactive feature examples
 
 **Requested by:** Keenan
