@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-06-24] — Light-touch social proof added to the /start funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f53657bc
+
+### In plain English (for Keenan)
+We added quiet trust signals at a few points in the onboarding funnel to make new visitors feel more confident as they go, which should reduce people dropping off partway through the quiz. There are three new spots: (1) a small "4.9 ★ from 127+ users" rating strip above the very first question, (2) one customer quote on the "how it works" screen, and (3) one customer quote on the "what changes week by week" screen. Every quote and the rating are real and already existed elsewhere in the product — nothing was made up. We deliberately left the emotional "pain" screens and the personal "this is your pattern" result screen completely clean, because adding proof there would break the moment. We can now measure whether these placements actually help, because each one reports when it's seen.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - New reusable `SocialProofRating` component — mirrors the existing Download screen markup exactly (`4.9 ★★★★★ from 127+ users`); value/wording unchanged per brand rule.
+  - New reusable `SocialProofQuote` component — renders a single testimonial in the funnel's existing card style (`rounded-xl border border-zinc-100 bg-white/60`). Quotes are reused from the real `PAYWALL_TESTIMONIALS_V2` array (imported from `funnel-config.ts`) — no new copy.
+  - Both components fire `funnel_social_proof_viewed` on mount with a `value` of the placement name (`entry` / `mechanism` / `timeline`).
+  - `SingleSelectScreen` gains an optional `topSlot?: React.ReactNode` prop rendered above the question; entry screen passes `<SocialProofRating placement="entry" />`.
+  - `MechanismScreen` gains a `track` prop; renders `PAYWALL_TESTIMONIALS_V2[0]` (Sarah M. — weekly-report quote) before the Continue button, fading in at 5400ms after the closing line.
+  - `TimelineScreen` gains a `track` prop; renders `PAYWALL_TESTIMONIALS_V2[2]` (Priya R. — "Week 3…" quote) after the bottom-line closer, mounted only once `showBottom` is true so the view event fires when it's actually visible.
+- No schema, API, env, or pricing changes. No dependencies added.
+
+### Manual steps needed
+- [ ] None — deploys on push. (Push still pending — waiting on Keenan's "push it".)
+
+### Notes
+- **Deliberately NOT touched:** the pain screens (merged mirror/gap1, gap2, gap3) and the pattern-result screen. Pain screens work by keeping the user in their own discomfort; pattern-result is the personal "this is about me" beat. Social proof on either would dilute the effect. The existing paywall (savings) proof was also left exactly as-is.
+- **Total new placements = 3** (entry strip + mechanism quote + timeline quote), as scoped. The existing paywall and download proof are unchanged.
+- The 4.9 rating and "127+ users" count are reused verbatim and must stay that way everywhere (brand rule).
+- `funnel_social_proof_viewed` is a new event (accepted by the server via the `funnel_*` prefix rule). Once live, compare step-over-step drop-off on `funnel_entry_viewed → funnel_branch_q2_viewed`, `funnel_mechanism_viewed`, and `funnel_timeline_viewed` before/after to judge impact.
+
+---
+
 ## [2026-06-24] — Paywall price-slash animation on both monthly and annual cards
 
 **Requested by:** Keenan
