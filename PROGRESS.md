@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9485f580
+**Commit hash:** 9485f580, b7c8f538 (areaFallback flag)
 
 ### In plain English (for Keenan)
 When someone goes through the /start funnel on the website, they now see a **personalized pattern screen** right after the "analyzing your patterns" loading moment. Based on what they answered in the quiz, they get assigned a **named pattern** (like "Mental Overload" or "Invisible Load"), a **secondary signal** (like "Overflow" or "Follow-Through Decay"), and the **area of their life it's costing them most**. Each pattern comes with its own unique explanation that's specific to THAT pattern — so two people who answered differently will see completely different descriptions. This is the emotional payoff before we ask them to pay. It makes the funnel feel like it actually understood them, not like a generic quiz.
@@ -43,7 +43,7 @@ Snapshot decomposition:
 New funnel step:
 - `"pattern-result"` added to `Step` type and `STEP_ORDER` after `"processing"`, before `"timeline"`.
 - `PatternResultScreen` component: renders primary pattern (large bold), secondary signal (if visible), area (pill tag), loop line (italic), body copy, "What Acuity tracks for you" list, CTA → timeline. Staggered reveal animation matching existing screen patterns.
-- Analytics: fires `funnel_pattern_assigned` event with `{primary, secondary, area, branch, duration, stuck_deep_override, collision_suppressed}` on render.
+- Analytics: fires `funnel_pattern_assigned` event with `{primary, secondary, area, area_fallback, branch, duration, stuck_deep_override, collision_suppressed}` on render. `area_fallback: true` means shared_q6 was empty and area defaulted to "Energy" — lets us distinguish real Energy answers from fallback firings in the data.
 - Event map: `funnel_snapshot_viewed` → `funnel_pattern_result_viewed` in component and metrics route.
 
 Paywall positioning:
