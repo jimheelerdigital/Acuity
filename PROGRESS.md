@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-06-24] — Paywall price-slash animation on both monthly and annual cards
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1a7c00e5
+
+### In plain English (for Keenan)
+Both pricing cards on the paywall now **animate the discount happening in real time**. The regular price ($19.99/mo or $199/yr) shows first as the big number, then a red strikethrough line draws across it, the regular price shrinks to a small anchor, and the founding rate ($4.99/mo or $39.99/yr) drops in with a spring effect. The badges ("FOUNDING RATE" / "SAVE 33%") appear last. After everything lands, a subtle savings line fades in ("You save $15/mo" / "save $159/yr"). The annual card runs 150ms behind the monthly card so they feel coordinated but not identical. The whole sequence takes about 1.5 seconds. Selecting between monthly and annual smoothly lifts the chosen card.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: `SavingsScreen` gains `slashPhase` state (0→3, timed via `setTimeout` at 800/1400/1800ms after mount). 5 CSS keyframes injected via `<style>` tag: `pw-strike` (strikethrough draw), `pw-shrink` (price shrink), `pw-land` (founding rate spring-in), `pw-badge` (badge pop), `pw-save` (savings fade). Both monthly and annual cards rewritten with phased visibility: regular price transitions from `text-2xl` hero to `text-sm` anchor at phase 1, founding rate appears at phase 2, badges at phase 3. Annual card uses `transitionDelay: 150ms` / `animationDelay: 150ms` throughout. Selected card gets `scale-[1.02]` lift via Tailwind transition.
+- Savings delta text added: "You save $15/mo" (monthly) and "$3.33/mo — save $159/yr" (annual), fading in at phase 3.
+- `prefers-reduced-motion`: all `setTimeout`s skipped, `slashPhase` set to 3 immediately, all keyframes set to `animation: none`, strikethrough `width: 100%` statically. No motion-sensitive user sees animation.
+
+### Manual steps needed
+None — deploys on push.
+
+### Notes
+- **Animation cannot cause incorrect pricing.** The Stripe Price ID and charge amount are determined by `selectedPlan` state (set via `onPlanChange`), which feeds into `handleCheckout()` → `/api/onboarding/create-checkout` → Stripe. The animation phase (`slashPhase`) is never read by the checkout flow. If a user taps "Lock In My Savings" at phase 0 (before animation starts), they get the correct founding rate price and Stripe ID. The displayed animation is decoration over a value that is correct from first render.
+- Prices unchanged: $4.99/mo (MONTHLY_PRICE_CENTS), $39.99/yr (ANNUAL_PRICE_CENTS). Stripe Price IDs unchanged.
+
+---
+
 ## [2026-06-23] — Tally deleted + mirror/gap1 merged into pain screen + gap3 restructured
 
 **Requested by:** Keenan
