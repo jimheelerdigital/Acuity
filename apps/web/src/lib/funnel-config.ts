@@ -619,6 +619,7 @@ export interface PatternLabels {
   primary: string;
   secondary: string | null;
   area: string;
+  areaFallback: boolean;
   bodyCopy: string;
   loopLine: string;
   secondaryVisible: boolean;
@@ -686,6 +687,7 @@ export function getPatternLabels(branch: Branch, answers: Record<string, string 
 
   // Area — single-select, clean 1:1
   const costAnswer = String(answers.shared_q6 ?? "");
+  const areaFallback = !costAnswer || !AREA_MAP[costAnswer];
   const area = AREA_MAP[costAnswer] ?? "Energy";
 
   // Secondary — from shared_q9
@@ -714,7 +716,7 @@ export function getPatternLabels(branch: Branch, answers: Record<string, string 
     secondaryVisible = false;
   }
 
-  return { primary, secondary, area, bodyCopy, loopLine, secondaryVisible, stuckDeepOverride, collisionSuppressed };
+  return { primary, secondary, area, areaFallback, bodyCopy, loopLine, secondaryVisible, stuckDeepOverride, collisionSuppressed };
 }
 
 // ─── Snapshot: Weekly Report Previews (used by Timeline screen) ────────────

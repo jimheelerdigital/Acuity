@@ -130,4 +130,17 @@ describe("getPatternLabels", () => {
     expect(blur.bodyCopy).not.toBe(mask.bodyCopy);
     expect(blur.loopLine).not.toBe(mask.loopLine);
   });
+
+  // ─── Area fallback observability ───────────────────────────────────────
+  it("sets areaFallback=false when q6 has a real answer", () => {
+    const result = getPatternLabels("blur", makeAnswers({ shared_q6: "My health" }));
+    expect(result.area).toBe("Health");
+    expect(result.areaFallback).toBe(false);
+  });
+
+  it("sets areaFallback=true and area='Energy' when q6 is empty", () => {
+    const result = getPatternLabels("blur", makeAnswers({ shared_q6: "" }));
+    expect(result.area).toBe("Energy");
+    expect(result.areaFallback).toBe(true);
+  });
 });

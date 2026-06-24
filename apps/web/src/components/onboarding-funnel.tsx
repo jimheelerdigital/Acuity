@@ -1824,6 +1824,7 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
         primary: labels.primary,
         secondary: labels.secondary,
         area: labels.area,
+        area_fallback: labels.areaFallback,
         branch,
         duration: String(answers.shared_q5 ?? ""),
         stuck_deep_override: labels.stuckDeepOverride,
