@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-06-24] — Admin funnel chart (v5) now matches the live funnel order
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 204be096
+
+### In plain English (for Keenan)
+
+When we moved the "time math" screen to run one step later (after the cost question), the admin dashboard's funnel chart didn't get the memo — it still showed Time Math before the cost question. That meant the drop-off and conversion percentages between those two steps in the dashboard were being calculated in the wrong order. This lines the chart back up with what people actually see, so those numbers read correctly again. No change to the funnel itself — purely an analytics-accuracy fix.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/api/admin/metrics/route.ts`: in `FUNNEL_STEPS_V5`, swapped the `timemath` and `shared_q6` rows so the order is now `shared_q5 → shared_q6 → timemath → shared_q7`, matching `STEP_ORDER` and the `eventMap` in `onboarding-funnel.tsx`.
+
+### Manual steps needed
+
+None.
+
+### Notes
+
+- Audited the full v5 list against the live `STEP_ORDER` + `eventMap` before changing anything. The timemath/Q6 swap was the only ordering discrepancy. The three v5-only rows (`commit_completed`, `account_created`, `trial_continued`) are intentional sub-events fired within their screens, not `STEP_ORDER` steps, so they were left as-is.
+- This is the analytics counterpart to commit 31544ad9 (the time-math reorder). Any future reorder of `STEP_ORDER` needs a matching edit to `FUNNEL_STEPS_V5`, or older sessions should be left on their original flow version.
+- The metrics route has ~40 pre-existing implicit-any / PrismaClient type errors unrelated to this change; none are near the edited block.
+
+---
+
 ## [2026-06-24] — Time-math screen now reflects the user's own answers
 
 **Requested by:** Keenan
