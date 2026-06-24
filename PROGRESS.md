@@ -7,6 +7,63 @@
 
 ---
 
+## [2026-06-23] — Deterministic pattern-label system + result screen + shared_q6 single-select + snapshot decomposed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9485f580
+
+### In plain English (for Keenan)
+When someone goes through the /start funnel on the website, they now see a **personalized pattern screen** right after the "analyzing your patterns" loading moment. Based on what they answered in the quiz, they get assigned a **named pattern** (like "Mental Overload" or "Invisible Load"), a **secondary signal** (like "Overflow" or "Follow-Through Decay"), and the **area of their life it's costing them most**. Each pattern comes with its own unique explanation that's specific to THAT pattern — so two people who answered differently will see completely different descriptions. This is the emotional payoff before we ask them to pay. It makes the funnel feel like it actually understood them, not like a generic quiz.
+
+Also: the "What's it costing you?" question used to let people pick multiple answers (energy, relationships, health, etc.). Now it asks "What's it costing you **most**?" and they pick one. This makes the pattern screen cleaner — one area, not a list.
+
+The weekly-report preview examples (the ones that show what Acuity's report actually looks like — "The argument happened Tuesday, but the tension started Sunday") were preserved and moved into the timeline screen, so users still see proof of the product before the paywall. The paywall headline now reads "Your personal clarity system is ready" with "Stop losing track of what your own life is trying to tell you."
+
+### Technical changes (for Jimmy)
+Taxonomy v2 was written as `funnel-pattern-taxonomy.md`, approved by Keenan before any code was written.
+
+Pattern label system:
+- `apps/web/src/lib/funnel-config.ts`: new `getPatternLabels(branch, answers)` pure function — maps entry branch → primary pattern (6 labels), shared_q9 → secondary pattern (4 labels), shared_q5 duration → "Stuck Deep" override, shared_q6 → area label (6 labels). Collision rule: Racing Mind + Rumination Spiral suppresses secondary (or falls through to Stuck Deep if duration qualifies). Includes `LOOP_LINES`, `BODY_COPY`, `SECONDARY_PATTERN`, `AREA_MAP`, `COLLISION_PAIRS` lookup tables.
+- `apps/web/src/lib/funnel-config.test.ts`: 23 vitest unit tests covering all 6 branches, 4 secondary patterns, duration override, collision-suppress case, collision-into-Stuck-Deep case, area mapping, anti-Barnum body copy uniqueness.
+
+shared_q6 single-select change:
+- `funnel-config.ts`: removed `multiSelect: true` from shared_q6, question text changed from "What's it costing you?" to "What's it costing you most?", normalization changed from "On average, people select 3 of these." to "Naming the cost makes it real."
+- `formatCostShort()`: signature changed from `(costs: string[])` to `(cost: string)` — no longer handles arrays.
+- `buildGap1Content()`: reads `answers.shared_q6` as single string, produces single-element `costWords` array for highlight animation.
+- `getGap2Header()`: reads `answers.shared_q6` as single string, passes to `formatCostShort()`.
+- `apps/web/src/app/api/admin/metrics/route.ts`: removed `.split(", ")` for `funnel_shared_q6_selected` events (now single-select). Updated diagnostic comment. Legacy multi-select data in analytics will show as comma-separated strings (harmless — just won't split into separate buckets).
+
+Snapshot decomposition:
+- Snapshot Section 1 ("The pattern you can't see" / `getSnapshotInsight()`) → DELETED. Replaced by `PatternResultScreen` which does this better with named labels + anti-Barnum copy. `getSnapshotInsight()` removed from `funnel-config.ts`.
+- Snapshot Section 2 ("What one week reveals" / `SNAPSHOT_PREVIEWS`) → MIGRATED to `TimelineScreen`. Appears after the Week 1–4 timeline as "What one week actually looks like" with the same staggered-reveal animation.
+- Snapshot Section 3 (bottom line / `SNAPSHOT_BOTTOM`) → MIGRATED to `TimelineScreen` as the closer before the CTA button.
+- `SnapshotScreen` component removed from `onboarding-funnel.tsx`. `"snapshot"` removed from `Step` type and `STEP_ORDER`.
+
+New funnel step:
+- `"pattern-result"` added to `Step` type and `STEP_ORDER` after `"processing"`, before `"timeline"`.
+- `PatternResultScreen` component: renders primary pattern (large bold), secondary signal (if visible), area (pill tag), loop line (italic), body copy, "What Acuity tracks for you" list, CTA → timeline. Staggered reveal animation matching existing screen patterns.
+- Analytics: fires `funnel_pattern_assigned` event with `{primary, secondary, area, branch, duration, stuck_deep_override, collision_suppressed}` on render.
+- Event map: `funnel_snapshot_viewed` → `funnel_pattern_result_viewed` in component and metrics route.
+
+Paywall positioning:
+- `SavingsScreen` headline: "Your personal clarity system is ready." / "Stop losing track of what your own life is trying to tell you."
+
+Step order (post-change): entry → branch-q2–q4 → shared-q5 → timemath → shared-q6 → shared-q7–q9 → tally → mirror → gap1–3 → mechanism → commit → processing → **pattern-result** → timeline → create-account → savings → download.
+
+### Manual steps needed
+None — no build, no migration, no store submission. Deploys automatically on push.
+
+### Notes
+- **⚠️ `acuity-onboarding-spec-v2.md` is stale.** It describes 5 universal diagnostic questions, a 30-day trial, account-before-paywall flow, and a "promise screen" that doesn't exist. Should be archived or updated to reflect the real funnel. Do not trust it for trial length, screen order, or paywall placement.
+- **shared_q6 blast radius was handled.** Every consumer of shared_q6 was found and updated: `formatCostShort()` (signature change), `buildGap1Content()`, `getGap2Header()`, metrics route split logic. `buildGapContent()` (legacy wrapper) calls `buildGap1Content()` so it inherits the fix. No other code reads `answers.shared_q6` directly.
+- **Mobile app not affected.** The mobile funnel (`apps/mobile/app/onboarding-new/q4.tsx`) has its own question set and answer keys — it doesn't share `shared_q6` with the web funnel. The mobile onboarding doesn't go through the `/start` web funnel.
+- **Mechanism screen left untouched.** Taxonomy §7 proposed unifying the mechanism screen onto the same taxonomy — that's deferred to a follow-up pass per Keenan's instruction.
+- **Collision rule is extensible.** `COLLISION_PAIRS` is a list of `[primary, secondary]` tuples. Currently only `["Racing Mind", "Rumination Spiral"]`. Add more pairs to the array if new patterns create redundancy.
+- **Analytics event `funnel_pattern_assigned`** captures the full label set including override/collision flags, so label distribution can be audited from analytics without reading code.
+
+---
+
 ## [2026-06-23] — Notifications settings (foundation) + account-deletion data-integrity fix
 
 **Requested by:** Jimmy
