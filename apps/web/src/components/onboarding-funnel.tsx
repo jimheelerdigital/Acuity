@@ -2325,16 +2325,27 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
   const [slashPhase, setSlashPhase] = useState(0);
+  const pricingRef = useRef<HTMLDivElement>(null);
+  const slashTriggered = useRef(false);
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+  // Trigger the slash animation only when the pricing section scrolls into view
   useEffect(() => {
     if (prefersReduced) { setSlashPhase(3); return; }
-    // Delay the slash until the rest of the screen has settled (~800ms after mount)
-    const t: ReturnType<typeof setTimeout>[] = [];
-    t.push(setTimeout(() => setSlashPhase(1), 800));   // strikethrough draws
-    t.push(setTimeout(() => setSlashPhase(2), 1400));   // founding rate lands
-    t.push(setTimeout(() => setSlashPhase(3), 1800));   // badges appear
-    return () => t.forEach(clearTimeout);
+    const el = pricingRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !slashTriggered.current) {
+        slashTriggered.current = true;
+        const t: ReturnType<typeof setTimeout>[] = [];
+        t.push(setTimeout(() => setSlashPhase(1), 400));    // strikethrough draws after 400ms in view
+        t.push(setTimeout(() => setSlashPhase(2), 1200));   // founding rate lands at 1.2s
+        t.push(setTimeout(() => setSlashPhase(3), 2000));   // badges appear at 2s
+        // Cleanup not critical — one-shot
+      }
+    }, { threshold: 0.3 }); // trigger when 30% of the pricing section is visible
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [prefersReduced]);
 
   const toggleFeature = (name: string) => {
@@ -2421,9 +2432,10 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         </section>
 
         {/* Section 5 — Pricing cards with price-slash animation */}
-        <section className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "260ms" }}>
+        <section ref={pricingRef} className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "260ms" }}>
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes pw-strike { from { width: 0; } to { width: 100%; } }
+            @keyframes pw-shrink-text { from { font-size: 1.5rem; } to { font-size: 0.875rem; } }
             @keyframes pw-shrink { from { font-size: inherit; opacity: 1; } to { font-size: 0.875rem; opacity: 0.7; } }
             @keyframes pw-land { from { opacity: 0; transform: scale(0.7) translateY(-8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
             @keyframes pw-badge { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
@@ -2440,12 +2452,12 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
                 {/* Strikethrough line — draws left-to-right */}
                 {slashPhase >= 1 && (
                   <span className="absolute left-0 top-1/2 h-[2px] bg-red-400"
-                    style={{ animation: prefersReduced ? "none" : "pw-strike 400ms ease-out forwards", width: prefersReduced ? "100%" : undefined }} />
+                    style={{ animation: prefersReduced ? "none" : "pw-strike 600ms ease-out forwards", width: prefersReduced ? "100%" : undefined }} />
                 )}
               </p>
               {/* Founding rate — lands after slash */}
               <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
-                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 400ms cubic-bezier(0.34,1.56,0.64,1) forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
+                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 600ms cubic-bezier(0.34,1.56,0.64,1) forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
                 {formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span>
               </p>
               {/* Badge — appears after rate lands */}
@@ -2468,12 +2480,12 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
                 <span>$199</span><span className={`font-normal ${slashPhase >= 1 ? "text-xs" : "text-sm text-zinc-400"}`}>/yr</span>
                 {slashPhase >= 1 && (
                   <span className="absolute left-0 top-1/2 h-[2px] bg-red-400"
-                    style={{ animation: prefersReduced ? "none" : "pw-strike 400ms ease-out 150ms forwards", width: prefersReduced ? "100%" : undefined }} />
+                    style={{ animation: prefersReduced ? "none" : "pw-strike 600ms ease-out 200ms forwards", width: prefersReduced ? "100%" : undefined }} />
                 )}
               </p>
               {/* Founding rate — lands after slash */}
               <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
-                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 400ms cubic-bezier(0.34,1.56,0.64,1) 150ms forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
+                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 600ms cubic-bezier(0.34,1.56,0.64,1) 200ms forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
                 {formatDollars(ANNUAL_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/yr</span>
               </p>
               {/* Badge — appears after rate lands */}
