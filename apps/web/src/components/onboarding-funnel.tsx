@@ -81,6 +81,42 @@ const DOWNLOAD_TESTIMONIALS = [
   { quote: "Week 3, Acuity connected my mom to my work stress. A year of therapy never did.", name: "Priya R." },
 ];
 
+// ── Reusable social proof (reuses the EXISTING 4.9/127+ rating + real testimonials) ──
+// Rating value, star markup, and "127+ users" copy mirror the Download screen exactly
+// and must not change (brand rule). Testimonial quotes are reused from the real
+// PAYWALL_TESTIMONIALS_V2 set — no new or fabricated copy. Each element fires
+// funnel_social_proof_viewed with its placement so we can measure step drop-off.
+
+function SocialProofRating({ track, placement, className }: {
+  track: (event: string, props?: Record<string, unknown>) => void;
+  placement: string;
+  className?: string;
+}) {
+  useEffect(() => { track("funnel_social_proof_viewed", { value: placement }); }, []);
+  return (
+    <p className={`text-[13px] font-semibold text-zinc-500 ${className ?? ""}`}>
+      4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
+      <span className="font-medium text-zinc-400">from 127+ users</span>
+    </p>
+  );
+}
+
+function SocialProofQuote({ track, placement, testimonial, className, style }: {
+  track: (event: string, props?: Record<string, unknown>) => void;
+  placement: string;
+  testimonial: { quote: string; name: string };
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  useEffect(() => { track("funnel_social_proof_viewed", { value: placement }); }, []);
+  return (
+    <div className={`rounded-xl border border-zinc-100 bg-white/60 px-4 py-3 text-center ${className ?? ""}`} style={style}>
+      <p className="text-[13px] italic leading-relaxed text-zinc-600">&ldquo;{testimonial.quote}&rdquo;</p>
+      <p className="mt-1.5 text-[11px] font-semibold text-zinc-400">&mdash; {testimonial.name}</p>
+    </div>
+  );
+}
+
 // ─── Session Tracking ───────────────────────────────────────────────────────
 
 const SESSION_STORAGE_KEY = "acuity_funnel_session";
@@ -612,6 +648,7 @@ export function OnboardingFunnel() {
             options={q.options}
             normalization={q.normalization}
             highlightBranch={isEntry ? adMatchBranch : undefined}
+            topSlot={isEntry ? <SocialProofRating track={track} placement="entry" /> : undefined}
             onSelect={(opt) => {
               if (isEntry && opt.branch) {
                 setBranch(opt.branch);
@@ -657,7 +694,7 @@ export function OnboardingFunnel() {
 
       {/* ── Mechanism / Product Explainer (Screen 11) ── */}
       {step === "mechanism" && branch && (
-        <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={() => setStep("value")} />
+        <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={() => setStep("value")} track={track} />
       )}
 
       {/* ── What It Gives You (Screen 11b — value surfaces) ── */}
@@ -682,7 +719,7 @@ export function OnboardingFunnel() {
 
       {/* ── Personalized Timeline (Screen 14 — includes weekly-report previews) ── */}
       {step === "timeline" && branch && (
-        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("savings")} />
+        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("savings")} track={track} />
       )}
 
       {/* ── Paywall (shown BEFORE account creation — price-anchor) ── */}
@@ -747,13 +784,14 @@ export function OnboardingFunnel() {
 
 // ─── Single Select Question Screen ──────────────────────────────────────────
 
-function SingleSelectScreen({ question, questionLarge, options, normalization, onSelect, highlightBranch }: {
+function SingleSelectScreen({ question, questionLarge, options, normalization, onSelect, highlightBranch, topSlot }: {
   question?: string;
   questionLarge?: string;
   options: { label: string; branch?: Branch }[];
   normalization?: string;
   onSelect: (opt: { label: string; branch?: Branch }) => void;
   highlightBranch?: Branch;
+  topSlot?: React.ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -767,6 +805,9 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full">
+        {topSlot && (
+          <div className="mb-7 flex justify-center funnel-screen">{topSlot}</div>
+        )}
         {questionLarge ? (
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10 funnel-screen">{questionLarge}</h1>
         ) : question ? (
@@ -1454,8 +1495,9 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
   },
 };
 
-function MechanismScreen({ branch, answers, onContinue }: {
+function MechanismScreen({ branch, answers, onContinue, track }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
+  track: (event: string, props?: Record<string, unknown>) => void;
 }) {
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -1560,6 +1602,11 @@ function MechanismScreen({ branch, answers, onContinue }: {
       <p className="mb-6 text-center text-base font-bold italic text-zinc-900" style={fadeUp(5000)}>
         You already think about your life every day. Acuity just makes sure it counts.
       </p>
+
+      {/* ── Social proof — reused real testimonial validating the weekly-report mechanism ── */}
+      <div className="mx-auto mb-6 max-w-md" style={fadeUp(5400)}>
+        <SocialProofQuote track={track} placement="mechanism" testimonial={PAYWALL_TESTIMONIALS_V2[0]} />
+      </div>
 
       {/* ── Continue button — always visible from mount, never gated behind animations ── */}
       <div className="text-center">
@@ -1882,7 +1929,7 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
 
 // ─── Personalized Timeline (Screen 14 — includes weekly-report previews) ────
 
-function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void }) {
+function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void; track: (event: string, props?: Record<string, unknown>) => void }) {
   const weeks = getTimelineWeeks(branch, answers);
   const previews = SNAPSHOT_PREVIEWS[branch];
   const bottomLine = SNAPSHOT_BOTTOM[branch];
@@ -1956,6 +2003,13 @@ function TimelineScreen({ branch, answers, onContinue }: { branch: Branch; answe
         <div className={`mb-8 text-center transition-all duration-[800ms] ${showBottom ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <p className="text-base font-semibold text-zinc-900 leading-relaxed">{bottomLine}</p>
         </div>
+
+        {/* Social proof — reused real, week-themed testimonial alongside the "what one week looks like" proof */}
+        {showBottom && (
+          <div className="mb-8 funnel-screen">
+            <SocialProofQuote track={track} placement="timeline" testimonial={PAYWALL_TESTIMONIALS_V2[2]} />
+          </div>
+        )}
 
         <div className={`text-center transition-all duration-300 ${showBtn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <button onClick={onContinue}
