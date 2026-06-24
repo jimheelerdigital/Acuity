@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-06-24] — Timeline + paywall examples made branch-aware (fixes generic-voice regression)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 66b1d331
+
+### In plain English (for Keenan)
+Two personalization fixes so the funnel speaks to each person's specific situation instead of one-size-fits-all. First, the "This is what changes" timeline (Week 1 / Month 1 / Year 1) was written in one voice for everyone — and that voice was about "the cycle," which only really fits people who came in through the relationship/patterns door. Now each of the six entry paths gets its own version of all three milestones: someone whose problem is foggy, blurred-together days hears about the fog lifting; someone stuck in 2am overthinking hears about their mind getting somewhere to rest; someone who's tried-everything-before hears about something finally sticking, and so on. Second, on the pricing screen, the little example lines under each feature used to default to a relationship example (a partner, an argument, "the Marcus conversation") for everyone — so a person who never mentioned relationships still saw relationship examples. Now every feature shows an example that matches the path the user came in on. Nothing about price, the trial, the layout, or the buttons changed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts` → `getTimelineWeeks(branch, _answers)` now reads `branch` (previously ignored as `_branch`). Added a `TIMELINE_WEEKS: Record<Branch, TimelineWeek[]>` map with branch-specific Week 1 / Month 1 / Year 1 copy for all six branches (blur, patterns, rumination, graveyard, mask, drift). The "Starting now" badge stays on Week 1; three-node structure unchanged. Falls back to `TIMELINE_WEEKS.patterns` if branch is somehow unmapped. This reverses the prior single-generic-set regression (commit 75acfcdf).
+- `apps/web/src/components/onboarding-funnel.tsx` → `PAYWALL_FEATURES` examples for `Signals`, `Pattern detection`, `Weekly report`, and `Smart insights` converted from relational-leaning ternary fallbacks to per-pattern object lookups keyed by `primary` pattern label, covering all six branches. `example(p)` is called with `labels?.primary` (which is `PRIMARY_PATTERN[branch]`: blur→Mental Overload, patterns→Relational Looping, rumination→Racing Mind, graveyard→System Fatigue, mask→Invisible Load, drift→Drifted Off-Course). Each lookup has a neutral non-relational fallback for the null-branch edge case.
+- `TimelineScreen` needed no changes — it already maps over `weeks` and passes `branch` positionally; node count, reveal timing, and progress-line height are data-driven.
+- Untouched: pricing, Stripe Price IDs, the price-slash animation, FAQ, testimonials, paywall CTAs, the `SNAPSHOT_PREVIEWS`/`SNAPSHOT_BOTTOM` weekly-report preview boxes (already branch-aware), and all animation timing.
+- Typecheck: the two funnel files are clean (`npx tsc --noEmit` shows zero errors in them; remaining errors are pre-existing in `account/` and `admin/adlab/`, unrelated to this change).
+
+### Manual steps needed
+- [ ] None — deploys on push. (Push still pending — waiting on Keenan's "push it".)
+
+### Notes
+- This was the #1 fix from the Phase 1 branch-awareness audit: branch data was already plumbed into both functions, so no new wiring was needed — only the copy/return values changed.
+- The non-relational fallbacks in the paywall examples only ever trigger when `branch` is null (e.g. someone deep-links into the savings step without an entry branch). Normal funnel traffic always has a branch, so every real user now hits a matching example.
+- If the timeline copy ever needs to go back to a single canonical set, replace the `TIMELINE_WEEKS` map body with one shared array — the call site does not care.
+
+---
+
 ## [2026-06-24] — Timeline reworked: Week 1 / Month 1 / Year 1 escalating milestones
 
 **Requested by:** Keenan
