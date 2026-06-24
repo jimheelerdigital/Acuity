@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-06-23] — Paywall redesign: trial-vs-paid comparison + interactive feature examples
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b81219b7
+
+### In plain English (for Keenan)
+The paywall screen ("Lock In My Savings") now shows a **concrete feature comparison table** that makes the trial-vs-paid difference tangible. During the trial, everything is unlocked (all checkmarks). After the trial ends without subscribing, the high-value features (Signals, pattern detection, Life Matrix, weekly report) show as "Locked" — so the user sees exactly what they'd lose. Each feature row is **tappable** — tap it and a real example expands showing what that feature actually does, personalized to the user's assigned pattern when possible (e.g. a "Relational Looping" user sees a relationship-specific Signal example). The 988 crisis line is now in the footer.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: `SavingsScreen` rewritten. New `PAYWALL_FEATURES` array (7 features matching `acuity-positioning.md` canonical terms: Voice debrief, Task extraction, Signals, Pattern detection, Life Matrix, Weekly report, Streaks and milestones). Each feature has `duringTrial`/`afterTrial` booleans and a `example(primaryPattern)` function for pattern-personalized expandable examples. `getPatternLabels()` called in SavingsScreen to feed the user's primary pattern into examples. `expandedFeature` state toggles row expansion.
+- Analytics: `funnel_paywall_feature_tap` event fires with feature name on expand.
+- Pricing cards, CTAs, Stripe logic, trial length (7-day) all unchanged.
+- No entitlement logic changes. No Stripe changes. No new feature gating.
+- 988 crisis line added to sticky footer.
+
+### Manual steps needed
+None — deploys on push.
+
+### Notes
+- **Not a free tier.** The "Without Pro" column shows the trial-EXPIRED state, not a permanent free plan. The summary line says "Everything is unlocked during your trial. Without Pro, you keep basic recording but lose the surfaces that show you what it means."
+- Features kept after trial expiry (debrief, task extraction, streaks) vs. locked (Signals, patterns, Life Matrix, weekly report) — this matches the actual entitlement logic in the app. If entitlements change, update `PAYWALL_FEATURES` afterTrial booleans.
+- Pattern-personalized examples only fire when `branch` is available (always true in the funnel flow, but defensive null check is in place).
+
+---
+
 ## [2026-06-23] — v5 funnel metrics stage list (pattern-result + single-select q6)
 
 **Requested by:** Keenan
