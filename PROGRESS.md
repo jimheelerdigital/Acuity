@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-06-24] — Remove the App Store install banner from the /start funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0461abe5
+
+### In plain English (for Keenan)
+
+When someone on a phone went through the /start onboarding funnel, a banner was sitting at the top inviting them to download the app from the App Store. The problem: the funnel already walks people to a download step at the end, so the banner was an early exit ramp that pulled them out before they finished. We removed that banner from the /start funnel only. It still shows on the homepage, landing pages, and the other marketing/signup pages exactly like before.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/install-banner.tsx`: added `/start` to `EXCLUDED_PREFIXES` so `isEligibleRoute` returns false for the funnel. No change to platform detection, dismiss-cookie, or analytics logic.
+
+### Manual steps needed
+
+None.
+
+### Notes
+
+- This is the global `InstallBanner` (the fixed "Acuity is better in the app" bar with the store badge), not the funnel's own end-of-flow download step — that step is untouched.
+- `install-banner.tsx` has one pre-existing `navigator.userAgent` type error unrelated to this change.
+
+---
+
 ## [2026-06-24] — Admin funnel chart (v5) now matches the live funnel order
 
 **Requested by:** Keenan
