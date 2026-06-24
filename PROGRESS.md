@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-06-23] — v5 funnel metrics stage list (pattern-result + single-select q6)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9a67c991
+
+### In plain English (for Keenan)
+The admin dashboard's funnel analytics now has a **v5** button alongside v4/v3/v2/v1. When you click v5, you see the current funnel stages — including the new "Pattern Result" screen that replaced the old "Snapshot" screen. New users going through the funnel are automatically tagged as v5 sessions, so their data shows up in the v5 view. Old data still shows up correctly under v4/v3/etc. — nothing historical was changed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/metrics/route.ts`: added `FUNNEL_STEPS_V5` stage list (26 stages — `pattern_result` replaces `snapshot`, everything else identical to v4). Added `"v5"` to `flowVersion` union type, version filter (`WHERE flowVersion = "v5"`), step-selector ternary, and function default. v1–v4 arrays and filtering logic untouched.
+- `apps/web/src/components/onboarding-funnel.tsx`: `flowVersion` in `useTrack` hook changed from `"v4"` to `"v5"` — all new funnel sessions now write `flowVersion: "v5"` to the `onboardingEvent` table.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: default version state changed to `"v5"`, version selector buttons now include `"v5"` as first option.
+
+### Manual steps needed
+None — deploys on push. No migration needed (flowVersion column already exists as a string).
+
+### Notes
+- **Version attribution method:** Each funnel session writes `flowVersion: "v5"` on every event at track-time (hardcoded in the `useTrack` hook). The metrics API filters on this column. No date-based epoch clamping is used for v2+ — version filtering is purely column-based. v1 is the exception (uses `flowVersion: null OR "v1"` + date clamping).
+- **The paywall has NOT moved yet.** The current live order is still account-first (create-account → savings). The card-first reorder is planned but not live — v5 reflects what's actually deployed, not what's planned.
+- **shared_q6 single-select:** The `.split(", ")` was already removed in the prior commit. v5 metrics will naturally read q6 as a single value. Legacy v4 data with comma-separated multi-select values will appear as-is in v4 view (harmless).
+
+---
+
 ## [2026-06-23] — Deterministic pattern-label system + result screen + shared_q6 single-select + snapshot decomposed
 
 **Requested by:** Keenan
