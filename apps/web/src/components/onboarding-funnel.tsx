@@ -39,6 +39,7 @@ import {
   SAVINGS_TIMELINE,
   PAYWALL_TESTIMONIALS_V2,
   getPaywallLossRecap,
+  getPaywallTestimonial,
   getPatternLabels,
 } from "@/lib/funnel-config";
 
@@ -2309,18 +2310,25 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
     example: () => "7-day streak. 30 entries. Your consistency is part of why the patterns become visible.",
   },
   {
-    name: "Signals",
-    description: "Next-step guidance based on what you actually said.",
+    name: "Weekly report",
+    description: "A written narrative of your week \u2014 the throughline you\u2019d never assemble yourself.",
     duringTrial: true,
     afterTrial: false,
     example: (p) => ({
-      "Mental Overload": "e.g. 'You described 4 days as \u2018fine\u2019 but named zero highlights \u2014 block 30 minutes for something that matters to you.'",
-      "Relational Looping": "e.g. 'You\u2019ve mentioned the same tension with your partner 3 times this week and keep deferring the conversation \u2014 schedule it.'",
-      "Racing Mind": "e.g. 'The same worry has looped for 3 nights running and never once came true \u2014 write down what you\u2019d need to see to let it go.'",
-      "System Fatigue": "e.g. 'You\u2019re on day 9 \u2014 past where every other tool fizzled out. Don\u2019t change a thing; just keep showing up for 60 seconds.'",
-      "Invisible Load": "e.g. 'You gave everyone else 8/10 energy and yourself 3/10 all week \u2014 name one thing this week that\u2019s just for you.'",
-      "Drifted Off-Course": "e.g. 'You\u2019ve mentioned a goal you used to care about twice and done nothing with it \u2014 take one small step toward it this week.'",
-    }[p ?? ""] ?? "e.g. 'You keep deferring the same thing week after week \u2014 block 30 minutes and finally close it out.'"),
+      "Mental Overload": "e.g. 'Three days blurred together this week \u2014 but Wednesday, the day you felt clear, was the one day you stepped outside at lunch.'",
+      "Relational Looping": "e.g. 'The argument happened Tuesday. The tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.'",
+      "Racing Mind": "e.g. 'The same three worries ran through every evening this week \u2014 and two of them never actually happened.'",
+      "System Fatigue": "e.g. 'This is the longest you\u2019ve stuck with anything in months \u2014 12 entries, and the week you almost quit was the week you learned the most.'",
+      "Invisible Load": "e.g. 'You gave 8/10 energy to everyone else and 3/10 to yourself \u2014 every single day this week.'",
+      "Drifted Off-Course": "e.g. 'You mentioned who you used to be twice this week and who you want to become once \u2014 the gap is the whole story.'",
+    }[p ?? ""] ?? "e.g. 'The same frustration showed up three days before it surfaced \u2014 a throughline you\u2019d never assemble yourself.'"),
+  },
+  {
+    name: "Life Matrix",
+    description: "Six life domains tracked over time so you see where you\u2019re thriving and where you\u2019re slipping.",
+    duringTrial: true,
+    afterTrial: false,
+    example: () => "Health: 7.2 \u2192 Career: 4.1 \u2192 Relationships: 6.8. You can see which areas get your energy and which ones don\u2019t.",
   },
   {
     name: "Pattern detection",
@@ -2337,25 +2345,18 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
     }[p ?? ""] ?? "e.g. 'The same theme keeps surfacing across your weeks \u2014 there\u2019s a pattern worth examining.'"),
   },
   {
-    name: "Life Matrix",
-    description: "Six life domains tracked over time so you see where you\u2019re thriving and where you\u2019re slipping.",
-    duringTrial: true,
-    afterTrial: false,
-    example: () => "Health: 7.2 \u2192 Career: 4.1 \u2192 Relationships: 6.8. You can see which areas get your energy and which ones don\u2019t.",
-  },
-  {
-    name: "Weekly report",
-    description: "A written narrative of your week \u2014 the throughline you\u2019d never assemble yourself.",
+    name: "Signals",
+    description: "Next-step guidance based on what you actually said.",
     duringTrial: true,
     afterTrial: false,
     example: (p) => ({
-      "Mental Overload": "e.g. 'Three days blurred together this week \u2014 but Wednesday, the day you felt clear, was the one day you stepped outside at lunch.'",
-      "Relational Looping": "e.g. 'The argument happened Tuesday. The tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.'",
-      "Racing Mind": "e.g. 'The same three worries ran through every evening this week \u2014 and two of them never actually happened.'",
-      "System Fatigue": "e.g. 'This is the longest you\u2019ve stuck with anything in months \u2014 12 entries, and the week you almost quit was the week you learned the most.'",
-      "Invisible Load": "e.g. 'You gave 8/10 energy to everyone else and 3/10 to yourself \u2014 every single day this week.'",
-      "Drifted Off-Course": "e.g. 'You mentioned who you used to be twice this week and who you want to become once \u2014 the gap is the whole story.'",
-    }[p ?? ""] ?? "e.g. 'The same frustration showed up three days before it surfaced \u2014 a throughline you\u2019d never assemble yourself.'"),
+      "Mental Overload": "e.g. 'You described 4 days as \u2018fine\u2019 but named zero highlights \u2014 block 30 minutes for something that matters to you.'",
+      "Relational Looping": "e.g. 'You\u2019ve mentioned the same tension with your partner 3 times this week and keep deferring the conversation \u2014 schedule it.'",
+      "Racing Mind": "e.g. 'The same worry has looped for 3 nights running and never once came true \u2014 write down what you\u2019d need to see to let it go.'",
+      "System Fatigue": "e.g. 'You\u2019re on day 9 \u2014 past where every other tool fizzled out. Don\u2019t change a thing; just keep showing up for 60 seconds.'",
+      "Invisible Load": "e.g. 'You gave everyone else 8/10 energy and yourself 3/10 all week \u2014 name one thing this week that\u2019s just for you.'",
+      "Drifted Off-Course": "e.g. 'You\u2019ve mentioned a goal you used to care about twice and done nothing with it \u2014 take one small step toward it this week.'",
+    }[p ?? ""] ?? "e.g. 'You keep deferring the same thing week after week \u2014 block 30 minutes and finally close it out.'"),
   },
   {
     name: "Ask your past self",
@@ -2396,6 +2397,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
 }) {
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
   const labels = branch ? getPatternLabels(branch, answers) : null;
+  const paywallTestimonial = getPaywallTestimonial(branch);
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
   const [slashPhase, setSlashPhase] = useState(0);
@@ -2448,8 +2450,8 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           {/* Column headers */}
           <div className="grid grid-cols-[1fr_auto_auto] items-center px-4 py-3 border-b border-zinc-100 bg-zinc-50/50">
             <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-400">Feature</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-600 w-[72px] text-center">Your trial</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-400 w-[72px] text-center">Without Pro</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-600 w-[72px] text-center">Pro</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-400 w-[72px] text-center">Free</span>
           </div>
 
           {/* Feature rows — tappable for examples */}
@@ -2491,7 +2493,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           {/* Summary line */}
           <div className="px-4 py-3 bg-zinc-50/50">
             <p className="text-[13px] text-zinc-700 text-center font-semibold">
-              Everything is unlocked during your trial. Without Pro, you keep basic recording but lose the surfaces that show you what it means.
+              After your trial, recording, task extraction, and streaks stay free forever. Pro keeps the insight layer &mdash; the weekly report, Life Matrix, and patterns that show you what it all means.
             </p>
           </div>
         </section>
@@ -2582,7 +2584,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           </div>
 
           {/* Micro-testimonial */}
-          <p className="text-[12px] text-zinc-500 text-center italic mt-3">&ldquo;{PAYWALL_TESTIMONIALS_V2[0].quote.slice(0, 80)}&hellip;&rdquo; &mdash; {PAYWALL_TESTIMONIALS_V2[0].name}</p>
+          <p className="text-[12px] text-zinc-500 text-center italic mt-3">&ldquo;{paywallTestimonial.quote.slice(0, 80)}&hellip;&rdquo; &mdash; {paywallTestimonial.name}</p>
         </section>
       </div>
 

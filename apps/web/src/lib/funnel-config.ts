@@ -1165,3 +1165,13 @@ export const PAYWALL_TESTIMONIALS_V2 = [
   { quote: "My therapist asked what changed. I showed her my Acuity report. She said \u2018this is what I try to do in sessions.\u2019", name: "James K." },
   { quote: "Week 3, Acuity told me I bring up my mom every time I\u2019m stressed about work. I\u2019ve been in therapy for a year and never connected those.", name: "Priya R." },
 ];
+
+// Branch-matched paywall testimonial (real quotes only — no fabrication).
+// Priya R.'s recurring-relational-trigger quote fits the patterns branch;
+// James K.'s therapist-validation quote is the most universal (not tied to a
+// specific domain), so it is the default for every other branch rather than
+// Sarah M.'s career-specific one.
+export function getPaywallTestimonial(branch: Branch | null): { quote: string; name: string } {
+  if (branch === "patterns") return PAYWALL_TESTIMONIALS_V2[2];
+  return PAYWALL_TESTIMONIALS_V2[1];
+}
