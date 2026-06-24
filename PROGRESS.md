@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-24] — Paywall CTA reframe + no-card skip demoted to a text link
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7dfbe51c
+
+### In plain English (for Keenan)
+Two changes to the pricing screen aimed at getting more people onto the card-on-file path (which converts to paid far better than the no-card path). First, the big button now says "Start My 7 Days" instead of "Lock In My Savings" — it makes more sense because tapping it doesn't actually charge anyone today, it starts the free trial. The "you won't be charged today" line still sits right under it. Second, "Continue without paying" used to be a big button just as prominent as the paid button, which made it too easy to pick the weaker path; it's now a small, quiet text link. The free no-card option is still there and still works exactly the same — it's just no longer competing head-to-head with the paid button. Nothing about the actual price, the trial, or how billing works changed. We added tracking so we can see whether more people now choose the paid path and whether that lifts trial-to-paid conversion.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` → `SavingsScreen` sticky footer:
+  - Primary CTA label `"Lock In My Savings"` → `"Start My 7 Days"`. Button styling, glow animation, `onCheckout` handler, and destination all unchanged.
+  - Trial fine print ("7-day free trial… You won't be charged today.") moved to directly under the primary CTA.
+  - `"Continue without paying"` changed from a full-width `<button>` to a centered, muted, underlined text link (`text-xs text-zinc-400 … underline`). Same `onSkip` handler, same path.
+- Paywall handlers in `OnboardingFunnel` now fire tap-level path events:
+  - `onCheckout` → `track("funnel_paywall_paid_selected", { value: selectedPlan })`
+  - `onSkip` → `track("funnel_paywall_skip_selected")`
+  - These are new events (accepted via the `funnel_*` prefix rule), fired at the moment of choice on the paywall — earlier than the existing `funnel_checkout_started` (fires at Stripe) and `funnel_trial_continued` (fires after account creation).
+- No Stripe Price IDs, prices, entitlement logic, price-slash animation, FOUNDING RATE framing, comparison/feature content, positioning header, or 988 footer changed.
+
+### Manual steps needed
+- [ ] None — deploys on push. (Push still pending — waiting on Keenan's "push it".)
+
+### Notes
+- **What to measure after this ships:** path selection ratio at the paywall (`funnel_paywall_paid_selected` vs `funnel_paywall_skip_selected`), and downstream trial→paid conversion split by which path was chosen. The hypothesis is that demoting the skip + reframing the CTA shifts more users onto the card-on-file path and lifts paid conversion without hurting overall trial starts. Watch overall trial-start volume too, in case the friction reduces total starts.
+- The no-card path is intentionally preserved (not removed) — only de-emphasized.
+
+---
+
 ## [2026-06-24] — Light-touch social proof added to the /start funnel
 
 **Requested by:** Keenan
