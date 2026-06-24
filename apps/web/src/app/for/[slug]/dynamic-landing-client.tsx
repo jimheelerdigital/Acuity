@@ -105,6 +105,8 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
       <SocialProofBar />
       <TestimonialCarousel testimonials={allTestimonials} />
 
+      <InlineInstallCTA location="hero" />
+
       {/* Pain Points */}
       <section className="px-6 py-14 sm:py-18">
         <div className="mx-auto max-w-2xl">

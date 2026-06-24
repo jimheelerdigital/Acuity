@@ -66,6 +66,8 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
       <SocialProofBar />
       <TestimonialCarousel testimonials={buildTestimonialsWithLeader(page.testimonial)} />
 
+      <InlineInstallCTA location="hero" />
+
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-6 sm:grid-cols-3">
