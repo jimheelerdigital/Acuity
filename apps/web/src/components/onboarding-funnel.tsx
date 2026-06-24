@@ -1815,56 +1815,57 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
   const show = (at: number) => vis >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4";
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-6 py-16 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center px-6 py-12 text-zinc-900">
       <div className="max-w-md w-full">
-        {/* Labels section */}
-        <div className={`mb-8 transition-all duration-[800ms] ${show(1)}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-2">Your pattern</p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 mb-4">{labels.primary}</h2>
 
+        {/* ── Hero: Primary Pattern (the centerpiece — big, unmissable) ── */}
+        <div className={`text-center mb-6 transition-all duration-[800ms] ${show(1)}`}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-acuity-primary mb-3">Your pattern</p>
+          <h2 className="text-[32px] sm:text-[40px] font-extrabold tracking-tight text-zinc-900 leading-[1.1]">{labels.primary}</h2>
+        </div>
+
+        {/* ── Secondary + Area — prominent cards side by side ── */}
+        <div className={`grid ${labels.secondaryVisible && labels.secondary ? "grid-cols-2" : "grid-cols-1"} gap-3 mb-8 transition-all duration-[800ms] ${show(1)}`}>
           {labels.secondaryVisible && labels.secondary && (
-            <div className="mb-3">
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1">Secondary signal</p>
-              <p className="text-base font-semibold text-zinc-600">{labels.secondary}</p>
+            <div className="rounded-xl border-2 border-zinc-200 bg-zinc-50/80 p-4 text-center">
+              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1.5">Secondary signal</p>
+              <p className="text-lg font-bold text-zinc-800">{labels.secondary}</p>
             </div>
           )}
-
-          <div className="mb-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1">Most affected area</p>
-            <span className="inline-block rounded-full bg-acuity-primary/10 border border-acuity-primary/20 px-3 py-1 text-sm font-medium text-acuity-primary">
-              {labels.area}
-            </span>
+          <div className="rounded-xl border-2 border-acuity-primary/30 bg-acuity-primary/5 p-4 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1.5">Most affected area</p>
+            <p className="text-lg font-bold text-acuity-primary">{labels.area}</p>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className={`mb-6 border-t border-zinc-200 transition-all duration-500 ${show(2)}`} />
-
-        {/* Loop line — italic, emotionally resonant */}
-        <div className={`mb-6 transition-all duration-[800ms] ${show(2)}`}>
+        {/* ── Loop line — the sentence that makes them nod ── */}
+        <div className={`mb-6 rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4 transition-all duration-[800ms] ${show(2)}`}>
           <p className="text-[15px] italic text-zinc-600 leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
         </div>
 
-        {/* Body copy — anti-Barnum, pattern-specific */}
+        {/* ── Body copy — the reframe (anti-Barnum, pattern-specific) ── */}
         <div className={`mb-8 transition-all duration-[800ms] ${show(3)}`}>
           <p className="text-[15px] text-zinc-700 leading-relaxed">{labels.bodyCopy}</p>
         </div>
 
-        {/* Divider */}
-        <div className={`mb-6 border-t border-zinc-200 transition-all duration-500 ${show(4)}`} />
-
-        {/* What Acuity tracks */}
+        {/* ── How Acuity Helps — actionable, breaking-free focused ── */}
         <div className={`mb-10 transition-all duration-[800ms] ${show(4)}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3">What Acuity tracks for you</p>
-          <ul className="space-y-2">
-            {["Recurring thoughts", "Avoided tasks", "Life-area trends", "Weekly patterns"].map((item, i) => (
-              <li key={i} className={`flex items-center gap-2 text-sm text-zinc-700 transition-all duration-500 ${vis >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
-                style={{ transitionDelay: `${i * 100}ms` }}>
-                <span className="h-1.5 w-1.5 rounded-full bg-acuity-primary flex-shrink-0" />
-                {item}
-              </li>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">How Acuity helps</p>
+          <div className="space-y-3">
+            {[
+              { label: "Surface the triggers you can\u2019t see from inside the pattern", icon: "\u25C6" },
+              { label: "Track the tasks and goals that keep slipping through", icon: "\u2611" },
+              { label: "Show you which life areas are draining and which are growing", icon: "\u25CE" },
+              { label: "Catch subconscious patterns before they run another week", icon: "\u25C8" },
+              { label: "Give you a weekly mirror \u2014 so you stop guessing and start seeing", icon: "\u25A8" },
+            ].map((item, i) => (
+              <div key={i} className={`flex items-start gap-3 transition-all duration-500 ${vis >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
+                style={{ transitionDelay: `${i * 120}ms` }}>
+                <span className="text-acuity-primary text-sm mt-0.5 flex-shrink-0">{item.icon}</span>
+                <p className="text-[14px] text-zinc-700 leading-snug">{item.label}</p>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
         {/* CTA */}
