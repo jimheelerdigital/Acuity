@@ -2313,20 +2313,28 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
     description: "Next-step guidance based on what you actually said.",
     duringTrial: true,
     afterTrial: false,
-    example: (p) => p === "Relational Looping"
-      ? "e.g. 'You\u2019ve mentioned the same tension with your partner 3 times this week and keep deferring the conversation \u2014 schedule it.'"
-      : p === "Mental Overload"
-      ? "e.g. 'You described 4 days as \u2018fine\u2019 but named zero highlights \u2014 block 30 minutes for something that matters to you.'"
-      : "e.g. 'You\u2019ve mentioned the Marcus conversation 3 times and keep deferring it \u2014 schedule it this week.'",
+    example: (p) => ({
+      "Mental Overload": "e.g. 'You described 4 days as \u2018fine\u2019 but named zero highlights \u2014 block 30 minutes for something that matters to you.'",
+      "Relational Looping": "e.g. 'You\u2019ve mentioned the same tension with your partner 3 times this week and keep deferring the conversation \u2014 schedule it.'",
+      "Racing Mind": "e.g. 'The same worry has looped for 3 nights running and never once came true \u2014 write down what you\u2019d need to see to let it go.'",
+      "System Fatigue": "e.g. 'You\u2019re on day 9 \u2014 past where every other tool fizzled out. Don\u2019t change a thing; just keep showing up for 60 seconds.'",
+      "Invisible Load": "e.g. 'You gave everyone else 8/10 energy and yourself 3/10 all week \u2014 name one thing this week that\u2019s just for you.'",
+      "Drifted Off-Course": "e.g. 'You\u2019ve mentioned a goal you used to care about twice and done nothing with it \u2014 take one small step toward it this week.'",
+    }[p ?? ""] ?? "e.g. 'You keep deferring the same thing week after week \u2014 block 30 minutes and finally close it out.'"),
   },
   {
     name: "Pattern detection",
     description: "Recurring themes surfaced across your entries.",
     duringTrial: true,
     afterTrial: false,
-    example: (p) => p === "Racing Mind"
-      ? "e.g. 'Your calmest day was the only day you processed out loud before 6pm. The evening replay correlates with unprocessed afternoons.'"
-      : "e.g. 'You bring up your workload every Monday and your energy drops every Thursday \u2014 there\u2019s a pattern worth examining.'",
+    example: (p) => ({
+      "Mental Overload": "e.g. 'Your foggiest days all had zero unstructured time. Your clearest day had two hours of nothing planned.'",
+      "Relational Looping": "e.g. 'You bring up the same tension every Monday and it surfaces as a fight by Thursday \u2014 there\u2019s a pattern worth examining.'",
+      "Racing Mind": "e.g. 'Your calmest day was the only day you processed out loud before 6pm. The evening replay correlates with unprocessed afternoons.'",
+      "System Fatigue": "e.g. 'You\u2019ve hit a wall around day 4 with every tool before this one. Knowing that, you can push through the dip instead of quitting.'",
+      "Invisible Load": "e.g. 'You say \u2018I\u2019m fine\u2019 most often on the days your mood score is lowest \u2014 your words and your feelings are telling different stories.'",
+      "Drifted Off-Course": "e.g. 'Your energy peaks Sunday morning and fades by Monday night \u2014 the reset you keep losing happens at the same point every week.'",
+    }[p ?? ""] ?? "e.g. 'The same theme keeps surfacing across your weeks \u2014 there\u2019s a pattern worth examining.'"),
   },
   {
     name: "Life Matrix",
@@ -2340,9 +2348,14 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
     description: "A written narrative of your week \u2014 the throughline you\u2019d never assemble yourself.",
     duringTrial: true,
     afterTrial: false,
-    example: (p) => p === "Invisible Load"
-      ? "e.g. 'You gave 8/10 energy to everyone else and 3/10 to yourself \u2014 every single day this week.'"
-      : "e.g. 'The argument happened Tuesday. The tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.'",
+    example: (p) => ({
+      "Mental Overload": "e.g. 'Three days blurred together this week \u2014 but Wednesday, the day you felt clear, was the one day you stepped outside at lunch.'",
+      "Relational Looping": "e.g. 'The argument happened Tuesday. The tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.'",
+      "Racing Mind": "e.g. 'The same three worries ran through every evening this week \u2014 and two of them never actually happened.'",
+      "System Fatigue": "e.g. 'This is the longest you\u2019ve stuck with anything in months \u2014 12 entries, and the week you almost quit was the week you learned the most.'",
+      "Invisible Load": "e.g. 'You gave 8/10 energy to everyone else and 3/10 to yourself \u2014 every single day this week.'",
+      "Drifted Off-Course": "e.g. 'You mentioned who you used to be twice this week and who you want to become once \u2014 the gap is the whole story.'",
+    }[p ?? ""] ?? "e.g. 'The same frustration showed up three days before it surfaced \u2014 a throughline you\u2019d never assemble yourself.'"),
   },
   {
     name: "Ask your past self",
@@ -2356,9 +2369,14 @@ const PAYWALL_FEATURES: PaywallFeature[] = [
     description: "AI-generated observations about you that you\u2019d never notice on your own.",
     duringTrial: true,
     afterTrial: false,
-    example: (p) => p === "Mental Overload"
-      ? "e.g. 'Your mood is 2 points higher on days you mention your kids. You never mention them on your lowest days.'"
-      : "e.g. 'You use the word \u2018fine\u2019 most often on days your mood score is lowest. Your language and your feelings are telling different stories.'",
+    example: (p) => ({
+      "Mental Overload": "e.g. 'Your mood is 2 points higher on days you mention your kids. You never mention them on your lowest days.'",
+      "Relational Looping": "e.g. 'You use warmer words about your partner on weekends and sharper ones midweek \u2014 the same cycle, every seven days.'",
+      "Racing Mind": "e.g. 'The nights you slept best were the ones you talked it out before dinner. The replay needs an empty evening to run.'",
+      "System Fatigue": "e.g. 'Your motivation dips every fourth day like clockwork. It\u2019s not you losing interest \u2014 it\u2019s a rhythm, and now you can ride it out.'",
+      "Invisible Load": "e.g. 'You use the word \u2018fine\u2019 most often on days your mood score is lowest. Your language and your feelings are telling different stories.'",
+      "Drifted Off-Course": "e.g. 'You light up when you talk about one specific thing you\u2019ve stopped making time for. Your own words keep pointing back to it.'",
+    }[p ?? ""] ?? "e.g. 'You use the word \u2018fine\u2019 most often on days your mood score is lowest. Your language and your feelings are telling different stories.'"),
   },
   {
     name: "Theme map",

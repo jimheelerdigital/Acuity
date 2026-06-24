@@ -900,25 +900,105 @@ export interface TimelineWeek {
 }
 
 // Three escalating milestones — immediate (Week 1), compounding (Month 1),
-// long-term transformation (Year 1). Old four weeks consolidated: old Week 1
-// stays; old Week 2 (trigger) + Life Matrix fold into Month 1; old Week 4
-// memoir folds into Year 1.
-export function getTimelineWeeks(_branch: Branch, _answers: Record<string, string | string[]>): TimelineWeek[] {
-  return [
+// long-term transformation (Year 1). Branch-aware: each of the six entry
+// branches gets its own voice for all three milestones, so a blur/drift/mask
+// user is not told their problem is "the cycle" (patterns/relational voice).
+// Structure and the "Starting now" Week 1 eyebrow are constant across branches.
+const TIMELINE_WEEKS: Record<Branch, TimelineWeek[]> = {
+  patterns: [
     {
       week: "Week 1",
       badge: "Starting now",
-      text: "The cycle gets named. Not fixed yet \u2014 named. That\u2019s the part nobody else could do for you, and it happens in the first few debriefs.",
+      text: "The cycle gets named. Not fixed yet \u2014 named. The same argument, the same shutdown, the same Sunday-night dread \u2014 Acuity catches it in the first few debriefs. That\u2019s the part you could never quite see from inside it.",
     },
     {
       week: "Month 1",
-      text: "The pattern becomes undeniable. Your weekly reports start connecting dots across weeks \u2014 the trigger that keeps showing up, the Life Matrix taking shape across your six domains. You stop reacting to your life and start seeing the shape of it.",
+      text: "The pattern becomes undeniable. Your weekly reports start connecting the dots \u2014 the trigger that shows up days before the fight, the Life Matrix taking shape across your six domains. You stop reacting and start seeing the shape of it coming.",
     },
     {
       week: "Year 1",
-      text: "You have a record of yourself nobody else could write. A year of patterns, turning points, and quiet wins \u2014 documented from the outside. You can see the cycle on paper, show it to someone, and choose differently. Not because the problems vanished, but because you finally have the whole picture.",
+      text: "You have a record of yourself nobody else could write. A year of the patterns, the turning points, the quiet wins. You can see the cycle on paper, show it to someone who matters, and choose differently \u2014 not because it\u2019s gone, but because you finally see it whole.",
     },
-  ];
+  ],
+  blur: [
+    {
+      week: "Week 1",
+      badge: "Starting now",
+      text: "The fog gets a name. Your days stop blurring into one long autopilot \u2014 Acuity catches what actually happened, the moments that slipped past you, in the first few debriefs.",
+    },
+    {
+      week: "Month 1",
+      text: "The blur starts to lift. Your weekly reports show you the week you actually lived \u2014 not the one that dissolved. The Life Matrix takes shape across your six domains, and for the first time you can see where your days are going instead of wondering where they went.",
+    },
+    {
+      week: "Year 1",
+      text: "You have a record of a year you\u2019d otherwise have lost. The days that ran together are now a story you can actually read. You can see where your life is going, show it to someone, and start steering it \u2014 instead of waking up wondering how it\u2019s already been a year.",
+    },
+  ],
+  rumination: [
+    {
+      week: "Week 1",
+      badge: "Starting now",
+      text: "The noise gets somewhere to go. The thoughts that loop at 2am \u2014 Acuity catches them in the first few debriefs, so your mind isn\u2019t the only place they live.",
+    },
+    {
+      week: "Month 1",
+      text: "The replay starts to quiet. Your weekly reports show you what your mind keeps circling back to \u2014 and the Life Matrix takes shape across your six domains. You stop carrying the whole backlog at once, because it\u2019s finally written down somewhere outside your head.",
+    },
+    {
+      week: "Year 1",
+      text: "You have a record of a mind that finally got to rest. A year of the worries that mattered and the ones that never came true. You can see what your brain was really protecting you from, show it to someone, and let go of what it\u2019s safe to let go of.",
+    },
+  ],
+  graveyard: [
+    {
+      week: "Week 1",
+      badge: "Starting now",
+      text: "Something finally sticks. The journals, the apps, the therapy that didn\u2019t quite hold \u2014 this one asks for 60 seconds, and in the first few debriefs it\u2019s already catching what the others missed.",
+    },
+    {
+      week: "Month 1",
+      text: "You realize it\u2019s still going. Past the point everything else fizzled out. Your weekly reports connect dots across weeks and the Life Matrix takes shape across your six domains \u2014 not because you forced it, but because it finally met you where you actually are.",
+    },
+    {
+      week: "Year 1",
+      text: "You have a year of proof that you stuck with something. The thing you were sure you\u2019d quit by February. A full record of yourself \u2014 patterns, turning points, quiet wins \u2014 and the evidence that you were never the problem. The tools were.",
+    },
+  ],
+  mask: [
+    {
+      week: "Week 1",
+      badge: "Starting now",
+      text: "What\u2019s underneath gets seen. The \u2018I\u2019m fine\u2019 you say on autopilot \u2014 Acuity hears what\u2019s actually under it in the first few debriefs. Somewhere, finally, the real version is on the record.",
+    },
+    {
+      week: "Month 1",
+      text: "The weight gets measured. Your weekly reports show how much you\u2019ve been carrying for everyone else, and the Life Matrix takes shape across your six domains \u2014 including the ones you\u2019ve been quietly running on empty. You see the cost nobody else thinks to ask about.",
+    },
+    {
+      week: "Year 1",
+      text: "You have a record of everything you held that nobody saw. A year of the load you carried alone \u2014 now visible, on paper, undeniable. You can see what it actually cost, show it to someone you trust, and start setting it down \u2014 instead of holding it until you break.",
+    },
+  ],
+  drift: [
+    {
+      week: "Week 1",
+      badge: "Starting now",
+      text: "The drift gets named. The goals that quietly disappeared, the version of you that went somewhere \u2014 Acuity catches the first threads of it in the first few debriefs.",
+    },
+    {
+      week: "Month 1",
+      text: "You start to come back into focus. Your weekly reports show the gap between where you are and where you meant to be, and the Life Matrix takes shape across your six domains. For the first time in a while, you can see your life clearly enough to want things from it again.",
+    },
+    {
+      week: "Year 1",
+      text: "You have a record of finding your way back. A year of small turns, recovered goals, and quiet wins you\u2019d have otherwise missed. You can see how far you\u2019ve come, show it to someone, and choose where you\u2019re headed \u2014 on purpose this time.",
+    },
+  ],
+};
+
+export function getTimelineWeeks(branch: Branch, _answers: Record<string, string | string[]>): TimelineWeek[] {
+  return TIMELINE_WEEKS[branch] ?? TIMELINE_WEEKS.patterns;
 }
 
 // ─── Paywall Hooks (Screen 15) ──────────────────────────────────────────────
