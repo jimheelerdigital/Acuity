@@ -2353,7 +2353,9 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
 
         {/* Section 2 — Loss-aversion recap */}
         <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "80ms" }}>
-          <p className="text-sm text-zinc-700 text-center leading-relaxed font-medium">{getPaywallLossRecap(branch)}</p>
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-center">
+            <p className="text-[15px] text-zinc-900 leading-relaxed font-semibold">{getPaywallLossRecap(branch)}</p>
+          </div>
         </section>
 
         {/* Section 3 — Trial vs. After Trial comparison */}
@@ -2410,12 +2412,12 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         </section>
 
         {/* Section 4 — Cost comparison */}
-        <section className="mb-6 text-center funnel-card-stagger" style={{ animationDelay: "200ms" }}>
-          <p className="text-sm text-zinc-600 font-semibold">
-            <span className="text-zinc-400">Therapy: $150/session.</span>{" "}
-            <span className="text-zinc-400">A coach: $200/month.</span>{" "}
-            <span className="text-zinc-900">Acuity: less than a coffee a week.</span>
+        <section className="mb-6 rounded-xl border border-zinc-200 bg-white px-5 py-4 text-center funnel-card-stagger" style={{ animationDelay: "200ms" }}>
+          <p className="text-[15px] font-semibold text-zinc-900 leading-relaxed">
+            <span className="text-zinc-400 font-normal">Therapy: $150/session.</span>{" "}
+            <span className="text-zinc-400 font-normal">A coach: $200/month.</span>
           </p>
+          <p className="text-[17px] font-bold text-zinc-900 mt-1">Acuity: less than a coffee a week.</p>
         </section>
 
         {/* Section 5 — Pricing cards with price-slash animation */}
