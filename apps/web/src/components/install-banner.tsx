@@ -48,6 +48,9 @@ const EXCLUDED_PREFIXES = [
   "/achievements",
   "/actions",
   "/delete-account",
+  // /start is the web onboarding funnel — it has its own download step at the
+  // end, so a competing App Store banner up top would pull users out early.
+  "/start",
 ];
 
 function isEligibleRoute(pathname: string): boolean {
