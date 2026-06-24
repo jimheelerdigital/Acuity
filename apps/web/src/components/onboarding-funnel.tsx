@@ -20,8 +20,6 @@ import {
   SHARED_QUESTIONS,
   buildMirrorLines,
   buildGap1Content,
-  getTallyHeader,
-  getTallyKicker,
   getTimeMathContent,
   GAP2_FEELINGS,
   getGap2Header,
@@ -50,10 +48,9 @@ type Step =
   | "entry"
   | "branch-q2" | "branch-q3" | "branch-q4"
   | "shared-q5" | "shared-q6" | "shared-q7" | "shared-q8" | "shared-q9"
-  | "tally"
   | "timemath"
-  | "mirror"
-  | "gap1" | "gap2" | "gap3"
+  | "pain"
+  | "gap2" | "gap3"
   | "mechanism"
   | "commit"
   | "processing"
@@ -66,7 +63,7 @@ type Step =
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
   "shared-q5", "timemath", "shared-q6", "shared-q7", "shared-q8", "shared-q9",
-  "tally", "mirror", "gap1", "gap2", "gap3", "mechanism", "commit", "processing", "pattern-result", "timeline",
+  "pain", "gap2", "gap3", "mechanism", "commit", "processing", "pattern-result", "timeline",
   "savings", "create-account", "download",
 ];
 
@@ -400,10 +397,8 @@ export function OnboardingFunnel() {
       "shared-q7": "funnel_shared_q7_viewed",
       "shared-q8": "funnel_shared_q8_viewed",
       "shared-q9": "funnel_shared_q9_viewed",
-      tally: "funnel_tally_viewed",
       timemath: "funnel_timemath_viewed",
-      mirror: "funnel_mirror_viewed",
-      gap1: "funnel_gap1_viewed",
+      pain: "funnel_pain_viewed",
       gap2: "funnel_gap2_viewed",
       gap3: "funnel_gap3_viewed",
       mechanism: "funnel_mechanism_viewed",
@@ -586,7 +581,7 @@ export function OnboardingFunnel() {
 
         const nextStep = (): Step => {
           const idx = STEP_ORDER.indexOf(step);
-          return STEP_ORDER[idx + 1] ?? "mirror";
+          return STEP_ORDER[idx + 1] ?? "pain";
         };
 
         const eventBase = isEntry ? "funnel_entry" : step.startsWith("branch-") ? `funnel_${step.replace("-", "_")}` : `funnel_${step.replace("-", "_")}`;
@@ -637,30 +632,9 @@ export function OnboardingFunnel() {
         <TimeMathScreen key="timemath" answers={answers} onContinue={() => setStep("shared-q6")} onSkip={() => setStep("shared-q6")} />
       )}
 
-      {/* ── Tally Counter (after Q9, before Mirror) ── */}
-      {step === "tally" && (
-        <TallyScreen key="tally" answers={answers} track={track}
-          onContinue={(count) => {
-            setAnswers((a) => ({ ...a, tally_count: count }));
-            track("funnel_tally_set", { value: count });
-            setStep("mirror");
-          }}
-        />
-      )}
-
-      {/* ── Mirror (Screen 10) ── */}
-      {step === "mirror" && branch && (
-        <MirrorScreen
-          key="mirror"
-          branch={branch}
-          answers={answers}
-          onContinue={() => setStep("gap1")}
-        />
-      )}
-
-      {/* ── Gap 1: What it's costing you (Screen 10a) ── */}
-      {step === "gap1" && branch && (
-        <Gap1Screen key="gap1" branch={branch} answers={answers} onContinue={() => setStep("gap2")} />
+      {/* ── Pain (merged mirror + gap1 — sequential build) ── */}
+      {step === "pain" && branch && (
+        <PainScreen key="pain" branch={branch} answers={answers} onContinue={() => setStep("gap2")} />
       )}
 
       {/* ── Gap 2: How would it feel? (Screen 10b) ── */}
@@ -882,86 +856,6 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
   );
 }
 
-// ─── Tally Counter Screen (after Q9, before Mirror) ─────────────────────────
-
-function TallyScreen({ answers, track, onContinue }: {
-  answers: Record<string, string | string[]>;
-  track: (event: string, props?: Record<string, unknown>) => void;
-  onContinue: (count: string) => void;
-}) {
-  const q9 = String(answers.shared_q9 ?? "");
-  const header = getTallyHeader(q9);
-  const [count, setCount] = useState(0);
-  const [popKey, setPopKey] = useState(0);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  const hasTapped = count > 0;
-
-  const increment = () => {
-    if (count >= 20) return; // cap at 20
-    setCount((c) => c + 1);
-    setPopKey((k) => k + 1);
-    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
-  };
-
-  // Show "Keep going" prompt after 2 taps
-  useEffect(() => {
-    if (count >= 2 && !showPrompt) setShowPrompt(true);
-  }, [count, showPrompt]);
-
-  const handleLostCount = () => onContinue("lost_count");
-  const handleContinue = () => onContinue(count > 20 ? "20+" : String(count));
-
-  const display = count > 20 ? "20+" : String(count);
-
-  // Invitation pulse: 3 cycles × 1.5s = 4.5s, then stops. Only before first tap.
-  const pulseStyle = !prefersReduced && !hasTapped
-    ? { animation: "funnel-invite-pulse 1.5s ease-in-out 3" }
-    : undefined;
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
-      <div className="max-w-md w-full text-center funnel-screen">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight leading-snug mb-3">{header}</h2>
-
-        {/* Instruction line — fades in with the question */}
-        <p className="text-sm text-zinc-400 mb-10 funnel-screen">Tap once for each time it happened.</p>
-
-        {/* The big tappable counter — circular container */}
-        <button
-          onClick={increment}
-          className="relative mx-auto mb-4 flex items-center justify-center w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] rounded-full border-2 border-zinc-200 bg-zinc-50/80 select-none active:scale-95 transition-transform"
-          style={pulseStyle}
-          aria-label="Tap to count"
-        >
-          <span key={popKey} className="text-[72px] sm:text-[96px] font-extrabold text-acuity-primary tabular-nums leading-none"
-            style={!prefersReduced && popKey > 0 ? { animation: "funnel-check-pop 150ms ease-out" } : undefined}>
-            {display}
-          </span>
-        </button>
-
-        {/* Prompt after 2+ taps */}
-        <p className={`text-xs text-zinc-400 mb-12 transition-all duration-500 ${showPrompt ? "opacity-100" : "opacity-0"}`}>
-          Keep going. Count them all.
-        </p>
-
-        {/* Lost count link — generous vertical separation */}
-        <button onClick={handleLostCount} className="text-sm text-zinc-400 hover:text-zinc-600 underline transition mb-10 block mx-auto py-2">
-          Honestly, I&rsquo;ve lost count
-        </button>
-
-        {/* CTA — visible after first tap or lost-count */}
-        <div className={`transition-all duration-500 ${hasTapped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
-          <button onClick={handleContinue}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Continue
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Time-Math Screen (after Q5 duration) ───────────────────────────────────
 
 function TimeMathScreen({ answers, onContinue, onSkip }: {
@@ -1139,117 +1033,47 @@ function TimeMathScreen({ answers, onContinue, onSkip }: {
   );
 }
 
-// ─── Mirror Screen (v4: 3-beat, ≤70 words) ──────────────────────────────────
+// ─── Pain Screen (merged mirror + gap1 — 4-block sequential build) ──────────
 
-function MirrorScreen({ branch, answers, onContinue }: {
+function PainScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  const lines = buildMirrorLines(branch, answers);
-  const [phase, setPhase] = useState(0);
-  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-  useEffect(() => {
-    if (prefersReduced) { setPhase(4); return; }
-    const t: ReturnType<typeof setTimeout>[] = [];
-    // Header at 0ms (via funnel-slide-up class)
-    // Beat 1 at +800ms
-    t.push(setTimeout(() => setPhase(1), 800));
-    // Beat 2 at +2400ms
-    t.push(setTimeout(() => setPhase(2), 2400));
-    // Beat 3 (settle) at +4000ms
-    t.push(setTimeout(() => setPhase(3), 4000));
-    // CTA at +4800ms
-    t.push(setTimeout(() => setPhase(4), 4800));
-    return () => t.forEach(clearTimeout);
-  }, [prefersReduced]);
-
-  const skip = () => setPhase(4);
-  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
-      onClick={phase < 4 ? skip : undefined}>
-      <div className="max-w-md w-full">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10 funnel-screen">
-          We heard you.
-        </h2>
-
-        {/* Beat 1: sharpest pain reflection */}
-        <div className={`mb-8 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-500 ease-out ${beat(1)}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{lines[0]}</p>
-        </div>
-
-        {/* Beat 2: Q9 echo + closer */}
-        <div className={`mb-10 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-500 ease-out ${beat(2)}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{lines[1]}</p>
-        </div>
-
-        {/* Beat 3 (settle): the closer */}
-        <div className={`mb-10 text-center transition-all duration-[600ms] ${phase >= 3 ? "opacity-100" : "opacity-0"}`}
-          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-lg font-bold text-zinc-900">You don&rsquo;t have to keep living like this.</p>
-        </div>
-
-        {/* CTA */}
-        <div className={`text-center transition-all duration-500 ${beat(4)}`}>
-          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Continue
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Gap 1: "The weight stacking up" (loss, personalized) ──────────────────
-
-function Gap1Screen({ branch, answers, onContinue }: {
-  branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
-}) {
-  const content = buildGap1Content(branch, answers);
-  const tallyValue = String(answers.tally_count ?? "");
-  const kicker = getTallyKicker(tallyValue);
-  const hasKicker = kicker.length > 0;
-  // Phases: 1=kicker (if present), 2=hero, 3=undertone, 4=settle, 5=CTA
-  const maxPhase = 5;
+  const mirrorLines = buildMirrorLines(branch, answers);
+  const gapContent = buildGap1Content(branch, answers);
   const [phase, setPhase] = useState(0);
   const [highlightPhase, setHighlightPhase] = useState(0);
+  const maxPhase = 5;
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
-    if (prefersReduced) { setPhase(maxPhase); setHighlightPhase(content.costWords.length); return; }
+    if (prefersReduced) { setPhase(maxPhase); setHighlightPhase(gapContent.costWords.length); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
-    let offset = 0;
-    // Beat 1: kicker (if present)
-    if (hasKicker) {
-      t.push(setTimeout(() => setPhase(1), 0));
-      offset = 1200;
-    }
-    // Beat 2: hero line
-    t.push(setTimeout(() => setPhase(2), offset));
-    // Highlight sweep on cost words, 400ms after hero lands
-    content.costWords.forEach((_, i) => {
-      t.push(setTimeout(() => setHighlightPhase(i + 1), offset + 500 + 400 + i * 250));
+    // Block 1 (recognition): 600ms
+    t.push(setTimeout(() => setPhase(1), 600));
+    // Block 2 (named want): 2200ms
+    t.push(setTimeout(() => setPhase(2), 2200));
+    // Block 3 (cost + highlight): 3800ms
+    t.push(setTimeout(() => setPhase(3), 3800));
+    // Highlight sweep on cost word
+    gapContent.costWords.forEach((_, i) => {
+      t.push(setTimeout(() => setHighlightPhase(i + 1), 3800 + 500 + i * 250));
     });
-    // Beat 3: undertone at +1600ms from hero
-    t.push(setTimeout(() => setPhase(3), offset + 1600));
-    // Beat 4: settle closer at +2800ms
-    t.push(setTimeout(() => setPhase(4), offset + 2800));
-    // Beat 5: CTA at +3600ms
-    t.push(setTimeout(() => setPhase(maxPhase), offset + 3600));
+    // Block 4 (stakes + closer): 5400ms
+    t.push(setTimeout(() => setPhase(4), 5400));
+    // CTA: 6400ms
+    t.push(setTimeout(() => setPhase(maxPhase), 6400));
     return () => t.forEach(clearTimeout);
-  }, [prefersReduced, content.costWords.length, hasKicker]);
+  }, [prefersReduced, gapContent.costWords.length]);
 
-  // Tap-to-skip: any tap on the container completes all beats
-  const skip = () => { setPhase(maxPhase); setHighlightPhase(content.costWords.length); };
+  const skip = () => { setPhase(maxPhase); setHighlightPhase(gapContent.costWords.length); };
+  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
 
-  // Render hero line with highlighted cost words
-  const renderHero = () => {
-    if (content.costWords.length === 0) return content.line1;
+  // Render cost line with highlighted word
+  const renderCostLine = () => {
+    if (gapContent.costWords.length === 0) return gapContent.line1;
     const parts: (string | { word: string; idx: number })[] = [];
-    let remaining = content.line1;
-    content.costWords.forEach((word, i) => {
+    let remaining = gapContent.line1;
+    gapContent.costWords.forEach((word, i) => {
       const idx = remaining.indexOf(word);
       if (idx >= 0) {
         if (idx > 0) parts.push(remaining.slice(0, idx));
@@ -1268,33 +1092,36 @@ function Gap1Screen({ branch, answers, onContinue }: {
     );
   };
 
-  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
       onClick={phase < maxPhase ? skip : undefined}>
-      <div className="max-w-md w-full flex flex-col items-center justify-center" style={{ minHeight: "70vh" }}>
-        {/* KICKER: condensed tally count — uppercase, letter-spaced, small */}
-        {hasKicker && (
-          <div className={`mb-10 transition-all duration-500 ease-out ${beat(1)}`}>
-            <p className="text-[11px] sm:text-xs font-semibold tracking-[0.2em] text-zinc-400 text-center">
-              {kicker}
-            </p>
+      <div className="max-w-md w-full">
+
+        {/* Block 1: Recognition (from mirror beat 1) */}
+        <div className={`mb-8 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[600ms] ease-out ${beat(1)}`}>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{mirrorLines[0]}</p>
+        </div>
+
+        {/* Block 2: Named want (from mirror beat 2) */}
+        <div className={`mb-10 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[600ms] ease-out ${beat(2)}`}>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{mirrorLines[1]}</p>
+        </div>
+
+        {/* Block 3: The cost (from gap1 — with highlighted area word) */}
+        <div className={`mb-8 transition-all duration-[600ms] ease-out ${beat(3)}`}>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900 leading-[1.5] text-center">{renderCostLine()}</p>
+          <div className={`mt-4 transition-all duration-500 ${phase >= 3 ? "opacity-70" : "opacity-0"}`} style={{ transitionDelay: "400ms" }}>
+            <p className="text-[14px] text-zinc-500 leading-relaxed text-center">{gapContent.line2}</p>
           </div>
-        )}
-        {/* HERO: the main cost statement — largest text, centered */}
-        <div className={`mb-12 transition-all duration-500 ease-out ${beat(2)}`}>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900 leading-[1.5] text-center">{renderHero()}</p>
         </div>
-        {/* UNDERTONE: compounding cost — smaller, reduced opacity */}
-        <div className={`mb-12 transition-all duration-500 ease-out ${beat(3)}`} style={{ opacity: phase >= 3 ? 0.7 : 0 }}>
-          <p className="text-[15px] text-zinc-500 leading-relaxed text-center">{content.line2}</p>
-        </div>
-        {/* SETTLE CLOSER: weighted final line */}
-        <div className={`mb-14 ${phase >= 4 ? "" : "opacity-0"}`}
+
+        {/* Block 4: Stakes + closer */}
+        <div className={`mb-10 ${phase >= 4 ? "" : "opacity-0"}`}
           style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-[17px] font-bold text-zinc-900 text-center">{content.line3}</p>
+          <p className="text-[17px] font-bold text-zinc-900 text-center mb-4">{gapContent.line3}</p>
+          <p className="text-lg font-bold text-zinc-900 text-center">You don&rsquo;t have to keep living like this.</p>
         </div>
+
         {/* CTA */}
         <div className={`text-center transition-all duration-500 ${beat(maxPhase)}`}>
           <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
@@ -1465,11 +1292,9 @@ function Gap3Screen({ answers, track, onContinue }: {
           Three weeks from now
         </p>
 
-        {/* Scene beats — dim-cascade */}
+        {/* Scene beats — dim-cascade, each as a distinct visual block */}
         {lines.map((line, i) => {
           const beatPhase = i + 2;
-          const isCurrentBeat = phase === beatPhase || (phase === beatPhase && !askVisible);
-          const isBright = phase >= beatPhase && !askVisible && phase <= beatPhase;
           // Current beat is bright, past beats dim to 45%, all dim to 35% when ask shows
           let opacity: number;
           if (phase < beatPhase) opacity = 0;
@@ -1479,7 +1304,7 @@ function Gap3Screen({ answers, track, onContinue }: {
 
           return (
             <div key={i}
-              className={`mb-6 transition-all duration-[800ms] ease-out ${phase >= beatPhase ? "translate-y-0" : "translate-y-[12px]"}`}
+              className={`mb-5 rounded-xl border border-zinc-100 bg-white/60 px-5 py-4 transition-all duration-[800ms] ease-out ${phase >= beatPhase ? "translate-y-0" : "translate-y-[12px]"}`}
               style={{ opacity }}>
               <p className="text-[15px] text-zinc-700 leading-relaxed">{renderLine(line)}</p>
             </div>

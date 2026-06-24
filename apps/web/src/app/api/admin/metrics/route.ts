@@ -1644,7 +1644,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     if (effectiveStart < epoch) effectiveStart = epoch;
   }
 
-  // v6 funnel steps — paywall before account creation (2026-06-23)
+  // v6 funnel steps — paywall-first, tally removed, mirror+gap1 merged into pain (2026-06-23)
   const FUNNEL_STEPS_V6 = [
     { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
     { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
@@ -1656,9 +1656,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "shared_q7", event: "funnel_shared_q7_viewed", label: "Q7" },
     { key: "shared_q8", event: "funnel_shared_q8_viewed", label: "Q8" },
     { key: "shared_q9", event: "funnel_shared_q9_viewed", label: "Q9 (Pattern)" },
-    { key: "tally", event: "funnel_tally_viewed", label: "Tally" },
-    { key: "mirror", event: "funnel_mirror_viewed", label: "Mirror" },
-    { key: "gap1", event: "funnel_gap1_viewed", label: "Gap 1" },
+    { key: "pain", event: "funnel_pain_viewed", label: "Pain" },
     { key: "gap2", event: "funnel_gap2_viewed", label: "Gap 2" },
     { key: "gap3", event: "funnel_gap3_viewed", label: "Gap 3" },
     { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
