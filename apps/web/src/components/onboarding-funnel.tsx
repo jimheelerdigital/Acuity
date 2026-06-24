@@ -2347,7 +2347,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
 
         {/* Section 1 — Positioning header */}
         <section className="text-center mb-6 funnel-screen">
-          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">Your personal clarity system is ready.</h2>
+          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Your personal clarity system is ready.</h2>
           <p className="text-sm text-zinc-500 mt-2">Stop losing track of what your own life is trying to tell you.</p>
         </section>
 
@@ -2417,7 +2417,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <span className="text-zinc-400 font-normal">Therapy: $150/session.</span>{" "}
             <span className="text-zinc-400 font-normal">A coach: $200/month.</span>
           </p>
-          <p className="text-[17px] font-bold text-zinc-900 mt-1">Acuity: less than a coffee a week.</p>
+          <p className="text-[17px] font-bold mt-1 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Acuity: less than a coffee a week.</p>
         </section>
 
         {/* Section 5 — Pricing cards with price-slash animation */}
