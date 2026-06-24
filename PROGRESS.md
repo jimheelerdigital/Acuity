@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-06-24] — Paywall now defaults to the annual plan
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5a61d411
+
+### In plain English (for Keenan)
+
+On the /start paywall, the annual plan is now the one selected by default instead of the monthly plan. The goal is to collect more money up front (a full year vs one month), which gives us more cash on hand for ad spend. People can still tap the monthly option if they prefer it — we only changed which one is highlighted when the screen first loads.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/components/onboarding-funnel.tsx`: `selectedPlan` initial state now defaults to `"yearly"` (was `"monthly"`). The plan-card highlight, checkout interval, FB pixel value, and download-screen price are all already driven by this state, so no other changes were needed.
+
+### Manual steps needed
+
+None.
+
+### Notes
+
+- Returning/resumed sessions still restore whatever plan the user previously had selected (`saved?.selectedPlan` takes precedence); only the fresh-session default changed.
+- No pricing, Stripe IDs, or trial length touched — annual remains $39.99/yr, monthly $4.99/mo, 7-day trial.
+
+---
+
 ## [2026-06-24] — Remove the App Store install banner from the /start funnel
 
 **Requested by:** Keenan
