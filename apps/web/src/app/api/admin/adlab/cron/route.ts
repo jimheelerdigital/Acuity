@@ -78,6 +78,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ── Migration kill-switch ──────────────────────────────────────────
+  // ADLAB_CRON_ENABLED=false makes this endpoint exit immediately — no
+  // Meta API calls, no metric sync, no decisions, no email. The cron
+  // stays registered in vercel.json so this is fully reversible: flip
+  // the env var back to true (or unset it) to resume. Default is enabled.
+  // Used to freeze the engine during the AdLab → standalone extraction.
+  if (process.env.ADLAB_CRON_ENABLED === "false") {
+    console.log("[adlab-cron] ADLAB_CRON_ENABLED=false — engine paused, exiting early.");
+    return NextResponse.json({
+      message: "AdLab cron disabled via ADLAB_CRON_ENABLED",
+      disabled: true,
+    });
+  }
+
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const dateStr = yesterday.toISOString().slice(0, 10);
