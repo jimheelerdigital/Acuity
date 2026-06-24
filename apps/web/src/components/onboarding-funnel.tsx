@@ -2186,6 +2186,19 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
   const labels = branch ? getPatternLabels(branch, answers) : null;
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
+  // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
+  const [slashPhase, setSlashPhase] = useState(0);
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  useEffect(() => {
+    if (prefersReduced) { setSlashPhase(3); return; }
+    // Delay the slash until the rest of the screen has settled (~800ms after mount)
+    const t: ReturnType<typeof setTimeout>[] = [];
+    t.push(setTimeout(() => setSlashPhase(1), 800));   // strikethrough draws
+    t.push(setTimeout(() => setSlashPhase(2), 1400));   // founding rate lands
+    t.push(setTimeout(() => setSlashPhase(3), 1800));   // badges appear
+    return () => t.forEach(clearTimeout);
+  }, [prefersReduced]);
 
   const toggleFeature = (name: string) => {
     setExpandedFeature((prev) => prev === name ? null : name);
@@ -2268,24 +2281,72 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           </p>
         </section>
 
-        {/* Section 5 — Pricing cards */}
+        {/* Section 5 — Pricing cards with price-slash animation */}
         <section className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "260ms" }}>
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes pw-strike { from { width: 0; } to { width: 100%; } }
+            @keyframes pw-shrink { from { font-size: inherit; opacity: 1; } to { font-size: 0.875rem; opacity: 0.7; } }
+            @keyframes pw-land { from { opacity: 0; transform: scale(0.7) translateY(-8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+            @keyframes pw-badge { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+            @keyframes pw-save { from { opacity: 0; } to { opacity: 1; } }
+          `}} />
           <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* Monthly card */}
             <button onClick={() => onPlanChange("monthly")}
-              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "monthly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft" : "border border-zinc-200 bg-white"}`}>
+              className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "monthly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02]" : "border border-zinc-200 bg-white scale-100"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
-              <p className="text-sm text-red-400 line-through font-semibold">$19.99<span className="text-xs font-normal">/mo</span></p>
-              <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span></p>
-              <span className="inline-block mt-2 rounded-full bg-acuity-primary text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm">FOUNDING RATE</span>
-              <p className="text-[10px] text-zinc-400 mt-1">Billed monthly</p>
+              {/* Regular price — starts as hero, shrinks to anchor on slash */}
+              <p className={`font-semibold relative inline-block transition-all duration-500 ${slashPhase >= 1 ? "text-sm text-red-400" : "text-2xl text-zinc-900 font-extrabold"}`}>
+                <span>$19.99</span><span className={`font-normal ${slashPhase >= 1 ? "text-xs" : "text-sm text-zinc-400"}`}>/mo</span>
+                {/* Strikethrough line — draws left-to-right */}
+                {slashPhase >= 1 && (
+                  <span className="absolute left-0 top-1/2 h-[2px] bg-red-400"
+                    style={{ animation: prefersReduced ? "none" : "pw-strike 400ms ease-out forwards", width: prefersReduced ? "100%" : undefined }} />
+                )}
+              </p>
+              {/* Founding rate — lands after slash */}
+              <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
+                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 400ms cubic-bezier(0.34,1.56,0.64,1) forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
+                {formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span>
+              </p>
+              {/* Badge — appears after rate lands */}
+              <span className={`inline-block mt-2 rounded-full bg-acuity-primary text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm ${slashPhase >= 3 ? "" : "opacity-0"}`}
+                style={slashPhase >= 3 && !prefersReduced ? { animation: "pw-badge 300ms ease-out forwards" } : undefined}>
+                FOUNDING RATE
+              </span>
+              {/* Savings delta — subtle fade after badge */}
+              <p className={`text-[10px] text-emerald-600 font-medium mt-1 transition-opacity duration-500 ${slashPhase >= 3 ? "opacity-100" : "opacity-0"}`}>
+                You save $15/mo
+              </p>
             </button>
+            {/* Annual card — staggered 150ms behind monthly */}
             <button onClick={() => onPlanChange("yearly")}
-              className={`rounded-xl p-4 text-center transition relative ${selectedPlan === "yearly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft" : "border border-zinc-200 bg-white"}`}>
+              className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "yearly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02]" : "border border-zinc-200 bg-white scale-100"}`}>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
-              <p className="text-sm text-red-400 line-through font-semibold">$199<span className="text-xs font-normal">/yr</span></p>
-              <p className="text-2xl font-extrabold text-zinc-900">{formatDollars(ANNUAL_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/yr</span></p>
-              <span className="inline-block mt-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[10px] font-bold">SAVE {PRICING.annual.savingsVsMonthly}</span>
-              <p className="text-[10px] text-zinc-400 mt-1">{formatDollars(annualMonthly)}/mo billed annually</p>
+              {/* Regular price — starts as hero, shrinks to anchor on slash */}
+              <p className={`font-semibold relative inline-block transition-all duration-500 ${slashPhase >= 1 ? "text-sm text-red-400" : "text-2xl text-zinc-900 font-extrabold"}`}
+                style={{ transitionDelay: slashPhase >= 1 ? "150ms" : "0ms" }}>
+                <span>$199</span><span className={`font-normal ${slashPhase >= 1 ? "text-xs" : "text-sm text-zinc-400"}`}>/yr</span>
+                {slashPhase >= 1 && (
+                  <span className="absolute left-0 top-1/2 h-[2px] bg-red-400"
+                    style={{ animation: prefersReduced ? "none" : "pw-strike 400ms ease-out 150ms forwards", width: prefersReduced ? "100%" : undefined }} />
+                )}
+              </p>
+              {/* Founding rate — lands after slash */}
+              <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
+                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 400ms cubic-bezier(0.34,1.56,0.64,1) 150ms forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
+                {formatDollars(ANNUAL_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/yr</span>
+              </p>
+              {/* Badge — appears after rate lands */}
+              <span className={`inline-block mt-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[10px] font-bold ${slashPhase >= 3 ? "" : "opacity-0"}`}
+                style={slashPhase >= 3 && !prefersReduced ? { animation: "pw-badge 300ms ease-out 150ms forwards" } : undefined}>
+                SAVE {PRICING.annual.savingsVsMonthly}
+              </span>
+              {/* Savings delta */}
+              <p className={`text-[10px] text-emerald-600 font-medium mt-1 transition-opacity duration-500 ${slashPhase >= 3 ? "opacity-100" : "opacity-0"}`}
+                style={{ transitionDelay: slashPhase >= 3 ? "150ms" : "0ms" }}>
+                {formatDollars(annualMonthly)}/mo &mdash; save $159/yr
+              </p>
             </button>
           </div>
 
