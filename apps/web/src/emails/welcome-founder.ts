@@ -21,7 +21,7 @@ import { trialButton, trialLayout } from "./trial/layout";
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-const WEB_APP_URL = "https://www.getacuity.io/home";
+const WEB_APP_URL = "https://getacuity.io/auth/signin";
 const HEADSHOT_URL =
   "https://www.getacuity.io/email/keenan-updated-headshot.png";
 
@@ -92,6 +92,7 @@ export function welcomeFounderEmail(
     html: trialLayout({
       content,
       footer: "marketing",
+      showLogo: false,
       unsubscribeUrl: opts.unsubscribeUrl,
       preheader:
         "A quick note from Keenan, and the two ways to start your first debrief.",

@@ -35,12 +35,27 @@ export interface TrialLayoutOpts {
    * onboarding unsubscribe.
    */
   footer?: "marketing" | "transactional";
+  /**
+   * Render the small Acuity logo at the top. Defaults to true. The
+   * founder welcome sets this false — it is a personal note that should
+   * read like a plain email, not a branded template header.
+   */
+  showLogo?: boolean;
 }
 
 export function trialLayout(opts: TrialLayoutOpts): string {
   const { content, unsubscribeUrl, preheader } = opts;
   const pre = preheader ?? "";
   const isMarketing = (opts.footer ?? "marketing") === "marketing";
+  const showLogo = opts.showLogo ?? true;
+
+  const logoRow = showLogo
+    ? `<tr>
+            <td style="padding-bottom:32px;">
+              <img src="https://www.getacuity.io/AcuityLogoDark.png" alt="Acuity" width="36" height="36" />
+            </td>
+          </tr>`
+    : "";
 
   const footerLinks = isMarketing
     ? `<p style="margin:0;font-size:12px;color:#6b7280;line-height:1.7;">
@@ -67,11 +82,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
     <tr>
       <td align="center" style="padding:40px 20px;">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-          <tr>
-            <td style="padding-bottom:32px;">
-              <img src="https://www.getacuity.io/AcuityLogoDark.png" alt="Acuity" width="36" height="36" />
-            </td>
-          </tr>
+          ${logoRow}
           ${content}
           <tr>
             <td style="padding:40px 0 16px;">

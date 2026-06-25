@@ -38,7 +38,7 @@ export const recoveryDownloadReminder: TrialEmailTemplate = {
         "If you don\u2019t have iPhone, our Android app is coming soon. You can use our web app here:"
       )}
       <tr><td style="padding-bottom:20px;">
-        ${trialButton("https://getacuity.io/home", "Use the web app")}
+        ${trialButton("https://getacuity.io/auth/signin", "Use the web app")}
       </td></tr>
       ${para(
         "Feel free to reach out with any questions! Make sure you use your 7 day trial \u2014 there\u2019s a ton of insights that you can get with Acuity, even in the first week :)"

@@ -61,7 +61,7 @@ export function founderWelcomeEmail(params: {
 
         <p style="margin:20px 0 12px;font-size:15px;color:#6B7280;line-height:1.7;">If you're an Android user, the app should be live within the next week! In the meantime, use our web app:</p>
 
-        ${button("https://getacuity.io/home", "\u{1F310}  Use the web app", "secondary")}
+        ${button("https://getacuity.io/auth/signin", "\u{1F310}  Use the web app", "secondary")}
 
         <!-- Divider -->
         <div style="height:1px;background:#E5E7EB;margin:28px 0;"></div>
