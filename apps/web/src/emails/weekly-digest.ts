@@ -90,7 +90,7 @@ export async function sendWeeklyDigest(input: WeeklyDigestInput) {
       .map(
         (o) =>
           `<li style="margin:6px 0;list-style:none;padding-left:16px;position:relative;">
-             <span style="position:absolute;left:0;color:#7C5CFC;">→</span>
+             <span style="position:absolute;left:0;color:#E06B46;">→</span>
              ${escapeHtml(o)}
            </li>`
       )
@@ -103,7 +103,7 @@ export async function sendWeeklyDigest(input: WeeklyDigestInput) {
       .slice(0, 3)
       .map((g) => {
         const bar = `<div style="height:4px;background:#E5E7EB;border-radius:2px;margin-top:4px;">
-          <div style="height:4px;background:#7C5CFC;border-radius:2px;width:${Math.max(0, Math.min(100, g.progress))}%;"></div>
+          <div style="height:4px;background:#E06B46;border-radius:2px;width:${Math.max(0, Math.min(100, g.progress))}%;"></div>
         </div>`;
         const deltaLabel =
           typeof g.delta === "number" && g.delta !== 0

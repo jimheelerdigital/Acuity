@@ -133,7 +133,7 @@ export async function notifyFoundersOfPayment(params: {
       subject: `\u{1F4B0} New payment: ${email} (${plan})`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-          <h2 style="color:#7C5CFC;margin:0 0 16px;">New Payment</h2>
+          <h2 style="color:#C4451C;margin:0 0 16px;">New Payment</h2>
           <table style="width:100%;border-collapse:collapse;">
             <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;font-weight:600;">${email}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Plan</td><td style="padding:8px 0;font-weight:600;">${plan}</td></tr>

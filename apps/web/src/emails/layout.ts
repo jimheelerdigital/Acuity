@@ -1,6 +1,12 @@
 /**
- * Shared HTML shell for transactional auth emails. Light-mode design:
- * white canvas, dark text, small left-aligned logo, solid purple CTA.
+ * Shared HTML shell for transactional auth emails. White canvas, dark
+ * text, small left-aligned logo, coral CTA. Brand palette is coral
+ * (#FF8A65) with the button using the deeper coral #E06B46 so white
+ * label text clears WCAG AA. Declares color-scheme so dark-mode clients
+ * keep our explicit light card instead of force-inverting it into
+ * unreadable dark-grey-on-near-black.
+ *
+ * TRANSACTIONAL footer: sender info only, no marketing unsubscribe.
  *
  * Used by: password-reset, verification, magic-link, payment-failed,
  * data-export-ready, state-of-me-ready.
@@ -26,6 +32,8 @@ export function emailLayout(opts: {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
   <title>${title}</title>
 </head>
 <body style="background:#FFFFFF;margin:0;padding:40px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -38,17 +46,17 @@ export function emailLayout(opts: {
     <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 32px;">
       ${intro}
     </p>
-    <a href="${ctaUrl}" style="display:block;background:#7C5CFC;color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:600;font-size:15px;margin-bottom:24px;">
+    <a href="${ctaUrl}" style="display:block;background:#E06B46;background:linear-gradient(135deg,#FFA47E 0%,#FF8A65 55%,#E06B46 100%);color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:600;font-size:15px;margin-bottom:24px;">
       ${ctaLabel}
     </a>
     ${
       footnote
-        ? `<p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">${footnote}</p>`
-        : `<p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">If you didn't request this email, you can safely ignore it.</p>`
+        ? `<p style="color:#6b7280;font-size:13px;text-align:center;margin:0;">${footnote}</p>`
+        : `<p style="color:#6b7280;font-size:13px;text-align:center;margin:0;">If you didn't request this email, you can safely ignore it.</p>`
     }
   </div>
-  <p style="color:#9ca3af;font-size:12px;text-align:center;margin:20px 0 0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    Acuity &middot; getacuity.io &middot; One minute a day.
+  <p style="color:#6b7280;font-size:12px;text-align:center;margin:20px 0 0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+    Acuity &middot; getacuity.io
   </p>
 </body>
 </html>

@@ -31,30 +31,30 @@ export const recoveryPaidNoApp: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(`Hey ${name},`)}
-      ${para(`Your 7-day trial is live. Here\u2019s your first step:`)}
+      ${para(`Your 7-day trial is live. There\u2019s just one step between you and it:`)}
       <tr>
         <td style="padding-bottom:20px;">
           <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
             <tr>
               <td style="padding:8px 0;font-size:16px;color:#374151;line-height:1.7;">
-                <strong style="color:#7C5CFC;">1.</strong> Download the app
+                <strong style="color:#C4451C;">1.</strong> Download the app
               </td>
             </tr>
             <tr>
               <td style="padding:8px 0;font-size:16px;color:#374151;line-height:1.7;">
-                <strong style="color:#7C5CFC;">2.</strong> Open it. Tap Record.
+                <strong style="color:#C4451C;">2.</strong> Open it and press record.
               </td>
             </tr>
             <tr>
               <td style="padding:8px 0;font-size:16px;color:#374151;line-height:1.7;">
-                <strong style="color:#7C5CFC;">3.</strong> Talk for 60 seconds about whatever\u2019s on your mind.
+                <strong style="color:#C4451C;">3.</strong> Say whatever\u2019s on your mind. A short debrief is plenty.
               </td>
             </tr>
           </table>
         </td>
       </tr>
-      ${para(`That\u2019s it. AI handles the rest \u2014 pulls your tasks, tracks your goals, maps your mood.`)}
-      ${para(`Your first weekly report arrives Sunday. It needs a few entries to build. Most people start with \u201Ctoday was...\u201D and go from there.`)}
+      ${para(`That\u2019s it. Acuity does the rest \u2014 it pulls out your tasks, keeps track of what you care about, and notices how your mood is sitting.`)}
+      ${para(`Your first weekly report comes together once you have a few entries in. Most people just start with how the day went and go from there.`)}
       <tr>
         <td style="padding-bottom:28px;">
           ${trialButton(APP_STORE_URL, "Download Acuity")}

@@ -86,7 +86,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
 
   return trialLayout({
     content,
-    unsubscribeUrl: "#",
+    footer: "transactional",
     preheader: `New signup: ${v.firstName} via ${v.signupMethod}`,
   });
 }

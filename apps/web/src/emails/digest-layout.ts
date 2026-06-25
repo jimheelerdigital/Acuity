@@ -1,13 +1,16 @@
 /**
- * Shared digest email shell — light-mode design. Richer than the
- * transactional emailLayout because digests carry sections: mood
- * summary, themes, observations, goals progress.
+ * Shared digest email shell. Richer than the transactional emailLayout
+ * because digests carry sections: mood summary, themes, observations,
+ * goals progress. Coral brand accents (#FF8A65 / #E06B46 button).
+ * Declares color-scheme so dark-mode clients keep the explicit light
+ * card instead of force-inverting it.
  *
  * Every caller supplies pre-escaped HTML sections. Don't pass raw
  * user input here — XSS-safe only when the caller escaped upstream.
  *
- * Unsubscribe link is mandatory. CAN-SPAM compliance + matches the
- * List-Unsubscribe header that upstream senders should include.
+ * MARKETING footer. Unsubscribe link is mandatory — CAN-SPAM
+ * compliance + matches the List-Unsubscribe header that upstream
+ * senders should include.
  */
 
 export function digestLayout(opts: {
@@ -26,7 +29,7 @@ export function digestLayout(opts: {
   const cta =
     opts.ctaLabel && opts.ctaUrl
       ? `<div style="padding:16px 32px 0;">
-           <a href="${opts.ctaUrl}" style="display:block;background:#7C5CFC;color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 20px;border-radius:8px;font-weight:600;font-size:14px;">${opts.ctaLabel}</a>
+           <a href="${opts.ctaUrl}" style="display:block;background:#E06B46;background:linear-gradient(135deg,#FFA47E 0%,#FF8A65 55%,#E06B46 100%);color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 20px;border-radius:8px;font-weight:600;font-size:14px;">${opts.ctaLabel}</a>
          </div>`
       : "";
 
@@ -35,6 +38,8 @@ export function digestLayout(opts: {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
   <title>${opts.title}</title>
 </head>
 <body style="background:#FFFFFF;margin:0;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -59,8 +64,8 @@ export function digestLayout(opts: {
       </p>
     </div>
   </div>
-  <p style="color:#9ca3af;font-size:11px;text-align:center;margin:16px 0 0;">
-    Acuity &middot; getacuity.io &middot; One minute a day.
+  <p style="color:#6b7280;font-size:11px;text-align:center;margin:16px 0 0;">
+    Acuity &middot; getacuity.io
   </p>
 </body>
 </html>`.trim();

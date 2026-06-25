@@ -14,8 +14,8 @@ export const welcomeDay0: TrialEmailTemplate = {
     const appUrl = escapeHtml(v.appUrl);
     const fmNumber = v.foundingMemberNumber;
     const psLine = fmNumber
-      ? `You're Founding Member #${fmNumber}. 14 days free, no card. If you're not into it in a week, delete the app and I'll buy your next coffee.`
-      : `7 days free, no card required. If you're not into it in a week, delete the app and I'll buy your next coffee.`;
+      ? `You're Founding Member #${fmNumber}. 7 days free, no card. If it's not for you, delete the app and I'll buy your next coffee.`
+      : `7 days free, no card required. If it's not for you, delete the app and I'll buy your next coffee.`;
 
     const content = `
       <tr>
@@ -23,10 +23,10 @@ export const welcomeDay0: TrialEmailTemplate = {
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">Hey ${name} —</p>
         </td>
       </tr>
-      ${para("You just signed up for Acuity. Here's the short version of what happens next.")}
-      ${para(`Open the app (<a href="${appUrl}" style="color:#7C5CFC;text-decoration:underline;">${appUrl}</a>), hit record, and just talk. Whatever's in your head. Out loud. Don't try to make it smart.`)}
-      ${para("What you'll get back: a clean list of tasks Acuity pulled from what you said, the goals you mentioned (even in passing), and by Sunday, a 400-word narrative of your week that reads like someone was paying attention.")}
-      ${para("Quick setup, then your first debrief.")}
+      ${para("You just signed up for Acuity. Here's the short version of how it works.")}
+      ${para(`Open the app (<a href="${appUrl}" style="color:#C4451C;text-decoration:underline;">${appUrl}</a>), press record, and say whatever's on your mind. No script, no tidying it up first. Just a short debrief, out loud.`)}
+      ${para("Acuity listens and gives it back to you in a form you can use: the tasks hidden in what you said, the things you care about, where your mood is sitting, and how the different parts of your life are tracking. By the weekend, a weekly report that reads like someone was actually paying attention.")}
+      ${para("That's the whole thing. A few spoken minutes, and you get to see yourself a little more clearly.")}
       <tr>
         <td style="padding-bottom:28px;">
           ${trialButton(appUrl, "Start your first debrief")}

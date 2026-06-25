@@ -31,9 +31,9 @@ export const recoveryRecordedOnce: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(`Hey ${name},`)}
-      ${para(`You recorded your first debrief. That\u2019s more than most people do.`)}
-      ${para(`Here\u2019s what you probably don\u2019t realize: the first entry is a snapshot. The second is where patterns start forming. By entry 4 or 5, the weekly report has enough data to show you something you\u2019ve never seen about yourself.`)}
-      ${para(`60 seconds. That\u2019s all it takes for the next one.`)}
+      ${para(`You recorded your first debrief. That\u2019s the hardest one to do, and you did it.`)}
+      ${para(`Here\u2019s the part that\u2019s easy to miss: the first entry is just a snapshot. The second is where patterns start to show. By the fourth or fifth, your weekly report has enough to reflect something back you might not have noticed on your own.`)}
+      ${para(`The next one only takes a few spoken minutes. Whenever you have them.`)}
       <tr>
         <td style="padding-bottom:28px;">
           ${trialButton(APP_STORE_URL, "Record now")}
