@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-06-24] — Stopped the duplicate welcome emails on signup
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 556ecbb2
+
+### In plain English (for Keenan)
+
+Every new person who signed up was getting TWO welcome emails at almost the same moment — the short "You're in" one and the longer "URGENT: Acuity; Next Steps" note from Keenan. That looks sloppy and spammy, so we turned both of them off. New signups now get zero welcome emails for the moment (the sign-in/verify email they need to log in still goes out — that is not a welcome, it is the link they click to get into their account). We will build one clean welcome to replace both later. The internal alert that tells Keenan and Jim "🎉 New Acuity signup" is untouched and still fires, so we still know in real time when someone joins. One of the two welcomes had been sneaking out through a side door that our central "off switch" did not control — we rerouted it through the same switch so nothing can escape it again.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/lib/email-enabled.ts`: flipped `welcome_day0` from `true` to `false`. Added a new `founder_welcome: false` key. Both reversible — flip back to `true` to re-enable.
+- `apps/web/src/lib/bootstrap-user.ts`: the founder welcome email (`founderWelcomeEmail`, subject "URGENT: Acuity; Next Steps") was an inline `getResendClient().emails.send` that never touched the kill-switch. It is now guarded by `isEmailEnabled("founder_welcome")` (imported at that point in `bootstrapNewUser`), so it is controlled by the same central map as everything else.
+- `welcome_day0` needed no code change at its send site — `sendTrialEmail` already early-returns on `isEmailEnabled("welcome_day0") === false`, so flipping the map value disables it on every path (it fires inline in bootstrap for OAuth/magic-link signups).
+- The internal `notifyFoundersOfSignup` ("🎉 New Acuity signup") is a separate inline send and was deliberately left firing.
+
+### Manual steps needed
+
+- [ ] None required to deploy — pushes live on merge to main (Keenan to say "push it" first).
+
+### Notes
+
+- After this change, signup-time user-facing email by path: OAuth / magic-link signups → zero emails (both welcomes off). Email/password signups → only the transactional welcome+verify (`welcomeVerifyEmail`), which carries the email-verification link and must keep firing; the founder welcome that previously also fired on these is now off. So no path double-welcomes anymore.
+- Other inline sends found that BYPASS the email-enabled.ts kill-switch (flagged per request — NOT changed):
+  - `welcomeVerifyEmail` — sent inline in `app/api/auth/signup/route.ts` and `app/api/auth/mobile-signup/route.ts`. Intentional: transactional auth email (verify link), out of kill-switch scope.
+  - `magicLinkEmail` — sent inline in `lib/auth.ts`. Transactional sign-in link, out of scope.
+  - `app/api/admin/users/[id]/resend-welcome/route.ts` — admin-only manual re-send of the founder welcome; fires on a deliberate admin button press, not on signup. Now bypasses the (newly off) `founder_welcome` switch, but is a manual override by design. Flagged, left as-is. (Side note: it destructures `text` from `founderWelcomeEmail`, which returns `{ subject, html }` — likely a pre-existing latent bug, out of scope here.)
+  - `waitlist-reactivation` + waitlist-signup confirmation — already flagged in the 2026-06-24 kill-switch entry; admin-fired / non-signup, untouched.
+  - Transactional/system emails (payment-failed, data-export-ready, state-of-me-ready, weekly-digest, founder notifications) send inline by design and are intentionally outside the kill-switch.
+
+---
+
 ## [2026-06-24] — Rebuilt the 12 kept emails: coral brand, dark-mode, fixed copy
 
 **Requested by:** Keenan
