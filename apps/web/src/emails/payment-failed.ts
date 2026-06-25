@@ -5,10 +5,10 @@
  *
  * Soft tone. No "your access has been cut off" panic. Stripe retries
  * for ~15 days; our job is to tell the user their card needs updating
- * so the retry succeeds. Deep-links them to the Customer Portal
- * (/account is the on-ramp; the actual portal link needs a session
- * token, so we can't cold-link from email — /account routes them
- * through the Manage subscription button).
+ * so the retry succeeds. The CTA points at /api/stripe/manage, which
+ * mints a fresh Stripe Billing Portal session on click and redirects
+ * the user straight into Stripe to update their card — no intermediate
+ * "sign in, then hit Manage subscription" hop.
  */
 
 import { getResendClient } from "@/lib/resend";
@@ -28,7 +28,7 @@ export async function sendPaymentFailedEmail({
   if (!resend) return;
 
   const firstName = name?.split(" ")[0] ?? "there";
-  const portalUrl = `${appUrl()}/account`;
+  const portalUrl = `${appUrl()}/api/stripe/manage`;
 
   const html = emailLayout({
     title: "Quick heads-up on your subscription",
@@ -37,7 +37,7 @@ export async function sendPaymentFailedEmail({
     ctaLabel: "Update payment method",
     ctaUrl: portalUrl,
     footnote:
-      "Tap the button above, sign in, then hit Manage subscription. Stripe will retry over the next couple of weeks; nothing gets cut off without another email first.",
+      "The button above takes you straight to Stripe to update your card. Stripe will retry over the next couple of weeks; nothing gets cut off without another email first.",
   });
 
   await resend.emails.send({

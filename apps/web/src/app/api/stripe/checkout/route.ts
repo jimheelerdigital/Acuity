@@ -77,28 +77,45 @@ export async function POST(req: NextRequest) {
   // starts paid immediately on checkout completion — avoids the
   // 14+7=21-day compound trial the old code created, and keeps the
   // trial clock in one place (IMPLEMENTATION_PLAN_PAYWALL §1.5).
-  const checkoutSession = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    customer: user?.stripeCustomerId ?? undefined,
-    customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    // Redirect to /account (settings) not /home so the user's eye
-    // lands on the Subscription section where the new active state is
-    // visible. `?upgrade=success` triggers a welcome banner + card
-    // highlight in the client; `{CHECKOUT_SESSION_ID}` is Stripe's
-    // template placeholder — Stripe swaps it for the real session id
-    // server-side at redirect time (session.id e.g. `cs_live_...`),
-    // which we keep for future correlation if anything fails.
-    success_url: `${process.env.NEXTAUTH_URL}/account?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXTAUTH_URL}/upgrade`,
-    metadata: { userId: session.user.id, interval },
-  });
+  let checkoutSession;
+  try {
+    checkoutSession = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      customer: user?.stripeCustomerId ?? undefined,
+      customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      // Redirect to /account (settings) not /home so the user's eye
+      // lands on the Subscription section where the new active state is
+      // visible. `?upgrade=success` triggers a welcome banner + card
+      // highlight in the client; `{CHECKOUT_SESSION_ID}` is Stripe's
+      // template placeholder — Stripe swaps it for the real session id
+      // server-side at redirect time (session.id e.g. `cs_live_...`),
+      // which we keep for future correlation if anything fails.
+      success_url: `${process.env.NEXTAUTH_URL}/account?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXTAUTH_URL}/upgrade`,
+      metadata: { userId: session.user.id, interval },
+    });
+  } catch (err) {
+    console.error("[stripe/checkout] session create failed:", err);
+    return NextResponse.json(
+      { error: "Couldn't reach Stripe. Try again in a moment." },
+      { status: 502 }
+    );
+  }
+
+  if (!checkoutSession.url) {
+    console.error("[stripe/checkout] session created without a redirect URL");
+    return NextResponse.json(
+      { error: "Stripe returned no checkout URL. Try again." },
+      { status: 502 }
+    );
+  }
 
   return NextResponse.json({ url: checkoutSession.url });
 }

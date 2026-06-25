@@ -164,9 +164,9 @@ add("08-payment_failed.html", "#6 payment_failed", {
       "Stripe couldn't charge your card — a small fix keeps things running.",
     intro: `Hi Sarah — Stripe couldn't charge your card for this month's Acuity subscription. Your account is still active for now while Stripe retries, but updating your card keeps everything running smoothly.`,
     ctaLabel: "Update payment method",
-    ctaUrl: `${APP_URL}/account`,
+    ctaUrl: `${APP_URL}/api/stripe/manage`,
     footnote:
-      "Tap the button above, sign in, then hit Manage subscription. Stripe will retry over the next couple of weeks; nothing gets cut off without another email first.",
+      "The button above takes you straight to Stripe to update your card. Stripe will retry over the next couple of weeks; nothing gets cut off without another email first.",
   }),
 });
 

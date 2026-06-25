@@ -48,7 +48,6 @@ export function UpgradePlanPicker() {
   const [interval, setInterval] = useState<Interval>("monthly");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [acknowledged, setAcknowledged] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
@@ -60,12 +59,6 @@ export function UpgradePlanPicker() {
   }, []);
 
   const handleUpgrade = async () => {
-    if (!acknowledged) {
-      setError(
-        "Please confirm you want your paid features to start now before subscribing."
-      );
-      return;
-    }
     setError(null);
     setLoading(true);
     try {
@@ -195,25 +188,14 @@ export function UpgradePlanPicker() {
       </div>
 
       <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 dark:border-white/10 dark:bg-[#13131F]">
-        <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-          <input
-            type="checkbox"
-            checked={acknowledged}
-            onChange={(e) => {
-              setAcknowledged(e.target.checked);
-              if (e.target.checked) setError(null);
-            }}
-            className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-zinc-300 dark:border-white/20"
-          />
-          <span>
-            I want my paid Acuity features to start now, and I understand
-            that by starting immediately I lose my 14-day right to cancel for
-            any content fully delivered, and that if I cancel within 14 days
-            I&rsquo;ll be refunded less a proportionate amount for the service
-            already provided.
-          </span>
-        </label>
-        <p className="mt-2 pl-7 text-[11px] text-zinc-400 dark:text-zinc-500">
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+          By tapping <span className="font-semibold">Subscribe Now</span>, I want
+          my paid Acuity features to start now, and I understand that by starting
+          immediately I lose my 14-day right to cancel for any content fully
+          delivered, and that if I cancel within 14 days I&rsquo;ll be refunded
+          less a proportionate amount for the service already provided.
+        </p>
+        <p className="mt-2 text-[11px] text-zinc-400 dark:text-zinc-500">
           This doesn&rsquo;t affect your statutory consumer rights. See how
           cancellation works in our{" "}
           <a href="/terms#eu-uk-consumer-rights" className="underline hover:text-zinc-600 dark:hover:text-zinc-300">
@@ -225,7 +207,7 @@ export function UpgradePlanPicker() {
 
       <button
         onClick={handleUpgrade}
-        disabled={loading || !acknowledged}
+        disabled={loading}
         className="w-full rounded-xl bg-zinc-900 py-3.5 text-sm font-semibold text-white hover:bg-zinc-700 transition-all duration-200 disabled:opacity-50 disabled:hover:bg-zinc-900 hover:shadow-lg hover:shadow-zinc-900/10 active:scale-[0.98]"
       >
         {loading ? (
