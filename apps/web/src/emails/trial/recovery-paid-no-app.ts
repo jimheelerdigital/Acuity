@@ -8,7 +8,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { trialButton, trialLayout } from "./layout";
+import { keenanSignature, trialButton, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
@@ -21,7 +21,8 @@ function para(text: string): string {
 export const recoveryPaidNoApp: TrialEmailTemplate = {
   subject: () => "Your trial started \u2014 one step left",
   html: (v: TrialVars) => {
-    const name = escapeHtml(v.firstName);
+    const rawFirst = (v.firstName ?? "").trim();
+    const greeting = rawFirst ? `Hey ${escapeHtml(rawFirst)},` : "Hi there,";
 
     const content = `
       <tr>
@@ -31,7 +32,7 @@ export const recoveryPaidNoApp: TrialEmailTemplate = {
           </h1>
         </td>
       </tr>
-      ${para(`Hey ${name},`)}
+      ${para(greeting)}
       ${para(`Your 7-day trial is live. There\u2019s just one step between you and it:`)}
       <tr>
         <td style="padding-bottom:20px;">
@@ -54,7 +55,7 @@ export const recoveryPaidNoApp: TrialEmailTemplate = {
           </table>
         </td>
       </tr>
-      ${para(`That\u2019s it. Acuity does the rest \u2014 it pulls out your tasks, keeps track of what you care about, and notices how your mood is sitting.`)}
+      ${para(`That\u2019s it. Acuity does the rest \u2014 it pulls out your tasks, keeps track of what you care about, and picks up on how you\u2019re actually feeling.`)}
       ${para(`Your first weekly report comes together once you have a few entries in. Most people just start with how the day went and go from there.`)}
       ${para(`On iPhone, download the app. On Android, or if you would rather not install anything, you can use the web app right in your browser:`)}
       <tr>
@@ -67,11 +68,7 @@ export const recoveryPaidNoApp: TrialEmailTemplate = {
           ${trialButton(WEB_APP_URL, "Open the web app")}
         </td>
       </tr>
-      <tr>
-        <td>
-          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">\u2014 Keenan</p>
-        </td>
-      </tr>
+      ${keenanSignature()}
     `;
 
     return trialLayout({
