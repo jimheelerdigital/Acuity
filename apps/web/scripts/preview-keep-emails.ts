@@ -33,6 +33,7 @@ import { recoveryDownloadReminder } from "@/emails/trial/recovery-download-remin
 import { magicLinkEmail } from "@/emails/magic-link";
 import { passwordResetEmail } from "@/emails/password-reset";
 import { welcomeVerifyEmail } from "@/emails/welcome-verify";
+import { welcomeFounderEmail } from "@/emails/welcome-founder";
 import {
   founderNotificationSubject,
   founderNotificationHtml,
@@ -87,6 +88,19 @@ add("01-welcome_day0.html", "#1 welcome_day0", {
   subject: welcomeDay0.subject(wd0Vars),
   html: welcomeDay0.html(wd0Vars),
 });
+
+// ── welcome_founder (the single rebuilt welcome) ────────────────────
+add(
+  "00-welcome_founder.html",
+  "welcome_founder (single welcome)",
+  welcomeFounderEmail({ firstName: "Sarah", unsubscribeUrl: UNSUB })
+);
+// Render the no-firstName fallback too ("Hi there,").
+add(
+  "00-welcome_founder-no-name.html",
+  "welcome_founder (no first name → \"Hi there,\")",
+  welcomeFounderEmail({ firstName: null, unsubscribeUrl: UNSUB })
+);
 
 // ── #29 recovery_paid_no_app (registry) ─────────────────────────────
 const rpnaVars = sampleTrialVars();

@@ -192,27 +192,10 @@ export async function bootstrapNewUser(params: {
       // Idempotent — ignore if it already exists.
     });
 
-  // Send welcome_day0 inline (spec: within 60 seconds of signup, not
-  // from the hourly orchestrator). Fail-soft — a send failure must not
-  // brick signup. The TrialEmailLog unique constraint makes this safe
-  // to re-invoke on a retried signup path: the second attempt returns
-  // `already_sent` without re-dispatching.
-  //
-  // Email/password signup paths pass skipWelcomeEmail=true because they
-  // send a combined welcome+verify email separately. OAuth + magic-link
-  // paths still get welcome_day0 here (their emails are pre-verified so
-  // they don't need a verify CTA at all).
-  if (!skipWelcomeEmail) {
-    try {
-      const { sendTrialEmail } = await import("@/lib/trial-emails");
-      await sendTrialEmail(userId, "welcome_day0");
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("[bootstrap-user] welcome_day0 send failed:", err);
-    }
-  }
+  // The old welcome_day0 inline send was removed (2026-06-24). It is
+  // replaced by the single welcome_founder email below — see that block.
 
-  // Read user name once for both admin notification and founder welcome.
+  // Read user name once for the admin notification and the welcome email.
   let userName: string | null = null;
   if (email) {
     try {
@@ -252,16 +235,61 @@ export async function bootstrapNewUser(params: {
     }
   }
 
-  // Personal welcome email from Keenan. Plain text, feels like a real
-  // email. Sent from keenan@getacuity.io so replies go straight to him.
-  // Fail-soft — same pattern as every other email in bootstrap.
-  //
-  // Routed through the central email-enabled.ts kill-switch (key
-  // "founder_welcome") so this inline send can't escape central control.
-  // Currently OFF: it fired alongside welcome_day0, double-welcoming
-  // every new signup. Flip the key back to true once the single welcome
-  // is rebuilt.
   const { isEmailEnabled } = await import("@/lib/email-enabled");
+
+  // The single welcome email — one personal note from Keenan with the
+  // App Store + web app links and a small circular founder headshot in
+  // the signature. Sent once on signup from keenan@getacuity.io so the
+  // reply-to is a real monitored inbox (the copy promises replies are
+  // read). Replaces the two killed welcomes (welcome_day0 + the founder
+  // "URGENT" inline send). Fail-soft — a send failure must not brick
+  // signup.
+  //
+  // Gated on `!skipWelcomeEmail` so email/password signup paths (which
+  // send a combined welcome+verify email separately) don't double up,
+  // and routed through the central kill-switch (key "welcome_founder").
+  // Net result: exactly one welcome per signup on every path.
+  if (email && !skipWelcomeEmail && isEmailEnabled("welcome_founder")) {
+    try {
+      const { welcomeFounderEmail } = await import("@/emails/welcome-founder");
+      const { getResendClient } = await import("@/lib/resend");
+      const { signUnsubscribeToken } = await import("@/lib/email-tokens");
+      const { appUrl } = await import("@/emails/digest-layout");
+
+      const firstName = (userName ?? "").trim().split(/\s+/)[0] || null;
+      const unsubscribeUrl = `${appUrl()}/api/emails/unsubscribe?token=${encodeURIComponent(
+        signUnsubscribeToken(userId, "onboarding")
+      )}`;
+
+      const { subject, html } = welcomeFounderEmail({
+        firstName,
+        unsubscribeUrl,
+      });
+
+      await getResendClient().emails.send({
+        from: '"Keenan" <keenan@getacuity.io>',
+        replyTo: "keenan@getacuity.io",
+        to: email,
+        subject,
+        html,
+        // RFC 8058 one-click unsubscribe — marketing email, so the
+        // marketing footer link is mirrored into the mail-client headers.
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[bootstrap-user] welcome_founder email failed:", err);
+    }
+  }
+
+  // Old founder "URGENT: Acuity; Next Steps" welcome. Kept here behind
+  // the kill-switch (key "founder_welcome", currently OFF) so it can be
+  // restored by flipping one value, but superseded by welcome_founder
+  // above. Routed through the central email-enabled.ts kill-switch so
+  // this inline send can't escape central control.
   if (email && isEmailEnabled("founder_welcome")) {
     try {
       const { founderWelcomeEmail } = await import(

@@ -39,12 +39,17 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   recovery_download_reminder: true, // #32 download reminder
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
-  // Both user-facing welcomes are off: new signups got welcome_day0 AND
-  // the founder "URGENT: Acuity; Next Steps" email back-to-back. A
-  // single clean welcome will be rebuilt later. Reversible — flip back
-  // to true to restore.
+  // The two OLD user-facing welcomes stay off: new signups used to get
+  // welcome_day0 AND the founder "URGENT: Acuity; Next Steps" email
+  // back-to-back. They are replaced by the single welcome_founder below.
+  // Reversible — flip back to true to restore the old behaviour.
   welcome_day0: false, // #1 welcome_day0 (sendTrialEmail, inline in bootstrap)
   founder_welcome: false, // #3 founder "URGENT" welcome (inline send in bootstrapNewUser)
+
+  // ── KEEP ON — the single rebuilt welcome (2026-06-24) ───────────
+  // welcome_founder: one personal note from Keenan, sent once on signup
+  // (inline in bootstrapNewUser). Replaces the two killed welcomes above.
+  welcome_founder: true,
 
   // ── PAUSED — registry onboarding / retention emails ─────────────
   first_debrief_replay: false,
