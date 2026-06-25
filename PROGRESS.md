@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-06-24] — Welcome email polish: no top logo, fixed web app link
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4487eb99
+
+### In plain English (for Keenan)
+
+Two quick fixes to the welcome email after you reviewed the live send. First, the little Acuity logo at the top (it was showing the old purple mark) is gone — the welcome now reads like a plain personal note from you instead of a branded template. Every other email keeps its logo. Second, the "Open the web app" button was pointing at a broken page; it now goes to the real sign-in page (getacuity.io/auth/signin). We fixed that same broken web app link everywhere it appears — the welcome, the download-reminder email, and the old founder welcome.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/emails/trial/layout.ts`: added optional `showLogo` to `TrialLayoutOpts` (defaults to `true`, so all existing trial/recovery emails are unchanged). When false, the top logo row is omitted.
+- `apps/web/src/emails/welcome-founder.ts`: passes `showLogo:false`; `WEB_APP_URL` changed from `https://www.getacuity.io/home` to `https://getacuity.io/auth/signin`.
+- `apps/web/src/emails/trial/recovery-download-reminder.ts`: web app button `/home` → `/auth/signin`.
+- `apps/web/src/emails/founder-welcome.ts`: web app button `/home` → `/auth/signin`.
+
+### Manual steps needed
+
+- [ ] Push to main so the change deploys (Keenan to say "push it").
+
+### Notes
+
+- `/home` was the broken target reported in the live test; `/auth/signin` is the working web entry point. Fixed in all three emails that offer a web app link.
+- The previous entry's headshot-deploy step is now live after the earlier push, so the signature photo loads.
+
+---
+
 ## [2026-06-24] — Built the single welcome email from Keenan
 
 **Requested by:** Keenan
