@@ -34,10 +34,17 @@
  */
 export const EMAIL_ENABLED: Record<string, boolean> = {
   // ── KEEP ON — registry emails (sendTrialEmail) ──────────────────
-  welcome_day0: true, // #1 welcome_day0
   recovery_paid_no_app: true, // #29 paid, no app install
   recovery_recorded_once: true, // #30 recorded once then stalled
   recovery_download_reminder: true, // #32 download reminder
+
+  // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
+  // Both user-facing welcomes are off: new signups got welcome_day0 AND
+  // the founder "URGENT: Acuity; Next Steps" email back-to-back. A
+  // single clean welcome will be rebuilt later. Reversible — flip back
+  // to true to restore.
+  welcome_day0: false, // #1 welcome_day0 (sendTrialEmail, inline in bootstrap)
+  founder_welcome: false, // #3 founder "URGENT" welcome (inline send in bootstrapNewUser)
 
   // ── PAUSED — registry onboarding / retention emails ─────────────
   first_debrief_replay: false,

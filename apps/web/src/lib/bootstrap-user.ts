@@ -255,7 +255,14 @@ export async function bootstrapNewUser(params: {
   // Personal welcome email from Keenan. Plain text, feels like a real
   // email. Sent from keenan@getacuity.io so replies go straight to him.
   // Fail-soft — same pattern as every other email in bootstrap.
-  if (email) {
+  //
+  // Routed through the central email-enabled.ts kill-switch (key
+  // "founder_welcome") so this inline send can't escape central control.
+  // Currently OFF: it fired alongside welcome_day0, double-welcoming
+  // every new signup. Flip the key back to true once the single welcome
+  // is rebuilt.
+  const { isEmailEnabled } = await import("@/lib/email-enabled");
+  if (email && isEmailEnabled("founder_welcome")) {
     try {
       const { founderWelcomeEmail } = await import(
         "@/emails/founder-welcome"
