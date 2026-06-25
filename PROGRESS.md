@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-06-25] — "Powered by Acuity" badge on every funnel step
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Every screen of the onboarding funnel now shows a small "powered by Acuity" badge pinned to the bottom, so people always know it's us. "powered by" is in dark text and "Acuity" is in the brand orange gradient, both in a small font. It floats above the content and can't be tapped, so it never gets in the way of any button.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/components/onboarding-funnel.tsx (OnboardingFunnel root): added one fixed badge inside the shared wrapper (just before its closing div) so it renders on every step automatically — no per-screen edits. `fixed bottom-3 inset-x-0 z-40 flex justify-center pointer-events-none`; pill is `bg-white/70` + hairline border + `backdrop-blur-sm`; "Acuity" uses `bg-acuity-grad-primary bg-clip-text text-transparent` for the gradient text.
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it").
+
+### Notes
+
+pointer-events-none on the container guarantees the badge can never intercept a tap on a funnel CTA — conversion is unaffected. z-40 keeps it below the back button / progress bar (z-50). Reused the existing `--acuity-grad-primary` token (exposed as the `bg-acuity-grad-primary` Tailwind utility) rather than hardcoding colors.
+
+---
+
 ## [2026-06-25] — Funnel results + timeline screen polish
 
 **Requested by:** Keenan
