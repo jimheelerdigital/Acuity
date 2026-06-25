@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-06-24] — Built the single welcome email from Keenan
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5057d9d7
+
+### In plain English (for Keenan)
+
+Every new person who signs up now gets one welcome email — a short, personal note from you with two big tappable buttons (get the iPhone app, open the web app) and your headshot in the signature at the bottom. It replaces the two welcomes we turned off last week, so nobody gets double-emailed anymore. It comes from your real address (keenan@getacuity.io), and if someone hits reply it lands in your inbox — the email even says you read every reply, so that promise is real. The note mentions Android is coming and invites people to reply to be told when it lands. The tone is calm and plainspoken, no hype, and it gently makes the point that Acuity gets better the more you use it. Because it opens in the normal Mail app, the buttons also give people a reliable way to download the app outside the Facebook/Instagram in-app browser, which has been a sticking point. If someone has images turned off, the signature still clearly reads "Keenan — Co-founder, Acuity," so the photo is a bonus, never load-bearing.
+
+### Technical changes (for Jimmy)
+
+- New template `apps/web/src/emails/welcome-founder.ts` — `welcomeFounderEmail({ firstName, unsubscribeUrl })` returning `{ subject, html }`. Subject: "You're in — here's how to start". Uses the shared `trialLayout` with `footer:"marketing"` (coral brand, one-click unsubscribe). Two `trialButton` CTAs: App Store (`https://apps.apple.com/us/app/acuity-daily/id6762633410`) and web app (`https://www.getacuity.io/home`). First name escaped via `escapeHtml`; null falls back to "Hi there,". Signature is a 2-cell table: 52×52 circular `<img>` (`border-radius:50%`, `alt="Keenan, co-founder of Acuity"`) + real-text "Keenan"/"Co-founder, Acuity".
+- `apps/web/public/email/keenan-updated-headshot.png` — headshot asset placed alongside the existing email logo; served at `https://www.getacuity.io/email/keenan-updated-headshot.png` (referenced by absolute URL, not relative path).
+- `apps/web/src/lib/email-enabled.ts` — added `welcome_founder: true`. `welcome_day0` and `founder_welcome` remain `false`.
+- `apps/web/src/lib/bootstrap-user.ts` — removed the dead `welcome_day0` inline send; added the `welcome_founder` send gated by `email && !skipWelcomeEmail && isEmailEnabled("welcome_founder")` (placed after `userName` is read). Builds `firstName` from `userName`, an unsubscribe URL via `signUnsubscribeToken(userId, "onboarding")` + `appUrl()`, sends with `from`/`replyTo` `keenan@getacuity.io` and RFC 8058 `List-Unsubscribe` + `List-Unsubscribe-Post` headers. Fail-soft try/catch. The old founder "URGENT" block stays behind its (off) kill-switch.
+- `apps/web/scripts/preview-keep-emails.ts` — renders `welcome_founder` (with and without a first name) to `.tmp/email-previews/`.
+
+### Manual steps needed
+
+- [ ] Push to main so the headshot asset deploys — until then `https://www.getacuity.io/email/keenan-updated-headshot.png` 404s (the email body still reads fine; the photo just won't load). (Keenan to say "push it".)
+
+### Notes
+
+- Welcome-per-signup-path after this change: OAuth / magic-link signups → `welcome_founder` (their single welcome). Email/password signups → `welcomeVerifyEmail` only (they set `skipWelcomeEmail=true`, and `welcome_founder` is gated on `!skipWelcomeEmail`), so they are NOT double-welcomed. No path sends two welcomes.
+- Web app URL was confirmed from `onboarding-funnel.tsx` ("Continue in the Web App" → `/home`), not guessed.
+- Coral comes from the shared `trialLayout`/`trialButton` (button `#E06B46` gradient, links `#C4451C`, accent `#FF8A65`) so branding is correct regardless of layout-fix state.
+- Banned-phrase scan of the rendered HTML is clean (no "60 seconds"/"one minute"/nightly/evening/before-bed/"brain dump"; no body exclamation points — the only "!" are `<!DOCTYPE>` and the preheader's `display:none!important`).
+- Headshot URL uses the `www.` host to byte-match the existing logo reference in the live emails (apex `getacuity.io` 308-redirects to `www`); the asset resolves publicly only after push + deploy.
+
+---
+
 ## [2026-06-24] — Stopped the duplicate welcome emails on signup
 
 **Requested by:** Keenan
