@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-06-25] — v5 funnel "Account Created" drop: diagnostic SQL + decision table
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+The signup funnel dashboard shows a big drop on the "Account Created" step (8 people see the form, only 2 register). We checked the code and can't yet tell whether that's real — people genuinely abandoning the form — or a measurement glitch where the counter just isn't firing. So we wrote a saved set of database queries you can run from home (Supabase is blocked on the work network) that compares how many real accounts were actually created against how many the dashboard counted. The file tells you, in a plain decision table, which of three fixes is the right one based on the numbers it returns. No tracking or app code was changed — that comes after you run it.
+
+### Technical changes (for Jimmy)
+
+- scripts/v5-account-created-diagnostic.sql: new file. Four queries (A–D) with a header decision table and root-cause notes.
+  - A: User rows created in window, grouped by signupMethod.
+  - B: trials + Stripe subs among that cohort.
+  - C: v5 funnel event counts (distinct sessions) — reproduces the dashboard tail.
+  - D (decisive): db_users_created / db_email_created / db_oauth_created vs evt_account_created.
+  - Parameterized date window via a `win` CTE, defaulting to last 3 days (now() - interval '3 days' .. now()), with `<<< EDIT HERE >>>` placeholders.
+- No tracking, funnel, or auth code changed. Read-only diagnostic only.
+
+### Manual steps needed
+
+- [ ] Run scripts/v5-account-created-diagnostic.sql from home network and read query D against the decision table (Keenan).
+- [ ] Based on D's outcome, pick the fix and request implementation (Keenan → Claude Code).
+- [ ] Push this commit when ready (Keenan to say "push it").
+
+### Notes
+
+Diagnostic established (read-only): v5 step defs (metrics route FUNNEL_STEPS_V5, lines 1648–1674) correctly match the paywall-first order; denominators use the correct preceding step; "2" on Account Created is a literal count of distinct sessions that fired funnel_account_created. Three root-cause candidates, decided by query D:
+- REAL form friction (db ≈ evt ≈ 2),
+- OAuth UNDER-fire (db_oauth_created > evt — funnel_account_created only fires when the browser returns to /start?step=post-signup; lost on origin mismatch www vs apex, in-app webview storage partitioning, or off-step redirects),
+- existing-user sign-in OVER-fire (evt > db — onboarding-funnel.tsx ~line 327 fires funnel_account_created unconditionally for anyone hitting step=post-signup, including returning sign-ins).
+The OVER-fire at ~line 327 is a known correctness bug regardless of D's outcome; the fix (gate it to genuinely new accounts only — e.g. a one-shot new-account signal through the OAuth round-trip) is documented in the SQL file's footer, ready to implement after the query is run. Email/password path fires the event reliably in-session; OAuth is the leaky path. No fix implemented yet — waiting on query D.
+
+---
+
 ## [2026-06-25] — Updated Keenan email headshot across all campaigns
 
 **Requested by:** Keenan
