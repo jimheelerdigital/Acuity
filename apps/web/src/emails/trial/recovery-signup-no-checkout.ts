@@ -9,7 +9,7 @@
 
 import { escapeHtml } from "@/lib/escape-html";
 import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
-import { trialButton, trialLayout } from "./layout";
+import { keenanSignature, trialButton, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 type Branch = "blur" | "patterns" | "rumination" | "graveyard" | "mask" | "drift";
@@ -59,11 +59,7 @@ export const recoverySignupNoCheckout: TrialEmailTemplate = {
           ${trialButton(startUrl, "Start my free trial")}
         </td>
       </tr>
-      <tr>
-        <td>
-          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">\u2014 Keenan</p>
-        </td>
-      </tr>
+      ${keenanSignature()}
     `;
 
     return trialLayout({

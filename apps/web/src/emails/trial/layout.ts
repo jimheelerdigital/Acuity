@@ -93,10 +93,54 @@ export function trialLayout(opts: TrialLayoutOpts): string {
 </html>`;
 }
 
-/** Coral button used across the trial and recovery sequences. Deep
- *  coral solid (#E06B46) so white label text clears WCAG AA, with a
- *  coral gradient overlay for clients that render it. */
-export function trialButton(href: string, label: string): string {
+/** Public URL of Keenan's headshot, hosted alongside the other email
+ *  assets. Used by keenanSignature(). */
+export const KEENAN_HEADSHOT_URL =
+  "https://www.getacuity.io/email/keenan-updated-headshot.png";
+
+/** Keenan's signature block — a small circular headshot next to his name
+ *  and title. Used by every email that goes out personally from Keenan so
+ *  they all sign off the same way. Reads cleanly with images off: the
+ *  name and title are real text, the photo carries descriptive alt text.
+ *  Returns a table row, so drop it straight into a trialLayout content
+ *  string (optionally after a "Talk soon," line). */
+export function keenanSignature(): string {
+  return `<tr>
+        <td>
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td valign="middle" style="padding-right:12px;">
+                <img src="${KEENAN_HEADSHOT_URL}" alt="Keenan, founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
+              </td>
+              <td valign="middle">
+                <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>
+                <p style="margin:0;font-size:13px;color:#6b7280;">Co-founder, Acuity</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`;
+}
+
+/**
+ * Standardized email buttons. Every email should use primaryButton() for
+ * the dominant action and secondaryButton() for the alternate/fallback,
+ * so button styling stays consistent everywhere and future emails just
+ * call these helpers.
+ *
+ * Both are table-based with inline styles only (no flexbox/modern CSS) so
+ * they survive Outlook's Word rendering engine, and both declare explicit
+ * colors against an explicit background so dark-mode clients that force a
+ * light card (we set color-scheme on the layout) keep them legible.
+ *
+ * PRIMARY: solid deep coral (#E06B46) fill — white label clears WCAG AA —
+ * with a coral gradient overlay for clients that render it. Full-width.
+ * SECONDARY: ghost/outline — white fill, 2px coral border, coral label
+ * (#C4451C clears AA on white). Same size + shape as primary, visually
+ * subordinate. The white fill (not transparent) keeps the coral text and
+ * border readable even where a client inverts the canvas.
+ */
+export function primaryButton(href: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:8px 0;">
     <tr>
       <td style="background-color:#E06B46;background:linear-gradient(135deg,#FFA47E 0%,#FF8A65 55%,#E06B46 100%);border-radius:8px;text-align:center;">
@@ -106,6 +150,24 @@ export function trialButton(href: string, label: string): string {
       </td>
     </tr>
   </table>`;
+}
+
+export function secondaryButton(href: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:8px 0;">
+    <tr>
+      <td style="background-color:#FFFFFF;border:2px solid #E06B46;border-radius:8px;text-align:center;">
+        <a href="${href}" style="display:block;padding:12px 26px;font-size:15px;font-weight:700;color:#C4451C;text-decoration:none;">
+          ${label}
+        </a>
+      </td>
+    </tr>
+  </table>`;
+}
+
+/** Back-compat alias — existing emails call trialButton; it now routes
+ *  through the standardized primary button so styling stays in one place. */
+export function trialButton(href: string, label: string): string {
+  return primaryButton(href, label);
 }
 
 /** Subtle inset card used for quotes, recaps, stat blocks. Coral

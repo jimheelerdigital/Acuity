@@ -17,13 +17,16 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { trialButton, trialLayout } from "./trial/layout";
+import {
+  keenanSignature,
+  primaryButton,
+  secondaryButton,
+  trialLayout,
+} from "./trial/layout";
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 const WEB_APP_URL = "https://getacuity.io/auth/signin";
-const HEADSHOT_URL =
-  "https://www.getacuity.io/email/keenan-updated-headshot.png";
 
 export interface WelcomeFounderOpts {
   /** First name from the user record; null falls back to "Hi there,". */
@@ -48,17 +51,17 @@ export function welcomeFounderEmail(
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${greeting}</p>
         </td>
       </tr>
-      ${para("It's Keenan — I'm one of the people who built Acuity, and I wanted to say hi properly.")}
+      ${para("It's Keenan — I'm one of the people who built Acuity, and I wanted to reach out personally.")}
       ${para("I'll keep this short, because I know your head's probably full enough already. That's kind of the whole point of Acuity: you talk through your day for a few spoken minutes, and it quietly catches the things you'd otherwise lose — the tasks, the patterns, the stuff that's been weighing on you that you can't quite name.")}
       ${para("Here's how to start:")}
       <tr>
         <td style="padding-bottom:4px;">
-          ${trialButton(APP_STORE_URL, "Get the iPhone app")}
+          ${primaryButton(APP_STORE_URL, "Get the iPhone app")}
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:28px;">
-          ${trialButton(WEB_APP_URL, "Open the web app")}
+          ${secondaryButton(WEB_APP_URL, "Open the web app")}
         </td>
       </tr>
       ${para("On Android? It's coming — we're building it now. Just reply to this email and I'll personally let you know the second it's ready.")}
@@ -70,21 +73,7 @@ export function welcomeFounderEmail(
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">Talk soon,</p>
         </td>
       </tr>
-      <tr>
-        <td>
-          <table role="presentation" cellpadding="0" cellspacing="0">
-            <tr>
-              <td valign="middle" style="padding-right:12px;">
-                <img src="${HEADSHOT_URL}" alt="Keenan, co-founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
-              </td>
-              <td valign="middle">
-                <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>
-                <p style="margin:0;font-size:13px;color:#6b7280;">Co-founder, Acuity</p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
+      ${keenanSignature()}
     `;
 
   return {

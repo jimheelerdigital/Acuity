@@ -65,8 +65,18 @@ export function founderWelcomeEmail(params: {
 
         <p style="margin:0 0 28px;font-size:15px;color:#4B5563;line-height:1.7;">If you have any questions about getting started, just reply to this email. I read everything.</p>
 
-        <p style="margin:0;font-size:16px;color:#1F2937;">Kindly,</p>
-        <p style="margin:4px 0 0;font-size:16px;color:#1F2937;font-weight:700;">Keenan - Co-Founder, Acuity</p>
+        <p style="margin:0 0 12px;font-size:16px;color:#1F2937;">Kindly,</p>
+        <table role="presentation" cellpadding="0" cellspacing="0">
+          <tr>
+            <td valign="middle" style="padding-right:12px;">
+              <img src="https://www.getacuity.io/email/keenan-updated-headshot.png" alt="Keenan, founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
+            </td>
+            <td valign="middle">
+              <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>
+              <p style="margin:0;font-size:13px;color:#6b7280;">Co-founder, Acuity</p>
+            </td>
+          </tr>
+        </table>
 
       </td></tr>
     </table>

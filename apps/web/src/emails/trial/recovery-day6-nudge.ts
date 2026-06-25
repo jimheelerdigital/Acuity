@@ -8,7 +8,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { trialButton, trialLayout } from "./layout";
+import { keenanSignature, trialButton, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
@@ -39,11 +39,7 @@ export const recoveryDay6Nudge: TrialEmailTemplate = {
           ${trialButton(APP_STORE_URL, "Record today\u2019s entry")}
         </td>
       </tr>
-      <tr>
-        <td>
-          <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">\u2014 Keenan</p>
-        </td>
-      </tr>
+      ${keenanSignature()}
     `;
 
     return trialLayout({
