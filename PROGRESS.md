@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-06-25] — Funnel results + timeline screen polish
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+
+Two tweaks to the onboarding result screens. On the "Your pattern" results screen, the main pattern (e.g. "Mental Overload") now sits in its own highlighted box with its description right underneath it, and the two smaller cards (secondary signal + most affected area) drop below that, followed by "How Acuity helps" — so it reads top-to-bottom from the big finding down to the details. On the timeline screen, the single written testimonial ("Week 3, Acuity told me…") is replaced with the 4.9 / 127+ reviews star rating, matching the proof shown on the download screen.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/components/onboarding-funnel.tsx (PatternResultScreen): wrapped the primary pattern in a tinted box (rounded-2xl, border-acuity-primary/30, bg-acuity-primary/5); moved the loop-line quote + reframe body copy directly beneath it; moved the secondary-signal / most-affected-area grid below the description; re-cascaded the reveal animation top-to-bottom (box=show(1), quote=show(2), body=show(3), cards=show(4), how-acuity-helps=show(5), CTA=show(6)).
+- apps/web/src/components/onboarding-funnel.tsx (PersonalizedTimeline): swapped SocialProofQuote (PAYWALL_TESTIMONIALS_V2[2]) for SocialProofRating (4.9 / 127+ users) at placement="timeline".
+- No copy invented; rating component already existed and is reused. SocialProofQuote + PAYWALL_TESTIMONIALS_V2 still used elsewhere (mechanism screen, rotating paywall testimonial).
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it").
+
+### Notes
+
+Both changes are presentation-only in the v5 funnel; no tracking, schema, or copy text changed. The timeline rating still fires funnel_social_proof_viewed with placement="timeline" (same event the quote fired), so the social-proof step metric is unaffected.
+
+---
+
 ## [2026-06-25] — v5 funnel "Account Created" drop: diagnostic SQL + decision table
 
 **Requested by:** Keenan

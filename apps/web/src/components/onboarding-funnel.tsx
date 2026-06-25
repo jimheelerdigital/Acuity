@@ -1875,14 +1875,22 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
     <div className="min-h-screen flex flex-col items-center px-6 py-12 text-zinc-900">
       <div className="max-w-md w-full">
 
-        {/* ── Hero: Primary Pattern (the centerpiece — big, unmissable) ── */}
-        <div className={`text-center mb-6 transition-all duration-[800ms] ${show(1)}`}>
+        {/* ── Hero: Primary Pattern in its own box (the centerpiece) ── */}
+        <div className={`mb-6 rounded-2xl border-2 border-acuity-primary/30 bg-acuity-primary/5 px-6 py-7 text-center transition-all duration-[800ms] ${show(1)}`}>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-acuity-primary mb-3">Your pattern</p>
           <h2 className="text-[32px] sm:text-[40px] font-extrabold tracking-tight text-zinc-900 leading-[1.1]">{labels.primary}</h2>
         </div>
 
+        {/* ── Description: loop line + reframe, directly under the pattern ── */}
+        <div className={`mb-6 rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4 transition-all duration-[800ms] ${show(2)}`}>
+          <p className="text-[15px] font-semibold italic text-zinc-700 leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
+        </div>
+        <div className={`mb-8 transition-all duration-[800ms] ${show(3)}`}>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{labels.bodyCopy}</p>
+        </div>
+
         {/* ── Secondary + Area — prominent cards side by side ── */}
-        <div className={`grid ${labels.secondaryVisible && labels.secondary ? "grid-cols-2" : "grid-cols-1"} gap-3 mb-8 transition-all duration-[800ms] ${show(1)}`}>
+        <div className={`grid ${labels.secondaryVisible && labels.secondary ? "grid-cols-2" : "grid-cols-1"} gap-3 mb-8 transition-all duration-[800ms] ${show(4)}`}>
           {labels.secondaryVisible && labels.secondary && (
             <div className="rounded-xl border-2 border-zinc-200 bg-zinc-50/80 p-4 text-center">
               <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1.5">Secondary signal</p>
@@ -1895,18 +1903,8 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
           </div>
         </div>
 
-        {/* ── Loop line — the sentence that makes them nod ── */}
-        <div className={`mb-6 rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4 transition-all duration-[800ms] ${show(2)}`}>
-          <p className="text-[15px] font-semibold italic text-zinc-700 leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
-        </div>
-
-        {/* ── Body copy — the reframe (anti-Barnum, pattern-specific) ── */}
-        <div className={`mb-8 transition-all duration-[800ms] ${show(3)}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{labels.bodyCopy}</p>
-        </div>
-
         {/* ── How Acuity Helps — actionable, breaking-free focused ── */}
-        <div className={`mb-10 transition-all duration-[800ms] ${show(4)}`}>
+        <div className={`mb-10 transition-all duration-[800ms] ${show(5)}`}>
           <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">How Acuity helps</p>
           <div className="space-y-3">
             {[
@@ -2014,10 +2012,10 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
           <p className="text-base font-semibold text-zinc-900 leading-relaxed">{bottomLine}</p>
         </div>
 
-        {/* Social proof — reused real, week-themed testimonial alongside the "what one week looks like" proof */}
+        {/* Social proof — the 4.9 / 127+ reviews rating (mirrors the Download screen) */}
         {showBottom && (
-          <div className="mb-8 funnel-screen">
-            <SocialProofQuote track={track} placement="timeline" testimonial={PAYWALL_TESTIMONIALS_V2[2]} />
+          <div className="mb-8 text-center funnel-screen">
+            <SocialProofRating track={track} placement="timeline" />
           </div>
         )}
 
