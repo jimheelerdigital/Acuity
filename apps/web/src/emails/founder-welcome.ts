@@ -69,7 +69,7 @@ export function founderWelcomeEmail(params: {
         <table role="presentation" cellpadding="0" cellspacing="0">
           <tr>
             <td valign="middle" style="padding-right:12px;">
-              <img src="https://www.getacuity.io/email/keenan-updated-headshot.png" alt="Keenan, founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
+              <img src="https://www.getacuity.io/email/ka-headshot-email.png" alt="Keenan, co-founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
             </td>
             <td valign="middle">
               <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>

@@ -96,7 +96,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
 /** Public URL of Keenan's headshot, hosted alongside the other email
  *  assets. Used by keenanSignature(). */
 export const KEENAN_HEADSHOT_URL =
-  "https://www.getacuity.io/email/keenan-updated-headshot.png";
+  "https://www.getacuity.io/email/ka-headshot-email.png";
 
 /** Keenan's signature block — a small circular headshot next to his name
  *  and title. Used by every email that goes out personally from Keenan so
@@ -110,7 +110,7 @@ export function keenanSignature(): string {
           <table role="presentation" cellpadding="0" cellspacing="0">
             <tr>
               <td valign="middle" style="padding-right:12px;">
-                <img src="${KEENAN_HEADSHOT_URL}" alt="Keenan, founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
+                <img src="${KEENAN_HEADSHOT_URL}" alt="Keenan, co-founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
               </td>
               <td valign="middle">
                 <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>
