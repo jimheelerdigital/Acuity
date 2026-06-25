@@ -7,6 +7,44 @@
 
 ---
 
+## [2026-06-24] — Rebuilt the 12 kept emails: coral brand, dark-mode, fixed copy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** cfd1c42d
+
+### In plain English (for Keenan)
+
+The 12 emails we kept turned on now actually look like Acuity. They used the old purple everywhere — buttons, links, accent bars, the little logo tile — and now they all use our coral brand color instead. They also read correctly in dark mode, so people on phones set to dark no longer get grey-on-black text they can barely see. We fixed the wording too: every place that still said "14 days free" now says "7 days" to match our real trial, and we removed the duration claims we are not allowed to make ("60 seconds," "one minute a day"), replacing them with softer lines like "a short debrief" or "a few spoken minutes." The recovery and welcome emails got a gentle rewrite in our calm, plainspoken voice for the women we serve — lead with understanding, then one clear next step, no hype. Finally, we sorted out the footers: the personal/account emails (sign-in, password reset, welcome+verify, payment alerts, exports) no longer show a marketing "unsubscribe from onboarding" link they should never have had, while the marketing ones (welcome, the recovery nudges, the weekly digest) keep their proper one-click unsubscribe. Fresh preview copies of all 13 were re-generated for review.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/emails/layout.ts` (transactional shell), `apps/web/src/emails/trial/layout.ts` (marketing shell + `trialButton`/`trialCard`), `apps/web/src/emails/digest-layout.ts` (digest shell): replaced violet `#7C5CFC` with coral — button `#E06B46` with a `linear-gradient(135deg,#FFA47E,#FF8A65,#E06B46)` overlay, link text `#C4451C` (AA on white), accent bars/card border `#FF8A65`. Added `color-scheme` + `supported-color-schemes` meta to all three; bumped low-contrast `#9ca3af` greys to `#6b7280`; removed the "One minute a day." line from every footer.
+- `apps/web/src/emails/trial/layout.ts`: `TrialLayoutOpts.unsubscribeUrl` now optional; added `footer?: "marketing" | "transactional"`. Marketing (default) keeps the one-click unsubscribe line; transactional renders sender info only.
+- `apps/web/src/emails/welcome-verify.ts`: switched to `footer:"transactional"` (was rendering the marketing footer), "14 days" → "7 days", coral link, rewrote body in mirror voice.
+- `apps/web/src/emails/trial/welcome-day0.ts`: "14 days" → "7 days", coral link, body rewrite.
+- `apps/web/src/emails/trial/recovery-paid-no-app.ts` + `recovery-recorded-once.ts`: removed "60 seconds"/"one minute" duration claims (→ "a short debrief"/"a few spoken minutes"), coral accents, voice pass.
+- `apps/web/src/emails/founder-signup-notification.ts`: `footer:"transactional"` (was `unsubscribeUrl:"#"` on marketing footer).
+- `apps/web/src/lib/founder-notifications.ts`: inline founder-payment HTML heading `#7C5CFC` → `#C4451C`.
+- `apps/web/src/emails/weekly-digest.ts`: observation arrow + goal progress bar `#7C5CFC` → `#E06B46`.
+- `apps/web/scripts/preview-keep-emails.ts`: synced the two inline reproductions (founder-payment heading, weekly-digest arrow + bar) to coral; re-rendered 13 previews to `.tmp/email-previews/`.
+- No send logic, triggers, kill-switch map values, pricing, or Stripe touched. Paused emails left untouched.
+
+### Manual steps needed
+
+- [ ] None required to deploy — pushes live on merge to main (Keenan to say "push it" first).
+- [ ] Optional: confirm marketing sends set the `List-Unsubscribe` header. weekly-digest already does (RFC 8058); the trial orchestrator sends do not yet (Jimmy, future).
+
+### Notes
+
+- Coral hex chosen: brand `#FF8A65` (logo tile / accent bars / card left-border), button `#E06B46` solid + `135deg` gradient (white label text clears WCAG AA — flat `#FF8A65` failed at 2.3:1), link/on-white text `#C4451C` (~4.7:1). Derived from the app's oklch coral token via manual OKLCH→sRGB conversion (culori wasn't resolvable locally).
+- Footer split verified in the rendered previews: unsubscribe present in exactly the 5 marketing emails (welcome_day0, recovery_paid_no_app, recovery_recorded_once, recovery_download_reminder, weekly_digest); absent from the 8 transactional/internal ones (magic_link, password_reset, welcome_verify, payment_failed, data_export_ready, state_of_me_ready, founder_signup_notify, founder_payment_notify).
+- welcome_verify keeps the richer trial shell deliberately (the minimal auth shell lands in spam for getacuity.io, which still lacks SPF) — it just gets the transactional footer now.
+- recovery_download_reminder needed no copy change (no banned claims; "7 day trial" was already correct) — it only inherits the coral button.
+- Grep over the 13 rendered previews confirms zero remaining `#7C5CFC`, "One minute a day", "60 seconds", "one minute", or "14 days".
+
+---
+
 ## [2026-06-24] — Paused all marketing emails except 12 essential ones
 
 **Requested by:** Keenan
