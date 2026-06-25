@@ -40,7 +40,6 @@ export function emailLayout(opts: {
   <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">${pre}</span>
   <div style="max-width:560px;margin:0 auto;background:#F9FAFB;border-radius:16px;padding:40px;border:1px solid #E5E7EB;">
     <div style="margin-bottom:32px;">
-      <img src="https://www.getacuity.io/AcuityLogoDark.png" alt="Acuity" width="36" height="36" style="display:block;width:36px;height:36px;margin-bottom:16px;" />
       <h1 style="color:#1a1a1a;font-size:24px;font-weight:700;margin:0;">${title}</h1>
     </div>
     <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 32px;">

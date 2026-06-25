@@ -92,7 +92,6 @@ export function welcomeFounderEmail(
     html: trialLayout({
       content,
       footer: "marketing",
-      showLogo: false,
       unsubscribeUrl: opts.unsubscribeUrl,
       preheader:
         "A quick note from Keenan, and the two ways to start your first debrief.",

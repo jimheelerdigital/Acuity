@@ -43,11 +43,6 @@ export function founderWelcomeEmail(params: {
       <!-- Header accent bar -->
       <tr><td style="height:4px;background:linear-gradient(90deg,#7C5CFC,#A78BFA,#7C5CFC);"></td></tr>
 
-      <!-- Logo -->
-      <tr><td align="center" style="padding:28px 0 0;">
-        <img src="https://www.getacuity.io/AcuityLogoDark.png" alt="Acuity" width="40" height="40" style="border-radius:10px;" />
-      </td></tr>
-
       <!-- Content -->
       <tr><td style="padding:24px 36px 36px;">
 

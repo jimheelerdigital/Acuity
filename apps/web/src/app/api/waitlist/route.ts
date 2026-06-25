@@ -140,12 +140,7 @@ function buildWelcomeEmail(name: string | null): string {
       <td align="center" style="padding:40px 20px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-          <!-- Logo + Tagline -->
-          <tr>
-            <td align="center" style="padding-bottom:12px;">
-              <img src="https://www.getacuity.io/AcuityLogo.png" alt="Acuity" width="48" height="48" />
-            </td>
-          </tr>
+          <!-- Tagline -->
           <tr>
             <td align="center" style="padding-bottom:40px;">
               <p style="margin:0;font-size:13px;color:#A0A0B8;letter-spacing:0.5px;">
