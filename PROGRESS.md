@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-06-25] — Updated Keenan email headshot across all campaigns
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 92a5116c
+
+### In plain English (for Keenan)
+
+Swapped your photo in the email signature for the new headshot everywhere it shows up — the welcome email and every recovery email. New sends will show the new photo. Emails already sitting in people's inboxes keep their old photo (we left the old image on the server so they don't break).
+
+### Technical changes (for Jimmy)
+
+- apps/web/public/email/ka-headshot-email.png: new headshot asset (URL-safe, cache-busting filename)
+- apps/web/src/emails/trial/layout.ts: KEENAN_HEADSHOT_URL → https://www.getacuity.io/email/ka-headshot-email.png (drives keenanSignature(), used by welcome + all recovery emails); img alt aligned to "co-founder"
+- apps/web/src/emails/founder-welcome.ts: inline signature img → new URL + alt
+- Old apps/web/public/email/keenan-updated-headshot.png left in place for already-sent emails
+
+### Manual steps needed
+
+- [ ] Push to main so the new asset deploys — until then https://www.getacuity.io/email/ka-headshot-email.png 404s and the new photo won't load (Keenan to say "push it").
+
+### Notes
+
+Used a new filename rather than overwriting the old file so email-client/CDN image caches don't serve the stale photo, and so historical sends (which reference the old URL) keep rendering. The standalone apps/web/src/emails/keenan-signature.ts component is unused by current campaigns (references a different, non-deployed asset) and was left untouched.
+
+---
+
 ## [2026-06-25] — One-click Stripe checkout + payment emails go straight to Stripe
 
 **Requested by:** Keenan
