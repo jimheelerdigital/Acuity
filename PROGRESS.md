@@ -7,6 +7,60 @@
 
 ---
 
+## [2026-06-25] — Recovery email copy polish (#29, #30, #32)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 09f39d7b
+
+### In plain English (for Keenan)
+
+Cleaned up the three recovery emails that chase people who signed up but stalled. The "app is waiting for you" email used to open with "Hi friend," (a placeholder that slipped through) and had an exclamation point and a smiley — all gone; it now greets people by their first name (or a clean "Hi there," if we don't have it), and its closing and Android line read warmer and less pushy. The "trial started" email had one stiff line about your mood that now reads more human. The "second entry" email got a light touch-up. Nothing about who gets these or when changed — this was purely making them sound like you.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/emails/trial/recovery-download-reminder.ts (#32): first-name greeting with "Hi there," fallback; removed "!" and ":)"; Android line → "It's coming soon — for now, the web app has everything"; warmer closing
+- apps/web/src/emails/trial/recovery-paid-no-app.ts (#29): "notices how your mood is sitting" → "picks up on how you're actually feeling"; graceful greeting fallback
+- apps/web/src/emails/trial/recovery-recorded-once.ts (#30): graceful greeting fallback only
+- No trigger/timing/kill-switch changes; previews re-rendered via scripts/preview-keep-emails.ts
+
+### Manual steps needed
+
+None
+
+### Notes
+
+All three verified clean of banned phrases (no "60 seconds"/"one minute"/nightly/before-bed/"brain dump"), no exclamation points or emojis, signature reads "Co-founder, Acuity". Greeting fallback pattern (`rawFirst ? \`Hey ${name},\` : "Hi there,"`) applied to all three so an empty firstName never renders "Hey ,".
+
+---
+
+## [2026-06-25] — Standardized email buttons + Keenan signature everywhere
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f95bab97
+
+### In plain English (for Keenan)
+
+Every email that goes out personally from you now signs off the same way — your circular headshot next to "Keenan / Co-founder, Acuity" — so they all feel like they're from the same person. We also gave all emails one consistent button style: a bold solid coral button for the main action and a matching outlined version for the backup option. The welcome now leads with "Get the iPhone app" as the big button and "Open the web app" as the secondary one (since almost everyone's on iPhone), and its opening was tightened so it doesn't greet you twice.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/emails/trial/layout.ts: added keenanSignature() (shared headshot block, "Co-founder, Acuity"), primaryButton() (solid coral + gradient), secondaryButton() (white fill, coral border/text); trialButton() now delegates to primaryButton(). All table-based + inline styles for Outlook/dark-mode safety.
+- apps/web/src/emails/welcome-founder.ts: primary iPhone button + secondary web button, shared signature, tightened opening line
+- apps/web/src/emails/founder-welcome.ts: inline Co-founder headshot signature (old killed founder welcome, kept gated off)
+- apps/web/src/emails/trial/recovery-day6-nudge.ts, recovery-checkout-abandoned.ts, recovery-signup-no-checkout.ts: shared keenanSignature()
+
+### Manual steps needed
+
+None
+
+### Notes
+
+Signature title lives in one place now (keenanSignature() in trial/layout.ts), so future title edits propagate to every helper-using email at once. founder-welcome.ts uses an inline copy because its layout structure differs — its title was fixed to "Co-founder" separately. Welcome test send verified earlier (Resend id c3d5e1b9). Not pushed.
+
+---
+
 ## [2026-06-24] — Welcome email polish: no top logo, fixed web app link
 
 **Requested by:** Keenan
