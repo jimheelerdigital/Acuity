@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-25] — One-click Stripe checkout + payment emails go straight to Stripe
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 96f4bb0e
+
+### In plain English (for Keenan)
+
+Subscribing on getacuity.io/upgrade is now one tap. We removed the extra "I want my paid features to start now" checkbox that was sitting above the button — by tapping Subscribe Now, people are agreeing to those same terms, so there's nothing extra to click before they can pay. This works the same for both Monthly and Yearly. We also made the "couldn't charge your card" email take people straight to Stripe to fix their card in one click, instead of dropping them on the account page and asking them to dig for a button. Going forward, payment emails send people right to Stripe to pay.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/app/upgrade/upgrade-plan-picker.tsx: removed the acknowledgement checkbox and its gating state. The 14-day-withdrawal consent is now a clickwrap — tapping Subscribe Now records the `distance_contract_immediate_performance` grant via /api/consent/record (granted=true, same wording) before the Stripe session is created, so the legal gate (`hasRecentGrant`) is unchanged for monthly and annual.
+- apps/web/src/app/api/stripe/checkout/route.ts: wrapped `stripe.checkout.sessions.create` in try/catch + added a null-`url` guard; returns 502 with a usable message instead of an opaque 500 (so a Stripe failure no longer looks like "nothing happens").
+- apps/web/src/app/api/stripe/manage/route.ts: NEW email-safe `GET` route. Mints a Stripe Billing Portal session on click and 302-redirects into Stripe; bounces through /auth/signin (callbackUrl back to itself) if not logged in; redirects to /upgrade if the user has no stripeCustomerId.
+- apps/web/src/emails/payment-failed.ts: CTA now points at /api/stripe/manage; footnote reworded.
+- apps/web/scripts/preview-keep-emails.ts: payment_failed preview kept byte-accurate.
+
+### Manual steps needed
+
+- [ ] Verify in production that Subscribe Now redirects to Stripe Checkout for both intervals (Keenan). If it still fails, the likely cause is env config — confirm STRIPE_SECRET_KEY, STRIPE_PRICE_MONTHLY/STRIPE_PRICE_YEARLY, and NEXTAUTH_URL are set in Vercel (Jimmy).
+- [ ] Confirm the Stripe Billing Portal is enabled/configured in the Stripe dashboard (required for /api/stripe/manage to mint a portal session) (Jimmy).
+
+### Notes
+
+The checkbox removal is itself the most likely fix for "Subscribe Now does nothing": the button was `disabled` until the box was ticked, so an un-ticked box read as a dead button. Consent is still legally captured — just via the button instead of a separate checkbox. For non-subscribers (trial-ending/ended emails) the correct "pay" destination remains /upgrade, not a cold Stripe Checkout link, because plan selection + the withdrawal consent must happen first; /api/stripe/manage sends them to /upgrade if they have no Stripe customer. Existing-customer billing (card declined) is the case that goes directly to the Stripe portal.
+
+---
+
 ## [2026-06-25] — Recovery email copy polish (#29, #30, #32)
 
 **Requested by:** Keenan
