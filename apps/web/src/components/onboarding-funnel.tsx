@@ -385,14 +385,27 @@ export function OnboardingFunnel() {
     if (authStatus !== "authenticated" || attributionSynced.current) return;
     attributionSynced.current = true;
 
-    // Read funnel UTMs from sessionStorage
+    // Top priority: UTMs carried back on the URL by the OAuth callbackUrl
+    // (handleOAuthSignup). This is the only channel that survives in-app
+    // webview storage partitioning and any www↔apex host switch, so it must
+    // win over the two stores that the redirect can wipe.
+    const urlUtm: Record<string, string> = {};
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
+        const v = sp.get(k);
+        if (v) urlUtm[k] = v;
+      }
+    } catch {}
+
+    // Fallback 1: funnel UTMs from sessionStorage (lost across webview/origin splits)
     let funnelUtm: Record<string, string> = {};
     try {
       const stored = sessionStorage.getItem("acuity_funnel_utm");
       if (stored) funnelUtm = JSON.parse(stored);
     } catch {}
 
-    // Also try the attribution cookie
+    // Fallback 2: the first-touch attribution cookie (host-only)
     let cookieAttr: Record<string, string> = {};
     try {
       const { getClientAttribution } = require("@/lib/attribution");
@@ -400,12 +413,12 @@ export function OnboardingFunnel() {
       if (attr) cookieAttr = attr;
     } catch {}
 
-    // Merge: funnel UTMs take priority (they're from the ad click URL), cookie is fallback
-    const utm_source = funnelUtm.utmSource || cookieAttr.utm_source;
-    const utm_medium = funnelUtm.utmMedium || cookieAttr.utm_medium;
-    const utm_campaign = funnelUtm.utmCampaign || cookieAttr.utm_campaign;
-    const utm_content = funnelUtm.utmContent || cookieAttr.utm_content;
-    const utm_term = funnelUtm.utmTerm || cookieAttr.utm_term;
+    // Priority: URL (survives the redirect) → sessionStorage → cookie
+    const utm_source = urlUtm.utm_source || funnelUtm.utmSource || cookieAttr.utm_source;
+    const utm_medium = urlUtm.utm_medium || funnelUtm.utmMedium || cookieAttr.utm_medium;
+    const utm_campaign = urlUtm.utm_campaign || funnelUtm.utmCampaign || cookieAttr.utm_campaign;
+    const utm_content = urlUtm.utm_content || funnelUtm.utmContent || cookieAttr.utm_content;
+    const utm_term = urlUtm.utm_term || funnelUtm.utmTerm || cookieAttr.utm_term;
 
     if (utm_source || utm_campaign) {
       fetch("/api/auth/set-attribution", {
@@ -2171,7 +2184,43 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   const handleOAuthSignup = async (provider: "google" | "apple") => {
     track("funnel_signup_started", { value: provider });
     setSignupLoading(provider);
-    await signIn(provider, { callbackUrl: "/start?step=post-signup" });
+
+    // Carry attribution through the OAuth round-trip on the callbackUrl.
+    // In-app webviews (IG/FB) and any www↔apex host switch wipe both
+    // sessionStorage and the host-only attribution cookie across the redirect,
+    // so the URL is the only channel that reliably survives. Read the captured
+    // UTMs + fbclid here (sessionStorage first, cookie as fallback) and append
+    // only the params that exist. The post-signup effect reads them back off
+    // window.location.search as its top-priority source. fbclid rides along so
+    // the returned context can re-attach it to funnel events for CAPI match.
+    const params = new URLSearchParams({ step: "post-signup" });
+
+    let funnelUtm: Record<string, string> = {};
+    try {
+      const stored = sessionStorage.getItem("acuity_funnel_utm");
+      if (stored) funnelUtm = JSON.parse(stored);
+    } catch {}
+
+    let cookieAttr: Record<string, string> = {};
+    try {
+      const { getClientAttribution } = require("@/lib/attribution");
+      const attr = getClientAttribution();
+      if (attr) cookieAttr = attr;
+    } catch {}
+
+    const carry: Record<string, string | undefined> = {
+      utm_source: funnelUtm.utmSource || cookieAttr.utm_source,
+      utm_medium: funnelUtm.utmMedium || cookieAttr.utm_medium,
+      utm_campaign: funnelUtm.utmCampaign || cookieAttr.utm_campaign,
+      utm_content: funnelUtm.utmContent || cookieAttr.utm_content,
+      utm_term: funnelUtm.utmTerm || cookieAttr.utm_term,
+      fbclid: funnelUtm.fbclid, // the attribution cookie never stores fbclid
+    };
+    for (const [k, v] of Object.entries(carry)) {
+      if (v) params.set(k, v); // URLSearchParams encodes; skip empties
+    }
+
+    await signIn(provider, { callbackUrl: `/start?${params.toString()}` });
   };
 
   return (
