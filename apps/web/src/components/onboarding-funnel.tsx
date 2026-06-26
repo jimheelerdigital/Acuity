@@ -2092,12 +2092,11 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     setSignupError(null);
     setAccountCreatedButSigninFailed(false);
 
-    // Client-side validation — fire funnel_signup_failed for each so admin sees it
-    if (!signupName.trim()) {
-      setSignupError("Please enter your name.");
-      track("funnel_signup_failed", { value: "validation:name_empty", method: "email" });
-      return;
-    }
+    // Client-side validation — fire funnel_signup_failed for each so admin sees it.
+    // Name is intentionally OPTIONAL (most users come via Google/Apple where we
+    // already have the profile name; requiring it here was needless friction and
+    // produced the "validation:name_empty" drop-off). Null/empty name is handled
+    // safely downstream (greetings + emails fall back to "there"/"friend").
     if (!signupEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim())) {
       setSignupError("Please enter a valid email address.");
       track("funnel_signup_failed", { value: "validation:invalid_email", method: "email" });
@@ -2280,7 +2279,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
         </div>
 
         <form onSubmit={handleSignup} className="space-y-3">
-          <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="Full name" autoComplete="name"
+          <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="Full name (optional)" autoComplete="name"
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
           <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="Email address" autoComplete="email"
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
