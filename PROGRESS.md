@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-06-26] — Meta/OAuth signups keep their source through the Google/Apple redirect
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** fd98a7c0
+
+### In plain English (for Keenan)
+
+People who came from a Meta ad and signed up with Google or Apple were showing up in our dashboard as source "direct" instead of "meta/paid" — so real paid traffic looked like it came from nowhere (this is what happened with Vince and the yahoo user). The reason: the ad tracking info (which campaign sent them) was being kept in two places that both get wiped when the phone bounces out to Google/Apple to sign in — especially inside the Instagram/Facebook in-app browser, or when the site flips between the "www" and non-"www" version of our address. The only thing that reliably survives that bounce is the web address itself, so we now tack the campaign info onto the address we send people to Google/Apple with, and read it back off the address the moment they return. We also carry the Meta click ID along the same way, which helps Meta correctly credit the signup to the ad. Net effect: Google/Apple signups from ads should now land labeled with their real source, and Meta should match more of them. Email/password signups are unchanged, and signing in still works whether or not there's any campaign info to carry.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/components/onboarding-funnel.tsx (`handleOAuthSignup`, ~line 2171): before `signIn(provider, …)`, read the captured UTMs + `fbclid` from `acuity_funnel_utm` sessionStorage (with the `acuity_attribution` cookie as fallback) and append only the params that exist to the `callbackUrl` via `URLSearchParams` (proper encoding, no empty params, no double-encoding). Result: `/start?step=post-signup&utm_source=…&utm_campaign=…&fbclid=…`. The cookie never stores `fbclid`, so that comes from sessionStorage only.
+- apps/web/src/components/onboarding-funnel.tsx (post-signup attribution effect, ~line 384): now reads `window.location.search` FIRST as the top-priority source, then falls back to sessionStorage, then the cookie, before POSTing to `/api/auth/set-attribution`. The URL is the only store that survives the OAuth handoff, so it must win.
+- Why two stores fail across the redirect: sessionStorage is origin-scoped (lost on any www↔apex host switch) and the `acuity_attribution` cookie is host-only (no `Domain` attribute). In-app webviews (IG/FB) push Google OAuth out to the system browser, a separate storage partition, so both are gone on return. The URL channel sidesteps all of that.
+- Email/password signup attribution path is untouched (it still merges sessionStorage + cookie inline at signup). OAuth `signIn` runs cleanly with AND without UTMs — when none exist, the params block is simply empty and the callbackUrl is just `/start?step=post-signup`.
+- Verified: `npx tsc --noEmit` introduces no new errors in onboarding-funnel.tsx.
+- Host-config observation (NOT changed this pass): source references the canonical host inconsistently — 115 uses of `https://getacuity.io` (apex) vs 19 of `https://www.getacuity.io` (www); the CAPI route posts from apex, the email layout uses www. Production `NEXTAUTH_URL` and the actual Meta ad destination host (www vs apex) are set in Vercel / the ad manager and are NOT readable from the repo.
+
+### Manual steps needed
+
+- [ ] **Jimmy: review before go-live — HIGH-RISK (/api/auth-adjacent).** This changes the OAuth `signIn` handoff and the attribution read order on return. Run a full OAuth regression before pushing: **Google + Apple × in-app webview (IG/FB) + system browser × www + apex × with-UTMs + without-UTMs.** Confirm sign-in completes in every cell and the source lands correctly when UTMs are present.
+- [ ] **Verify production `NEXTAUTH_URL` and the Meta ad destination host (Keenan/Jimmy).** If the ads point to one host (e.g. apex `getacuity.io`) and `NEXTAUTH_URL` resolves to the other (e.g. `www.getacuity.io`), the callback still switches origin — this fix carries UTMs through that switch, but the canonical-host redirect (deferred, see below) would close the gap fully.
+- [ ] Push to main (Keenan to say "push it").
+- [ ] After deploy, verify: do a real Google + Apple signup from a UTM-tagged link and confirm the User row lands with the right `signupUtmSource`/campaign (not "direct").
+
+### Notes
+
+- This is **Fix A** from the 2026-06-26 attribution audit. **Fix B (www↔apex canonical-host redirect) was deliberately NOT built this pass** — it touches host routing for auth callbacks and needs the production-host verification above first. Fixes C/D (server-set first-party `_fbc`/`_fbp` + `Domain=.getacuity.io` attribution cookie) remain open follow-ups for match quality.
+- Bug 1 (CompleteRegistration not firing for OAuth free-trial) was already fixed separately by commit `00ccfca1`, live since 2026-06-26 08:34. This change is the Bug 2 (source mislabeling) fix; the two share the in-app-webview / host-switch handoff as a common aggravator but are distinct. A "direct" label never blocked CompleteRegistration from firing — the CAPI route attributes via email/IP/UA + `fbclid` (from OnboardingEvent), not the source label — so this fix improves *attribution/label quality*, it does not by itself create more registration events.
+
+---
+
 ## [2026-06-26] — Sessions table now matches the funnel (real entries only by default)
 
 **Requested by:** Keenan
