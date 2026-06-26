@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-06-26] — See exactly where people get stuck trying to download the app
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f534e382
+
+### In plain English (for Keenan)
+
+Until now, anyone who reached the "download the app" screen but didn't end up opening the app all got lumped together in the dashboard under one vague label, "Attempted download" — so we had no idea what was actually going wrong. The most important problem was completely invisible: people who open our funnel inside the Instagram or Facebook in-app browser, where Apple's App Store link silently refuses to open, so they get stuck through no fault of their own. Now the dashboard shows the furthest step each stuck person actually reached: "Viewed download" (saw the screen), "Blocked in webview" (trapped in the Instagram/Facebook browser — the big one to watch), "Tapped App Store" (clicked the button), and "Bounced from store" (tapped the button, came back to our page, and never opened the app — a strong sign they couldn't get it installed). There's also a new summary row at the top of the Users tab with a live count for each of those four stages, and clicking any count filters the list to just those people so you can follow up. One quiet bug got fixed along the way: the App Store button was firing a tracking event under a name the dashboard never looked at, so App Store taps weren't being counted at all — they are now.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/components/onboarding-funnel.tsx (`DownloadScreen`):
+  - App Store CTA `onClick` now calls a new `handleAppStoreTap` that fires `funnel_app_store_clicked` (previously fired `funnel_download_tap`, which NO dashboard query consumed — App Store taps were invisible). Value still carries the PII-safe `diagContext` string, which already includes `os:ios|android|other`, so platform is captured.
+  - Added `funnel_download_returned`: a `visibilitychange` + `window.focus` listener that fires once when the user returns to the screen after tapping the App Store (gated on a `tappedAppStoreRef`; records `awayMs` + diagContext). This is the best available "tapped but didn't complete" proxy since we cannot observe anything after the OS handoff.
+  - Unchanged and still emitted: `funnel_download_screen_viewed` (screen view) and `funnel_inapp_browser_detected` (webview-block detection, driven by the existing `detectBrowserEnv()` UA check for FBAN/FBAV/Instagram/etc).
+- apps/web/src/app/api/admin/users/route.ts:
+  - `computeLifecycle` signature changed from `clickedDownload: boolean` → `downloadEvents: Set<string>`. New `downloadSubstage()` helper maps a user's download events to the most-advanced stage: "Bounced from store" (app_store_clicked + download_returned) > "Tapped App Store" > "Blocked in webview" > "Viewed download" > fallback "Attempted download". `appFirstOpenedAt` still wins as the source of truth for a real app open ("App downloaded").
+  - Per-user download events are now fetched (event names, not a distinct-userId boolean) and grouped into a `Map<userId, Set<event>>` for both the paginated list and the first-page summary.
+  - `summaryStats` gains `downloadStages: { viewed, blockedWebview, tappedAppStore, bouncedFromStore }`, counted across the whole cohort (users with no entries and no app open).
+  - New module constants `DOWNLOAD_STAGE_EVENTS` / `EMPTY_EVENT_SET`; legacy event names (`funnel_download_viewed`, `onboarding_app_store_clicked`) still recognized for older rows.
+- apps/web/src/app/admin/tabs/UsersTab.tsx:
+  - `SummaryStats` type + `LIFECYCLE_OPTIONS` filter + `LifecyclePill` color styles extended for the four new sub-stages.
+  - New "Stuck at download — most-advanced step reached" breakdown row with clickable `DownloadStageChip` counts that set the lifecycle filter for one-click drill-down.
+- No Prisma schema change — every event persists to the existing `OnboardingEvent` table via the existing `/api/onboarding-events` route.
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it").
+- [ ] After deploy, verify the new events land as real `OnboardingEvent` rows (Jimmy, home network — Supabase is blocked on the work network): walk the `/start` funnel to the download screen and confirm `funnel_download_screen_viewed`, `funnel_app_store_clicked`, and (after tapping App Store then returning to the tab) `funnel_download_returned` appear; open `/start?...` inside the Instagram in-app browser and confirm `funnel_inapp_browser_detected` fires. Then load the admin Users tab and confirm the "Stuck at download" counts and per-user pills render.
+
+### Notes
+
+- Why the rename mattered: the App Store button fired `funnel_download_tap` while both the metrics route and the users route only ever looked for `funnel_app_store_clicked`, so App Store engagement was silently dropped from every dashboard. Renaming the producer to the canonical name (rather than teaching every consumer the old name) aligns them and is the smaller change.
+- We genuinely cannot track anything after the App Store / "Open in Safari" handoff — the OS leaves our page. `funnel_download_returned` (a return to our still-open tab) is the closest proxy, and `appFirstOpenedAt` remains the only ground-truth signal that an app was actually opened. The webview-block detection is the highest-value piece here because it catches an entirely silent failure the user can't escape without manual breakout steps.
+- The `funnel_download_returned` listener fires at most once per screen mount (guarded by `returnedFiredRef`) to avoid spamming events on every tab switch.
+- Pre-existing/unrelated: tsc flags `UsersTab.tsx:103` (`searchParams` possibly null) — this comes from Next.js auto-regenerating `next-env.d.ts` (it added the `navigation-types/compat` reference, making `useSearchParams()` nullable) and is at a line I did not touch; `next.config.js` has `ignoreBuildErrors`, so the build is unaffected. Left as-is to keep this change scoped.
+
+---
+
 ## [2026-06-26] — Name is no longer required to create an account
 
 **Requested by:** Keenan
