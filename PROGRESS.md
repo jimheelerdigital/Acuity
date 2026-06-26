@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-06-26] — v5 funnel "Entry" now counts real first taps, not page loads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b6427d56
+
+### In plain English (for Keenan)
+
+The analytics dashboard was overcounting the very first step of the v5 onboarding funnel. "Entry" was counting everyone whose screen simply loaded — including people who landed and immediately left without tapping anything — so it showed ~129 when only ~100 people actually started. That fake inflation created an impossible-looking cliff to the next question (Branch Q2 looked like it lost 62% of people in one step, which can't be real). Now "Entry" only counts people who actually tapped a Q1 answer, so the number reflects real starts (~100) and the drop to Q2 becomes a believable, honest figure. We also fixed the "Page Loads → First Tap" banner at the top, which was showing a nonsense 99% tap rate: "First Tap" now shows the real number of people who tapped (~100) and the true tap rate (~62%). The three places that show this number — the banner, the raw-events strip, and the funnel's Entry bar — now all agree on the same real figure instead of showing 128 / 100 / 129.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/app/api/admin/metrics/route.ts: `FUNNEL_STEPS_V5` Entry step event changed from `funnel_entry_viewed` (fires on entry-screen render / page load) to `funnel_entry_selected` (fires only when the user taps a Q1 answer — the real first interaction). v3 (`FUNNEL_STEPS_V3` / `FUNNEL_STEPS_V3_COPY`), v4, and v1 are deliberately untouched.
+- apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx: the "Page Loads → First Tap" banner was rewired. First Tap previously used `km.interactedCount` (= sessions with any event other than `funnel_entry_viewed`), which fired on auto-rendered view events and so nearly equalled page loads (the impossible 99%). It now reads the real diagnostics: Page Loads = `diag.entryViewedEvents`, First Tap = `diag.entrySelectedEvents`, % = `diag.tapRate` (= entry_selected / entry_viewed). This makes the banner a bold summary of the raw-events strip directly below it, and the percentage divides correctly (~100/162 = ~62%). Sub-line relabeled from "bot/prefetch filtered" to "viewed, didn't tap Q1".
+- The `hasInteracted` filter / bot-prefetch exclusion in the step-reach loop (route.ts ~1818–1869) is unchanged and still applies; a session with `funnel_entry_selected` necessarily has a non-view event, so it qualifies as interacted. The back-fill loop only fills Entry from later steps that are themselves gated behind a real Q1 answer, so it can't re-inflate Entry.
+- Verified: no NEW typecheck errors introduced (baseline `metrics/route.ts` already has 44 pre-existing `noImplicitAny`/`PrismaClient` errors; `FunnelAnalyticsTab.tsx` is clean). `next.config.js` sets `ignoreBuildErrors`/`ignoreDuringBuilds`, so the build does not gate on tsc regardless.
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it"). No deploy/env/schema steps — this is dashboard read/display logic only.
+- [ ] After deploy, sanity-check the v5 funnel: Entry should now read ~100 (matching the raw `entry_selected`), and the banner's First Tap + raw strip + Entry bar should all show the same real number.
+
+### Notes
+
+- **Root cause of the cliff:** `funnel_entry_viewed` fires the instant the funnel mounts (onboarding-funnel.tsx:429/452), before any tap. `funnel_entry_selected` fires only on a Q1 answer tap (onboarding-funnel.tsx:656–657). Every later step's `_viewed` event is reachable only by answering the previous question (selecting Q1 calls `setStep(nextStep())`), so **only Entry fired pre-interaction and only Entry was inflated** — no other v5 step needed changing. Branch Q2 was checked specifically and is fine (it fires on view, but you can only view Q2 after answering Q1).
+- **Branch Q2 after the fix:** with Entry now ~100 and Branch Q2 ~49, Q1→Q2 reads ~49–51%. That is a *real* drop (genuine signal worth attention), not the previous counting artifact. It may still trip the <50% red alert — that's legitimate now, not noise.
+- **Versioning decision (per Keenan's lean):** kept as **corrected-v5** rather than bumping to v6, since v5 is recent. Pre-fix vs post-fix v5 Entry counts are **NOT comparable** (old = page-load views, new = real taps) — don't compare an Entry number from before 2026-06-26 against one after. The change is documented inline in route.ts above `FUNNEL_STEPS_V5`.
+- **Banner Page Loads number:** now shows the `entry_viewed` view count (~162) instead of the old distinct-session `pageLoadCount` (~129). This was a deliberate trade to make the banner internally consistent (First Tap / Page Loads = the real 62% tap rate) and to mirror the raw-events strip exactly. If you'd rather Page Loads stay the distinct-session count, that's a one-line follow-up — flag it.
+
+---
+
 ## [2026-06-26] — OAuth free-trial signups now report to Meta (CompleteRegistration gap fixed)
 
 **Requested by:** Keenan
