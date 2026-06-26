@@ -123,20 +123,28 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         </div>
       )}
 
-      {/* Page Load → First Tap funnel */}
-      {(km.pageLoadCount ?? 0) > 0 && (
+      {/* Page Load → First Tap funnel.
+          First Tap = funnel_entry_selected (the user tapped a Q1 answer = the
+          real first interaction), NOT the old "interacted" count, which fired on
+          any non-view event and so nearly equalled page loads (the impossible
+          99%). Page Loads here is the entry_viewed view count, so this banner is
+          a bold summary of the raw-events strip below and agrees with it
+          exactly: First Tap === entry_selected, and the % === the real tap rate
+          (entry_selected / entry_viewed). It also matches the funnel's Entry
+          step, which now counts entry_selected too. */}
+      {(diag.entryViewedEvents ?? 0) > 0 && (
         <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Page Loads:</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{km.pageLoadCount}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{diag.entryViewedEvents}</span>
           <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>First Tap:</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{km.interactedCount}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{diag.entrySelectedEvents}</span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
-            ({km.pageLoadCount > 0 ? Math.round((km.interactedCount / km.pageLoadCount) * 100) : 0}%)
+            ({diag.tapRate ?? 0}%)
           </span>
           <span style={{ flex: 1 }} />
           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)" }}>
-            {(km.pageLoadCount ?? 0) - (km.interactedCount ?? 0)} bot/prefetch filtered
+            {(diag.entryViewedEvents ?? 0) - (diag.entrySelectedEvents ?? 0)} viewed, didn’t tap Q1
           </span>
         </div>
       )}

@@ -1645,8 +1645,20 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   }
 
   // v5 funnel steps — current live funnel: pattern-result, pain screen, value screen, paywall-first (2026-06-23)
+  //
+  // Entry counts funnel_entry_SELECTED (the user tapped a Q1 answer = the real
+  // first interaction), NOT funnel_entry_viewed (the entry screen merely
+  // rendered on page load). entry_viewed fires before any interaction, so using
+  // it inflated Entry with non-engagers — e.g. Entry=129 while only ~100
+  // actually tapped — which produced an impossible Entry→Branch Q2 "cliff"
+  // (49/129 = 38%). With entry_selected, Entry ≈ the real engaged count (~100)
+  // and Q1→Q2 becomes a genuine ratio. Every later "_viewed" step is gated
+  // behind answering the prior question (you can only view Q2 after selecting
+  // Q1), so only this first step needed correcting. This matches the raw
+  // entry_selected diagnostic and the banner's First Tap. NOTE: pre-fix vs
+  // post-fix v5 Entry counts are NOT comparable (old = views, new = real taps).
   const FUNNEL_STEPS_V5 = [
-    { key: "entry", event: "funnel_entry_viewed", label: "Entry" },
+    { key: "entry", event: "funnel_entry_selected", label: "Entry" },
     { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Branch Q2" },
     { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
     { key: "branch_q4", event: "funnel_branch_q4_viewed", label: "Q4" },
