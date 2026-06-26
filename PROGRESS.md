@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-06-26] — Name is no longer required to create an account
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 08616d46
+
+### In plain English (for Keenan)
+
+The "Create account" form was forcing people to type their full name before it would let them continue, and if they left it blank the form silently refused to submit (this showed up in our tracking as "validation:name_empty" — real people who wanted to sign up but got blocked). Since most people sign up with Google or Apple, where we already get their name automatically, demanding a name a second time on the email/password form was pointless friction that was costing us signups. Now the name field is optional: the box even says "Full name (optional)". People who sign up with Google/Apple still get their real name carried over as before. For anyone who skips it, every place that would have shown their name now shows a friendly fallback instead — the welcome emails open with "Hi there," / address them as "friend", the dashboard greeting says "there", and the little circle avatar in the top corner just uses the first letter of their email. Password rules are unchanged — a too-short password is still rejected.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/components/onboarding-funnel.tsx (`CreateAccountScreen.handleSignup`, ~line 2092): removed the `if (!signupName.trim())` hard block that set the error and fired `funnel_signup_failed` with `value: "validation:name_empty"`. Replaced with an explanatory comment. Email-format and password validation are untouched and still run.
+- apps/web/src/components/onboarding-funnel.tsx (~line 2282): name input placeholder changed `"Full name"` → `"Full name (optional)"`. The input never had an HTML `required` attribute, so the JS block was the only gate.
+- **No API change needed.** apps/web/src/app/api/auth/signup/route.ts already coerces an empty/whitespace name to `null` (line 59: `…body.name.trim() ? …slice(0,100) : null`) and stores it nullable; `firstName` derivation (line 205, `(userRow?.name ?? name ?? "").trim().split(/\s+/)[0] || "friend"`) and the CAPI name split (line 241, `(name ?? "")`) are already null-safe. The form still POSTs `name: signupName.trim()` which is `""` when blank → coerced to `null` server-side.
+- Null-name fallbacks verified end-to-end at every render point: welcome-founder email → "Hi there,"; welcome-verify email always receives at least "friend" (route derives `firstName` before passing it); web dashboard greeting (apps/web/src/app/home/page.tsx, line 167) → "there"; nav-bar avatar initials (apps/web/src/components/nav-bar.tsx) → first letter of email, else "?".
+- Password `"password_short"` guardrail intentionally left in place.
+- Verified: `npx tsc --noEmit` introduces no new errors in onboarding-funnel.tsx or auth/signup/route.ts.
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it").
+- [ ] After deploy, smoke-test: submit the email/password signup form with the name field left blank and confirm the account is created (no "validation:name_empty" block) and the welcome email opens with "Hi there,".
+
+### Notes
+
+- The only gate on name was client-side JS — there was no HTML `required` attribute and the server was already null-tolerant, so this was a one-block removal plus a placeholder copy change. No schema or migration involved (`User.name` is already nullable).
+- Kept the `funnel_signup_failed` telemetry for the remaining validations (invalid email, short password) so the admin funnel still sees real drop-off reasons — we just removed the name reason because name is no longer a failure case.
+
+---
+
 ## [2026-06-26] — Meta/OAuth signups keep their source through the Google/Apple redirect
 
 **Requested by:** Keenan
