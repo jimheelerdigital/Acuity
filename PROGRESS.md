@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-06-26] — OAuth free-trial signups now report to Meta (CompleteRegistration gap fixed)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 00ccfca1
+
+### In plain English (for Keenan)
+
+When someone signed up with Google or Apple and chose the free trial (instead of paying), Meta never got told a signup happened — so those people were invisible in Ads Manager and our ads looked like they were producing zero registrations, even though the accounts were real and sitting in our database. People who signed up with email, and people who signed up with Google/Apple AND paid, were already being reported correctly. This fix makes the Google/Apple free-trial signups report to Meta too, so Ads Manager finally sees the conversions it's been missing. Every signup path now reports exactly once — none are missed, and none are counted twice.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/components/onboarding-funnel.tsx: mounted `<TrackCompleteRegistration />` on the `download` step, gated on `!paymentConfirmed`, immediately before `<DownloadScreen>`.
+  - Root cause: OAuth returnees hit the `post-signup` branch (~lines 324–345). The no-payment branch routes straight to `step=download`, which previously fired only `funnel_account_created` + the `StartTrial` pixel — never CompleteRegistration. The tracker only existed on the `create-account` step (line 755), which OAuth free-trial users skip entirely. The old server-side fire in `auth.ts` (events.createUser) was removed earlier (auth.ts:257–261), so nothing fired for this path.
+  - Fix reuses the existing, tested `TrackCompleteRegistration` component: it POSTs `/api/capi/complete-registration` first (server-side CAPI — webview-proof, important since ~90% of this traffic is in-app webview where the browser pixel is unreliable), then fires the browser pixel with the same `event_id` for dedup.
+  - Double-fire prevention (three layers): (1) `!paymentConfirmed` gate means OAuth-PAID users — who already fired CompleteRegistration on the create-account step before Stripe — never mount the download tracker; (2) email free-trial already set the `acuity_reg_pixel_fired` sessionStorage guard inline at signup, so the component early-returns for them; (3) the `/api/capi/complete-registration` route's existing 5-minute new-signup guard (`createdAt < 5 min`) backstops any returning/authenticated user who lands on `download`.
+- No schema, env, route, or auth-logic changes. Email/password and OAuth-paid paths are untouched and still fire exactly once.
+- Pixel ID `869829585445303` and `META_ACCESS_TOKEN` confirmed correct/valid in Vercel (per Keenan), so CAPI delivery itself works — this was purely a missing call site on one funnel branch.
+
+### Manual steps needed
+
+- [ ] **Jimmy: review before go-live (HIGH-RISK, auth/conversion-adjacent).** Change sits next to `/api/auth` + entitlement logic in the signup flow. Confirm the post-signup→download branch interaction is sound and there's no path where a returning OAuth user re-fires.
+- [ ] Push to main (Keenan to say "push it").
+- [ ] After deploy, verify live (see Notes for the exact log line + Events Manager Test Events steps).
+
+### Notes
+
+How to verify live once pushed:
+- **Server log (Vercel runtime):** do a real Google/Apple signup, choose "Continue without paying," land on the download screen. Watch for `[capi/complete-registration] Fired for user <id>, eventId=CompleteRegistration_...` followed by `[meta-capi] CompleteRegistration SUCCESS (200)`. If you instead see `Missing META_PIXEL_ID or META_ACCESS_TOKEN — skipping` or `FAILED`, that's an env/token problem, not this code.
+- **Meta Events Manager → Test Events:** add the browser/device as a test device, run the same OAuth free-trial signup, and confirm a `CompleteRegistration` event appears (server CAPI + browser pixel deduped by shared `event_id`). It should show exactly one CompleteRegistration, not two.
+- **Regression check:** repeat for (a) email free-trial and (b) OAuth + paid — each must still show exactly one CompleteRegistration, never two.
+- Gotcha for review: React 18 auto-batches the `setPaymentConfirmed(true)` + `setStep("download")` in the verify-payment `.then` (onboarding-funnel.tsx ~308), so on the OAuth-paid path `download` first renders with `paymentConfirmed=true` — the tracker never momentarily mounts. If that batching assumption ever changes, OAuth-paid could briefly mount the tracker (still blocked by the sessionStorage guard + 5-min CAPI guard, but worth knowing).
+
+---
+
 ## [2026-06-25] — "Powered by Acuity" badge on every funnel step
 
 **Requested by:** Keenan
