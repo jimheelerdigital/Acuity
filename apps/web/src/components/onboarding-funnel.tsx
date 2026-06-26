@@ -778,6 +778,22 @@ export function OnboardingFunnel() {
       )}
 
       {/* ── Download (Screen 18) ── */}
+      {/* OAuth (Google/Apple) free-trial signups reach `download` straight from
+          the post-signup branch WITHOUT passing through `create-account`, so the
+          create-account tracker above never mounts for them — they'd otherwise
+          fire StartTrial but never CompleteRegistration. Mount the tracker here
+          for the unpaid case. It POSTs /api/capi/complete-registration first
+          (server-side CAPI, webview-proof — ~90% of this traffic is in-app
+          webview where the browser pixel is unreliable), then fires the browser
+          pixel with the same event_id for dedup.
+          Gated on !paymentConfirmed so OAuth-PAID users — who already fired
+          CompleteRegistration on the create-account step before Stripe — do not
+          double-fire when they return to download. Email free-trial is also
+          unpaid but already set the `acuity_reg_pixel_fired` sessionStorage guard
+          inline at signup, so the component early-returns for them. The CAPI
+          route's 5-minute new-signup guard is the final backstop against
+          returning/authenticated users landing on download. */}
+      {step === "download" && !paymentConfirmed && <TrackCompleteRegistration />}
       {step === "download" && (
         <DownloadScreen key="download" track={track} paymentConfirmed={paymentConfirmed} selectedPlan={selectedPlan} />
       )}
