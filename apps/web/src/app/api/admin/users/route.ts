@@ -25,6 +25,11 @@ export const runtime = "nodejs";
 
 type LifecycleStage =
   | "Signed up"
+  | "Viewed download"
+  | "Blocked in webview"
+  | "Tapped App Store"
+  | "Bounced from store"
+  | "Attempted download"
   | "App downloaded"
   | "Downloaded"
   | "First debrief"
@@ -34,11 +39,35 @@ type LifecycleStage =
   | "At risk"
   | "Churned";
 
+// ── Download-stage event names (emitted by the /start DownloadScreen) ──
+const DL_SCREEN_VIEWED = "funnel_download_screen_viewed";
+const DL_WEBVIEW_BLOCKED = "funnel_inapp_browser_detected";
+const DL_APP_STORE_CLICKED = "funnel_app_store_clicked";
+const DL_RETURNED = "funnel_download_returned";
+const DL_WEB_APP_CLICKED = "funnel_continue_web_app_clicked";
+// Legacy aliases still present in older OnboardingEvent rows
+const DL_LEGACY_VIEWED = ["funnel_download_viewed", "onboarding_app_store_clicked"];
+const DOWNLOAD_STAGE_EVENTS = [
+  DL_SCREEN_VIEWED, DL_WEBVIEW_BLOCKED, DL_APP_STORE_CLICKED, DL_RETURNED, DL_WEB_APP_CLICKED, ...DL_LEGACY_VIEWED,
+];
+const EMPTY_EVENT_SET: Set<string> = new Set();
+
+// Most-advanced (most actionable) download sub-step a user reached, derived from
+// their funnel events. Ordered so the strongest "got stuck" signal wins: a user
+// who tapped the store and came back is more telling than one who only viewed.
+function downloadSubstage(ev: Set<string>): LifecycleStage {
+  if (ev.has(DL_APP_STORE_CLICKED) && ev.has(DL_RETURNED)) return "Bounced from store";
+  if (ev.has(DL_APP_STORE_CLICKED) || ev.has("onboarding_app_store_clicked")) return "Tapped App Store";
+  if (ev.has(DL_WEBVIEW_BLOCKED)) return "Blocked in webview";
+  if (ev.has(DL_SCREEN_VIEWED) || ev.has(DL_WEB_APP_CLICKED) || ev.has("funnel_download_viewed")) return "Viewed download";
+  return "Attempted download";
+}
+
 function computeLifecycle(
   entryCount: number,
   lastEntryAt: Date | null,
   appFirstOpenedAt: Date | null,
-  clickedDownload: boolean,
+  downloadEvents: Set<string>,
   now: Date
 ): LifecycleStage {
   // Users with entries check recency first
@@ -51,9 +80,10 @@ function computeLifecycle(
     if (entryCount >= 2) return "Exploring";
     return "First debrief";
   }
-  // No entries — check app/download status
+  // No entries — appFirstOpenedAt is the source of truth for a real app open
   if (appFirstOpenedAt) return "App downloaded";
-  if (clickedDownload) return "Attempted download";
+  // Otherwise surface the most-advanced download sub-step they reached
+  if (downloadEvents.size > 0) return downloadSubstage(downloadEvents);
   return "Signed up";
 }
 
@@ -149,9 +179,25 @@ export async function GET(req: NextRequest) {
     });
     const lastEntryMap = new Map(latestEntries.map(e => [e.userId, e._max.createdAt]));
 
+    // Download-stage events for the whole cohort, so the summary can break down
+    // where stuck users are in the download stage (viewed / blocked / tapped / bounced).
+    const allDownloadEvents = await prisma.onboardingEvent.findMany({
+      where: { userId: { in: allUsers.map(u => u.id) }, event: { in: DOWNLOAD_STAGE_EVENTS } },
+      select: { userId: true, event: true },
+    });
+    const allDownloadByUser = new Map<string, Set<string>>();
+    for (const e of allDownloadEvents) {
+      if (!e.userId) continue;
+      let set = allDownloadByUser.get(e.userId);
+      if (!set) { set = new Set(); allDownloadByUser.set(e.userId, set); }
+      set.add(e.event);
+    }
+
     let totalUsers = 0, downloadedOrWeb = 0, recordedAtLeast1 = 0;
     let activeThisWeek = 0, atRisk = 0, neverRecorded = 0, paying = 0;
     let totalEntriesThisWeek = 0, activeUsersThisWeek = 0;
+    // Download-stage breakdown (users with no entries and no app open)
+    let dlViewed = 0, dlBlockedWebview = 0, dlTappedAppStore = 0, dlBouncedFromStore = 0;
 
     for (const u of allUsers) {
       totalUsers++;
@@ -165,8 +211,12 @@ export async function GET(req: NextRequest) {
       if (u.subscriptionStatus === "PRO" && u.stripeSubscriptionId) paying++;
       if (etw > 0) { activeThisWeek++; totalEntriesThisWeek += etw; activeUsersThisWeek++; }
 
-      const lifecycle = computeLifecycle(ec, lastEntry, u.appFirstOpenedAt, false, now);
+      const lifecycle = computeLifecycle(ec, lastEntry, u.appFirstOpenedAt, allDownloadByUser.get(u.id) ?? EMPTY_EVENT_SET, now);
       if (lifecycle === "At risk") atRisk++;
+      else if (lifecycle === "Viewed download") dlViewed++;
+      else if (lifecycle === "Blocked in webview") dlBlockedWebview++;
+      else if (lifecycle === "Tapped App Store") dlTappedAppStore++;
+      else if (lifecycle === "Bounced from store") dlBouncedFromStore++;
     }
 
     summaryStats = {
@@ -178,6 +228,12 @@ export async function GET(req: NextRequest) {
       neverRecorded,
       paying,
       avgEntriesPerActiveUser: activeUsersThisWeek > 0 ? Math.round((totalEntriesThisWeek / activeUsersThisWeek) * 10) / 10 : 0,
+      downloadStages: {
+        viewed: dlViewed,
+        blockedWebview: dlBlockedWebview,
+        tappedAppStore: dlTappedAppStore,
+        bouncedFromStore: dlBouncedFromStore,
+      },
     };
     } catch (err) {
       console.error("[admin/users] Summary query failed:", err);
@@ -287,24 +343,30 @@ export async function GET(req: NextRequest) {
   });
   const lastEntryMap = new Map(latestEntries.map(e => [e.userId, e._max.createdAt]));
 
-  // Check which users clicked the download/app store link
+  // Pull every download-stage event for these users so we can derive the
+  // most-advanced download sub-step each one reached (not just a yes/no click).
   const downloadEvents = await prisma.onboardingEvent.findMany({
     where: {
       userId: { in: userIds },
-      event: { in: ["funnel_app_store_clicked", "funnel_download_viewed", "funnel_download_screen_viewed", "onboarding_app_store_clicked"] },
+      event: { in: DOWNLOAD_STAGE_EVENTS },
     },
-    select: { userId: true },
-    distinct: ["userId"],
+    select: { userId: true, event: true },
   });
-  const clickedDownloadSet = new Set(downloadEvents.map(e => e.userId));
+  const downloadEventsByUser = new Map<string, Set<string>>();
+  for (const e of downloadEvents) {
+    if (!e.userId) continue;
+    let set = downloadEventsByUser.get(e.userId);
+    if (!set) { set = new Set(); downloadEventsByUser.set(e.userId, set); }
+    set.add(e.event);
+  }
 
   const mappedUsers = page.map((u) => {
     const entryCount = u._count.entries;
     const entriesThisWeek = u.entries.length;
     const lastEntryAt = lastEntryMap.get(u.id) ?? u.lastRecordingAt;
     const platform = computePlatform(u.appFirstOpenedAt, entryCount, u.devicePlatform);
-    const clickedDownload = clickedDownloadSet.has(u.id);
-    const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, clickedDownload, now);
+    const userDownloadEvents = downloadEventsByUser.get(u.id) ?? EMPTY_EVENT_SET;
+    const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, userDownloadEvents, now);
     const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now);
 
     // Last active: most recent of lastSeenAt, lastEntryAt, appFirstOpenedAt

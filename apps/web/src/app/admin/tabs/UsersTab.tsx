@@ -35,6 +35,12 @@ type SummaryStats = {
   neverRecorded: number;
   paying: number;
   avgEntriesPerActiveUser: number;
+  downloadStages?: {
+    viewed: number;
+    blockedWebview: number;
+    tappedAppStore: number;
+    bouncedFromStore: number;
+  };
 };
 
 type DetailUser = ListUser & {
@@ -74,7 +80,8 @@ type SentEmail = {
 };
 
 const LIFECYCLE_OPTIONS = [
-  "Signed up", "Attempted download", "App downloaded", "First debrief", "Exploring",
+  "Signed up", "Viewed download", "Blocked in webview", "Tapped App Store",
+  "Bounced from store", "Attempted download", "App downloaded", "First debrief", "Exploring",
   "Building habit", "Active user", "At risk", "Churned",
 ];
 
@@ -168,6 +175,21 @@ export default function UsersTab() {
           <SummaryCard label="Never Recorded" value={S.neverRecorded} sub={`${S.totalUsers > 0 ? Math.round((S.neverRecorded / S.totalUsers) * 100) : 0}% of total`} color="text-red-300" />
           <SummaryCard label="Paying" value={S.paying} color="text-green-300" />
           <SummaryCard label="Avg Entries / Active / Week" value={S.avgEntriesPerActiveUser} />
+        </div>
+      )}
+
+      {/* ── Download-stage breakdown (where stuck users sit before they open the app) ── */}
+      {S?.downloadStages && (
+        <div className="rounded-lg border border-white/10 bg-[#13131F] p-3">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-white/40">
+            Stuck at download — most-advanced step reached
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <DownloadStageChip label="Viewed download" value={S.downloadStages.viewed} color="text-sky-200" onClick={() => setLifecycleFilter("Viewed download")} />
+            <DownloadStageChip label="Blocked in webview" value={S.downloadStages.blockedWebview} color="text-rose-300" onClick={() => setLifecycleFilter("Blocked in webview")} />
+            <DownloadStageChip label="Tapped App Store" value={S.downloadStages.tappedAppStore} color="text-sky-300" onClick={() => setLifecycleFilter("Tapped App Store")} />
+            <DownloadStageChip label="Bounced from store" value={S.downloadStages.bouncedFromStore} color="text-amber-300" onClick={() => setLifecycleFilter("Bounced from store")} />
+          </div>
         </div>
       )}
 
@@ -373,6 +395,18 @@ function SummaryCard({ label, value, sub, color }: { label: string; value: numbe
   );
 }
 
+function DownloadStageChip({ label, value, color, onClick }: { label: string; value: number; color: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-baseline gap-1.5 rounded-md bg-white/[0.03] px-3 py-1.5 text-left transition hover:bg-white/[0.07]"
+    >
+      <span className={`text-base font-semibold ${color}`}>{value}</span>
+      <span className="text-[11px] text-white/50">{label}</span>
+    </button>
+  );
+}
+
 function SortHeader({ label, field, current, dir, onClick }: { label: string; field: string; current: string; dir: string; onClick: (f: string) => void }) {
   const active = current === field;
   return (
@@ -404,6 +438,10 @@ function PlatformPill({ platform }: { platform: string }) {
 function LifecyclePill({ stage }: { stage: string }) {
   const STYLES: Record<string, string> = {
     "Signed up": "bg-white/10 text-white/50",
+    "Viewed download": "bg-sky-500/10 text-sky-200",
+    "Blocked in webview": "bg-rose-500/20 text-rose-300",
+    "Tapped App Store": "bg-sky-500/20 text-sky-300",
+    "Bounced from store": "bg-amber-500/20 text-amber-300",
     "Attempted download": "bg-sky-500/20 text-sky-300",
     "App downloaded": "bg-blue-500/20 text-blue-300",
     "First debrief": "bg-teal-500/20 text-teal-300",

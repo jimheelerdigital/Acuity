@@ -2698,6 +2698,12 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   const celebratedRef = useRef(false);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  // Return-to-site tracking: a user who taps the App Store CTA and then comes
+  // back to this tab (page never unloaded) is the clearest "got stuck" signal
+  // we can see — we cannot observe anything after the handoff.
+  const tappedAppStoreRef = useRef(false);
+  const tappedAtRef = useRef<number | null>(null);
+  const returnedFiredRef = useRef(false);
   const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
 
   // Diagnostic context string for download-step events (PII-safe: UA only, no email/name)
@@ -2745,6 +2751,33 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
     return () => clearInterval(interval);
   }, []);
 
+  // Fire `funnel_download_returned` when the user comes back to this screen
+  // after tapping the App Store CTA. We CANNOT track anything post-handoff, so a
+  // return (visibilitychange/focus, page never unloaded) is the best proxy for
+  // "tapped but didn't complete". appFirstOpenedAt (server-side) stays the source
+  // of truth for a real successful open. Fires at most once per screen mount.
+  useEffect(() => {
+    const onReturn = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!tappedAppStoreRef.current || returnedFiredRef.current) return;
+      returnedFiredRef.current = true;
+      const awayMs = tappedAtRef.current ? Date.now() - tappedAtRef.current : 0;
+      track("funnel_download_returned", { value: `awayMs:${awayMs}|${diagContext}` });
+    };
+    document.addEventListener("visibilitychange", onReturn);
+    window.addEventListener("focus", onReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", onReturn);
+      window.removeEventListener("focus", onReturn);
+    };
+  }, [track, diagContext]);
+
+  const handleAppStoreTap = () => {
+    tappedAppStoreRef.current = true;
+    tappedAtRef.current = Date.now();
+    track("funnel_app_store_clicked", { value: diagContext });
+  };
+
   const planPrice = selectedPlan === "yearly" ? formatDollars(ANNUAL_PRICE_CENTS) + "/yr" : formatDollars(MONTHLY_PRICE_CENTS) + "/mo";
 
   return (
@@ -2768,7 +2801,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
             {/* ── Webview path: native anchor + prominent breakout instructions ── */}
             <a
               href={APP_STORE_URL}
-              onClick={() => track("funnel_download_tap", { value: diagContext })}
+              onClick={handleAppStoreTap}
               className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
               style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
               <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
@@ -2806,7 +2839,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
               href={APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => track("funnel_download_tap", { value: diagContext })}
+              onClick={handleAppStoreTap}
               className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
               style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
               <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
