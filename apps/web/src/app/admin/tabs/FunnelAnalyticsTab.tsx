@@ -42,8 +42,10 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const cn = (id: string | null) => (id && names[id]) || id || "direct";
   const fmt = (s: number) => s < 60 ? `${s}s` : `${Math.round(s / 60)}m`;
 
-  // Filter sessions: by default only show interacted sessions
-  const filteredSessions = showPageLoadOnly ? sessions : sessions.filter((s: any) => s.hasInteracted);
+  // Filter sessions: by default only show sessions that actually STARTED the
+  // funnel (enteredFunnel = same real-entry definition as the corrected v5
+  // Entry step). The checkbox reveals page-load-only / non-started sessions.
+  const filteredSessions = showPageLoadOnly ? sessions : sessions.filter((s: any) => s.enteredFunnel);
 
   // Simple client-side sort — no useMemo, just a sorted copy
   const sorted = [...filteredSessions].sort((a: any, b: any) => {
@@ -433,7 +435,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       {/* Sessions */}
       <div style={S}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={H as any}>Sessions ({showPageLoadOnly ? sessions.length : data.totalSessionCount ?? filteredSessions.length})</div>
+          <div style={H as any}>Sessions ({filteredSessions.length})</div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
               <input

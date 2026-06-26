@@ -1855,6 +1855,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     events: { event: string; value: string | null; createdAt: Date }[];
     browser: string | null;
     hasInteracted: boolean;
+    enteredFunnel: boolean;
   }[] = [];
 
   for (const [token, evts] of sessionMap) {
@@ -1949,6 +1950,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       events: sorted.map((e) => ({ event: e.event, value: e.value, createdAt: e.createdAt })),
       browser: evts.find((e) => e.browser)?.browser ?? null,
       hasInteracted,
+      // Same definition as the funnel Entry step / stepReach["entry"]: a real
+      // entry is an interacted session that reached step 1 (Entry). This is what
+      // the corrected v5 funnel counts, so the sessions table can match it.
+      enteredFunnel: hasInteracted && maxStep >= 1,
     });
   }
 
