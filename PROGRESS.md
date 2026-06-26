@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-26] — Sessions table now matches the funnel (real entries only by default)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 89345329
+
+### In plain English (for Keenan)
+
+The big Sessions table in the admin dashboard was listing every single session that loaded the page — including the instant-bounce and bot-prefetch rows you saw with Step "Unknown", Status "Dropped", and 0–2 seconds of time. That made the table disagree with the corrected funnel: the funnel now counts ~100 real starts, but the table still showed ~128 rows. Now the table defaults to showing only the sessions that actually STARTED the funnel (the same real-tap definition the funnel's Entry step uses), so the Sessions count roughly matches the funnel's Entry number. The "Show page-load-only sessions" checkbox that was already there now does something useful: leave it unchecked (the default) to see only real starts, or check it to reveal all the page-load-only/bounce rows when you want to inspect them.
+
+### Technical changes (for Jimmy)
+
+- apps/web/src/app/api/admin/metrics/route.ts: added a per-session `enteredFunnel` boolean to the session row object (and its type), defined as `hasInteracted && maxStep >= 1`. This is exactly the membership test for `stepReach["entry"]` (the funnel Entry count), so the table reuses the funnel's real-entry definition rather than inventing a new one.
+- apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx: the default sessions filter now uses `s.enteredFunnel` instead of `s.hasInteracted` (line ~46). The "Show page-load-only sessions" checkbox was already wired to `showPageLoadOnly`; checking it still shows the full `sessions` array. The Sessions count header now reads `filteredSessions.length` (was `data.totalSessionCount ?? filteredSessions.length`) so the displayed count always matches the rows actually rendered.
+- Why `enteredFunnel` ≠ `hasInteracted`: a session can be "interacted" (any event other than `funnel_entry_viewed`, e.g. the entry-screen SocialProofRating) without ever tapping a Q1 answer. `hasInteracted` was ~128; requiring `maxStep >= 1` (reached the Entry step) drops it to the ~100 real starts the funnel now reports.
+- Verified: no NEW typecheck errors introduced (same 44 pre-existing `metrics/route.ts` errors on baseline; `FunnelAnalyticsTab.tsx` clean). `next.config.js` sets `ignoreBuildErrors`/`ignoreDuringBuilds`, so the build doesn't gate on tsc.
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it"). No deploy/env/schema steps — dashboard read/display logic only.
+- [ ] After deploy, sanity-check: with the checkbox unchecked, the Sessions count should roughly match the v5 funnel's Entry (~100); checking "Show page-load-only sessions" should bring back the bounce/prefetch rows.
+
+### Notes
+
+- The fix deliberately mirrors the funnel's own membership logic (`hasInteracted && maxStep >= 1`) instead of re-deriving "real entry" client-side, so the table and the funnel can't drift apart if the Entry definition changes again.
+- The count won't be a *perfect* match to the funnel Entry bar in every edge case (e.g. flow-version filtering), but it will be the same real-entry population, which is the intent.
+
+---
+
 ## [2026-06-26] — v5 funnel "Entry" now counts real first taps, not page loads
 
 **Requested by:** Keenan
