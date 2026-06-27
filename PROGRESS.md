@@ -7,6 +7,50 @@
 
 ---
 
+## [2026-06-27] — 5 milestone/power-user emails at 10/25/50/100/365 recordings
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3eac21a
+
+### In plain English (for Keenan)
+
+Our most engaged users now get milestone recognition emails at 10, 25, 50, 100, and 365 recordings — each with a different ask that matches their depth: early feedback + App Store review at 10 and 25, a testimonial request at 50, a referral nudge + deeper feedback at 100, and a year-of-showing-up recognition at 365. All five invite replies to your real inbox. For existing power users who already passed milestones, they get only the email matching their HIGHEST milestone (a user with 120 recordings gets the 100-milestone email, not four stacked), and the lower ones are marked as already-satisfied so they never fire. Everything drains under the global rate cap — no blast.
+
+### Technical changes (for Jimmy)
+
+- 5 new templates: `milestone-{10,25,50,100,365}.ts`
+  - 10 + 25: feedback ask + "Leave a review" button → `https://apps.apple.com/app/id6762633410?action=write-review` (no incentive — App Store compliant)
+  - 50: testimonial ask (reply-driven, no button)
+  - 100: referral nudge + feedback ask (reply-driven, no button)
+  - 365: year recognition (reply-driven, no button)
+- `types.ts`: added 5 TrialEmailKey values
+- `registry.ts`: registered all 5
+- `email-enabled.ts`: added 5 kill-switch entries (all `true`)
+- `recovery-email-orchestrator.ts`: conditions #24–28:
+  - Queries all users with `totalRecordings >= 10`
+  - Batch-loads existing TrialEmailLog rows for milestone keys
+  - **Highest-only logic:** finds the highest milestone a user has passed, writes `resendId: "skipped_backlog"` TrialEmailLog entries for all lower milestones, then sends only the highest unsent one
+  - All under global rate cap + 24h per-user throttle
+  - All `replyTo: "keenan@getacuity.io"`
+- `recovery-preview/route.ts`: added milestone counts to dry-run preview (per-tier, subtracting already-sent)
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, hit `GET /api/admin/recovery-preview` to see how many users qualify at each milestone tier — check the numbers before the backlog starts draining (Keenan)
+- [ ] Watch Resend dashboard for review-link clicks on milestone_10 and milestone_25 emails — track if they convert to App Store reviews (Keenan)
+- [ ] Monitor keenan@getacuity.io inbox for replies — milestone emails are feedback magnets (Keenan)
+
+### Notes
+
+- **No rewards/incentives for reviews.** The copy says "we'd be grateful if you left one" — purely a request, no quid pro quo. This is App Store compliant.
+- **Highest-only logic prevents stacked sends.** A user with 120 recordings: milestone_10/25/50 are auto-skipped (TrialEmailLog rows created with `resendId: "skipped_backlog"`), and milestone_100 sends. Going forward, they'll get milestone_365 when they reach it.
+- **Retroactive under rate cap.** Existing power users who qualify get their milestone email, but throttled at the configured daily rate (default 300/day). No blast.
+- **gitleaks false positive:** The string `milestone_365` triggers gitleaks' generic-api-key rule (high entropy). Added `gitleaks:allow` inline comments on the two flagged lines.
+
+---
+
 ## [2026-06-27] — Safe backlog recovery: rate cap, forward-only guards, dry-run preview
 
 **Requested by:** Keenan
