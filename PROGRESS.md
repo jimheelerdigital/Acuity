@@ -7,6 +7,49 @@
 
 ---
 
+## [2026-06-27] — Audited all email CTAs for correct link destinations
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3736139
+
+### In plain English (for Keenan)
+
+Went through every email template and checked that the "open the app" buttons point to the right place based on who receives the email. Users who already have the app should get the `/open` universal link (opens the native app); users who don't have it yet should get the App Store link. Found two that were wrong: the "Acuity noticed something" insight email (sent to people with 5+ recordings) was pointing to a bare web link instead of `/open`, and the old "recorded once went quiet" email was pointing to the App Store even though the recipient already has the app. Both fixed.
+
+### Technical changes (for Jimmy)
+
+- `first-insight.ts`: "See the full picture" CTA changed from `${appUrl}/home` to `${appUrl}/open`
+- `recovery-recorded-once.ts`: "Record now" CTA changed from App Store URL to `https://www.getacuity.io/open` (this email is disabled/replaced by stall_1rec, but corrected for if it's ever re-enabled)
+
+Full audit results:
+
+| Email | Recipient state | Primary CTA | Correct? |
+|---|---|---|---|
+| stall_1rec/2rec/3plus | recorded 1/2/3+ | `/open` | Yes (already) |
+| winback_7d/14d/30d | recorded 1+, lapsed | `/open` | Yes (already) |
+| winback_90d | recorded 1+, 90d lapsed | No CTA (farewell) | Yes (correct) |
+| first-insight | recorded 5+ | `/open` | **Fixed** (was `/home`) |
+| keep-momentum | recorded 2+ | No CTA (encouragement) | Yes (correct) |
+| trial-ending | recorded 1+, trial | `/upgrade` | Yes (correct — subscribe CTA) |
+| recovery-recorded-once | recorded 1 | `/open` | **Fixed** (was App Store) |
+| never-recorded 1-4 | 0 recordings | App Store | Yes (correct) |
+| rescue 1-4 | no app open | App Store | Yes (correct) |
+| recovery-paid-no-app | no recordings | App Store | Yes (correct) |
+| recovery-download-reminder | no app | App Store | Yes (correct, disabled) |
+| welcome-founder | new signup | App Store | Yes (correct) |
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+
+### Notes
+
+- Every email to an app-having user (recorded 1+ or opened app) now uses `/open` as its primary CTA. Every email to a user without the app correctly uses the App Store link.
+- The never-recorded sequence uses App Store links because those users have 0 recordings and may not have the app installed. Some of them may have opened the app without recording — but since `totalRecordings = 0` is the filter, App Store is the safe default (it's a no-op if already installed).
+
+---
+
 ## [2026-06-27] — Universal link /open so "Open Acuity" email buttons open the native iOS app
 
 **Requested by:** Keenan
