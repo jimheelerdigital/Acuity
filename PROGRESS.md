@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-06-27] — One-time retroactive catch-up for ~120 stranded never-recorded users
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 8b65198
+
+### In plain English (for Keenan)
+
+About 120 existing users who signed up but never recorded a single debrief were falling through the cracks — they signed up before the email system went live, so they missed the "you dropped this" and "uh oh did you forget" emails entirely. This change sweeps them in: everyone in that group gets the two early nudge emails (the ones that work regardless of trial state), and anyone still on an active trial also gets the countdown emails ("three days left" / "last call") if their trial timing fits. Users whose trial already expired just get the nudges — no point sending "three days left" to someone whose trial ended weeks ago. This is a one-time sweep: once everyone's been reached, it automatically stops. The daily rate cap still applies (no blast), and if any of these users record a debrief, their remaining emails cancel.
+
+### Technical changes (for Jimmy)
+
+- `recovery-email-orchestrator.ts`: added condition #29 — retroactive catch-up:
+  - Query: `totalRecordings = 0`, `createdAt < RECOVERY_ENABLEMENT_DATE`, `subscriptionStatus != "PRO"`
+  - For each user: sends `never_recorded_24h` + `never_recorded_48h` (early nudges for all)
+  - For still-on-trial users with matching `trialEndsAt` windows + no card on file: also sends `never_recorded_3day` (48-96h left) and `never_recorded_lastday` (0-36h left)
+  - TrialEmailLog dedup makes this inherently one-time — once all ~120 users have log entries, the section does nothing on future ticks
+  - Under global rate cap + 24h per-user throttle
+  - `totalRecordings: 0` in the where-clause = cancel rule (recording a debrief → totalRecordings > 0 → no longer matches)
+- `recovery-preview/route.ts`: added `catchupCounts` section:
+  - `stranded_total`: total stranded never-recorded users
+  - `stranded_still_on_trial` / `stranded_expired_trial`: breakdown
+  - `never_recorded_24h/48h/3day/lastday_catchup`: unsent counts per email
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, hit `/api/admin/recovery-preview` to see the catch-up numbers before sends start (the `catchupCounts` section) (Keenan)
+- [ ] Monitor Resend dashboard over the next day as the backlog drains (Keenan)
+
+### Notes
+
+- **One-time by design.** TrialEmailLog dedup is the mechanism: each email key can only fire once per user. After the first tick sends the nudges, subsequent ticks see the log entries and skip. No cleanup needed — the section becomes a permanent no-op once everyone's been swept.
+- **24h throttle spaces the two early nudges.** A user won't get both `never_recorded_24h` AND `never_recorded_48h` on the same day. They'll get one today, the other tomorrow (if budget permits).
+- **Forward-only resumes automatically.** New users who sign up after the enablement date are handled by the existing forward-only conditions (#13-16). The catch-up only queries users BEFORE the enablement date. No permanent retroactive behavior.
+- **Expired-trial users get nudges only.** The countdown emails (`3day`, `lastday`) require `subscriptionStatus = "TRIAL"` + a future `trialEndsAt` + no card on file. Expired-trial users (status = FREE) don't match those conditions. They still get the early nudges, which are about "you never tried it" — not about the trial clock.
+
+---
+
 ## [2026-06-27] — Email design refresh — branded coral header, cleaner hierarchy, centralized styling
 
 **Requested by:** Keenan
