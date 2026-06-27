@@ -61,4 +61,8 @@ export type TrialEmailKey =
   | "rescue_signup_only"
   | "rescue_viewed_no_tap"
   | "rescue_tapped_app_store"
-  | "rescue_webview_blocked";
+  | "rescue_webview_blocked"
+  | "never_recorded_24h"
+  | "never_recorded_48h"
+  | "never_recorded_3day"
+  | "never_recorded_lastday";

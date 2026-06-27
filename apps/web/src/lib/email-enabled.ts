@@ -44,6 +44,10 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   rescue_viewed_no_tap: true, // download rescue #2: viewed download, didn't tap
   rescue_tapped_app_store: true, // download rescue #3: tapped App Store, never opened app
   rescue_webview_blocked: true, // download rescue #4: stuck in IG/FB webview
+  never_recorded_24h: true, // never-recorded #1: 24h after signup, 0 recordings (all trial)
+  never_recorded_48h: true, // never-recorded #2: 48h after signup, 0 recordings (all trial)
+  never_recorded_3day: true, // never-recorded #3: 3 days before trial end, 0 recordings (no-card only)
+  never_recorded_lastday: true, // never-recorded #4: last day of trial, 0 recordings (no-card only)
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

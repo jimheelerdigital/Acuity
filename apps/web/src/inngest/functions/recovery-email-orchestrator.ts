@@ -216,6 +216,97 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // 13–16. NEVER RECORDED — escalating sequence to drive first debrief
+      //    TRIAL users with totalRecordings = 0. THE CANCEL RULE: if the
+      //    user has recorded ANY debrief (totalRecordings > 0), skip ALL
+      //    remaining emails in this sequence. The totalRecordings = 0
+      //    check on every condition IS the cancel rule — the moment a
+      //    recording completes and increments totalRecordings, all future
+      //    conditions fail to match.
+      //
+      //    Emails 1 & 2 (24h, 48h): ALL trial users with 0 recordings.
+      //    Emails 3 & 4 (3-day, lastday): ONLY no-card/no-paid users.
+      // ═══════════════════════════════════════════════════════════
+
+      // #13 — NEVER RECORDED 24h
+      //    Created 20–48h ago (wide window for 15-min cron), TRIAL, 0 recordings.
+      const neverRecorded24hCandidates = await prisma.user.findMany({
+        where: {
+          subscriptionStatus: "TRIAL",
+          totalRecordings: 0,
+          createdAt: {
+            gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+            lte: new Date(now.getTime() - 20 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of neverRecorded24hCandidates) {
+        await trySend(user.id, "never_recorded_24h");
+      }
+
+      // #14 — NEVER RECORDED 48h
+      //    Created 44–96h ago, TRIAL, 0 recordings.
+      const neverRecorded48hCandidates = await prisma.user.findMany({
+        where: {
+          subscriptionStatus: "TRIAL",
+          totalRecordings: 0,
+          createdAt: {
+            gte: new Date(now.getTime() - 96 * 60 * 60 * 1000),
+            lte: new Date(now.getTime() - 44 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of neverRecorded48hCandidates) {
+        await trySend(user.id, "never_recorded_48h");
+      }
+
+      // #15 — NEVER RECORDED 3 DAYS LEFT (no-card only)
+      //    trialEndsAt 48–96h from now, TRIAL, 0 recordings, no card on file.
+      const neverRecorded3dayCandidates = await prisma.user.findMany({
+        where: {
+          subscriptionStatus: "TRIAL",
+          totalRecordings: 0,
+          trialEndsAt: {
+            gte: new Date(now.getTime() + 48 * 60 * 60 * 1000),
+            lt: new Date(now.getTime() + 96 * 60 * 60 * 1000),
+          },
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+          appleOriginalTransactionId: null,
+        },
+        select: { id: true },
+      });
+
+      for (const user of neverRecorded3dayCandidates) {
+        await trySend(user.id, "never_recorded_3day");
+      }
+
+      // #16 — NEVER RECORDED LAST DAY (no-card only)
+      //    trialEndsAt within 0–36h from now, TRIAL, 0 recordings, no card on file.
+      const neverRecordedLastdayCandidates = await prisma.user.findMany({
+        where: {
+          subscriptionStatus: "TRIAL",
+          totalRecordings: 0,
+          trialEndsAt: {
+            gte: now,
+            lt: new Date(now.getTime() + 36 * 60 * 60 * 1000),
+          },
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+          appleOriginalTransactionId: null,
+        },
+        select: { id: true },
+      });
+
+      for (const user of neverRecordedLastdayCandidates) {
+        await trySend(user.id, "never_recorded_lastday");
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 9–12. DOWNLOAD RESCUE — four stage-specific emails
       //    ALL gated on appFirstOpenedAt IS NULL (never opened app).
       //    Mutual exclusivity: each user gets ONE email matching their
