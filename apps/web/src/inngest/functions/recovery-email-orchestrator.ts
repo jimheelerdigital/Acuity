@@ -216,6 +216,27 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // 7. KEEP MOMENTUM — early encouragement at 2 recordings
+      //    2–4 completed recordings, first recording 48hr+ ago.
+      //    Skipped if user is already at 5+ recordings (the
+      //    first_insight email handles that stage). No CTA — pure
+      //    encouragement. Fires once per user via TrialEmailLog dedup.
+      // ═══════════════════════════════════════════════════════════
+      const keepMomentumCandidates = await prisma.user.findMany({
+        where: {
+          totalRecordings: { gte: 2, lt: 5 },
+          firstRecordingAt: {
+            lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of keepMomentumCandidates) {
+        await trySend(user.id, "keep_momentum");
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 6. FIRST INSIGHT — activation email at ~5 recordings
       //    5+ completed recordings AND a real UserInsight exists.
       //    Fires once per user (dedup via TrialEmailLog).
