@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-06-27] — Trial-ending "2 days left" email for recorded trial users without payment
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 8f013c0
+
+### In plain English (for Keenan)
+
+Users who are on an active trial, have recorded at least one debrief, and have NOT paid or put a card on file now get a one-time heads-up email about 2 days before their trial ends. It says "Your Acuity trial ends in 2 days," acknowledges they've been building something, gives the price ($4.99/month), and has a single "Keep my subscription" button. No pressure language, no exclamation points. Users who have never recorded get nothing (they'll be handled separately). Users who have already paid or have a card on file are excluded — if there's any ambiguity about payment status, the system errs on the side of NOT emailing. Kill switch is in email-enabled.ts.
+
+### Technical changes (for Jimmy)
+
+- New template: `apps/web/src/emails/trial/trial-ending.ts` — subject "Your Acuity trial ends in 2 days", uses shared trialLayout + primaryButton ("Keep my subscription" → `/upgrade?src=trial_ending_email`) + keenanSignature
+- `apps/web/src/emails/trial/types.ts`: added `"trial_ending"` to TrialEmailKey union
+- `apps/web/src/emails/trial/registry.ts`: imported and registered `trialEnding` template
+- `apps/web/src/lib/email-enabled.ts`: added `trial_ending: true` kill-switch entry
+- `apps/web/src/inngest/functions/recovery-email-orchestrator.ts`: added condition #8 with full filter:
+  - `subscriptionStatus = "TRIAL"` (active trial only)
+  - `trialEndsAt` between now+24h and now+72h (the "~2 days left" window)
+  - `totalRecordings >= 1` (has recorded — never-recorded users excluded)
+  - `stripeCustomerId IS NULL` (no card on file — fail-safe: anyone who ever went through Stripe checkout is excluded)
+  - `stripeSubscriptionId IS NULL` (no active Stripe subscription)
+  - `appleOriginalTransactionId IS NULL` (no Apple IAP)
+  - Dedup via TrialEmailLog unique constraint on `(userId, "trial_ending")`
+  - 24h global throttle prevents collision with other recovery emails
+- Preview HTML at `.tmp/email-previews/trial-ending-preview.html` (gitignored)
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, verify recovery-email-orchestrator runs cleanly in Inngest dashboard (Jimmy)
+- [ ] To test: find a trial user with 1+ recordings, no payment fields set, trialEndsAt ~2 days from now — wait for the next 15-min tick or manually invoke `sendTrialEmail(userId, "trial_ending", { force: true })` (Jimmy)
+
+### Notes
+
+- **Payment detection is DB-only, no Stripe API calls needed.** The `stripeCustomerId` field is set during `checkout.session.completed` webhook processing, which requires a card. If it's null, the user has never completed Stripe checkout. `appleOriginalTransactionId` covers Apple IAP. These fields combined provide a reliable fail-safe filter.
+- **Fail-safe on ambiguity:** If `subscriptionStatus` is TRIAL but `stripeCustomerId` is set (unusual but theoretically possible after a refund/reset), the user is NOT emailed. Better to miss a send than hit a payer.
+- The existing `trial-countdown-emails-cron.ts` has its own countdown sequence (T-4, T-2, T+0, T+3) but those emails are all currently PAUSED in email-enabled.ts. This new `trial_ending` email lives in the recovery orchestrator instead, using the same TrialEmailLog dedup pattern as the other activation emails. It does NOT conflict with the paused countdown cron.
+- Never-recorded trial users are explicitly excluded (`totalRecordings >= 1`). They'll need a separate funnel built later — sending "you've been building something" to someone who hasn't recorded would feel dishonest.
+
+---
+
 ## [2026-06-27] — "Keep the momentum" early encouragement email at 2 recordings
 
 **Requested by:** Keenan
