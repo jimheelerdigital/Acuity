@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-06-27] — "Keep the momentum" early encouragement email at 2 recordings
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 329baec
+
+### In plain English (for Keenan)
+
+New users who record their second debrief now get a one-time email titled "You've done two. Here's where it starts to click." It's a warm, personal note from Keenan that explains why the habit compounds — why the value isn't in one recording but in what shows up across several. There's intentionally no button or link in this email; it's purely encouragement. It only arrives once they've been recording for at least two days (not if someone bangs out two recordings back-to-back on day one), and it never fires for users who are already past 5 recordings (they get the "Acuity noticed something" insight email instead). The existing 24-hour throttle means these two emails can never land on the same day. Kill switch is in email-enabled.ts.
+
+### Technical changes (for Jimmy)
+
+- New template: `apps/web/src/emails/trial/keep-momentum.ts` — subject "You've done two. Here's where it starts to click.", uses shared trialLayout + keenanSignature, NO primaryButton/CTA, NO app link
+- `apps/web/src/emails/trial/types.ts`: added `"keep_momentum"` to TrialEmailKey union
+- `apps/web/src/emails/trial/registry.ts`: imported and registered `keepMomentum` template
+- `apps/web/src/lib/email-enabled.ts`: added `keep_momentum: true` kill-switch entry
+- `apps/web/src/inngest/functions/recovery-email-orchestrator.ts`: added condition #7 — `totalRecordings >= 2 AND < 5`, `firstRecordingAt <= now - 48h`. Dedup enforced by TrialEmailLog unique constraint on `(userId, "keep_momentum")`. 24h global throttle prevents collision with first_insight or any other recovery email.
+- Preview HTML generated to `.tmp/email-previews/keep-momentum-preview.html` (gitignored, open locally)
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, verify in Inngest dashboard that recovery-email-orchestrator runs cleanly with the new condition (Jimmy)
+- [ ] To test: find a user with exactly 2 recordings whose firstRecordingAt is 48+ hours ago, then wait for the next 15-min orchestrator tick or manually invoke `sendTrialEmail(userId, "keep_momentum", { force: true })` (Jimmy)
+
+### Notes
+
+- The `totalRecordings < 5` upper bound ensures keep_momentum only fires in the 2-4 recording window. Users who jump straight to 5+ recordings skip it entirely — they'll get the first_insight email instead.
+- The 48-hour floor is measured from `User.firstRecordingAt`, which is stamped by the `update-recording-stats` step in process-entry when the first COMPLETE entry lands. This prevents the email from firing same-day for a user who records twice in a single session.
+- No CTA button is intentional — this email is encouragement, not activation. The first_insight email (at 5 recordings) is the one with the "See the full picture" CTA.
+- The 24h global throttle in the recovery orchestrator means: if a user gets recovery_recorded_once (condition #4, at exactly 1 recording 48-96h after first), they can't also get keep_momentum within 24h. In practice these won't collide because condition #4 requires totalRecordings=1 while condition #7 requires totalRecordings>=2.
+
+---
+
 ## [2026-06-27] — First-insight email now fires same-day (on-demand insight generation at recording #5)
 
 **Requested by:** Keenan
