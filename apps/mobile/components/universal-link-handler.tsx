@@ -32,6 +32,7 @@ import { useAuth } from "@/contexts/auth-context";
  */
 
 const VERIFY_EMAIL_PATH = "/api/auth/verify-email";
+const OPEN_APP_PATH = "/open";
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
 
@@ -46,6 +47,17 @@ async function handleUrl(
   } catch {
     return;
   }
+  // /open — "Open Acuity" deep link from re-engagement emails.
+  // Just routes to the main app screen (or sign-in if logged out).
+  if (parsed.pathname === OPEN_APP_PATH) {
+    if (signedIn) {
+      router.replace("/(tabs)");
+    } else {
+      router.replace("/(auth)/sign-in");
+    }
+    return;
+  }
+
   if (parsed.pathname !== VERIFY_EMAIL_PATH) return;
   const token = parsed.searchParams.get("token");
   if (!token) return;

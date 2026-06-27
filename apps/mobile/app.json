@@ -178,6 +178,11 @@
               "scheme": "https",
               "host": "getacuity.io",
               "pathPrefix": "/api/auth/verify-email"
+            },
+            {
+              "scheme": "https",
+              "host": "getacuity.io",
+              "pathPrefix": "/open"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

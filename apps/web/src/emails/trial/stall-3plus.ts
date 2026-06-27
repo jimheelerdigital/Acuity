@@ -27,7 +27,7 @@ export const stall3plus: TrialEmailTemplate = {
       ? `Hi ${escapeHtml(rawFirst)},`
       : "Hi there,";
 
-    const appLink = `${v.appUrl}/home`;
+    const appLink = `${v.appUrl}/open`;
 
     const content = `
       <tr>

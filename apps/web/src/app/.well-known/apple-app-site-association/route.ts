@@ -50,6 +50,15 @@ const aasa = {
             "?": { token: "?*" },
             comment: "Email verification link routes into the iOS app.",
           },
+          {
+            // /open — "Open Acuity" deep link used by re-engagement
+            // and winback emails. Opens the app's main screen when
+            // installed; falls back to /home web app otherwise.
+            // Dedicated path so /home web visits don't trigger the
+            // app-open prompt.
+            "/": "/open",
+            comment: "Open-the-app deep link from email CTAs.",
+          },
         ],
       },
     ],
