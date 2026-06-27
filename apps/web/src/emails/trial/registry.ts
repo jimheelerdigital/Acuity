@@ -38,6 +38,9 @@ import { neverRecorded24h } from "./never-recorded-24h";
 import { neverRecorded48h } from "./never-recorded-48h";
 import { neverRecorded3day } from "./never-recorded-3day";
 import { neverRecordedLastday } from "./never-recorded-lastday";
+import { stall1rec } from "./stall-1rec";
+import { stall2rec } from "./stall-2rec";
+import { stall3plus } from "./stall-3plus";
 import { firstInsight } from "./first-insight";
 import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
@@ -77,6 +80,9 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     never_recorded_48h: neverRecorded48h,
     never_recorded_3day: neverRecorded3day,
     never_recorded_lastday: neverRecordedLastday,
+    stall_1rec: stall1rec,
+    stall_2rec: stall2rec,
+    stall_3plus: stall3plus,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

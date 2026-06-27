@@ -35,7 +35,7 @@
 export const EMAIL_ENABLED: Record<string, boolean> = {
   // ── KEEP ON — registry emails (sendTrialEmail) ──────────────────
   recovery_paid_no_app: true, // #29 paid, no app install
-  recovery_recorded_once: true, // #30 recorded once then stalled
+  recovery_recorded_once: false, // #30 REPLACED by stall_1rec/stall_2rec/stall_3plus ladder
   recovery_download_reminder: false, // #32 REPLACED by 4 stage-specific rescue emails below
   first_insight: true, // activation: fires once at ~5 recordings w/ real insight
   keep_momentum: true, // encouragement: fires once at 2 recordings, 48h after first
@@ -48,6 +48,9 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   never_recorded_48h: true, // never-recorded #2: 48h after signup, 0 recordings (all trial)
   never_recorded_3day: true, // never-recorded #3: 3 days before trial end, 0 recordings (no-card only)
   never_recorded_lastday: true, // never-recorded #4: last day of trial, 0 recordings (no-card only)
+  stall_1rec: true, // stall re-engagement: 1 recording, 48h+ silent
+  stall_2rec: true, // stall re-engagement: 2 recordings, 48h+ silent
+  stall_3plus: true, // stall re-engagement: 3+ recordings, 72h+ silent
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

@@ -65,4 +65,7 @@ export type TrialEmailKey =
   | "never_recorded_24h"
   | "never_recorded_48h"
   | "never_recorded_3day"
-  | "never_recorded_lastday";
+  | "never_recorded_lastday"
+  | "stall_1rec"
+  | "stall_2rec"
+  | "stall_3plus";

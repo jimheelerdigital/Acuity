@@ -175,22 +175,76 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 4. RECORDED ONCE, NEVER RETURNED
-      //    1 recording, first recording 48hr–96hr ago
+      // 4. (LEGACY — replaced by stall ladder below)
+      //    Old "recorded once, never returned" is disabled in
+      //    email-enabled.ts. Left as no-op for safety.
       // ═══════════════════════════════════════════════════════════
-      const recordedOnce = await prisma.user.findMany({
+
+      // ═══════════════════════════════════════════════════════════
+      // 17–19. STALL RE-ENGAGEMENT LADDER
+      //    Users who recorded then went silent. Triggered by time
+      //    since LAST recording (lastRecordingAt). Each fires once
+      //    per user. Recording again clears the stall (lastRecordingAt
+      //    updates, so the silence window no longer matches).
+      //    Replaces the old "recorded once went quiet" email (#4).
+      // ═══════════════════════════════════════════════════════════
+
+      // #17 — STALL 1 REC: exactly 1 recording, 48h+ since last recording
+      const stall1recCandidates = await prisma.user.findMany({
         where: {
           totalRecordings: 1,
-          firstRecordingAt: {
-            gte: new Date(now.getTime() - 96 * 60 * 60 * 1000),
+          lastRecordingAt: {
             lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
           },
         },
         select: { id: true },
       });
 
-      for (const user of recordedOnce) {
-        await trySend(user.id, "recovery_recorded_once");
+      for (const user of stall1recCandidates) {
+        await trySend(user.id, "stall_1rec");
+      }
+
+      // #18 — STALL 2 REC: exactly 2 recordings, 48h+ since last recording
+      const stall2recCandidates = await prisma.user.findMany({
+        where: {
+          totalRecordings: 2,
+          lastRecordingAt: {
+            lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of stall2recCandidates) {
+        await trySend(user.id, "stall_2rec");
+      }
+
+      // #19 — STALL 3+ REC: 3+ recordings, 72h+ since last recording.
+      //    Longer silence window — established users have normal gaps.
+      //    Email C invites replies → replyTo keenan@getacuity.io.
+      const stall3plusCandidates = await prisma.user.findMany({
+        where: {
+          totalRecordings: { gte: 3 },
+          lastRecordingAt: {
+            lte: new Date(now.getTime() - 72 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of stall3plusCandidates) {
+        if (await isThrottled(user.id)) {
+          throttled++;
+          continue;
+        }
+        const result = await sendTrialEmail(user.id, "stall_3plus", {
+          replyTo: "keenan@getacuity.io",
+        });
+        if (result.sent) {
+          sent++;
+        } else {
+          skipped++;
+        }
       }
 
       // ═══════════════════════════════════════════════════════════
