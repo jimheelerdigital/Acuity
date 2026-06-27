@@ -7,6 +7,50 @@
 
 ---
 
+## [2026-06-27] — Long-tail winback ladder — 4 emails for lapsed users at 7/14/30/90 days
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b903128
+
+### In plain English (for Keenan)
+
+Users who recorded at least one debrief and then went completely silent now get up to four emails spaced across the long tail: "silent 7..." at one week, "it adds up" at two weeks, "given up?" at one month, and a final "done after this one" at three months. After the 90-day email, we stop emailing them permanently — that's the hard stop for deliverability protection. The 7-day, 30-day, and 90-day emails all invite replies to your inbox. The 90-day email has no CTA buttons — it's purely a farewell and feedback ask. If a user comes back and records at any point, the rest of the sequence cancels automatically (they're no longer lapsed). Currently-paying users never get these. All four have kill switches.
+
+### Technical changes (for Jimmy)
+
+- 4 new templates: `winback-7d.ts` ("silent 7..."), `winback-14d.ts` ("it adds up"), `winback-30d.ts` ("given up?"), `winback-90d.ts` ("done after this one" — no CTA buttons, farewell + feedback ask)
+- All link to `${appUrl}/home` (web app), NOT the App Store — these users already have the app
+- Emails 1, 3, 4 use `replyTo: "keenan@getacuity.io"` (real monitored inbox)
+- `types.ts`: added `winback_7d`, `winback_14d`, `winback_30d`, `winback_90d` to TrialEmailKey
+- `registry.ts`: registered all 4 templates
+- `email-enabled.ts`: added 4 kill-switch entries (all `true`)
+- `recovery-email-orchestrator.ts`: conditions #20–23:
+  - Shared filter: `totalRecordings >= 1`, `subscriptionStatus != "PRO"` (not currently paying)
+  - **#20 (7d):** `lastRecordingAt` 7–13 days ago
+  - **#21 (14d):** `lastRecordingAt` 14–29 days ago
+  - **#22 (30d):** `lastRecordingAt` 30–89 days ago
+  - **#23 (90d FINAL):** `lastRecordingAt` 90–120 days ago
+  - **HARD STOP:** Upper bound of 120 days means users silent >120 days match NOTHING. No email fires beyond the 90d send.
+  - Cancel rule: new recording updates `lastRecordingAt` → silence window no longer matches → pending winbacks stop
+  - All dedup via TrialEmailLog, 24h global throttle
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, verify recovery-email-orchestrator runs cleanly in Inngest dashboard (Jimmy)
+- [ ] **Deep link follow-up (same as stall ladder):** "Open Acuity" links to the web app. Adding `/home` to AASA universal link config would make it open the native app. (Jimmy)
+- [ ] Verify reply-to works on emails 1, 3, 4: send a test reply and confirm it arrives at keenan@getacuity.io (Keenan)
+
+### Notes
+
+- **HARD STOP is enforced by upper-bounded windows.** Each condition has both a lower AND upper bound on `lastRecordingAt`. A user silent for 200 days falls outside ALL four windows (the widest is 90–120 days). No condition matches → no email fires. This protects deliverability — ancient addresses are never mailed.
+- **No collision with stall ladder.** The stall ladder fires at 48–72h of silence (conditions #17–19). Winback starts at 7 days. The 24h global throttle adds belt-and-suspenders protection. A user who got `stall_1rec` at 48h won't get `winback_7d` within 24h of any other send.
+- **Not currently paying check:** `subscriptionStatus != "PRO"` excludes active paid users. A user who lapsed, got a winback email, then re-subscribed won't get further winbacks because they're now PRO.
+- **The 90-day email intentionally has NO CTA buttons.** It's a farewell and feedback ask only — pressuring a 90-day-lapsed user with "Open Acuity" buttons would feel tone-deaf.
+
+---
+
 ## [2026-06-27] — "You stalled" re-engagement ladder — 3 emails for users who recorded then went silent
 
 **Requested by:** Keenan
