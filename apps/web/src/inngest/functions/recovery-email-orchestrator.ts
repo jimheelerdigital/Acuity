@@ -1,21 +1,36 @@
 /**
  * Recovery Email Orchestrator
  *
- * Cron: every 15 minutes. Evaluates all users against 5 recovery email
- * conditions and sends the first applicable email per user per tick.
+ * Cron: every 15 minutes. Evaluates users against recovery/activation
+ * email conditions and sends the applicable email per user per tick.
  *
- * Recovery emails target funnel drop-offs and early-activation gaps:
- * 1. checkout_abandoned — 30min after checkout start, no payment
- * 2. signup_no_checkout — 1hr after signup, never started checkout
- * 3. paid_no_app — 2hr after signup, has subscription but no recording
- * 4. recorded_once — 48hr after first recording, only 1 entry
- * 5. day6_nudge — Saturday, 3+ recordings, weekly report coming tomorrow
+ * ── SAFE BACKLOG RECOVERY (2026-06-27) ──────────────────────────────
  *
- * Deduplication: reuses TrialEmailLog (userId, emailKey) unique constraint
- * via sendTrialEmail(). Each recovery email can only be sent once per user.
+ * Three layers of protection prevent blast-on-enable:
  *
- * Throttle: 24h global cooldown — won't send any recovery email if the user
- * received ANY trial/recovery email in the last 24 hours.
+ * 1. GLOBAL RATE CAP — configurable max sends per tick (default 50)
+ *    and per day (default 300). The backlog drains gradually over days
+ *    instead of one spike. Tune via RECOVERY_MAX_SENDS_PER_TICK and
+ *    RECOVERY_MAX_SENDS_PER_DAY env vars.
+ *
+ * 2. FORWARD-ONLY GUARD — time-sensitive emails (stall, never-recorded,
+ *    trial-ending, download-rescue) only fire when the triggering event
+ *    is AFTER RECOVERY_ENABLEMENT_DATE. Prevents retroactive blasting
+ *    of old users on re-enable.
+ *
+ * 3. CURRENT-STAGE-ONLY — winback/stall windows are non-overlapping
+ *    with upper bounds. A user matches exactly ONE tier, not a stack.
+ *    Stall ladder is capped at 7d; beyond that, winback takes over.
+ *
+ * DRY RUN — set RECOVERY_DRY_RUN=true to count qualifying users per
+ * email type without actually sending. Returns counts + estimated
+ * drain time at the configured rate.
+ *
+ * Deduplication: TrialEmailLog (userId, emailKey) unique constraint
+ * via sendTrialEmail(). Each email fires at most once per user.
+ *
+ * Throttle: 24h per-user cooldown — won't send any recovery email if
+ * the user received ANY trial/recovery email in the last 24 hours.
  */
 
 import { inngest } from "@/inngest/client";
@@ -29,17 +44,43 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
     concurrency: { limit: 1 },
     retries: 2,
   },
-  async ({ step }) => {
+  async ({ step, logger }) => {
     const stats = await step.run("evaluate-and-send", async () => {
       const { prisma } = await import("@/lib/prisma");
       const { sendTrialEmail } = await import("@/lib/trial-emails");
+      const { getRecoveryConfig } = await import("@/lib/recovery-config");
 
+      const config = getRecoveryConfig();
       const now = new Date();
       let sent = 0;
       let skipped = 0;
       let throttled = 0;
+      let rateLimited = 0;
 
-      // ── Helper: check 24h global throttle ──
+      // ── Dry-run accumulator ──
+      const dryRunCounts: Record<string, number> = {};
+
+      // ── Global daily send count ──
+      const todayStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+      );
+      const dailySentSoFar = await prisma.trialEmailLog.count({
+        where: { sentAt: { gte: todayStart } },
+      });
+
+      let dailyBudget = Math.max(0, config.maxSendsPerDay - dailySentSoFar);
+      let tickBudget = config.maxSendsPerTick;
+
+      function hasGlobalBudget(): boolean {
+        return tickBudget > 0 && dailyBudget > 0;
+      }
+
+      function consumeBudget(): void {
+        tickBudget--;
+        dailyBudget--;
+      }
+
+      // ── Helper: check 24h per-user throttle ──
       async function isThrottled(userId: string): Promise<boolean> {
         const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const recent = await prisma.trialEmailLog.findFirst({
@@ -61,294 +102,285 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         return !!row;
       }
 
-      // ── Helper: get timestamp of an onboarding event ──
-      async function eventTime(
-        userId: string,
-        event: string
-      ): Promise<Date | null> {
-        const row = await prisma.onboardingEvent.findFirst({
-          where: { userId, event },
-          orderBy: { createdAt: "desc" },
-          select: { createdAt: true },
-        });
-        return row?.createdAt ?? null;
-      }
-
-      // ── Helper: try to send, respecting throttle ──
+      // ── Helper: try to send, respecting per-user + global throttle ──
       async function trySend(
         userId: string,
-        emailKey: TrialEmailKey
+        emailKey: TrialEmailKey,
+        opts?: { replyTo?: string }
       ): Promise<boolean> {
+        if (config.dryRun) {
+          dryRunCounts[emailKey] = (dryRunCounts[emailKey] ?? 0) + 1;
+          return false;
+        }
+        if (!hasGlobalBudget()) {
+          rateLimited++;
+          return false;
+        }
         if (await isThrottled(userId)) {
           throttled++;
           return false;
         }
-        const result = await sendTrialEmail(userId, emailKey);
+        const result = await sendTrialEmail(userId, emailKey, opts);
         if (result.sent) {
           sent++;
+          consumeBudget();
           return true;
         }
         skipped++;
         return false;
       }
 
-      // ═══════════════════════════════════════════════════════════
-      // 1. CHECKOUT ABANDONED
-      //    Users who started checkout 30min–2hr ago, no payment
-      // ═══════════════════════════════════════════════════════════
-      const checkoutWindow = {
-        gte: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-        lte: new Date(now.getTime() - 30 * 60 * 1000),
-      };
+      // ── Helper: forward-only guard ──
+      // Returns true if the timestamp is AFTER the enablement date.
+      // Time-sensitive emails use this to skip backlog users.
+      function isAfterEnablement(d: Date | null): boolean {
+        if (!d) return false;
+        return d.getTime() >= config.enablementDate.getTime();
+      }
 
-      const checkoutAbandoned = await prisma.onboardingEvent.findMany({
-        where: {
-          event: "funnel_checkout_started",
-          createdAt: checkoutWindow,
-          userId: { not: null },
-        },
-        select: { userId: true },
-        distinct: ["userId"],
-      });
+      // ═══════════════════════════════════════════════════════════
+      // 1. CHECKOUT ABANDONED (forward-only: narrow window)
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const checkoutWindow = {
+          gte: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+          lte: new Date(now.getTime() - 30 * 60 * 1000),
+        };
 
-      for (const row of checkoutAbandoned) {
-        if (!row.userId) continue;
-        // Verify no payment completed
-        const paid = await hasEvent(row.userId, "funnel_payment_completed");
-        if (paid) continue;
-        // Verify user still exists and is in TRIAL (not already converted)
-        const user = await prisma.user.findUnique({
-          where: { id: row.userId },
-          select: { subscriptionStatus: true, stripeSubscriptionId: true },
+        const checkoutAbandoned = await prisma.onboardingEvent.findMany({
+          where: {
+            event: "funnel_checkout_started",
+            createdAt: checkoutWindow,
+            userId: { not: null },
+          },
+          select: { userId: true },
+          distinct: ["userId"],
         });
-        if (!user || user.stripeSubscriptionId) continue;
-        await trySend(row.userId, "recovery_checkout_abandoned");
-      }
 
-      // ═══════════════════════════════════════════════════════════
-      // 2. SIGNUP NO CHECKOUT
-      //    Users who signed up 1hr–4hr ago, never started checkout
-      // ═══════════════════════════════════════════════════════════
-      const signupWindow = {
-        gte: new Date(now.getTime() - 4 * 60 * 60 * 1000),
-        lte: new Date(now.getTime() - 1 * 60 * 60 * 1000),
-      };
-
-      const signupNoCheckout = await prisma.onboardingEvent.findMany({
-        where: {
-          event: "funnel_signup_completed",
-          createdAt: signupWindow,
-          userId: { not: null },
-        },
-        select: { userId: true },
-        distinct: ["userId"],
-      });
-
-      for (const row of signupNoCheckout) {
-        if (!row.userId) continue;
-        const didCheckout = await hasEvent(
-          row.userId,
-          "funnel_checkout_started"
-        );
-        if (didCheckout) continue;
-        await trySend(row.userId, "recovery_signup_no_checkout");
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // 3. PAID BUT NEVER OPENED APP
-      //    Active subscription, no recordings, created 2hr–24hr ago
-      // ═══════════════════════════════════════════════════════════
-      const paidNoApp = await prisma.user.findMany({
-        where: {
-          subscriptionStatus: { in: ["PRO", "TRIALING"] },
-          firstRecordingAt: null,
-          createdAt: {
-            gte: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-            lte: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of paidNoApp) {
-        await trySend(user.id, "recovery_paid_no_app");
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // 4. (LEGACY — replaced by stall ladder below)
-      //    Old "recorded once, never returned" is disabled in
-      //    email-enabled.ts. Left as no-op for safety.
-      // ═══════════════════════════════════════════════════════════
-
-      // ═══════════════════════════════════════════════════════════
-      // 17–19. STALL RE-ENGAGEMENT LADDER
-      //    Users who recorded then went silent. Triggered by time
-      //    since LAST recording (lastRecordingAt). Each fires once
-      //    per user. Recording again clears the stall (lastRecordingAt
-      //    updates, so the silence window no longer matches).
-      //    Replaces the old "recorded once went quiet" email (#4).
-      // ═══════════════════════════════════════════════════════════
-
-      // #17 — STALL 1 REC: exactly 1 recording, 48h+ since last recording
-      const stall1recCandidates = await prisma.user.findMany({
-        where: {
-          totalRecordings: 1,
-          lastRecordingAt: {
-            lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of stall1recCandidates) {
-        await trySend(user.id, "stall_1rec");
-      }
-
-      // #18 — STALL 2 REC: exactly 2 recordings, 48h+ since last recording
-      const stall2recCandidates = await prisma.user.findMany({
-        where: {
-          totalRecordings: 2,
-          lastRecordingAt: {
-            lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of stall2recCandidates) {
-        await trySend(user.id, "stall_2rec");
-      }
-
-      // #19 — STALL 3+ REC: 3+ recordings, 72h+ since last recording.
-      //    Longer silence window — established users have normal gaps.
-      //    Email C invites replies → replyTo keenan@getacuity.io.
-      const stall3plusCandidates = await prisma.user.findMany({
-        where: {
-          totalRecordings: { gte: 3 },
-          lastRecordingAt: {
-            lte: new Date(now.getTime() - 72 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of stall3plusCandidates) {
-        if (await isThrottled(user.id)) {
-          throttled++;
-          continue;
-        }
-        const result = await sendTrialEmail(user.id, "stall_3plus", {
-          replyTo: "keenan@getacuity.io",
-        });
-        if (result.sent) {
-          sent++;
-        } else {
-          skipped++;
+        for (const row of checkoutAbandoned) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!row.userId) continue;
+          const paid = await hasEvent(row.userId, "funnel_payment_completed");
+          if (paid) continue;
+          const user = await prisma.user.findUnique({
+            where: { id: row.userId },
+            select: { subscriptionStatus: true, stripeSubscriptionId: true },
+          });
+          if (!user || user.stripeSubscriptionId) continue;
+          await trySend(row.userId, "recovery_checkout_abandoned");
         }
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 20–23. WINBACK LADDER — long-tail re-engagement for lapsed users
-      //    Recorded >=1 debrief then went fully silent. NOT currently
-      //    paying (subscriptionStatus != PRO). Escalating 7/14/30/90 days.
-      //    HARD STOP after 90 days — no email beyond winback_90d
-      //    (deliverability protection).
-      //    Cancel rule: new activity (lastRecordingAt updates) → the
-      //    silence window no longer matches → no pending winback sends.
-      //    Upper bound on each window prevents users silent for e.g.
-      //    200 days from matching any condition (hard stop).
+      // 2. SIGNUP NO CHECKOUT (forward-only: narrow window)
       // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const signupWindow = {
+          gte: new Date(now.getTime() - 4 * 60 * 60 * 1000),
+          lte: new Date(now.getTime() - 1 * 60 * 60 * 1000),
+        };
 
-      // Shared filter: recorded >=1, NOT currently paying.
-      const winbackBase = {
-        totalRecordings: { gte: 1 },
-        subscriptionStatus: { notIn: ["PRO"] as string[] },
-      };
-
-      // #20 — WINBACK 7 DAYS: lastRecordingAt 7–13 days ago
-      const winback7dCandidates = await prisma.user.findMany({
-        where: {
-          ...winbackBase,
-          lastRecordingAt: {
-            gte: new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000),
-            lte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+        const signupNoCheckout = await prisma.onboardingEvent.findMany({
+          where: {
+            event: "funnel_signup_completed",
+            createdAt: signupWindow,
+            userId: { not: null },
           },
-        },
-        select: { id: true },
-      });
-
-      for (const user of winback7dCandidates) {
-        if (await isThrottled(user.id)) { throttled++; continue; }
-        const result = await sendTrialEmail(user.id, "winback_7d", {
-          replyTo: "keenan@getacuity.io",
+          select: { userId: true },
+          distinct: ["userId"],
         });
-        if (result.sent) sent++; else skipped++;
-      }
 
-      // #21 — WINBACK 14 DAYS: lastRecordingAt 14–29 days ago
-      const winback14dCandidates = await prisma.user.findMany({
-        where: {
-          ...winbackBase,
-          lastRecordingAt: {
-            gte: new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000),
-            lte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of winback14dCandidates) {
-        await trySend(user.id, "winback_14d");
-      }
-
-      // #22 — WINBACK 30 DAYS: lastRecordingAt 30–89 days ago
-      const winback30dCandidates = await prisma.user.findMany({
-        where: {
-          ...winbackBase,
-          lastRecordingAt: {
-            gte: new Date(now.getTime() - 89 * 24 * 60 * 60 * 1000),
-            lte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of winback30dCandidates) {
-        if (await isThrottled(user.id)) { throttled++; continue; }
-        const result = await sendTrialEmail(user.id, "winback_30d", {
-          replyTo: "keenan@getacuity.io",
-        });
-        if (result.sent) sent++; else skipped++;
-      }
-
-      // #23 — WINBACK 90 DAYS (FINAL): lastRecordingAt 90–120 days ago.
-      //    HARD STOP — the upper bound (120 days) means users silent
-      //    longer than 120 days match NOTHING. No email fires past this.
-      const winback90dCandidates = await prisma.user.findMany({
-        where: {
-          ...winbackBase,
-          lastRecordingAt: {
-            gte: new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000),
-            lte: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of winback90dCandidates) {
-        if (await isThrottled(user.id)) { throttled++; continue; }
-        const result = await sendTrialEmail(user.id, "winback_90d", {
-          replyTo: "keenan@getacuity.io",
-        });
-        if (result.sent) sent++; else skipped++;
+        for (const row of signupNoCheckout) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!row.userId) continue;
+          const didCheckout = await hasEvent(
+            row.userId,
+            "funnel_checkout_started"
+          );
+          if (didCheckout) continue;
+          await trySend(row.userId, "recovery_signup_no_checkout");
+        }
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 5. DAY 6 NUDGE (Saturday pre-weekly-report)
-      //    3+ recordings, created 5–7 days ago, today is Saturday
+      // 3. PAID BUT NEVER OPENED APP (forward-only: narrow window)
       // ═══════════════════════════════════════════════════════════
-      const dayOfWeek = now.getUTCDay(); // 0=Sun, 6=Sat
-      if (dayOfWeek === 6) {
+      if (hasGlobalBudget() || config.dryRun) {
+        const paidNoApp = await prisma.user.findMany({
+          where: {
+            subscriptionStatus: { in: ["PRO", "TRIALING"] },
+            firstRecordingAt: null,
+            createdAt: {
+              gte: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true },
+        });
+
+        for (const user of paidNoApp) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "recovery_paid_no_app");
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // 17–19. STALL RE-ENGAGEMENT LADDER (FORWARD-ONLY)
+      //    Upper-bounded at 7 days: beyond that, winback takes over.
+      //    Forward-only guard: lastRecordingAt must be after enablement.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const STALL_UPPER = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+        // #17 — STALL 1 REC: 1 recording, 48h–7d since last
+        const stall1recCandidates = await prisma.user.findMany({
+          where: {
+            totalRecordings: 1,
+            lastRecordingAt: {
+              gte: new Date(now.getTime() - STALL_UPPER),
+              lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true, lastRecordingAt: true },
+        });
+
+        for (const user of stall1recCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!isAfterEnablement(user.lastRecordingAt)) continue;
+          await trySend(user.id, "stall_1rec");
+        }
+
+        // #18 — STALL 2 REC: 2 recordings, 48h–7d since last
+        const stall2recCandidates = await prisma.user.findMany({
+          where: {
+            totalRecordings: 2,
+            lastRecordingAt: {
+              gte: new Date(now.getTime() - STALL_UPPER),
+              lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true, lastRecordingAt: true },
+        });
+
+        for (const user of stall2recCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!isAfterEnablement(user.lastRecordingAt)) continue;
+          await trySend(user.id, "stall_2rec");
+        }
+
+        // #19 — STALL 3+ REC: 3+ recordings, 72h–7d since last
+        const stall3plusCandidates = await prisma.user.findMany({
+          where: {
+            totalRecordings: { gte: 3 },
+            lastRecordingAt: {
+              gte: new Date(now.getTime() - STALL_UPPER),
+              lte: new Date(now.getTime() - 72 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true, lastRecordingAt: true },
+        });
+
+        for (const user of stall3plusCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!isAfterEnablement(user.lastRecordingAt)) continue;
+          await trySend(user.id, "stall_3plus", {
+            replyTo: "keenan@getacuity.io",
+          });
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // 20–23. WINBACK LADDER (RETROACTIVE WITH RATE CAP)
+      //    Non-overlapping windows → current-stage-only by design.
+      //    Retroactive: reaches backlog users, throttled by global cap.
+      //    90-day hard stop: 120-day upper bound means >120d = no match.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const winbackBase = {
+          totalRecordings: { gte: 1 },
+          subscriptionStatus: { notIn: ["PRO"] as string[] },
+        };
+
+        // #20 — WINBACK 7 DAYS: lastRecordingAt 7–13 days ago
+        const winback7dCandidates = await prisma.user.findMany({
+          where: {
+            ...winbackBase,
+            lastRecordingAt: {
+              gte: new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true },
+        });
+
+        for (const user of winback7dCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "winback_7d", {
+            replyTo: "keenan@getacuity.io",
+          });
+        }
+
+        // #21 — WINBACK 14 DAYS: lastRecordingAt 14–29 days ago
+        const winback14dCandidates = await prisma.user.findMany({
+          where: {
+            ...winbackBase,
+            lastRecordingAt: {
+              gte: new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true },
+        });
+
+        for (const user of winback14dCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "winback_14d");
+        }
+
+        // #22 — WINBACK 30 DAYS: lastRecordingAt 30–89 days ago
+        const winback30dCandidates = await prisma.user.findMany({
+          where: {
+            ...winbackBase,
+            lastRecordingAt: {
+              gte: new Date(now.getTime() - 89 * 24 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true },
+        });
+
+        for (const user of winback30dCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "winback_30d", {
+            replyTo: "keenan@getacuity.io",
+          });
+        }
+
+        // #23 — WINBACK 90 DAYS (FINAL): lastRecordingAt 90–120 days ago.
+        //    HARD STOP — users silent >120 days match NOTHING.
+        const winback90dCandidates = await prisma.user.findMany({
+          where: {
+            ...winbackBase,
+            lastRecordingAt: {
+              gte: new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true },
+        });
+
+        for (const user of winback90dCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "winback_90d", {
+            replyTo: "keenan@getacuity.io",
+          });
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // 5. DAY 6 NUDGE (forward-only: Saturday-only + narrow window)
+      // ═══════════════════════════════════════════════════════════
+      if ((hasGlobalBudget() || config.dryRun) && now.getUTCDay() === 6) {
         const day6Users = await prisma.user.findMany({
           where: {
             totalRecordings: { gte: 3 },
@@ -361,265 +393,268 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         });
 
         for (const user of day6Users) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
           await trySend(user.id, "recovery_day6_nudge");
         }
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 13–16. NEVER RECORDED — escalating sequence to drive first debrief
-      //    TRIAL users with totalRecordings = 0. THE CANCEL RULE: if the
-      //    user has recorded ANY debrief (totalRecordings > 0), skip ALL
-      //    remaining emails in this sequence. The totalRecordings = 0
-      //    check on every condition IS the cancel rule — the moment a
-      //    recording completes and increments totalRecordings, all future
-      //    conditions fail to match.
-      //
-      //    Emails 1 & 2 (24h, 48h): ALL trial users with 0 recordings.
-      //    Emails 3 & 4 (3-day, lastday): ONLY no-card/no-paid users.
+      // 13–16. NEVER RECORDED (FORWARD-ONLY)
+      //    Forward-only guard: createdAt must be after enablement.
       // ═══════════════════════════════════════════════════════════
-
-      // #13 — NEVER RECORDED 24h
-      //    Created 20–48h ago (wide window for 15-min cron), TRIAL, 0 recordings.
-      const neverRecorded24hCandidates = await prisma.user.findMany({
-        where: {
-          subscriptionStatus: "TRIAL",
-          totalRecordings: 0,
-          createdAt: {
-            gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
-            lte: new Date(now.getTime() - 20 * 60 * 60 * 1000),
+      if (hasGlobalBudget() || config.dryRun) {
+        // #13 — 24h: created 20–48h ago, TRIAL, 0 recordings
+        const nr24h = await prisma.user.findMany({
+          where: {
+            subscriptionStatus: "TRIAL",
+            totalRecordings: 0,
+            createdAt: {
+              gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() - 20 * 60 * 60 * 1000),
+            },
           },
-        },
-        select: { id: true },
-      });
+          select: { id: true, createdAt: true },
+        });
 
-      for (const user of neverRecorded24hCandidates) {
-        await trySend(user.id, "never_recorded_24h");
-      }
-
-      // #14 — NEVER RECORDED 48h
-      //    Created 44–96h ago, TRIAL, 0 recordings.
-      const neverRecorded48hCandidates = await prisma.user.findMany({
-        where: {
-          subscriptionStatus: "TRIAL",
-          totalRecordings: 0,
-          createdAt: {
-            gte: new Date(now.getTime() - 96 * 60 * 60 * 1000),
-            lte: new Date(now.getTime() - 44 * 60 * 60 * 1000),
-          },
-        },
-        select: { id: true },
-      });
-
-      for (const user of neverRecorded48hCandidates) {
-        await trySend(user.id, "never_recorded_48h");
-      }
-
-      // #15 — NEVER RECORDED 3 DAYS LEFT (no-card only)
-      //    trialEndsAt 48–96h from now, TRIAL, 0 recordings, no card on file.
-      const neverRecorded3dayCandidates = await prisma.user.findMany({
-        where: {
-          subscriptionStatus: "TRIAL",
-          totalRecordings: 0,
-          trialEndsAt: {
-            gte: new Date(now.getTime() + 48 * 60 * 60 * 1000),
-            lt: new Date(now.getTime() + 96 * 60 * 60 * 1000),
-          },
-          stripeCustomerId: null,
-          stripeSubscriptionId: null,
-          appleOriginalTransactionId: null,
-        },
-        select: { id: true },
-      });
-
-      for (const user of neverRecorded3dayCandidates) {
-        await trySend(user.id, "never_recorded_3day");
-      }
-
-      // #16 — NEVER RECORDED LAST DAY (no-card only)
-      //    trialEndsAt within 0–36h from now, TRIAL, 0 recordings, no card on file.
-      const neverRecordedLastdayCandidates = await prisma.user.findMany({
-        where: {
-          subscriptionStatus: "TRIAL",
-          totalRecordings: 0,
-          trialEndsAt: {
-            gte: now,
-            lt: new Date(now.getTime() + 36 * 60 * 60 * 1000),
-          },
-          stripeCustomerId: null,
-          stripeSubscriptionId: null,
-          appleOriginalTransactionId: null,
-        },
-        select: { id: true },
-      });
-
-      for (const user of neverRecordedLastdayCandidates) {
-        await trySend(user.id, "never_recorded_lastday");
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // 9–12. DOWNLOAD RESCUE — four stage-specific emails
-      //    ALL gated on appFirstOpenedAt IS NULL (never opened app).
-      //    Mutual exclusivity: each user gets ONE email matching their
-      //    furthest/most-specific stage. Priority: webview-blocked (4)
-      //    > tapped-app-store (3) > viewed-download (2) > signup-only (1).
-      //    Timing: created 2–48 hours ago (matches old download-reminder
-      //    cadence but wider window for the 15-min cron to catch everyone).
-      // ═══════════════════════════════════════════════════════════
-      const rescueWindow = {
-        gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
-        lte: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-      };
-
-      // Candidates: signed up 2–48h ago, never opened the app.
-      const rescueCandidates = await prisma.user.findMany({
-        where: {
-          createdAt: rescueWindow,
-          appFirstOpenedAt: null,
-        },
-        select: { id: true },
-      });
-
-      // Download-step events for all candidates in one query.
-      const rescueUserIds = rescueCandidates.map((u) => u.id);
-      const rescueEvents =
-        rescueUserIds.length > 0
-          ? await prisma.onboardingEvent.findMany({
-              where: {
-                userId: { in: rescueUserIds },
-                event: {
-                  in: [
-                    "funnel_download_screen_viewed",
-                    "funnel_app_store_clicked",
-                    "funnel_inapp_browser_detected",
-                  ],
-                },
-              },
-              select: { userId: true, event: true },
-            })
-          : [];
-
-      // Build per-user event sets.
-      const userEvents = new Map<string, Set<string>>();
-      for (const e of rescueEvents) {
-        if (!e.userId) continue;
-        if (!userEvents.has(e.userId)) userEvents.set(e.userId, new Set());
-        userEvents.get(e.userId)!.add(e.event);
-      }
-
-      for (const user of rescueCandidates) {
-        const events = userEvents.get(user.id) ?? new Set<string>();
-
-        // Priority: most-specific wins → exactly one email per user.
-        let emailKey: TrialEmailKey;
-        let replyTo: string | undefined;
-
-        if (events.has("funnel_inapp_browser_detected")) {
-          // #4 — Webview blocked (highest priority)
-          emailKey = "rescue_webview_blocked";
-        } else if (events.has("funnel_app_store_clicked")) {
-          // #3 — Tapped App Store, never opened
-          emailKey = "rescue_tapped_app_store";
-        } else if (events.has("funnel_download_screen_viewed")) {
-          // #2 — Viewed download, no tap
-          emailKey = "rescue_viewed_no_tap";
-          replyTo = "keenan@getacuity.io";
-        } else {
-          // #1 — Signed up only (lowest priority)
-          emailKey = "rescue_signup_only";
+        for (const user of nr24h) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!isAfterEnablement(user.createdAt)) continue;
+          await trySend(user.id, "never_recorded_24h");
         }
 
-        if (await isThrottled(user.id)) {
-          throttled++;
-          continue;
+        // #14 — 48h: created 44–96h ago
+        const nr48h = await prisma.user.findMany({
+          where: {
+            subscriptionStatus: "TRIAL",
+            totalRecordings: 0,
+            createdAt: {
+              gte: new Date(now.getTime() - 96 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() - 44 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true, createdAt: true },
+        });
+
+        for (const user of nr48h) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!isAfterEnablement(user.createdAt)) continue;
+          await trySend(user.id, "never_recorded_48h");
         }
-        const result = await sendTrialEmail(user.id, emailKey, { replyTo });
-        if (result.sent) {
-          sent++;
-        } else {
-          skipped++;
+
+        // #15 — 3 days left (no-card only)
+        const nr3day = await prisma.user.findMany({
+          where: {
+            subscriptionStatus: "TRIAL",
+            totalRecordings: 0,
+            trialEndsAt: {
+              gte: new Date(now.getTime() + 48 * 60 * 60 * 1000),
+              lt: new Date(now.getTime() + 96 * 60 * 60 * 1000),
+            },
+            stripeCustomerId: null,
+            stripeSubscriptionId: null,
+            appleOriginalTransactionId: null,
+          },
+          select: { id: true, createdAt: true },
+        });
+
+        for (const user of nr3day) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!isAfterEnablement(user.createdAt)) continue;
+          await trySend(user.id, "never_recorded_3day");
+        }
+
+        // #16 — Last day (no-card only)
+        const nrLastday = await prisma.user.findMany({
+          where: {
+            subscriptionStatus: "TRIAL",
+            totalRecordings: 0,
+            trialEndsAt: {
+              gte: now,
+              lt: new Date(now.getTime() + 36 * 60 * 60 * 1000),
+            },
+            stripeCustomerId: null,
+            stripeSubscriptionId: null,
+            appleOriginalTransactionId: null,
+          },
+          select: { id: true, createdAt: true },
+        });
+
+        for (const user of nrLastday) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!isAfterEnablement(user.createdAt)) continue;
+          await trySend(user.id, "never_recorded_lastday");
         }
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 8. TRIAL ENDING — 2 days before trialEndsAt
-      //    Active trial, has recorded at least 1 debrief, NOT paid,
-      //    no card/payment method on file. Fires once per user.
-      //    Fail-safe: if payment status is ambiguous (stripeCustomerId
-      //    is set but subscriptionStatus is TRIAL), do NOT email.
+      // 9–12. DOWNLOAD RESCUE (FORWARD-ONLY: narrow createdAt window)
       // ═══════════════════════════════════════════════════════════
-      const trialEndingWindow = {
-        // trialEndsAt between 24h and 72h from now → "~2 days left"
-        gte: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-        lt: new Date(now.getTime() + 72 * 60 * 60 * 1000),
-      };
+      if (hasGlobalBudget() || config.dryRun) {
+        const rescueWindow = {
+          gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+          lte: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+        };
 
-      const trialEndingCandidates = await prisma.user.findMany({
-        where: {
-          subscriptionStatus: "TRIAL",
-          trialEndsAt: trialEndingWindow,
-          totalRecordings: { gte: 1 },
-          // No payment on ANY platform — fail-safe: exclude anyone
-          // who has ever interacted with a payment system.
-          stripeCustomerId: null,
-          stripeSubscriptionId: null,
-          appleOriginalTransactionId: null,
-        },
-        select: { id: true },
-      });
-
-      for (const user of trialEndingCandidates) {
-        await trySend(user.id, "trial_ending");
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // 7. KEEP MOMENTUM — early encouragement at 2 recordings
-      //    2–4 completed recordings, first recording 48hr+ ago.
-      //    Skipped if user is already at 5+ recordings (the
-      //    first_insight email handles that stage). No CTA — pure
-      //    encouragement. Fires once per user via TrialEmailLog dedup.
-      // ═══════════════════════════════════════════════════════════
-      const keepMomentumCandidates = await prisma.user.findMany({
-        where: {
-          totalRecordings: { gte: 2, lt: 5 },
-          firstRecordingAt: {
-            lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+        const rescueCandidates = await prisma.user.findMany({
+          where: {
+            createdAt: rescueWindow,
+            appFirstOpenedAt: null,
           },
-        },
-        select: { id: true },
-      });
-
-      for (const user of keepMomentumCandidates) {
-        await trySend(user.id, "keep_momentum");
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // 6. FIRST INSIGHT — activation email at ~5 recordings
-      //    5+ completed recordings AND a real UserInsight exists.
-      //    Fires once per user (dedup via TrialEmailLog).
-      //    The insight is pulled in buildTrialVars and rendered by
-      //    the template — orchestrator just gates on existence.
-      // ═══════════════════════════════════════════════════════════
-      const firstInsightCandidates = await prisma.user.findMany({
-        where: {
-          totalRecordings: { gte: 5 },
-          subscriptionStatus: { in: ["TRIAL", "ACTIVE", "PRO"] },
-        },
-        select: { id: true },
-      });
-
-      for (const user of firstInsightCandidates) {
-        // Only send if a real UserInsight observation exists — never
-        // fabricate. If the weekly insights cron hasn't run yet for
-        // this user, skip them; they'll be picked up on a future tick.
-        const hasInsight = await prisma.userInsight.findFirst({
-          where: { userId: user.id, dismissedAt: null },
           select: { id: true },
         });
-        if (!hasInsight) continue;
-        await trySend(user.id, "first_insight");
+
+        const rescueUserIds = rescueCandidates.map((u) => u.id);
+        const rescueEvents =
+          rescueUserIds.length > 0
+            ? await prisma.onboardingEvent.findMany({
+                where: {
+                  userId: { in: rescueUserIds },
+                  event: {
+                    in: [
+                      "funnel_download_screen_viewed",
+                      "funnel_app_store_clicked",
+                      "funnel_inapp_browser_detected",
+                    ],
+                  },
+                },
+                select: { userId: true, event: true },
+              })
+            : [];
+
+        const userEvents = new Map<string, Set<string>>();
+        for (const e of rescueEvents) {
+          if (!e.userId) continue;
+          if (!userEvents.has(e.userId)) userEvents.set(e.userId, new Set());
+          userEvents.get(e.userId)!.add(e.event);
+        }
+
+        for (const user of rescueCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          const events = userEvents.get(user.id) ?? new Set<string>();
+
+          let emailKey: TrialEmailKey;
+          let replyTo: string | undefined;
+
+          if (events.has("funnel_inapp_browser_detected")) {
+            emailKey = "rescue_webview_blocked";
+          } else if (events.has("funnel_app_store_clicked")) {
+            emailKey = "rescue_tapped_app_store";
+          } else if (events.has("funnel_download_screen_viewed")) {
+            emailKey = "rescue_viewed_no_tap";
+            replyTo = "keenan@getacuity.io";
+          } else {
+            emailKey = "rescue_signup_only";
+          }
+
+          await trySend(user.id, emailKey, { replyTo });
+        }
       }
 
-      return { sent, skipped, throttled };
+      // ═══════════════════════════════════════════════════════════
+      // 8. TRIAL ENDING (FORWARD-ONLY: trialEndsAt window)
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const trialEndingCandidates = await prisma.user.findMany({
+          where: {
+            subscriptionStatus: "TRIAL",
+            trialEndsAt: {
+              gte: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+              lt: new Date(now.getTime() + 72 * 60 * 60 * 1000),
+            },
+            totalRecordings: { gte: 1 },
+            stripeCustomerId: null,
+            stripeSubscriptionId: null,
+            appleOriginalTransactionId: null,
+          },
+          select: { id: true },
+        });
+
+        for (const user of trialEndingCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "trial_ending");
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // 7. KEEP MOMENTUM (RETROACTIVE + throttled)
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const keepMomentumCandidates = await prisma.user.findMany({
+          where: {
+            totalRecordings: { gte: 2, lt: 5 },
+            firstRecordingAt: {
+              lte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+            },
+          },
+          select: { id: true },
+        });
+
+        for (const user of keepMomentumCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "keep_momentum");
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // 6. FIRST INSIGHT (RETROACTIVE + throttled)
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const firstInsightCandidates = await prisma.user.findMany({
+          where: {
+            totalRecordings: { gte: 5 },
+            subscriptionStatus: { in: ["TRIAL", "ACTIVE", "PRO"] },
+          },
+          select: { id: true },
+        });
+
+        for (const user of firstInsightCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          const hasInsight = await prisma.userInsight.findFirst({
+            where: { userId: user.id, dismissedAt: null },
+            select: { id: true },
+          });
+          if (!hasInsight) continue;
+          await trySend(user.id, "first_insight");
+        }
+      }
+
+      // ── Return stats ──
+      if (config.dryRun) {
+        const totalQualifying = Object.values(dryRunCounts).reduce(
+          (a, b) => a + b,
+          0
+        );
+        const estimatedDrainDays = Math.ceil(
+          totalQualifying / config.maxSendsPerDay
+        );
+        logger.info("[recovery-orchestrator] DRY RUN", {
+          dryRunCounts,
+          totalQualifying,
+          estimatedDrainDays,
+          config: {
+            maxSendsPerTick: config.maxSendsPerTick,
+            maxSendsPerDay: config.maxSendsPerDay,
+            enablementDate: config.enablementDate.toISOString(),
+          },
+        });
+        return {
+          dryRun: true,
+          counts: dryRunCounts,
+          totalQualifying,
+          estimatedDrainDays,
+        };
+      }
+
+      logger.info("[recovery-orchestrator] tick complete", {
+        sent,
+        skipped,
+        throttled,
+        rateLimited,
+        dailyBudgetRemaining: dailyBudget,
+        tickBudgetRemaining: tickBudget,
+      });
+
+      return { sent, skipped, throttled, rateLimited };
     });
 
     return stats;
