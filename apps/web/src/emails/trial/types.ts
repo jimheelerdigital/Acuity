@@ -77,4 +77,7 @@ export type TrialEmailKey =
   | "milestone_25"
   | "milestone_50"
   | "milestone_100"
-  | "milestone_365";
+  | "milestone_365"
+  | "nr_winback_1"
+  | "nr_winback_2"
+  | "nr_winback_3";

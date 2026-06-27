@@ -181,51 +181,37 @@ export async function GET(req: NextRequest) {
     counts[key] = await countUnsent(key, candidates.map((u) => u.id));
   }
 
-  // ── Never-recorded retroactive catch-up ──
+  // ── Never-recorded re-engagement drip (backlog) ──
   const strandedNR = await prisma.user.findMany({
     where: {
       totalRecordings: 0,
       createdAt: { lt: config.enablementDate },
       subscriptionStatus: { notIn: ["PRO"] as string[] },
     },
-    select: { id: true, subscriptionStatus: true, trialEndsAt: true },
+    select: { id: true },
   });
   const strandedIds = strandedNR.map((u) => u.id);
 
-  // Early nudges — all stranded never-recorded
-  const catchup24h = await countUnsent("never_recorded_24h", strandedIds);
-  const catchup48h = await countUnsent("never_recorded_48h", strandedIds);
-
-  // Countdown — only still-on-trial with matching windows
-  const stillOnTrial = strandedNR.filter(
-    (u) => u.subscriptionStatus === "TRIAL" && u.trialEndsAt && u.trialEndsAt.getTime() > now.getTime()
-  );
-  const stillOnTrialIds = stillOnTrial.map((u) => u.id);
-  const catchup3day = await countUnsent("never_recorded_3day", stillOnTrialIds);
-  const catchupLastday = await countUnsent("never_recorded_lastday", stillOnTrialIds);
-
-  const catchupCounts = {
-    never_recorded_24h_catchup: catchup24h,
-    never_recorded_48h_catchup: catchup48h,
-    never_recorded_3day_catchup: catchup3day,
-    never_recorded_lastday_catchup: catchupLastday,
+  const nrWinbackCounts = {
+    nr_winback_1: await countUnsent("nr_winback_1", strandedIds),
+    nr_winback_2: await countUnsent("nr_winback_2", strandedIds),
+    nr_winback_3: await countUnsent("nr_winback_3", strandedIds),
     stranded_total: strandedNR.length,
-    stranded_still_on_trial: stillOnTrial.length,
-    stranded_expired_trial: strandedNR.length - stillOnTrial.length,
   };
 
   // ── Summary ──
   const totalQualifying = Object.values(counts).reduce((a, b) => a + b, 0);
-  const totalCatchup = catchup24h + catchup48h + catchup3day + catchupLastday;
+  const totalNrWinback = nrWinbackCounts.nr_winback_1 +
+    nrWinbackCounts.nr_winback_2 + nrWinbackCounts.nr_winback_3;
   const estimatedDrainDays = Math.ceil(
-    (totalQualifying + totalCatchup) / config.maxSendsPerDay
+    (totalQualifying + totalNrWinback) / config.maxSendsPerDay
   );
 
   return NextResponse.json({
     counts,
-    catchupCounts,
+    nrWinbackCounts,
     totalQualifying,
-    totalCatchup,
+    totalNrWinback,
     estimatedDrainDays,
     config: {
       maxSendsPerTick: config.maxSendsPerTick,

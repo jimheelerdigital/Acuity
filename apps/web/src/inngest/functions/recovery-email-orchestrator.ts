@@ -720,64 +720,96 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 29. NEVER-RECORDED RETROACTIVE CATCH-UP (ONE-TIME)
-      //    Sweeps stranded never-recorded users who predate the
-      //    enablement date (missed the forward-only windows).
-      //    - EVERYONE gets the 2 early nudges (24h + 48h).
-      //    - Only still-on-trial users with matching trialEndsAt
-      //      windows get the countdown emails (3day + lastday).
-      //    - Expired-trial users get early nudges only.
-      //    - TrialEmailLog dedup makes this inherently one-time:
-      //      once all users have log rows, this section is a no-op.
-      //    - Recording a debrief (totalRecordings > 0) cancels
-      //      remaining sends (the where-clause stops matching).
-      //    - Throttled under the global rate cap like everything else.
+      // 29. NEVER-RECORDED RE-ENGAGEMENT DRIP (ONE-TIME BACKLOG)
+      //    3-email drip for stranded never-recorded users who predate
+      //    the enablement date. Day 1 / Day 3 / Day 6 spacing.
+      //    - Audience: totalRecordings=0, not paying, pre-enablement.
+      //    - Cancel rule: totalRecordings=0 in where-clause — recording
+      //      a debrief stops remaining sends.
+      //    - Drip timing: email 2 requires email 1 sent 2+ days ago;
+      //      email 3 requires email 2 sent 3+ days ago.
+      //    - TrialEmailLog dedup makes this one-time per user.
       // ═══════════════════════════════════════════════════════════
       if (hasGlobalBudget() || config.dryRun) {
-        // Stranded never-recorded users: created BEFORE enablement,
-        // 0 recordings, not currently paying.
-        const strandedNeverRecorded = await prisma.user.findMany({
-          where: {
-            totalRecordings: 0,
-            createdAt: { lt: config.enablementDate },
-            subscriptionStatus: { notIn: ["PRO"] as string[] },
-          },
-          select: {
-            id: true,
-            subscriptionStatus: true,
-            trialEndsAt: true,
-            stripeCustomerId: true,
-            stripeSubscriptionId: true,
-            appleOriginalTransactionId: true,
-          },
+        const nrWinbackBase = {
+          totalRecordings: 0,
+          createdAt: { lt: config.enablementDate },
+          subscriptionStatus: { notIn: ["PRO"] as string[] },
+        };
+
+        // Email 1 (day 1) — send to all qualifying who haven't received it
+        const nrw1Candidates = await prisma.user.findMany({
+          where: nrWinbackBase,
+          select: { id: true },
         });
 
-        for (const user of strandedNeverRecorded) {
+        for (const user of nrw1Candidates) {
           if (!hasGlobalBudget() && !config.dryRun) break;
+          await trySend(user.id, "nr_winback_1", {
+            replyTo: "keenan@getacuity.io",
+          });
+        }
 
-          // Early nudges — everyone in the audience, regardless of
-          // trial state. TrialEmailLog dedup prevents double-sends.
-          await trySend(user.id, "never_recorded_24h");
-          await trySend(user.id, "never_recorded_48h");
+        // Email 2 (day 3) — only if email 1 was sent 2+ days ago
+        const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const nrw2Ready = await prisma.trialEmailLog.findMany({
+          where: {
+            emailKey: "nr_winback_1",
+            sentAt: { lte: twoDaysAgo },
+          },
+          select: { userId: true },
+        });
+        const nrw2UserIds = nrw2Ready
+          .map((r) => r.userId)
+          .filter((id): id is string => !!id);
 
-          // Countdown emails — ONLY for users still on active trial
-          // with enough time left, AND no card on file.
-          if (
-            user.subscriptionStatus === "TRIAL" &&
-            user.trialEndsAt &&
-            !user.stripeCustomerId &&
-            !user.stripeSubscriptionId &&
-            !user.appleOriginalTransactionId
-          ) {
-            const msLeft = user.trialEndsAt.getTime() - now.getTime();
-            // 3-day email: trial ends in 48h–96h
-            if (msLeft >= 48 * 60 * 60 * 1000 && msLeft < 96 * 60 * 60 * 1000) {
-              await trySend(user.id, "never_recorded_3day");
-            }
-            // Last-day email: trial ends in 0–36h
-            if (msLeft >= 0 && msLeft < 36 * 60 * 60 * 1000) {
-              await trySend(user.id, "never_recorded_lastday");
-            }
+        if (nrw2UserIds.length > 0) {
+          // Re-check they're still 0-recording + not paying
+          const nrw2Candidates = await prisma.user.findMany({
+            where: {
+              id: { in: nrw2UserIds },
+              totalRecordings: 0,
+              subscriptionStatus: { notIn: ["PRO"] as string[] },
+            },
+            select: { id: true },
+          });
+
+          for (const user of nrw2Candidates) {
+            if (!hasGlobalBudget() && !config.dryRun) break;
+            await trySend(user.id, "nr_winback_2", {
+              replyTo: "keenan@getacuity.io",
+            });
+          }
+        }
+
+        // Email 3 (day 6) — only if email 2 was sent 3+ days ago
+        const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+        const nrw3Ready = await prisma.trialEmailLog.findMany({
+          where: {
+            emailKey: "nr_winback_2",
+            sentAt: { lte: threeDaysAgo },
+          },
+          select: { userId: true },
+        });
+        const nrw3UserIds = nrw3Ready
+          .map((r) => r.userId)
+          .filter((id): id is string => !!id);
+
+        if (nrw3UserIds.length > 0) {
+          const nrw3Candidates = await prisma.user.findMany({
+            where: {
+              id: { in: nrw3UserIds },
+              totalRecordings: 0,
+              subscriptionStatus: { notIn: ["PRO"] as string[] },
+            },
+            select: { id: true },
+          });
+
+          for (const user of nrw3Candidates) {
+            if (!hasGlobalBudget() && !config.dryRun) break;
+            await trySend(user.id, "nr_winback_3", {
+              replyTo: "keenan@getacuity.io",
+            });
           }
         }
       }

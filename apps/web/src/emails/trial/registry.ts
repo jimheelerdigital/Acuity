@@ -50,6 +50,9 @@ import { milestone25 } from "./milestone-25";
 import { milestone50 } from "./milestone-50";
 import { milestone100 } from "./milestone-100";
 import { milestone365 } from "./milestone-365";
+import { nrWinback1 } from "./nr-winback-1";
+import { nrWinback2 } from "./nr-winback-2";
+import { nrWinback3 } from "./nr-winback-3";
 import { firstInsight } from "./first-insight";
 import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
@@ -101,6 +104,9 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     milestone_50: milestone50,
     milestone_100: milestone100,
     milestone_365: milestone365,
+    nr_winback_1: nrWinback1,
+    nr_winback_2: nrWinback2,
+    nr_winback_3: nrWinback3,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

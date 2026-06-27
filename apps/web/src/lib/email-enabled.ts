@@ -60,6 +60,9 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   milestone_50: true, // milestone: 50 recordings — testimonial ask
   milestone_100: true, // milestone: 100 recordings — referral + feedback
   milestone_365: true, // milestone: 365 recordings — year recognition
+  nr_winback_1: true, // never-recorded drip #1 (day 1): "you never gave it a shot"
+  nr_winback_2: true, // never-recorded drip #2 (day 3): "here's what one debrief gets you"
+  nr_winback_3: true, // never-recorded drip #3 (day 6): "should I take the hint?"
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get
