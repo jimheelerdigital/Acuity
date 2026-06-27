@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-06-27] — Universal link /open so "Open Acuity" email buttons open the native iOS app
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f5f19ca
+
+### In plain English (for Keenan)
+
+The "Open Acuity" button in our re-engagement and winback emails now opens the native iOS app directly instead of just loading the web app in a browser. If the app isn't installed, the same link falls back to the web app — nobody hits a dead end. This works by adding a dedicated `/open` URL that iOS recognizes as a universal link for our app. We deliberately used `/open` instead of adding `/home` so that people browsing the web app normally don't get hijacked into the native app.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/app/.well-known/apple-app-site-association/route.ts`: added `/open` path to the AASA `applinks.details[].components` array (alongside existing `/api/auth/verify-email`)
+- `apps/web/src/app/open/page.tsx`: new web fallback page — `redirect("/home")`. When the app is NOT installed, Safari loads this page and gets redirected to the web app.
+- `apps/mobile/components/universal-link-handler.tsx`: added `/open` path handling — routes to `/(tabs)` if signed in, `/(auth)/sign-in` if not
+- `apps/mobile/app.json`: added `/open` to Android `intentFilters` data array (for future Play launch)
+- Updated 6 email templates (stall-1rec, stall-2rec, stall-3plus, winback-7d, winback-14d, winback-30d) to use `/open` instead of `/home` for the primary "Open Acuity" button. Secondary "Use the web version" buttons still point to `/home`.
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] **HIGH-RISK / needs Jimmy review:** The AASA file (`/.well-known/apple-app-site-association`) is server-side and updates immediately on deploy. BUT the iOS Associated Domains entitlement (`applinks:getacuity.io` in app.json) is already configured and included in the current build — so the entitlement side is already live. However, Apple caches AASA aggressively. For NEW installs, the updated AASA will be fetched on install. For EXISTING installs, Apple re-checks the AASA periodically but there's no guaranteed timeline — a new EAS build + App Store update would force all devices to re-fetch. Jimmy should confirm whether a new build is needed or if the CDN re-check is sufficient.
+- [ ] After deploy, verify the AASA is served correctly: `curl -sI https://getacuity.io/.well-known/apple-app-site-association` should return `Content-Type: application/json` with no redirect (Jimmy)
+- [ ] Test on an iPhone WITH the app installed: tap `https://getacuity.io/open` from Mail/Notes — should open the native app. WITHOUT the app: should load getacuity.io/home in Safari. (Keenan / Jimmy)
+- [ ] **Android future flag:** When the Play version launches, `assetlinks.json` (Google's equivalent of AASA) will need to be served at `/.well-known/assetlinks.json`. The `intentFilters` in app.json are already configured for `/open`. No action needed now — just flagging.
+
+### Notes
+
+- **Why /open instead of /home:** If we added `/home` to the AASA, every visit to getacuity.io/home — including normal web app usage — would prompt iOS to open the native app. That's disruptive for web users. `/open` is a dedicated "open the app" entry point used only in email buttons, so the universal link interception only happens when the user explicitly tapped "Open Acuity."
+- **The Associated Domains entitlement (`applinks:getacuity.io`) is already in the current live build** (app.json line 23, confirmed in build 45). No entitlement change is needed — the existing entitlement covers any path Apple finds in the AASA. The only question is AASA cache timing.
+- **Apple AASA caching:** Apple's CDN caches the AASA file and re-checks periodically (hours to days). New installs always fetch fresh. Existing installs may take time to pick up the new `/open` path. A new build expedites this because the install process triggers a fresh AASA fetch.
+- **Universal links don't work from in-app browsers** (Instagram/Facebook) — but our re-engagement emails are opened from real email clients (Mail, Gmail), where universal links work correctly.
+
+---
+
 ## [2026-06-27] — Long-tail winback ladder — 4 emails for lapsed users at 7/14/30/90 days
 
 **Requested by:** Keenan
