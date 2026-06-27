@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-06-27] — "You stalled" re-engagement ladder — 3 emails for users who recorded then went silent
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** de686fe
+
+### In plain English (for Keenan)
+
+Users who record a debrief and then go quiet now get a specific follow-up based on how far in they were. Someone who recorded once and disappeared for 2 days gets "don't leave it at one..." — explaining that the magic needs more than one snapshot. Someone who did two then stalled gets "right before the good part?" — telling them they're at the tipping point. And someone who built a real streak of 3+ recordings then went silent for 3 days gets a gentle "everything okay?" that invites them to reply and tell us what changed. All three link to the web app (not the App Store — these users already have the app installed). The old single "recorded once went quiet" email is replaced by this ladder. Each fires once per user, and the 24-hour throttle prevents any collision with other emails.
+
+### Technical changes (for Jimmy)
+
+- 3 new templates: `stall-1rec.ts` ("don't leave it at one..."), `stall-2rec.ts` ("right before the good part?"), `stall-3plus.ts` ("everything okay?" — replyTo: keenan@getacuity.io)
+- All 3 link to `${appUrl}/home` (web app), NOT the App Store — these users already have the app
+- `types.ts`: added `stall_1rec`, `stall_2rec`, `stall_3plus` to TrialEmailKey
+- `registry.ts`: registered all 3 templates
+- `email-enabled.ts`: added 3 kill-switch entries (all `true`), disabled `recovery_recorded_once` (set to `false`)
+- `recovery-email-orchestrator.ts`: conditions #17–19:
+  - **#17 (stall_1rec):** `totalRecordings = 1`, `lastRecordingAt` 48h+ ago
+  - **#18 (stall_2rec):** `totalRecordings = 2`, `lastRecordingAt` 48h+ ago
+  - **#19 (stall_3plus):** `totalRecordings >= 3`, `lastRecordingAt` 72h+ ago, replyTo: keenan@getacuity.io
+  - All dedup via TrialEmailLog unique on `(userId, emailKey)`, 24h global throttle
+  - Old condition #4 (recovery_recorded_once) left as no-op comment
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, verify recovery-email-orchestrator runs cleanly in Inngest dashboard (Jimmy)
+- [ ] **Deep link follow-up for Jimmy:** The "Open Acuity" button currently links to `https://www.getacuity.io/home` (web app) because the app's universal link (AASA) only covers `/api/auth/verify-email`. To make it open the native app instead, add `/home` (or a dedicated `/open` path) to `apps/web/src/app/.well-known/apple-app-site-association/route.ts` in the `applinks.details[].paths` array. Low effort, high impact — every stall email would then open the native app directly.
+- [ ] Verify Email C's reply-to: send a test reply from keenan@heelerdigital.com and confirm it arrives at keenan@getacuity.io (Keenan)
+
+### Notes
+
+- **Recording again clears the stall.** These conditions check `lastRecordingAt` for the silence window. The moment the user records again, `lastRecordingAt` updates to now and the condition stops matching. Combined with TrialEmailLog dedup, a user gets each email at most once — then if they come back, record, and stall again at a higher count, they can get the next-tier email.
+- **No collision with keep_momentum.** The momentum email fires WHEN the user hits 2 recordings (active event). The stall_2rec email fires 48h+ AFTER their last recording (silence). The 24h global throttle prevents same-day sends, and the timing is naturally separated — momentum fires on recording day, stall fires 2+ days later.
+- **The "Open Acuity" button goes to the web app, not the App Store.** The custom URL scheme `acuity://` exists but is unreliable from email clients (many strip custom schemes). The web app at `/home` is a fully functional experience. Adding `/home` to the AASA universal link config would make this button open the native app — flagged as a follow-up for Jimmy.
+- **Old recovery_recorded_once is fully replaced.** Its kill-switch is set to `false`. The orchestrator's old condition #4 is commented out. The stall_1rec email covers the same audience (1 recording, 48h+ silent) with better copy and proper app linking.
+
+---
+
 ## [2026-06-27] — "Never recorded" trial sequence — 4 escalating emails to drive the first debrief
 
 **Requested by:** Keenan
