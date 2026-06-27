@@ -65,6 +65,8 @@ function sampleTrialVars(overrides: Partial<TrialVars> = {}): TrialVars {
     firstDebriefTaskCount: 3,
     foundingMemberNumber: 42,
     unsubscribeUrl: UNSUB,
+    observationText: null,
+    observationSeverity: null,
     ...overrides,
   };
 }

@@ -37,6 +37,7 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   recovery_paid_no_app: true, // #29 paid, no app install
   recovery_recorded_once: true, // #30 recorded once then stalled
   recovery_download_reminder: true, // #32 download reminder
+  first_insight: true, // activation: fires once at ~5 recordings w/ real insight
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

@@ -30,6 +30,7 @@ import { recoveryPaidNoApp } from "./recovery-paid-no-app";
 import { recoveryRecordedOnce } from "./recovery-recorded-once";
 import { recoverySignupNoCheckout } from "./recovery-signup-no-checkout";
 import { recoveryDownloadReminder } from "./recovery-download-reminder";
+import { firstInsight } from "./first-insight";
 import { welcomeDay0 } from "./welcome-day0";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
@@ -55,6 +56,7 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     recovery_recorded_once: recoveryRecordedOnce,
     recovery_day6_nudge: recoveryDay6Nudge,
     recovery_download_reminder: recoveryDownloadReminder,
+    first_insight: firstInsight,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

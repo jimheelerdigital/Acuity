@@ -215,6 +215,33 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         }
       }
 
+      // ═══════════════════════════════════════════════════════════
+      // 6. FIRST INSIGHT — activation email at ~5 recordings
+      //    5+ completed recordings AND a real UserInsight exists.
+      //    Fires once per user (dedup via TrialEmailLog).
+      //    The insight is pulled in buildTrialVars and rendered by
+      //    the template — orchestrator just gates on existence.
+      // ═══════════════════════════════════════════════════════════
+      const firstInsightCandidates = await prisma.user.findMany({
+        where: {
+          totalRecordings: { gte: 5 },
+          subscriptionStatus: { in: ["TRIAL", "ACTIVE", "PRO"] },
+        },
+        select: { id: true },
+      });
+
+      for (const user of firstInsightCandidates) {
+        // Only send if a real UserInsight observation exists — never
+        // fabricate. If the weekly insights cron hasn't run yet for
+        // this user, skip them; they'll be picked up on a future tick.
+        const hasInsight = await prisma.userInsight.findFirst({
+          where: { userId: user.id, dismissedAt: null },
+          select: { id: true },
+        });
+        if (!hasInsight) continue;
+        await trySend(user.id, "first_insight");
+      }
+
       return { sent, skipped, throttled };
     });
 
