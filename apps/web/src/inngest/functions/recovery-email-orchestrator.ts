@@ -248,6 +248,102 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // 20–23. WINBACK LADDER — long-tail re-engagement for lapsed users
+      //    Recorded >=1 debrief then went fully silent. NOT currently
+      //    paying (subscriptionStatus != PRO). Escalating 7/14/30/90 days.
+      //    HARD STOP after 90 days — no email beyond winback_90d
+      //    (deliverability protection).
+      //    Cancel rule: new activity (lastRecordingAt updates) → the
+      //    silence window no longer matches → no pending winback sends.
+      //    Upper bound on each window prevents users silent for e.g.
+      //    200 days from matching any condition (hard stop).
+      // ═══════════════════════════════════════════════════════════
+
+      // Shared filter: recorded >=1, NOT currently paying.
+      const winbackBase = {
+        totalRecordings: { gte: 1 },
+        subscriptionStatus: { notIn: ["PRO"] as string[] },
+      };
+
+      // #20 — WINBACK 7 DAYS: lastRecordingAt 7–13 days ago
+      const winback7dCandidates = await prisma.user.findMany({
+        where: {
+          ...winbackBase,
+          lastRecordingAt: {
+            gte: new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000),
+            lte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of winback7dCandidates) {
+        if (await isThrottled(user.id)) { throttled++; continue; }
+        const result = await sendTrialEmail(user.id, "winback_7d", {
+          replyTo: "keenan@getacuity.io",
+        });
+        if (result.sent) sent++; else skipped++;
+      }
+
+      // #21 — WINBACK 14 DAYS: lastRecordingAt 14–29 days ago
+      const winback14dCandidates = await prisma.user.findMany({
+        where: {
+          ...winbackBase,
+          lastRecordingAt: {
+            gte: new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000),
+            lte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of winback14dCandidates) {
+        await trySend(user.id, "winback_14d");
+      }
+
+      // #22 — WINBACK 30 DAYS: lastRecordingAt 30–89 days ago
+      const winback30dCandidates = await prisma.user.findMany({
+        where: {
+          ...winbackBase,
+          lastRecordingAt: {
+            gte: new Date(now.getTime() - 89 * 24 * 60 * 60 * 1000),
+            lte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of winback30dCandidates) {
+        if (await isThrottled(user.id)) { throttled++; continue; }
+        const result = await sendTrialEmail(user.id, "winback_30d", {
+          replyTo: "keenan@getacuity.io",
+        });
+        if (result.sent) sent++; else skipped++;
+      }
+
+      // #23 — WINBACK 90 DAYS (FINAL): lastRecordingAt 90–120 days ago.
+      //    HARD STOP — the upper bound (120 days) means users silent
+      //    longer than 120 days match NOTHING. No email fires past this.
+      const winback90dCandidates = await prisma.user.findMany({
+        where: {
+          ...winbackBase,
+          lastRecordingAt: {
+            gte: new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000),
+            lte: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+          },
+        },
+        select: { id: true },
+      });
+
+      for (const user of winback90dCandidates) {
+        if (await isThrottled(user.id)) { throttled++; continue; }
+        const result = await sendTrialEmail(user.id, "winback_90d", {
+          replyTo: "keenan@getacuity.io",
+        });
+        if (result.sent) sent++; else skipped++;
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 5. DAY 6 NUDGE (Saturday pre-weekly-report)
       //    3+ recordings, created 5–7 days ago, today is Saturday
       // ═══════════════════════════════════════════════════════════

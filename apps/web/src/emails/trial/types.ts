@@ -68,4 +68,8 @@ export type TrialEmailKey =
   | "never_recorded_lastday"
   | "stall_1rec"
   | "stall_2rec"
-  | "stall_3plus";
+  | "stall_3plus"
+  | "winback_7d"
+  | "winback_14d"
+  | "winback_30d"
+  | "winback_90d";

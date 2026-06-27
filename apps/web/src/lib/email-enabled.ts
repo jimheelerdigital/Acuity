@@ -51,6 +51,10 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   stall_1rec: true, // stall re-engagement: 1 recording, 48h+ silent
   stall_2rec: true, // stall re-engagement: 2 recordings, 48h+ silent
   stall_3plus: true, // stall re-engagement: 3+ recordings, 72h+ silent
+  winback_7d: true, // winback: 7 days silent, recorded >=1, not paying
+  winback_14d: true, // winback: 14 days silent
+  winback_30d: true, // winback: 30 days silent
+  winback_90d: true, // winback: 90 days silent (FINAL — hard stop after this)
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

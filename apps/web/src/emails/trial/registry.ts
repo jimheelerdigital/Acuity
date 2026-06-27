@@ -41,6 +41,10 @@ import { neverRecordedLastday } from "./never-recorded-lastday";
 import { stall1rec } from "./stall-1rec";
 import { stall2rec } from "./stall-2rec";
 import { stall3plus } from "./stall-3plus";
+import { winback7d } from "./winback-7d";
+import { winback14d } from "./winback-14d";
+import { winback30d } from "./winback-30d";
+import { winback90d } from "./winback-90d";
 import { firstInsight } from "./first-insight";
 import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
@@ -83,6 +87,10 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     stall_1rec: stall1rec,
     stall_2rec: stall2rec,
     stall_3plus: stall3plus,
+    winback_7d: winback7d,
+    winback_14d: winback14d,
+    winback_30d: winback30d,
+    winback_90d: winback90d,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";
