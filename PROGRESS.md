@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-06-27] — Safe backlog recovery: rate cap, forward-only guards, dry-run preview
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 913e40f
+
+### In plain English (for Keenan)
+
+When we turn on the recovery emails, there will be a backlog of lapsed/dropped-off users who all qualify at once. Without protection, turning them on would send hundreds of emails in one burst and wreck our deliverability reputation. This change adds three safety layers: (1) a configurable daily send limit (starts at 300/day) so the backlog drains gradually over days instead of one spike, (2) a "forward-only" guard on time-sensitive emails (like "24 hours since signup" or "2 days left on trial") so old users whose windows passed months ago don't get irrelevant emails retroactively, and (3) each lapsed user gets only the ONE email matching their current stage — a user 40 days silent gets the 30-day winback, not the 7-day + 14-day + 30-day stacked. There's also a dry-run mode and a preview endpoint so you can see how many users qualify for each email and how long the drain will take before sending a single message.
+
+### Technical changes (for Jimmy)
+
+- New file: `apps/web/src/lib/recovery-config.ts` — configurable via env vars in Vercel:
+  - `RECOVERY_MAX_SENDS_PER_TICK` (default 50 — at 4 ticks/hour = 200/hour max)
+  - `RECOVERY_MAX_SENDS_PER_DAY` (default 300 — daily ceiling across all ticks)
+  - `RECOVERY_ENABLEMENT_DATE` (ISO timestamp — time-sensitive emails only fire for events AFTER this date)
+  - `RECOVERY_DRY_RUN` ("true"/"false" — count qualifying users without sending)
+- `recovery-email-orchestrator.ts` — major rewrite:
+  - **Global rate cap:** tracks tick budget + daily budget (counts TrialEmailLog rows since midnight UTC). Every send loop checks `hasGlobalBudget()` before iterating. Once budget exhausted, remaining emails are deferred to next tick.
+  - **Forward-only guards:** stall ladder upper-bounded at 7 days (was unbounded). Time-sensitive emails (stall, never-recorded, download-rescue) check `isAfterEnablement(date)` — skips users whose triggering event predates `RECOVERY_ENABLEMENT_DATE`.
+  - **Current-stage-only:** winback windows are already non-overlapping (7-13d, 14-29d, 30-89d, 90-120d). Stall now capped at 7d → clean handoff to winback at 7d. A user matches exactly ONE tier.
+  - **Dry-run mode:** when `RECOVERY_DRY_RUN=true`, `trySend` accumulates counts per emailKey without calling sendTrialEmail. Returns per-email counts + estimated drain days.
+- New endpoint: `GET /api/admin/recovery-preview` — admin-only dry-run preview. Runs the same qualifying queries, subtracts already-sent (TrialEmailLog), returns unsent counts per email + estimated drain time at configured rate. No emails sent.
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] **Before enabling any new emails:** Set `RECOVERY_ENABLEMENT_DATE` in Vercel env vars to today's date (ISO, e.g. `2026-06-28T00:00:00Z`). This prevents retroactive blasting of old users on time-sensitive emails. (Keenan)
+- [ ] **Preview first:** After deploy, hit `GET /api/admin/recovery-preview` to see how many users qualify per email and estimated drain time. Share with Jimmy before proceeding. (Keenan)
+- [ ] **Optional dry-run:** Set `RECOVERY_DRY_RUN=true` in Vercel to watch the orchestrator count without sending. Check Inngest logs for `[recovery-orchestrator] DRY RUN` output. (Jimmy)
+- [ ] **Tune rate:** Start with 300/day. If deliverability metrics (Resend dashboard: bounce rate, spam complaints) look clean after 2-3 days, increase to 500-1000. (Keenan)
+
+### Notes
+
+- **Current-stage-only is enforced by non-overlapping windows.** A user 40 days silent matches ONLY winback_30d (30-89d window). They don't match winback_7d (7-13d) or winback_14d (14-29d) because their silence exceeds those ranges. No need to pre-skip earlier stages — the windows already ensure single-stage matching.
+- **Stall → winback handoff at 7 days.** Stall ladder is now 48h-7d (was unbounded). At 7+ days of silence, winback takes over. The 24h per-user throttle prevents overlap at the boundary.
+- **The 90-day winback hard stop still holds.** Upper bound of 120 days means >120d silent = no match. The global rate cap doesn't change this — it just slows the drain, it doesn't extend the window.
+- **TrialEmailLog dedup still guarantees once-only per email per user.** The rate cap defers sends to later ticks, it doesn't bypass dedup.
+- **The `rateLimited` counter in the orchestrator's return value** tells you how many users were skipped due to the global cap in each tick. Watch this in Inngest logs to gauge backlog drain speed.
+
+---
+
 ## [2026-06-27] — Audited all email CTAs for correct link destinations
 
 **Requested by:** Keenan
