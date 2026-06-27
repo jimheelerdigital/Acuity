@@ -6,15 +6,12 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialButton, trialLayout } from "./layout";
+import { keenanSignature, trialButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
-function para(text: string): string {
-  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
-}
 
 export const recoveryDownloadReminder: TrialEmailTemplate = {
   subject: () => "Your Acuity app is waiting for you",

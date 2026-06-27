@@ -6,15 +6,12 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, trialLayout } from "./layout";
+import { keenanSignature, primaryButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const REVIEW_URL =
   "https://apps.apple.com/app/id6762633410?action=write-review";
 
-function para(text: string): string {
-  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
-}
 
 export const milestone10: TrialEmailTemplate = {
   subject: () => "10 in \u2014 how\u2019s it feeling?",

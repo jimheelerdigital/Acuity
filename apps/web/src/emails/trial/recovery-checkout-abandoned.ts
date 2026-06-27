@@ -11,7 +11,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialButton, trialLayout } from "./layout";
+import { keenanSignature, trialButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 type Branch = "blur" | "patterns" | "rumination" | "graveyard" | "mask" | "drift";
@@ -30,9 +30,6 @@ function branchLine(v: TrialVars): string {
   return BRANCH_SUMMARIES[branch ?? "blur"] ?? BRANCH_SUMMARIES.blur;
 }
 
-function para(text: string): string {
-  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
-}
 
 export const recoveryCheckoutAbandoned: TrialEmailTemplate = {
   subject: () => "You were almost there",

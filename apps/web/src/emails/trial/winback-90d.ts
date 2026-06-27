@@ -10,12 +10,9 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialLayout } from "./layout";
+import { keenanSignature, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-function para(text: string): string {
-  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
-}
 
 export const winback90d: TrialEmailTemplate = {
   subject: () => "done after this one",

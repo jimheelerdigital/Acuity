@@ -1,39 +1,34 @@
 /**
  * Shared HTML shell for every email in the trial onboarding sequence
- * (emails/trial/*.ts) and recovery emails. White canvas, dark text,
- * small left-aligned logo, coral accents (#FF8A65 brand / #E06B46
- * button). Declares color-scheme so dark-mode clients keep our explicit
- * light card rather than force-inverting it.
+ * (emails/trial/*.ts) and recovery emails.
  *
- * MARKETING footer: includes the one-click unsubscribe required on
- * lifecycle/marketing sends. Senders pair this with a List-Unsubscribe
- * header (see weekly-digest.ts for the header wiring).
+ * DESIGN (2026-06-27 refresh):
+ *   - Branded coral header: thin 3px coral top border + text-based
+ *     "acuity" wordmark in coral (#E06B46). No images — text-only
+ *     wordmark survives image-blocking and doesn't trip spam filters.
+ *   - Clean hierarchy: headline (bold, dark) → body (gray #374151,
+ *     1.7 line-height) → coral emphasis → CTA.
+ *   - Generous whitespace: 48px top/bottom padding, 24px between
+ *     sections.
+ *   - Coral accent used with restraint: header, links, buttons,
+ *     emphasis text, card left-border, dividers.
+ *   - Dark-mode safe: explicit color-scheme, explicit backgrounds,
+ *     coral (#E06B46 / #FF8A65) clears WCAG AA on both light and
+ *     dark canvases.
+ *
+ * MARKETING footer: includes one-click unsubscribe (legal requirement).
+ * TRANSACTIONAL footer: sender info only.
  *
  * Contract:
- *   - `content` is pre-built HTML that goes inside the main 560px
- *     table. Each email builds its own content with
- *     HTML-escaped user values via `escapeHtml` before passing in.
- *   - `unsubscribeUrl` is required on EVERY trial email — legal
- *     requirement. Orchestrator fills it with the per-user token URL.
+ *   - `content` is pre-built HTML that goes inside the main 560px table.
+ *   - `unsubscribeUrl` required on marketing emails (legal).
  *   - `preheader` is the inbox preview line (<= ~90 chars).
  */
 
 export interface TrialLayoutOpts {
   content: string;
-  /**
-   * Required for the marketing footer (legal one-click unsubscribe).
-   * Optional/ignored when footer is "transactional" — auth and
-   * internal emails carry no marketing unsubscribe.
-   */
   unsubscribeUrl?: string;
   preheader?: string;
-  /**
-   * "marketing" (default) renders the one-click unsubscribe line for
-   * lifecycle sends. "transactional" renders sender info only — used
-   * by welcome+verify and internal founder notifications, which reuse
-   * this richer shell for deliverability but must not invite an
-   * onboarding unsubscribe.
-   */
   footer?: "marketing" | "transactional";
 }
 
@@ -45,8 +40,8 @@ export function trialLayout(opts: TrialLayoutOpts): string {
   const footerLinks = isMarketing
     ? `<p style="margin:0;font-size:12px;color:#6b7280;line-height:1.7;">
                 <a href="https://getacuity.io" style="color:#C4451C;text-decoration:none;">getacuity.io</a>
-                <span style="margin:0 8px;color:#E5E7EB;">&middot;</span>
-                <a href="${unsubscribeUrl ?? "https://getacuity.io/account"}" style="color:#6b7280;text-decoration:underline;">Unsubscribe from onboarding emails</a>
+                <span style="margin:0 8px;color:#D1D5DB;">&middot;</span>
+                <a href="${unsubscribeUrl ?? "https://getacuity.io/account"}" style="color:#9CA3AF;text-decoration:underline;">Unsubscribe from onboarding emails</a>
               </p>`
     : `<p style="margin:0;font-size:12px;color:#6b7280;line-height:1.7;">
                 <a href="https://getacuity.io" style="color:#C4451C;text-decoration:none;">getacuity.io</a>
@@ -61,16 +56,29 @@ export function trialLayout(opts: TrialLayoutOpts): string {
   <meta name="supported-color-schemes" content="light dark" />
   <title>Acuity</title>
 </head>
-<body style="margin:0;padding:0;background-color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background-color:#F9FAFB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">${pre}</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F9FAFB;">
     <tr>
-      <td align="center" style="padding:40px 20px;">
+      <td align="center" style="padding:32px 20px 40px;">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-          ${content}
+          <!-- ── Branded header: coral top border + wordmark ── -->
           <tr>
-            <td style="padding:40px 0 16px;">
-              <div style="height:1px;background:#E5E7EB;"></div>
+            <td style="padding-bottom:32px;">
+              <div style="height:3px;background:linear-gradient(90deg,#FF8A65,#E06B46);border-radius:2px;"></div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:28px;">
+              <p style="margin:0;font-size:18px;font-weight:700;color:#E06B46;letter-spacing:1.5px;text-transform:lowercase;">acuity</p>
+            </td>
+          </tr>
+          <!-- ── Content ── -->
+          ${content}
+          <!-- ── Footer ── -->
+          <tr>
+            <td style="padding:36px 0 16px;">
+              <div style="height:1px;background:linear-gradient(90deg,#FFD4C4,#E5E7EB,#FFD4C4);"></div>
             </td>
           </tr>
           <tr>
@@ -80,7 +88,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
           </tr>
           <tr>
             <td align="center">
-              <p style="margin:0;font-size:11px;color:#6b7280;">
+              <p style="margin:0;font-size:11px;color:#9CA3AF;">
                 Acuity &middot; getacuity.io
               </p>
             </td>
@@ -93,20 +101,14 @@ export function trialLayout(opts: TrialLayoutOpts): string {
 </html>`;
 }
 
-/** Public URL of Keenan's headshot, hosted alongside the other email
- *  assets. Used by keenanSignature(). */
+/** Public URL of Keenan's headshot. */
 export const KEENAN_HEADSHOT_URL =
   "https://www.getacuity.io/email/ka-headshot-email.png";
 
-/** Keenan's signature block — a small circular headshot next to his name
- *  and title. Used by every email that goes out personally from Keenan so
- *  they all sign off the same way. Reads cleanly with images off: the
- *  name and title are real text, the photo carries descriptive alt text.
- *  Returns a table row, so drop it straight into a trialLayout content
- *  string (optionally after a "Talk soon," line). */
+/** Keenan's signature block — headshot + name/title. */
 export function keenanSignature(): string {
   return `<tr>
-        <td>
+        <td style="padding-top:8px;">
           <table role="presentation" cellpadding="0" cellspacing="0">
             <tr>
               <td valign="middle" style="padding-right:12px;">
@@ -123,28 +125,19 @@ export function keenanSignature(): string {
 }
 
 /**
- * Standardized email buttons. Every email should use primaryButton() for
- * the dominant action and secondaryButton() for the alternate/fallback,
- * so button styling stays consistent everywhere and future emails just
- * call these helpers.
+ * Standardized email buttons.
  *
- * Both are table-based with inline styles only (no flexbox/modern CSS) so
- * they survive Outlook's Word rendering engine, and both declare explicit
- * colors against an explicit background so dark-mode clients that force a
- * light card (we set color-scheme on the layout) keep them legible.
+ * PRIMARY: solid deep coral (#E06B46) fill with gradient overlay.
+ * Rounded corners, generous padding. Full-width.
  *
- * PRIMARY: solid deep coral (#E06B46) fill — white label clears WCAG AA —
- * with a coral gradient overlay for clients that render it. Full-width.
- * SECONDARY: ghost/outline — white fill, 2px coral border, coral label
- * (#C4451C clears AA on white). Same size + shape as primary, visually
- * subordinate. The white fill (not transparent) keeps the coral text and
- * border readable even where a client inverts the canvas.
+ * SECONDARY: ghost/outline — white fill, 2px coral border, coral label.
+ * Same size + shape, visually subordinate.
  */
 export function primaryButton(href: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:8px 0;">
     <tr>
-      <td style="background-color:#E06B46;background:linear-gradient(135deg,#FFA47E 0%,#FF8A65 55%,#E06B46 100%);border-radius:8px;text-align:center;">
-        <a href="${href}" style="display:block;padding:14px 28px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;">
+      <td style="background-color:#E06B46;background:linear-gradient(135deg,#FFA47E 0%,#FF8A65 55%,#E06B46 100%);border-radius:10px;text-align:center;">
+        <a href="${href}" style="display:block;padding:16px 28px;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.2px;">
           ${label}
         </a>
       </td>
@@ -155,8 +148,8 @@ export function primaryButton(href: string, label: string): string {
 export function secondaryButton(href: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:8px 0;">
     <tr>
-      <td style="background-color:#FFFFFF;border:2px solid #E06B46;border-radius:8px;text-align:center;">
-        <a href="${href}" style="display:block;padding:12px 26px;font-size:15px;font-weight:700;color:#C4451C;text-decoration:none;">
+      <td style="background-color:#FFFFFF;border:2px solid #FFB89E;border-radius:10px;text-align:center;">
+        <a href="${href}" style="display:block;padding:14px 26px;font-size:15px;font-weight:600;color:#C4451C;text-decoration:none;">
           ${label}
         </a>
       </td>
@@ -164,20 +157,50 @@ export function secondaryButton(href: string, label: string): string {
   </table>`;
 }
 
-/** Back-compat alias — existing emails call trialButton; it now routes
- *  through the standardized primary button so styling stays in one place. */
+/** Back-compat alias. */
 export function trialButton(href: string, label: string): string {
   return primaryButton(href, label);
 }
 
-/** Subtle inset card used for quotes, recaps, stat blocks. Coral
- *  left-accent. */
+/** Subtle inset card — coral left-accent. Used for quotes, insights. */
 export function trialCard(inner: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
-      <td style="background-color:#F9FAFB;border-radius:12px;padding:24px;border:1px solid #E5E7EB;border-left:4px solid #FF8A65;">
+      <td style="background-color:#FFF7F4;border-radius:12px;padding:24px;border:1px solid #FFE4D9;border-left:4px solid #FF8A65;">
         ${inner}
       </td>
     </tr>
   </table>`;
+}
+
+/**
+ * Standard paragraph — centralized so all templates inherit consistent
+ * typography. 16px, gray (#374151), generous line-height.
+ */
+export function para(text: string): string {
+  return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
+}
+
+/**
+ * Coral emphasis paragraph — for ONE key punch line per email.
+ * Slightly larger, coral color, semi-bold. Used sparingly for the
+ * single phrase you want to land (e.g. "It compounds." or "top 1%").
+ */
+export function emphasis(text: string): string {
+  return `<tr><td style="padding:8px 0 28px;"><p style="margin:0;font-size:17px;color:#E06B46;font-weight:600;line-height:1.6;">${text}</p></td></tr>`;
+}
+
+/**
+ * Coral-accented list item — for value/insight bullets.
+ * Small coral dot marker + clean spacing.
+ */
+export function coralListItem(text: string): string {
+  return `<tr><td style="padding-bottom:12px;padding-left:4px;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td valign="top" style="padding-right:10px;padding-top:6px;">
+        <div style="width:6px;height:6px;background:#FF8A65;border-radius:50%;"></div>
+      </td>
+      <td><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td>
+    </tr></table>
+  </td></tr>`;
 }
