@@ -55,7 +55,7 @@ export const firstInsight: TrialEmailTemplate = {
       ${para(`This came from your own words \u2014 Acuity surfaced it, but you said it first. The full picture (your patterns, your Signals, your Life Matrix) is in the app whenever you\u2019re ready.`)}
       <tr>
         <td style="padding-bottom:28px;">
-          ${primaryButton(`${v.appUrl}/home`, "See the full picture")}
+          ${primaryButton(`${v.appUrl}/open`, "See the full picture")}
         </td>
       </tr>
       ${para("Talk soon,")}

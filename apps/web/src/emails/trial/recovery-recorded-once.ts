@@ -11,7 +11,10 @@ import { escapeHtml } from "@/lib/escape-html";
 import { keenanSignature, trialButton, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+// User has recorded — they have the app. Use /open universal link,
+// not the App Store. (This email is currently disabled, replaced by
+// stall_1rec, but correct the link for if it's ever re-enabled.)
+const APP_OPEN_URL = "https://www.getacuity.io/open";
 
 function para(text: string): string {
   return `<tr><td style="padding-bottom:20px;"><p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${text}</p></td></tr>`;
@@ -37,7 +40,7 @@ export const recoveryRecordedOnce: TrialEmailTemplate = {
       ${para(`The next one only takes a few spoken minutes. Whenever you have them.`)}
       <tr>
         <td style="padding-bottom:28px;">
-          ${trialButton(APP_STORE_URL, "Record now")}
+          ${trialButton(APP_OPEN_URL, "Record now")}
         </td>
       </tr>
       ${keenanSignature()}
