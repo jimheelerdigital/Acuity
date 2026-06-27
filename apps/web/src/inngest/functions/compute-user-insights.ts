@@ -75,7 +75,7 @@ type Signal = {
   context: Record<string, unknown>;
 };
 
-function weekStartOf(d: Date): Date {
+export function weekStartOf(d: Date): Date {
   const base = new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
   );
@@ -224,7 +224,7 @@ export const computeUserInsightsFn = inngest.createFunction(
 
 // ─── Signal collection (heuristic scanner) ───────────────────────────────
 
-async function collectSignals(
+export async function collectSignals(
   prisma: typeof import("@prisma/client").PrismaClient.prototype,
   params: {
     userId: string;
@@ -397,7 +397,7 @@ async function collectSignals(
  * transcripts (privacy + token cost) — just summaries, themes,
  * moods, and aggregate stats.
  */
-async function buildDigest(
+export async function buildDigest(
   prisma: typeof import("@prisma/client").PrismaClient.prototype,
   userId: string,
   fourteenDaysAgo: Date
@@ -443,7 +443,7 @@ async function buildDigest(
 
 // ─── Claude synthesis ────────────────────────────────────────────────────
 
-async function synthesizeWithClaude(params: {
+export async function synthesizeWithClaude(params: {
   signals: Signal[];
   digest: string;
 }): Promise<Array<{ text: string; severity: Severity; linkedAreaId: string | null }> | null> {

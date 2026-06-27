@@ -491,6 +491,37 @@ export const processEntryFn = inngest.createFunction(
         );
       });
 
+      // First-insight check (same as PRO path — see end of function).
+      // FREE users won't pass the subscription gate in generate-first-
+      // insight, but if they upgrade later, this avoids a gap.
+      await step
+        .run("check-first-insight-trigger-free", async () => {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { totalRecordings: true, subscriptionStatus: true },
+          });
+          if (!user) return;
+          if ((user.totalRecordings ?? 0) < 5) return;
+          if (!["TRIAL", "ACTIVE", "PRO"].includes(user.subscriptionStatus ?? "")) return;
+
+          const alreadySent = await prisma.trialEmailLog.findUnique({
+            where: { userId_emailKey: { userId, emailKey: "first_insight" } },
+            select: { id: true },
+          });
+          if (alreadySent) return;
+
+          await inngest.send({
+            name: "first-insight/generate.requested",
+            data: { userId },
+          });
+        })
+        .catch((err) => {
+          logger.error(
+            "[process-entry] check-first-insight-trigger-free failed (non-fatal)",
+            { err }
+          );
+        });
+
       return { entryId, free: true };
     }
 
@@ -1234,6 +1265,43 @@ export const processEntryFn = inngest.createFunction(
       .catch((err) => {
         logger.error(
           "[process-entry] send-completion-push failed (non-fatal)",
+          { err }
+        );
+      });
+
+    // ── First-insight activation: detect the 5-recording crossing ──
+    // When a user's 5th completed recording finishes, emit an event
+    // that triggers on-demand insight generation + the "Acuity noticed
+    // something" activation email. The actual Opus call + email send
+    // happen in generate-first-insight (separate async function) so
+    // they don't block this pipeline. Cost guard: check TrialEmailLog
+    // before emitting — if the email was already sent, skip the event
+    // entirely. Fail-soft: a failure here never degrades the entry.
+    await step
+      .run("check-first-insight-trigger", async () => {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { totalRecordings: true, subscriptionStatus: true },
+        });
+        if (!user) return;
+        if ((user.totalRecordings ?? 0) < 5) return;
+        if (!["TRIAL", "ACTIVE", "PRO"].includes(user.subscriptionStatus ?? "")) return;
+
+        // Quick dedup: if the email was already sent, don't emit.
+        const alreadySent = await prisma.trialEmailLog.findUnique({
+          where: { userId_emailKey: { userId, emailKey: "first_insight" } },
+          select: { id: true },
+        });
+        if (alreadySent) return;
+
+        await inngest.send({
+          name: "first-insight/generate.requested",
+          data: { userId },
+        });
+      })
+      .catch((err) => {
+        logger.error(
+          "[process-entry] check-first-insight-trigger failed (non-fatal)",
           { err }
         );
       });
