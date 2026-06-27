@@ -8,7 +8,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialButton, trialLayout , para } from "./layout";
+import { keenanSignature, secondaryButton, trialButton, trialLayout, para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 // App Store listing — shows "OPEN" if installed, "GET" if not.
@@ -35,8 +35,13 @@ export const recoveryRecordedOnce: TrialEmailTemplate = {
       ${para(`Here\u2019s the part that\u2019s easy to miss: the first entry is just a snapshot. The second is where patterns start to show. By the fourth or fifth, your weekly report has enough to reflect something back you might not have noticed on your own.`)}
       ${para(`The next one only takes a few spoken minutes. Whenever you have them.`)}
       <tr>
-        <td style="padding-bottom:28px;">
+        <td style="padding-bottom:8px;">
           ${trialButton(APP_STORE_URL, "Record now")}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom:28px;">
+          ${secondaryButton("https://www.getacuity.io/home", "Use the web version")}
         </td>
       </tr>
       ${keenanSignature()}

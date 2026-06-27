@@ -13,7 +13,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, trialCard, trialLayout , para } from "./layout";
+import { keenanSignature, primaryButton, secondaryButton, trialCard, trialLayout, para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 
@@ -51,8 +51,13 @@ export const firstInsight: TrialEmailTemplate = {
       </tr>
       ${para(`This came from your own words \u2014 Acuity surfaced it, but you said it first. The full picture (your patterns, your Signals, your Life Matrix) is in the app whenever you\u2019re ready.`)}
       <tr>
-        <td style="padding-bottom:28px;">
+        <td style="padding-bottom:8px;">
           ${primaryButton("https://apps.apple.com/us/app/acuity-daily/id6762633410", "See the full picture")}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom:28px;">
+          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
         </td>
       </tr>
       ${para("Talk soon,")}
