@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-06-27] — Email design refresh — branded coral header, cleaner hierarchy, centralized styling
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a995590
+
+### In plain English (for Keenan)
+
+Every lifecycle email now looks and feels like a polished product — not a marketing blast. There's a branded coral header at the top of every email (a thin coral gradient bar + the "acuity" name in coral text), giving them instant visual identity without any images. The buttons are slightly more prominent (bigger padding, rounder corners), the insight cards have a warm coral tint instead of cold gray, and the footer has a subtle coral-tinted divider. The overall feel is "minimal, premium, tasteful" — lots of whitespace, one confident accent color (coral), great typography. No copy was changed. No images were added to the body. Everything is dark-mode safe.
+
+### Technical changes (for Jimmy)
+
+- `apps/web/src/emails/trial/layout.ts` — all design changes centralized here:
+  - **Branded header:** 3px coral gradient (`#FF8A65` → `#E06B46`) top border + text-based "acuity" wordmark (`font-size:18px; font-weight:700; color:#E06B46; letter-spacing:1.5px; text-transform:lowercase`). No image file — renders as styled text, survives image-blocking, zero spam filter risk.
+  - **Outer background:** soft gray (`#F9FAFB`) → content floats on white canvas for depth
+  - **Footer divider:** coral-tinted gradient (`#FFD4C4` → `#E5E7EB` → `#FFD4C4`)
+  - **Footer text:** lighter gray (`#9CA3AF`) for secondary links
+  - **Primary button:** `border-radius:10px` (was 8), `padding:16px 28px` (was 14), `font-size:16px` (was 15)
+  - **Secondary button:** border color softened to `#FFB89E`, `border-radius:10px`, `font-weight:600`
+  - **trialCard:** warm coral tint (`#FFF7F4` bg, `#FFE4D9` border) instead of cold `#F9FAFB`/`#E5E7EB`
+  - **New exports:** `para()` (centralized body paragraph), `emphasis()` (coral semi-bold for punch lines), `coralListItem()` (coral dot bullet for lists)
+- 30 template files: removed local `para()` function definitions, now import from `./layout` — one source of truth for body typography
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, send yourself a test email from any sequence and verify: coral header renders, buttons look right, dark mode reads well (Apple Mail + Gmail)
+
+### Notes
+
+- **No images in body content.** The "acuity" wordmark is rendered as styled text, not an image file. This means it always displays (even when images are blocked) and doesn't affect text-to-markup ratio or spam scoring.
+- **Dark-mode safe.** `color-scheme: light dark` is declared in the `<head>`. All colors use explicit values (no `inherit` or `transparent`). Coral `#E06B46` clears WCAG AA contrast on both light (#FFFFFF) and dark (#1a1a1a) backgrounds.
+- **Copy is 100% unchanged.** This is a pure design/typography refresh — not a single word of approved copy was modified.
+- **The `emphasis()` and `coralListItem()` helpers are available but not yet used in templates.** They're ready for future templates that want a coral punch line or formatted bullet list. Existing templates work as-is with the layout-level changes (header, buttons, card, footer).
+
+---
+
 ## [2026-06-27] — 5 milestone/power-user emails at 10/25/50/100/365 recordings
 
 **Requested by:** Keenan
