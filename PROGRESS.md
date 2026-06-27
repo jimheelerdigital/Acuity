@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-06-27] — "Never recorded" trial sequence — 4 escalating emails to drive the first debrief
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d8a7cc3
+
+### In plain English (for Keenan)
+
+Trial users who sign up but never record a single debrief now get up to four escalating emails: a casual "you dropped this..." at 24 hours, a more direct "uh oh... did you forget?" at 48 hours, a "three days left..." when the trial is winding down, and a final "last call :/" on the last day. The first two go to everyone in the trial with zero recordings. The last two only go to people who haven't put a card on file (no point pressuring someone who's already set to pay). The moment anyone records their first debrief, the rest of the sequence cancels automatically — they graduate to the momentum and insight emails instead. Each email fires once, and the 24-hour spacing rule means nobody gets blasted. All four have their own kill switches.
+
+### Technical changes (for Jimmy)
+
+- 4 new templates: `never-recorded-24h.ts`, `never-recorded-48h.ts`, `never-recorded-3day.ts`, `never-recorded-lastday.ts` — casual lowercase subjects ("you dropped this...", "uh oh... did you forget?", "three days left...", "last call :/"), primary (App Store) + secondary (web) buttons, Keenan signature
+- `types.ts`: added `never_recorded_24h`, `never_recorded_48h`, `never_recorded_3day`, `never_recorded_lastday` to TrialEmailKey
+- `registry.ts`: registered all 4 templates
+- `email-enabled.ts`: added 4 kill-switch entries (all `true`)
+- `recovery-email-orchestrator.ts`: conditions #13-16:
+  - **#13 (24h):** `subscriptionStatus=TRIAL`, `totalRecordings=0`, `createdAt` 20-48h ago → all trial users
+  - **#14 (48h):** `subscriptionStatus=TRIAL`, `totalRecordings=0`, `createdAt` 44-96h ago → all trial users
+  - **#15 (3-day):** `subscriptionStatus=TRIAL`, `totalRecordings=0`, `trialEndsAt` 48-96h from now, `stripeCustomerId/stripeSubscriptionId/appleOriginalTransactionId` all null → no-card only
+  - **#16 (lastday):** `subscriptionStatus=TRIAL`, `totalRecordings=0`, `trialEndsAt` 0-36h from now, same no-card filter → no-card only
+  - **Cancel rule:** `totalRecordings=0` on every condition IS the cancel — the moment `totalRecordings` increments (first recording completes), all conditions stop matching
+- `scripts/send-preview-emails.ts`: added 4 new templates for preview sending
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, verify recovery-email-orchestrator runs cleanly in Inngest dashboard (Jimmy)
+- [ ] Verify the cancel rule: find a trial user with 0 recordings who received `never_recorded_24h`, then simulate a recording completion (or wait for one) and confirm `never_recorded_48h` does NOT send (because `totalRecordings` is now > 0) (Jimmy)
+
+### Notes
+
+- **The cancel rule is elegant and implicit.** Every condition checks `totalRecordings: 0`. The moment the user's first recording completes and `update-recording-stats` increments `totalRecordings` to 1, none of the four conditions match anymore. No explicit "cancel" call needed — the state change IS the cancellation.
+- **Card-on-file branching uses the same fields as the trial-ending email:** `stripeCustomerId`, `stripeSubscriptionId`, `appleOriginalTransactionId` all null = no card. Users who have already put a card down don't get emails #3 and #4 (no point counting down for someone who's already set to convert).
+- **Overlapping windows are safe.** A 7-day trial user created Monday will match #13 (24h) on Tuesday, #14 (48h) on Wednesday. Thanks to the 24h global throttle, even if both conditions match in the same orchestrator tick, only one sends. TrialEmailLog dedup means each fires at most once.
+- **Lowercase subjects are intentional** — tested pattern for higher open rates on casual/personal emails. The single "!" in Email 1 ("using it!") is deliberate per spec.
+
+---
+
 ## [2026-06-27] — Four stage-specific download-rescue emails replace the flat download reminder
 
 **Requested by:** Keenan
