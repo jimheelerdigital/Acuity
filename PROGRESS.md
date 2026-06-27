@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-06-27] — Fixed dead /open link — all email CTAs now use App Store listing
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 297a078
+
+### In plain English (for Keenan)
+
+The "Open Acuity" button in emails was hitting a dead end because the /open page required users to be logged into the web app — and most people clicking from an email aren't. Fixed it two ways: (1) the /open page now sends logged-in users to the web app and everyone else to the App Store listing, and (2) all 11 email templates that used /open now point directly to the App Store listing instead. The App Store page shows "OPEN" for people who already have the app (opens it) and "GET" for people who don't (downloads it) — one link that works for everyone, zero dead ends.
+
+### Technical changes (for Jimmy)
+
+- **Root cause:** `/open` → `redirect("/home")` → `/home` requires `getServerSession()` → unauthenticated users bounced to `/auth/signin` (dead end from email)
+- `apps/web/src/app/open/page.tsx`: now checks session — authenticated → `/home`, unauthenticated → App Store listing
+- 11 email templates updated to replace `/open` with `https://apps.apple.com/us/app/acuity-daily/id6762633410`:
+  - stall-1rec, stall-2rec, stall-3plus
+  - winback-7d, winback-14d, winback-30d
+  - first-insight
+  - recovery-recorded-once
+  - nr-winback-1, nr-winback-2, nr-winback-3
+- Zero `/open` references remain in any email template
+- Secondary "Use the web version" buttons unchanged (still → getacuity.io/home)
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+
+### Notes
+
+- The `/open` route and AASA config remain in the codebase — they're just no longer used by emails. If a future app build refreshes the AASA cache on devices, `/open` could work as a universal link. But for emails, the App Store listing is the bulletproof choice.
+- The App Store "OPEN" button is Apple's built-in deep link — it's more reliable than any custom universal link because Apple controls both sides.
+
+---
+
 ## [2026-06-27] — 3-email never-recorded re-engagement drip (replaces catch-up sweep)
 
 **Requested by:** Keenan
