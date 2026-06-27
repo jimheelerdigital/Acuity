@@ -55,6 +55,11 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   winback_14d: true, // winback: 14 days silent
   winback_30d: true, // winback: 30 days silent
   winback_90d: true, // winback: 90 days silent (FINAL — hard stop after this)
+  milestone_10: true, // milestone: 10 recordings — feedback ask + review
+  milestone_25: true, // milestone: 25 recordings — feedback + review
+  milestone_50: true, // milestone: 50 recordings — testimonial ask
+  milestone_100: true, // milestone: 100 recordings — referral + feedback
+  milestone_365: true, // milestone: 365 recordings — year recognition
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

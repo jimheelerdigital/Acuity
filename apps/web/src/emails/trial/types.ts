@@ -72,4 +72,9 @@ export type TrialEmailKey =
   | "winback_7d"
   | "winback_14d"
   | "winback_30d"
-  | "winback_90d";
+  | "winback_90d"
+  | "milestone_10"
+  | "milestone_25"
+  | "milestone_50"
+  | "milestone_100"
+  | "milestone_365";

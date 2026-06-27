@@ -45,6 +45,11 @@ import { winback7d } from "./winback-7d";
 import { winback14d } from "./winback-14d";
 import { winback30d } from "./winback-30d";
 import { winback90d } from "./winback-90d";
+import { milestone10 } from "./milestone-10";
+import { milestone25 } from "./milestone-25";
+import { milestone50 } from "./milestone-50";
+import { milestone100 } from "./milestone-100";
+import { milestone365 } from "./milestone-365";
 import { firstInsight } from "./first-insight";
 import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
@@ -91,6 +96,11 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     winback_14d: winback14d,
     winback_30d: winback30d,
     winback_90d: winback90d,
+    milestone_10: milestone10,
+    milestone_25: milestone25,
+    milestone_50: milestone50,
+    milestone_100: milestone100,
+    milestone_365: milestone365,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

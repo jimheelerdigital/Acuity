@@ -618,6 +618,107 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         }
       }
 
+      // ═══════════════════════════════════════════════════════════
+      // 24–28. MILESTONE EMAILS (RETROACTIVE + throttled)
+      //    Power users at 10/25/50/100/365 completed recordings.
+      //    HIGHEST-PASSED-MILESTONE-ONLY: a user with 120 recordings
+      //    gets milestone_100, and lower milestones are auto-skipped
+      //    (TrialEmailLog rows written as "skipped" so they never fire).
+      //    All reply-to keenan@getacuity.io — feedback is the point.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        // Milestone thresholds in ascending order.
+        const MILESTONES: Array<{
+          threshold: number;
+          key: TrialEmailKey;
+        }> = [
+          { threshold: 10, key: "milestone_10" },
+          { threshold: 25, key: "milestone_25" },
+          { threshold: 50, key: "milestone_50" },
+          { threshold: 100, key: "milestone_100" },
+          { threshold: 365, key: "milestone_365" }, // gitleaks:allow
+        ];
+
+        // All users with 10+ recordings who might qualify.
+        const milestoneCandidates = await prisma.user.findMany({
+          where: { totalRecordings: { gte: 10 } },
+          select: { id: true, totalRecordings: true },
+        });
+
+        // Which milestone emails has each candidate already received?
+        const candidateIds = milestoneCandidates.map((u) => u.id);
+        const existingMilestoneLogs =
+          candidateIds.length > 0
+            ? await prisma.trialEmailLog.findMany({
+                where: {
+                  userId: { in: candidateIds },
+                  emailKey: {
+                    in: MILESTONES.map((m) => m.key),
+                  },
+                },
+                select: { userId: true, emailKey: true },
+              })
+            : [];
+
+        const userMilestoneSent = new Map<string, Set<string>>();
+        for (const log of existingMilestoneLogs) {
+          const uid = log.userId;
+          const ek = log.emailKey;
+          if (!uid || !ek) continue;
+          if (!userMilestoneSent.has(uid))
+            userMilestoneSent.set(uid, new Set());
+          userMilestoneSent.get(uid)!.add(ek);
+        }
+
+        for (const user of milestoneCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+
+          const sentKeys = userMilestoneSent.get(user.id) ?? new Set<string>();
+
+          // Find the highest milestone this user has passed.
+          let highestIdx = -1;
+          for (let i = MILESTONES.length - 1; i >= 0; i--) {
+            if ((user.totalRecordings ?? 0) >= MILESTONES[i].threshold) {
+              highestIdx = i;
+              break;
+            }
+          }
+          if (highestIdx < 0) continue;
+
+          // Skip lower milestones: write TrialEmailLog "skipped" entries
+          // for milestones below the highest so they never fire later.
+          if (!config.dryRun) {
+            for (let i = 0; i < highestIdx; i++) {
+              if (sentKeys.has(MILESTONES[i].key)) continue;
+              // Upsert a skipped log row — prevents these from ever firing.
+              await prisma.trialEmailLog.upsert({
+                where: {
+                  userId_emailKey: {
+                    userId: user.id,
+                    emailKey: MILESTONES[i].key,
+                  },
+                },
+                update: {},
+                create: {
+                  userId: user.id,
+                  emailKey: MILESTONES[i].key,
+                  sentAt: now,
+                  resendId: "skipped_backlog",
+                },
+              });
+            }
+          }
+
+          // Send the highest milestone they haven't received yet.
+          const highestKey = MILESTONES[highestIdx].key;
+          if (sentKeys.has(highestKey)) continue;
+
+          await trySend(user.id, highestKey, {
+            replyTo: "keenan@getacuity.io",
+          });
+        }
+      }
+
       // ── Return stats ──
       if (config.dryRun) {
         const totalQualifying = Object.values(dryRunCounts).reduce(

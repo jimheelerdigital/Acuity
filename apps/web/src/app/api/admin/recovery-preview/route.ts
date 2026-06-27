@@ -153,6 +153,34 @@ export async function GET(req: NextRequest) {
   });
   counts.first_insight = await countUnsent("first_insight", fi.map((u) => u.id));
 
+  // ── Milestones (highest-only logic) ──
+  const MILESTONES = [
+    { threshold: 10, key: "milestone_10" },
+    { threshold: 25, key: "milestone_25" },
+    { threshold: 50, key: "milestone_50" },
+    { threshold: 100, key: "milestone_100" },
+    { threshold: 365, key: "milestone_365" }, // gitleaks:allow
+  ] as const;
+
+  for (const { threshold, key } of MILESTONES) {
+    // Count users AT this exact milestone tier (between this threshold
+    // and the next one). For the highest tier (365), no upper bound.
+    const nextIdx = MILESTONES.findIndex((m) => m.threshold === threshold) + 1;
+    const nextThreshold = nextIdx < MILESTONES.length
+      ? MILESTONES[nextIdx].threshold
+      : undefined;
+
+    const candidates = await prisma.user.findMany({
+      where: {
+        totalRecordings: nextThreshold
+          ? { gte: threshold, lt: nextThreshold }
+          : { gte: threshold },
+      },
+      select: { id: true },
+    });
+    counts[key] = await countUnsent(key, candidates.map((u) => u.id));
+  }
+
   // ── Summary ──
   const totalQualifying = Object.values(counts).reduce((a, b) => a + b, 0);
   const estimatedDrainDays = Math.ceil(totalQualifying / config.maxSendsPerDay);
