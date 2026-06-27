@@ -30,6 +30,10 @@ import { recoveryPaidNoApp } from "./recovery-paid-no-app";
 import { recoveryRecordedOnce } from "./recovery-recorded-once";
 import { recoverySignupNoCheckout } from "./recovery-signup-no-checkout";
 import { recoveryDownloadReminder } from "./recovery-download-reminder";
+import { rescueSignupOnly } from "./rescue-signup-only";
+import { rescueViewedNoTap } from "./rescue-viewed-no-tap";
+import { rescueTappedAppStore } from "./rescue-tapped-app-store";
+import { rescueWebviewBlocked } from "./rescue-webview-blocked";
 import { firstInsight } from "./first-insight";
 import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
@@ -61,6 +65,10 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     first_insight: firstInsight,
     keep_momentum: keepMomentum,
     trial_ending: trialEnding,
+    rescue_signup_only: rescueSignupOnly,
+    rescue_viewed_no_tap: rescueViewedNoTap,
+    rescue_tapped_app_store: rescueTappedAppStore,
+    rescue_webview_blocked: rescueWebviewBlocked,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

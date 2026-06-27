@@ -36,10 +36,14 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   // ── KEEP ON — registry emails (sendTrialEmail) ──────────────────
   recovery_paid_no_app: true, // #29 paid, no app install
   recovery_recorded_once: true, // #30 recorded once then stalled
-  recovery_download_reminder: true, // #32 download reminder
+  recovery_download_reminder: false, // #32 REPLACED by 4 stage-specific rescue emails below
   first_insight: true, // activation: fires once at ~5 recordings w/ real insight
   keep_momentum: true, // encouragement: fires once at 2 recordings, 48h after first
   trial_ending: true, // trial-ending: fires ~2d before trialEndsAt, recorded users only, no card on file
+  rescue_signup_only: true, // download rescue #1: signed up, never reached download screen
+  rescue_viewed_no_tap: true, // download rescue #2: viewed download, didn't tap
+  rescue_tapped_app_store: true, // download rescue #3: tapped App Store, never opened app
+  rescue_webview_blocked: true, // download rescue #4: stuck in IG/FB webview
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

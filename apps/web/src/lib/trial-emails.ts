@@ -162,7 +162,7 @@ export interface SendResult {
 export async function sendTrialEmail(
   userId: string,
   emailKey: TrialEmailKey,
-  opts: { force?: boolean } = {}
+  opts: { force?: boolean; replyTo?: string } = {}
 ): Promise<SendResult> {
   // Kill-switch — lifecycle/marketing emails are paused per-key while we
   // rebuild templates. Disabled keys early-return before any DB lookup or
@@ -234,6 +234,7 @@ export async function sendTrialEmail(
     const resend = getResendClient();
     const sendResp = await resend.emails.send({
       from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+      replyTo: opts.replyTo ?? undefined,
       to: user.email,
       subject,
       html,

@@ -57,4 +57,8 @@ export type TrialEmailKey =
   | "recovery_download_reminder"
   | "first_insight"
   | "keep_momentum"
-  | "trial_ending";
+  | "trial_ending"
+  | "rescue_signup_only"
+  | "rescue_viewed_no_tap"
+  | "rescue_tapped_app_store"
+  | "rescue_webview_blocked";

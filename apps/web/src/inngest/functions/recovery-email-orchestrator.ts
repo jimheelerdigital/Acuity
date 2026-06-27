@@ -216,6 +216,90 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // 9–12. DOWNLOAD RESCUE — four stage-specific emails
+      //    ALL gated on appFirstOpenedAt IS NULL (never opened app).
+      //    Mutual exclusivity: each user gets ONE email matching their
+      //    furthest/most-specific stage. Priority: webview-blocked (4)
+      //    > tapped-app-store (3) > viewed-download (2) > signup-only (1).
+      //    Timing: created 2–48 hours ago (matches old download-reminder
+      //    cadence but wider window for the 15-min cron to catch everyone).
+      // ═══════════════════════════════════════════════════════════
+      const rescueWindow = {
+        gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+        lte: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+      };
+
+      // Candidates: signed up 2–48h ago, never opened the app.
+      const rescueCandidates = await prisma.user.findMany({
+        where: {
+          createdAt: rescueWindow,
+          appFirstOpenedAt: null,
+        },
+        select: { id: true },
+      });
+
+      // Download-step events for all candidates in one query.
+      const rescueUserIds = rescueCandidates.map((u) => u.id);
+      const rescueEvents =
+        rescueUserIds.length > 0
+          ? await prisma.onboardingEvent.findMany({
+              where: {
+                userId: { in: rescueUserIds },
+                event: {
+                  in: [
+                    "funnel_download_screen_viewed",
+                    "funnel_app_store_clicked",
+                    "funnel_inapp_browser_detected",
+                  ],
+                },
+              },
+              select: { userId: true, event: true },
+            })
+          : [];
+
+      // Build per-user event sets.
+      const userEvents = new Map<string, Set<string>>();
+      for (const e of rescueEvents) {
+        if (!e.userId) continue;
+        if (!userEvents.has(e.userId)) userEvents.set(e.userId, new Set());
+        userEvents.get(e.userId)!.add(e.event);
+      }
+
+      for (const user of rescueCandidates) {
+        const events = userEvents.get(user.id) ?? new Set<string>();
+
+        // Priority: most-specific wins → exactly one email per user.
+        let emailKey: TrialEmailKey;
+        let replyTo: string | undefined;
+
+        if (events.has("funnel_inapp_browser_detected")) {
+          // #4 — Webview blocked (highest priority)
+          emailKey = "rescue_webview_blocked";
+        } else if (events.has("funnel_app_store_clicked")) {
+          // #3 — Tapped App Store, never opened
+          emailKey = "rescue_tapped_app_store";
+        } else if (events.has("funnel_download_screen_viewed")) {
+          // #2 — Viewed download, no tap
+          emailKey = "rescue_viewed_no_tap";
+          replyTo = "keenan@getacuity.io";
+        } else {
+          // #1 — Signed up only (lowest priority)
+          emailKey = "rescue_signup_only";
+        }
+
+        if (await isThrottled(user.id)) {
+          throttled++;
+          continue;
+        }
+        const result = await sendTrialEmail(user.id, emailKey, { replyTo });
+        if (result.sent) {
+          sent++;
+        } else {
+          skipped++;
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 8. TRIAL ENDING — 2 days before trialEndsAt
       //    Active trial, has recorded at least 1 debrief, NOT paid,
       //    no card/payment method on file. Fires once per user.
