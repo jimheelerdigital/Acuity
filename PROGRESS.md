@@ -7,6 +7,52 @@
 
 ---
 
+## [2026-06-27] — Four stage-specific download-rescue emails replace the flat download reminder
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d4c5aea
+
+### In plain English (for Keenan)
+
+Instead of sending everyone the same generic "your app is waiting" download reminder, we now send one of four specific emails based on exactly where each person got stuck. Someone who signed up but never even saw the download page gets a different email than someone who tapped the App Store link but the download didn't complete, and both of those are different from someone whose Instagram browser silently blocked the App Store. Each person gets exactly one email — the one that matches the furthest point they reached — and none of these fire if the person has already opened the app. Email #2 ("Did something get in the way?") explicitly invites people to reply, and replies go to keenan@getacuity.io. The old flat download reminder is now turned off. All four have their own kill switches.
+
+### Technical changes (for Jimmy)
+
+- 4 new templates:
+  - `rescue-signup-only.ts` — "You did the hard part" (primary: App Store, secondary: web app)
+  - `rescue-viewed-no-tap.ts` — "Did something get in the way?" (primary: App Store, secondary: web app, replyTo: keenan@getacuity.io)
+  - `rescue-tapped-app-store.ts` — "Looks like the download didn't finish" (primary: App Store only, includes webview tip)
+  - `rescue-webview-blocked.ts` — "Whoops — here it is" (primary: App Store only, explains IG/FB browser block)
+- `types.ts`: added `rescue_signup_only`, `rescue_viewed_no_tap`, `rescue_tapped_app_store`, `rescue_webview_blocked` to TrialEmailKey
+- `registry.ts`: registered all 4 templates
+- `email-enabled.ts`: added 4 new kill-switch entries (all `true`), set `recovery_download_reminder: false` (old email disabled)
+- `trial-emails.ts`: added optional `replyTo` param to `sendTrialEmail`, passed to Resend — used by Email #2
+- `recovery-email-orchestrator.ts`: conditions #9–12 with mutual-exclusivity:
+  - Candidates: `createdAt` 2-48h ago, `appFirstOpenedAt` null
+  - Batch query of `OnboardingEvent` for all candidates (funnel_download_screen_viewed, funnel_app_store_clicked, funnel_inapp_browser_detected)
+  - Per-user priority: webview-blocked (#4) > tapped-app-store (#3) > viewed-download (#2) > signup-only (#1)
+  - Each user matches exactly ONE bucket
+  - Dedup via TrialEmailLog per key, 24h global throttle
+- Previews in `.tmp/email-previews/rescue-{1,2,3,4}-*.html` (gitignored)
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, verify recovery-email-orchestrator runs cleanly in Inngest dashboard (Jimmy)
+- [ ] Verify the old `download-reminder-email` Inngest function no longer sends (its key `recovery_download_reminder` is now `false` in email-enabled.ts) — check Inngest logs to confirm it skips with reason "disabled" (Jimmy)
+- [ ] Send a test reply to Email #2 and confirm it arrives at keenan@getacuity.io (Keenan)
+- [ ] After a day or two, check Resend logs to see which rescue variant fires most — webview-blocked is expected to be the highest-value one based on the download-step analytics (Keenan)
+
+### Notes
+
+- **Mutual exclusivity works via priority cascade.** The orchestrator loads all download-step events for each candidate in one batch query, then checks priority order (webview > tapped > viewed > signup). A user who was webview-blocked AND tapped the App Store gets Email #4 (webview), not #3 (tapped). A user with no download events at all gets Email #1 (signup-only).
+- **The old `download-reminder-email.ts` Inngest function still runs** on its 15-min cron but will no-op because `isEmailEnabled("recovery_download_reminder")` returns false. The function registration is left in place (removing it would require an Inngest Cloud function pause/delete) — it just harmlessly skips. It can be fully removed in a future cleanup.
+- **Sending STOPS once appFirstOpenedAt is set.** All 4 conditions require `appFirstOpenedAt: null`. The moment the user opens the app (triggers `/api/user/me` with the mobile client), `appFirstOpenedAt` is stamped and none of these emails can fire.
+- **replyTo on Email #2 matches the welcome_founder email** (`keenan@getacuity.io`), which the copy already promises is a real monitored inbox. The `sendTrialEmail` function now supports an optional `replyTo` parameter passed through to Resend.
+
+---
+
 ## [2026-06-27] — Trial-ending "2 days left" email for recorded trial users without payment
 
 **Requested by:** Keenan
