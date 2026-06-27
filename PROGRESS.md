@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-06-27] — 3-email never-recorded re-engagement drip (replaces catch-up sweep)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7905db4
+
+### In plain English (for Keenan)
+
+Cancelled the previous catch-up that would have shoved all stranded never-recorded users into the existing 24h/48h/3day/lastday emails. Replaced it with a purpose-built 3-email drip designed for this specific audience: people who signed up a while ago and never tried it. Email 1 ("you never gave it a shot") sends first, then email 2 ("here's what one debrief gets you") two days later, then email 3 ("should I take the hint?") three days after that. If anyone records a debrief at any point, the rest cancel. The last email invites replies. All three use the /open universal link. Throttled under the daily rate cap — no blast.
+
+### Technical changes (for Jimmy)
+
+- **Removed:** condition #29 catch-up that sent `never_recorded_24h/48h/3day/lastday` to backlog users
+- **Removed:** `catchupCounts` section from `/api/admin/recovery-preview`
+- 3 new templates: `nr-winback-1.ts` ("you never gave it a shot"), `nr-winback-2.ts` ("here's what one debrief gets you"), `nr-winback-3.ts` ("should I take the hint?" — invites replies)
+- `types.ts`: added `nr_winback_1`, `nr_winback_2`, `nr_winback_3` to TrialEmailKey
+- `registry.ts`: registered all 3
+- `email-enabled.ts`: added 3 kill-switch entries (all `true`)
+- `recovery-email-orchestrator.ts`: condition #29 rewritten:
+  - **Email 1:** queries all `totalRecordings=0, createdAt < enablementDate, subscriptionStatus != PRO` → sends `nr_winback_1`
+  - **Email 2:** queries TrialEmailLog for users who received `nr_winback_1` 2+ days ago, re-checks `totalRecordings=0 + not PRO` → sends `nr_winback_2`
+  - **Email 3:** queries TrialEmailLog for users who received `nr_winback_2` 3+ days ago, re-checks `totalRecordings=0 + not PRO` → sends `nr_winback_3`
+  - Cancel rule: `totalRecordings=0` re-checked before each send — recording stops the drip
+  - All `replyTo: "keenan@getacuity.io"`
+- `recovery-preview/route.ts`: replaced `catchupCounts` with `nrWinbackCounts` (per-email unsent counts + stranded total)
+
+### Manual steps needed
+
+- [ ] Push to main (Keenan to say "push it")
+- [ ] After deploy, hit `/api/admin/recovery-preview` — check `nrWinbackCounts` to see how many qualify (Keenan)
+- [ ] Monitor Resend dashboard: day 1 emails start immediately, day 3 emails ~2 days later, day 6 emails ~3 days after that (Keenan)
+- [ ] Watch keenan@getacuity.io for replies to email 3 (Keenan)
+
+### Notes
+
+- **Drip timing is enforced via TrialEmailLog sentAt.** Email 2 won't send until email 1's log entry is 2+ days old. Email 3 won't send until email 2's log entry is 3+ days old. The 24h per-user throttle adds additional spacing.
+- **The old catch-up is fully removed.** No code path sends `never_recorded_24h/48h/3day/lastday` retroactively to pre-enablement users. The forward-only never-recorded sequence (conditions #13-16) continues to handle new signups going forward — no overlap.
+- **One-time by design.** TrialEmailLog dedup (keys `nr_winback_1/2/3`) ensures each email fires once per user. After the drip completes for all ~120 users, the section is a permanent no-op.
+- **Recording cancels remaining.** Each drip stage re-checks `totalRecordings=0` before sending. The moment a user records, they no longer match.
+
+---
+
 ## [2026-06-27] — One-time retroactive catch-up for ~120 stranded never-recorded users
 
 **Requested by:** Keenan
