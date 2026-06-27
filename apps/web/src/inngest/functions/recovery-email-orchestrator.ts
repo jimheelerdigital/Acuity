@@ -719,6 +719,69 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         }
       }
 
+      // ═══════════════════════════════════════════════════════════
+      // 29. NEVER-RECORDED RETROACTIVE CATCH-UP (ONE-TIME)
+      //    Sweeps stranded never-recorded users who predate the
+      //    enablement date (missed the forward-only windows).
+      //    - EVERYONE gets the 2 early nudges (24h + 48h).
+      //    - Only still-on-trial users with matching trialEndsAt
+      //      windows get the countdown emails (3day + lastday).
+      //    - Expired-trial users get early nudges only.
+      //    - TrialEmailLog dedup makes this inherently one-time:
+      //      once all users have log rows, this section is a no-op.
+      //    - Recording a debrief (totalRecordings > 0) cancels
+      //      remaining sends (the where-clause stops matching).
+      //    - Throttled under the global rate cap like everything else.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        // Stranded never-recorded users: created BEFORE enablement,
+        // 0 recordings, not currently paying.
+        const strandedNeverRecorded = await prisma.user.findMany({
+          where: {
+            totalRecordings: 0,
+            createdAt: { lt: config.enablementDate },
+            subscriptionStatus: { notIn: ["PRO"] as string[] },
+          },
+          select: {
+            id: true,
+            subscriptionStatus: true,
+            trialEndsAt: true,
+            stripeCustomerId: true,
+            stripeSubscriptionId: true,
+            appleOriginalTransactionId: true,
+          },
+        });
+
+        for (const user of strandedNeverRecorded) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+
+          // Early nudges — everyone in the audience, regardless of
+          // trial state. TrialEmailLog dedup prevents double-sends.
+          await trySend(user.id, "never_recorded_24h");
+          await trySend(user.id, "never_recorded_48h");
+
+          // Countdown emails — ONLY for users still on active trial
+          // with enough time left, AND no card on file.
+          if (
+            user.subscriptionStatus === "TRIAL" &&
+            user.trialEndsAt &&
+            !user.stripeCustomerId &&
+            !user.stripeSubscriptionId &&
+            !user.appleOriginalTransactionId
+          ) {
+            const msLeft = user.trialEndsAt.getTime() - now.getTime();
+            // 3-day email: trial ends in 48h–96h
+            if (msLeft >= 48 * 60 * 60 * 1000 && msLeft < 96 * 60 * 60 * 1000) {
+              await trySend(user.id, "never_recorded_3day");
+            }
+            // Last-day email: trial ends in 0–36h
+            if (msLeft >= 0 && msLeft < 36 * 60 * 60 * 1000) {
+              await trySend(user.id, "never_recorded_lastday");
+            }
+          }
+        }
+      }
+
       // ── Return stats ──
       if (config.dryRun) {
         const totalQualifying = Object.values(dryRunCounts).reduce(
