@@ -10,6 +10,9 @@ import { escapeHtml } from "@/lib/escape-html";
 import { keenanSignature, primaryButton, secondaryButton, trialLayout, para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
+const APP_STORE_URL =
+  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+
 export const nrWinback3: TrialEmailTemplate = {
   subject: () => "should I take the hint?",
   html: (v: TrialVars) => {
@@ -32,7 +35,7 @@ export const nrWinback3: TrialEmailTemplate = {
       ${para(`So either give it that one shot... or, if something\u2019s holding you back \u2014 it felt like a hassle, you weren\u2019t sure it was for you, the timing was wrong \u2014 just hit reply and tell me. I read every one, and honestly, knowing why people don\u2019t start is some of the most useful feedback I get.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(`${v.appUrl}/open`, "Open Acuity")}
+          ${primaryButton(APP_STORE_URL, "Open Acuity")}
         </td>
       </tr>
       <tr>

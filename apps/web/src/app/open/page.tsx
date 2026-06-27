@@ -1,21 +1,40 @@
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { getAuthOptions } from "@/lib/auth";
 
 /**
  * /open — Universal link landing page.
  *
- * When the iOS app is installed, iOS intercepts this URL and opens
- * the app directly (via the AASA config). The user never sees this
- * page — they land in the app.
+ * When the iOS app is installed AND Apple's AASA cache has the /open
+ * path, iOS intercepts this URL and opens the app directly. The user
+ * never sees this page.
  *
- * When the app is NOT installed, iOS falls back to loading this page
- * in Safari. We redirect to /home (the web app) so they get the full
- * web experience instead of a dead end.
+ * When the app is NOT installed (or AASA hasn't refreshed), this page
+ * loads in the browser. Fallback behavior:
  *
- * This is why /open exists as a separate path from /home — we want
- * /home to always open in the browser (it's the web app), and /open
- * to be the universal-link entry point that either opens the native
- * app or falls back to /home.
+ *   - AUTHENTICATED user → redirect to /home (the web app dashboard).
+ *   - UNAUTHENTICATED user → redirect to the App Store listing. The
+ *     App Store shows "OPEN" if the app is already installed (opens it)
+ *     or "GET" if not (downloads it). This covers all states with zero
+ *     dead ends.
+ *
+ * Why not always redirect to /home: /home requires auth. An
+ * unauthenticated user (clicking from an email) would bounce to
+ * /auth/signin — a confusing dead end when they expected to open an
+ * app they already have.
  */
-export default function OpenPage() {
-  redirect("/home");
+
+const APP_STORE_URL =
+  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+
+export default async function OpenPage() {
+  const session = await getServerSession(getAuthOptions());
+
+  if (session?.user?.id) {
+    // Logged in → send to the web app dashboard.
+    redirect("/home");
+  }
+
+  // Not logged in → App Store handles both "open" and "download."
+  redirect(APP_STORE_URL);
 }

@@ -19,7 +19,7 @@ export const winback14d: TrialEmailTemplate = {
       ? `Hi ${escapeHtml(rawFirst)},`
       : "Hi there,";
 
-    const appLink = `${v.appUrl}/open`;
+    const appLink = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
     const content = `
       <tr>
