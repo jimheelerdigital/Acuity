@@ -32,6 +32,7 @@ import { recoverySignupNoCheckout } from "./recovery-signup-no-checkout";
 import { recoveryDownloadReminder } from "./recovery-download-reminder";
 import { firstInsight } from "./first-insight";
 import { keepMomentum } from "./keep-momentum";
+import { trialEnding } from "./trial-ending";
 import { welcomeDay0 } from "./welcome-day0";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
@@ -59,6 +60,7 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     recovery_download_reminder: recoveryDownloadReminder,
     first_insight: firstInsight,
     keep_momentum: keepMomentum,
+    trial_ending: trialEnding,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

@@ -216,6 +216,37 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // 8. TRIAL ENDING — 2 days before trialEndsAt
+      //    Active trial, has recorded at least 1 debrief, NOT paid,
+      //    no card/payment method on file. Fires once per user.
+      //    Fail-safe: if payment status is ambiguous (stripeCustomerId
+      //    is set but subscriptionStatus is TRIAL), do NOT email.
+      // ═══════════════════════════════════════════════════════════
+      const trialEndingWindow = {
+        // trialEndsAt between 24h and 72h from now → "~2 days left"
+        gte: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        lt: new Date(now.getTime() + 72 * 60 * 60 * 1000),
+      };
+
+      const trialEndingCandidates = await prisma.user.findMany({
+        where: {
+          subscriptionStatus: "TRIAL",
+          trialEndsAt: trialEndingWindow,
+          totalRecordings: { gte: 1 },
+          // No payment on ANY platform — fail-safe: exclude anyone
+          // who has ever interacted with a payment system.
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+          appleOriginalTransactionId: null,
+        },
+        select: { id: true },
+      });
+
+      for (const user of trialEndingCandidates) {
+        await trySend(user.id, "trial_ending");
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 7. KEEP MOMENTUM — early encouragement at 2 recordings
       //    2–4 completed recordings, first recording 48hr+ ago.
       //    Skipped if user is already at 5+ recordings (the

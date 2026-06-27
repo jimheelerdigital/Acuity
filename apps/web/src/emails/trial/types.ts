@@ -56,4 +56,5 @@ export type TrialEmailKey =
   | "recovery_day6_nudge"
   | "recovery_download_reminder"
   | "first_insight"
-  | "keep_momentum";
+  | "keep_momentum"
+  | "trial_ending";

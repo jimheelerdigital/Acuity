@@ -39,6 +39,7 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   recovery_download_reminder: true, // #32 download reminder
   first_insight: true, // activation: fires once at ~5 recordings w/ real insight
   keep_momentum: true, // encouragement: fires once at 2 recordings, 48h after first
+  trial_ending: true, // trial-ending: fires ~2d before trialEndsAt, recorded users only, no card on file
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get
