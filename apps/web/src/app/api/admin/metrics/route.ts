@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -970,7 +971,7 @@ export async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
       SELECT DATE_TRUNC('week', "createdAt")::date::text as week, COUNT(*)::bigint as count
       FROM "User"
       WHERE "createdAt" >= ${start} AND "createdAt" <= ${end}
-      ${DASHBOARD_EPOCH ? prisma.$queryRawUnsafe(`AND "createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'`) : prisma.$queryRawUnsafe("")}
+      ${DASHBOARD_EPOCH ? Prisma.sql`AND "createdAt" >= ${DASHBOARD_EPOCH}` : Prisma.empty}
       GROUP BY DATE_TRUNC('week', "createdAt")
       ORDER BY week ASC
     `.catch(() => []),
@@ -984,7 +985,7 @@ export async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
         '1 week'::interval
       ) as w(week)
       LEFT JOIN "User" u ON u."createdAt" <= w.week + interval '6 days'
-      ${DASHBOARD_EPOCH ? prisma.$queryRawUnsafe(`AND u."createdAt" >= '${DASHBOARD_EPOCH.toISOString()}'`) : prisma.$queryRawUnsafe("")}
+      ${DASHBOARD_EPOCH ? Prisma.sql`AND u."createdAt" >= ${DASHBOARD_EPOCH}` : Prisma.empty}
       GROUP BY w.week ORDER BY w.week ASC
     `.catch(() => []),
 
