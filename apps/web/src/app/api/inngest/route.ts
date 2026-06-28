@@ -45,6 +45,7 @@ import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly"
 import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twice-daily";
 import { commitExtractionBackstopFn } from "@/inngest/functions/commit-extraction-backstop";
 import { stripeWebhookHealthFn } from "@/inngest/functions/stripe-webhook-health";
+import { generateInsightsCronFn } from "@/inngest/functions/generate-insights-cron";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -95,6 +96,7 @@ const handler = serve({
     downloadReminderEmailFn,
     achievementsNightlyFn,
     notificationsTwiceDailyFn,
+    generateInsightsCronFn,
   ],
 });
 
