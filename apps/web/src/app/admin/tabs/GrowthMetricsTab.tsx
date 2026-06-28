@@ -26,6 +26,16 @@ type GrowthMetricsData = {
     referral: number;
   }[];
 
+  platformAcquisition: {
+    source: string;
+    platform: string;
+    signups: number;
+    activated: number;
+    activationPct: number;
+    openedNoRecord: number;
+    neverOpened: number;
+  }[];
+
   cohorts: {
     cohortWeek: string;
     signups: number;
@@ -262,6 +272,69 @@ export default function GrowthMetricsTab({
 
       <ChartCard title="Signups by Source">
         <StackedBarChart data={data.signupsBySource} />
+      </ChartCard>
+
+      <ChartCard title="Acquisition funnel — source × platform">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-white/40">
+                <th className="py-2 pr-4 font-medium">Source</th>
+                <th className="py-2 pr-4 font-medium">Platform</th>
+                <th className="py-2 pr-4 text-right font-medium">Signups</th>
+                <th className="py-2 pr-4 text-right font-medium">Activated</th>
+                <th className="py-2 pr-4 text-right font-medium">Activation %</th>
+                <th className="py-2 pr-4 text-right font-medium">Opened, no record</th>
+                <th className="py-2 text-right font-medium">Never opened</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data.platformAcquisition ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-white/30">
+                    No data in range
+                  </td>
+                </tr>
+              ) : (
+                (data.platformAcquisition ?? []).map((r, i) => {
+                  const pctColor =
+                    r.activationPct < 15
+                      ? "#FB7185"
+                      : r.activationPct < 35
+                        ? "#FBBF24"
+                        : "#34D399";
+                  return (
+                    <tr
+                      key={i}
+                      className="border-t border-white/5 text-white/80"
+                    >
+                      <td className="py-2 pr-4">{r.source}</td>
+                      <td className="py-2 pr-4">{r.platform}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {r.signups}
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {r.activated}
+                      </td>
+                      <td
+                        className="py-2 pr-4 text-right font-semibold tabular-nums"
+                        style={{ color: pctColor }}
+                      >
+                        {r.activationPct.toFixed(1)}%
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums text-white/50">
+                        {r.openedNoRecord}
+                      </td>
+                      <td className="py-2 text-right tabular-nums text-white/50">
+                        {r.neverOpened}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </ChartCard>
 
       {/* Projections callout */}

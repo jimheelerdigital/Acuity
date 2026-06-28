@@ -39,6 +39,23 @@ type BusinessMetricsData = {
   profitTrend: { month: string; revenue: number; costs: number; net: number }[];
   breakEvenUsers: number;
   runwayMonths: number | null;
+  staleStripeRecords: {
+    email: string;
+    name: string | null;
+    subscriptionStatus: string;
+    stripeSubscriptionId: string | null;
+    stripeFirstFailureAt: string | null;
+    createdAt: string;
+    lastSeenAt: string | null;
+    daysInactive: number | null;
+  }[];
+  pastDueRecovery: {
+    email: string;
+    name: string | null;
+    subscriptionSource: string | null;
+    stripeFirstFailureAt: string | null;
+    createdAt: string;
+  }[];
 };
 
 /* ── Formatting helpers ────────────────────────────────────────────── */
@@ -309,6 +326,123 @@ export default function BusinessMetricsTab({
             </p>
           </div>
         )}
+
+        {/* Stripe reconciliation (analytics 2026-06-16) — admin-only PII */}
+        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-900/10 p-4">
+          <p className="text-xs text-amber-200/70">
+            ⚠️ Revenue figures above are <strong>estimates</strong>. For
+            authoritative numbers see the Stripe Dashboard + App Store Connect
+            Sales reports. The tables below are reconciliation tools — compare
+            against Stripe directly.
+          </p>
+        </div>
+
+        <ChartCard
+          title={`Stale Stripe records — Stripe PRO users by last seen (${(data.staleStripeRecords ?? []).length})`}
+          className="mt-4"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-white/40">
+                  <th className="py-2 pr-4 font-medium">Email</th>
+                  <th className="py-2 pr-4 font-medium">Status</th>
+                  <th className="py-2 pr-4 font-medium">Sub ID</th>
+                  <th className="py-2 pr-4 text-right font-medium">
+                    Days inactive
+                  </th>
+                  <th className="py-2 text-right font-medium">Last seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.staleStripeRecords ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-white/30">
+                      No Stripe PRO users
+                    </td>
+                  </tr>
+                ) : (
+                  (data.staleStripeRecords ?? []).map((r, i) => {
+                    const stale = r.daysInactive != null && r.daysInactive > 14;
+                    return (
+                      <tr
+                        key={i}
+                        className="border-t border-white/5 text-white/75"
+                      >
+                        <td className="py-2 pr-4">{r.email}</td>
+                        <td className="py-2 pr-4">{r.subscriptionStatus}</td>
+                        <td className="py-2 pr-4 font-mono text-xs text-white/40">
+                          {r.stripeSubscriptionId ?? "—"}
+                        </td>
+                        <td
+                          className="py-2 pr-4 text-right tabular-nums"
+                          style={
+                            stale
+                              ? { color: "#FB7185", fontWeight: 600 }
+                              : undefined
+                          }
+                        >
+                          {r.daysInactive ?? "—"}
+                          {stale ? " ⚠" : ""}
+                        </td>
+                        <td className="py-2 text-right tabular-nums text-white/50">
+                          {r.lastSeenAt
+                            ? new Date(r.lastSeenAt).toLocaleDateString()
+                            : "never"}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </ChartCard>
+
+        <ChartCard
+          title={`PAST_DUE recovery candidates (${(data.pastDueRecovery ?? []).length})`}
+          className="mt-4"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-white/40">
+                  <th className="py-2 pr-4 font-medium">Email</th>
+                  <th className="py-2 pr-4 font-medium">Source</th>
+                  <th className="py-2 text-right font-medium">First failure</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.pastDueRecovery ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-6 text-center text-white/30">
+                      No PAST_DUE users 🎉
+                    </td>
+                  </tr>
+                ) : (
+                  (data.pastDueRecovery ?? []).map((r, i) => (
+                    <tr
+                      key={i}
+                      className="border-t border-white/5 text-white/75"
+                    >
+                      <td className="py-2 pr-4">{r.email}</td>
+                      <td className="py-2 pr-4">
+                        {r.subscriptionSource ?? "—"}
+                      </td>
+                      <td className="py-2 text-right tabular-nums text-white/50">
+                        {r.stripeFirstFailureAt
+                          ? new Date(
+                              r.stripeFirstFailureAt
+                            ).toLocaleDateString()
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </ChartCard>
       </section>
     </div>
   );
