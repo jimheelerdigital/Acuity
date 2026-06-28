@@ -111,14 +111,16 @@ const SOURCE_COLORS: Record<string, string> = {
 };
 
 function BarChart({ data, labelKey, valueKey, color = "#7C5CFC", formatLabel, formatValue }: {
-  data: Record<string, unknown>[];
+  data?: Record<string, unknown>[] | null;
   labelKey: string;
   valueKey: string;
   color?: string;
   formatLabel?: (v: string) => string;
   formatValue?: (v: number) => string;
 }) {
-  if (data.length === 0) return <p className="text-sm text-white/30 py-12 text-center">Not enough data</p>;
+  // Guard against a missing/undefined data field (e.g. a metric the API
+  // doesn't return) — render "Not enough data" instead of crashing the tab.
+  if (!data || data.length === 0) return <p className="text-sm text-white/30 py-12 text-center">Not enough data</p>;
   const max = Math.max(...data.map((d) => Number(d[valueKey]) || 0), 1);
   return (
     <div className="flex items-end gap-1 h-48 pt-4">
@@ -140,8 +142,8 @@ function BarChart({ data, labelKey, valueKey, color = "#7C5CFC", formatLabel, fo
   );
 }
 
-function StackedBarChart({ data }: { data: GrowthMetricsData["signupsBySource"] }) {
-  if (data.length === 0) return <p className="text-sm text-white/30 py-12 text-center">Not enough data</p>;
+function StackedBarChart({ data }: { data?: GrowthMetricsData["signupsBySource"] | null }) {
+  if (!data || data.length === 0) return <p className="text-sm text-white/30 py-12 text-center">Not enough data</p>;
   const max = Math.max(...data.map((d) => d.direct + d.meta + d.organic + d.referral), 1);
   return (
     <div>
