@@ -19,6 +19,7 @@
 Account rls
 Achievement rls    # v1.3 catalog of achievement definitions; signed-in users read via /api/achievements
 AdminAuditLog rls
+AdminInsight rls    # MRI diagnostic AI analysis (revenue/churn/MRI findings) — business-sensitive; written only via service-role Prisma
 BlogPrunerRun no-rls    # operational logging table for blog pruner cron, no PII — only stores blog post slugs, URLs, GSC coverage states, and timestamps
 BlogTopicQueue rls
 CalendarConnection rls
