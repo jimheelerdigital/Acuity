@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-06-27] — Admin dashboard: analytics tabs (#11) + MRI diagnostic (#10)
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hash:** 353a52d (#11), 2b146ad (#10)
+
+### In plain English (for Keenan)
+The internal admin dashboard got two big upgrades, merged back-to-back.
+
+First (#11), new analytics tabs: **Features Adoption** (which features people who've activated actually use, separating real engagement from auto-created stuff), **Engagement Distribution** (how many users are one-and-done vs. dabblers vs. habit-formers), plus richer **Growth** (acquisition broken down by platform × source, e.g. iOS-from-Meta vs web-from-organic) and **Business** (Stripe reconciliation to catch stale billing records, a PAST_DUE recovery list, and new 60-day + all-time date ranges).
+
+Second (#10), a whole new **MRI** tab — a single-page "health scan" of the business across ten sections (system health, web funnel, activation funnel, trial→paid, acquisition, feature usage, engagement, failure surfaces, revenue, and a per-user lookup) topped by an **AI Insights panel**: Claude reads the live metrics and writes back the top issues, ranked, with evidence and a recommended action — refreshed every 4 hours.
+
+No user-facing app change — this is all internal tooling for us to see what's working.
+
+### Technical changes (for Jimmy)
+- **#11** (squash 353a52d): new `FeatureAdoptionTab` + `EngagementDistributionTab`; enhanced `GrowthMetricsTab` (source×platform acquisition funnel table) + `BusinessMetricsTab` (Stripe stale-record reconciliation, PAST_DUE recovery, infra-cost/P&L). New `getFeatureAdoption` / `getEngagementDistribution` (+ growth/business enhancements) in `apps/web/src/app/api/admin/metrics/route.ts`; `TimeRangeSelector` gains 60d + all-time. All additive — `$queryRaw` scoped to the dashboard start/end range, wrapped in the existing `safe()` guard.
+- **#10** (squash 2b146ad): `MRITab.tsx` + 11 sections under `apps/web/src/app/admin/tabs/mri/` (System Health, Web/Activation/Trial funnels, Acquisition, Feature Usage, Engagement, Failure Surfaces, Revenue, User Lookup, AIInsightsPanel — IntersectionObserver-gated). API: `/api/admin/mri` (section dispatch), `/api/admin/mri/insights` (GET latest / `?regenerate`, 5-min/admin rate limit, `maxDuration=300`), `/api/admin/mri/user/[id]` (audited timeline). Server: `apps/web/src/lib/mri/` (`queries.ts`, `insights.ts`, `snapshot.ts`, `types.ts`).
+- New Prisma model **`AdminInsight`** (snapshotData/insights/summary/modelUsed/tokens/costCents/rangeUsed/generatedBy; `generatedAt desc` index). No user FK — standalone admin analysis.
+- New Inngest cron **`generate-insights-cron`** (`0 */4 * * *`) → `generateInsights("cron","30d")`; logs to `ClaudeCallLog` (purpose `admin_insights`). Registered in the serve route.
+- RLS: `AdminInsight rls` in `prisma/rls-allowlist.txt` + `supabase/migrations/2026-06-23_admin_insight_rls.sql` (enable RLS + RESTRICTIVE deny-all, service role bypasses).
+
+### Manual steps needed
+- [x] `AdminInsight` table created in prod — done (Supabase migration `create_admin_insight`, applied 2026-06-16 by the PR author).
+- [x] RLS enabled + deny-all policy on `AdminInsight` — done + verified this session (RESTRICTIVE, `FOR ALL USING (false)`).
+- [ ] Confirm `ANTHROPIC_API_KEY` is set in the production env (the AI Insights generation + the 4h cron depend on it). Believed present (other Claude features run in prod) — verify if the Insights panel shows "Regenerate failed".
+- [ ] **Visual click-through of `/admin` in prod is still pending a human** (see Notes) — Jimmy/Keenan to eyeball each tab + the MRI sections.
+
+### Notes
+- **Merge/recovery saga:** #10 was stacked on #11's branch. Squash-merging #11 with branch-delete auto-*closed* #10 (GitHub closes a PR when its base branch is deleted rather than retargeting). Recovered: recreated the base ref, reopened #10, retargeted to main. Then rebased #10 onto main with `git rebase --onto main <#11-tip>` to replay only #10's 3 own commits (avoiding re-applying #11's already-squashed work) — clean 3-way auto-merge of the 3 overlapping files (`schema.prisma`, `inngest/route.ts`, `metrics/route.ts`), verified with `prisma validate` + full content check (4,407 lines intact). Added the missing `AdminInsight` allowlist entry + RLS migration (the original `rls-coverage` failure). Force-pushed; all checks green before merge.
+- **`AdminInsight` was created via a Supabase migration, not `prisma db push`** — the model was added to `schema.prisma` afterward to give Prisma typed access. The table predates the merge, so the AI Insights panel won't 500 on a missing table.
+- **MRI route is the higher-risk surface:** unlike `/api/admin/metrics` (every query wrapped in `safe()` + client `_error` convention), `/api/admin/mri` calls section query fns directly with no route-level try/catch. The raw-SQL queries self-guard with `.catch(() => [])`, but a few non-raw Prisma calls (`getRevenue` stale-Stripe/PAST_DUE `findMany`, `getUserTimeline` `findMany`) don't — if a table/column errors, that section 500s with no fallback. Worth a guard pass in a follow-up; flagged, not fixed.
+- **Inactive files:** `FunnelAnalyticsTab.broken.tsx` (orphaned backup, not imported); `GuideTab.tsx` is a 0-byte empty file (the Settings → Guide sub-tab renders blank).
+- Production deploy of both merges is `READY`; no production 500s observed post-merge (small traffic window).
+
+---
+
 ## [2026-06-27] — Fixed dead /open link — all email CTAs now use App Store listing
 
 **Requested by:** Keenan
