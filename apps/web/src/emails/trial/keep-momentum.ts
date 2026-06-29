@@ -6,7 +6,7 @@
  *          same-day burst). Only fires for users with < 5 recordings
  *          (above that, the first_insight email takes over).
  * Subject: "You've done two. Here's where it starts to click."
- * From: Keenan at Acuity <hello@getacuity.io>
+ * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  *
  * Fires once per user. NO CTA button, NO app/web link — this is
  * purely a warm reminder of why the habit pays off.

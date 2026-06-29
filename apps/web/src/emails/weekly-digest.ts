@@ -26,7 +26,11 @@ import {
   section,
 } from "./digest-layout";
 
-const EMAIL_FROM = process.env.EMAIL_FROM ?? "noreply@getacuity.io";
+// Marketing-style engagement email — sends FROM Keenan (real, monitored
+// inbox), not no-reply. Hardcoded, not env-driven: prod EMAIL_FROM is the
+// system no-reply address used by transactional senders. From=keenan@ also
+// routes any replies to keenan@ without a separate reply-to.
+const EMAIL_FROM = '"Keenan from Acuity" <keenan@getacuity.io>';
 
 export interface WeeklyDigestInput {
   to: string;

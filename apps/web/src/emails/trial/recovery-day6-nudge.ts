@@ -4,7 +4,7 @@
  * Trigger: User has 3+ recordings, Day 6 of trial (Saturday).
  *          Their weekly report generates tomorrow.
  * Subject: "Your first report arrives tomorrow"
- * From: Keenan at Acuity <hello@getacuity.io>
+ * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  */
 
 import { escapeHtml } from "@/lib/escape-html";

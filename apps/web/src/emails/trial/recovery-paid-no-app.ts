@@ -4,7 +4,7 @@
  * Trigger: User has active subscription but firstRecordingAt IS NULL.
  *          2 hours after signup.
  * Subject: "Your trial started — one step left"
- * From: Keenan at Acuity <hello@getacuity.io>
+ * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  */
 
 import { escapeHtml } from "@/lib/escape-html";

@@ -4,7 +4,7 @@
  * Trigger: User has funnel_checkout_started but no active subscription.
  *          30 minutes after abandonment.
  * Subject: "You were almost there"
- * From: Keenan at Acuity <hello@getacuity.io>
+ * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  *
  * Dynamic per diagnostic branch — the one-liner references what they
  * told us during the quiz to make it feel personal, not automated.

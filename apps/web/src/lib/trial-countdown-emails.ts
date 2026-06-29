@@ -376,7 +376,11 @@ export async function sendCountdownEmail(
     const { getResendClient } = await import("@/lib/resend");
     const resend = getResendClient();
     const resp = await resend.emails.send({
-      from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+      // Marketing-style trial nudges — send FROM Keenan (real, monitored
+      // inbox), not no-reply. Hardcoded, not env-driven (prod EMAIL_FROM is
+      // the system no-reply address). Currently paused via kill switches;
+      // this keeps them correct if re-enabled.
+      from: '"Keenan from Acuity" <keenan@getacuity.io>',
       to: user.email,
       subject,
       html,

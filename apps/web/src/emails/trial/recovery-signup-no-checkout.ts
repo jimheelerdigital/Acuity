@@ -4,7 +4,7 @@
  * Trigger: User has funnel_signup_completed but no funnel_checkout_started.
  *          1 hour after signup.
  * Subject: "Your insight profile is waiting"
- * From: Keenan at Acuity <hello@getacuity.io>
+ * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  */
 
 import { escapeHtml } from "@/lib/escape-html";

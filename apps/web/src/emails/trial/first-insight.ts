@@ -4,7 +4,7 @@
  * Trigger: User has ~5 completed recordings AND at least one real
  *          UserInsight observation exists.
  * Subject: "Acuity noticed something"
- * From: Keenan at Acuity <hello@getacuity.io>
+ * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  *
  * Fires once per user. The observation text is pulled from the
  * product's real UserInsight rows (same data the app's Insights page

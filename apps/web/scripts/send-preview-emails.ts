@@ -24,7 +24,7 @@ if (!RESEND_API_KEY) {
 
 const resend = new Resend(RESEND_API_KEY);
 const TO = "keenan@heelerdigital.com";
-const FROM = "Acuity <hello@getacuity.io>";
+const FROM = '"Keenan from Acuity" <keenan@getacuity.io>';
 
 // Import templates
 import { firstInsight } from "../src/emails/trial/first-insight";

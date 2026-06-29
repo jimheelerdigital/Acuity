@@ -27,6 +27,23 @@ import { safeLog } from "@/lib/safe-log";
 
 const DEFAULT_APP_URL = "https://www.getacuity.io";
 
+/**
+ * FROM address for every lifecycle/recovery/marketing email that flows
+ * through sendTrialEmail (keep_momentum, first_insight, trial_ending, all
+ * rescue_*, never_recorded_*, stall_*, winback_*, milestone_*, nr_winback_*).
+ *
+ * These are personal, reply-inviting emails — they send from Keenan's real,
+ * monitored inbox, NOT a no-reply address. Intentionally hardcoded and NOT
+ * driven by process.env.EMAIL_FROM: that env var is the system/no-reply
+ * address used by transactional senders (verification, password reset,
+ * billing), and in production it is set to a no-reply mailbox. Reading it
+ * here would route these human emails through no-reply again.
+ *
+ * keenan@getacuity.io is on the verified getacuity.io domain (SPF/DKIM
+ * already cover it), so sending FROM it has no deliverability cost.
+ */
+const LIFECYCLE_FROM = '"Keenan from Acuity" <keenan@getacuity.io>';
+
 export interface MinimalUser {
   id: string;
   email: string;
@@ -233,7 +250,7 @@ export async function sendTrialEmail(
     const { getResendClient } = await import("@/lib/resend");
     const resend = getResendClient();
     const sendResp = await resend.emails.send({
-      from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+      from: LIFECYCLE_FROM,
       replyTo: opts.replyTo ?? undefined,
       to: user.email,
       subject,

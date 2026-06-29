@@ -6,7 +6,7 @@
  *          card/payment method on file (stripeCustomerId is null,
  *          stripeSubscriptionId is null, no Apple/Google IAP).
  * Subject: "Your Acuity trial ends in 2 days"
- * From: Keenan at Acuity <hello@getacuity.io>
+ * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  *
  * Fires once per user. Single CTA to /upgrade. Copy assumes the user
  * HAS recorded (never-recorded users are excluded at the orchestrator).
