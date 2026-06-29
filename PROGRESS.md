@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-06-29] — Lifecycle emails now come from Keenan, not a no-reply address
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 265c6663
+
+### In plain English (for Keenan)
+All the "human" emails Acuity sends — trial onboarding nudges, recovery emails for people who stalled, milestone congrats, win-backs, and the weekly/monthly recap digests — were going out from the robotic no-reply system address. Now they come from "Keenan from Acuity" (keenan@getacuity.io), a real inbox you actually read. That makes them feel personal and invites replies, which is the whole point of these emails. Nothing changed for the boring transactional mail (email verification, password resets, login links) or the internal alerts that ping us — those still come from the system address, which is correct for that kind of mail. To prove it works, all 11 onboarding/recovery preview emails were sent to your heelerdigital inbox from the new address — check that the sender shows as "Keenan from Acuity".
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/trial-emails.ts`: added a hardcoded `LIFECYCLE_FROM = '"Keenan from Acuity" <keenan@getacuity.io>'` constant and used it in the `sendTrialEmail` Resend call (was `process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>"`). This is the single send path for all 26 trial keys (keep_momentum, first_insight, trial_ending, rescue_*, never_recorded_*, stall_*, winback_*, milestone_*, nr_winback_*, recovery_*). Intentionally hardcoded, NOT env-driven — prod `EMAIL_FROM` is the no-reply mailbox, so reading it would re-route these back through no-reply.
+- `apps/web/src/emails/weekly-digest.ts` and `monthly-digest.ts`: `EMAIL_FROM` constant changed from `process.env.EMAIL_FROM ?? "noreply@getacuity.io"` to the keenan@ from-string. (monthly is currently paused via the `monthly_digest` kill switch — this keeps it correct if re-enabled.)
+- `apps/web/src/lib/trial-countdown-emails.ts`: same from-address change (currently paused via kill switches).
+- `apps/web/src/emails/trial/*.ts` (8 templates): corrected stale `From:` doc-comment headers that still said `hello@getacuity.io` — comments only, the actual address is set centrally in `sendTrialEmail`.
+- `apps/web/scripts/send-preview-emails.ts`: preview `FROM` updated to keenan@ so previews match prod.
+- **Left unchanged (verified correct):** auth.ts (magic link/verify), forgot-password, signup, mobile-signup, mobile-magic-link, admin magic-link, payment-failed, data-export-ready, state-of-me-ready → transactional, stay on `EMAIL_FROM`/no-reply. founder-notifications, stripe-webhook-health, rls-audit, waitlist confirm/reactivation → internal/brand, stay on `hello@getacuity.io`. bootstrap-user welcome + admin send-email already used `"Keenan" <keenan@getacuity.io>`.
+
+### Manual steps needed
+- [ ] Push to main when ready (Keenan — held back per request; say "push it")
+- [ ] After deploy, confirm a live lifecycle send (e.g. trigger a recovery email or wait for the orchestrator) shows "Keenan from Acuity" as sender in a real inbox.
+
+### Notes
+- The `from` is an SMTP envelope field, not part of the HTML body — so re-rendering template HTML does NOT show the change. Only a live send proves it, which is why the 11-email preview run (to keenan@heelerdigital.com) was used as verification.
+- `keenan@getacuity.io` is on the already-verified getacuity.io domain; SPF/DKIM cover it, so sending from it carries no deliverability penalty vs. the previous address.
+- `npx tsc --noEmit` shows only pre-existing, unrelated errors (admin/adlab pages, untracked `send-welcome-test.ts`); none in the files touched here, and the digest/template edits were comment- or string-only.
+- Did NOT commit unrelated working-tree noise: auto-generated `next-env.d.ts`, the `keenan-headshot.png` deletion, and untracked diagnostic scripts were left unstaged.
+
+---
+
 ## [2026-06-27] — Admin dashboard: analytics tabs (#11) + MRI diagnostic (#10)
 
 **Requested by:** Both
