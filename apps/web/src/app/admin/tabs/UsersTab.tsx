@@ -44,6 +44,7 @@ type SummaryStats = {
 };
 
 type DetailUser = ListUser & {
+  subscriptionSource: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   stripeCurrentPeriodEnd: string | null;
@@ -490,6 +491,7 @@ function UserDetailModal({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
+  const [showCancelSub, setShowCancelSub] = useState(false);
   const [sentEmails, setSentEmails] = useState<SentEmail[] | null>(null);
 
   const load = useCallback(async () => {
@@ -643,8 +645,33 @@ function UserDetailModal({
               <button onClick={resendWelcome} disabled={busy} className="rounded-md bg-emerald-500/20 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-500/30">Resend welcome</button>
               <button onClick={sendMagicLink} disabled={busy} className="rounded-md bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/20">Password reset</button>
               <button onClick={extendTrial} disabled={busy} className="rounded-md bg-[#7C5CFC] px-3 py-2 text-xs font-medium">Extend trial…</button>
+              {(() => {
+                const source = data.user.subscriptionSource;
+                const isStore = source === "apple" || source === "google_play";
+                if (isStore) {
+                  return (
+                    <span className="rounded-md bg-white/5 px-3 py-2 text-xs text-white/40" title="Apple/Play subscriptions can only be canceled in their store">
+                      Sub via {source === "apple" ? "App Store" : "Play"} — cancel in store
+                    </span>
+                  );
+                }
+                if (data.user.stripeSubscriptionId) {
+                  return (
+                    <button onClick={() => setShowCancelSub(true)} disabled={busy} className="rounded-md bg-amber-500/20 px-3 py-2 text-xs font-medium text-amber-300 hover:bg-amber-500/30">Cancel subscription…</button>
+                  );
+                }
+                return null;
+              })()}
               <button onClick={softDelete} disabled={busy} className="rounded-md bg-red-500/20 px-3 py-2 text-xs font-medium text-red-300 hover:bg-red-500/30">Delete…</button>
             </div>
+            {showCancelSub && (
+              <CancelSubscriptionModal
+                userId={userId}
+                email={data.user.email}
+                onClose={() => setShowCancelSub(false)}
+                onDone={() => { setShowCancelSub(false); load(); onMutation(); }}
+              />
+            )}
           </div>
         )}
       </div>
@@ -774,6 +801,185 @@ function BulkEmailModal({ onClose }: { onClose: () => void }) {
             <div className="flex gap-2">
               <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className={`rounded-md px-4 py-2 text-xs font-medium text-white disabled:opacity-50 ${confirming ? "bg-amber-600" : "bg-[#7C5CFC]"}`}>{sending ? "Sending…" : confirming ? "Yes, send" : "Send to all"}</button>
               <button onClick={onClose} className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20">Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Cancel Subscription Modal ───────────────────────────────────
+
+type CancelPreviewResponse =
+  | {
+      eligible: false;
+      reason: string;
+      subscriptionSource: string | null;
+      email: string;
+      subscriptionStatus: string;
+    }
+  | {
+      eligible: true;
+      email: string;
+      subscriptionStatus: string;
+      subscriptionSource: string | null;
+      preview: {
+        subscription: {
+          id: string;
+          status: string;
+          currentPeriodStart: string | null;
+          currentPeriodEnd: string | null;
+          cancelAtPeriodEnd: boolean;
+          latestInvoiceStatus: string | null;
+        } | null;
+        subscriptionMissing: boolean;
+        charges: {
+          id: string;
+          amountCents: number;
+          currency: string;
+          status: string;
+          refundedCents: number;
+          refundableCents: number;
+          createdAt: string;
+        }[];
+        refundableCents: number;
+        refundableCount: number;
+        totalCollectedCents: number;
+        currency: string;
+      };
+    };
+
+type CancelExecResult = {
+  refunds: { chargeId: string; refundId: string; amountCents: number }[];
+  totalRefundedCents: number;
+  canceledStatus: string | null;
+  dbVia: string;
+  finalStatus: string | null;
+  finalSubscriptionId: string | null;
+};
+
+function fmtMoney(cents: number, currency = "usd"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(cents / 100);
+}
+
+function CancelSubscriptionModal({
+  userId,
+  email,
+  onClose,
+  onDone,
+}: {
+  userId: string;
+  email: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [preview, setPreview] = useState<CancelPreviewResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<CancelExecResult | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/users/${userId}/cancel-subscription`, { cache: "no-store" });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error ?? "Failed to load preview");
+        setPreview(d);
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    })();
+  }, [userId]);
+
+  async function handleConfirm() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/cancel-subscription`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirmEmail: confirmEmail.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Cancel failed");
+      setResult(d.result);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const emailMatches = confirmEmail.trim().toLowerCase() === email.toLowerCase();
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+      <div className="w-full max-w-md rounded-lg bg-[#0A0A0F] p-6 text-white">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-semibold">Cancel subscription</h3>
+          <button onClick={onClose} className="text-sm text-white/40 hover:text-white">close</button>
+        </div>
+        {error && <div className="mb-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
+
+        {result ? (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md bg-green-500/10 px-3 py-2 text-green-300">
+              Done. Refunded {fmtMoney(result.totalRefundedCents)} across {result.refunds.length} charge{result.refunds.length !== 1 ? "s" : ""}; subscription {result.canceledStatus ?? "—"}.
+            </div>
+            <dl className="grid grid-cols-2 gap-2 rounded-md bg-[#13131F] p-3 text-xs">
+              <div><dt className="text-white/40">DB status</dt><dd>{result.finalStatus ?? "—"}</dd></div>
+              <div><dt className="text-white/40">Sub id</dt><dd>{result.finalSubscriptionId ?? "null"}</dd></div>
+              <div><dt className="text-white/40">Cleaned via</dt><dd>{result.dbVia}</dd></div>
+            </dl>
+            <button onClick={onDone} className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20">Done</button>
+          </div>
+        ) : !preview ? (
+          <p className="text-sm text-white/40">Loading preview…</p>
+        ) : !preview.eligible ? (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md bg-amber-500/10 px-3 py-2 text-amber-300">
+              {preview.reason === "not_applicable"
+                ? `This is a ${preview.subscriptionSource === "apple" ? "App Store" : "Google Play"} subscription — it can only be canceled in the store.`
+                : "This user has no Stripe customer — nothing to cancel here."}
+            </div>
+            <button onClick={onClose} className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20">Close</button>
+          </div>
+        ) : (
+          <div className="space-y-3 text-sm">
+            <dl className="grid grid-cols-2 gap-2 rounded-md bg-[#13131F] p-3 text-xs">
+              <div><dt className="text-white/40">Subscription</dt><dd>{preview.preview.subscription ? preview.preview.subscription.status : preview.preview.subscriptionMissing ? "not found on Stripe" : "none"}</dd></div>
+              <div><dt className="text-white/40">Collected</dt><dd>{fmtMoney(preview.preview.totalCollectedCents, preview.preview.currency)}</dd></div>
+            </dl>
+            <div className="rounded-md bg-[#13131F] p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">Charges ({preview.preview.charges.length})</div>
+              {preview.preview.charges.length === 0 ? (
+                <p className="text-xs text-white/40">None.</p>
+              ) : (
+                <ul className="space-y-1 text-xs">
+                  {preview.preview.charges.map((c) => (
+                    <li key={c.id} className="flex justify-between">
+                      <span className="text-white/60">{new Date(c.createdAt).toLocaleDateString()}</span>
+                      <span className={c.status === "succeeded" ? "text-white/80" : "text-white/40"}>{fmtMoney(c.amountCents, c.currency)} · {c.status}{c.refundedCents > 0 ? ` (−${fmtMoney(c.refundedCents, c.currency)})` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Will refund <strong>{fmtMoney(preview.preview.refundableCents, preview.preview.currency)}</strong> across {preview.preview.refundableCount} charge{preview.preview.refundableCount !== 1 ? "s" : ""} and cancel {preview.preview.subscription ? preview.preview.subscription.id : "the subscription"} immediately. This can&apos;t be undone.
+            </div>
+            <div>
+              <label className="text-xs text-white/50">Type <span className="font-mono text-white/70">{email}</span> to confirm</label>
+              <input type="text" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} className="mt-1 w-full rounded-md bg-[#13131F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30" placeholder={email} />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleConfirm} disabled={!emailMatches || submitting} className="rounded-md bg-red-500/20 px-4 py-2 text-xs font-medium text-red-300 hover:bg-red-500/30 disabled:opacity-40">{submitting ? "Canceling…" : "Cancel + refund"}</button>
+              <button onClick={onClose} disabled={submitting} className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20">Back</button>
             </div>
           </div>
         )}
