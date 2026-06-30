@@ -24,6 +24,14 @@ interface Props {
   subscriptionStatus: string;
   hasStripeCustomer: boolean;
   periodEnd: string | null;
+  /** True when the active sub is scheduled to cancel at period end
+   *  (Stripe cancel_at_period_end). Flips the Subscription card from
+   *  "Renews [date]" to "canceled — access until [date]". */
+  cancelAtPeriodEnd: boolean;
+  /** True when the page was rendered from the Stripe Customer Portal
+   *  return_url (?portal=returned). Triggers a status refetch + a
+   *  one-time "we've updated your subscription" confirmation banner. */
+  portalReturned: boolean;
   trialEndsAt: string | null;
   /** Slice 5: stamped by trial-expiration cron at TRIAL → FREE
    *  transition. TrialStatusCard reads it to show the post-expiry
@@ -78,6 +86,8 @@ export default function AccountClient({
   subscriptionStatus,
   hasStripeCustomer,
   periodEnd,
+  cancelAtPeriodEnd,
+  portalReturned,
   trialEndsAt,
   trialExpiredAt,
   weeklyEmailEnabled,
@@ -146,6 +156,8 @@ export default function AccountClient({
             status={subscriptionStatus}
             hasStripeCustomer={hasStripeCustomer}
             periodEnd={periodEnd}
+            cancelAtPeriodEnd={cancelAtPeriodEnd}
+            portalReturned={portalReturned}
             trialEndsAt={trialEndsAt}
             justUpgraded={justUpgraded}
           />
@@ -675,12 +687,16 @@ function SubscriptionSection({
   status: initialStatus,
   hasStripeCustomer: initialHasStripeCustomer,
   periodEnd: initialPeriodEnd,
+  cancelAtPeriodEnd: initialCancelAtPeriodEnd,
+  portalReturned,
   trialEndsAt,
   justUpgraded,
 }: {
   status: string;
   hasStripeCustomer: boolean;
   periodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  portalReturned: boolean;
   trialEndsAt: string | null;
   justUpgraded: boolean;
 }) {
@@ -691,6 +707,12 @@ function SubscriptionSection({
     initialHasStripeCustomer
   );
   const [periodEnd, setPeriodEnd] = useState(initialPeriodEnd);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(
+    initialCancelAtPeriodEnd
+  );
+  // One-time "we've updated your subscription" banner after the user
+  // returns from the Stripe Customer Portal (?portal=returned).
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   // UI state for the post-upgrade window.
   const [bannerVisible, setBannerVisible] = useState(justUpgraded);
@@ -741,6 +763,7 @@ function SubscriptionSection({
             user?: {
               subscriptionStatus?: string;
               stripeCurrentPeriodEnd?: string | null;
+              stripeCancelAtPeriodEnd?: boolean;
               hasStripeCustomer?: boolean;
             };
           };
@@ -748,6 +771,7 @@ function SubscriptionSection({
           if (nextStatus === "PRO") {
             setStatus("PRO");
             setHasStripeCustomer(Boolean(body.user?.hasStripeCustomer));
+            setCancelAtPeriodEnd(Boolean(body.user?.stripeCancelAtPeriodEnd));
             if (body.user?.stripeCurrentPeriodEnd) {
               setPeriodEnd(body.user.stripeCurrentPeriodEnd);
             }
@@ -780,7 +804,60 @@ function SubscriptionSection({
     };
   }, [polling]);
 
+  // Post-portal-return: the user just came back from Stripe's hosted
+  // portal, where they may have canceled. Refetch immediately so the card
+  // reflects the new cancel_at_period_end state without a manual reload,
+  // show a one-time confirmation banner, and strip ?portal=returned so a
+  // refresh doesn't re-trigger it.
+  useEffect(() => {
+    if (!portalReturned) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/user/me", {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (res.ok && !cancelled) {
+          const body = (await res.json()) as {
+            user?: {
+              subscriptionStatus?: string;
+              stripeCurrentPeriodEnd?: string | null;
+              stripeCancelAtPeriodEnd?: boolean;
+              hasStripeCustomer?: boolean;
+            };
+          };
+          if (body.user?.subscriptionStatus) {
+            setStatus(body.user.subscriptionStatus);
+          }
+          setHasStripeCustomer(Boolean(body.user?.hasStripeCustomer));
+          setCancelAtPeriodEnd(Boolean(body.user?.stripeCancelAtPeriodEnd));
+          if (body.user?.stripeCurrentPeriodEnd) {
+            setPeriodEnd(body.user.stripeCurrentPeriodEnd);
+          }
+        }
+      } catch {
+        // Non-fatal — the server-rendered state still shows; the banner
+        // just won't reflect a brand-new change until the next load.
+      } finally {
+        if (!cancelled) setConfirmVisible(true);
+      }
+    })();
+    // Strip the query param so a manual refresh doesn't re-show the banner.
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("portal");
+      window.history.replaceState({}, "", url.toString());
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [portalReturned]);
+
   const meta = STATUS_LABELS[status] ?? STATUS_LABELS.FREE;
+  // PRO but scheduled to cancel at period end — show "canceled, access
+  // until [date]" instead of the misleading "Renews [date]".
+  const isCanceling = status === "PRO" && cancelAtPeriodEnd;
 
   const openPortal = async () => {
     setLoading(true);
@@ -855,6 +932,29 @@ function SubscriptionSection({
         </div>
       )}
 
+      {confirmVisible && (
+        <div className="mb-5 flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              We&rsquo;ve updated your subscription.
+            </p>
+            <p className="mt-0.5 text-xs text-emerald-700/90 dark:text-emerald-300/80">
+              {isCanceling && periodEndLabel
+                ? `You'll keep full access through ${periodEndLabel}. You won't be charged again.`
+                : "Your subscription settings have been saved."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmVisible(false)}
+            aria-label="Dismiss"
+            className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         Subscription
       </h2>
@@ -867,6 +967,10 @@ function SubscriptionSection({
               className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-acuity-primary-soft border-t-acuity-primary dark:border-acuity-primary-soft dark:border-t-acuity-primary"
             />
             Activating your subscription…
+          </span>
+        ) : isCanceling ? (
+          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            Canceled
           </span>
         ) : (
           <span
@@ -881,7 +985,12 @@ function SubscriptionSection({
             {meta.label}
           </span>
         )}
-        {!showingActivatingState && status === "PRO" && periodEndLabel && (
+        {!showingActivatingState && isCanceling && periodEndLabel && (
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            Access until {periodEndLabel}
+          </span>
+        )}
+        {!showingActivatingState && !isCanceling && status === "PRO" && periodEndLabel && (
           <span className="text-xs text-zinc-500 dark:text-zinc-400">
             Renews {periodEndLabel}
           </span>
@@ -914,6 +1023,12 @@ function SubscriptionSection({
             Refresh
           </button>
         </div>
+      ) : isCanceling ? (
+        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+          Your subscription is canceled. You&rsquo;ll keep full Pro access
+          {periodEndLabel ? ` until ${periodEndLabel}` : " until the end of your billing period"},
+          then your account moves to read-only. You won&rsquo;t be charged again.
+        </p>
       ) : (
         <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
           {meta.hint}
