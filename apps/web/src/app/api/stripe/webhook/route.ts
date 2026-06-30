@@ -217,20 +217,27 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Notify founders of new payment
-      try {
-        const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
-        await notifyFoundersOfPayment({
-          userId,
-          email: user.email ?? "unknown",
-          plan: session.metadata?.interval ?? "monthly",
-          source: session.metadata?.source ?? "direct",
-          timestamp: new Date(),
-        });
-      } catch (err) {
-        safeLog.warn("stripe-webhook.payment-notification-failed", {
-          err: err instanceof Error ? err.message : String(err),
-        });
+      // Founder notification. checkout.session.completed fires for BOTH the
+      // trial funnel (no money now — converts in ~7 days) and the immediate-
+      // charge /upgrade path. Only send the "new trial signup" notice when
+      // nothing was charged at checkout (amount_total 0/null). The immediate-
+      // charge case is covered by the "Payment received" notice on
+      // invoice.payment_succeeded, so we don't double-notify here.
+      if ((session.amount_total ?? 0) === 0) {
+        try {
+          const { notifyFoundersOfTrialSignup } = await import("@/lib/founder-notifications");
+          await notifyFoundersOfTrialSignup({
+            email: user.email ?? "unknown",
+            plan: session.metadata?.interval ?? "monthly",
+            source: session.metadata?.source ?? "direct",
+            timestamp: new Date(),
+            convertsOn: user.trialEndsAt,
+          });
+        } catch (err) {
+          safeLog.warn("stripe-webhook.trial-signup-notification-failed", {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
 
       // Fire referral conversion if this user was referred. Stub
@@ -298,6 +305,37 @@ export async function POST(req: NextRequest) {
           customerId,
           invoiceId: invoice.id,
         });
+      }
+
+      // Founder "money received" notification — the REAL payment signal
+      // (trial conversion or renewal). Skip the $0 trial-start invoice so we
+      // don't send a misleading "$0.00 received". Fail-soft + non-blocking.
+      if ((invoice.amount_paid ?? 0) > 0) {
+        try {
+          const payer = await prisma.user.findFirst({
+            where: { stripeCustomerId: customerId },
+            select: { email: true },
+          });
+          const interval = invoice.lines.data[0]?.price?.recurring?.interval;
+          const plan =
+            interval === "year"
+              ? "yearly"
+              : interval === "month"
+                ? "monthly"
+                : "subscription";
+          const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
+          await notifyFoundersOfPayment({
+            email: payer?.email ?? invoice.customer_email ?? "unknown",
+            plan,
+            amountCents: invoice.amount_paid,
+            currency: invoice.currency ?? "usd",
+            timestamp: new Date(),
+          });
+        } catch (err) {
+          safeLog.warn("stripe-webhook.payment-received-notification-failed", {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
       break;
     }
@@ -484,6 +522,40 @@ export async function POST(req: NextRequest) {
         safeLog.error("stripe-webhook.sub-deleted-update-failed", err, {
           customerId: sub.customer,
           subscriptionId: sub.id,
+        });
+      }
+      break;
+    }
+
+    case "charge.refunded": {
+      // Real money OUT — surface it to founders. amount_refunded is the
+      // cumulative refunded total on the charge. Notification-only; the DB
+      // cancel/cleanup is handled by the cancel script / admin action.
+      // Requires charge.refunded to be enabled on the Stripe webhook
+      // endpoint (Dashboard → Webhooks).
+      const charge = event.data.object as Stripe.Charge;
+      const customerId =
+        typeof charge.customer === "string" ? charge.customer : null;
+      try {
+        let email: string | null =
+          charge.billing_details?.email ?? charge.receipt_email ?? null;
+        if (!email && customerId) {
+          const u = await prisma.user.findFirst({
+            where: { stripeCustomerId: customerId },
+            select: { email: true },
+          });
+          email = u?.email ?? null;
+        }
+        const { notifyFoundersOfRefund } = await import("@/lib/founder-notifications");
+        await notifyFoundersOfRefund({
+          email: email ?? "unknown",
+          amountCents: charge.amount_refunded,
+          currency: charge.currency ?? "usd",
+          timestamp: new Date(),
+        });
+      } catch (err) {
+        safeLog.warn("stripe-webhook.refund-notification-failed", {
+          err: err instanceof Error ? err.message : String(err),
         });
       }
       break;
