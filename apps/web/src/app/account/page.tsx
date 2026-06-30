@@ -29,6 +29,9 @@ export default async function AccountPage({
     // Slice 4 v1.2 Calendar Integration — connect/callback redirect
     // hands status via ?calendar=connected|denied|error|no_token.
     calendar?: string;
+    // Set by the Stripe Customer Portal return_url. Triggers a status
+    // refetch + a one-time confirmation banner in SubscriptionSection.
+    portal?: string;
   };
 }) {
   const session = await getServerSession(getAuthOptions());
@@ -47,6 +50,7 @@ export default async function AccountPage({
       subscriptionStatus: true,
       stripeCustomerId: true,
       stripeCurrentPeriodEnd: true,
+      stripeCancelAtPeriodEnd: true,
       trialEndsAt: true,
       // Slice 5 (2026-05-25): used by TrialStatusCard to decide
       // whether to render the post-expiry copy ("Your trial ended,
@@ -142,6 +146,8 @@ export default async function AccountPage({
         subscriptionStatus={user?.subscriptionStatus ?? "FREE"}
         hasStripeCustomer={Boolean(user?.stripeCustomerId)}
         periodEnd={user?.stripeCurrentPeriodEnd?.toISOString() ?? null}
+        cancelAtPeriodEnd={user?.stripeCancelAtPeriodEnd ?? false}
+        portalReturned={searchParams?.portal === "returned"}
         trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
         trialExpiredAt={user?.trialExpiredAt?.toISOString() ?? null}
         weeklyEmailEnabled={user?.weeklyEmailEnabled ?? true}

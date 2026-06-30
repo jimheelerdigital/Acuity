@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { stripe } from "@/lib/stripe";
+import { deriveSubscriptionUpdate } from "@/lib/billing/subscription-status";
 import { safeLog } from "@/lib/safe-log";
 import {
   sendConversionEvent,
@@ -146,6 +147,9 @@ export async function POST(req: NextRequest) {
             stripeSubscriptionId: session.subscription as string,
             subscriptionStatus: "PRO",
             subscriptionSource: "stripe",
+            // Fresh subscription — clear any stale cancel flag left over from
+            // a prior canceled-then-resubscribed cycle.
+            stripeCancelAtPeriodEnd: false,
           },
           select: { createdAt: true, trialEndsAt: true, email: true },
         });
@@ -394,20 +398,19 @@ export async function POST(req: NextRequest) {
       }
 
       const status = sub.status;
-      // Map Stripe's granular statuses onto our vocab. NO grace (2026-06-12
-      // spec): active/trialing → PRO; any non-active state (past_due, unpaid,
-      // canceled, incomplete_expired) → FREE immediately. The recovery banner
-      // is driven by stripeFirstFailureAt (set by invoice.payment_failed), not
-      // by a PAST_DUE status.
-      let nextStatus: string | null = null;
-      if (status === "active" || status === "trialing") nextStatus = "PRO";
-      else if (
-        status === "past_due" ||
-        status === "unpaid" ||
-        status === "canceled" ||
-        status === "incomplete_expired"
-      )
-        nextStatus = "FREE";
+      // Map Stripe's granular statuses onto our vocab + capture whether the
+      // sub is scheduled to cancel at period end. Extracted to a pure helper
+      // (deriveSubscriptionUpdate) so the mapping is unit-tested. NO grace
+      // (2026-06-12): active/trialing → PRO; past_due/unpaid/canceled/
+      // incomplete_expired → FREE immediately. The recovery banner is driven
+      // by stripeFirstFailureAt (set by invoice.payment_failed), not a
+      // PAST_DUE status.
+      const { nextStatus, cancelAtPeriodEnd, currentPeriodEnd } =
+        deriveSubscriptionUpdate({
+          status: sub.status,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          current_period_end: sub.current_period_end ?? null,
+        });
 
       if (nextStatus) {
         // Status guard (W-A audit, 2026-05-03): same race shape as
@@ -428,6 +431,10 @@ export async function POST(req: NextRequest) {
               subscriptionStatus: nextStatus,
               subscriptionSource: "stripe",
               stripeSubscriptionId: sub.id,
+              // Mirror Stripe's cancel-at-period-end flag so /account can show
+              // "canceled — access until [date]" instead of "Renews [date]".
+              // Coerced to false for FREE/terminal subs by the helper.
+              stripeCancelAtPeriodEnd: cancelAtPeriodEnd,
               // Clear the failure anchor on recovery (PRO). On FREE, leave it
               // — invoice.payment_failed sets it on a failed renewal and it
               // drives the recovery banner's 30-day window. (A clean cancel
@@ -435,12 +442,8 @@ export async function POST(req: NextRequest) {
               ...(nextStatus === "PRO"
                 ? { stripeFirstFailureAt: null }
                 : {}),
-              ...(sub.current_period_end
-                ? {
-                    stripeCurrentPeriodEnd: new Date(
-                      sub.current_period_end * 1000
-                    ),
-                  }
+              ...(currentPeriodEnd
+                ? { stripeCurrentPeriodEnd: currentPeriodEnd }
                 : {}),
             },
           });
@@ -478,6 +481,8 @@ export async function POST(req: NextRequest) {
             stripeSubscriptionId: null,
             stripeCurrentPeriodEnd: null,
             stripeFirstFailureAt: null,
+            // Sub is fully gone — no longer "scheduled to cancel".
+            stripeCancelAtPeriodEnd: false,
           },
         });
       } catch (err) {

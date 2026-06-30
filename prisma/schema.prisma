@@ -68,6 +68,13 @@ model User {
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?
   stripeCurrentPeriodEnd DateTime?
+  // True when the active subscription is scheduled to cancel at the end of
+  // the current period (Stripe `cancel_at_period_end`). Set by the
+  // customer.subscription.updated webhook for PRO subs; reset to false on a
+  // fresh subscription, on resume, and when the sub is fully deleted. Drives
+  // the /account "canceled — access until [date]" copy so a user who
+  // scheduled cancellation isn't shown a misleading "Renews [date]".
+  stripeCancelAtPeriodEnd Boolean  @default(false)
   // First failed Stripe charge in the current dunning episode — set by the
   // webhook on the first invoice.payment_failed, cleared on recovery/cancel.
   // Anchors the PAST_DUE grace window in entitlements.ts (NOT
