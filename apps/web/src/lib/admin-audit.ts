@@ -17,6 +17,7 @@ export const ADMIN_ACTIONS = {
   FEATURE_OVERRIDE_DELETE: "feature_override.delete",
   USER_SOFT_DELETE: "user.soft_delete",
   USER_EXTEND_TRIAL: "user.extend_trial",
+  USER_CANCEL_SUBSCRIPTION: "user.cancel_subscription",
   USER_SEND_MAGIC_LINK: "user.send_magic_link",
   METRIC_DRILLDOWN: "admin.metric.drilldown",
   USER_SEND_EMAIL: "user.send_email",
