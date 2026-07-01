@@ -1670,6 +1670,11 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
 
 const VALUE_FEATURES = [
   {
+    icon: "\u25C8",
+    title: "Deep life insights",
+    description: "What\u2019s driving you, what\u2019s holding you back \u2014 true insight into the patterns you can\u2019t see from inside your own life.",
+  },
+  {
     icon: "\u2611",
     title: "Active task tracking",
     description: "Tasks pulled from your words, tracked until done. Your life stops falling through the cracks.",
