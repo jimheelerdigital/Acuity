@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-07-01] — Filled Branch 2 (patterns) of the onboarding funnel with real content
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1c120778
+
+### In plain English (for Keenan)
+The second path through the signup quiz — the "I keep having the same fights and patterns and I don't know why" path — is now finished and runs end-to-end with its real "the cycle" words. When someone picks it, the quiz mirrors their exact pattern back ("the same argument wearing a different face... it's costing you the closeness you actually want"), flips to relief, and shows the "you right now" vs "you a few weeks in" side-by-side built from their specific answers. The paywall, timeline, and "how it works" screen all speak to naming and breaking the cycle, closing with Jennifer H.'s real testimonial. It reuses the exact same look, feel, and animations as Branch 1 — nothing new was invented.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: rewrote `MECH_CONTENT.patterns.cards` to fixed on-theme "cycle" copy. It previously derived a "who" from `q2.includes("partner"/"work"/"family")`, but the current patterns Q2 options don't contain those words (they moved to Q3), so it silently rendered wrong card text; the weekly-insight line was already correct and is unchanged.
+- No config changes were needed: the verbatim patterns copy (`PAIN_FRAGMENTS.patterns`, `RELIEF_FLIP.patterns`, `CURRENT_FUTURE.patterns` with header/footer, `BRANCH_QUESTIONS`/`BRANCH_Q6` for patterns, `PAYWALL_HOOKS`/`PAYWALL_SUBHEAD`/`PRICING_COPY`, `getPaywallHeadline`/`getCostOfInaction`/`getCreateAccountHeadline`, `TIMELINE_WEEKS.patterns`, `PRIMARY_PATTERN.patterns` = "The Cycle", `AREA_MAP.patterns`, Jennifer H. testimonial at index 4) was already present and verified against spec.
+
+### Manual steps needed
+- [ ] None — no schema/env changes. (Push held: waiting on Keenan's "push it".)
+
+### Notes
+- Proved Branch 2 end-to-end via a throwaway vitest stitching example Q2 (same argument) / Q3 (with my partner) / Q6 (closest relationships): screens 7 and 9 matched spec verbatim, and the pattern-result area resolved to "Relationships" with `areaFallback=false` (Q6→area map is wired). Removed the throwaway test.
+- Typecheck clean for funnel files; 18/18 config tests pass. Branches 3-5 config data is present but their component surfaces are the next passes.
+
+---
+
 ## [2026-07-01] — Filled Branch 1 (overload) of the onboarding funnel with real content
 
 **Requested by:** Keenan
