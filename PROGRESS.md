@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-07-01] — Removed distracting halo from the Pain/Mirror screen
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5447ec8f
+
+### In plain English (for Keenan)
+The reflection screen (screen 7, the "here's what you're carrying" moment) had a faint animated background shape behind the words — a slow looping circle on the patterns funnel, and similar quiet motifs for the other four funnels. In practice it read as a distracting halo rather than subtle atmosphere, so it's been removed entirely on all five funnels. The background is now clean (just the normal page gradient). The words themselves are unchanged: the same clean flowing lines, left-aligned, with coral emphasis on the key phrase in each line, generous spacing, the paced one-line-at-a-time reveal, and the closing beat. Nothing is boxed — it still reads as intimate prose.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: deleted the `PainMotif` component (the per-branch SVG background) and its `<PainMotif .../>` render inside `PainScreen`; removed the motif `@keyframes` (motif-rotate, motif-rotate-rev, motif-dash, motif-settle, motif-drift, motif-crack), their utility classes, and their `prefers-reduced-motion` overrides from the funnel `<style>` block; dropped the now-unneeded `overflow-hidden` from the `PainScreen` wrapper.
+- No change to the text assembly (`assemblePainCopy`), the `emphasize`/`PAIN_EMPHASIS` coral treatment, spacing, or the paced-reveal timing. `prefersReduced` is still used by the reveal effect. Tracking untouched.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Net −83 lines. Verified no dead references remain (grep for `PainMotif`/`motif` returns nothing) and typecheck is clean for the funnel files. Text treatment (alignment, coral emphasis, spacing, paced reveal, closer) is byte-for-byte the same — only the background motif layer was removed.
+
+---
+
 ## [2026-07-01] — Paywall trimmed: cleaner offer + "What our users say" popup
 
 **Requested by:** Keenan
