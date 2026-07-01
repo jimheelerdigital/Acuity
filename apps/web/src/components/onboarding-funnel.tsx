@@ -1206,9 +1206,11 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
   const skip = () => { setActiveRow(rows.length); setDone(true); };
   const revealed = (i: number) => activeRow >= i;
 
-  // Grid columns shared by the label row and every transformation row so the
-  // eye reads straight across: [drab "you now"] → arrow → [coral "after"].
-  const grid = "grid grid-cols-[1fr_28px_1fr] sm:grid-cols-[1fr_44px_1fr] gap-x-2 sm:gap-x-3";
+  // Shared 3-column template used by BOTH the background panel layer and the
+  // foreground label/row layer, so the two grey/coral panels sit exactly under
+  // the left/right text columns and the middle column stays a transparent gap
+  // that the arrows bridge. No gap-x — the fixed middle column IS the gap.
+  const grid = "grid grid-cols-[1fr_30px_1fr] sm:grid-cols-[1fr_46px_1fr]";
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-5 py-16 text-zinc-900"
@@ -1218,42 +1220,54 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
         {/* Header */}
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-7 leading-snug">{content.header}</h2>
 
-        {/* Column labels — reinforce the split */}
-        <div className={`${grid} mb-3`}>
-          <p className="text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">{content.currentLabel}</p>
-          <span />
-          <p className="text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-acuity-primary">{content.futureLabel}</p>
-        </div>
+        {/* Paneled transformation diagram — dead-grey "before" vs alive-coral
+            "after". The contrast makes the shift visible before the words. */}
+        <div className="relative">
+          {/* Background panel layer — same grid so panels align under columns */}
+          <div className={`absolute inset-0 ${grid}`} aria-hidden>
+            <div className="rounded-2xl bg-zinc-100/90 ring-1 ring-zinc-200/70" />
+            <div />
+            <div className="rounded-2xl bg-acuity-primary/[0.06] ring-1 ring-acuity-primary/20 shadow-acuity-glow-soft" />
+          </div>
 
-        {/* Transformation rows */}
-        <div className="relative space-y-3.5">
-          {/* faint center seam */}
-          <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-zinc-200/60" aria-hidden />
-          {rows.map(([before, after], i) => {
-            const on = revealed(i);
-            return (
-              <div key={i} className={`${grid} items-center`}>
-                {/* left — drab "you now" */}
-                <p className={`text-right text-[12.5px] sm:text-sm leading-snug text-zinc-400 break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
-                  style={{ filter: "grayscale(0.5)" }}>
-                  {before}
-                </p>
-                {/* arrow — sweeps left → right */}
-                <span className="flex items-center justify-center" aria-hidden>
-                  <svg width="24" height="12" viewBox="0 0 24 12" fill="none"
-                    className="transition-all duration-300 ease-out"
-                    style={{ opacity: on ? 1 : 0, transform: on ? "translateX(0)" : "translateX(-6px)", transitionDelay: "170ms" }}>
-                    <path d="M1 6 H20 M15 1 L21 6 L15 11" stroke="var(--acuity-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-                {/* right — coral pop "you, a few weeks in" */}
-                <p className={`text-left text-[13px] sm:text-[15px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
-                  style={{ transitionDelay: "360ms", transformOrigin: "left center" }}>
-                  {after}
-                </p>
-              </div>
-            );
-          })}
+          {/* Foreground — labels + rows, padded so text breathes inside panels */}
+          <div className="relative z-10 py-4">
+            {/* Panel captions */}
+            <div className={`${grid} mb-3`}>
+              <p className="text-right pr-2.5 sm:pr-3.5 pl-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">{content.currentLabel}</p>
+              <span />
+              <p className="text-left pl-2.5 sm:pl-3.5 pr-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-acuity-primary">{content.futureLabel}</p>
+            </div>
+
+            {/* Transformation rows */}
+            <div className="space-y-3.5">
+              {rows.map(([before, after], i) => {
+                const on = revealed(i);
+                return (
+                  <div key={i} className={`${grid} items-center`}>
+                    {/* left — drab "you now" */}
+                    <p className={`text-right pr-2.5 sm:pr-3.5 pl-3 text-[12.5px] sm:text-sm leading-snug text-zinc-400 break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
+                      style={{ filter: "grayscale(0.5)" }}>
+                      {before}
+                    </p>
+                    {/* arrow — bridges the gap left → right */}
+                    <span className="flex items-center justify-center" aria-hidden>
+                      <svg width="24" height="12" viewBox="0 0 24 12" fill="none"
+                        className="transition-all duration-300 ease-out"
+                        style={{ opacity: on ? 1 : 0, transform: on ? "translateX(0)" : "translateX(-6px)", transitionDelay: "170ms" }}>
+                        <path d="M1 6 H20 M15 1 L21 6 L15 11" stroke="var(--acuity-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    {/* right — coral pop "you, a few weeks in" */}
+                    <p className={`text-left pl-2.5 sm:pl-3.5 pr-3 text-[13px] sm:text-[15px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
+                      style={{ transitionDelay: "360ms", transformOrigin: "left center" }}>
+                      {after}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
