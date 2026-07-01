@@ -27,6 +27,7 @@ import {
   SNAPSHOT_BOTTOM,
   getTimelineWeeks,
   PAYWALL_HOOKS,
+  PAYWALL_SUBHEAD,
   PRICING_COPY,
   getPaywallHeadline,
   getCreateAccountHeadline,
@@ -649,8 +650,10 @@ export function OnboardingFunnel() {
         .funnel-screen { animation: funnel-slide-up 0.4s ease-out both; }
         .funnel-card-stagger { animation: funnel-card-in 0.35s ease-out both; }
         .funnel-bounce { animation: funnel-bounce-in 0.4s ease-out both; }
+        /* Shared CTA emphasis — one class every primary funnel button pulls from. */
+        .funnel-cta { animation: funnel-glow 2s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .funnel-screen, .funnel-card-stagger, .funnel-bounce { animation: none !important; opacity: 1 !important; transform: none !important; }
+          .funnel-screen, .funnel-card-stagger, .funnel-bounce, .funnel-cta { animation: none !important; opacity: 1 !important; transform: none !important; }
           .gap-highlight { background-size: 100% 100% !important; animation: none !important; }
           * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
         }
@@ -989,51 +992,64 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
 function PainScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  // Answer-aware: assemblePainCopy stitches the user's Q2/Q3/Q6 selections
-  // into a two-beat mirror. beat[0] = recognition, beat[1] = the cost.
-  const [beat1, beat2] = assemblePainCopy(branch, answers);
+  // Answer-aware: assemblePainCopy stitches the user's Q2/Q3/Q6 selections into
+  // an ordered set of beats — [opener, Q2 echo, Q3 amplifier, Q6 cost, closer].
+  // Length varies per branch/answers (empty fragments are dropped upstream), so
+  // this renders whatever beats it's handed: first = recognition (border-left),
+  // last = emphasized closer, middle = body lines.
+  const beats = assemblePainCopy(branch, answers);
+  const lastIndex = beats.length - 1;
+  const ctaPhase = beats.length + 1; // beats reveal 1..length, then CTA
   const [phase, setPhase] = useState(0);
-  const maxPhase = 4;
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
-    if (prefersReduced) { setPhase(maxPhase); return; }
+    if (prefersReduced) { setPhase(ctaPhase); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
-    t.push(setTimeout(() => setPhase(1), 600));   // Block 1: recognition
-    t.push(setTimeout(() => setPhase(2), 2400));  // Block 2: the cost
-    t.push(setTimeout(() => setPhase(3), 4000));  // Block 3: closer
-    t.push(setTimeout(() => setPhase(maxPhase), 5000)); // CTA
+    const first = 500;
+    const step = 1100;
+    for (let i = 1; i <= beats.length; i++) {
+      t.push(setTimeout(() => setPhase(i), first + (i - 1) * step));
+    }
+    t.push(setTimeout(() => setPhase(ctaPhase), first + beats.length * step));
     return () => t.forEach(clearTimeout);
-  }, [prefersReduced]);
+  }, [prefersReduced, beats.length, ctaPhase]);
 
-  const skip = () => setPhase(maxPhase);
-  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
+  const skip = () => setPhase(ctaPhase);
+  const shown = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
-      onClick={phase < maxPhase ? skip : undefined}>
+      onClick={phase < ctaPhase ? skip : undefined}>
       <div className="max-w-md w-full">
 
-        {/* Block 1: Recognition (assembled beat 1) */}
-        <div className={`mb-8 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[600ms] ease-out ${beat(1)}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{beat1}</p>
-        </div>
-
-        {/* Block 2: The cost (assembled beat 2) */}
-        <div className={`mb-10 transition-all duration-[600ms] ease-out ${beat(2)}`}>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900 leading-[1.5] text-center">{beat2}</p>
-        </div>
-
-        {/* Block 3: Closer */}
-        <div className={`mb-10 ${phase >= 3 ? "" : "opacity-0"}`}
-          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-lg font-bold text-zinc-900 text-center">You don&rsquo;t have to keep living like this.</p>
-        </div>
+        {beats.map((text, i) => {
+          const revealed = shown(i + 1);
+          if (i === 0) {
+            return (
+              <div key={i} className={`mb-7 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[600ms] ease-out ${revealed}`}>
+                <p className="text-[15px] text-zinc-700 leading-relaxed">{text}</p>
+              </div>
+            );
+          }
+          if (i === lastIndex) {
+            return (
+              <div key={i} className={`mt-2 mb-10 transition-all duration-[600ms] ease-out ${revealed}`}>
+                <p className="text-lg sm:text-xl font-bold text-zinc-900 text-center leading-[1.5]">{text}</p>
+              </div>
+            );
+          }
+          return (
+            <div key={i} className={`mb-5 transition-all duration-[600ms] ease-out ${revealed}`}>
+              <p className="text-[15px] text-zinc-700 leading-relaxed">{text}</p>
+            </div>
+          );
+        })}
 
         {/* CTA */}
-        <div className={`text-center transition-all duration-500 ${beat(maxPhase)}`}>
+        <div className={`text-center transition-all duration-500 ${shown(ctaPhase)}`}>
           <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="funnel-cta rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98]">
             Keep going
           </button>
         </div>
@@ -1119,6 +1135,9 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
       onClick={phase < 3 ? skip : undefined}>
       <div className="max-w-md w-full space-y-4">
 
+        {/* Header */}
+        <h2 className={`text-xl sm:text-2xl font-bold tracking-tight text-center mb-2 leading-snug transition-all duration-500 ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[8px]"}`}>{content.header}</h2>
+
         {/* Current you — desaturated, heavy, low-motion */}
         <div className={`rounded-2xl border border-zinc-200 bg-zinc-100/70 px-6 py-6 transition-all duration-[700ms] ease-out ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}
           style={{ filter: phase >= 1 ? "grayscale(0.6)" : undefined }}>
@@ -1141,10 +1160,13 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
           </div>
         </div>
 
+        {/* Footer */}
+        <p className={`text-center text-[14px] text-zinc-600 leading-relaxed pt-2 transition-all duration-500 ${phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[8px]"}`}>{content.footer}</p>
+
         {/* CTA */}
         <div className={`text-center pt-4 transition-all duration-500 ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
           <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
+            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] funnel-cta">
             Show me how
           </button>
         </div>
@@ -1166,13 +1188,13 @@ interface MechBranchContent {
 const MECH_CONTENT: Record<Branch, MechBranchContent> = {
   overload: {
     cards: () => [
-      { text: "Block 30 minutes for the thing you keep postponing", icon: "\u25A1" },
-      { text: "Notice what actually mattered \u2014 Day 1", icon: "\u25B2" },
-      { text: "Foggy \u2192 Aware", icon: "\u25CF" },
-      { text: "You described 3 days as \u2018fine\u2019 but couldn\u2019t name a single highlight", icon: "\u25C6" },
+      { text: "Call the pharmacy about Mom\u2019s refill", icon: "\u25A1" },
+      { text: "Get back to the goal you keep pushing \u2014 Day 1", icon: "\u25B2" },
+      { text: "Overwhelmed \u2192 Lighter", icon: "\u25CF" },
+      { text: "You mentioned 3 of these before and still haven\u2019t done them", icon: "\u25C6" },
     ],
     step3Sub: "",
-    insight: "Your \u2018fine\u2019 days had zero unstructured time. Your best day had 2 hours of nothing planned.",
+    insight: "In one debrief you named 7 things to remember. Acuity caught them all \u2014 and flagged 3 you\u2019d said before and still hadn\u2019t done.",
   },
   patterns: {
     cards: (q2) => {
@@ -1259,13 +1281,13 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
 
       {/* Headline */}
       <h2 className="mb-9 text-center text-[26px] font-bold leading-[33px] tracking-tight text-zinc-900" style={fadeUp(0)}>
-        One minute. Every day.<br />That&rsquo;s all it takes.
+        A few minutes. Every day.<br />That&rsquo;s all it takes.
       </h2>
 
       {/* ── STEP 1: TALK ── */}
       <div className="mb-8" style={fadeUp(800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 1</p>
-        <p className="mb-1.5 text-xl font-bold text-zinc-900">Talk for 60 seconds.</p>
+        <p className="mb-1.5 text-xl font-bold text-zinc-900">Just say what&rsquo;s on your mind.</p>
         <p className="mb-4 text-sm leading-5 text-zinc-500">About whatever&rsquo;s on your mind &mdash; and get it out of your head, where it&rsquo;s been costing you sleep and patience.</p>
         <div className="flex items-end gap-[4px]" style={{ height: 40 }}>
           {MECHANISM_WAVE_HEIGHTS.map((h, i) => (
@@ -2101,6 +2123,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   // branch is null (ad-deep-link edge case where no entry answer was recorded).
   const paywallHeadline = branch ? getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
   const paywallHook = branch ? PAYWALL_HOOKS[branch] : null;
+  const paywallSubhead = branch ? PAYWALL_SUBHEAD[branch] : null;
   const costOfInaction = branch ? getCostOfInaction(branch, answers) : null;
   const pricingCopy = branch ? PRICING_COPY[branch] : null;
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
@@ -2149,6 +2172,9 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-2">{paywallHook}</p>
           )}
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">{paywallHeadline}</h2>
+          {paywallSubhead && (
+            <p className="text-[15px] text-zinc-600 mt-3 leading-relaxed">{paywallSubhead}</p>
+          )}
           <p className="text-sm text-zinc-500 mt-2">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
         </section>
 

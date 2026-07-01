@@ -57,11 +57,11 @@ export const ENTRY_QUESTION: Question = {
   id: "entry",
   text: "What\u2019s been on your mind lately?",
   options: [
-    { label: "My days blur together and nothing sticks", branch: "overload" },
-    { label: "I keep having the same fights and patterns", branch: "patterns" },
-    { label: "My brain won\u2019t stop at night", branch: "rumination" },
-    { label: "I\u2019ve tried journaling, apps, therapy \u2014 nothing worked", branch: "stuck" },
-    { label: "I\u2019m holding it together but barely", branch: "mask" },
+    { label: "My head\u2019s too full and I keep forgetting things", branch: "overload" },
+    { label: "I keep having the same fights and patterns and I don\u2019t know why", branch: "patterns" },
+    { label: "My brain won\u2019t stop racing at night", branch: "rumination" },
+    { label: "I\u2019m busy nonstop but I never actually get anywhere", branch: "stuck" },
+    { label: "I look fine to everyone but I\u2019m barely holding on", branch: "mask" },
   ],
 };
 
@@ -71,164 +71,160 @@ export const BRANCH_QUESTIONS: Record<Branch, [Question, Question, Question]> = 
   overload: [
     {
       id: "branch_q2",
-      text: "What does a typical day feel like?",
+      text: "When your head\u2019s at its fullest, what happens?",
       options: [
-        { label: "Autopilot \u2014 I don\u2019t remember half of it" },
-        { label: "Busy but empty" },
-        { label: "Fine on the surface, foggy underneath" },
-        { label: "Like I\u2019m watching someone else live my life" },
+        { label: "I forget things I meant to do" },
+        { label: "I lie awake running through my list" },
+        { label: "I feel scattered and can\u2019t focus on one thing" },
+        { label: "I snap or shut down from the sheer volume" },
       ],
     },
     {
       id: "branch_q3",
-      text: "When you try to remember last Tuesday, you\u2026",
+      text: "What\u2019s taking up the most space up there right now?",
       options: [
-        { label: "Draw a complete blank" },
-        { label: "Remember feelings but not facts" },
-        { label: "Can piece it together if I try hard" },
-        { label: "Remember what I did but not why it mattered" },
+        { label: "Everyone else\u2019s schedules and needs" },
+        { label: "Work tasks and deadlines" },
+        { label: "All of the different things I need to be doing" },
+        { label: "All the above \u2014 I\u2019m the one who\u2019s supposed to remember everything" },
       ],
     },
     {
       id: "branch_q4",
-      text: "The scariest part is\u2026",
+      text: "When something slips, what happens?",
       options: [
-        { label: "How fast time is moving" },
-        { label: "That I might already be living my best life and this is it" },
-        { label: "That nobody notices" },
-        { label: "That I\u2019ve stopped caring" },
+        { label: "I let the people around me down by forgetting" },
+        { label: "I have to scramble to fix it last minute" },
+        { label: "I add it back to the pile and try to get to it later" },
+        { label: "All of the above" },
       ],
     },
   ],
   patterns: [
     {
       id: "branch_q2",
-      text: "What keeps repeating?",
+      text: "When you\u2019re stuck in it, what does it look like?",
       options: [
-        { label: "The same argument with my partner" },
-        { label: "The same frustration at work" },
-        { label: "The same cycle with family" },
-        { label: "The same dynamic in every relationship" },
+        { label: "The same argument, over and over" },
+        { label: "The same mood or spiral, on repeat" },
+        { label: "The same situations blowing up the same way" },
+        { label: "All the above" },
       ],
     },
     {
       id: "branch_q3",
-      text: "When it happens again, you feel\u2026",
+      text: "Where does the cycle hit hardest?",
       options: [
-        { label: "Exhausted \u2014 I know exactly how it\u2019ll end" },
-        { label: "Angry at myself for falling into it again" },
-        { label: "Numb \u2014 I\u2019ve stopped reacting" },
-        { label: "Confused \u2014 I don\u2019t understand why" },
+        { label: "With my partner" },
+        { label: "With my family" },
+        { label: "With my coworkers" },
+        { label: "With my friends" },
+        { label: "In my own head" },
       ],
     },
     {
       id: "branch_q4",
-      text: "You\u2019ve tried to break it by\u2026",
+      text: "When it starts, what do you usually do?",
       options: [
-        { label: "Talking it out" },
-        { label: "Giving space" },
-        { label: "Reading about it" },
-        { label: "Ignoring it and hoping it changes" },
-        { label: "Nothing \u2014 I don\u2019t know where to start" },
+        { label: "I react before I even think" },
+        { label: "I go quiet and let it build" },
+        { label: "I try to forget about it" },
       ],
     },
   ],
   rumination: [
     {
       id: "branch_q2",
-      text: "When does it hit hardest?",
+      text: "When your mind won\u2019t quiet down, what\u2019s it doing?",
       options: [
-        { label: "The moment I lie down" },
-        { label: "During any quiet moment" },
-        { label: "When I\u2019m driving or showering" },
-        { label: "It never fully stops" },
+        { label: "Replaying things I said or did" },
+        { label: "Running through everything I still have to do" },
+        { label: "Worrying about things I can\u2019t control" },
+        { label: "All the above" },
       ],
     },
     {
       id: "branch_q3",
-      text: "What\u2019s your brain doing?",
+      text: "When is it the worst?",
       options: [
-        { label: "Replaying conversations" },
-        { label: "Running through tomorrow\u2019s problems" },
-        { label: "Worrying about things I can\u2019t control" },
-        { label: "All of the above, in random order" },
+        { label: "The second my head hits the pillow" },
+        { label: "The middle of the night, wide awake" },
+        { label: "Early morning, before I even get up" },
+        { label: "Any quiet moment \u2014 it fills the silence" },
       ],
     },
     {
       id: "branch_q4",
-      text: "You\u2019ve tried to quiet it by\u2026",
+      text: "When your brain won\u2019t stop, what do you do?",
       options: [
-        { label: "Scrolling until I\u2019m exhausted" },
-        { label: "Meditation or breathing exercises" },
-        { label: "Writing things down" },
-        { label: "Nothing \u2014 I just wait for it to pass" },
+        { label: "Lie there and let it spin" },
+        { label: "Scroll my phone to drown it out" },
+        { label: "Get up because I can\u2019t rest anyway" },
+        { label: "Try to push it down and force sleep" },
       ],
     },
   ],
   stuck: [
     {
       id: "branch_q2",
-      text: "What\u2019s the most recent thing you tried?",
+      text: "When you say you\u2019re not getting anywhere, what do you mean?",
       options: [
-        { label: "A journaling app" },
-        { label: "Therapy or coaching" },
-        { label: "A productivity system" },
-        { label: "Meditation or mindfulness" },
-        { label: "A self-help book" },
+        { label: "I\u2019m always busy but nothing feels like progress" },
+        { label: "I end every week exhausted with nothing to show for it" },
+        { label: "I keep doing everything for everyone but me" },
+        { label: "All the above" },
       ],
     },
     {
       id: "branch_q3",
-      text: "How long did it last?",
+      text: "Where does most of your energy actually go?",
       options: [
-        { label: "Less than a week" },
-        { label: "A few weeks" },
-        { label: "A month or two" },
-        { label: "I\u2019m technically still doing it but getting nothing from it" },
+        { label: "Everyone else\u2019s needs and schedules" },
+        { label: "Work that never really ends" },
+        { label: "Just keeping everything from falling apart" },
+        { label: "I honestly don\u2019t know \u2014 that\u2019s the problem" },
       ],
     },
     {
       id: "branch_q4",
-      text: "Why did it stop working?",
+      text: "When you feel stuck, what do you do?",
       options: [
-        { label: "Too much effort" },
-        { label: "Felt pointless \u2014 nothing changed" },
-        { label: "Life got in the way" },
-        { label: "I forgot about it" },
-        { label: "It wasn\u2019t built for how my brain works" },
+        { label: "Push harder and hope it changes" },
+        { label: "Tell myself I\u2019ll fix it once things calm down" },
+        { label: "Just keep going \u2014 there\u2019s no time to stop and think" },
+        { label: "Feel bad for myself without changing anything" },
       ],
     },
   ],
   mask: [
     {
       id: "branch_q2",
-      text: "Who are you holding it together for?",
+      text: "What does \u2018barely holding on\u2019 look like from the inside?",
       options: [
-        { label: "My partner" },
-        { label: "My kids" },
-        { label: "My team at work" },
-        { label: "Everyone" },
-        { label: "Honestly, just myself" },
+        { label: "I\u2019m running on empty but no one can tell" },
+        { label: "I keep it together all day, then fall apart alone" },
+        { label: "I say \u2018I\u2019m fine\u2019 when I\u2019m really not" },
+        { label: "All the above" },
       ],
     },
     {
       id: "branch_q3",
-      text: "The last time someone asked how you\u2019re doing, you said\u2026",
+      text: "Who are you holding it together for?",
       options: [
-        { label: "\u2018Fine\u2019 \u2014 it\u2019s easier" },
-        { label: "\u2018Busy\u2019 \u2014 so they don\u2019t ask more" },
-        { label: "The truth \u2014 and they didn\u2019t know what to say" },
-        { label: "I can\u2019t remember the last time someone asked" },
+        { label: "Myself" },
+        { label: "My kids / family" },
+        { label: "Everyone at work" },
+        { label: "Everyone \u2014 I\u2019m the one people lean on" },
       ],
     },
     {
       id: "branch_q4",
-      text: "What you actually need is\u2026",
+      text: "When it gets heavy, what do you do?",
       options: [
-        { label: "Someone to see what\u2019s really going on" },
-        { label: "Permission to not be okay" },
-        { label: "A place to put all of this" },
-        { label: "To understand why I feel this way" },
+        { label: "Push it down and keep going" },
+        { label: "Tell myself others have it worse" },
+        { label: "Wait until I\u2019m alone to let it out" },
+        { label: "Nothing \u2014 I just carry it" },
       ],
     },
   ],
@@ -245,10 +241,10 @@ export const SHARED_QUESTIONS: Question[] = [
     id: "shared_q5",
     text: "How long have you felt this way?",
     options: [
-      { label: "A few weeks" },
-      { label: "A few months" },
-      { label: "Over a year" },
-      { label: "I can\u2019t remember when it started" },
+      { label: "Days" },
+      { label: "Months" },
+      { label: "Years" },
+      { label: "As long as I can remember" },
     ],
     normalization: "Most people have felt this way for over a year before they do something about it.",
   },
@@ -266,56 +262,56 @@ export const SHARED_QUESTIONS: Question[] = [
 export const BRANCH_Q6: Record<Branch, Question> = {
   overload: {
     id: "branch_q6",
-    text: "What\u2019s it costing you most?",
+    text: "What is carrying all of it costing you most?",
     options: [
-      { label: "My memory \u2014 whole days just vanish" },
-      { label: "My energy \u2014 I\u2019m running on empty" },
-      { label: "My presence \u2014 I\u2019m never really here" },
-      { label: "My sense of self \u2014 I don\u2019t know who I am under it" },
+      { label: "People\u2019s trust in me" },
+      { label: "My confidence in myself" },
+      { label: "My sense of peace and calm" },
+      { label: "All the above" },
     ],
     normalization: "Naming the cost makes it real.",
   },
   patterns: {
     id: "branch_q6",
-    text: "What\u2019s it costing you most?",
+    text: "What is the cycle costing you most?",
     options: [
-      { label: "My relationships \u2014 the same fights keep landing" },
-      { label: "My peace \u2014 I\u2019m always bracing for the next round" },
-      { label: "My self-respect \u2014 I hate who I become in it" },
-      { label: "My hope \u2014 I\u2019ve stopped believing it can change" },
+      { label: "My closest relationships" },
+      { label: "My peace of mind" },
+      { label: "The way I see myself" },
+      { label: "My work performance" },
     ],
     normalization: "Naming the cost makes it real.",
   },
   rumination: {
     id: "branch_q6",
-    text: "What\u2019s it costing you most?",
+    text: "What is the racing mind costing you most?",
     options: [
-      { label: "My sleep \u2014 the nights I can\u2019t shut off" },
-      { label: "My focus \u2014 I can\u2019t hear myself think" },
-      { label: "My calm \u2014 I\u2019m always braced for something" },
-      { label: "My energy \u2014 worrying takes everything" },
+      { label: "My sleep" },
+      { label: "My energy the next day" },
+      { label: "My peace of mind" },
+      { label: "My health" },
     ],
     normalization: "Naming the cost makes it real.",
   },
   stuck: {
     id: "branch_q6",
-    text: "What\u2019s it costing you most?",
+    text: "What is running in place costing you most?",
     options: [
-      { label: "My belief that anything actually works" },
-      { label: "My time \u2014 wasted on tools that didn\u2019t fit" },
-      { label: "My momentum \u2014 I quit before it lands" },
-      { label: "My self-trust \u2014 I assume I\u2019ll fail again" },
+      { label: "The goals I keep putting off" },
+      { label: "My sense of purpose" },
+      { label: "Time I\u2019ll never get back" },
+      { label: "All the above" },
     ],
     normalization: "Naming the cost makes it real.",
   },
   mask: {
     id: "branch_q6",
-    text: "What\u2019s it costing you most?",
+    text: "What is holding it all together costing you most?",
     options: [
-      { label: "My relationships \u2014 nobody sees the real me" },
-      { label: "My energy \u2014 performing takes everything" },
-      { label: "My health \u2014 I\u2019m ignoring what my body says" },
-      { label: "My identity \u2014 I\u2019ve lost who I am under the mask" },
+      { label: "My own sense of who I am" },
+      { label: "The energy it takes to keep pretending I\u2019m fine" },
+      { label: "My sanity" },
+      { label: "All of the above" },
     ],
     normalization: "Naming the cost makes it real.",
   },
@@ -333,113 +329,208 @@ export const BRANCH_Q6: Record<Branch, Question> = {
 // per-branch copy can be filled without touching component logic.
 
 export interface PainFragments {
-  /** Keyed by exact Q2 option label → sharpest pain reflection (beat 1). */
+  /** Per-branch opening frame (beat 0) — sets the scene before the Q2 echo. */
+  opener: string;
+  /** Keyed by exact Q2 option label → sharpest pain reflection. */
   q2: Record<string, string>;
-  /** TODO(copy): keyed by exact Q3 option label → optional amplifier. */
+  /** Keyed by exact Q3 option label → "where it lives" amplifier. */
   q3: Record<string, string>;
-  /** TODO(copy): keyed by exact Q6 option label → cost-specific line. */
+  /** Keyed by exact Q6 option label → cost-specific line. */
   q6: Record<string, string>;
-  /** Real per-branch fallback for beat 1 when no Q2 fragment matches. */
+  /** Per-branch fallback for the Q2 beat when no Q2 fragment matches. */
   fallback: string;
-  /** Real per-branch closer (beat 2) when no Q3/Q6 fragment is available. */
+  /** Per-branch closing frame — the last beat, always shown. */
   closer: string;
 }
 
 export const PAIN_FRAGMENTS: Record<Branch, PainFragments> = {
   overload: {
+    opener: "You\u2019re the one who remembers. And there\u2019s no room left up there.",
     q2: {
-      "Autopilot \u2014 I don\u2019t remember half of it":
-        "Your days run on autopilot. You get to the end of the week and can\u2019t name a single moment that mattered.",
-      "Busy but empty":
-        "Full calendar. Nothing to show for it. That\u2019s what you told us.",
-      "Fine on the surface, foggy underneath":
-        "Fine on the surface. Foggy underneath. Your answers suggest it\u2019s been building for a while.",
-      "Like I\u2019m watching someone else live my life":
-        "Going through the motions. Present but not there. And nobody around you sees it.",
+      "I forget things I meant to do":
+        "So things slip \u2014 the ones you meant to do, gone the second something louder needs you.",
+      "I lie awake running through my list":
+        "So you lie awake running the list, because the moment you stop is the moment you\u2019ll forget the thing that mattered.",
+      "I feel scattered and can\u2019t focus on one thing":
+        "So you\u2019re scattered \u2014 starting five things, finishing none, your attention spread across everything at once.",
+      "I snap or shut down from the sheer volume":
+        "So it comes out sideways \u2014 you snap, or go quiet, not because you\u2019re angry, but because there\u2019s simply too much to hold.",
     },
-    q3: {}, // TODO(copy): per-Q3 amplifier fragments
-    q6: {}, // TODO(copy): per-Q6 cost fragments
-    fallback: "Your days blur together, and nothing sticks.",
-    closer: "The pattern isn\u2019t the fog. It\u2019s what\u2019s hiding inside it.",
+    q3: {
+      "Everyone else\u2019s schedules and needs":
+        "You\u2019re holding everyone else\u2019s lives \u2014 their schedules, their needs, the things only you remember.",
+      "Work tasks and deadlines":
+        "You\u2019re holding every deadline and open loop at once, with no off switch.",
+      "All of the different things I need to be doing":
+        "You\u2019re holding all of it at once \u2014 every separate thing you\u2019re supposed to be doing, stacked in one head.",
+      "All the above \u2014 I\u2019m the one who\u2019s supposed to remember everything":
+        "You\u2019re the one who\u2019s supposed to remember everything. So all of it lives in you \u2014 and there\u2019s no one to hand it to.",
+    },
+    q6: {
+      "People\u2019s trust in me":
+        "And it\u2019s costing you something that\u2019s hard to win back \u2014 people\u2019s trust that you\u2019ll remember.",
+      "My confidence in myself":
+        "And it\u2019s costing you your confidence in yourself \u2014 you used to be the one who had it handled.",
+      "My sense of peace and calm":
+        "And it\u2019s costing you your peace \u2014 you\u2019re always braced for the next thing to slip.",
+      "All the above":
+        "And it\u2019s costing you all of it \u2014 trust, confidence, and any sense of calm.",
+    },
+    fallback: "Your head is too full, and there\u2019s nowhere to set any of it down.",
+    closer: "This isn\u2019t a discipline problem. You\u2019re holding more than any one mind was built to hold. Let\u2019s take some of it off your shoulders.",
   },
   patterns: {
+    opener: "You already know how it ends. You\u2019ve watched it happen enough times to see it coming \u2014 and it happens anyway.",
     q2: {
-      "The same argument with my partner":
-        "You already know how the fight ends. The words change but the feeling is exactly the same.",
-      "The same frustration at work":
-        "Different meeting, different day, same feeling in your chest.",
-      "The same cycle with family":
-        "The family dynamic has been running longer than you\u2019d like to admit. You thought you\u2019d outgrow it.",
-      "The same dynamic in every relationship":
-        "It\u2019s not one relationship. It\u2019s the pattern underneath all of them.",
+      "The same argument, over and over":
+        "It\u2019s the same argument wearing a different face. Different night, same fight.",
+      "The same mood or spiral, on repeat":
+        "It\u2019s the same spiral \u2014 you can feel it starting, and knowing doesn\u2019t stop it.",
+      "The same situations blowing up the same way":
+        "It\u2019s the same situations detonating the same way, like you\u2019re reading from a script no one gave you.",
+      "All the above":
+        "It\u2019s all of it \u2014 the same arguments, the same spirals, the same situations, all on repeat.",
     },
-    q3: {},
-    q6: {},
+    q3: {
+      "With my partner":
+        "And it lands hardest with the person you most want it to be easy with.",
+      "With my family":
+        "And it plays out with the family you thought you\u2019d have outgrown this with.",
+      "With my coworkers":
+        "And it follows you into work, the same friction with the same people.",
+      "With my friends":
+        "And it shows up with the friends who are supposed to be the easy part.",
+      "In my own head":
+        "And it runs inside your own head, where there\u2019s no one else to blame for it.",
+    },
+    q6: {
+      "My closest relationships":
+        "It\u2019s costing you the closeness you actually want.",
+      "My peace of mind":
+        "It\u2019s costing you your peace \u2014 you\u2019re never fully at rest, waiting for the next round.",
+      "The way I see myself":
+        "And quietly, it\u2019s costing you the way you see yourself \u2014 like something\u2019s wrong with you.",
+      "My work performance":
+        "And it\u2019s bleeding into your work \u2014 the same loop pulling focus you can\u2019t afford to lose.",
+    },
     fallback: "The same cycle keeps running, and you can\u2019t quite see it from inside it.",
-    closer: "The pattern isn\u2019t the fight. It\u2019s what builds up before it.",
+    closer: "Here\u2019s the thing: the fight isn\u2019t the pattern. The pattern is what builds up before it. And you can\u2019t change what you can\u2019t see. Let\u2019s make it visible.",
   },
   rumination: {
+    opener: "Your head hits the pillow, and your brain turns on. The day\u2019s finally quiet \u2014 so everything you didn\u2019t have time to feel shows up at once.",
     q2: {
-      "The moment I lie down":
-        "The second your head hits the pillow, your brain turns on. Conversations replay. Decisions get second-guessed.",
-      "During any quiet moment":
-        "Silence isn\u2019t peaceful for you. It\u2019s when the noise starts.",
-      "When I\u2019m driving or showering":
-        "You do your deepest thinking behind the wheel \u2014 not because you choose to, but because that\u2019s when your brain can ambush you.",
-      "It never fully stops":
-        "It\u2019s not that your brain gets loud sometimes. It\u2019s that it never fully stops.",
+      "Replaying things I said or did":
+        "You replay it \u2014 the thing you said, the look on their face, the version where you handled it better.",
+      "Running through everything I still have to do":
+        "You run the list \u2014 everything undone, everything due, everything you can\u2019t afford to forget by morning.",
+      "Worrying about things I can\u2019t control":
+        "You circle the things you can\u2019t control, turning them over and over, getting nowhere.",
+      "All the above":
+        "It\u2019s all of it at once \u2014 the replays, the list, the worries \u2014 a pile-up with no exit.",
     },
-    q3: {},
-    q6: {},
-    fallback: "Your brain won\u2019t stop, and there\u2019s nowhere to put it all.",
-    closer: "The loop isn\u2019t random. It\u2019s processing something your day didn\u2019t give you space to finish.",
+    q3: {
+      "The second my head hits the pillow":
+        "And it starts the moment you lie down, like your mind was waiting for the lights to go out.",
+      "The middle of the night, wide awake":
+        "And it wakes you in the dark, wide awake with no reason and no off switch.",
+      "Early morning, before I even get up":
+        "And it\u2019s there before you\u2019re even up, greeting you before the day starts.",
+      "Any quiet moment \u2014 it fills the silence":
+        "And it floods every quiet moment, because silence is when it gets loud.",
+    },
+    q6: {
+      "My sleep":
+        "It\u2019s costing you sleep you can\u2019t get back.",
+      "My energy the next day":
+        "It\u2019s costing you tomorrow \u2014 you\u2019re running on empty before the day begins.",
+      "My peace of mind":
+        "It\u2019s costing you your peace \u2014 you can\u2019t remember the last time your mind was actually quiet.",
+      "My health":
+        "And it\u2019s starting to cost you your health \u2014 a body that never gets to fully rest.",
+    },
+    fallback: "Your mind won\u2019t stop, and there\u2019s nowhere to put it all down.",
+    closer: "You don\u2019t need to solve all of it tonight. You just need somewhere to put it down. Let\u2019s give your mind a place to empty out.",
   },
   stuck: {
+    opener: "You\u2019re moving all day. Busy from the moment you wake up. And somehow, you end up in the exact same place you started.",
     q2: {
-      "A journaling app":
-        "Maybe you downloaded a journaling app. You stopped \u2014 not because it was bad, but because staring at a blank screen felt like one more thing to fail at.",
-      "Therapy or coaching":
-        "Maybe therapy helped while you were in the room. The insights faded between sessions.",
-      "A productivity system":
-        "Maybe you built a system. You spent more time maintaining it than actually living.",
-      "Meditation or mindfulness":
-        "Maybe someone told you to meditate. Sitting alone with your thoughts wasn\u2019t the relief they promised.",
-      "A self-help book":
-        "Something shifted for about three days. Then it faded. And you went back to exactly where you were.",
+      "I\u2019m always busy but nothing feels like progress":
+        "You\u2019re always busy \u2014 but busy isn\u2019t the same as forward, and somewhere you started confusing the two.",
+      "I end every week exhausted with nothing to show for it":
+        "You end every week wrung out, and if someone asked what you actually moved forward, you\u2019d struggle to answer.",
+      "I keep doing everything for everyone but me":
+        "You pour it all into everyone else, and there\u2019s nothing left over to build the life you actually want.",
+      "All the above":
+        "You\u2019re busy, you\u2019re exhausted, and it all goes to everyone but you \u2014 every single week.",
     },
-    q3: {},
-    q6: {},
-    fallback: "You\u2019ve tried the right things. They just weren\u2019t built for how your mind works.",
-    closer: "It\u2019s not discipline you\u2019re missing. It\u2019s that nobody\u2019s helped you see the moment you stop.",
+    q3: {
+      "Everyone else\u2019s needs and schedules":
+        "Your energy goes to everyone else\u2019s needs, on everyone else\u2019s schedule.",
+      "Work that never really ends":
+        "Your energy goes into work that refills the second you empty it.",
+      "Just keeping everything from falling apart":
+        "Your energy goes to keeping everything from falling apart \u2014 which leaves nothing for moving it forward.",
+      "I honestly don\u2019t know \u2014 that\u2019s the problem":
+        "And the honest truth is you\u2019re not even sure where it all goes. That\u2019s the part that scares you.",
+    },
+    q6: {
+      "The goals I keep putting off":
+        "It\u2019s costing you the goals you keep pushing to \u2018someday.\u2019",
+      "My sense of purpose":
+        "It\u2019s costing you your sense of purpose \u2014 the feeling that any of this is going somewhere.",
+      "Time I\u2019ll never get back":
+        "It\u2019s costing you time you don\u2019t get back \u2014 weeks that blur into months into years.",
+      "All the above":
+        "It\u2019s costing you all of it \u2014 your goals, your purpose, and time you can\u2019t get back.",
+    },
+    fallback: "You\u2019re busy nonstop, and none of it feels like getting anywhere.",
+    closer: "You\u2019re not stuck because you\u2019re not trying. You\u2019re stuck because you can\u2019t see where all that effort is actually going. Once you can see it, you can finally point it somewhere that matters.",
   },
   mask: {
+    opener: "Everyone thinks you\u2019re fine \u2014 because you made sure of it. You\u2019re the steady one, the reliable one, the one who\u2019s got it handled. And no one knows how much that\u2019s costing you.",
     q2: {
-      "My partner":
-        "Your partner thinks you\u2019re fine because you\u2019ve made sure they think you\u2019re fine. So you carry it.",
-      "My kids":
-        "Your kids see someone who has it all handled. What they don\u2019t see is what it takes to hold that together every single day.",
-      "My team at work":
-        "At work, you\u2019re the reliable one. Nobody asks how you\u2019re doing because you\u2019ve made it so nobody needs to.",
-      "Everyone":
-        "You\u2019re holding it together for everyone. The one person you\u2019re not holding it together for is yourself.",
-      "Honestly, just myself":
-        "You\u2019re performing for yourself \u2014 maintaining the fiction that you\u2019re fine.",
+      "I\u2019m running on empty but no one can tell":
+        "You\u2019re running on empty, and you\u2019ve gotten so good at hiding it that no one would ever guess.",
+      "I keep it together all day, then fall apart alone":
+        "You hold it together all day, and then, when the door finally closes, it all comes down.",
+      "I say \u2018I\u2019m fine\u2019 when I\u2019m really not":
+        "You say \u2018I\u2019m fine\u2019 so automatically you almost believe it \u2014 right up until you\u2019re alone.",
+      "All the above":
+        "You run on empty, keep it together all day, say you\u2019re fine \u2014 and fall apart where no one can see.",
     },
-    q3: {},
-    q6: {},
-    fallback: "You\u2019re holding it together for everyone but you.",
-    closer: "The pattern isn\u2019t generosity. It\u2019s erasure.",
+    q3: {
+      "Myself":
+        "You hold it together even when you\u2019re alone \u2014 you can\u2019t fully let go even with yourself.",
+      "My kids / family":
+        "You hold it together for your family, because they need you to be okay.",
+      "Everyone at work":
+        "You hold it together at work, because that\u2019s where you can\u2019t afford to crack.",
+      "Everyone \u2014 I\u2019m the one people lean on":
+        "You hold it together for everyone \u2014 you\u2019re the one people lean on, so who do you get to lean on?",
+    },
+    q6: {
+      "My own sense of who I am":
+        "And it\u2019s costing you the thread to who you actually are underneath the performance.",
+      "The energy it takes to keep pretending I\u2019m fine":
+        "And it\u2019s costing you an exhausting amount of energy \u2014 keeping up \u2018I\u2019m fine\u2019 is its own full-time job.",
+      "My sanity":
+        "And it\u2019s starting to cost you your sanity \u2014 you can only hold this much for so long before something gives.",
+      "All of the above":
+        "And it\u2019s costing you all of it \u2014 your sense of self, your energy, and your sanity.",
+    },
+    fallback: "You\u2019re holding it together for everyone, and no one sees what it takes.",
+    closer: "You don\u2019t have to perform here. This is the one place you can set the mask down and just say the thing underneath \u2014 no one watching, no one to reassure. Let\u2019s give you somewhere to be honest.",
   },
 };
 
 /**
  * Assemble the Pain screen reflection from the user's actual answers.
- * Returns an array of "beats" (short paragraphs) the component reveals in
- * sequence. beat 1 = Q2 pain reflection; beat 2 = stitched Q3/Q6 fragments
- * when available, else the per-branch closer.
- *
- * TODO(copy): once the q3/q6 fragment banks are filled, beat 2 will read as
- * an assembled cost-aware line; until then it uses the per-branch closer.
+ * Returns an ordered array of "beats" (short paragraphs) the component reveals
+ * in sequence:
+ *   [opener, Q2 echo, Q3 amplifier, Q6 cost, closer]
+ * Any missing fragment is dropped (empty strings filtered), so the screen still
+ * renders coherently if a branch hasn't defined a given fragment. The closer is
+ * always the final, emphasized beat.
  */
 export function assemblePainCopy(
   branch: Branch,
@@ -450,14 +541,11 @@ export function assemblePainCopy(
   const q3 = String(answers.branch_q3 ?? "");
   const q6 = String(answers.branch_q6 ?? "");
 
-  const beat1 = frag.q2[q2] ?? frag.fallback;
-  const q3Frag = frag.q3[q3];
-  const q6Frag = frag.q6[q6];
-  const beat2 = [q3Frag, q6Frag].filter(Boolean).join(" ") || frag.closer;
+  const q2Beat = frag.q2[q2] ?? frag.fallback;
+  const q3Beat = frag.q3[q3] ?? "";
+  const q6Beat = frag.q6[q6] ?? "";
 
-  return [beat1, beat2];
-  // Beat 3 ("You don't have to keep living like this.") is rendered by the
-  // PainScreen component as a static settle line.
+  return [frag.opener, q2Beat, q3Beat, q6Beat, frag.closer].filter(Boolean);
 }
 
 // ─── Relief Flip (Screen 8, NEW) ────────────────────────────────────────────
@@ -474,34 +562,56 @@ export interface ReliefFlipConfig {
   options: { id: string; label: string }[];
 }
 
-const RELIEF_FLIP_OPTIONS: { id: string; label: string }[] = [
-  { id: "lighter", label: "Lighter \u2014 like I put something heavy down" },
-  { id: "clear", label: "Clear \u2014 I\u2019d finally hear myself think" },
-  { id: "present", label: "Present \u2014 actually here with the people I love" },
-  { id: "hopeful", label: "Hopeful \u2014 like things could actually change" },
-  { id: "all", label: "All of the above" },
-];
-
 export const RELIEF_FLIP: Record<Branch, ReliefFlipConfig> = {
   overload: {
-    prompt: "Imagine the fog lifted \u2014 the days stopped blurring. How would you feel?",
-    options: RELIEF_FLIP_OPTIONS,
+    prompt: "Imagine your head wasn\u2019t full anymore\u2026 how would you feel?",
+    options: [
+      { id: "lighter", label: "Lighter \u2014 like I could finally breathe" },
+      { id: "calm", label: "Calm \u2014 not braced for the next thing to drop" },
+      { id: "present", label: "Present \u2014 actually here, instead of half-somewhere-else" },
+      { id: "relieved", label: "Relieved \u2014 the weight finally off my shoulders" },
+      { id: "all", label: "All of the above" },
+    ],
   },
   patterns: {
-    prompt: "Imagine the cycle finally broke. How would you feel?",
-    options: RELIEF_FLIP_OPTIONS,
+    prompt: "Imagine the cycle finally broke\u2026 how would you feel?",
+    options: [
+      { id: "free", label: "Free \u2014 like the loop finally let go" },
+      { id: "closer", label: "Closer \u2014 to the people it keeps pushing away" },
+      { id: "clear", label: "Clear \u2014 I\u2019d finally understand why it happens" },
+      { id: "at_peace", label: "At peace with myself \u2014 instead of blaming myself" },
+      { id: "all", label: "All of the above" },
+    ],
   },
   rumination: {
-    prompt: "Imagine your mind finally went quiet. How would you feel?",
-    options: RELIEF_FLIP_OPTIONS,
+    prompt: "Imagine your mind went quiet at night\u2026 how would you feel?",
+    options: [
+      { id: "rested", label: "Rested \u2014 actually sleeping again" },
+      { id: "lighter", label: "Lighter \u2014 like I set the day down before bed" },
+      { id: "calm", label: "Calm \u2014 no spiral waiting for me in the dark" },
+      { id: "clear", label: "Clear \u2014 instead of tangled up in my own head" },
+      { id: "all", label: "All of the above" },
+    ],
   },
   stuck: {
-    prompt: "Imagine something finally stuck. How would you feel?",
-    options: RELIEF_FLIP_OPTIONS,
+    prompt: "Imagine you were actually moving forward again\u2026 how would you feel?",
+    options: [
+      { id: "motivated", label: "Motivated \u2014 like my effort finally counts" },
+      { id: "clear", label: "Clear \u2014 I\u2019d know exactly what to focus on" },
+      { id: "proud", label: "Proud \u2014 actually making progress on what matters" },
+      { id: "free", label: "Free \u2014 off the treadmill for good" },
+      { id: "all", label: "All of the above" },
+    ],
   },
   mask: {
-    prompt: "Imagine you could set the mask down. How would you feel?",
-    options: RELIEF_FLIP_OPTIONS,
+    prompt: "Imagine you could finally take the mask off\u2026 how would you feel?",
+    options: [
+      { id: "relieved", label: "Relieved \u2014 like I could exhale for the first time" },
+      { id: "honest", label: "Honest \u2014 with myself, for once" },
+      { id: "lighter", label: "Lighter \u2014 not carrying it all alone" },
+      { id: "seen", label: "Seen \u2014 even if only by me" },
+      { id: "all", label: "All of the above" },
+    ],
   },
 };
 
@@ -520,6 +630,8 @@ export const RELIEF_FLIP: Record<Branch, ReliefFlipConfig> = {
 // follows in the branch-content pass.
 
 export interface CurrentFutureContent {
+  header: string;
+  footer: string;
   currentLabel: string;
   futureLabel: string;
   current: string[];
@@ -527,71 +639,173 @@ export interface CurrentFutureContent {
 }
 
 interface CurrentFutureBank {
+  header: string;
+  footer: string;
+  currentLabel?: string;
+  futureLabel?: string;
+  /** Two-item fallback: [Q2-dimension line, Q6-dimension line]. */
   currentDefault: string[];
   futureDefault: string[];
-  /** Keyed by exact Q2 label → replaces current[0] when matched. */
+  /** Keyed by exact Q2 label → replaces current[0] (left, pain). */
   q2Current: Record<string, string>;
-  /** TODO(copy): keyed by exact Q6 label → replaces future[0] when matched. */
+  /** Keyed by exact Q2 label → replaces future[0] (right, relief). */
+  q2Future: Record<string, string>;
+  /** Keyed by exact Q6 label → replaces current[1] (left, pain). */
+  q6Current: Record<string, string>;
+  /** Keyed by exact Q6 label → replaces future[1] (right, relief). */
   q6Future: Record<string, string>;
 }
 
 const CURRENT_FUTURE: Record<Branch, CurrentFutureBank> = {
   overload: {
-    currentDefault: ["Days blur together", "Running on autopilot", "Nothing sticks"],
-    futureDefault: ["You can name what mattered", "Present for your own life", "The week actually lands"],
+    header: "Here\u2019s the shift.",
+    footer: "Same you. Same life. Just no longer carrying all of it alone.",
+    currentDefault: ["Things keep slipping through", "Braced for the next thing to slip"],
+    futureDefault: ["Nothing falls through anymore", "Calm \u2014 nothing waiting to fall"],
     q2Current: {
-      "Autopilot \u2014 I don\u2019t remember half of it": "Half the day just vanishes",
-      "Busy but empty": "Busy but empty",
-      "Fine on the surface, foggy underneath": "Foggy underneath the surface",
-      "Like I\u2019m watching someone else live my life": "Watching your own life go by",
+      "I forget things I meant to do": "Things keep slipping through",
+      "I lie awake running through my list": "Awake at 2 a.m., running the list",
+      "I feel scattered and can\u2019t focus on one thing": "Scattered, finishing nothing",
+      "I snap or shut down from the sheer volume": "Snapping from the sheer volume",
     },
-    q6Future: {},
+    q2Future: {
+      "I forget things I meant to do": "Nothing falls through anymore",
+      "I lie awake running through my list": "Resting \u2014 it\u2019s written where you trust it",
+      "I feel scattered and can\u2019t focus on one thing": "Focused, one thing at a time",
+      "I snap or shut down from the sheer volume": "Steady, because the pressure\u2019s off",
+    },
+    q6Current: {
+      "People\u2019s trust in me": "People starting to doubt you\u2019ll remember",
+      "My confidence in myself": "Feeling like you\u2019ve lost your grip",
+      "My sense of peace and calm": "Braced for the next thing to slip",
+      "All the above": "Trust, confidence, calm \u2014 all fraying",
+    },
+    q6Future: {
+      "People\u2019s trust in me": "Someone they can count on again",
+      "My confidence in myself": "Back on top of your life",
+      "My sense of peace and calm": "Calm \u2014 nothing waiting to fall",
+      "All the above": "Steady, trusted, and clear again",
+    },
   },
   patterns: {
-    currentDefault: ["The same fight, on repeat", "Bracing for the next round", "Reacting before you see it"],
-    futureDefault: ["You see the trigger coming", "You respond instead of react", "The cycle loses its grip"],
+    header: "Here\u2019s the shift.",
+    footer: "Same you. Same people. Just no longer stuck in the same loop.",
+    currentDefault: ["The same loops running on repeat", "Never at rest, braced for the next round"],
+    futureDefault: ["In control, not on autopilot", "At rest, the loop finally quiet"],
     q2Current: {
-      "The same argument with my partner": "The same argument, again",
-      "The same frustration at work": "The same frustration at work",
-      "The same cycle with family": "The same cycle with family",
-      "The same dynamic in every relationship": "The same dynamic everywhere",
+      "The same argument, over and over": "Same fight, different night",
+      "The same mood or spiral, on repeat": "Feeling the spiral start, unable to stop",
+      "The same situations blowing up the same way": "Watching it blow up the same way",
+      "All the above": "The same loops running on repeat",
     },
-    q6Future: {},
+    q2Future: {
+      "The same argument, over and over": "You see it coming \u2014 and step out of it",
+      "The same mood or spiral, on repeat": "You catch the spiral before it takes you",
+      "The same situations blowing up the same way": "The same trigger, a different outcome",
+      "All the above": "In control, not on autopilot",
+    },
+    q6Current: {
+      "My closest relationships": "Pushing away the people you want close",
+      "My peace of mind": "Never at rest, braced for the next round",
+      "The way I see myself": "Wondering what\u2019s wrong with you",
+      "My work performance": "The loop pulling focus from your work",
+    },
+    q6Future: {
+      "My closest relationships": "Closer to the people who matter",
+      "My peace of mind": "At rest, the loop finally quiet",
+      "The way I see myself": "Kinder to yourself \u2014 it was a pattern, not a flaw",
+      "My work performance": "Clear-headed, present at work again",
+    },
   },
   rumination: {
-    currentDefault: ["A mind that won\u2019t shut off", "Replaying it at 2am", "Never fully at rest"],
-    futureDefault: ["The noise has somewhere to go", "You hear yourself think", "Nights get quieter"],
+    header: "Here\u2019s the shift.",
+    footer: "Same mind. Same nights. Just no longer taking all of it to bed with you.",
+    currentDefault: ["The replays, the list, the worries \u2014 all at once", "A mind that never goes quiet"],
+    futureDefault: ["The noise let out before it piles up", "Quiet, when you want it"],
     q2Current: {
-      "The moment I lie down": "It starts the moment you lie down",
-      "During any quiet moment": "Every quiet moment fills with noise",
-      "When I\u2019m driving or showering": "It ambushes you when you\u2019re alone",
-      "It never fully stops": "It never fully stops",
+      "Replaying things I said or did": "Replaying the day on a loop",
+      "Running through everything I still have to do": "Running the list in the dark",
+      "Worrying about things I can\u2019t control": "Circling what you can\u2019t control",
+      "All the above": "The replays, the list, the worries \u2014 all at once",
     },
-    q6Future: {},
+    q2Future: {
+      "Replaying things I said or did": "The day set down, not replayed",
+      "Running through everything I still have to do": "The list out of your head, onto something you trust",
+      "Worrying about things I can\u2019t control": "The worries named, not spinning",
+      "All the above": "The noise let out before it piles up",
+    },
+    q6Current: {
+      "My sleep": "Lying awake, sleep out of reach",
+      "My energy the next day": "Dragging through tomorrow on empty",
+      "My peace of mind": "A mind that never goes quiet",
+      "My health": "A body that never fully rests",
+    },
+    q6Future: {
+      "My sleep": "Sleeping \u2014 your mind finally still",
+      "My energy the next day": "Waking up with energy again",
+      "My peace of mind": "Quiet, when you want it",
+      "My health": "Rest your body actually gets",
+    },
   },
   stuck: {
-    currentDefault: ["Another tool half-abandoned", "Sure you\u2019ll quit again", "Nothing ever stuck"],
-    futureDefault: ["Something that finally holds", "Past the point you usually quit", "Proof you can stick with it"],
+    header: "Here\u2019s the shift.",
+    footer: "Same effort. Same hours. Just finally pointed somewhere that counts.",
+    currentDefault: ["Busy, drained, and stuck in place", "Goals, purpose, and time all slipping"],
+    futureDefault: ["Off the treadmill, actually going somewhere", "Moving forward, on purpose"],
     q2Current: {
-      "A journaling app": "Another app you stopped opening",
-      "Therapy or coaching": "Insights that faded between sessions",
-      "A productivity system": "A system you spent more time maintaining",
-      "Meditation or mindfulness": "Sitting alone that never brought relief",
-      "A self-help book": "A book that faded after three days",
+      "I\u2019m always busy but nothing feels like progress": "Busy all day, moving nowhere",
+      "I end every week exhausted with nothing to show for it": "Wrung out, nothing to show for it",
+      "I keep doing everything for everyone but me": "Pouring it all into everyone else",
+      "All the above": "Busy, drained, and stuck in place",
     },
-    q6Future: {},
+    q2Future: {
+      "I\u2019m always busy but nothing feels like progress": "Busy with things that actually move you",
+      "I end every week exhausted with nothing to show for it": "Ending the week with something real to show",
+      "I keep doing everything for everyone but me": "Energy going to your life too",
+      "All the above": "Off the treadmill, actually going somewhere",
+    },
+    q6Current: {
+      "The goals I keep putting off": "Goals stuck on \u2018someday\u2019",
+      "My sense of purpose": "Wondering what any of it is for",
+      "Time I\u2019ll never get back": "Weeks blurring into months, gone",
+      "All the above": "Goals, purpose, and time all slipping",
+    },
+    q6Future: {
+      "The goals I keep putting off": "Goals you\u2019re finally moving on",
+      "My sense of purpose": "A clear sense of where it\u2019s all headed",
+      "Time I\u2019ll never get back": "Time going toward what matters",
+      "All the above": "Moving forward, on purpose",
+    },
   },
   mask: {
-    currentDefault: ["Holding it together for everyone", "Nobody sees the real you", "Last on your own list"],
-    futureDefault: ["A place to be honest", "Seen \u2014 finally", "You, back on the list"],
+    header: "Here\u2019s the shift.",
+    footer: "Same you. Same day. Just no longer holding all of it behind the mask.",
+    currentDefault: ["Performing okay, falling apart alone", "Feeling like you\u2019re at your limit"],
+    futureDefault: ["The mask down, at least somewhere", "Steadier, with room to breathe"],
     q2Current: {
-      "My partner": "Holding it together for your partner",
-      "My kids": "Holding it together for your kids",
-      "My team at work": "The reliable one, always",
-      "Everyone": "Holding it together for everyone",
-      "Honestly, just myself": "Performing even for yourself",
+      "I\u2019m running on empty but no one can tell": "Empty inside, fine on the outside",
+      "I keep it together all day, then fall apart alone": "Holding it together until the door closes",
+      "I say \u2018I\u2019m fine\u2019 when I\u2019m really not": "Saying \u2018I\u2019m fine\u2019 when you\u2019re not",
+      "All the above": "Performing okay, falling apart alone",
     },
-    q6Future: {},
+    q2Future: {
+      "I\u2019m running on empty but no one can tell": "A place where you don\u2019t have to pretend",
+      "I keep it together all day, then fall apart alone": "Somewhere to let it out before it builds",
+      "I say \u2018I\u2019m fine\u2019 when I\u2019m really not": "Honest with yourself, for once",
+      "All the above": "The mask down, at least somewhere",
+    },
+    q6Current: {
+      "My own sense of who I am": "Losing the thread of who you are",
+      "The energy it takes to keep pretending I\u2019m fine": "Exhausted from keeping \u2018I\u2019m fine\u2019 up",
+      "My sanity": "Feeling like you\u2019re at your limit",
+      "All of the above": "Self, energy, and sanity all draining",
+    },
+    q6Future: {
+      "My own sense of who I am": "Reconnected to who you actually are",
+      "The energy it takes to keep pretending I\u2019m fine": "Lighter \u2014 not spending energy hiding",
+      "My sanity": "Steadier, with room to breathe",
+      "All of the above": "Honest, steadier, and less alone",
+    },
   },
 };
 
@@ -609,17 +823,22 @@ export function assembleCurrentFuture(
   const q2 = String(answers.branch_q2 ?? "");
   const q6 = String(answers.branch_q6 ?? "");
 
+  // Row 0 echoes the Q2 tap; row 1 echoes the Q6 tap. Left = pain, right =
+  // relief. Defaults are real copy, so the screen renders even if a tap has no
+  // matching fragment.
   const current = [...bank.currentDefault];
   const future = [...bank.futureDefault];
 
-  const cOverride = bank.q2Current[q2];
-  if (cOverride) current[0] = cOverride;
-  const fOverride = bank.q6Future[q6]; // TODO(copy): placeholder bank
-  if (fOverride) future[0] = fOverride;
+  if (bank.q2Current[q2]) current[0] = bank.q2Current[q2];
+  if (bank.q2Future[q2]) future[0] = bank.q2Future[q2];
+  if (bank.q6Current[q6]) current[1] = bank.q6Current[q6];
+  if (bank.q6Future[q6]) future[1] = bank.q6Future[q6];
 
   return {
-    currentLabel: "You right now",
-    futureLabel: "You, a few weeks in",
+    header: bank.header,
+    footer: bank.footer,
+    currentLabel: bank.currentLabel ?? "You right now",
+    futureLabel: bank.futureLabel ?? "You, a few weeks in",
     current,
     future,
   };
@@ -646,41 +865,75 @@ export interface PatternLabels {
 }
 
 const PRIMARY_PATTERN: Record<Branch, string> = {
-  overload: "Mental Overload",
-  patterns: "Relational Looping",
-  rumination: "Racing Mind",
-  stuck: "System Fatigue",
-  mask: "Invisible Load",
+  overload: "Cognitive Overload",
+  patterns: "The Cycle",
+  rumination: "The Loop",
+  stuck: "The Treadmill",
+  mask: "The Mask",
 };
 
 const LOOP_LINES: Record<Branch, string> = {
-  overload: "Your days run together without registering \u2014 not because nothing happens, but because nothing lands.",
-  patterns: "The same conversations keep cycling without resolving \u2014 different words, same feeling.",
-  rumination: "Your brain keeps processing a backlog it never gets to clear \u2014 so it replays instead.",
-  stuck: "You\u2019ve tried the right things \u2014 they just weren\u2019t built for how your mind actually works.",
-  mask: "You\u2019re carrying everything for everyone \u2014 and nobody sees the cost because you\u2019ve made sure they don\u2019t.",
+  overload: "You\u2019re holding more than any one mind was built to hold \u2014 so things slip, and it isn\u2019t your fault.",
+  patterns: "The fight isn\u2019t the pattern \u2014 the pattern is everything that quietly builds up before it.",
+  rumination: "Your mind replays at night because the day never gave it anywhere to set things down.",
+  stuck: "You\u2019re not doing too little \u2014 you\u2019re spending all of it just staying in place.",
+  mask: "You\u2019ve gotten so good at \u2018I\u2019m fine\u2019 that no one sees the weight you\u2019re actually carrying.",
 };
 
+// bodyCopy carries the Screen-14 snapshot — the concrete "here's what Acuity
+// caught" moment that makes the pattern feel specific rather than generic.
 const BODY_COPY: Record<Branch, string> = {
-  overload: "You\u2019re not lacking memory \u2014 you\u2019re lacking a surface for your days to land on. When nothing captures what happened, everything flattens into noise.",
-  patterns: "You\u2019re not lacking communication skills \u2014 you\u2019re missing the 48-hour view. The trigger isn\u2019t the fight. It\u2019s what built up in the days before it.",
-  rumination: "You\u2019re not lacking calm \u2014 you\u2019re carrying a processing backlog. Your brain replays at night because your day never gave it space to finish.",
-  stuck: "You\u2019re not lacking discipline \u2014 you\u2019ve been using tools that ask too much. Blank pages, daily prompts, meditation timers \u2014 none of them met you where you actually are.",
-  mask: "You\u2019re not lacking strength \u2014 you\u2019re spending all of it on everyone else. The mask works so well that nobody thinks to ask what\u2019s underneath.",
+  overload: "In a single debrief, you mentioned 7 things you needed to remember. Acuity caught all of them \u2014 and flagged 3 you\u2019d already mentioned before and still hadn\u2019t done. This is the load you\u2019ve been carrying in your head.",
+  patterns: "Across your debriefs, the tension started Sunday \u2014 and the argument landed Tuesday, the same way it did the week before. Acuity spotted the fuse, not just the explosion. This is the pattern you\u2019ve been living inside.",
+  rumination: "You recorded this debrief at 10:47pm \u2014 but the thing keeping you up actually started at 2:15 that afternoon. Acuity traced the worry back to where it began. The loop has a source, and now you can see it.",
+  stuck: "Across your debriefs, almost all your energy went to maintenance \u2014 keeping things running \u2014 and almost none to the goals you actually mentioned wanting. You\u2019re not doing too little. You\u2019re spending it all on staying in place.",
+  mask: "You said \u2018I\u2019m fine\u2019 in three separate debriefs this week \u2014 and each of those days, your mood was among your lowest. Acuity noticed the gap between what you say and what you carry. You\u2019ve been holding more than you let on.",
 };
 
 // Per-branch default area (used when branch_q6 has no explicit area mapping).
 const AREA_DEFAULT: Record<Branch, string> = {
-  overload: "Energy",
+  overload: "Peace of mind",
   patterns: "Relationships",
   rumination: "Peace of mind",
   stuck: "Momentum",
   mask: "Identity",
 };
 
-// TODO(copy): map branch_q6 option labels → area names as the branched Q6 copy
-// firms up. Until then, area falls back to the per-branch default.
-const AREA_MAP: Record<string, string> = {};
+// Map each branch's Q6 option label → the "most affected area" shown on the
+// pattern-result screen. Nested by branch so shared labels ("All the above",
+// "My peace of mind") don't collide across branches.
+const AREA_MAP: Record<Branch, Record<string, string>> = {
+  overload: {
+    "People\u2019s trust in me": "Trust",
+    "My confidence in myself": "Confidence",
+    "My sense of peace and calm": "Peace of mind",
+    "All the above": "Everything",
+  },
+  patterns: {
+    "My closest relationships": "Relationships",
+    "My peace of mind": "Peace of mind",
+    "The way I see myself": "Self-image",
+    "My work performance": "Work",
+  },
+  rumination: {
+    "My sleep": "Sleep",
+    "My energy the next day": "Energy",
+    "My peace of mind": "Peace of mind",
+    "My health": "Rest",
+  },
+  stuck: {
+    "The goals I keep putting off": "Goals",
+    "My sense of purpose": "Purpose",
+    "Time I\u2019ll never get back": "Time",
+    "All the above": "Everything",
+  },
+  mask: {
+    "My own sense of who I am": "Identity",
+    "The energy it takes to keep pretending I\u2019m fine": "Energy",
+    "My sanity": "Peace of mind",
+    "All of the above": "Everything",
+  },
+};
 
 export function getPatternLabels(branch: Branch, answers: Record<string, string | string[]>): PatternLabels {
   const primary = PRIMARY_PATTERN[branch];
@@ -689,13 +942,13 @@ export function getPatternLabels(branch: Branch, answers: Record<string, string 
 
   // Area — from branched Q6, with a per-branch default fallback.
   const costAnswer = String(answers.branch_q6 ?? "");
-  const mapped = AREA_MAP[costAnswer];
+  const mapped = AREA_MAP[branch]?.[costAnswer];
   const areaFallback = !mapped;
   const area = mapped ?? AREA_DEFAULT[branch];
 
   // Secondary — v6 has no Q9 source. Only the long-duration override applies.
   const duration = String(answers.shared_q5 ?? "");
-  const isLongDuration = duration === "Over a year" || duration === "I can\u2019t remember when it started";
+  const isLongDuration = duration === "Years" || duration === "As long as I can remember";
   let secondary: string | null = null;
   let stuckDeepOverride = false;
   let secondaryVisible = false;
@@ -716,18 +969,19 @@ export function getPatternLabels(branch: Branch, answers: Record<string, string 
 // ─── Snapshot: Bottom Line (Screen 14, Section 3) ───────────────────────────
 
 export const SNAPSHOT_BOTTOM: Record<Branch, string> = {
-  overload: "Your days have a pattern. You just can\u2019t see it from inside them. One week of Acuity and you will.",
-  patterns: "The cycle has a trigger. You\u2019ve been looking at the explosion. Acuity shows you the fuse.",
-  rumination: "Your brain isn\u2019t broken. It\u2019s processing a backlog you\u2019ve never cleared. 60 seconds a day starts clearing it.",
-  stuck: "You didn\u2019t fail at journaling. Journaling failed you. This is what it should have been all along.",
-  mask: "You\u2019ve been performing for too long. One minute a day of honesty and the mask starts to crack \u2014 in a good way.",
+  overload: "You\u2019ve been holding all of it in your head. Acuity is where you finally set it down.",
+  patterns: "The cycle has a trigger you\u2019ve never been able to see. This is where it becomes visible.",
+  rumination: "You don\u2019t have to carry it into the night. Acuity is somewhere to set it down first.",
+  stuck: "Your effort was never the problem. It just never had anywhere to land. Now it does.",
+  mask: "You\u2019ve held it together for everyone else. This is the one place you don\u2019t have to.",
 };
 
 // ─── Timeline Templates (Screen 15) ─────────────────────────────────────────
 //
-// v6: the "what one week actually looks like" preview block was removed from
-// the Timeline screen. Only the three escalating milestones (Week 1 / Month 1
-// / Year 1) remain. Branch-aware voice preserved.
+// v6: the "what one week actually looks like" preview block was removed. The
+// timeline is now three near-term milestones — Week 1 / Week 2 / Week 4 — with
+// the first item badged "Starting now". Copy is branch-specific and avoids the
+// removed Life Matrix feature and any recording-duration claims.
 
 export interface TimelineWeek {
   week: string;
@@ -736,80 +990,30 @@ export interface TimelineWeek {
 }
 
 const TIMELINE_WEEKS: Record<Branch, TimelineWeek[]> = {
-  patterns: [
-    {
-      week: "Week 1",
-      badge: "Starting now",
-      text: "The cycle gets named. Not fixed yet \u2014 named. The same argument, the same shutdown, the same Sunday-night dread \u2014 Acuity catches it in the first few debriefs. That\u2019s the part you could never quite see from inside it.",
-    },
-    {
-      week: "Month 1",
-      text: "The pattern becomes undeniable. Your weekly reports start connecting the dots \u2014 the trigger that shows up days before the fight, the Life Matrix taking shape across your six domains. You stop reacting and start seeing the shape of it coming.",
-    },
-    {
-      week: "Year 1",
-      text: "You have a record of yourself nobody else could write. A year of the patterns, the turning points, the quiet wins. You can see the cycle on paper, show it to someone who matters, and choose differently \u2014 not because it\u2019s gone, but because you finally see it whole.",
-    },
-  ],
   overload: [
-    {
-      week: "Week 1",
-      badge: "Starting now",
-      text: "The fog gets a name. Your days stop blurring into one long autopilot \u2014 Acuity catches what actually happened, the moments that slipped past you, in the first few debriefs.",
-    },
-    {
-      week: "Month 1",
-      text: "The blur starts to lift. Your weekly reports show you the week you actually lived \u2014 not the one that dissolved. The Life Matrix takes shape across your six domains, and for the first time you can see where your days are going instead of wondering where they went.",
-    },
-    {
-      week: "Year 1",
-      text: "You have a record of a year you\u2019d otherwise have lost. The days that ran together are now a story you can actually read. You can see where your life is going, show it to someone, and start steering it \u2014 instead of waking up wondering how it\u2019s already been a year.",
-    },
+    { week: "Week 1", badge: "Starting now", text: "The load starts leaving your head \u2014 you say it, Acuity holds it." },
+    { week: "Week 2", text: "You stop lying awake running the list. It\u2019s written where you can trust it." },
+    { week: "Week 4", text: "You\u2019ve stopped dropping things. There\u2019s room up there again." },
+  ],
+  patterns: [
+    { week: "Week 1", badge: "Starting now", text: "You start naming the cycle instead of just living it." },
+    { week: "Week 2", text: "You catch the buildup before the blowup." },
+    { week: "Week 4", text: "The same trigger stops leading to the same fight." },
   ],
   rumination: [
-    {
-      week: "Week 1",
-      badge: "Starting now",
-      text: "The noise gets somewhere to go. The thoughts that loop at 2am \u2014 Acuity catches them in the first few debriefs, so your mind isn\u2019t the only place they live.",
-    },
-    {
-      week: "Month 1",
-      text: "The replay starts to quiet. Your weekly reports show you what your mind keeps circling back to \u2014 and the Life Matrix takes shape across your six domains. You stop carrying the whole backlog at once, because it\u2019s finally written down somewhere outside your head.",
-    },
-    {
-      week: "Year 1",
-      text: "You have a record of a mind that finally got to rest. A year of the worries that mattered and the ones that never came true. You can see what your brain was really protecting you from, show it to someone, and let go of what it\u2019s safe to let go of.",
-    },
+    { week: "Week 1", badge: "Starting now", text: "You start emptying your head before bed instead of into it." },
+    { week: "Week 2", text: "The spiral gets shorter \u2014 you\u2019ve already said it, so it stops repeating." },
+    { week: "Week 4", text: "Your mind learns it can let go, because nothing gets lost." },
   ],
   stuck: [
-    {
-      week: "Week 1",
-      badge: "Starting now",
-      text: "Something finally sticks. The journals, the apps, the therapy that didn\u2019t quite hold \u2014 this one asks for 60 seconds, and in the first few debriefs it\u2019s already catching what the others missed.",
-    },
-    {
-      week: "Month 1",
-      text: "You realize it\u2019s still going. Past the point everything else fizzled out. Your weekly reports connect dots across weeks and the Life Matrix takes shape across your six domains \u2014 not because you forced it, but because it finally met you where you actually are.",
-    },
-    {
-      week: "Year 1",
-      text: "You have a year of proof that you stuck with something. The thing you were sure you\u2019d quit by February. A full record of yourself \u2014 patterns, turning points, quiet wins \u2014 and the evidence that you were never the problem. The tools were.",
-    },
+    { week: "Week 1", badge: "Starting now", text: "You start seeing where your energy actually goes." },
+    { week: "Week 2", text: "The goals you keep mentioning stop getting buried." },
+    { week: "Week 4", text: "You feel the difference between being busy and moving forward." },
   ],
   mask: [
-    {
-      week: "Week 1",
-      badge: "Starting now",
-      text: "What\u2019s underneath gets seen. The \u2018I\u2019m fine\u2019 you say on autopilot \u2014 Acuity hears what\u2019s actually under it in the first few debriefs. Somewhere, finally, the real version is on the record.",
-    },
-    {
-      week: "Month 1",
-      text: "The weight gets measured. Your weekly reports show how much you\u2019ve been carrying for everyone else, and the Life Matrix takes shape across your six domains \u2014 including the ones you\u2019ve been quietly running on empty. You see the cost nobody else thinks to ask about.",
-    },
-    {
-      week: "Year 1",
-      text: "You have a record of everything you held that nobody saw. A year of the load you carried alone \u2014 now visible, on paper, undeniable. You can see what it actually cost, show it to someone you trust, and start setting it down \u2014 instead of holding it until you break.",
-    },
+    { week: "Week 1", badge: "Starting now", text: "You start telling the truth in one place, without editing it." },
+    { week: "Week 2", text: "The gap between \u2018I\u2019m fine\u2019 and how you actually feel gets smaller." },
+    { week: "Week 4", text: "You stop carrying all of it alone, even if you\u2019re not ready to tell anyone yet." },
   ],
 };
 
@@ -819,20 +1023,30 @@ export function getTimelineWeeks(branch: Branch, _answers: Record<string, string
 
 // ─── Paywall Hooks (Screen 16) ──────────────────────────────────────────────
 
+// Eyebrow line above the paywall headline (small, sets the thread).
 export const PAYWALL_HOOKS: Record<Branch, string> = {
-  overload: "Your days don\u2019t have to disappear.",
-  patterns: "The cycle breaks when you see it.",
-  rumination: "Your brain deserves somewhere to put it all.",
-  stuck: "This one sticks. Because it only asks for 60 seconds.",
-  mask: "You don\u2019t have to hold it together here.",
+  overload: "The load finally has somewhere to go.",
+  patterns: "The cycle breaks when you can see it.",
+  rumination: "Your mind deserves somewhere to set it down.",
+  stuck: "Busy and forward aren\u2019t the same thing.",
+  mask: "One place you don\u2019t have to perform.",
+};
+
+// Subhead directly under the paywall headline (spec copy, per branch).
+export const PAYWALL_SUBHEAD: Record<Branch, string> = {
+  overload: "Put the list down. Acuity remembers so you don\u2019t have to.",
+  patterns: "See what keeps setting it off \u2014 and finally break the cycle.",
+  rumination: "Give it somewhere to put everything down \u2014 and finally rest.",
+  stuck: "See where your effort actually goes \u2014 and point it somewhere that matters.",
+  mask: "A private place to set the mask down and finally be honest.",
 };
 
 export const PRICING_COPY: Record<Branch, string> = {
-  overload: "Get your days back for less than a coffee a week.",
+  overload: "Stop white-knuckling your mental to-do list \u2014 for less than a coffee a month.",
   patterns: "Break the cycle for less than a coffee a week.",
-  rumination: "Quiet your brain for less than a coffee a week.",
-  stuck: "The tool that finally sticks \u2014 for less than a coffee a week.",
-  mask: "A place to be honest with yourself \u2014 for less than a coffee a week.",
+  rumination: "A quiet mind at night \u2014 for less than a coffee a month.",
+  stuck: "Stop running in place \u2014 for less than a coffee a month.",
+  mask: "A place to be honest \u2014 for less than a coffee a month.",
 };
 
 // ─── Processing Theater Text (Screen 13) ────────────────────────────────────
@@ -845,63 +1059,30 @@ export const PROCESSING_STAGES: { text: string; endSec: number }[] = [
   { text: "Your profile is ready.", endSec: 10 },
 ];
 
-// ─── Paywall Dynamic Headlines (Screen 16, Section 1) ───────────────────────
+// ─── Paywall Headline (Screen 16, Section 1) ────────────────────────────────
+//
+// Fixed per-branch headlines (spec). Kept as a function returning by branch so
+// callers don't change; the answers arg is retained for signature stability.
 
-/** Map raw Q5 answer to a natural-language duration phrase per branch context. */
-function durPhrase(raw: string, style: "losing" | "running" | "carrying"): string {
-  const v = raw.trim();
-  switch (v) {
-    case "A few weeks": return style === "losing" ? "weeks of lost days" : "weeks";
-    case "A few months": return "months";
-    case "Over a year": return "over a year";
-    case "I can\u2019t remember when it started": return style === "losing" ? "longer than you can count" : "so long you can\u2019t remember when it started";
-    default: return "too long";
-  }
-}
-
-export function getPaywallHeadline(branch: Branch, answers: Record<string, string | string[]>): string {
-  const raw = String(answers.shared_q5 ?? "");
-  const noMemory = raw === "I can\u2019t remember when it started";
+export function getPaywallHeadline(branch: Branch, _answers: Record<string, string | string[]>): string {
   switch (branch) {
-    case "overload":
-      return noMemory
-        ? "Your days have been disappearing for so long you stopped counting. Here\u2019s what the next 7 look like instead."
-        : `${durPhrase(raw, "losing")} of days you can\u2019t remember. Here\u2019s what the next 7 look like instead.`;
-    case "patterns":
-      return noMemory
-        ? "The same cycle has been running for as long as you can remember. Here\u2019s what it looks like when you finally see it."
-        : `The same cycle has been running for ${durPhrase(raw, "running")}. Here\u2019s what it looks like when you finally see it.`;
-    case "rumination":
-      return noMemory
-        ? "Your brain has been doing this for as long as you can remember. Here\u2019s what changes in 7 days."
-        : `Your brain has been doing this for ${durPhrase(raw, "running")}. Here\u2019s what changes in 7 days.`;
-    case "stuck":
-      return noMemory
-        ? "You\u2019ve been trying to fix this for longer than you can remember. Here\u2019s the thing that\u2019s different."
-        : `You\u2019ve been trying to fix this for ${durPhrase(raw, "carrying")}. Here\u2019s the thing that\u2019s different.`;
-    case "mask":
-      return noMemory
-        ? "You\u2019ve been carrying this for so long it feels normal. Here\u2019s what it looks like when something actually sees it."
-        : `You\u2019ve been carrying this for ${durPhrase(raw, "carrying")}. Here\u2019s what it looks like when something actually sees it.`;
+    case "overload": return "Your head was never built to hold all of this.";
+    case "patterns": return "The pattern isn\u2019t you. It\u2019s just a loop you couldn\u2019t see.";
+    case "rumination": return "Your mind won\u2019t stop because it\u2019s afraid to let go.";
+    case "stuck": return "Busy isn\u2019t the same as forward. Let\u2019s find the difference.";
+    case "mask": return "You don\u2019t have to hold it together here.";
   }
 }
 
 // ─── Paywall Cost of Inaction (Screen 16, Section 2) ────────────────────────
 
-export function getCostOfInaction(branch: Branch, answers: Record<string, string | string[]>): string {
-  const raw = String(answers.shared_q5 ?? "");
-  const dur = durPhrase(raw, "running");
+export function getCostOfInaction(branch: Branch, _answers: Record<string, string | string[]>): string {
   switch (branch) {
-    case "overload":
-      return "Without something catching it, the next 6 months look like the last 6. Same overwhelm. Same forgetting. Same feeling like the days blur together.";
-    case "patterns":
-      return `The cycle you described has been running for ${dur}. It ran last month. It\u2019ll run next month. Nothing changes until something sees it.`;
-    case "rumination":
-      return "The thoughts that kept you up last night will keep you up tonight. And tomorrow night. That\u2019s what no visibility looks like.";
-    case "stuck":
-      return "The goals you mentioned \u2014 they\u2019ll still be sitting there in 6 months. Not because you don\u2019t care, but because nothing is tracking them.";
-    case "mask":
-      return "You told us things look fine on the outside. Six months from now, they\u2019ll still look fine on the outside. The gap between what people see and what you carry just gets wider.";
+    case "overload": return "Every day you carry it all is another day something slips through.";
+    case "patterns": return "Left alone, cycles don\u2019t fade. They dig deeper.";
+    case "rumination": return "Every night it spins is another day you start already tired.";
+    case "stuck": return "Every week on the treadmill is a week you don\u2019t get back.";
+    case "mask": return "The longer you hold it in, the heavier the mask gets.";
   }
 }
 
@@ -909,33 +1090,36 @@ export function getCostOfInaction(branch: Branch, answers: Record<string, string
 
 export function getCreateAccountHeadline(branch: Branch): string {
   switch (branch) {
-    case "overload": return "Your patterns are already forming. Create your free account to see them.";
-    case "patterns": return "Your cycles are already mapped. Create your free account to see them.";
-    case "rumination": return "Your thought patterns are taking shape. Create your free account to see them.";
-    case "stuck": return "Your goals are already tracked. Create your free account to see them.";
-    case "mask": return "Your real story is already being written. Create your free account to see it.";
+    case "overload": return "Let\u2019s get it out of your head.";
+    case "patterns": return "Let\u2019s name the cycle.";
+    case "rumination": return "Let\u2019s quiet the noise.";
+    case "stuck": return "Let\u2019s get you moving forward.";
+    case "mask": return "Let\u2019s set the mask down.";
   }
 }
 
 // ─── Paywall Testimonials (outcome-specific) ────────────────────────────────
 
 export const PAYWALL_TESTIMONIALS_V2 = [
+  // 0-2: original pool. MechanismScreen renders index [0] — do NOT reorder.
   { quote: "I found out I mention quitting my job every Monday. I never noticed until the weekly report showed me. That one pattern changed everything.", name: "Sarah M." },
   { quote: "My therapist asked what changed. I showed her my Acuity report. She said \u2018this is what I try to do in sessions.\u2019", name: "James K." },
   { quote: "Week 3, Acuity told me I bring up my mom every time I\u2019m stressed about work. I\u2019ve been in therapy for a year and never connected those.", name: "Priya R." },
+  // 3-7: branch-matched quotes (spec, one per branch).
+  { quote: "It felt like I had 47 tabs open in my brain at all times. Work stuff, kid stuff, my mom\u2019s appointment, bills, groceries. Acuity gave me a place to dump it all without organizing first. That alone felt like breathing again.", name: "Monica R." },
+  { quote: "I thought my partner and I were fighting about different things every week. Acuity helped me see it was actually the same pattern repeating: I was overloaded, didn\u2019t ask for help, then exploded when he didn\u2019t notice. That insight changed the conversation.", name: "Jennifer H." },
+  { quote: "At night, my brain used to replay everything: what I forgot, what I said wrong, what I still needed to do. Acuity gave me a way to get it out before bed. I didn\u2019t need to solve everything. I just needed somewhere to put it.", name: "Megan R." },
+  { quote: "I was constantly busy but never felt like I was moving forward. Acuity helped me see that most of my energy was going to maintenance, not progress. That insight was uncomfortable, but it was exactly what I needed.", name: "Stephanie K." },
+  { quote: "Everyone thinks I have it together because I\u2019m the reliable one. Acuity is the one place where I don\u2019t have to perform. I can say the thing underneath the thing.", name: "Sarah J." },
 ];
 
 // Branch-matched paywall testimonial (real quotes only — no fabrication).
-// TODO(copy): only patterns has a purpose-matched quote (Priya R., recurring
-// relational trigger). overload maps to Sarah M. (pattern-discovery). The rest
-// fall back to James K.'s universal therapist-validation quote until matched
-// testimonials are sourced per branch.
 const PAYWALL_TESTIMONIAL_INDEX: Record<Branch, number> = {
-  overload: 0,
-  patterns: 2,
-  rumination: 1,
-  stuck: 1,
-  mask: 1,
+  overload: 3, // Monica R.
+  patterns: 4, // Jennifer H.
+  rumination: 5, // Megan R.
+  stuck: 6, // Stephanie K.
+  mask: 7, // Sarah J.
 };
 
 export function getPaywallTestimonial(branch: Branch | null): { quote: string; name: string } {

@@ -3,7 +3,7 @@ import { getPatternLabels, type Branch } from "./funnel-config";
 
 function makeAnswers(overrides: Record<string, string | string[]> = {}): Record<string, string | string[]> {
   return {
-    shared_q5: "A few months",
+    shared_q5: "Months",
     branch_q6: "My energy",
     ...overrides,
   };
@@ -12,11 +12,11 @@ function makeAnswers(overrides: Record<string, string | string[]> = {}): Record<
 describe("getPatternLabels", () => {
   // ─── Primary pattern mapping (one per branch) ───────────────────────────
   const branchExpected: [Branch, string][] = [
-    ["overload", "Mental Overload"],
-    ["patterns", "Relational Looping"],
-    ["rumination", "Racing Mind"],
-    ["stuck", "System Fatigue"],
-    ["mask", "Invisible Load"],
+    ["overload", "Cognitive Overload"],
+    ["patterns", "The Cycle"],
+    ["rumination", "The Loop"],
+    ["stuck", "The Treadmill"],
+    ["mask", "The Mask"],
   ];
 
   for (const [branch, expected] of branchExpected) {
@@ -28,10 +28,10 @@ describe("getPatternLabels", () => {
     });
   }
 
-  // ─── Area mapping — v6 has no branch_q6→area map yet, so every branch
-  //     falls back to its per-branch default (areaFallback=true). ──────────
+  // ─── Area mapping — falls back to per-branch default when branch_q6 has no
+  //     explicit area mapping (areaFallback=true). ──────────────────────────
   const areaDefaultExpected: [Branch, string][] = [
-    ["overload", "Energy"],
+    ["overload", "Peace of mind"],
     ["patterns", "Relationships"],
     ["rumination", "Peace of mind"],
     ["stuck", "Momentum"],
@@ -46,9 +46,9 @@ describe("getPatternLabels", () => {
     });
   }
 
-  // ─── Secondary: no Q9 source in v6 — only the long-duration override ────
+  // ─── Secondary: no Q9 source — only the long-duration override ──────────
   it("has no secondary for short/medium durations", () => {
-    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "A few months" }));
+    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "Months" }));
     expect(result.secondary).toBeNull();
     expect(result.secondaryVisible).toBe(false);
     expect(result.stuckDeepOverride).toBe(false);
@@ -56,22 +56,22 @@ describe("getPatternLabels", () => {
   });
 
   // ─── Duration override → "Stuck Deep" ──────────────────────────────────
-  it("overrides secondary to 'Stuck Deep' when duration is 'Over a year'", () => {
-    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "Over a year" }));
+  it("overrides secondary to 'Stuck Deep' when duration is 'Years'", () => {
+    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "Years" }));
     expect(result.secondary).toBe("Stuck Deep");
     expect(result.secondaryVisible).toBe(true);
     expect(result.stuckDeepOverride).toBe(true);
     expect(result.collisionSuppressed).toBe(false);
   });
 
-  it("overrides secondary to 'Stuck Deep' when duration is 'I can\u2019t remember when it started'", () => {
-    const result = getPatternLabels("patterns", makeAnswers({ shared_q5: "I can\u2019t remember when it started" }));
+  it("overrides secondary to 'Stuck Deep' when duration is 'As long as I can remember'", () => {
+    const result = getPatternLabels("patterns", makeAnswers({ shared_q5: "As long as I can remember" }));
     expect(result.secondary).toBe("Stuck Deep");
     expect(result.stuckDeepOverride).toBe(true);
   });
 
   it("does NOT override for short durations", () => {
-    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "A few weeks" }));
+    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "Days" }));
     expect(result.secondary).toBeNull();
     expect(result.stuckDeepOverride).toBe(false);
   });
@@ -85,15 +85,22 @@ describe("getPatternLabels", () => {
   });
 
   // ─── Area fallback observability ───────────────────────────────────────
-  it("sets areaFallback=true (no branch_q6→area map wired yet) even with a real answer", () => {
+  it("sets areaFallback=true when branch_q6 has no area mapping", () => {
     const result = getPatternLabels("overload", makeAnswers({ branch_q6: "My health" }));
-    expect(result.area).toBe("Energy"); // per-branch default
+    expect(result.area).toBe("Peace of mind"); // per-branch default
     expect(result.areaFallback).toBe(true);
   });
 
   it("sets areaFallback=true and area=default when branch_q6 is empty", () => {
     const result = getPatternLabels("overload", makeAnswers({ branch_q6: "" }));
-    expect(result.area).toBe("Energy");
+    expect(result.area).toBe("Peace of mind");
     expect(result.areaFallback).toBe(true);
+  });
+
+  // ─── Area mapping resolves a real Q6 option to its mapped area ─────────
+  it("maps a known branch_q6 option to its area (areaFallback=false)", () => {
+    const result = getPatternLabels("overload", makeAnswers({ branch_q6: "My confidence in myself" }));
+    expect(result.area).toBe("Confidence");
+    expect(result.areaFallback).toBe(false);
   });
 });
