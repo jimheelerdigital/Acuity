@@ -208,6 +208,48 @@ function detectBrowserEnv(): { isWebView: boolean; label: string; ua: string } {
   return { isWebView: false, label: "browser", ua };
 }
 
+// PII-safe, pipe-delimited environment string for signup/OAuth diagnostics.
+// Mirrors DownloadScreen's diagContext so create-account events can be sliced by
+// the EXACT environment they happened in (webview? which app? which OS?). The
+// raw user-agent is already stored server-side in OnboardingEvent.browser on
+// every event, so we deliberately keep this string short — no UA duplication.
+function getSignupEnvDiag(): string {
+  const env = detectBrowserEnv();
+  if (env.label === "ssr") return "ssr";
+  const os = /iPhone|iPad|iPod/i.test(env.ua) ? "ios" : /Android/i.test(env.ua) ? "android" : "other";
+  return `webview:${env.isWebView}|label:${env.label}|os:${os}`;
+}
+
+// Pending-OAuth marker: written to localStorage right before we hand off to the
+// provider (signIn does a full-page navigation, so our JS dies until — and only
+// IF — the user returns). On the NEXT funnel mount we reconcile the marker to
+// see how the OAuth attempt ended:
+//   • returned to /start?step=post-signup  → success  (funnel_oauth_returned_success)
+//   • bounced back to create-account form  → failure  (funnel_oauth_returned_error /
+//                                             funnel_oauth_never_returned if the gap is long)
+// A user who closes the webview entirely and never comes back is, by definition,
+// invisible client-side — that true silent death is only measurable in aggregate
+// as (funnel_oauth_*_tapped count) − (funnel_oauth_returned_* count).
+const OAUTH_PENDING_KEY = "acuity_oauth_pending";
+// Gap (ms) above which a bounce-back to the signup form is treated as a long
+// silent stall ("never returned" in spirit) rather than a quick error bounce.
+const OAUTH_NEVER_RETURNED_MS = 60_000;
+
+interface OAuthPending { provider: string; ts: number; env: string; }
+
+function readOAuthPending(): OAuthPending | null {
+  try {
+    const raw = localStorage.getItem(OAUTH_PENDING_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as OAuthPending;
+    return p && typeof p.ts === "number" ? p : null;
+  } catch { return null; }
+}
+
+function clearOAuthPending(): void {
+  try { localStorage.removeItem(OAUTH_PENDING_KEY); } catch {}
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatTrialEndDate(): string {
@@ -323,7 +365,15 @@ export function OnboardingFunnel() {
     } else if (stepParam === "post-signup") {
       // OAuth returnees land here after Google/Apple signup redirect.
       // Account is now created — check if they intended to pay.
-      track("funnel_account_created");
+      // Reconcile the pending-OAuth marker: this is the SUCCESS outcome.
+      const pending = readOAuthPending();
+      const envDiag = getSignupEnvDiag();
+      if (pending) {
+        const awayMs = Date.now() - pending.ts;
+        track("funnel_oauth_returned_success", { value: `${pending.provider}|${pending.env}|awayMs:${awayMs}` });
+        clearOAuthPending();
+      }
+      track("funnel_account_created", { value: `method:oauth|${envDiag}` });
       fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
       if (typeof window !== "undefined" && "gtag" in window) {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
@@ -771,7 +821,7 @@ export function OnboardingFunnel() {
           answers={answers}
           track={track}
           onAccountCreated={() => {
-            track("funnel_account_created");
+            track("funnel_account_created", { value: `method:email|${getSignupEnvDiag()}` });
             fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
@@ -2090,10 +2140,45 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   // Track whether account was created but signIn failed (Fix 2)
   const [accountCreatedButSigninFailed, setAccountCreatedButSigninFailed] = useState(false);
 
+  // ── Instrumentation: make the create-account → account_created path visible ──
+  // The entire point of this pass is to SEE where people die, by exact
+  // environment. Every diagnostic event packs the pipe-delimited env string
+  // (webview? which app? which OS?) into `value`; the shared tracker attaches
+  // the sessionToken, and the ingest route stores the raw user-agent in
+  // OnboardingEvent.browser on every event — so each event can be sliced by
+  // method × environment × session without any schema change.
+  useEffect(() => {
+    const env = detectBrowserEnv();
+    const envDiag = getSignupEnvDiag();
+    track("funnel_signup_screen_viewed", { value: envDiag });
+    if (env.isWebView) {
+      const os = /iPhone|iPad|iPod/i.test(env.ua) ? "ios" : /Android/i.test(env.ua) ? "android" : "other";
+      track("funnel_webview_detected", { value: `label:${env.label}|os:${os}` });
+    }
+    // Reconcile a pending OAuth attempt that bounced the user BACK to this form
+    // without completing (provider rejected the webview, or they hit back). A
+    // genuine SUCCESS return arrives at ?step=post-signup and is handled by the
+    // parent — skip here so we don't double-count that as an error.
+    const isPostSignupReturn = new URLSearchParams(window.location.search).get("step") === "post-signup";
+    const pending = readOAuthPending();
+    if (pending && !isPostSignupReturn) {
+      const awayMs = Date.now() - pending.ts;
+      const evt = awayMs > OAUTH_NEVER_RETURNED_MS ? "funnel_oauth_never_returned" : "funnel_oauth_returned_error";
+      track(evt, { value: `${pending.provider}|${pending.env}|awayMs:${awayMs}` });
+      clearOAuthPending();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignupError(null);
     setAccountCreatedButSigninFailed(false);
+
+    // Env-tagged instrumentation (parallel to the existing funnel_signup_*
+    // events, which stay untouched so admin's reason/method grouping keeps working).
+    const envDiag = getSignupEnvDiag();
+    track("funnel_email_signup_tapped", { value: envDiag });
 
     // Client-side validation — fire funnel_signup_failed for each so admin sees it.
     // Name is intentionally OPTIONAL (most users come via Google/Apple where we
@@ -2103,15 +2188,18 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     if (!signupEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim())) {
       setSignupError("Please enter a valid email address.");
       track("funnel_signup_failed", { value: "validation:invalid_email", method: "email" });
+      track("funnel_email_signup_failed", { value: `validation:invalid_email|${envDiag}` });
       return;
     }
     if (signupPassword.length < 8) {
       setSignupError("Password must be at least 8 characters.");
       track("funnel_signup_failed", { value: "validation:password_short", method: "email" });
+      track("funnel_email_signup_failed", { value: `validation:password_short|${envDiag}` });
       return;
     }
 
     track("funnel_signup_started", { value: "email" });
+    track("funnel_email_signup_submitted", { value: envDiag });
     setSignupLoading("email");
     try {
       let funnelUtm: Record<string, string> = {};
@@ -2143,6 +2231,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
           setSignupError("Something went wrong. Please try again.");
         }
         track("funnel_signup_failed", { value: `server:${errorCode}`, method: "email" });
+        track("funnel_email_signup_failed", { value: `server:${errorCode}|${envDiag}` });
         setSignupLoading(null);
         return;
       }
@@ -2159,6 +2248,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
       const result = await signIn("credentials", { email: signupEmail.trim(), password: signupPassword, redirect: false });
       if (result?.ok) {
+        track("funnel_email_signup_success", { value: envDiag });
         onAccountCreated();
       } else {
         // Fix 2: Account was created but credential signin failed. Fire the
@@ -2166,6 +2256,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
         // and fire a failure event for observability.
         onAccountCreated();
         track("funnel_signup_failed", { value: "signin_after_creation_failed", method: "email" });
+        track("funnel_email_signup_failed", { value: `signin_after_creation_failed|${envDiag}` });
         setAccountCreatedButSigninFailed(true);
         setSignupError("Your account was created! Tap below to sign in.");
         // Log server-side for observability
@@ -2178,6 +2269,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     } catch {
       setSignupError("Connection issue \u2014 your info is saved. Please try again.");
       track("funnel_signup_failed", { value: "network_error", method: "email" });
+      track("funnel_email_signup_failed", { value: `network_error|${envDiag}` });
     } finally {
       setSignupLoading(null);
     }
@@ -2185,6 +2277,9 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
   const handleOAuthSignup = async (provider: "google" | "apple") => {
     track("funnel_signup_started", { value: provider });
+    // Env-tagged tap event — lets us see Apple-vs-Google attempts per environment.
+    const envDiag = getSignupEnvDiag();
+    track(provider === "apple" ? "funnel_oauth_apple_tapped" : "funnel_oauth_google_tapped", { value: envDiag });
     setSignupLoading(provider);
 
     // Carry attribution through the OAuth round-trip on the callbackUrl.
@@ -2221,6 +2316,18 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     for (const [k, v] of Object.entries(carry)) {
       if (v) params.set(k, v); // URLSearchParams encodes; skip empties
     }
+
+    // Drop a pending-OAuth breadcrumb so the NEXT funnel mount can tell us how
+    // this attempt ended (success return vs. bounced back to the form). Written
+    // to localStorage because in-app webviews partition sessionStorage across the
+    // provider redirect — localStorage is the store most likely to survive.
+    try {
+      localStorage.setItem(OAUTH_PENDING_KEY, JSON.stringify({ provider, ts: Date.now(), env: envDiag }));
+    } catch {}
+    // Confirm we actually reached the provider hand-off (if this fires but no
+    // return event ever does, the death happened at the provider — the exact
+    // silent-death we've been unable to see).
+    track("funnel_oauth_redirect_started", { value: `${provider}|${envDiag}` });
 
     await signIn(provider, { callbackUrl: `/start?${params.toString()}` });
   };
