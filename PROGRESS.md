@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 92a6b7e7
 
 ### In plain English (for Keenan)
 The "This is what changes" timeline (screen 15) used to promise Week 1 / Week 2 / Week 4 with the same generic lines for everyone. It's now an aspirational Week 1 / Month 1 / Year 1 arc, AND every line is personalized to the user's own earlier answers. Week 1 names the first relief from the exact thing they said hurts, Month 1 shows that specific pain visibly changing with a new habit forming, and Year 1 describes who they've become now that it no longer runs them. Someone who said they forget things and can't find calm sees a different, truer timeline than someone who said they lie awake or push people away. It builds to a real "this is my future" moment. The vertical coral timeline, the "Starting now" tag, the closing line, the 4.9-from-127+ rating, and the button all stay exactly as they were.
