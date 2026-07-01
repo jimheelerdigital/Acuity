@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-01] — "What it gives you" funnel screen now leads with insights
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ae3365fe
+
+### In plain English (for Keenan)
+The value screen partway through the web signup flow (the "What it gives you" cards) used to open with "Active task tracking." That led with a to-do feature instead of the real reason people come to Acuity — the answers. It now opens with a new lead card, "Deep life insights," that says what people actually get: what's driving them and what's holding them back — the patterns they can't see from inside their own life. That's our core differentiator and the "Acuity gives you answers" promise, front and center. We kept "Active task tracking" — it's concrete, believable proof that reassures skeptical users — but moved it to second so the emotional insight promise leads and the practical proof backs it up. The other four cards (Life Matrix, Habit tracking, Weekly report, Signals) are unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: prepended a new entry to the `VALUE_FEATURES` array consumed by `ValueScreen` — title "Deep life insights", diamond icon (`\u25C8`) with the existing coral `text-acuity-primary` accent, two-line body, reusing the exact existing card markup (no style changes).
+- Card order is now: Deep life insights → Active task tracking → Life Matrix → Habit tracking and goal achievement → Weekly report → Signals (6 cards; the render loop and staggered reveal animation key off array length, so no other code changed).
+- Screen event tracking (`funnel_value_viewed`, fired on step mount) and the "Continue" CTA (`onContinue` → `commit` step) are untouched.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held back per request; say "push it")
+
+### Notes
+- Decision: KEPT "Active task tracking" rather than dropping it (Option A), placed at slot 2. Rationale (Keenan's lean, agreed): concrete proof matters for a skeptical audience, so it stays in the list — just not first. Minimal reordering (new card inserted at top, everything else shifts down one) preserves the existing relative order of the four kept cards.
+- Copy is Keenan's verbatim wording; aligns with the "mirror, not coach" / "answers" positioning. No duration or fixed-time claims. `npx tsc --noEmit` clean for this file.
+
+---
+
 ## [2026-06-29] — Lifecycle emails now come from Keenan, not a no-reply address
 
 **Requested by:** Keenan
