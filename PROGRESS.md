@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-07-01] — Paywall polish: dropped subhead + cleaner social proof
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e0a229ef
+
+### In plain English (for Keenan)
+Two small cleanups to the paywall (screen 16), applied to all five funnels. First, the second line under the main headline (the branch-specific subhead, e.g. overload's "Put the list down. Acuity remembers so you don't have to.") is gone — the headline now flows straight into the "Try all of Acuity free for 7 days" line, with tighter spacing so there's no awkward gap. Second, the social-proof area is simpler: the "Loved by women who carry a lot" caption is removed, and the five-star rating now sits centered directly above the "What our users say" box. Tapping that box still opens the same popup with three testimonials matched to the user's funnel.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `SavingsScreen`: removed the `{paywallSubhead && ...}` `<p>` from the header and its `const paywallSubhead` compute + `PAYWALL_SUBHEAD` import; bumped the trial line to `mt-3` for clean headline→reassurance spacing. In the social-proof block, deleted the "Loved by women who carry a lot" label and its wrapping flex row, leaving a centered `★★★★★` (`items-center flex-col`) directly above the unchanged "What our users say" button.
+- Popup, branch-matched pool (`getPaywallTestimonialPool(branch)`), and `funnel_testimonials_opened` tracking all unchanged. `PAYWALL_SUBHEAD` still exists in funnel-config (only the paywall stopped rendering it).
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Both changes are branch-agnostic — `SavingsScreen` renders for every branch, so removing the subhead and label covers all 5. Typecheck clean for funnel files; tracking intact.
+
+---
+
 ## [2026-07-01] — Current-vs-Future screen: now a paneled before/after diagram
 
 **Requested by:** Keenan
