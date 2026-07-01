@@ -7,11 +7,37 @@
 
 ---
 
-## [2026-07-01] — Funnel quiz answer screens restyled — warm coral, on-brand
+## [2026-07-01] — Pain/Mirror screen redesigned — paced reveal + ambient motifs
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** PENDING
+
+### In plain English (for Keenan)
+The "we see you" moment in the funnel (the mirror screen that reflects the user's own answers back at them) used to read like a flat wall of grey text — an indented opening quote, full-width middle lines, and a big shouting centered closer. It now reads like an intimate, personal reflection: everything is left-aligned like being spoken to, the lines reveal one at a time with a gentle beat between each so each truth lands, the single most important phrase in each line is picked out in coral, and the final line is set apart as a quiet payoff before the "Keep going" button. Behind the text, a barely-there ambient animation embodies each branch's feeling — a slow circling loop for "the cycle," shapes gently settling for "the load," a turning tangle for "the loop," a sideways drift that goes nowhere for "the treadmill," and a hairline crack easing across a calm surface for "the mask." It's mood, not decoration — the words stay the focus. Anyone who prefers less motion sees a calm, fully-visible static version.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: added `PAIN_EMPHASIS: Record<Branch, string[]>` — a centralized per-branch bank of key emotional phrases (presentation metadata; does not alter the fragment copy).
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - New `emphasize(text, phrases)` helper — wraps the single longest matching phrase per beat in a coral medium-weight span (one hit per line, never a whole sentence, graceful no-match fallback).
+  - New `PainMotif` component — per-branch ambient SVG motif pulled by branch key (patterns=looping circle, overload=settling stacked bars, rumination=turning tangle, stuck=horizontal drift, mask=hairline crack), absolute/`pointer-events-none`, opacity ~0.055–0.07, `animate=false` renders a static end-state.
+  - Rewrote `PainScreen` render: one unified left-aligned column (removed the indented border-left opener and the centered bold closer), generous spacing/line-height, opener→body→closer hierarchy, closer set apart as a `font-medium` payoff beat, CTA left-aligned after the reveal.
+  - Global `<style>` block: added `motif-rotate/-rev`, `motif-dash`, `motif-settle`, `motif-drift`, `motif-crack` keyframes + classes (slow, GPU-light), and froze them in the `prefers-reduced-motion` reset.
+- Existing paced-reveal phase logic (staggered fade+slide, tap-to-skip, reduced-motion → all visible) preserved; only presentation changed, not the answer-aware fragments.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Emphasis is driven by a phrase bank rather than positional heuristics because the "key phrase" varies (sometimes a cost noun like "your peace," sometimes a trailing kicker like "all on repeat") — a bank guarantees the right phrase and "never whole sentence." Motifs are CSS/SVG only (no images, no libraries, no load impact) so the under-4s load rule and the CTA are unaffected. Typecheck clean for the funnel; funnel-config tests unaffected.
+
+---
+
+## [2026-07-01] — Funnel quiz answer screens restyled — warm coral, on-brand
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dbf0c9a6
 
 ### In plain English (for Keenan)
 The quiz answer cards in the onboarding funnel looked bland and off-brand — plain grey with a blue "selected" flash that didn't match Acuity. They're now warm and branded: soft coral borders, a barely-there cream tint, and a coral fill + glow when you tap one (the blue is gone). Each answer has a small coral dot on the left that fills in when chosen, the cards gently lift and glow on press, and the progress bar at the top is a slightly bolder coral. It looks premium and alive without any images and without slowing the funnel down. This applies to every quiz screen across all 5 branches, plus the "imagine you could…" relief screen.

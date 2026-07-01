@@ -20,6 +20,7 @@ import {
   SHARED_QUESTIONS,
   BRANCH_Q6,
   assemblePainCopy,
+  PAIN_EMPHASIS,
   RELIEF_FLIP,
   assembleCurrentFuture,
   getCostOfInaction,
@@ -694,11 +695,34 @@ export function OnboardingFunnel() {
           transform: scale(1.15);
           box-shadow: 0 0 0 3px var(--acuity-primary-soft);
         }
+        /* ── Pain/Mirror ambient branch motifs — barely-there atmosphere behind
+           the text. Slow, calm, GPU-light. One block per branch thread. ── */
+        @keyframes motif-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes motif-rotate-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        @keyframes motif-dash { to { stroke-dashoffset: -1000; } }
+        @keyframes motif-settle {
+          0%, 100% { transform: translateY(0); opacity: 0.9; }
+          50% { transform: translateY(6px); opacity: 1; }
+        }
+        @keyframes motif-drift { from { transform: translateX(0); } to { transform: translateX(-72px); } }
+        @keyframes motif-crack {
+          0% { stroke-dashoffset: 340; opacity: 0; }
+          25% { opacity: 1; }
+          100% { stroke-dashoffset: 0; opacity: 1; }
+        }
+        .motif-rotate { animation: motif-rotate 46s linear infinite; transform-origin: center; }
+        .motif-rotate-rev { animation: motif-rotate-rev 60s linear infinite; transform-origin: center; }
+        .motif-dash { animation: motif-dash 30s linear infinite; }
+        .motif-settle { animation: motif-settle 7s ease-in-out infinite; }
+        .motif-drift { animation: motif-drift 9s linear infinite; }
+        .motif-crack { animation: motif-crack 8s ease-out both; }
         /* Shared CTA emphasis — one class every primary funnel button pulls from. */
         .funnel-cta { animation: funnel-glow 2s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
           .funnel-screen, .funnel-card-stagger, .funnel-bounce, .funnel-cta { animation: none !important; opacity: 1 !important; transform: none !important; }
           .gap-highlight { background-size: 100% 100% !important; animation: none !important; }
+          .motif-rotate, .motif-rotate-rev, .motif-dash, .motif-settle, .motif-drift, .motif-crack { animation: none !important; }
+          .motif-crack { stroke-dashoffset: 0 !important; opacity: 1 !important; }
           * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
         }
       `}} />
@@ -1042,6 +1066,84 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
   );
 }
 
+// Highlight the single longest emphasis phrase found in a beat with a coral,
+// medium-weight span. Presentation only — one hit per line, never a whole
+// sentence. Falls back to plain text when no phrase matches.
+function emphasize(text: string, phrases: string[]): React.ReactNode {
+  let best = "";
+  for (const p of phrases) {
+    if (p.length > best.length && text.includes(p)) best = p;
+  }
+  if (!best) return text;
+  const idx = text.indexOf(best);
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="text-acuity-primary font-medium">{best}</span>
+      {text.slice(idx + best.length)}
+    </>
+  );
+}
+
+// Ambient branch-metaphor motif for the Pain/Mirror screen. Defined once per
+// branch, pulled by key. Sits behind the text at low opacity — atmosphere, not
+// infographic. `animate=false` (reduced motion) renders a static end-state.
+function PainMotif({ branch, animate }: { branch: Branch; animate: boolean }) {
+  const a = (cls: string) => (animate ? cls : "");
+  const wrap = "pointer-events-none absolute inset-0 overflow-hidden select-none";
+  const stroke = "var(--acuity-primary)";
+  switch (branch) {
+    case "patterns": // the cycle — a slow looping circle
+      return (
+        <div className={wrap} aria-hidden style={{ opacity: 0.06 }}>
+          <svg className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" width="460" height="460" viewBox="0 0 100 100">
+            <circle className={a("motif-rotate")} cx="50" cy="50" r="38" fill="none" stroke={stroke} strokeWidth="1.2" strokeDasharray="120 60" strokeLinecap="round" style={{ transformOrigin: "50px 50px" }} />
+            <circle cx="50" cy="50" r="26" fill="none" stroke={stroke} strokeWidth="0.7" strokeDasharray="4 8" />
+          </svg>
+        </div>
+      );
+    case "overload": // the load — layered shapes gently settling
+      return (
+        <div className={wrap} aria-hidden style={{ opacity: 0.055 }}>
+          <svg className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2" width="360" height="300" viewBox="0 0 120 100">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <rect key={i} className={a("motif-settle")} x={20 + i * 3} y={22 + i * 12} width={80 - i * 6} height="8" rx="4" fill={stroke} style={{ animationDelay: `${i * 0.5}s` }} />
+            ))}
+          </svg>
+        </div>
+      );
+    case "rumination": // the loop — a soft tangle slowly turning, never resolving
+      return (
+        <div className={wrap} aria-hidden style={{ opacity: 0.06 }}>
+          <svg className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${a("motif-rotate-rev")}`} width="420" height="420" viewBox="0 0 100 100" style={{ transformOrigin: "center" }}>
+            <path className={a("motif-dash")} d="M32,50 C32,32 68,32 68,50 C68,68 32,68 32,50 C32,38 62,62 50,50 C38,38 68,62 68,50" fill="none" stroke={stroke} strokeWidth="1" strokeLinecap="round" strokeDasharray="6 10" />
+          </svg>
+        </div>
+      );
+    case "stuck": // the treadmill — horizontal drift that goes nowhere
+      return (
+        <div className={wrap} aria-hidden style={{ opacity: 0.055 }}>
+          <svg className="absolute left-0 top-1/2 -translate-y-1/2" width="150%" height="220" viewBox="0 0 240 100" preserveAspectRatio="none">
+            <g className={a("motif-drift")}>
+              {Array.from({ length: 12 }, (_, i) => (
+                <rect key={i} x={i * 24} y={30 + (i % 3) * 16} width="12" height="3" rx="1.5" fill={stroke} />
+              ))}
+            </g>
+          </svg>
+        </div>
+      );
+    case "mask": // the mask — a calm surface with a barely-visible hairline crack
+      return (
+        <div className={wrap} aria-hidden style={{ opacity: 0.07 }}>
+          <svg className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" width="360" height="440" viewBox="0 0 100 120">
+            <ellipse cx="50" cy="60" rx="34" ry="46" fill="none" stroke={stroke} strokeWidth="0.7" />
+            <path className={a("motif-crack")} d="M50,16 L47,40 L53,58 L48,80 L52,104" fill="none" stroke={stroke} strokeWidth="1" strokeLinecap="round" strokeDasharray="340" />
+          </svg>
+        </div>
+      );
+  }
+}
+
 // ─── Pain / Mirror Screen (answer-aware — assembled from Q2+Q3+Q6) ──────────
 
 function PainScreen({ branch, answers, onContinue }: {
@@ -1072,37 +1174,36 @@ function PainScreen({ branch, answers, onContinue }: {
 
   const skip = () => setPhase(ctaPhase);
   const shown = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
+  const emphasis = PAIN_EMPHASIS[branch];
 
+  // One unified left-aligned column — an intimate reflection, revealed one line
+  // at a time. Opener sets the scene, body lines carry the echo, and the closer
+  // lands as a set-apart payoff beat. The ambient motif sits behind at low
+  // opacity so the words stay the clear focus.
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-16 text-zinc-900 overflow-hidden"
       onClick={phase < ctaPhase ? skip : undefined}>
-      <div className="max-w-md w-full">
+      <PainMotif branch={branch} animate={!prefersReduced} />
+      <div className="relative z-10 max-w-md w-full text-left">
 
         {beats.map((text, i) => {
           const revealed = shown(i + 1);
-          if (i === 0) {
-            return (
-              <div key={i} className={`mb-7 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[600ms] ease-out ${revealed}`}>
-                <p className="text-[15px] text-zinc-700 leading-relaxed">{text}</p>
-              </div>
-            );
-          }
-          if (i === lastIndex) {
-            return (
-              <div key={i} className={`mt-2 mb-10 transition-all duration-[600ms] ease-out ${revealed}`}>
-                <p className="text-lg sm:text-xl font-bold text-zinc-900 text-center leading-[1.5]">{text}</p>
-              </div>
-            );
-          }
+          const isOpener = i === 0;
+          const isCloser = i === lastIndex;
+          const cls = isCloser
+            ? "mt-9 text-[17px] sm:text-lg font-medium text-zinc-900 leading-[1.65]"
+            : isOpener
+              ? "mb-6 text-[17px] sm:text-lg text-zinc-800 leading-[1.65]"
+              : "mb-6 text-[15px] sm:text-base text-zinc-600 leading-[1.7]";
           return (
-            <div key={i} className={`mb-5 transition-all duration-[600ms] ease-out ${revealed}`}>
-              <p className="text-[15px] text-zinc-700 leading-relaxed">{text}</p>
-            </div>
+            <p key={i} className={`transition-all duration-[650ms] ease-out ${revealed} ${cls}`}>
+              {emphasize(text, emphasis)}
+            </p>
           );
         })}
 
-        {/* CTA */}
-        <div className={`text-center transition-all duration-500 ${shown(ctaPhase)}`}>
+        {/* CTA — available after the reveal, not rushed */}
+        <div className={`mt-10 transition-all duration-500 ${shown(ctaPhase)}`}>
           <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
             className="funnel-cta rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98]">
             Keep going

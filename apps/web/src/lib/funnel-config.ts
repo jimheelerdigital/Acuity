@@ -523,6 +523,59 @@ export const PAIN_FRAGMENTS: Record<Branch, PainFragments> = {
   },
 };
 
+// ─── Pain-screen emphasis phrases ───────────────────────────────────────────
+//
+// Per-branch bank of the KEY emotional phrases that appear inside the assembled
+// beats. The Pain screen highlights (coral, medium weight) the single longest
+// phrase from this bank that appears in each beat — one hit per line max, never
+// a whole sentence. This is presentation metadata only: it does NOT alter the
+// fragment copy. Centralized here so emphasis is pulled by branch key, not
+// hard-coded per screen. A beat with no match simply renders un-emphasized.
+export const PAIN_EMPHASIS: Record<Branch, string[]> = {
+  overload: [
+    "no room left up there", "something louder needs you", "the thing that mattered",
+    "starting five things, finishing none", "too much to hold",
+    "the things only you remember", "no off switch", "stacked in one head",
+    "no one to hand it to", "people\u2019s trust", "your confidence in yourself",
+    "your peace", "all of it", "more than any one mind was built to hold",
+    "off your shoulders",
+  ],
+  patterns: [
+    "and it happens anyway", "same fight", "knowing doesn\u2019t stop it",
+    "a script no one gave you", "all on repeat",
+    "the person you most want it to be easy with", "outgrown this with",
+    "the same friction with the same people", "the easy part",
+    "no one else to blame", "the closeness you actually want", "your peace",
+    "something\u2019s wrong with you", "focus you can\u2019t afford to lose",
+    "what builds up before it", "make it visible",
+  ],
+  rumination: [
+    "everything you didn\u2019t have time to feel",
+    "the version where you handled it better", "by morning", "getting nowhere",
+    "a pile-up with no exit", "waiting for the lights to go out",
+    "wide awake with no reason", "before the day starts",
+    "silence is when it gets loud", "sleep you can\u2019t get back",
+    "running on empty", "your peace", "your health", "a place to empty out",
+  ],
+  stuck: [
+    "the exact same place you started", "busy isn\u2019t the same as forward",
+    "nothing left over", "every single week", "everyone else\u2019s schedule",
+    "refills the second you empty it", "nothing for moving it forward",
+    "the part that scares you", "your sense of purpose",
+    "time you don\u2019t get back", "all of it", "\u2018someday.\u2019",
+    "point it somewhere that matters",
+  ],
+  mask: [
+    "how much that\u2019s costing you", "no one would ever guess",
+    "it all comes down", "right up until you\u2019re alone",
+    "fall apart where no one can see", "even with yourself",
+    "need you to be okay", "can\u2019t afford to crack",
+    "who do you get to lean on?", "who you actually are",
+    "its own full-time job", "your sanity", "your sense of self",
+    "set the mask down", "somewhere to be honest",
+  ],
+};
+
 /**
  * Assemble the Pain screen reflection from the user's actual answers.
  * Returns an ordered array of "beats" (short paragraphs) the component reveals
