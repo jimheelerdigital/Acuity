@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-07-01] — Paywall redesigned: shorter, warmer, monthly as the default plan
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 68d1012e
+
+### In plain English (for Keenan)
+The paywall was our biggest drop-off point, and it looked and felt like a wall — long, a little guilt-trippy, and it quietly pushed people toward the pricey annual plan. It now reads as a warm invitation instead of a pitch. The $4.99 monthly plan is the one highlighted by default, the screen is about half as long, the big feature table is gone (replaced with a simple "here's what's free forever vs. what Pro adds"), and the "7-day free trial, cancel anytime, you won't be charged today" reassurance is now big and easy to see right above the button. The "continue without paying" option is also clearer for people who aren't ready to commit.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - Default `selectedPlan` state changed from `"yearly"` to `"monthly"` so Monthly gets the selected (coral border/glow) treatment by default.
+  - `SavingsScreen` header softened ("Everything's ready when you are." / "Try all of Acuity free for 7 days."). Removed the loss-aversion guilt section (`getPaywallLossRecap`).
+  - Replaced the 11-row `PAYWALL_FEATURES` interface/array + expandable-example table with two compact groups: `FREE_FEATURES` (Voice debrief, Task extraction — Streaks/milestones removed) and `PRO_FEATURES` (Deep Insights, Pattern detection, Signals, Weekly report). Dropped Life Matrix, Ask your past self, Theme map, Streaks rows and the "Locked" tags.
+  - Promoted the trial reassurance line near the CTA (larger, emerald-tinted "7-day free trial."); made "Continue without paying" more visible.
+  - Removed now-unused `getPaywallLossRecap` import, `answers` prop, and `expandedFeature`/`toggleFeature`/`labels` state.
+  - Added `funnel_paywall_plan_selected` (value=monthly|yearly) on plan-card taps. Kept all existing tracking (`funnel_savings_viewed`, `funnel_paywall_paid_selected`, `funnel_paywall_skip_selected`).
+  - Kept therapy/coffee anchor, founding-rate $19.99→$4.99 slash animation, urgency banner, and micro-testimonial.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held back per request; say "push it"). Note: the prior "What it gives you" entry (ae3365fe) is also still unpushed.
+
+### Notes
+- `funnel_paywall_feature_tap` events will stop firing since the tappable feature table was removed — expected, not a regression. `funnel_paywall_plan_selected` is a new signal to watch monthly-vs-annual choice at the paywall.
+- `getPatternLabels` import was kept — still used elsewhere (MechanismScreen at ~line 1887). Only `getPaywallLossRecap` was removed.
+- Typecheck: no new errors introduced in onboarding-funnel.tsx (pre-existing errors in adlab/metrics/integrations files are unrelated).
+- No paywall preview tooling exists in the repo (only email previews), so no rendered preview was generated.
+
+---
+
 ## [2026-07-01] — "What it gives you" funnel screen now leads with insights
 
 **Requested by:** Keenan
