@@ -1208,13 +1208,13 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
   },
   rumination: {
     cards: () => [
-      { text: "Write down the 3 thoughts that keep looping", icon: "\u25A1" },
-      { text: "Process what\u2019s on my mind \u2014 Day 1", icon: "\u25B2" },
+      { text: "Reply to the message that\u2019s been nagging you", icon: "\u25A1" },
+      { text: "Set the day down before it piles up \u2014 Day 1", icon: "\u25B2" },
       { text: "Racing \u2192 Settled", icon: "\u25CF" },
-      { text: "Your spiral starts with something that happened 8 hours earlier", icon: "\u25C6" },
+      { text: "Your spiral starts with something from 8 hours earlier", icon: "\u25C6" },
     ],
     step3Sub: "",
-    insight: "You were calmest on the day you processed out loud before the evening.",
+    insight: "You were calmest on the day you got it out before the evening piled up.",
   },
   stuck: {
     cards: (q2) => {
