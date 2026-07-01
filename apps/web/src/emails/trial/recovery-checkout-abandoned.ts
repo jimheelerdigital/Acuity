@@ -14,20 +14,19 @@ import { escapeHtml } from "@/lib/escape-html";
 import { keenanSignature, trialButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-type Branch = "blur" | "patterns" | "rumination" | "graveyard" | "mask" | "drift";
+type Branch = "overload" | "patterns" | "rumination" | "stuck" | "mask";
 
 const BRANCH_SUMMARIES: Record<Branch, string> = {
-  blur: "your days have been blurring together",
+  overload: "your days have been blurring together",
   patterns: "the same argument keeps happening",
   rumination: "your brain won\u2019t quiet down at night",
-  graveyard: "you\u2019ve tried other things and they didn\u2019t stick",
+  stuck: "you\u2019ve tried other things and they didn\u2019t stick",
   mask: "you\u2019ve been holding it together on the outside",
-  drift: "you feel like you\u2019re drifting from who you used to be",
 };
 
 function branchLine(v: TrialVars): string {
   const branch = (v as TrialVars & { branch?: string }).branch as Branch | undefined;
-  return BRANCH_SUMMARIES[branch ?? "blur"] ?? BRANCH_SUMMARIES.blur;
+  return BRANCH_SUMMARIES[branch ?? "overload"] ?? BRANCH_SUMMARIES.overload;
 }
 
 

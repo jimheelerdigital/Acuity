@@ -241,13 +241,20 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Sort mapping ──
+  // "plan" orders by raw subscriptionStatus so paid / trial / free / churned
+  // rows group together; "trialEnds" orders by trial expiry so you can find
+  // trials about to lapse (asc) or freshly started (desc).
   const orderBy = sortField === "entries"
     ? { entries: { _count: sortDir } as const }
     : sortField === "lastEntry"
       ? { lastRecordingAt: sortDir }
       : sortField === "lastActive"
         ? { lastSeenAt: sortDir }
-        : { createdAt: sortDir };
+        : sortField === "plan"
+          ? { subscriptionStatus: sortDir }
+          : sortField === "trialEnds"
+            ? { trialEndsAt: sortDir }
+            : { createdAt: sortDir };
 
   // ── Main query ──
   let users;

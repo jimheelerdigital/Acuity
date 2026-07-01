@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-07-01] — Rebuilt the onboarding funnel skeleton (structure only) + sortable admin Plan column
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 02163181
+
+### In plain English (for Keenan)
+The web quiz that new people go through before signup got a structural overhaul. It now walks them through a tighter, more emotional arc: after we mirror back their pain, we flip to relief ("imagine that weight gone — how would you feel?") and show a side-by-side of "you right now" versus "you a few weeks in." We cut the screens that dragged (a time-math counter, three extra quiz questions, two loss-focused "gap" screens, and a preview block) and simplified the branch list from six paths to five by folding the two weakest ones into stronger neighbours. Everything is wired end-to-end and clickable, but a lot of the per-path wording is still placeholder — the real branch-by-branch copy lands in follow-up commits. This commit is the skeleton, not the finished copy. Separately, the admin dashboard's user list can now be sorted by plan (paid vs trial vs free) by clicking the Plan column header.
+
+### Technical changes (for Jimmy)
+- **STRUCTURE ONLY** — per-branch CONTENT (Relief Flip options, Current-vs-Future fragments, branched Q6, pain fragment banks, paywall copy) is scaffolded with clearly-marked TODO placeholders; real copy comes in later commits.
+- `apps/web/src/lib/funnel-config.ts`: rewritten to a 5-branch taxonomy (`Branch = overload | patterns | rumination | stuck | mask`; remapped `blur→overload`, `graveyard→stuck`, dropped `drift`). New exports: `BRANCH_Q6`, `PAIN_FRAGMENTS` + `assemblePainCopy`, `RELIEF_FLIP`, `assembleCurrentFuture`, `getCostOfInaction`. Removed all Time-Math, Q7–Q9, gap, and Life-Matrix-preview config + dead helpers.
+- `apps/web/src/components/onboarding-funnel.tsx`: new 17-screen `STEP_ORDER` (`entry → branch-q2/q3/q4 → shared-q5 → branch-q6 → pain → relief-flip → current-future → mechanism → value → commit → processing → pattern-result → timeline → savings → create-account → download`). Deleted `TimeMathScreen`, `Gap2Screen`, `Gap3Screen`. Rewrote `PainScreen` to assemble copy from Q2/Q3/Q6. Added `ReliefFlipScreen` + `CurrentFutureScreen` (answer-aware two-state contrast, respects `prefers-reduced-motion`). Rekeyed `MECH_CONTENT`, removed the Life Matrix value item, stripped the "what one week actually looks like" timeline previews, and wired branch-personalized paywall copy (`getPaywallHeadline`/`PAYWALL_HOOKS`/`getCostOfInaction`/`PRICING_COPY`) into `SavingsScreen`.
+- Tracking: added `funnel_branch_q6_viewed`, `funnel_relief_flip_viewed`/`_selected`, `funnel_current_future_viewed` (auto-allowlisted by the `funnel_*` prefix rule — no server change). Removed the now-dead q6–q9/timemath/gap2/gap3 view events.
+- `apps/web/src/lib/funnel-config.test.ts`: rewritten for the 5-branch primary map, per-branch default areas, and duration-only secondary (`Stuck Deep`). Q9-secondary + collision tests removed (those sources no longer exist). 17 tests passing.
+- `apps/web/src/app/api/admin/metrics/route.ts`: `BRANCH_KEYS` updated to the new 5 branch keys.
+- `apps/web/src/emails/trial/recovery-checkout-abandoned.ts` + `recovery-signup-no-checkout.ts`: local `Branch` unions + `BRANCH_SUMMARIES` remapped to the 5-branch taxonomy (both emails remain PAUSED via the kill-switch).
+- `apps/web/src/app/admin/tabs/UsersTab.tsx` + `apps/web/src/app/api/admin/users/route.ts`: Plan column header is now a sortable `SortHeader` (`field="plan"` → `orderBy subscriptionStatus`); also added a `trialEnds` → `orderBy trialEndsAt` case in the API for future use. Reuses the existing server-side sort plumbing.
+
+### Manual steps needed
+- [ ] None for this commit. Branch-specific copy for the new/placeholder surfaces (Relief Flip, Current-vs-Future, branched Q6, pain fragments, paywall) still needs writing — follow-up commits. (Keenan for copy, Claude Code to wire)
+
+### Notes
+- Branch remap rationale: `blur`'s primary pattern was already "Mental Overload" so it became `overload` with its rich copy intact; `graveyard` ("tried everything, nothing worked") became `stuck`. `drift` was dropped. This preserves live-funnel quality between the structure commit and the copy commits instead of blanking screens to TODO.
+- `funnel-config.ts` still contains some copy that references "Life Matrix / six domains" inside timeline milestone strings — intentionally left for the content pass; the Life Matrix VALUE item and the timeline preview block are the only Life-Matrix surfaces removed here.
+- Typecheck: all files touched here are error-clean. Pre-existing unrelated `tsc` errors remain in `metrics/route.ts` (implicit-any, missing `PrismaClient`) and `UsersTab.tsx:103` (`searchParams` null) and the `.next/types` codegen — none introduced by this change.
+
+---
+
 ## [2026-07-01] — Removed the "Acuity noticed something" email entirely (and its dedicated generation)
 
 **Requested by:** Keenan

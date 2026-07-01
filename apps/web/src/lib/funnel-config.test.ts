@@ -4,8 +4,7 @@ import { getPatternLabels, type Branch } from "./funnel-config";
 function makeAnswers(overrides: Record<string, string | string[]> = {}): Record<string, string | string[]> {
   return {
     shared_q5: "A few months",
-    shared_q6: "My energy",
-    shared_q9: "Snapping at people I love, then feeling guilty",
+    branch_q6: "My energy",
     ...overrides,
   };
 }
@@ -13,12 +12,11 @@ function makeAnswers(overrides: Record<string, string | string[]> = {}): Record<
 describe("getPatternLabels", () => {
   // ─── Primary pattern mapping (one per branch) ───────────────────────────
   const branchExpected: [Branch, string][] = [
-    ["blur", "Mental Overload"],
+    ["overload", "Mental Overload"],
     ["patterns", "Relational Looping"],
     ["rumination", "Racing Mind"],
-    ["graveyard", "System Fatigue"],
+    ["stuck", "System Fatigue"],
     ["mask", "Invisible Load"],
-    ["drift", "Drifted Off-Course"],
   ];
 
   for (const [branch, expected] of branchExpected) {
@@ -30,43 +28,36 @@ describe("getPatternLabels", () => {
     });
   }
 
-  // ─── Secondary pattern mapping (from shared_q9) ────────────────────────
-  const q9Expected: [string, string][] = [
-    ["Snapping at people I love, then feeling guilty", "Overflow"],
-    ["Putting everyone else first until I have nothing left", "Last on the List"],
-    ["Starting things and watching them fizzle", "Follow-Through Decay"],
-    ["Replaying the same worries on a loop", "Rumination Spiral"],
+  // ─── Area mapping — v6 has no branch_q6→area map yet, so every branch
+  //     falls back to its per-branch default (areaFallback=true). ──────────
+  const areaDefaultExpected: [Branch, string][] = [
+    ["overload", "Energy"],
+    ["patterns", "Relationships"],
+    ["rumination", "Peace of mind"],
+    ["stuck", "Momentum"],
+    ["mask", "Identity"],
   ];
 
-  for (const [q9, expected] of q9Expected) {
-    it(`maps q9 "${q9.slice(0, 30)}…" → secondary "${expected}"`, () => {
-      const result = getPatternLabels("blur", makeAnswers({ shared_q9: q9 }));
-      expect(result.secondary).toBe(expected);
-      expect(result.secondaryVisible).toBe(true);
-      expect(result.stuckDeepOverride).toBe(false);
-    });
-  }
-
-  // ─── Area mapping (from shared_q6) ─────────────────────────────────────
-  const q6Expected: [string, string][] = [
-    ["My energy", "Energy"],
-    ["My relationships", "Relationships"],
-    ["My health", "Health"],
-    ["My career", "Career"],
-    ["My sense of self", "Identity"],
-    ["Time I can\u2019t get back", "Time"],
-  ];
-
-  for (const [q6, expected] of q6Expected) {
-    it(`maps q6 "${q6}" → area "${expected}"`, () => {
-      const result = getPatternLabels("blur", makeAnswers({ shared_q6: q6 }));
+  for (const [branch, expected] of areaDefaultExpected) {
+    it(`falls back to default area "${expected}" for branch "${branch}"`, () => {
+      const result = getPatternLabels(branch, makeAnswers());
       expect(result.area).toBe(expected);
+      expect(result.areaFallback).toBe(true);
     });
   }
+
+  // ─── Secondary: no Q9 source in v6 — only the long-duration override ────
+  it("has no secondary for short/medium durations", () => {
+    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "A few months" }));
+    expect(result.secondary).toBeNull();
+    expect(result.secondaryVisible).toBe(false);
+    expect(result.stuckDeepOverride).toBe(false);
+    expect(result.collisionSuppressed).toBe(false);
+  });
 
   // ─── Duration override → "Stuck Deep" ──────────────────────────────────
   it("overrides secondary to 'Stuck Deep' when duration is 'Over a year'", () => {
-    const result = getPatternLabels("blur", makeAnswers({ shared_q5: "Over a year" }));
+    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "Over a year" }));
     expect(result.secondary).toBe("Stuck Deep");
     expect(result.secondaryVisible).toBe(true);
     expect(result.stuckDeepOverride).toBe(true);
@@ -80,66 +71,28 @@ describe("getPatternLabels", () => {
   });
 
   it("does NOT override for short durations", () => {
-    const result = getPatternLabels("blur", makeAnswers({ shared_q5: "A few weeks" }));
-    expect(result.secondary).toBe("Overflow");
-    expect(result.stuckDeepOverride).toBe(false);
-  });
-
-  // ─── Collision: Racing Mind + Rumination Spiral ─────────────────────────
-  it("suppresses secondary when Racing Mind collides with Rumination Spiral (short duration)", () => {
-    const result = getPatternLabels("rumination", makeAnswers({
-      shared_q9: "Replaying the same worries on a loop",
-      shared_q5: "A few months",
-    }));
-    expect(result.primary).toBe("Racing Mind");
+    const result = getPatternLabels("overload", makeAnswers({ shared_q5: "A few weeks" }));
     expect(result.secondary).toBeNull();
-    expect(result.secondaryVisible).toBe(false);
-    expect(result.collisionSuppressed).toBe(true);
     expect(result.stuckDeepOverride).toBe(false);
-  });
-
-  it("falls through to Stuck Deep when Racing Mind collides with Rumination Spiral AND duration qualifies", () => {
-    const result = getPatternLabels("rumination", makeAnswers({
-      shared_q9: "Replaying the same worries on a loop",
-      shared_q5: "Over a year",
-    }));
-    expect(result.primary).toBe("Racing Mind");
-    expect(result.secondary).toBe("Stuck Deep");
-    expect(result.secondaryVisible).toBe(true);
-    expect(result.stuckDeepOverride).toBe(true);
-    // Duration override takes precedence — collision check never fires
-    expect(result.collisionSuppressed).toBe(false);
-  });
-
-  // ─── Non-colliding combos are visible ───────────────────────────────────
-  it("shows secondary for non-colliding combos (Racing Mind + Overflow)", () => {
-    const result = getPatternLabels("rumination", makeAnswers({
-      shared_q9: "Snapping at people I love, then feeling guilty",
-      shared_q5: "A few months",
-    }));
-    expect(result.primary).toBe("Racing Mind");
-    expect(result.secondary).toBe("Overflow");
-    expect(result.secondaryVisible).toBe(true);
-    expect(result.collisionSuppressed).toBe(false);
   });
 
   // ─── Body copy is pattern-specific (anti-Barnum) ───────────────────────
   it("returns different body copy for different branches", () => {
-    const blur = getPatternLabels("blur", makeAnswers());
+    const overload = getPatternLabels("overload", makeAnswers());
     const mask = getPatternLabels("mask", makeAnswers());
-    expect(blur.bodyCopy).not.toBe(mask.bodyCopy);
-    expect(blur.loopLine).not.toBe(mask.loopLine);
+    expect(overload.bodyCopy).not.toBe(mask.bodyCopy);
+    expect(overload.loopLine).not.toBe(mask.loopLine);
   });
 
   // ─── Area fallback observability ───────────────────────────────────────
-  it("sets areaFallback=false when q6 has a real answer", () => {
-    const result = getPatternLabels("blur", makeAnswers({ shared_q6: "My health" }));
-    expect(result.area).toBe("Health");
-    expect(result.areaFallback).toBe(false);
+  it("sets areaFallback=true (no branch_q6→area map wired yet) even with a real answer", () => {
+    const result = getPatternLabels("overload", makeAnswers({ branch_q6: "My health" }));
+    expect(result.area).toBe("Energy"); // per-branch default
+    expect(result.areaFallback).toBe(true);
   });
 
-  it("sets areaFallback=true and area='Energy' when q6 is empty", () => {
-    const result = getPatternLabels("blur", makeAnswers({ shared_q6: "" }));
+  it("sets areaFallback=true and area=default when branch_q6 is empty", () => {
+    const result = getPatternLabels("overload", makeAnswers({ branch_q6: "" }));
     expect(result.area).toBe("Energy");
     expect(result.areaFallback).toBe(true);
   });

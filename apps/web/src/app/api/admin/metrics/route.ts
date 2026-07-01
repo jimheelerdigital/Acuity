@@ -2356,7 +2356,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   }).sort((a, b) => b.sessions - a.sessions);
 
   // ── Branch breakdown — step-by-step conversion per branch ──
-  const BRANCH_KEYS = ["blur", "patterns", "rumination", "graveyard", "mask", "drift"];
+  const BRANCH_KEYS = ["overload", "patterns", "rumination", "stuck", "mask"];
   const branchMap = new Map<string, typeof sessions>();
   for (const s of interactedSessionsList) {
     const entryEvent = s.events.find((e) => e.event === "funnel_entry_selected");

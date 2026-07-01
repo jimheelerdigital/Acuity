@@ -18,25 +18,18 @@ import {
   ENTRY_QUESTION,
   BRANCH_QUESTIONS,
   SHARED_QUESTIONS,
-  buildMirrorLines,
-  buildGap1Content,
-  getTimeMathContent,
-  GAP2_FEELINGS,
-  getGap2Header,
-  buildGap3Lines,
-  type Gap3Line,
-  GAP3_DISMISS_COPY,
+  BRANCH_Q6,
+  assemblePainCopy,
+  RELIEF_FLIP,
+  assembleCurrentFuture,
+  getCostOfInaction,
   PROCESSING_STAGES,
-  SNAPSHOT_PREVIEWS,
   SNAPSHOT_BOTTOM,
   getTimelineWeeks,
   PAYWALL_HOOKS,
   PRICING_COPY,
   getPaywallHeadline,
-  PAYWALL_FAQ,
   getCreateAccountHeadline,
-  getSavingsCostRecap,
-  SAVINGS_TIMELINE,
   PAYWALL_TESTIMONIALS_V2,
   getPaywallTestimonial,
   getPatternLabels,
@@ -47,10 +40,11 @@ import {
 type Step =
   | "entry"
   | "branch-q2" | "branch-q3" | "branch-q4"
-  | "shared-q5" | "shared-q6" | "shared-q7" | "shared-q8" | "shared-q9"
-  | "timemath"
+  | "shared-q5"
+  | "branch-q6"
   | "pain"
-  | "gap2" | "gap3"
+  | "relief-flip"
+  | "current-future"
   | "mechanism"
   | "value"
   | "commit"
@@ -63,8 +57,9 @@ type Step =
 
 const STEP_ORDER: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q4",
-  "shared-q5", "shared-q6", "timemath", "shared-q7", "shared-q8", "shared-q9",
-  "pain", "gap2", "gap3", "mechanism", "value", "commit", "processing", "pattern-result", "timeline",
+  "shared-q5", "branch-q6",
+  "pain", "relief-flip", "current-future", "mechanism", "value", "commit",
+  "processing", "pattern-result", "timeline",
   "savings", "create-account", "download",
 ];
 
@@ -271,7 +266,7 @@ export function OnboardingFunnel() {
   const [adMatchBranch] = useState<Branch | undefined>(() => {
     if (typeof window === "undefined") return undefined;
     const p = new URLSearchParams(window.location.search).get("p");
-    if (p && (["blur","patterns","rumination","graveyard","mask","drift"] as string[]).includes(p)) return p as Branch;
+    if (p && (["overload","patterns","rumination","stuck","mask"] as string[]).includes(p)) return p as Branch;
     return undefined;
   });
   const [apiError, setApiError] = useState<string | null>(null);
@@ -497,14 +492,10 @@ export function OnboardingFunnel() {
       "branch-q3": "funnel_branch_q3_viewed",
       "branch-q4": "funnel_branch_q4_viewed",
       "shared-q5": "funnel_shared_q5_viewed",
-      "shared-q6": "funnel_shared_q6_viewed",
-      "shared-q7": "funnel_shared_q7_viewed",
-      "shared-q8": "funnel_shared_q8_viewed",
-      "shared-q9": "funnel_shared_q9_viewed",
-      timemath: "funnel_timemath_viewed",
+      "branch-q6": "funnel_branch_q6_viewed",
       pain: "funnel_pain_viewed",
-      gap2: "funnel_gap2_viewed",
-      gap3: "funnel_gap3_viewed",
+      "relief-flip": "funnel_relief_flip_viewed",
+      "current-future": "funnel_current_future_viewed",
       mechanism: "funnel_mechanism_viewed",
       value: "funnel_value_viewed",
       commit: "funnel_commit_viewed",
@@ -547,6 +538,7 @@ export function OnboardingFunnel() {
   // ── Get current question for branch/shared steps ──
   const getCurrentQuestion = (): Question | null => {
     if (step === "entry") return ENTRY_QUESTION;
+    if (step === "branch-q6" && branch) return BRANCH_Q6[branch];
     if (step.startsWith("branch-") && branch) {
       const idx = parseInt(step.replace("branch-q", "")) - 2; // q2 → 0, q3 → 1, q4 → 2
       return BRANCH_QUESTIONS[branch][idx] ?? null;
@@ -733,30 +725,25 @@ export function OnboardingFunnel() {
         );
       })()}
 
-      {/* ── Time Math (after Q6 cost — duration drives the number, branch+cost drive the framing) ── */}
-      {step === "timemath" && (
-        <TimeMathScreen key="timemath" branch={branch} answers={answers} onContinue={() => setStep("shared-q7")} onSkip={() => setStep("shared-q7")} />
-      )}
-
-      {/* ── Pain (merged mirror + gap1 — sequential build) ── */}
+      {/* ── Pain / Mirror (Screen 7 — answer-aware, assembled from Q2+Q3+Q6) ── */}
       {step === "pain" && branch && (
-        <PainScreen key="pain" branch={branch} answers={answers} onContinue={() => setStep("gap2")} />
+        <PainScreen key="pain" branch={branch} answers={answers} onContinue={() => setStep("relief-flip")} />
       )}
 
-      {/* ── Gap 2: How would it feel? (Screen 10b) ── */}
-      {step === "gap2" && branch && (
-        <Gap2Screen key="gap2" branch={branch} answers={answers} track={track}
-          onContinue={(feelings) => {
-            setAnswers((a) => ({ ...a, gap2_feelings: feelings }));
-            track("funnel_gap2_selected", { value: feelings.join(", ") });
-            setStep("gap3");
+      {/* ── Relief Flip (Screen 8 — imagine the pain gone, how would you feel?) ── */}
+      {step === "relief-flip" && branch && (
+        <ReliefFlipScreen key="relief-flip" branch={branch} track={track}
+          onSelect={(reliefId) => {
+            setAnswers((a) => ({ ...a, relief_flip: reliefId }));
+            track("funnel_relief_flip_selected", { value: reliefId });
+            setStep("current-future");
           }}
         />
       )}
 
-      {/* ── Gap 3: Your future self (Screen 10c) ── */}
-      {step === "gap3" && branch && (
-        <Gap3Screen key="gap3" answers={answers} track={track} onContinue={() => setStep("mechanism")} />
+      {/* ── Current You vs Future You (Screen 9 — answer-aware two-state contrast) ── */}
+      {step === "current-future" && branch && (
+        <CurrentFutureScreen key="current-future" branch={branch} answers={answers} onContinue={() => setStep("mechanism")} />
       )}
 
       {/* ── Mechanism / Product Explainer (Screen 11) ── */}
@@ -794,6 +781,7 @@ export function OnboardingFunnel() {
         <SavingsScreen
           key="savings"
           branch={branch}
+          answers={answers}
           track={track}
           selectedPlan={selectedPlan}
           onPlanChange={setSelectedPlan}
@@ -996,305 +984,49 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
   );
 }
 
-// ─── Time-Math Screen (after Q5 duration) ───────────────────────────────────
-
-function TimeMathScreen({ branch, answers, onContinue, onSkip }: {
-  branch: Branch | null;
-  answers: Record<string, string | string[]>;
-  onContinue: () => void;
-  onSkip: () => void;
-}) {
-  const dur = String(answers.shared_q5 ?? "");
-  const content = getTimeMathContent(dur, branch, String(answers.shared_q6 ?? ""));
-  const isThousands = content.count === null && content.show;
-  // Phases: 0=hidden, 1=kicker, 2=hero-anim-start, 3=label, 4=closer, 5=CTA
-  const [phase, setPhase] = useState(0);
-  const [displayNum, setDisplayNum] = useState(0);
-  const [scrambleDisplay, setScrambleDisplay] = useState("");
-  const [scrambleResolved, setScrambleResolved] = useState(false);
-  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-  // Skip for short durations — immediately advance, fire no event
-  useEffect(() => {
-    if (!content.show) { onSkip(); return; }
-    if (prefersReduced) { setPhase(5); setDisplayNum(content.count ?? 0); setScrambleResolved(true); return; }
-    const t: ReturnType<typeof setTimeout>[] = [];
-
-    if (isThousands) {
-      // Thousands timeline: kicker → scramble → label → closer → CTA
-      t.push(setTimeout(() => setPhase(1), 0));        // kicker fades in (500ms CSS)
-      t.push(setTimeout(() => setPhase(2), 800));       // scramble starts (+300ms after kicker settles)
-      t.push(setTimeout(() => setPhase(3), 2250));      // "of evenings" (+200ms after resolve at ~2050)
-      t.push(setTimeout(() => setPhase(4), 3050));      // closer
-      t.push(setTimeout(() => setPhase(5), 3850));      // CTA
-    } else {
-      // Numeric timeline: kicker → count-up → label → closer → CTA
-      t.push(setTimeout(() => setPhase(1), 0));        // kicker fades in (500ms CSS)
-      t.push(setTimeout(() => setPhase(2), 800));       // count-up starts
-      t.push(setTimeout(() => setPhase(3), 2200));      // "evenings" (+200ms after 1200ms count finishes)
-      t.push(setTimeout(() => setPhase(4), 3000));      // closer
-      t.push(setTimeout(() => setPhase(5), 3800));      // CTA
-    }
-
-    return () => t.forEach(clearTimeout);
-  }, [content.show, prefersReduced, onSkip, isThousands]);
-
-  // Odometer count-up animation — numeric variant only.
-  // useRef guard prevents re-fire on subsequent phase changes and
-  // React 18 StrictMode double-invoke in development.
-  const countUpStarted = useRef(false);
-  useEffect(() => {
-    if (phase < 2 || content.count === null || prefersReduced) return;
-    if (countUpStarted.current) return;
-    countUpStarted.current = true;
-    const target = content.count;
-    const duration = 1200;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const elapsed = now - start;
-      const pct = Math.min(1, elapsed / duration);
-      const eased = 1 - Math.pow(1 - pct, 3); // ease-out cubic
-      setDisplayNum(Math.round(eased * target));
-      if (pct < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [phase, content.count, prefersReduced]);
-
-  // Digit scramble animation — thousands variant only.
-  // Rapid random 4-digit numbers (~50ms/frame) for ~900ms, decelerating
-  // in the final ~300ms, then resolves to the word "Thousands".
-  const scrambleStarted = useRef(false);
-  useEffect(() => {
-    if (phase < 2 || content.count !== null || prefersReduced) return;
-    if (scrambleStarted.current) return;
-    scrambleStarted.current = true;
-
-    const SCRAMBLE_DURATION = 900;
-    const DECEL_START = 600;
-    const startTime = performance.now();
-    let lastFrameTime = 0;
-
-    const tick = (now: number) => {
-      const elapsed = now - startTime;
-
-      if (elapsed >= SCRAMBLE_DURATION) {
-        setScrambleDisplay("");
-        setScrambleResolved(true);
-        return;
-      }
-
-      // Frame interval: 50ms base, easing to ~200ms in final 300ms
-      let interval = 50;
-      if (elapsed > DECEL_START) {
-        const decelPct = (elapsed - DECEL_START) / (SCRAMBLE_DURATION - DECEL_START);
-        interval = 50 + decelPct * 150;
-      }
-
-      if (now - lastFrameTime >= interval) {
-        // Always 4-digit for stable width with tabular-nums
-        const n = 1000 + Math.floor(Math.random() * 9000);
-        setScrambleDisplay(n.toLocaleString());
-        lastFrameTime = now;
-      }
-
-      requestAnimationFrame(tick);
-    };
-
-    requestAnimationFrame(tick);
-  }, [phase, content.count, prefersReduced]);
-
-  // Tap-to-skip — jump to resolved final state
-  const skip = () => {
-    setPhase(5);
-    if (content.count !== null) setDisplayNum(content.count);
-    countUpStarted.current = true;
-    scrambleStarted.current = true;
-    setScrambleResolved(true);
-  };
-
-  if (!content.show) return null;
-
-  const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
-
-  // Ring fill percentage — animates alongside the count-up
-  const ringPct = content.count !== null && content.count > 0
-    ? Math.min(1, displayNum / content.count)
-    : (scrambleResolved ? 1 : 0);
-  const ringCircumference = 2 * Math.PI * 72; // r=72 for the SVG ring
-  const ringOffset = ringCircumference * (1 - ringPct);
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
-      onClick={phase < 5 ? skip : undefined}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes tm-ring-pulse { 0%, 100% { opacity: 0.15; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.04); } }
-      `}} />
-      <div className="max-w-md w-full text-center">
-        {/* Kicker */}
-        <div className={`mb-8 transition-all duration-500 ease-out ${beat(1)}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1">Your answers show</p>
-          <p className="text-[15px] text-zinc-600">This has been running for {content.herDuration}.</p>
-        </div>
-
-        {/* Hero — number inside a ring */}
-        <div className={`mb-8 transition-all duration-500 ease-out ${beat(2)}`}>
-          {content.atLeast && (
-            <p className={`text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1 transition-opacity duration-300 ${phase >= 3 ? "opacity-100" : "opacity-0"}`}>At least</p>
-          )}
-          <div className="relative inline-flex items-center justify-center w-[180px] h-[180px] sm:w-[200px] sm:h-[200px]">
-            {/* Background ring */}
-            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 160 160">
-              <circle cx="80" cy="80" r="72" fill="none" stroke="currentColor" strokeWidth="3" className="text-zinc-100" />
-              {/* Fill ring — draws as count-up progresses */}
-              <circle cx="80" cy="80" r="72" fill="none" stroke="currentColor" strokeWidth="3"
-                className="text-acuity-primary transition-all duration-200"
-                strokeDasharray={ringCircumference}
-                strokeDashoffset={ringOffset}
-                strokeLinecap="round" />
-            </svg>
-            {/* Pulse ring — appears when count lands */}
-            {phase >= 3 && !prefersReduced && (
-              <div className="absolute inset-0 rounded-full border-2 border-acuity-primary"
-                style={{ animation: "tm-ring-pulse 2s ease-in-out 2" }} />
-            )}
-            {/* Number */}
-            <div className="relative z-10">
-              {content.count !== null ? (
-                <span className="text-[56px] sm:text-[72px] font-extrabold text-zinc-900 tabular-nums leading-none">
-                  {phase >= 2 ? displayNum.toLocaleString() : "0"}
-                </span>
-              ) : (
-                !scrambleResolved ? (
-                  <span className="text-[56px] sm:text-[72px] font-extrabold text-zinc-900 tabular-nums leading-none inline-block min-w-[4ch]">
-                    {scrambleDisplay || "\u00A0"}
-                  </span>
-                ) : (
-                  <span className="text-[36px] sm:text-[48px] font-extrabold text-zinc-900 leading-none inline-block"
-                    style={{ animation: prefersReduced ? "none" : "funnel-scramble-resolve 350ms ease-out both" }}>
-                    Thousands
-                  </span>
-                )
-              )}
-            </div>
-          </div>
-
-          {/* Label — staggered after hero resolves */}
-          <div className={`mt-3 transition-all duration-300 ease-out ${beat(3)}`}>
-            <span className="text-lg text-zinc-500 font-medium">{content.label}</span>
-            {content.costLine && (
-              <p className="text-[14px] text-zinc-500 mt-2 max-w-xs mx-auto leading-snug">{content.costLine}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className={`mx-auto w-12 h-px bg-zinc-200 mb-8 transition-all duration-500 ${phase >= 4 ? "opacity-100" : "opacity-0"}`} />
-
-        {/* Closer */}
-        <div className={`mb-12 transition-all duration-[600ms] ${phase >= 4 ? "opacity-100" : "opacity-0"}`}
-          style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-[17px] font-bold text-zinc-900 leading-snug">{content.headline}</p>
-          <p className="text-[15px] text-zinc-500 mt-2">{content.closer}</p>
-        </div>
-
-        {/* CTA */}
-        <div className={`transition-all duration-500 ${beat(5)}`}>
-          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Continue
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Pain Screen (merged mirror + gap1 — 4-block sequential build) ──────────
+// ─── Pain / Mirror Screen (answer-aware — assembled from Q2+Q3+Q6) ──────────
 
 function PainScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  const mirrorLines = buildMirrorLines(branch, answers);
-  const gapContent = buildGap1Content(branch, answers);
+  // Answer-aware: assemblePainCopy stitches the user's Q2/Q3/Q6 selections
+  // into a two-beat mirror. beat[0] = recognition, beat[1] = the cost.
+  const [beat1, beat2] = assemblePainCopy(branch, answers);
   const [phase, setPhase] = useState(0);
-  const [highlightPhase, setHighlightPhase] = useState(0);
-  const maxPhase = 5;
+  const maxPhase = 4;
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
-    if (prefersReduced) { setPhase(maxPhase); setHighlightPhase(gapContent.costWords.length); return; }
+    if (prefersReduced) { setPhase(maxPhase); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
-    // Block 1 (recognition): 600ms
-    t.push(setTimeout(() => setPhase(1), 600));
-    // Block 2 (named want): 2200ms
-    t.push(setTimeout(() => setPhase(2), 2200));
-    // Block 3 (cost + highlight): 3800ms
-    t.push(setTimeout(() => setPhase(3), 3800));
-    // Highlight sweep on cost word
-    gapContent.costWords.forEach((_, i) => {
-      t.push(setTimeout(() => setHighlightPhase(i + 1), 3800 + 500 + i * 250));
-    });
-    // Block 4 (stakes + closer): 5400ms
-    t.push(setTimeout(() => setPhase(4), 5400));
-    // CTA: 6400ms
-    t.push(setTimeout(() => setPhase(maxPhase), 6400));
+    t.push(setTimeout(() => setPhase(1), 600));   // Block 1: recognition
+    t.push(setTimeout(() => setPhase(2), 2400));  // Block 2: the cost
+    t.push(setTimeout(() => setPhase(3), 4000));  // Block 3: closer
+    t.push(setTimeout(() => setPhase(maxPhase), 5000)); // CTA
     return () => t.forEach(clearTimeout);
-  }, [prefersReduced, gapContent.costWords.length]);
+  }, [prefersReduced]);
 
-  const skip = () => { setPhase(maxPhase); setHighlightPhase(gapContent.costWords.length); };
+  const skip = () => setPhase(maxPhase);
   const beat = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
-
-  // Render cost line with highlighted word
-  const renderCostLine = () => {
-    if (gapContent.costWords.length === 0) return gapContent.line1;
-    const parts: (string | { word: string; idx: number })[] = [];
-    let remaining = gapContent.line1;
-    gapContent.costWords.forEach((word, i) => {
-      const idx = remaining.indexOf(word);
-      if (idx >= 0) {
-        if (idx > 0) parts.push(remaining.slice(0, idx));
-        parts.push({ word, idx: i });
-        remaining = remaining.slice(idx + word.length);
-      }
-    });
-    if (remaining) parts.push(remaining);
-    return parts.map((p, i) =>
-      typeof p === "string" ? <span key={i}>{p}</span> : (
-        <span key={i} className={`gap-highlight ${highlightPhase > p.idx ? "sweep" : ""}`}
-          style={highlightPhase > p.idx ? { animationDelay: `${p.idx * 250}ms` } : undefined}>
-          {p.word}
-        </span>
-      )
-    );
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
       onClick={phase < maxPhase ? skip : undefined}>
       <div className="max-w-md w-full">
 
-        {/* Block 1: Recognition (from mirror beat 1) */}
+        {/* Block 1: Recognition (assembled beat 1) */}
         <div className={`mb-8 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[600ms] ease-out ${beat(1)}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{mirrorLines[0]}</p>
+          <p className="text-[15px] text-zinc-700 leading-relaxed">{beat1}</p>
         </div>
 
-        {/* Block 2: Named want (from mirror beat 2) */}
-        <div className={`mb-10 border-l-2 border-acuity-primary/40 pl-5 transition-all duration-[600ms] ease-out ${beat(2)}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{mirrorLines[1]}</p>
+        {/* Block 2: The cost (assembled beat 2) */}
+        <div className={`mb-10 transition-all duration-[600ms] ease-out ${beat(2)}`}>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900 leading-[1.5] text-center">{beat2}</p>
         </div>
 
-        {/* Block 3: The cost (from gap1 — with highlighted area word) */}
-        <div className={`mb-8 transition-all duration-[600ms] ease-out ${beat(3)}`}>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900 leading-[1.5] text-center">{renderCostLine()}</p>
-          <div className={`mt-4 transition-all duration-500 ${phase >= 3 ? "opacity-70" : "opacity-0"}`} style={{ transitionDelay: "400ms" }}>
-            <p className="text-[14px] text-zinc-500 leading-relaxed text-center">{gapContent.line2}</p>
-          </div>
-        </div>
-
-        {/* Block 4: Stakes + closer */}
-        <div className={`mb-10 ${phase >= 4 ? "" : "opacity-0"}`}
-          style={phase >= 4 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-[17px] font-bold text-zinc-900 text-center mb-4">{gapContent.line3}</p>
+        {/* Block 3: Closer */}
+        <div className={`mb-10 ${phase >= 3 ? "" : "opacity-0"}`}
+          style={phase >= 3 ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
           <p className="text-lg font-bold text-zinc-900 text-center">You don&rsquo;t have to keep living like this.</p>
         </div>
 
@@ -1310,50 +1042,42 @@ function PainScreen({ branch, answers, onContinue }: {
   );
 }
 
-// ─── Gap 2: "How would it feel?" (interactive multi-select) ─────────────────
+// ─── Relief Flip (Screen 8 — imagine the pain gone, how would you feel?) ─────
 
-function Gap2Screen({ branch, answers, track, onContinue }: {
-  branch: Branch; answers: Record<string, string | string[]>;
+function ReliefFlipScreen({ branch, track, onSelect }: {
+  branch: Branch;
   track: (event: string, props?: Record<string, unknown>) => void;
-  onContinue: (feelings: string[]) => void;
+  onSelect: (reliefId: string) => void;
 }) {
-  const header = getGap2Header(branch, answers);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [pulseCta, setPulseCta] = useState(false);
+  const config = RELIEF_FLIP[branch];
+  const [chosen, setChosen] = useState<string | null>(null);
 
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      // Pulse the CTA on first selection
-      if (prev.size === 0 && next.size === 1) {
-        setPulseCta(true);
-        setTimeout(() => setPulseCta(false), 400);
-      }
-      return next;
-    });
+  const handle = (id: string) => {
+    if (chosen) return;
+    setChosen(id);
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+    // Tap-to-advance: brief highlight, then continue.
+    setTimeout(() => onSelect(id), 350);
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
       <div className="max-w-md w-full">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 leading-snug funnel-screen">{header}</h2>
-        {/* Full-width option cards matching quiz style */}
-        <div className="space-y-3 mb-4">
-          {GAP2_FEELINGS.map((f, i) => {
-            const isSelected = selected.has(f.id);
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 leading-snug funnel-screen">{config.prompt}</h2>
+        <div className="space-y-3">
+          {config.options.map((o, i) => {
+            const isChosen = chosen === o.id;
             return (
-              <button key={f.id} onClick={() => toggle(f.id)}
+              <button key={o.id} onClick={() => handle(o.id)}
                 className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
-                  isSelected
+                  isChosen
                     ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900"
                     : "border-zinc-200 bg-white/70 text-zinc-700 hover:bg-zinc-100/80"
                 }`}
                 style={{ animationDelay: `${i * 80}ms` }}>
                 <span className="flex items-center justify-between">
-                  <span>{f.label}</span>
-                  {isSelected && (
+                  <span>{o.label}</span>
+                  {isChosen && (
                     <span className="ml-2 text-acuity-primary flex-shrink-0"
                       style={{ animation: "funnel-check-pop 250ms ease-out both" }}>
                       &#10003;
@@ -1364,149 +1088,64 @@ function Gap2Screen({ branch, answers, track, onContinue }: {
             );
           })}
         </div>
-        <p className="text-xs text-zinc-400 text-center mb-5">
-          {selected.size > 0 ? `${selected.size} selected` : "Select all that resonate."}
-        </p>
-        <div className="text-center">
-          <button onClick={() => onContinue([...selected])} disabled={selected.size === 0}
-            className={`rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed animate-[funnel-glow_2s_ease-in-out_infinite] ${pulseCta ? "animate-[funnel-soft-pulse_400ms_ease-out]" : ""}`}>
-            That&rsquo;s what I want
-          </button>
-        </div>
       </div>
     </div>
   );
 }
 
-// ─── Gap 3: "Your future self" (time-lapse, not an essay) ──────────────────
+// ─── Current You vs Future You (Screen 9 — answer-aware two-state contrast) ──
 
-function Gap3Screen({ answers, track, onContinue }: {
-  answers: Record<string, string | string[]>;
-  track: (event: string, props?: Record<string, unknown>) => void;
-  onContinue: () => void;
+function CurrentFutureScreen({ branch, answers, onContinue }: {
+  branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  const feelings = Array.isArray(answers.gap2_feelings) ? answers.gap2_feelings : [];
-  const lines = buildGap3Lines(feelings);
+  const content = assembleCurrentFuture(branch, answers);
+  // Phases: 0=hidden, 1=current (drab) settles, 2=future (warm) animates in, 3=CTA
   const [phase, setPhase] = useState(0);
-  const [showDismiss, setShowDismiss] = useState(false);
-  const [dismissPhase, setDismissPhase] = useState(0);
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  // Total phases: 0=nothing, 1=kicker, 2..N+1=scene beats, N+2=ask, N+3=yes CTA, N+4=no button
-  const askPhase = lines.length + 2;
-  const yesPhase = lines.length + 3;
-  const noPhase = lines.length + 4;
-
   useEffect(() => {
-    if (prefersReduced) { setPhase(noPhase); return; }
+    if (prefersReduced) { setPhase(3); return; }
     const t: ReturnType<typeof setTimeout>[] = [];
-    // Kicker: 0ms
-    t.push(setTimeout(() => setPhase(1), 0));
-    // Scene beats: 700ms for kicker to land, then 1600ms per beat
-    for (let i = 0; i < lines.length; i++) {
-      t.push(setTimeout(() => setPhase(i + 2), 700 + i * 1600));
-    }
-    // Ask: 500ms pause after last beat
-    t.push(setTimeout(() => setPhase(askPhase), 700 + lines.length * 1600 + 500));
-    // Yes CTA: immediately after ask settles
-    t.push(setTimeout(() => setPhase(yesPhase), 700 + lines.length * 1600 + 1100));
-    // No button: 400ms after yes
-    t.push(setTimeout(() => setPhase(noPhase), 700 + lines.length * 1600 + 1500));
+    t.push(setTimeout(() => setPhase(1), 300));   // "you right now" — drab
+    t.push(setTimeout(() => setPhase(2), 1600));  // "you, a few weeks in" — warm entrance
+    t.push(setTimeout(() => setPhase(3), 3000));  // CTA
     return () => t.forEach(clearTimeout);
-  }, [lines.length, prefersReduced, askPhase, yesPhase, noPhase]);
+  }, [prefersReduced]);
 
-  const skip = () => setPhase(noPhase);
-
-  // Render a line with the bold key phrase in semibold
-  const renderLine = (line: Gap3Line) => {
-    const idx = line.text.indexOf(line.bold);
-    if (idx < 0) return line.text;
-    return (
-      <>
-        {line.text.slice(0, idx)}
-        <span className="font-semibold text-zinc-900">{line.bold}</span>
-        {line.text.slice(idx + line.bold.length)}
-      </>
-    );
-  };
-
-  const handleYes = () => {
-    track("funnel_gap3_answered", { value: "yes" });
-    onContinue();
-  };
-  const handleNo = () => {
-    track("funnel_gap3_answered", { value: "no" });
-    setShowDismiss(true);
-    setTimeout(() => setDismissPhase(1), 100);
-  };
-
-  if (showDismiss) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
-        <div className="max-w-md w-full text-center">
-          <div className={`transition-all duration-500 ease-out ${dismissPhase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
-            <p className="text-[15px] text-zinc-600 leading-relaxed mb-8">{GAP3_DISMISS_COPY}</p>
-            <button onClick={onContinue}
-              className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-              Okay, show me how it works
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Determine if ask is showing — dim all scene beats
-  const askVisible = phase >= askPhase;
+  const skip = () => setPhase(3);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
-      onClick={phase < noPhase ? skip : undefined}>
-      <div className="max-w-md w-full">
-        {/* Kicker — film title card */}
-        <p className={`text-[11px] uppercase tracking-[0.2em] text-zinc-400 text-center mb-8 transition-all duration-[700ms] ease-out ${phase >= 1 ? "opacity-100" : "opacity-0"}`}>
-          Three weeks from now
-        </p>
+      onClick={phase < 3 ? skip : undefined}>
+      <div className="max-w-md w-full space-y-4">
 
-        {/* Scene beats — dim-cascade, each as a distinct visual block */}
-        {lines.map((line, i) => {
-          const beatPhase = i + 2;
-          // Current beat is bright, past beats dim to 45%, all dim to 35% when ask shows
-          let opacity: number;
-          if (phase < beatPhase) opacity = 0;
-          else if (askVisible) opacity = 0.35;
-          else if (phase === beatPhase) opacity = 1;
-          else opacity = 0.45; // past beat
-
-          return (
-            <div key={i}
-              className={`mb-5 rounded-xl border border-zinc-100 bg-white/60 px-5 py-4 transition-all duration-[800ms] ease-out ${phase >= beatPhase ? "translate-y-0" : "translate-y-[12px]"}`}
-              style={{ opacity }}>
-              <p className="text-[15px] text-zinc-700 leading-relaxed">{renderLine(line)}</p>
-            </div>
-          );
-        })}
-
-        {/* The ask — with heavier settle animation */}
-        <div className={`mt-6 text-center transition-all duration-500 ${askVisible ? "opacity-100" : "opacity-0"}`}
-          style={askVisible ? { animation: "funnel-settle 600ms ease-out both" } : undefined}>
-          <p className="text-lg font-bold text-zinc-900 mb-6">Are you ready to make a lasting change?</p>
+        {/* Current you — desaturated, heavy, low-motion */}
+        <div className={`rounded-2xl border border-zinc-200 bg-zinc-100/70 px-6 py-6 transition-all duration-[700ms] ease-out ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}
+          style={{ filter: phase >= 1 ? "grayscale(0.6)" : undefined }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3">{content.currentLabel}</p>
+          <div className="space-y-2">
+            {content.current.map((line, i) => (
+              <p key={i} className="text-[15px] text-zinc-500 leading-relaxed">{line}</p>
+            ))}
+          </div>
         </div>
 
-        {/* Yes CTA with soft pulse */}
-        <div className={`text-center transition-all duration-500 ${phase >= yesPhase ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}
-          style={phase === yesPhase ? { animation: "funnel-soft-pulse 400ms ease-out" } : undefined}>
-          <button onClick={(e) => { e.stopPropagation(); handleYes(); }}
+        {/* Future you — warm coral, lively, breathing entrance */}
+        <div className={`rounded-2xl border border-acuity-primary/30 bg-acuity-primary/[0.06] px-6 py-6 transition-all duration-[800ms] ease-out ${phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[16px]"}`}
+          style={phase >= 2 && !prefersReduced ? { animation: "funnel-settle 800ms ease-out both" } : undefined}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-3">{content.futureLabel}</p>
+          <div className="space-y-2">
+            {content.future.map((line, i) => (
+              <p key={i} className="text-[15px] font-medium text-zinc-800 leading-relaxed">{line}</p>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className={`text-center pt-4 transition-all duration-500 ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
+          <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            Yes &mdash; how does it work?
-          </button>
-        </div>
-
-        {/* No button — 400ms after yes */}
-        <div className={`text-center mt-3 transition-all duration-500 ${phase >= noPhase ? "opacity-100" : "opacity-0"}`}>
-          <button onClick={(e) => { e.stopPropagation(); handleNo(); }}
-            className="text-sm text-zinc-400 hover:text-zinc-600 transition py-2">
-            No, maybe next year
+            Show me how
           </button>
         </div>
       </div>
@@ -1525,7 +1164,7 @@ interface MechBranchContent {
 }
 
 const MECH_CONTENT: Record<Branch, MechBranchContent> = {
-  blur: {
+  overload: {
     cards: () => [
       { text: "Block 30 minutes for the thing you keep postponing", icon: "\u25A1" },
       { text: "Notice what actually mattered \u2014 Day 1", icon: "\u25B2" },
@@ -1559,7 +1198,7 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     step3Sub: "",
     insight: "You were calmest on the day you processed out loud before the evening.",
   },
-  graveyard: {
+  stuck: {
     cards: (q2) => {
       const tool = q2 || "what hasn\u2019t worked";
       return [
@@ -1581,16 +1220,6 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     ],
     step3Sub: "",
     insight: "Your energy for everyone else averaged 8/10. For yourself: 3/10. Every single day.",
-  },
-  drift: {
-    cards: () => [
-      { text: "Name one thing you used to care about", icon: "\u25A1" },
-      { text: "Reconnect with what matters \u2014 Day 1", icon: "\u25B2" },
-      { text: "Numb \u2192 Present", icon: "\u25CF" },
-      { text: "You talked about who you used to be twice. Who you want to become \u2014 zero times.", icon: "\u25C6" },
-    ],
-    step3Sub: "",
-    insight: "Your highest energy was Sunday morning. By Monday evening, gone. The reset happens every week.",
   },
 };
 
@@ -1730,11 +1359,6 @@ const VALUE_FEATURES = [
     icon: "\u2611",
     title: "Active task tracking",
     description: "Tasks pulled from your words, tracked until done. Your life stops falling through the cracks.",
-  },
-  {
-    icon: "\u25CE",
-    title: "Life Matrix",
-    description: "Six life domains scored by your own words. See where you\u2019re thriving and where you\u2019re slipping \u2014 every week.",
   },
   {
     icon: "\u2B06",
@@ -2029,14 +1653,12 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
   );
 }
 
-// ─── Personalized Timeline (Screen 14 — includes weekly-report previews) ────
+// ─── Personalized Timeline (Screen 14 — week-by-week milestone reveal) ───────
 
 function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void; track: (event: string, props?: Record<string, unknown>) => void }) {
   const weeks = getTimelineWeeks(branch, answers);
-  const previews = SNAPSHOT_PREVIEWS[branch];
   const bottomLine = SNAPSHOT_BOTTOM[branch];
   const [visibleNodes, setVisibleNodes] = useState(0);
-  const [showPreviews, setShowPreviews] = useState(false);
   const [showBottom, setShowBottom] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
 
@@ -2046,14 +1668,12 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
       timers.push(setTimeout(() => setVisibleNodes(i + 1), 600 + i * 900));
     });
     const timelineEnd = 600 + weeks.length * 900;
-    // Weekly-report previews appear after timeline completes
-    timers.push(setTimeout(() => setShowPreviews(true), timelineEnd + 400));
-    // Bottom line after previews settle
-    timers.push(setTimeout(() => setShowBottom(true), timelineEnd + 400 + previews.length * 400 + 400));
+    // Bottom line after the week-timeline completes
+    timers.push(setTimeout(() => setShowBottom(true), timelineEnd + 400));
     // CTA after bottom line
-    timers.push(setTimeout(() => setShowBtn(true), timelineEnd + 400 + previews.length * 400 + 1000));
+    timers.push(setTimeout(() => setShowBtn(true), timelineEnd + 1000));
     return () => timers.forEach(clearTimeout);
-  }, [weeks.length, previews.length]);
+  }, [weeks.length]);
 
   return (
     <div className="min-h-screen flex flex-col items-center px-6 py-16 text-zinc-900">
@@ -2083,19 +1703,6 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
                 </div>
                 <p className="text-sm text-zinc-700"><span className="font-bold">{w.week}:</span> {w.text}</p>
                 {w.badge && <span className="text-[11px] text-acuity-primary font-medium">{w.badge}</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Weekly-report previews — migrated from snapshot, the critical proof beat */}
-        <div className={`mb-8 transition-all duration-[800ms] ${showPreviews ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">What one week actually looks like</p>
-          <div className="space-y-3">
-            {previews.map((p, i) => (
-              <div key={i} className={`rounded-xl bg-zinc-50 border border-zinc-200 px-4 py-3 transition-all duration-500 ${showPreviews ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
-                style={{ borderLeft: "3px solid var(--acuity-primary)", transitionDelay: showPreviews ? `${i * 400}ms` : "0ms" }}>
-                <p className="text-xs text-zinc-600 leading-relaxed font-mono">{p}</p>
               </div>
             ))}
           </div>
@@ -2481,14 +2088,21 @@ const PRO_FEATURES = [
   { name: "Weekly report", description: "A written narrative of your week, delivered every Sunday." },
 ];
 
-function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
+function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
   branch: Branch | null;
+  answers: Record<string, string | string[]>;
   track: (event: string, props?: Record<string, unknown>) => void;
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
   const paywallTestimonial = getPaywallTestimonial(branch);
+  // Branch-personalized paywall copy. All fall back to shared defaults when
+  // branch is null (ad-deep-link edge case where no entry answer was recorded).
+  const paywallHeadline = branch ? getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
+  const paywallHook = branch ? PAYWALL_HOOKS[branch] : null;
+  const costOfInaction = branch ? getCostOfInaction(branch, answers) : null;
+  const pricingCopy = branch ? PRICING_COPY[branch] : null;
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
   const [slashPhase, setSlashPhase] = useState(0);
   const pricingRef = useRef<HTMLDivElement>(null);
@@ -2529,11 +2143,21 @@ function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
       `}} />
       <div className="max-w-lg mx-auto px-6 pt-10">
 
-        {/* Section 1 — Warm, free-forward positioning header */}
+        {/* Section 1 — Warm, free-forward positioning header (branch-personalized) */}
         <section className="text-center mb-6 funnel-screen">
-          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Everything&rsquo;s ready when you are.</h2>
+          {paywallHook && (
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-2">{paywallHook}</p>
+          )}
+          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">{paywallHeadline}</h2>
           <p className="text-sm text-zinc-500 mt-2">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
         </section>
+
+        {/* Cost-of-inaction — branch-specific stakes reminder */}
+        {costOfInaction && (
+          <section className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50/60 px-5 py-4 text-center funnel-card-stagger" style={{ animationDelay: "80ms" }}>
+            <p className="text-[14px] text-zinc-600 leading-relaxed">{costOfInaction}</p>
+          </section>
+        )}
 
         {/* Section 2 — Free vs Pro split (trimmed, no table) */}
         <section className="mb-6 rounded-xl bg-white border border-zinc-200 shadow-sm overflow-hidden funnel-card-stagger" style={{ animationDelay: "120ms" }}>
@@ -2649,6 +2273,11 @@ function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
             <p className="text-xs text-emerald-800 font-semibold">Founding rate &mdash; locked in for life if you start today.</p>
             <p className="text-[10px] text-emerald-600 mt-0.5">This price rises as we grow.</p>
           </div>
+
+          {/* Branch-specific pricing framing */}
+          {pricingCopy && (
+            <p className="text-[13px] text-zinc-600 text-center mt-3 leading-relaxed">{pricingCopy}</p>
+          )}
 
           {/* Micro-testimonial — full quote (no mid-sentence truncation) */}
           <p className="text-[12px] text-zinc-500 text-center italic mt-3">&ldquo;{paywallTestimonial.quote}&rdquo; &mdash; {paywallTestimonial.name}</p>

@@ -12,20 +12,19 @@ import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 import { keenanSignature, trialButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-type Branch = "blur" | "patterns" | "rumination" | "graveyard" | "mask" | "drift";
+type Branch = "overload" | "patterns" | "rumination" | "stuck" | "mask";
 
 const BRANCH_SUMMARIES: Record<Branch, string> = {
-  blur: "your days have been blurring together",
+  overload: "your days have been blurring together",
   patterns: "the same fights keep happening",
   rumination: "your mind won\u2019t stop replaying things",
-  graveyard: "you\u2019ve tried other things and they didn\u2019t stick",
+  stuck: "you\u2019ve tried other things and they didn\u2019t stick",
   mask: "you keep it together on the outside but something\u2019s off",
-  drift: "you feel like you\u2019re drifting",
 };
 
 function branchLine(v: TrialVars): string {
   const branch = (v as TrialVars & { branch?: string }).branch as Branch | undefined;
-  return BRANCH_SUMMARIES[branch ?? "blur"] ?? BRANCH_SUMMARIES.blur;
+  return BRANCH_SUMMARIES[branch ?? "overload"] ?? BRANCH_SUMMARIES.overload;
 }
 
 const PRICE = formatDollars(MONTHLY_PRICE_CENTS);

@@ -259,7 +259,7 @@ export default function UsersTab() {
                 <th className="px-3 py-3">Source</th>
                 <th className="px-3 py-3">Method</th>
                 <SortHeader label="Signup" field="createdAt" current={sortField} dir={sortDir} onClick={toggleSort} />
-                <th className="px-3 py-3">Plan</th>
+                <SortHeader label="Plan" field="plan" current={sortField} dir={sortDir} onClick={toggleSort} />
                 <th className="px-3 py-3">Platform</th>
                 <th className="px-3 py-3">Lifecycle</th>
                 <SortHeader label="Entries" field="entries" current={sortField} dir={sortDir} onClick={toggleSort} />
