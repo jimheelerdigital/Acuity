@@ -28,7 +28,6 @@ import {
   SNAPSHOT_BOTTOM,
   getTimelineWeeks,
   PAYWALL_HOOKS,
-  PAYWALL_SUBHEAD,
   getPaywallHeadline,
   getCreateAccountHeadline,
   PAYWALL_TESTIMONIALS_V2,
@@ -2226,7 +2225,6 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   // branch is null (ad-deep-link edge case where no entry answer was recorded).
   const paywallHeadline = branch ? getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
   const paywallHook = branch ? PAYWALL_HOOKS[branch] : null;
-  const paywallSubhead = branch ? PAYWALL_SUBHEAD[branch] : null;
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
   const [slashPhase, setSlashPhase] = useState(0);
   const pricingRef = useRef<HTMLDivElement>(null);
@@ -2273,10 +2271,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-2">{paywallHook}</p>
           )}
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">{paywallHeadline}</h2>
-          {paywallSubhead && (
-            <p className="text-[15px] text-zinc-600 mt-3 leading-relaxed">{paywallSubhead}</p>
-          )}
-          <p className="text-sm text-zinc-500 mt-2">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
+          <p className="text-sm text-zinc-500 mt-3">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
         </section>
 
         {/* Section 2 — Free vs Pro split (trimmed, no table) */}
@@ -2396,10 +2391,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
 
           {/* Compact social proof — stars + tappable "What our users say" */}
           <div className="mt-4 flex flex-col items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-acuity-primary text-[15px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-              <span className="text-[12px] font-semibold text-zinc-600">Loved by women who carry a lot</span>
-            </div>
+            <span className="text-acuity-primary text-[16px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
             <button
               type="button"
               onClick={() => { setTestimonialsOpen(true); track("funnel_testimonials_opened", { value: branch ?? "unknown" }); }}
