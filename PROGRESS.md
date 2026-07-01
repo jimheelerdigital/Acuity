@@ -7,6 +7,52 @@
 
 ---
 
+## [2026-07-01] — Branch 5 (mask) verified — all 5 funnel branches now content-complete
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** cc342a28
+
+### In plain English (for Keenan)
+The fifth and final path through the signup quiz — the "I look fine to everyone but I'm barely holding on" path — is confirmed finished and running end-to-end with its real "the mask" words, closing with Sarah J.'s testimonial. It was written with care for how stretched this person feels: it names the weight of holding it together and offers "a private place to set the mask down and be honest," but never implies therapy, treatment, or a mental-health intervention, and never uses crisis language. With this, all five paths of the rebuilt onboarding funnel now have their real content — the funnel rebuild is content-complete.
+
+### Technical changes (for Jimmy)
+- No code change was required for the mask branch: `MECH_CONTENT.mask` was already answer-independent and on-theme (no q2 substring bug), and every mask config surface (`PAIN_FRAGMENTS.mask`, `RELIEF_FLIP.mask`, `CURRENT_FUTURE.mask` with header/footer, `BRANCH_QUESTIONS`/`BRANCH_Q6`, `PAYWALL_*`/`getPaywallHeadline`/`getCostOfInaction`/`getCreateAccountHeadline`, `TIMELINE_WEEKS.mask`, `PRIMARY_PATTERN.mask` = "The Mask", `AREA_MAP.mask`, Sarah J. testimonial at index 7) was already present and verified against spec.
+- This entry shares commit `cc342a28` (the Branch 4 code fix); the mask branch itself introduced no diff.
+
+### Manual steps needed
+- [ ] None — no schema/env changes. (Push held: waiting on Keenan's "push it".)
+
+### Notes
+- Sensitivity + no-medical-claims audit passed. The "My sanity" Q6 option is handled as the feeling of being at a limit, not mental illness: the pain fragment says "you can only hold this much for so long before something gives," the pattern area maps to "Peace of mind" (not "Sanity"), and the future line is "Steadier, with room to breathe." No treatment, cure, therapy, or crisis framing anywhere in the branch.
+- Proved Branch 5 end-to-end via a throwaway vitest stitching example Q2 (say I'm fine) / Q3 (everyone leans on me) / Q6 (my sanity) at duration "As long as I can remember": screens 7 and 9 matched spec verbatim, area resolved to "Peace of mind" (areaFallback=false). Removed the throwaway test.
+- All five branches (overload, patterns, rumination, stuck, mask) now render end-to-end with real content and answer-aware screens 7 and 9; typecheck clean, 18/18 config tests pass.
+
+---
+
+## [2026-07-01] — Filled Branch 4 (stuck) of the onboarding funnel with real content
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** cc342a28
+
+### In plain English (for Keenan)
+The fourth path through the signup quiz — the "I'm busy nonstop but I never actually get anywhere" path — is finished and runs end-to-end with its real "the treadmill" words. It mirrors the exact stuck-and-spinning feeling back ("you pour it all into everyone else... it's costing you the goals you keep pushing to someday"), flips to relief, and shows the personalized "you right now" vs "you a few weeks in" contrast, closing with Stephanie K.'s real testimonial. It reuses the same look and animations as the earlier branches.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: rewrote `MECH_CONTENT.stuck.cards`. It previously built its first card by interpolating the raw Q2 sentence (producing text like "instead of i'm always busy but nothing feels like progress"), carried a "60 seconds" duration claim (a positioning violation), and ran an off-thread "tool/quit on Day 4" narrative. Replaced with fixed treadmill-thread cards about where energy actually goes vs. the goals it never reaches; reworded the weekly `insight` to the maintenance-vs-goals snapshot.
+- No config changes were needed: the verbatim stuck copy (`PAIN_FRAGMENTS.stuck`, `RELIEF_FLIP.stuck`, `CURRENT_FUTURE.stuck` with header/footer, questions/Q6, `PAYWALL_*`/`getPaywallHeadline`/`getCostOfInaction`/`getCreateAccountHeadline`, `TIMELINE_WEEKS.stuck`, `PRIMARY_PATTERN.stuck` = "The Treadmill", `AREA_MAP.stuck`, Stephanie K. testimonial at index 6) was already present and verified against spec.
+
+### Manual steps needed
+- [ ] None — no schema/env changes. (Push held: waiting on Keenan's "push it".)
+
+### Notes
+- Removed a duration claim ("Show up for 60 seconds") that had survived in the stuck mechanism cards, consistent with the positioning rule against recording-duration claims.
+- Proved Branch 4 end-to-end via a throwaway vitest stitching example Q2 (everything for everyone but me) / Q3 (work that never ends) / Q6 (goals I keep putting off): screens 7 and 9 matched spec verbatim, area resolved to "Goals" (areaFallback=false), paywall headline "Busy isn't the same as forward. Let's find the difference." Removed the throwaway test.
+- Typecheck clean for funnel files; 18/18 config tests pass.
+
+---
+
 ## [2026-07-01] — Filled Branch 3 (rumination) of the onboarding funnel with real content
 
 **Requested by:** Keenan
