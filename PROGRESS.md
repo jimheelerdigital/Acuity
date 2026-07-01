@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-07-01] — Funnel quiz answer screens restyled — warm coral, on-brand
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+The quiz answer cards in the onboarding funnel looked bland and off-brand — plain grey with a blue "selected" flash that didn't match Acuity. They're now warm and branded: soft coral borders, a barely-there cream tint, and a coral fill + glow when you tap one (the blue is gone). Each answer has a small coral dot on the left that fills in when chosen, the cards gently lift and glow on press, and the progress bar at the top is a slightly bolder coral. It looks premium and alive without any images and without slowing the funnel down. This applies to every quiz screen across all 5 branches, plus the "imagine you could…" relief screen.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - Added shared CSS to the global `<style>` block: `.funnel-choice` (warm cream bg, light coral border, softer shadow, `-webkit-tap-highlight-color: transparent` to kill the mobile blue flash, hover lift + coral glow via `@media (hover:hover)`, `:active` press-scale), `.funnel-choice-selected` (coral border + `--acuity-primary-soft` fill + coral glow + inset ring), `.funnel-choice-dim`, `.funnel-choice-hint` (softer ad-match tint), and `.funnel-marker` (coral ring that fills on `data-on="1"`).
+  - Added module-level `CHOICE_BASE` constant so all three choice components share one class string (no per-screen one-offs).
+  - Refactored `SingleSelectScreen`, `MultiSelectScreen`, and `ReliefFlipScreen` buttons to use `CHOICE_BASE` + the stateful classes and a left `funnel-marker` + right coral checkmark on selection.
+  - Progress bar bumped 2px→3px, track uses `bg-acuity-primary/10`, fill gets a coral `box-shadow` glow.
+- The reported "blue selected state" was the mobile browser default tap-highlight, not a CSS class — killed via `-webkit-tap-highlight-color: transparent`. Selected state was already coral (`--acuity-primary`, oklch hue 38).
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Centralized on shared classes/tokens rather than per-screen styling so future branches inherit the look automatically. Entrance is the existing staggered fade/slide (`funnel-card-stagger` + `funnel-card-in`), not typewriter — reduced-motion path already resets it and never delays tappability. Typecheck clean for the funnel; the 18 funnel-config vitest tests still pass; all other tsc errors are pre-existing in unrelated files (meta-pixel, progression-checklist, auto-blog, adlab, mri).
+
+---
+
 ## [2026-07-01] — Branch 5 (mask) verified — all 5 funnel branches now content-complete
 
 **Requested by:** Keenan

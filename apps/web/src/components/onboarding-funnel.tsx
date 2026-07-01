@@ -650,6 +650,50 @@ export function OnboardingFunnel() {
         .funnel-screen { animation: funnel-slide-up 0.4s ease-out both; }
         .funnel-card-stagger { animation: funnel-card-in 0.35s ease-out both; }
         .funnel-bounce { animation: funnel-bounce-in 0.4s ease-out both; }
+        /* ── Shared quiz choice card — one warm, coral, branded system every
+           choice screen (Q2-Q6 + Relief Flip) pulls from. ── */
+        .funnel-choice {
+          -webkit-tap-highlight-color: transparent;
+          border: 1px solid oklch(0.86 0.055 38 / 0.6);
+          background: oklch(0.995 0.012 60 / 0.85);
+          box-shadow: 0 1px 2px oklch(0.55 0.05 38 / 0.06);
+          transition: transform 200ms cubic-bezier(.32,.72,0,1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease, opacity 200ms ease;
+        }
+        @media (hover: hover) {
+          .funnel-choice:not(.funnel-choice-selected):not(.funnel-choice-dim):hover {
+            background: var(--acuity-primary-soft);
+            border-color: oklch(0.80 0.11 38 / 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px oklch(0.70 0.14 38 / 0.16);
+          }
+        }
+        .funnel-choice:active { transform: translateY(0) scale(0.985); }
+        .funnel-choice-selected {
+          border-color: var(--acuity-primary);
+          background: var(--acuity-primary-soft);
+          box-shadow: 0 6px 22px oklch(0.70 0.15 38 / 0.28), inset 0 0 0 1px var(--acuity-primary);
+        }
+        .funnel-choice-dim { opacity: 0.4; }
+        /* Ad-match hint on entry — coral-tinted but softer than a full selection. */
+        .funnel-choice-hint {
+          border-color: oklch(0.80 0.11 38 / 0.5);
+          background: var(--acuity-primary-soft);
+        }
+        /* Coral left marker — a guided ring that fills on selection. */
+        .funnel-marker {
+          flex-shrink: 0;
+          width: 9px; height: 9px;
+          border-radius: 9999px;
+          border: 1.5px solid oklch(0.80 0.10 38 / 0.55);
+          background: transparent;
+          transition: background 200ms ease, border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+        }
+        .funnel-marker[data-on="1"] {
+          background: var(--acuity-primary);
+          border-color: var(--acuity-primary);
+          transform: scale(1.15);
+          box-shadow: 0 0 0 3px var(--acuity-primary-soft);
+        }
         /* Shared CTA emphasis — one class every primary funnel button pulls from. */
         .funnel-cta { animation: funnel-glow 2s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
@@ -660,8 +704,9 @@ export function OnboardingFunnel() {
       `}} />
 
       {/* Progress bar */}
-      <div className="fixed top-[var(--install-banner-h)] inset-x-0 z-50 h-[2px] bg-zinc-200/50">
-        <div className="h-full bg-acuity-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+      <div className="fixed top-[var(--install-banner-h)] inset-x-0 z-50 h-[3px] bg-acuity-primary/10">
+        <div className="h-full bg-acuity-primary transition-all duration-700 ease-out"
+          style={{ width: `${progressPct}%`, boxShadow: "0 0 8px var(--acuity-glow-primary)" }} />
       </div>
 
       {/* Back button — hidden on entry and download */}
@@ -865,6 +910,12 @@ export function OnboardingFunnel() {
   );
 }
 
+// Shared choice-card base — warm, coral, branded. Every quiz choice screen
+// (single, multi, relief flip) composes from this one string + the stateful
+// .funnel-choice-* / .funnel-marker classes defined in the global style block.
+const CHOICE_BASE =
+  "funnel-choice funnel-card-stagger w-full text-left rounded-2xl px-5 py-4 text-[15px] flex items-center gap-3 text-zinc-800";
+
 // ─── Single Select Question Screen ──────────────────────────────────────────
 
 function SingleSelectScreen({ question, questionLarge, options, normalization, onSelect, highlightBranch, topSlot }: {
@@ -898,23 +949,28 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
         ) : null}
         <div className="space-y-3" style={{ minHeight: `${options.length * 64}px` }}>
           {options.map((opt, i) => {
+            const isSelected = selected === opt.label;
             const isHighlighted = !selected && highlightBranch && opt.branch === highlightBranch;
             return (
             <button key={opt.label} onClick={() => handleTap(opt)}
-              className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
-                selected === opt.label
-                  ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900 animate-[funnel-pulse-select_0.2s_ease-out]"
+              className={`${CHOICE_BASE} ${
+                isSelected
+                  ? "funnel-choice-selected animate-[funnel-pulse-select_0.2s_ease-out]"
                   : selected
-                    ? "border-zinc-200 bg-zinc-50 text-zinc-700 opacity-40"
+                    ? "funnel-choice-dim"
                     : isHighlighted
-                      ? "border-acuity-primary/40 bg-acuity-primary/5 text-zinc-900 hover:bg-acuity-primary/10"
-                      : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                      ? "funnel-choice-hint"
+                      : ""
               }`}
               style={{ animationDelay: `${i * 100}ms` }}
               disabled={!!selected}
             >
-              {selected === opt.label && <span className="mr-2 text-acuity-primary">&#10003;</span>}
-              {opt.label}
+              <span className="funnel-marker" data-on={isSelected ? "1" : undefined} />
+              <span className="flex-1">{opt.label}</span>
+              {isSelected && (
+                <span className="ml-1 flex-shrink-0 text-acuity-primary"
+                  style={{ animation: "funnel-check-pop 250ms ease-out both" }}>&#10003;</span>
+              )}
             </button>
             );
           })}
@@ -953,23 +1009,22 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 funnel-screen">{question}</h2>
         <div className="space-y-3" style={{ minHeight: `${options.length * 64}px` }}>
-          {options.map((opt, i) => (
+          {options.map((opt, i) => {
+            const isOn = selected.has(opt);
+            return (
             <button key={opt} onClick={() => toggle(opt)}
-              className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
-                selected.has(opt)
-                  ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
-              }`}
+              className={`${CHOICE_BASE} ${isOn ? "funnel-choice-selected" : ""}`}
               style={{ animationDelay: `${i * 100}ms` }}
             >
-              {selected.has(opt) ? (
-                <span className="mr-2 text-acuity-primary">&#10003;</span>
-              ) : (
-                <span className="mr-2 text-zinc-300">&#9711;</span>
+              <span className="funnel-marker" data-on={isOn ? "1" : undefined} />
+              <span className="flex-1">{opt}</span>
+              {isOn && (
+                <span className="ml-1 flex-shrink-0 text-acuity-primary"
+                  style={{ animation: "funnel-check-pop 250ms ease-out both" }}>&#10003;</span>
               )}
-              {opt}
             </button>
-          ))}
+            );
+          })}
         </div>
         {normalization && (
           <p className="mt-4 text-center text-xs italic text-zinc-400">{normalization}</p>
@@ -1085,21 +1140,16 @@ function ReliefFlipScreen({ branch, track, onSelect }: {
             const isChosen = chosen === o.id;
             return (
               <button key={o.id} onClick={() => handle(o.id)}
-                className={`w-full text-left rounded-xl border px-5 py-4 text-[15px] transition-all duration-200 active:scale-[0.98] funnel-card-stagger ${
-                  isChosen
-                    ? "border-acuity-primary bg-acuity-primary/10 text-zinc-900"
-                    : "border-zinc-200 bg-white/70 text-zinc-700 hover:bg-zinc-100/80"
-                }`}
+                className={`${CHOICE_BASE} ${isChosen ? "funnel-choice-selected" : ""}`}
                 style={{ animationDelay: `${i * 80}ms` }}>
-                <span className="flex items-center justify-between">
-                  <span>{o.label}</span>
-                  {isChosen && (
-                    <span className="ml-2 text-acuity-primary flex-shrink-0"
-                      style={{ animation: "funnel-check-pop 250ms ease-out both" }}>
-                      &#10003;
-                    </span>
-                  )}
-                </span>
+                <span className="funnel-marker" data-on={isChosen ? "1" : undefined} />
+                <span className="flex-1">{o.label}</span>
+                {isChosen && (
+                  <span className="ml-1 flex-shrink-0 text-acuity-primary"
+                    style={{ animation: "funnel-check-pop 250ms ease-out both" }}>
+                    &#10003;
+                  </span>
+                )}
               </button>
             );
           })}
