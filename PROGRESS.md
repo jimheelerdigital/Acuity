@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-07-01] — Current-vs-Future screen: now a paneled before/after diagram
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 88006f82
+
+### In plain English (for Keenan)
+The "Here's the shift" screen (screen 9) used to be two columns of text with arrows between them — it read as floating text, not a clear comparison. It's now a true before/after diagram: a muted, dim grey panel on the LEFT ("You right now") sitting next to a warm, coral-tinted panel on the RIGHT ("You, a few weeks in") that's subtly lifted with a soft glow so it feels alive and hopeful. Arrows bridge the gap between the two panels, revealing row by row. The dead-grey-vs-alive-coral contrast makes the transformation land before you even read the words. Same four rows, same header, same one-at-a-time reveal, same button. Applies to all five funnels.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `CurrentFutureScreen`: added an absolute background panel layer (`grid` sharing the exact same 3-column template as the foreground) with a grey left panel (`bg-zinc-100/90` + `ring`) and a coral-tinted right panel (`bg-acuity-primary/[0.06]` + `ring-acuity-primary/20` + `shadow-acuity-glow-soft`). The transparent middle column is the gap the arrows bridge. Foreground labels + rows sit in a `z-10 py-4` layer; text columns get inner padding so they breathe inside the panels. Removed the old faint center seam.
+- Kept the 4 `TRANSFORMATION_ROWS[branch]`, the row-by-row `activeRow` reveal (left drab → arrow sweep → coral pop), the header, branch footer, and CTA. Grid template `[1fr_30px_1fr]` mobile / `[1fr_46px_1fr]` sm.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Two-layer approach (absolute bg grid + foreground grid, identical column templates) guarantees the panels align under the columns without JS measurement. CSS-only backgrounds/shadows — GPU-light, no CTA delay. Reduced-motion path unchanged: `activeRow` starts at `rows.length` and `done=true`, so both panels + all rows + footer + CTA render static immediately. Mobile ~380px: `px-5` → ~340px content, minus 30px gap → ~155px per panel, minus ~22px inner padding → ~133px text with `break-words` — no clip. Typecheck clean for funnel files.
+
+---
+
 ## [2026-07-01] — Removed distracting halo from the Pain/Mirror screen
 
 **Requested by:** Keenan
