@@ -276,7 +276,11 @@ export function OnboardingFunnel() {
   });
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "monthly");
+  // Monthly is the locked default-selected plan. We intentionally do NOT restore
+  // a persisted selectedPlan here — a stale "yearly" from an earlier build/session
+  // would otherwise reappear as the default. Always lead with monthly on load;
+  // the user can still switch, and the switch persists within the session.
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
   // Payment intent: set when user taps "Lock In My Savings" on the paywall.
   // After account creation, if true → route to Stripe checkout; if false → download.
   const [wantsPayment, setWantsPayment] = useState(false);
@@ -2512,21 +2516,32 @@ function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
 
   return (
     <div className="min-h-screen text-zinc-900 pb-32">
+      {/* Scoped, restrained entrance/emphasis animations. Global reduced-motion
+          rule (* { animation-duration: 0.01ms }) neutralizes all of these, and
+          none gate interaction — the sticky CTA is always immediately tappable. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes pw-row-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pw-cta-shimmer { 0% { transform: translateX(-140%) skewX(-18deg); } 100% { transform: translateX(140%) skewX(-18deg); } }
+        @keyframes pw-free-pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+        @keyframes pw-select-glow { 0% { box-shadow: 0 0 0 0 rgba(233,116,81,0.0); } 35% { box-shadow: 0 0 0 4px rgba(233,116,81,0.28); } 100% { box-shadow: 0 0 0 0 rgba(233,116,81,0.0); } }
+        .pw-row { animation: pw-row-in 0.4s ease-out both; }
+        .pw-select-glow { animation: pw-select-glow 1.6s ease-out 0.5s 2; }
+      `}} />
       <div className="max-w-lg mx-auto px-6 pt-10">
 
-        {/* Section 1 — Warm positioning header */}
+        {/* Section 1 — Warm, free-forward positioning header */}
         <section className="text-center mb-6 funnel-screen">
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Everything&rsquo;s ready when you are.</h2>
-          <p className="text-sm text-zinc-500 mt-2">Try all of Acuity free for 7 days. Keep what you love.</p>
+          <p className="text-sm text-zinc-500 mt-2">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
         </section>
 
         {/* Section 2 — Free vs Pro split (trimmed, no table) */}
         <section className="mb-6 rounded-xl bg-white border border-zinc-200 shadow-sm overflow-hidden funnel-card-stagger" style={{ animationDelay: "120ms" }}>
           {/* Free group */}
           <div className="px-5 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-400 mb-3">Free forever</p>
-            {FREE_FEATURES.map((f) => (
-              <div key={f.name} className="flex items-start gap-3 py-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-emerald-600 mb-3">Free forever</p>
+            {FREE_FEATURES.map((f, i) => (
+              <div key={f.name} className="pw-row flex items-start gap-3 py-1.5" style={{ animationDelay: `${220 + i * 70}ms` }}>
                 <span className="text-emerald-500 text-sm mt-0.5 leading-none">&#10003;</span>
                 <div>
                   <p className="text-[14px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
@@ -2538,8 +2553,8 @@ function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
           {/* Pro group */}
           <div className="px-5 py-4 border-t border-zinc-100 bg-zinc-50/40">
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] mb-3 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">The insight layer &mdash; with Pro</p>
-            {PRO_FEATURES.map((f) => (
-              <div key={f.name} className="flex items-start gap-3 py-1.5">
+            {PRO_FEATURES.map((f, i) => (
+              <div key={f.name} className="pw-row flex items-start gap-3 py-1.5" style={{ animationDelay: `${360 + i * 70}ms` }}>
                 <span className="text-acuity-primary text-sm mt-0.5 leading-none">&#10003;</span>
                 <div>
                   <p className="text-[14px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
@@ -2572,7 +2587,7 @@ function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
           <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Monthly card */}
             <button onClick={() => { onPlanChange("monthly"); track("funnel_paywall_plan_selected", { value: "monthly" }); }}
-              className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "monthly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02]" : "border border-zinc-200 bg-white scale-100"}`}>
+              className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "monthly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02] pw-select-glow" : "border border-zinc-200 bg-white scale-100"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
               {/* Regular price — starts as hero, shrinks to anchor on slash */}
               <p className={`font-semibold relative inline-block transition-all duration-500 ${slashPhase >= 1 ? "text-sm text-red-400" : "text-2xl text-zinc-900 font-extrabold"}`}>
@@ -2635,8 +2650,11 @@ function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
             <p className="text-[10px] text-emerald-600 mt-0.5">This price rises as we grow.</p>
           </div>
 
-          {/* Micro-testimonial */}
-          <p className="text-[12px] text-zinc-500 text-center italic mt-3">&ldquo;{paywallTestimonial.quote.slice(0, 80)}&hellip;&rdquo; &mdash; {paywallTestimonial.name}</p>
+          {/* Micro-testimonial — full quote (no mid-sentence truncation) */}
+          <p className="text-[12px] text-zinc-500 text-center italic mt-3">&ldquo;{paywallTestimonial.quote}&rdquo; &mdash; {paywallTestimonial.name}</p>
+
+          {/* No-charge-until-trial-end framing — pricing is what you pay LATER */}
+          <p className="text-[12px] text-center mt-3 text-zinc-500">You won&rsquo;t be charged until your 7 days are up &mdash; <span className="font-semibold text-zinc-700">cancel anytime before then.</span></p>
         </section>
       </div>
 
@@ -2645,11 +2663,16 @@ function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, 
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
           <button onClick={onCheckout} disabled={loading}
-            className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
-            {loading ? "Loading\u2026" : "Start My 7 Days"}
+            className="relative w-full overflow-hidden rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
+            <span className="relative z-10">{loading ? "Loading\u2026" : "Start My 7 Days Free"}</span>
+            {/* Decorative shimmer sweep — does not gate tappability */}
+            {!loading && !prefersReduced && (
+              <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+                style={{ animation: "pw-cta-shimmer 2.8s ease-in-out infinite" }} />
+            )}
           </button>
-          <p className="text-[13px] text-center mt-2 font-medium text-zinc-600">
-            <span className="text-emerald-600 font-semibold">7-day free trial.</span> Cancel anytime. You won&rsquo;t be charged today.
+          <p className="text-[14px] text-center mt-2.5 font-semibold text-zinc-700">
+            <span className="text-emerald-600 font-bold">Free for 7 days.</span> Cancel anytime. <span className="text-zinc-900 font-bold">You won&rsquo;t be charged today.</span>
           </p>
           <div className="text-center mt-2.5">
             <button onClick={onSkip} className="text-[13px] text-zinc-500 hover:text-zinc-700 underline underline-offset-2 transition">
