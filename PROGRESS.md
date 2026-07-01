@@ -7,6 +7,82 @@
 
 ---
 
+## [2026-07-01] — Instrumented the signup cliff: we can now SEE where OAuth dies in webviews
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a2f10bbc
+
+### In plain English (for Keenan)
+Our single biggest leak is the "create account" step — about half the people who get there never finish, and the data says most of that traffic is trapped inside the Facebook/Instagram in-app browsers where "Continue with Google/Apple" often just fails silently. The problem: when that failure happened, our system recorded *nothing* — so every fix we've tried has been a guess in the dark. This pass doesn't try to fix it. It installs the cameras. We now log exactly what happens at each step — which app's browser the person is in (Facebook vs Instagram), which phone (iPhone vs Android), which button they tapped (Apple, Google, or email), whether the hand-off to Google/Apple even started, and whether they came back successfully, bounced back to the form, or vanished. Next session we read what these cameras record — plus what Keenan sees in the live test below — and *then* build the real fix on evidence instead of guesses.
+
+Two things worth knowing up front:
+- **The webview "fixes" we already built are almost all on the wrong screen.** The only place the app currently detects an in-app browser and shows "open in Safari" help is the *download* screen — which comes *after* the account is created. The create-account screen, where the OAuth failure actually happens, had zero webview awareness. That likely explains why past mitigations didn't move the number: they were helping people who'd already gotten past the leak.
+- A person who taps Google, gets rejected, and closes the app entirely is invisible by nature — no website can log someone after they've left. We catch every case where they come *back*, and the true vanish rate shows up as the gap between "tapped OAuth" and "came back," which is now countable.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` (instrumentation only — no new mitigations):
+  - Added `getSignupEnvDiag()` → PII-safe pipe string `webview:<bool>|label:<facebook|instagram|…>|os:<ios|android|other>`, mirroring `DownloadScreen`'s existing `diagContext`.
+  - Added an **OAuth pending-marker** (`localStorage` key `acuity_oauth_pending` = `{provider, ts, env}`) written right before `signIn()` (full-page redirect kills our JS), reconciled on the next funnel mount. `readOAuthPending()` / `clearOAuthPending()` helpers; `OAUTH_NEVER_RETURNED_MS = 60_000` threshold.
+  - New `funnel_*` events (all env-tagged in `value`; ingest route auto-accepts anything matching `^funnel_[a-z0-9_]+$`, so no allowlist edit): `funnel_signup_screen_viewed`, `funnel_webview_detected`, `funnel_oauth_apple_tapped`, `funnel_oauth_google_tapped`, `funnel_oauth_redirect_started`, `funnel_oauth_returned_success` (fired from the parent post-signup handler + clears marker), `funnel_oauth_returned_error` / `funnel_oauth_never_returned` (fired from the `CreateAccountScreen` mount effect on bounce-back, gated so a real success return at `?step=post-signup` is not double-counted as an error), `funnel_email_signup_tapped`, `funnel_email_signup_submitted`, `funnel_email_signup_failed` (value `<reason>|<env>`), `funnel_email_signup_success`.
+  - Enriched the two `funnel_account_created` fires with `value: method:<oauth|email>|<env>` (event is only counted, never value-parsed, so counts are unaffected).
+  - **Left untouched on purpose:** `funnel_signup_started` (grouped by method) and `funnel_signup_failed` (grouped by reason) in `apps/web/src/app/api/admin/metrics/route.ts` — the new events run in parallel so existing admin groupings don't fragment.
+- No Prisma/schema change. Raw user-agent is already persisted in `OnboardingEvent.browser` on every event by `apps/web/src/app/api/onboarding-events/route.ts`.
+
+### Inventory of existing webview/OAuth mitigations (live vs. dead)
+- **`detectBrowserEnv()`** (UA tokens `FBAN|FBAV|FB_IAB` → facebook, `Instagram` → instagram, `LinkedInApp`, `Twitter`): **LIVE**, but only consumed by `DownloadScreen` — the post-account screen. **Not used anywhere on `CreateAccountScreen`.**
+- **`DownloadScreen` webview handling** (auto-copy App Store URL to clipboard, "Open in Safari/Chrome" breakout instructions, native `<a>` anchor, `funnel_inapp_browser_detected` / `funnel_download_returned` / `funnel_app_store_clicked` events): **LIVE and running** — but all post-account-creation, i.e. downstream of the leak.
+- **`rescue_webview_blocked` email** (triggered by `funnel_inapp_browser_detected`): **LIVE and wired** in `recovery-email-orchestrator.ts` — but its candidate query is `prisma.user.findMany` (users who already have an account) with `appFirstOpenedAt: null`, so it can only rescue people who *already created an account* and got stuck downloading. It does **nothing** for people dying at OAuth on create-account (they have no `User` row).
+- **CreateAccountScreen OAuth handling:** `handleOAuthSignup` → `signIn(provider, { callbackUrl })`. **No webview detection, no button reordering, no "open in browser" escape, no environment logging** existed before this commit. Google's provider uses standard `prompt: consent` OAuth (Google blocks OAuth inside webviews with `disallowed_useragent` — matches the observed ~31% Google / ~75% Apple loss).
+- **`method` prop was dead the whole time:** existing calls like `track("funnel_signup_failed", { value, method: "email" })` pass `method`, but `trackOnboardingEvent` only serializes `value`/`browser`/`utm`/`flowVersion` — `method` was silently dropped and never stored. That's why environment/method slicing was impossible; the new events encode it into `value` instead.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held back per request; say "push it"). Prior unpushed-then-pushed entries are already on main; this one is the only new hold.
+- [ ] **Run the live IG/FB webview test protocol below** (Keenan, on a real iPhone) so we have observed per-method behavior to cross-reference against the new event data.
+- [ ] After ~1–2 days of live traffic, pull the new events from `OnboardingEvent` (or add an admin view next session) and slice by env — see "How to read the data" below.
+
+### Notes — HANDS-ON TEST PROTOCOL (run this, Keenan)
+**Goal:** watch, on a real iPhone, exactly where each signup method dies inside the Instagram and Facebook in-app browsers.
+
+**Setup (do once):**
+1. Make sure this build is deployed to prod (push first, wait for Vercel).
+2. On your iPhone, have the funnel link ready: `https://getacuity.io/start`.
+3. Open a way to watch events land. Easiest: have Jimmy tail the `OnboardingEvent` table (filter `flowVersion = 'v5'`, order by `createdAt desc`), or watch the Vercel function logs for `[onboarding-track]` lines. Note your rough start time so you can find your own session.
+
+**To get INTO the Instagram in-app browser (not Safari):**
+1. From your phone, DM yourself (or post to your own story/close-friends) the link `https://getacuity.io/start`.
+2. Open Instagram → open that DM/story → tap the link. It opens Instagram's built-in browser (you'll see the small "Instagram" bar, ⋯ menu bottom-right). Do NOT tap "open in Safari" — we want to test the trap.
+3. Go through the quiz to the "Create account" screen.
+
+**To get into the FACEBOOK in-app browser:**
+1. Post the same link to your own Facebook (timeline or Messenger-to-self).
+2. Open it from inside the Facebook app → its built-in browser (⋯ menu top-right).
+3. Reach the "Create account" screen.
+
+**For EACH webview (IG, then FB), attempt all three methods in a fresh session and record what happens:**
+- **Continue with Apple** → does an Apple sheet/redirect appear at all, or nothing? If it appears, can you finish and land back on getacuity.io? Does it drop you back on the form?
+- **Continue with Google** → watch for a Google error page saying something like "this browser or app may not be secure" / `disallowed_useragent`. Note whether it errors immediately, and whether hitting back returns you to our form.
+- **Email + password** → does the form submit and log you in (this is our control — it should be the most reliable)?
+
+**What to watch in the events for each attempt (your session, in order):**
+- `funnel_signup_screen_viewed` (value shows `webview:true|label:instagram|os:ios` — confirms detection works)
+- `funnel_webview_detected` (fires only in a webview)
+- the tap event: `funnel_oauth_apple_tapped` / `funnel_oauth_google_tapped` / `funnel_email_signup_tapped`
+- for OAuth: `funnel_oauth_redirect_started` — **if this fires but no `funnel_oauth_returned_*` ever follows, that is the silent death caught on camera** (you left to the provider and never made it back).
+- return outcome: `funnel_oauth_returned_success` (+ `funnel_account_created` with `method:oauth`) vs. `funnel_oauth_returned_error` / `funnel_oauth_never_returned` (you bounced back to the form).
+- for email: `funnel_email_signup_submitted` → then `funnel_email_signup_success` or `funnel_email_signup_failed` (value carries the reason + env).
+
+**Checklist to answer after the run:**
+- [ ] Does **Apple** hand off at all inside IG? Inside FB? Does it ever return successfully?
+- [ ] Does **Google** show the `disallowed_useragent`/"browser not secure" wall? In both apps?
+- [ ] Does **email** signup work end-to-end in both webviews? (expected: yes)
+- [ ] For each failed OAuth attempt, did we get a `redirect_started` with no matching `returned_*` (true silent death) or a `returned_error` bounce?
+- [ ] Did any pre-existing "open in browser" prompt appear on the *create-account* screen? (expected: no — that help only exists on the later download screen.)
+
+**How to read the aggregate data (next session):** slice all the new events by the `label`/`os` embedded in `value` (and by the raw UA in `browser`). The key ratios: `oauth_*_tapped` → `oauth_returned_success` (per provider per webview) exposes the true OAuth completion rate; the shortfall vs. `oauth_redirect_started` is the silent-death rate; compare against `email_signup_tapped` → `email_signup_success` to confirm email is the reliable path in webviews. That evidence + Keenan's live observations drive the actual fix in the following pass.
+
+---
+
 ## [2026-07-01] — Paywall redesigned: shorter, warmer, monthly as the default plan
 
 **Requested by:** Keenan
