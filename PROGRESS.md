@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-07-01] — Paywall: Monthly is now the default, and the whole screen leans into "free"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 049958d2
+
+### In plain English (for Keenan)
+On the "Everything's ready when you are" paywall, the $4.99 Monthly plan is now the plan that's highlighted by default for everyone — it no longer quietly falls back to the yearly plan because of a leftover choice saved from an earlier visit. The screen now hammers home that the trial is free: the button says "Start My 7 Days Free," the reassurance line is bigger and bolder ("You won't be charged today"), and there's a new line by the pricing making clear you aren't charged until the 7 days are up. The testimonial that used to get cut off mid-sentence now shows the full quote, and a few subtle, tasteful animations were added (rows easing in, a gentle glow on the selected Monthly plan, a soft shimmer on the button) — none of which slow down or block the button.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/onboarding-funnel.tsx:
+  - `selectedPlan` initial state hard-set to `"monthly"`; removed the `saved?.selectedPlan` restore so a stale sessionStorage `"yearly"` can no longer become the default. In-session switching still works and still persists.
+  - SavingsScreen CTA label `"Start My 7 Days"` → `"Start My 7 Days Free"`; added a decorative `pw-cta-shimmer` sweep overlay (pointer-events-none, gated on `!loading && !prefersReduced`).
+  - Reassurance line enlarged to `text-[14px]` semibold with bold emerald "Free for 7 days." and bold "You won't be charged today."
+  - Added a new no-charge-until-trial-end line beneath the pricing block.
+  - Removed `.slice(0, 80)` + `&hellip;` on the paywall testimonial (was truncating James K. mid-sentence) — now renders the full quote.
+  - Added scoped `<style>` keyframes `pw-row-in` (Free/Pro row entrance stagger via `.pw-row`) and `pw-select-glow` (one-shot double glow on the selected Monthly card via `.pw-select-glow`).
+- Funnel tracking untouched: `funnel_paywall_plan_selected` (monthly/yearly), checkout, and skip fire exactly as before.
+
+### Manual steps needed
+- [ ] None. No schema, env, or infra changes. Vercel redeploys automatically on push (Keenan to push when ready).
+
+### Notes
+- Root cause of the "still defaults to yearly" report: the paywall persists `selectedPlan` to sessionStorage on every change (`saveFunnelState`). An earlier build that defaulted to yearly wrote `"yearly"` into a tester's sessionStorage, and the `saved?.selectedPlan ?? "monthly"` restore then kept resurrecting it. Forcing the initial state to `"monthly"` and dropping the restore eliminates this class of stale-state bug entirely.
+- All new animation respects the global `prefers-reduced-motion` rule already defined in the funnel's inline `<style>` (`* { animation-duration: 0.01ms }`), and every new effect is decorative — the sticky CTA remains immediately tappable on load (honors the under-4s rule).
+- Kept per the request: coffee anchor, founding-rate anchor ($19.99→$4.99, "locked in for life"), "Continue without paying," and the Free/Pro split.
+
+---
+
 ## [2026-07-01] — Instrumented the signup cliff: we can now SEE where OAuth dies in webviews
 
 **Requested by:** Keenan
