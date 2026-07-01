@@ -596,27 +596,10 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 6. FIRST INSIGHT (RETROACTIVE + throttled)
+      // (6. FIRST INSIGHT removed 2026-07-01 — the "Acuity noticed
+      //  something" email surfaced low-value non-insight text and was
+      //  deleted entirely, along with its dedicated same-day generation.)
       // ═══════════════════════════════════════════════════════════
-      if (hasGlobalBudget() || config.dryRun) {
-        const firstInsightCandidates = await prisma.user.findMany({
-          where: {
-            totalRecordings: { gte: 5 },
-            subscriptionStatus: { in: ["TRIAL", "ACTIVE", "PRO"] },
-          },
-          select: { id: true },
-        });
-
-        for (const user of firstInsightCandidates) {
-          if (!hasGlobalBudget() && !config.dryRun) break;
-          const hasInsight = await prisma.userInsight.findFirst({
-            where: { userId: user.id, dismissedAt: null },
-            select: { id: true },
-          });
-          if (!hasInsight) continue;
-          await trySend(user.id, "first_insight");
-        }
-      }
 
       // ═══════════════════════════════════════════════════════════
       // 24–28. MILESTONE EMAILS (RETROACTIVE + throttled)

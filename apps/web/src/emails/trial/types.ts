@@ -22,10 +22,6 @@ export interface TrialVars {
   foundingMemberNumber: number | null;
   /** Tokenized unsubscribe URL — required in every email footer. */
   unsubscribeUrl: string;
-  /** Surfaced UserInsight observation text; null if none exists. */
-  observationText: string | null;
-  /** Severity of the surfaced observation (POSITIVE|NEUTRAL|CONCERNING). */
-  observationSeverity: string | null;
 }
 
 export interface TrialEmailTemplate {
@@ -55,7 +51,6 @@ export type TrialEmailKey =
   | "recovery_recorded_once"
   | "recovery_day6_nudge"
   | "recovery_download_reminder"
-  | "first_insight"
   | "keep_momentum"
   | "trial_ending"
   | "rescue_signup_only"

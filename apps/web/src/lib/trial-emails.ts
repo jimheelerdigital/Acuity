@@ -29,7 +29,7 @@ const DEFAULT_APP_URL = "https://www.getacuity.io";
 
 /**
  * FROM address for every lifecycle/recovery/marketing email that flows
- * through sendTrialEmail (keep_momentum, first_insight, trial_ending, all
+ * through sendTrialEmail (keep_momentum, trial_ending, all
  * rescue_*, never_recorded_*, stall_*, winback_*, milestone_*, nr_winback_*).
  *
  * These are personal, reply-inviting emails — they send from Keenan's real,
@@ -93,8 +93,6 @@ export async function buildTrialVars(
 
   let topTheme: string | null = null;
   let firstDebriefTaskCount: number | null = null;
-  let observationText: string | null = null;
-  let observationSeverity: string | null = null;
 
   if (user.totalRecordings > 0) {
     // Top recurring theme — highest-mentionCount Theme for this user.
@@ -129,18 +127,6 @@ export async function buildTrialVars(
         where: { entryId: firstEntry.id },
       });
     }
-
-    // Latest non-dismissed UserInsight observation — used by first_insight
-    // email. One small query; short-circuits if no rows exist.
-    const latestInsight = await prisma.userInsight.findFirst({
-      where: { userId: user.id, dismissedAt: null },
-      orderBy: { createdAt: "desc" },
-      select: { observationText: true, severity: true },
-    });
-    if (latestInsight) {
-      observationText = latestInsight.observationText;
-      observationSeverity = latestInsight.severity;
-    }
   }
 
   const unsubToken = signUnsubscribeToken(user.id, "onboarding");
@@ -156,8 +142,6 @@ export async function buildTrialVars(
     firstDebriefTaskCount,
     foundingMemberNumber: user.foundingMemberNumber,
     unsubscribeUrl,
-    observationText,
-    observationSeverity,
   };
 }
 

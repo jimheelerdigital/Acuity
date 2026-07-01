@@ -38,7 +38,6 @@ import {
 } from "@/inngest/functions/auto-blog";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
-import { generateFirstInsightFn } from "@/inngest/functions/generate-first-insight";
 import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
 import { downloadReminderEmailFn } from "@/inngest/functions/download-reminder-email";
 import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly";
@@ -91,7 +90,6 @@ const handler = serve({
     backfillExtractionsFn,
     freeCapEvaluatorFn,
     cleanupTrySessionsFn,
-    generateFirstInsightFn,
     recoveryEmailOrchestratorFn,
     downloadReminderEmailFn,
     achievementsNightlyFn,

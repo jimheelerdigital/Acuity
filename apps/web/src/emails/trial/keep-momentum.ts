@@ -3,8 +3,7 @@
  *
  * Trigger: User has 2+ completed recordings AND first recording was
  *          at least 48 hours ago (habit forming across days, not a
- *          same-day burst). Only fires for users with < 5 recordings
- *          (above that, the first_insight email takes over).
+ *          same-day burst). Only fires for users with < 5 recordings.
  * Subject: "You've done two. Here's where it starts to click."
  * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
  *

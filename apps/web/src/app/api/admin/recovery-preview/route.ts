@@ -144,14 +144,7 @@ export async function GET(req: NextRequest) {
   });
   counts.keep_momentum = await countUnsent("keep_momentum", km.map((u) => u.id));
 
-  const fi = await prisma.user.findMany({
-    where: {
-      totalRecordings: { gte: 5 },
-      subscriptionStatus: { in: ["TRIAL", "ACTIVE", "PRO"] },
-    },
-    select: { id: true },
-  });
-  counts.first_insight = await countUnsent("first_insight", fi.map((u) => u.id));
+  // (first_insight removed 2026-07-01 — email deleted entirely.)
 
   // ── Milestones (highest-only logic) ──
   const MILESTONES = [

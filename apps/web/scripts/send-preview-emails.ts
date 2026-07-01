@@ -27,7 +27,6 @@ const TO = "keenan@heelerdigital.com";
 const FROM = '"Keenan from Acuity" <keenan@getacuity.io>';
 
 // Import templates
-import { firstInsight } from "../src/emails/trial/first-insight";
 import { keepMomentum } from "../src/emails/trial/keep-momentum";
 import { trialEnding } from "../src/emails/trial/trial-ending";
 import { rescueSignupOnly } from "../src/emails/trial/rescue-signup-only";
@@ -51,12 +50,9 @@ const sampleVars: TrialVars = {
   firstDebriefTaskCount: 3,
   foundingMemberNumber: null,
   unsubscribeUrl: "https://www.getacuity.io/api/emails/unsubscribe?token=preview",
-  observationText: "You mention your partner more in positive entries \u2014 worth noticing.",
-  observationSeverity: "POSITIVE",
 };
 
 const emails = [
-  { name: "First Insight", template: firstInsight, replyTo: undefined },
   { name: "Keep Momentum", template: keepMomentum, replyTo: undefined },
   { name: "Trial Ending", template: trialEnding, replyTo: undefined },
   { name: "Rescue #1: Signup Only", template: rescueSignupOnly, replyTo: undefined },

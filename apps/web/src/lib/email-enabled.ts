@@ -37,7 +37,7 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   recovery_paid_no_app: true, // #29 paid, no app install
   recovery_recorded_once: false, // #30 REPLACED by stall_1rec/stall_2rec/stall_3plus ladder
   recovery_download_reminder: false, // #32 REPLACED by 4 stage-specific rescue emails below
-  first_insight: true, // activation: fires once at ~5 recordings w/ real insight
+  first_insight: false, // REMOVED 2026-07-01 — surfaced low-value non-insight text; email deleted entirely
   keep_momentum: true, // encouragement: fires once at 2 recordings, 48h after first
   trial_ending: true, // trial-ending: fires ~2d before trialEndsAt, recorded users only, no card on file
   rescue_signup_only: true, // download rescue #1: signed up, never reached download screen

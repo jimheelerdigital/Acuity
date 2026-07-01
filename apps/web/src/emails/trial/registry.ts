@@ -53,7 +53,6 @@ import { milestone365 } from "./milestone-365";
 import { nrWinback1 } from "./nr-winback-1";
 import { nrWinback2 } from "./nr-winback-2";
 import { nrWinback3 } from "./nr-winback-3";
-import { firstInsight } from "./first-insight";
 import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
 import { welcomeDay0 } from "./welcome-day0";
@@ -81,7 +80,6 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     recovery_recorded_once: recoveryRecordedOnce,
     recovery_day6_nudge: recoveryDay6Nudge,
     recovery_download_reminder: recoveryDownloadReminder,
-    first_insight: firstInsight,
     keep_momentum: keepMomentum,
     trial_ending: trialEnding,
     rescue_signup_only: rescueSignupOnly,
