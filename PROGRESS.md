@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-01] — Filled Branch 3 (rumination) of the onboarding funnel with real content
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 89b34de8
+
+### In plain English (for Keenan)
+The third path through the signup quiz — the "my brain won't stop racing at night" path — is finished and runs end-to-end with its real "the loop" words. It mirrors the exact racing-mind experience back ("you circle the things you can't control... it wakes you in the dark"), flips to relief, and shows the personalized "you right now" vs "you a few weeks in" contrast, closing with Megan R.'s real testimonial. Importantly, this path was carefully kept on the right side of the line: it names the problem (lost sleep, tiredness, a mind that won't quiet) and promises "somewhere to put it down" and rest — it never claims to cure insomnia, treat a condition, or improve your health. It reuses the same look and animations as Branches 1 and 2.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: fixed `MECH_CONTENT.rumination.cards[0]` — it said "Write down the 3 thoughts that keep looping," which contradicts the "No typing" voice mechanic rendered on the same mechanism screen. Replaced with a voice-consistent extracted task; reworded `cards[1]` and the weekly `insight` to drop the typing/vague framing.
+- No config changes were needed: the verbatim rumination copy (`PAIN_FRAGMENTS.rumination`, `RELIEF_FLIP.rumination`, `CURRENT_FUTURE.rumination` with header/footer, `BRANCH_QUESTIONS`/`BRANCH_Q6`, `PAYWALL_*`/`getPaywallHeadline`/`getCostOfInaction`/`getCreateAccountHeadline`, `TIMELINE_WEEKS.rumination`, `PRIMARY_PATTERN.rumination` = "The Loop", `AREA_MAP.rumination`, Megan R. testimonial at index 5) was already present and verified against spec.
+
+### Manual steps needed
+- [ ] Keenan to confirm the deliberate night/"before bed" framing on this branch is acceptable. It brushes against the general positioning rule (avoid fixed-time framing like "before bed"), but it is spec-mandated copy for this specifically night-time pain point. Left as written; flagging for a call.
+
+### Notes
+- No-medical-claims audit passed: grepped the rumination copy for cure/insomnia/treat/therapy/heal/clinical language — none present. The "My health" Q6 cost maps to area "Rest" (not "Health") on purpose, and its future line promises "rest your body actually gets," not a health cure.
+- Proved Branch 3 end-to-end via a throwaway vitest stitching example Q2 (worrying about things I can't control) / Q3 (middle of the night) / Q6 (my health) at duration "Years": screens 7 and 9 matched spec verbatim, area resolved to "Rest" (areaFallback=false), and the long-duration secondary "Stuck Deep" fired. Removed the throwaway test.
+- Typecheck clean for funnel files; 18/18 config tests pass. Branches 4 (stuck) and 5 (mask) component surfaces remain.
+
+---
+
 ## [2026-07-01] — Filled Branch 2 (patterns) of the onboarding funnel with real content
 
 **Requested by:** Keenan
