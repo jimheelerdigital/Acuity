@@ -234,7 +234,10 @@ export default function TaskEditScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+          <ScrollView
+            contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Title */}
             <Text
               className="text-xs font-medium mb-1"
