@@ -1217,17 +1217,14 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     insight: "You were calmest on the day you got it out before the evening piled up.",
   },
   stuck: {
-    cards: (q2) => {
-      const tool = q2 || "what hasn\u2019t worked";
-      return [
-        { text: `Give this 7 days before deciding \u2014 instead of ${tool.charAt(0).toLowerCase() + tool.slice(1)}`, icon: "\u25A1" },
-        { text: "Show up for 60 seconds \u2014 Day 1", icon: "\u25B2" },
-        { text: "Skeptical \u2192 Curious", icon: "\u25CF" },
-        { text: "You\u2019ve quit every tool on Day 4. There\u2019s a reason for that.", icon: "\u25C6" },
-      ];
-    },
+    cards: () => [
+      { text: "Move one thing forward on the goal you keep parking", icon: "\u25A1" },
+      { text: "Protect an hour for your own life \u2014 Day 1", icon: "\u25B2" },
+      { text: "Spinning \u2192 Moving", icon: "\u25CF" },
+      { text: "Almost all your energy went to maintenance, none to your goals", icon: "\u25C6" },
+    ],
     step3Sub: "",
-    insight: "Day 4 is when you almost quit. Every tool. Every time. Now you know when to push through.",
+    insight: "Your energy went almost entirely to keeping things running \u2014 and almost none to the goals you actually mentioned.",
   },
   mask: {
     cards: () => [
