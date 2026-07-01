@@ -7,11 +7,33 @@
 
 ---
 
-## [2026-07-01] — Pain/Mirror screen redesigned — paced reveal + ambient motifs
+## [2026-07-01] — Current-vs-Future screen redesigned — true split + row reveal
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** PENDING
+
+### In plain English (for Keenan)
+The "here's the shift" screen (screen 9) used to be two stacked grey cards with grey-on-grey text — flat and easy to miss. It's now a true side-by-side split that makes the transformation land: on the LEFT, "You now" in muted grey; on the RIGHT, "You, a few weeks in" in bright coral that visually wins. Four transformation rows stack down the screen, and they animate one at a time — the drab "before" appears, a coral arrow sweeps left-to-right, then the vivid "after" pops in. The user literally watches themselves change, four times, before the footer and button appear. It's built to stay readable on a narrow phone, and anyone who prefers less motion sees the whole thing static.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: added `TRANSFORMATION_ROWS: Record<Branch, [string, string][]>` — exactly four fixed [drab → coral] pairs per branch (guarantees 4 rows regardless of the user's taps), pulled by branch key.
+- `apps/web/src/components/onboarding-funnel.tsx`: rewrote `CurrentFutureScreen` as a true vertical split using a shared 3-column grid (`[1fr_28px_1fr]` mobile / `[1fr_44px_1fr]` sm) so the eye reads left→arrow→right. Left column muted grey + `grayscale(0.5)`; right column coral, `font-semibold`, scale-in pop. Row-by-row reveal driven by an `activeRow` counter (760ms/row) with per-element `transition-delay` sequencing left(0) → arrow(170ms) → right(360ms); footer + CTA gated behind `done`. Tap-to-skip; faint center seam; `break-words` for mobile overflow safety.
+- Still calls `assembleCurrentFuture` for the header/footer/column labels; the old two-card `current[]`/`future[]` rendering is replaced by the fixed rows.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Used fixed per-branch pairs (not answer-derived) so four rows always render exactly as specified — reliable regardless of taps. Grid math holds at ~380px: ~20px side padding + 28px arrow col + 16px gaps leaves ~148px per text column, and `break-words` prevents overflow on the longer "after" lines. CSS/SVG only — no images, no libraries, no CTA/load impact. Reduced-motion starts at the final state (all rows + footer + CTA visible). Typecheck clean for the funnel; 18 funnel-config tests pass.
+
+---
+
+## [2026-07-01] — Pain/Mirror screen redesigned — paced reveal + ambient motifs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 20b1cc71
 
 ### In plain English (for Keenan)
 The "we see you" moment in the funnel (the mirror screen that reflects the user's own answers back at them) used to read like a flat wall of grey text — an indented opening quote, full-width middle lines, and a big shouting centered closer. It now reads like an intimate, personal reflection: everything is left-aligned like being spoken to, the lines reveal one at a time with a gentle beat between each so each truth lands, the single most important phrase in each line is picked out in coral, and the final line is set apart as a quiet payoff before the "Keep going" button. Behind the text, a barely-there ambient animation embodies each branch's feeling — a slow circling loop for "the cycle," shapes gently settling for "the load," a turning tangle for "the loop," a sideways drift that goes nowhere for "the treadmill," and a hairline crack easing across a calm surface for "the mask." It's mood, not decoration — the words stay the focus. Anyone who prefers less motion sees a calm, fully-visible static version.

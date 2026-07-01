@@ -897,6 +897,45 @@ export function assembleCurrentFuture(
   };
 }
 
+// ─── Transformation rows (Screen 9 vertical split) ──────────────────────────
+//
+// Exactly four [drab "you now" → coral "you, a few weeks in"] pairs per branch.
+// Fixed per branch so the split ALWAYS renders four rows regardless of the
+// user's taps. Pulled by branch key; the screen reads left→right across each
+// row so the eye watches the change happen. Left = muted grey, right = coral.
+export const TRANSFORMATION_ROWS: Record<Branch, [string, string][]> = {
+  overload: [
+    ["Holding it all in your head", "Your head finally clear"],
+    ["Lying awake running the list", "Resting, nothing lost"],
+    ["Dropping things, apologizing", "Nothing falls through"],
+    ["Braced for the next drop", "Calm, on top of it"],
+  ],
+  patterns: [
+    ["Same fight, different night", "You see it coming \u2014 and step out"],
+    ["Blaming yourself after", "Kinder to yourself \u2014 it\u2019s a pattern, not a flaw"],
+    ["Pushing people away", "Closer to the ones who matter"],
+    ["Never at rest", "The loop finally quiet"],
+  ],
+  rumination: [
+    ["Replaying the day at 2am", "The day set down, not replayed"],
+    ["Running the list in the dark", "It\u2019s out of your head, onto something you trust"],
+    ["Lying awake, spinning", "Sleeping \u2014 your mind finally still"],
+    ["Starting tomorrow exhausted", "Waking up with energy again"],
+  ],
+  stuck: [
+    ["Busy all day, moving nowhere", "Busy with what actually moves you"],
+    ["Wrung out, nothing to show", "Ending the week with something real"],
+    ["Goals stuck on \u201csomeday\u201d", "Goals you\u2019re finally moving on"],
+    ["Running in place", "Off the treadmill, going somewhere"],
+  ],
+  mask: [
+    ["Performing okay, falling apart alone", "The mask finally down"],
+    ["Saying \u201cI\u2019m fine\u201d on repeat", "Honest, for once"],
+    ["Exhausted from holding it up", "Lighter, nothing to hide"],
+    ["Carrying all of it alone", "Less alone, more you"],
+  ],
+};
+
 // ─── Pattern Labels (Screen 14) — deterministic mapping ────────────────────
 //
 // v6: secondary pattern used to come from shared_q9 (removed). It now comes

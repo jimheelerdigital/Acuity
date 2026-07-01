@@ -23,6 +23,7 @@ import {
   PAIN_EMPHASIS,
   RELIEF_FLIP,
   assembleCurrentFuture,
+  TRANSFORMATION_ROWS,
   getCostOfInaction,
   PROCESSING_STAGES,
   SNAPSHOT_BOTTOM,
@@ -1266,58 +1267,87 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
   const content = assembleCurrentFuture(branch, answers);
-  // Phases: 0=hidden, 1=current (drab) settles, 2=future (warm) animates in, 3=CTA
-  const [phase, setPhase] = useState(0);
+  const rows = TRANSFORMATION_ROWS[branch];
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  useEffect(() => {
-    if (prefersReduced) { setPhase(3); return; }
-    const t: ReturnType<typeof setTimeout>[] = [];
-    t.push(setTimeout(() => setPhase(1), 300));   // "you right now" — drab
-    t.push(setTimeout(() => setPhase(2), 1600));  // "you, a few weeks in" — warm entrance
-    t.push(setTimeout(() => setPhase(3), 3000));  // CTA
-    return () => t.forEach(clearTimeout);
-  }, [prefersReduced]);
+  // Row-by-row reveal: activeRow is the highest row index shown (-1 = none);
+  // within each row the left state, arrow sweep, and right pop are sequenced by
+  // transition-delay. `done` gates the footer + CTA after all rows land.
+  const [activeRow, setActiveRow] = useState(prefersReduced ? rows.length : -1);
+  const [done, setDone] = useState(prefersReduced);
 
-  const skip = () => setPhase(3);
+  useEffect(() => {
+    if (prefersReduced) return;
+    const t: ReturnType<typeof setTimeout>[] = [];
+    const first = 300;
+    const rowMs = 760;
+    for (let i = 0; i < rows.length; i++) {
+      t.push(setTimeout(() => setActiveRow(i), first + i * rowMs));
+    }
+    t.push(setTimeout(() => setDone(true), first + rows.length * rowMs));
+    return () => t.forEach(clearTimeout);
+  }, [prefersReduced, rows.length]);
+
+  const skip = () => { setActiveRow(rows.length); setDone(true); };
+  const revealed = (i: number) => activeRow >= i;
+
+  // Grid columns shared by the label row and every transformation row so the
+  // eye reads straight across: [drab "you now"] → arrow → [coral "after"].
+  const grid = "grid grid-cols-[1fr_28px_1fr] sm:grid-cols-[1fr_44px_1fr] gap-x-2 sm:gap-x-3";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900"
-      onClick={phase < 3 ? skip : undefined}>
-      <div className="max-w-md w-full space-y-4">
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-5 py-16 text-zinc-900"
+      onClick={!done ? skip : undefined}>
+      <div className="w-full max-w-md">
 
         {/* Header */}
-        <h2 className={`text-xl sm:text-2xl font-bold tracking-tight text-center mb-2 leading-snug transition-all duration-500 ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[8px]"}`}>{content.header}</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-7 leading-snug">{content.header}</h2>
 
-        {/* Current you — desaturated, heavy, low-motion */}
-        <div className={`rounded-2xl border border-zinc-200 bg-zinc-100/70 px-6 py-6 transition-all duration-[700ms] ease-out ${phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}
-          style={{ filter: phase >= 1 ? "grayscale(0.6)" : undefined }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-3">{content.currentLabel}</p>
-          <div className="space-y-2">
-            {content.current.map((line, i) => (
-              <p key={i} className="text-[15px] text-zinc-500 leading-relaxed">{line}</p>
-            ))}
-          </div>
+        {/* Column labels — reinforce the split */}
+        <div className={`${grid} mb-3`}>
+          <p className="text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">{content.currentLabel}</p>
+          <span />
+          <p className="text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-acuity-primary">{content.futureLabel}</p>
         </div>
 
-        {/* Future you — warm coral, lively, breathing entrance */}
-        <div className={`rounded-2xl border border-acuity-primary/30 bg-acuity-primary/[0.06] px-6 py-6 transition-all duration-[800ms] ease-out ${phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[16px]"}`}
-          style={phase >= 2 && !prefersReduced ? { animation: "funnel-settle 800ms ease-out both" } : undefined}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-3">{content.futureLabel}</p>
-          <div className="space-y-2">
-            {content.future.map((line, i) => (
-              <p key={i} className="text-[15px] font-medium text-zinc-800 leading-relaxed">{line}</p>
-            ))}
-          </div>
+        {/* Transformation rows */}
+        <div className="relative space-y-3.5">
+          {/* faint center seam */}
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-zinc-200/60" aria-hidden />
+          {rows.map(([before, after], i) => {
+            const on = revealed(i);
+            return (
+              <div key={i} className={`${grid} items-center`}>
+                {/* left — drab "you now" */}
+                <p className={`text-right text-[12.5px] sm:text-sm leading-snug text-zinc-400 break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
+                  style={{ filter: "grayscale(0.5)" }}>
+                  {before}
+                </p>
+                {/* arrow — sweeps left → right */}
+                <span className="flex items-center justify-center" aria-hidden>
+                  <svg width="24" height="12" viewBox="0 0 24 12" fill="none"
+                    className="transition-all duration-300 ease-out"
+                    style={{ opacity: on ? 1 : 0, transform: on ? "translateX(0)" : "translateX(-6px)", transitionDelay: "170ms" }}>
+                    <path d="M1 6 H20 M15 1 L21 6 L15 11" stroke="var(--acuity-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                {/* right — coral pop "you, a few weeks in" */}
+                <p className={`text-left text-[13px] sm:text-[15px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
+                  style={{ transitionDelay: "360ms", transformOrigin: "left center" }}>
+                  {after}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         {/* Footer */}
-        <p className={`text-center text-[14px] text-zinc-600 leading-relaxed pt-2 transition-all duration-500 ${phase >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[8px]"}`}>{content.footer}</p>
+        <p className={`text-center text-[14px] text-zinc-600 leading-relaxed mt-7 transition-all duration-500 ${done ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[8px]"}`}>{content.footer}</p>
 
         {/* CTA */}
-        <div className={`text-center pt-4 transition-all duration-500 ${phase >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
+        <div className={`text-center mt-6 transition-all duration-500 ${done ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
           <button onClick={(e) => { e.stopPropagation(); onContinue(); }}
-            className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] funnel-cta">
+            className="funnel-cta rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98]">
             Show me how
           </button>
         </div>
