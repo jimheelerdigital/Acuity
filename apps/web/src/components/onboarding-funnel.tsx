@@ -24,17 +24,15 @@ import {
   RELIEF_FLIP,
   assembleCurrentFuture,
   TRANSFORMATION_ROWS,
-  getCostOfInaction,
   PROCESSING_STAGES,
   SNAPSHOT_BOTTOM,
   getTimelineWeeks,
   PAYWALL_HOOKS,
   PAYWALL_SUBHEAD,
-  PRICING_COPY,
   getPaywallHeadline,
   getCreateAccountHeadline,
   PAYWALL_TESTIMONIALS_V2,
-  getPaywallTestimonial,
+  getPaywallTestimonialPool,
   getPatternLabels,
 } from "@/lib/funnel-config";
 
@@ -2273,15 +2271,13 @@ function SignupTestimonialStrip() {
 // ─── Paywall Feature Data (trimmed Free-vs-Pro split) ────────────────────────
 
 const FREE_FEATURES = [
-  { name: "Voice debrief", description: "Talk instead of type. The entry point to everything." },
-  { name: "Task extraction", description: "Action items pulled from your words automatically." },
+  { name: "Voice debrief & task extraction", description: "Talk instead of type; your action items pulled out automatically." },
 ];
 
 const PRO_FEATURES = [
   { name: "Deep Insights", description: "Observations about you that you\u2019d never notice on your own." },
   { name: "Pattern detection", description: "Recurring themes surfaced across your entries." },
   { name: "Signals", description: "Next-step guidance based on what you actually said." },
-  { name: "Weekly report", description: "A written narrative of your week, delivered every Sunday." },
 ];
 
 function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
@@ -2292,14 +2288,14 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
-  const paywallTestimonial = getPaywallTestimonial(branch);
+  // Branch-matched social-proof pool for the "What our users say" popup.
+  const testimonialPool = getPaywallTestimonialPool(branch);
+  const [testimonialsOpen, setTestimonialsOpen] = useState(false);
   // Branch-personalized paywall copy. All fall back to shared defaults when
   // branch is null (ad-deep-link edge case where no entry answer was recorded).
   const paywallHeadline = branch ? getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
   const paywallHook = branch ? PAYWALL_HOOKS[branch] : null;
   const paywallSubhead = branch ? PAYWALL_SUBHEAD[branch] : null;
-  const costOfInaction = branch ? getCostOfInaction(branch, answers) : null;
-  const pricingCopy = branch ? PRICING_COPY[branch] : null;
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
   const [slashPhase, setSlashPhase] = useState(0);
   const pricingRef = useRef<HTMLDivElement>(null);
@@ -2351,13 +2347,6 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           )}
           <p className="text-sm text-zinc-500 mt-2">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
         </section>
-
-        {/* Cost-of-inaction — branch-specific stakes reminder */}
-        {costOfInaction && (
-          <section className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50/60 px-5 py-4 text-center funnel-card-stagger" style={{ animationDelay: "80ms" }}>
-            <p className="text-[14px] text-zinc-600 leading-relaxed">{costOfInaction}</p>
-          </section>
-        )}
 
         {/* Section 2 — Free vs Pro split (trimmed, no table) */}
         <section className="mb-6 rounded-xl bg-white border border-zinc-200 shadow-sm overflow-hidden funnel-card-stagger" style={{ animationDelay: "120ms" }}>
@@ -2474,13 +2463,19 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <p className="text-[10px] text-emerald-600 mt-0.5">This price rises as we grow.</p>
           </div>
 
-          {/* Branch-specific pricing framing */}
-          {pricingCopy && (
-            <p className="text-[13px] text-zinc-600 text-center mt-3 leading-relaxed">{pricingCopy}</p>
-          )}
-
-          {/* Micro-testimonial — full quote (no mid-sentence truncation) */}
-          <p className="text-[12px] text-zinc-500 text-center italic mt-3">&ldquo;{paywallTestimonial.quote}&rdquo; &mdash; {paywallTestimonial.name}</p>
+          {/* Compact social proof — stars + tappable "What our users say" */}
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-acuity-primary text-[15px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+              <span className="text-[12px] font-semibold text-zinc-600">Loved by women who carry a lot</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setTestimonialsOpen(true); track("funnel_testimonials_opened", { value: branch ?? "unknown" }); }}
+              className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[12px] font-semibold text-zinc-700 shadow-sm transition hover:border-acuity-primary hover:text-acuity-primary active:scale-[0.98]">
+              What our users say
+            </button>
+          </div>
 
           {/* No-charge-until-trial-end framing — pricing is what you pay LATER */}
           <p className="text-[12px] text-center mt-3 text-zinc-500">You won&rsquo;t be charged until your 7 days are up &mdash; <span className="font-semibold text-zinc-700">cancel anytime before then.</span></p>
@@ -2511,6 +2506,44 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <p className="text-[9px] text-zinc-300 text-center mt-2">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>
       </div>
+
+      {/* "What our users say" — dismissable, on-brand testimonial modal */}
+      {testimonialsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="What our users say"
+          onClick={() => setTestimonialsOpen(false)}>
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-zinc-100 max-h-[85vh] overflow-y-auto"
+            style={prefersReduced ? undefined : { animation: "pw-land 320ms cubic-bezier(0.34,1.56,0.64,1) both" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2">
+                <span className="text-acuity-primary text-[14px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+                <p className="text-[14px] font-bold text-zinc-900">What our users say</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTestimonialsOpen(false)}
+                aria-label="Close"
+                className="rounded-full h-7 w-7 flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition">
+                &#10005;
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              {testimonialPool.map((t) => (
+                <figure key={t.name} className="rounded-xl border border-zinc-100 bg-zinc-50/60 px-4 py-3">
+                  <span className="text-acuity-primary text-[12px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+                  <blockquote className="text-[13px] text-zinc-700 leading-relaxed mt-1.5">&ldquo;{t.quote}&rdquo;</blockquote>
+                  <figcaption className="text-[12px] font-semibold text-zinc-500 mt-2">&mdash; {t.name}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

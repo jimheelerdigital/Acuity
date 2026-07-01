@@ -1473,3 +1473,16 @@ export function getPaywallTestimonial(branch: Branch | null): { quote: string; n
   if (!branch) return PAYWALL_TESTIMONIALS_V2[1];
   return PAYWALL_TESTIMONIALS_V2[PAYWALL_TESTIMONIAL_INDEX[branch]];
 }
+
+// Popup "What our users say" pool: 3 REAL quotes per branch (no fabrication).
+// Leads with the branch-matched quote, then two of the strongest generic reals.
+// Index 2 (Priya R.) and index 1 (James K.) are the two social-proof-strongest
+// of the original pool; every trio starts with the branch's own voice.
+export function getPaywallTestimonialPool(branch: Branch | null): { quote: string; name: string }[] {
+  const lead = getPaywallTestimonial(branch);
+  const support = [PAYWALL_TESTIMONIALS_V2[2], PAYWALL_TESTIMONIALS_V2[1]];
+  // De-dupe in case a branch ever maps onto a generic index.
+  return [lead, ...support].filter(
+    (t, i, arr) => arr.findIndex((x) => x.name === t.name) === i,
+  ).slice(0, 3);
+}
