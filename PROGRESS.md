@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-07-01] — Paywall trimmed: cleaner offer + "What our users say" popup
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5cc6f2b7
+
+### In plain English (for Keenan)
+The paywall (screen 16) is now less cluttered and easier to scan, across all 5 funnel branches. We removed the "cost of inaction" guilt line and the extra pricing sub-line. On the free side, the two separate items ("Voice debrief" and "Task extraction") are now one clean item — "Voice debrief & task extraction." On the Pro side, we dropped "Weekly report" so the insight layer shows just the three strongest: Deep Insights, Pattern detection, Signals. Instead of a single small italic quote, users now see a prominent ★★★★★ rating with a tappable "What our users say" button. Tapping it opens a tidy, on-brand popup with three real testimonials matched to that user's own branch (e.g. the overload funnel leads with Monica R.'s "47 tabs open" quote; the mask funnel leads with Sarah J.). The popup closes by tapping the X or the backdrop. Everything else stays exactly as it was: the branch headline/subhead, the Monthly $4.99 plan pre-selected by default, the therapy/coffee comparison, the founding-rate lock-in, the "Start My 7 Days Free" button, and the "continue without paying" option.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `SavingsScreen`: collapsed `FREE_FEATURES` to a single combined item; removed "Weekly report" from `PRO_FEATURES` (now 3); deleted the cost-of-inaction `<section>` and its `getCostOfInaction` call; deleted the per-branch `PRICING_COPY` framing line; replaced the inline `paywallTestimonial` `<p>` with a ★★★★★ block + "What our users say" button and a dismissable modal (backdrop + X close, `role="dialog"`, `aria-modal`, reduced-motion-safe reuse of the existing `pw-land` keyframe). Button fires `track("funnel_testimonials_opened", { value: branch })`.
+- `apps/web/src/lib/funnel-config.ts` — added `getPaywallTestimonialPool(branch)` returning 3 REAL testimonials (branch-matched lead via `getPaywallTestimonial`, then the two strongest generic reals, de-duped). No fabricated copy.
+- Removed now-unused `getCostOfInaction` and `PRICING_COPY` imports from the component. Monthly remains the default `selectedPlan` (`useState("monthly")`, unchanged).
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Testimonial popup uses only pre-existing real quotes — no fabrication (matches the "real quotes only" rule already in funnel-config). Each branch leads with its own matched quote: overload→Monica R., patterns→Jennifer H., rumination→Megan R., stuck→Stephanie K., mask→Sarah J.; no "Kelsey R." (that name was removed with the Life Matrix). `PRICING_COPY` and `getCostOfInaction` still exist in funnel-config (only the paywall stopped rendering them) so nothing else breaks. Proved pools for all 5 branches at runtime (3 real quotes each, correct lead). Typecheck clean for funnel files; 18 funnel-config tests pass.
+
+---
+
 ## [2026-07-01] — Timeline screen: Week 1 / Month 1 / Year 1, now answer-aware
 
 **Requested by:** Keenan
