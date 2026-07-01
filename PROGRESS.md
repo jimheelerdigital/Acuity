@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-07-01] — Removed the "Acuity noticed something" email entirely (and its dedicated generation)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2d76c829
+
+### In plain English (for Keenan)
+We killed the "Acuity noticed something" activation email for good. It was supposed to send people a real insight around their 5th recording, but in practice it kept surfacing low-value filler ("one entry in fourteen days… worth a sentence next time") that read like a nag, not an insight — which works against our whole "Acuity gives you answers" promise. Instead of trying to police its quality, we removed it completely: the email no longer sends, and the behind-the-scenes machinery that spun up a same-day insight just to feed that email is gone too (it was quietly costing us AI money for an email we're not sending). Nothing users actually see changed — the app's Insights page and the weekly insight generation still work exactly as before.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/email-enabled.ts`: `first_insight` flipped to `false` (kill-switch tombstone with a dated removal note) — stops all sends immediately regardless of the rest.
+- `apps/web/src/inngest/functions/recovery-email-orchestrator.ts`: deleted the entire "6. FIRST INSIGHT" retroactive send block.
+- `apps/web/src/inngest/functions/process-entry.ts`: removed BOTH 5-recording triggers — `check-first-insight-trigger` (PRO/TRIAL path) and `check-first-insight-trigger-free` (FREE path) — that emitted `first-insight/generate.requested`.
+- `apps/web/src/inngest/functions/generate-first-insight.ts`: **deleted** (the on-demand generator + email sender).
+- `apps/web/src/app/api/inngest/route.ts`: unregistered `generateFirstInsightFn` (import + serve list).
+- `apps/web/src/emails/trial/first-insight.ts`: **deleted** template; removed from `registry.ts` map/import and from the `TrialEmailKey` union in `types.ts`.
+- `apps/web/src/lib/trial-emails.ts` + `types.ts`: removed the now-orphaned `observationText`/`observationSeverity` locals, the `latestInsight` UserInsight query, the returned fields, and the `TrialVars` interface fields (only the deleted template consumed them).
+- `apps/web/src/app/api/admin/recovery-preview/route.ts`: removed the `first_insight` candidate query + count. Preview scripts (`send-preview-emails.ts`, `preview-keep-emails.ts`) cleaned of the deleted template + orphaned sample vars.
+
+### Recording-#5 on-demand generation: which case?
+**Case A — nothing else used it, so it was removed entirely.** The `first-insight/generate.requested` event had exactly one producer (process-entry) and one consumer (`generateFirstInsightFn`). That same-day generation existed ONLY to let the email fire same-day instead of waiting for the weekly cron. In-app insights are still populated by the weekly `compute-user-insights` job, so removing the on-demand path costs users nothing and saves an Opus synthesis call per qualifying 5th recording.
+
+### Manual steps needed
+- [ ] None required for correctness. On next deploy, Inngest will drop `generate-first-insight` from the registered function list automatically on the next GET to `/api/inngest` (usual auto-resync). If the stale function lingers in the Inngest dashboard, a manual app resync clears it. (Jimmy, only if it lingers)
+- [ ] Existing `TrialEmailLog` rows with `emailKey = "first_insight"` are harmless historical records — no cleanup needed. (No owner)
+
+### Notes
+- Left explicitly untouched: the weekly `compute-user-insights` Sunday cron, the `UserInsight` table, and all in-app Insights display. We removed only the EMAIL and its dedicated same-day generation trigger — not the core insights product.
+- `EMAIL_ENABLED` is a `Record<string, boolean>` (decoupled from `TrialEmailKey`), so the `first_insight: false` tombstone line is valid even though the key was removed from the type union — kept intentionally so no one re-adds the email thinking a flag is missing.
+- Typecheck: the files touched here are error-clean. The repo has ~150 pre-existing unrelated `tsc` errors (adlab, auth/route generated `.next/types` null-checks) that fluctuate with Next's codegen cache — none are from this change.
+
+---
+
 ## [2026-07-01] — Paywall: Monthly is now the default, and the whole screen leans into "free"
 
 **Requested by:** Keenan
