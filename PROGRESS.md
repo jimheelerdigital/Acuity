@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 02163181
+**Commit hash:** 546d109f
 
 ### In plain English (for Keenan)
 The web quiz that new people go through before signup got a structural overhaul. It now walks them through a tighter, more emotional arc: after we mirror back their pain, we flip to relief ("imagine that weight gone — how would you feel?") and show a side-by-side of "you right now" versus "you a few weeks in." We cut the screens that dragged (a time-math counter, three extra quiz questions, two loss-focused "gap" screens, and a preview block) and simplified the branch list from six paths to five by folding the two weakest ones into stronger neighbours. Everything is wired end-to-end and clickable, but a lot of the per-path wording is still placeholder — the real branch-by-branch copy lands in follow-up commits. This commit is the skeleton, not the finished copy. Separately, the admin dashboard's user list can now be sorted by plan (paid vs trial vs free) by clicking the Plan column header.
