@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-07-01] — Filled Branch 1 (overload) of the onboarding funnel with real content
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2f2e0fcd
+
+### In plain English (for Keenan)
+The first path through the new signup quiz — the "my head's too full and I keep forgetting things" path — now has its real words in place instead of placeholders. When someone picks that path, the quiz mirrors their exact pain back to them ("you lie awake running the list... it's costing you your peace"), flips to relief, and shows a "you right now" vs "you a few weeks in" side-by-side that's assembled from the specific answers they tapped. The paywall, the timeline, and the "how it works" screen all speak to the same "put the load down" idea, closing with a real testimonial from Monica R. I also made every screen's animation feel the same (one clean, uniform style) and removed the "one minute / talk for 60 seconds" wording so we're not making time claims we shouldn't. This is the finished template — the other four paths follow the same pattern next.
+
+### Technical changes (for Jimmy)
+- Filled Branch 1 (overload) content in `apps/web/src/lib/funnel-config.ts`: pain-fragment bank, relief-flip options, current-vs-future banks (header/footer), branched Q6, paywall subhead/headline/cost-of-inaction/pricing, timeline Week 1/2/4, Monica R. testimonial (real, from spec — no fabrication).
+- `apps/web/src/components/onboarding-funnel.tsx`: rewrote `PainScreen` to render a variable-length beats array from `assemblePainCopy` (was a fixed 2-beat design); added header + footer render to `CurrentFutureScreen`; updated `MECH_CONTENT.overload` cards + weekly-insight to the load/task-extraction thread; added `PAYWALL_SUBHEAD` import/compute/render; centralized CTA emphasis into a shared `.funnel-cta` class with a `prefers-reduced-motion` reset; softened duration claims ("One minute" → "A few minutes", "Talk for 60 seconds" → "Just say what's on your mind").
+- `apps/web/src/lib/funnel-config.test.ts`: updated to current Q5 labels (Days/Months/Years/"As long as I can remember") and current primary/area pattern values; 18 tests pass.
+- Branches 2-5 config data is present (verbatim spec copy) so the `Record<Branch>` maps compile, but only overload's component surfaces (mechanism cards) are verified — 2-5 are the next passes.
+
+### Manual steps needed
+- [ ] None — no schema/env changes. (Push held: waiting on Keenan's "push it".)
+
+### Notes
+- Proved the answer-aware assembly end-to-end via a throwaway vitest that stitched example Q2 (lie awake) / Q3 (everyone's needs) / Q6 (peace) selections — output matched the spec copy verbatim for screens 7 and 9. Removed the throwaway test after.
+- Typecheck is clean for the funnel files; the remaining `tsc` errors are pre-existing and unrelated (adlab experiments page, integrations-settings).
+- Commit is intentionally scoped to the three funnel files only; unrelated working-tree changes (next-env.d.ts, deleted headshot png, untracked scripts) were left unstaged.
+
+---
+
 ## [2026-07-01] — Rebuilt the onboarding funnel skeleton (structure only) + sortable admin Plan column
 
 **Requested by:** Keenan
