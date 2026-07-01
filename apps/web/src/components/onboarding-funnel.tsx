@@ -38,7 +38,6 @@ import {
   getSavingsCostRecap,
   SAVINGS_TIMELINE,
   PAYWALL_TESTIMONIALS_V2,
-  getPaywallLossRecap,
   getPaywallTestimonial,
   getPatternLabels,
 } from "@/lib/funnel-config";
@@ -235,7 +234,7 @@ export function OnboardingFunnel() {
   });
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "yearly");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(saved?.selectedPlan ?? "monthly");
   // Payment intent: set when user taps "Lock In My Savings" on the paywall.
   // After account creation, if true → route to Stripe checkout; if false → download.
   const [wantsPayment, setWantsPayment] = useState(false);
@@ -741,7 +740,6 @@ export function OnboardingFunnel() {
         <SavingsScreen
           key="savings"
           branch={branch}
-          answers={answers}
           track={track}
           selectedPlan={selectedPlan}
           onPlanChange={setSelectedPlan}
@@ -2358,129 +2356,28 @@ function SignupTestimonialStrip() {
 
 // ─── Lock In Your Savings (Screen 17 — optional paywall) ──────────────────
 
-// ─── Paywall Feature Comparison Data ─────────────────────────────────────────
+// ─── Paywall Feature Data (trimmed Free-vs-Pro split) ────────────────────────
 
-interface PaywallFeature {
-  name: string;
-  description: string;
-  duringTrial: boolean;
-  afterTrial: boolean;
-  /** Pattern-aware example shown on tap — personalized if branch available */
-  example: (primary: string | null) => string;
-}
-
-const PAYWALL_FEATURES: PaywallFeature[] = [
-  {
-    name: "Voice debrief",
-    description: "Talk instead of type. The entry point to everything.",
-    duringTrial: true,
-    afterTrial: true,
-    example: () => "Record whenever something is on your mind. Acuity transcribes it and pulls out what matters.",
-  },
-  {
-    name: "Task extraction",
-    description: "Action items pulled from your words automatically.",
-    duringTrial: true,
-    afterTrial: true,
-    example: () => "You said 'I need to call the school about Tuesday.' Acuity created the task before you finished the sentence.",
-  },
-  {
-    name: "Streaks and milestones",
-    description: "Progress tracking that reinforces the habit.",
-    duringTrial: true,
-    afterTrial: true,
-    example: () => "7-day streak. 30 entries. Your consistency is part of why the patterns become visible.",
-  },
-  {
-    name: "Weekly report",
-    description: "A written narrative of your week \u2014 the throughline you\u2019d never assemble yourself.",
-    duringTrial: true,
-    afterTrial: false,
-    example: (p) => ({
-      "Mental Overload": "e.g. 'Three days blurred together this week \u2014 but Wednesday, the day you felt clear, was the one day you stepped outside at lunch.'",
-      "Relational Looping": "e.g. 'The argument happened Tuesday. The tension started Sunday \u2014 you mentioned the same frustration three days before it surfaced.'",
-      "Racing Mind": "e.g. 'The same three worries ran through every evening this week \u2014 and two of them never actually happened.'",
-      "System Fatigue": "e.g. 'This is the longest you\u2019ve stuck with anything in months \u2014 12 entries, and the week you almost quit was the week you learned the most.'",
-      "Invisible Load": "e.g. 'You gave 8/10 energy to everyone else and 3/10 to yourself \u2014 every single day this week.'",
-      "Drifted Off-Course": "e.g. 'You mentioned who you used to be twice this week and who you want to become once \u2014 the gap is the whole story.'",
-    }[p ?? ""] ?? "e.g. 'The same frustration showed up three days before it surfaced \u2014 a throughline you\u2019d never assemble yourself.'"),
-  },
-  {
-    name: "Life Matrix",
-    description: "Six life domains tracked over time so you see where you\u2019re thriving and where you\u2019re slipping.",
-    duringTrial: true,
-    afterTrial: false,
-    example: () => "Health: 7.2 \u2192 Career: 4.1 \u2192 Relationships: 6.8. You can see which areas get your energy and which ones don\u2019t.",
-  },
-  {
-    name: "Pattern detection",
-    description: "Recurring themes surfaced across your entries.",
-    duringTrial: true,
-    afterTrial: false,
-    example: (p) => ({
-      "Mental Overload": "e.g. 'Your foggiest days all had zero unstructured time. Your clearest day had two hours of nothing planned.'",
-      "Relational Looping": "e.g. 'You bring up the same tension every Monday and it surfaces as a fight by Thursday \u2014 there\u2019s a pattern worth examining.'",
-      "Racing Mind": "e.g. 'Your calmest day was the only day you processed out loud before 6pm. The evening replay correlates with unprocessed afternoons.'",
-      "System Fatigue": "e.g. 'You\u2019ve hit a wall around day 4 with every tool before this one. Knowing that, you can push through the dip instead of quitting.'",
-      "Invisible Load": "e.g. 'You say \u2018I\u2019m fine\u2019 most often on the days your mood score is lowest \u2014 your words and your feelings are telling different stories.'",
-      "Drifted Off-Course": "e.g. 'Your energy peaks Sunday morning and fades by Monday night \u2014 the reset you keep losing happens at the same point every week.'",
-    }[p ?? ""] ?? "e.g. 'The same theme keeps surfacing across your weeks \u2014 there\u2019s a pattern worth examining.'"),
-  },
-  {
-    name: "Signals",
-    description: "Next-step guidance based on what you actually said.",
-    duringTrial: true,
-    afterTrial: false,
-    example: (p) => ({
-      "Mental Overload": "e.g. 'You described 4 days as \u2018fine\u2019 but named zero highlights \u2014 block 30 minutes for something that matters to you.'",
-      "Relational Looping": "e.g. 'You\u2019ve mentioned the same tension with your partner 3 times this week and keep deferring the conversation \u2014 schedule it.'",
-      "Racing Mind": "e.g. 'The same worry has looped for 3 nights running and never once came true \u2014 write down what you\u2019d need to see to let it go.'",
-      "System Fatigue": "e.g. 'You\u2019re on day 9 \u2014 past where every other tool fizzled out. Don\u2019t change a thing; just keep showing up for 60 seconds.'",
-      "Invisible Load": "e.g. 'You gave everyone else 8/10 energy and yourself 3/10 all week \u2014 name one thing this week that\u2019s just for you.'",
-      "Drifted Off-Course": "e.g. 'You\u2019ve mentioned a goal you used to care about twice and done nothing with it \u2014 take one small step toward it this week.'",
-    }[p ?? ""] ?? "e.g. 'You keep deferring the same thing week after week \u2014 block 30 minutes and finally close it out.'"),
-  },
-  {
-    name: "Ask your past self",
-    description: "Search your own history \u2014 ask what you were thinking, feeling, or avoiding at any point.",
-    duringTrial: true,
-    afterTrial: false,
-    example: () => "e.g. 'What was I stressed about in March?' \u2014 Acuity pulls the answer from your own words, not a generic summary.",
-  },
-  {
-    name: "Smart insights",
-    description: "AI-generated observations about you that you\u2019d never notice on your own.",
-    duringTrial: true,
-    afterTrial: false,
-    example: (p) => ({
-      "Mental Overload": "e.g. 'Your mood is 2 points higher on days you mention your kids. You never mention them on your lowest days.'",
-      "Relational Looping": "e.g. 'You use warmer words about your partner on weekends and sharper ones midweek \u2014 the same cycle, every seven days.'",
-      "Racing Mind": "e.g. 'The nights you slept best were the ones you talked it out before dinner. The replay needs an empty evening to run.'",
-      "System Fatigue": "e.g. 'Your motivation dips every fourth day like clockwork. It\u2019s not you losing interest \u2014 it\u2019s a rhythm, and now you can ride it out.'",
-      "Invisible Load": "e.g. 'You use the word \u2018fine\u2019 most often on days your mood score is lowest. Your language and your feelings are telling different stories.'",
-      "Drifted Off-Course": "e.g. 'You light up when you talk about one specific thing you\u2019ve stopped making time for. Your own words keep pointing back to it.'",
-    }[p ?? ""] ?? "e.g. 'You use the word \u2018fine\u2019 most often on days your mood score is lowest. Your language and your feelings are telling different stories.'"),
-  },
-  {
-    name: "Theme map",
-    description: "Advanced view of your recurring life themes and subconscious patterns over time.",
-    duringTrial: true,
-    afterTrial: false,
-    example: () => "Visualize how themes like \u2018work pressure,\u2019 \u2018family tension,\u2019 and \u2018self-worth\u2019 rise and fall across weeks \u2014 and how they connect to each other.",
-  },
+const FREE_FEATURES = [
+  { name: "Voice debrief", description: "Talk instead of type. The entry point to everything." },
+  { name: "Task extraction", description: "Action items pulled from your words automatically." },
 ];
 
-function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
+const PRO_FEATURES = [
+  { name: "Deep Insights", description: "Observations about you that you\u2019d never notice on your own." },
+  { name: "Pattern detection", description: "Recurring themes surfaced across your entries." },
+  { name: "Signals", description: "Next-step guidance based on what you actually said." },
+  { name: "Weekly report", description: "A written narrative of your week, delivered every Sunday." },
+];
+
+function SavingsScreen({ branch, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
   branch: Branch | null;
-  answers: Record<string, string | string[]>;
   track: (event: string, props?: Record<string, unknown>) => void;
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
-  const labels = branch ? getPatternLabels(branch, answers) : null;
   const paywallTestimonial = getPaywallTestimonial(branch);
-  const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
   const [slashPhase, setSlashPhase] = useState(0);
   const pricingRef = useRef<HTMLDivElement>(null);
@@ -2506,82 +2403,48 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
     return () => observer.disconnect();
   }, [prefersReduced]);
 
-  const toggleFeature = (name: string) => {
-    setExpandedFeature((prev) => prev === name ? null : name);
-  };
-
   return (
     <div className="min-h-screen text-zinc-900 pb-32">
       <div className="max-w-lg mx-auto px-6 pt-10">
 
-        {/* Section 1 — Positioning header */}
+        {/* Section 1 — Warm positioning header */}
         <section className="text-center mb-6 funnel-screen">
-          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Your personal clarity system is ready.</h2>
-          <p className="text-sm text-zinc-500 mt-2">Stop losing track of what your own life is trying to tell you.</p>
+          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Everything&rsquo;s ready when you are.</h2>
+          <p className="text-sm text-zinc-500 mt-2">Try all of Acuity free for 7 days. Keep what you love.</p>
         </section>
 
-        {/* Section 2 — Loss-aversion recap */}
-        <section className="mb-6 funnel-card-stagger" style={{ animationDelay: "80ms" }}>
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-center">
-            <p className="text-[15px] text-zinc-900 leading-relaxed font-semibold">{getPaywallLossRecap(branch)}</p>
-          </div>
-        </section>
-
-        {/* Section 3 — Trial vs. After Trial comparison */}
-        <section className="mb-6 rounded-xl bg-white border border-zinc-200 shadow-sm overflow-hidden funnel-card-stagger" style={{ animationDelay: "140ms" }}>
-          {/* Column headers */}
-          <div className="grid grid-cols-[1fr_auto_auto] items-center px-4 py-3 border-b border-zinc-100 bg-zinc-50/50">
-            <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-400">Feature</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-600 w-[72px] text-center">Pro</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-400 w-[72px] text-center">Free</span>
-          </div>
-
-          {/* Feature rows — tappable for examples */}
-          {PAYWALL_FEATURES.map((f, i) => {
-            const isExpanded = expandedFeature === f.name;
-            return (
-              <div key={f.name} className={`border-b border-zinc-100 last:border-b-0 ${i % 2 === 0 ? "" : "bg-zinc-50/30"}`}>
-                <button
-                  onClick={() => { toggleFeature(f.name); track("funnel_paywall_feature_tap", { value: f.name }); }}
-                  className="w-full grid grid-cols-[1fr_auto_auto] items-center px-4 py-3 text-left transition-colors hover:bg-zinc-50/80 active:bg-zinc-100/60"
-                >
-                  <div className="pr-2">
-                    <p className="text-[13px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
-                    <p className="text-[11px] text-zinc-500 leading-snug mt-0.5">{f.description}</p>
-                  </div>
-                  <div className="w-[72px] flex justify-center">
-                    <span className="text-emerald-500 text-sm">&#10003;</span>
-                  </div>
-                  <div className="w-[72px] flex justify-center">
-                    {f.afterTrial ? (
-                      <span className="text-emerald-500 text-sm">&#10003;</span>
-                    ) : (
-                      <span className="text-[11px] font-bold bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Locked</span>
-                    )}
-                  </div>
-                </button>
-                {/* Expandable example */}
-                {isExpanded && (
-                  <div className="px-4 pb-3 pt-0">
-                    <div className="rounded-lg bg-acuity-primary/5 border border-acuity-primary/10 px-3 py-2.5">
-                      <p className="text-[11px] text-zinc-600 leading-relaxed">{f.example(labels?.primary ?? null)}</p>
-                    </div>
-                  </div>
-                )}
+        {/* Section 2 — Free vs Pro split (trimmed, no table) */}
+        <section className="mb-6 rounded-xl bg-white border border-zinc-200 shadow-sm overflow-hidden funnel-card-stagger" style={{ animationDelay: "120ms" }}>
+          {/* Free group */}
+          <div className="px-5 py-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-400 mb-3">Free forever</p>
+            {FREE_FEATURES.map((f) => (
+              <div key={f.name} className="flex items-start gap-3 py-1.5">
+                <span className="text-emerald-500 text-sm mt-0.5 leading-none">&#10003;</span>
+                <div>
+                  <p className="text-[14px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
+                  <p className="text-[12px] text-zinc-500 leading-snug mt-0.5">{f.description}</p>
+                </div>
               </div>
-            );
-          })}
-
-          {/* Summary line */}
-          <div className="px-4 py-3 bg-zinc-50/50">
-            <p className="text-[13px] text-zinc-700 text-center font-semibold">
-              After your trial, recording, task extraction, and streaks stay free forever. Pro keeps the insight layer &mdash; the weekly report, Life Matrix, and patterns that show you what it all means.
-            </p>
+            ))}
+          </div>
+          {/* Pro group */}
+          <div className="px-5 py-4 border-t border-zinc-100 bg-zinc-50/40">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] mb-3 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">The insight layer &mdash; with Pro</p>
+            {PRO_FEATURES.map((f) => (
+              <div key={f.name} className="flex items-start gap-3 py-1.5">
+                <span className="text-acuity-primary text-sm mt-0.5 leading-none">&#10003;</span>
+                <div>
+                  <p className="text-[14px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
+                  <p className="text-[12px] text-zinc-500 leading-snug mt-0.5">{f.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* Section 4 — Cost comparison */}
-        <section className="mb-6 rounded-xl border border-zinc-200 bg-white px-5 py-4 text-center funnel-card-stagger" style={{ animationDelay: "200ms" }}>
+        {/* Section 3 — Cost comparison */}
+        <section className="mb-6 rounded-xl border border-zinc-200 bg-white px-5 py-4 text-center funnel-card-stagger" style={{ animationDelay: "180ms" }}>
           <p className="text-[15px] font-semibold text-zinc-900 leading-relaxed">
             <span className="text-zinc-500 font-semibold">Therapy: $150/session.</span>{" "}
             <span className="text-zinc-500 font-semibold">A coach: $200/month.</span>
@@ -2589,8 +2452,8 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           <p className="text-[17px] font-bold mt-1 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Acuity: less than a coffee a month.</p>
         </section>
 
-        {/* Section 5 — Pricing cards with price-slash animation */}
-        <section ref={pricingRef} className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "260ms" }}>
+        {/* Section 4 — Pricing cards with price-slash animation */}
+        <section ref={pricingRef} className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "240ms" }}>
           <style dangerouslySetInnerHTML={{ __html: `
             @keyframes pw-strike { from { width: 0; } to { width: 100%; } }
             @keyframes pw-shrink-text { from { font-size: 1.5rem; } to { font-size: 0.875rem; } }
@@ -2601,7 +2464,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           `}} />
           <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Monthly card */}
-            <button onClick={() => onPlanChange("monthly")}
+            <button onClick={() => { onPlanChange("monthly"); track("funnel_paywall_plan_selected", { value: "monthly" }); }}
               className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "monthly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02]" : "border border-zinc-200 bg-white scale-100"}`}>
               <p className="text-xs text-zinc-500 mb-1">Monthly</p>
               {/* Regular price — starts as hero, shrinks to anchor on slash */}
@@ -2629,7 +2492,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               </p>
             </button>
             {/* Annual card — staggered 150ms behind monthly */}
-            <button onClick={() => onPlanChange("yearly")}
+            <button onClick={() => { onPlanChange("yearly"); track("funnel_paywall_plan_selected", { value: "yearly" }); }}
               className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "yearly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02]" : "border border-zinc-200 bg-white scale-100"}`}>
               <p className="text-xs text-zinc-500 mb-1">Annual</p>
               {/* Regular price — starts as hero, shrinks to anchor on slash */}
@@ -2678,9 +2541,11 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
             {loading ? "Loading\u2026" : "Start My 7 Days"}
           </button>
-          <p className="text-[10px] text-zinc-400 text-center mt-2">7-day free trial included with all plans. Cancel anytime. You won&rsquo;t be charged today.</p>
-          <div className="text-center mt-2">
-            <button onClick={onSkip} className="text-xs text-zinc-400 hover:text-zinc-600 underline underline-offset-2 transition">
+          <p className="text-[13px] text-center mt-2 font-medium text-zinc-600">
+            <span className="text-emerald-600 font-semibold">7-day free trial.</span> Cancel anytime. You won&rsquo;t be charged today.
+          </p>
+          <div className="text-center mt-2.5">
+            <button onClick={onSkip} className="text-[13px] text-zinc-500 hover:text-zinc-700 underline underline-offset-2 transition">
               Continue without paying
             </button>
           </div>
