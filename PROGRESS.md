@@ -7,11 +7,33 @@
 
 ---
 
-## [2026-07-01] — Current-vs-Future screen redesigned — true split + row reveal
+## [2026-07-01] — Timeline screen: Week 1 / Month 1 / Year 1, now answer-aware
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** PENDING
+
+### In plain English (for Keenan)
+The "This is what changes" timeline (screen 15) used to promise Week 1 / Week 2 / Week 4 with the same generic lines for everyone. It's now an aspirational Week 1 / Month 1 / Year 1 arc, AND every line is personalized to the user's own earlier answers. Week 1 names the first relief from the exact thing they said hurts, Month 1 shows that specific pain visibly changing with a new habit forming, and Year 1 describes who they've become now that it no longer runs them. Someone who said they forget things and can't find calm sees a different, truer timeline than someone who said they lie awake or push people away. It builds to a real "this is my future" moment. The vertical coral timeline, the "Starting now" tag, the closing line, the 4.9-from-127+ rating, and the button all stay exactly as they were.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: replaced the static `TIMELINE_WEEKS` with `TIMELINE_NODES: Record<Branch, TimelineNode[]>` — each of the 3 nodes carries a `base` line plus `q2`/`q6` insert maps keyed to the exact option labels. Rewrote `getTimelineWeeks` to assemble `base + q2[answer] + q6[answer]` (self-contained sentences joined with spaces), returning the same `TimelineWeek[]` shape. Week labels changed to "Week 1" / "Month 1" / "Year 1".
+- No component change: `TimelineScreen` in `apps/web/src/components/onboarding-funnel.tsx` already renders `w.week`/`w.text`/`w.badge`, so the layout and animation are untouched.
+- Reused the exact base+keyed-insert mechanism from `assemblePainCopy` / `assembleCurrentFuture` — no new assembly system.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Inserts are written as complete sentences so any combination joins grammatically, including "all the above" (its own key) and options with no matching insert (e.g. overload Q2 has no "all the above", so that node gracefully renders base + Q6 only). Verified by assembling overload (forget+peace), overload (all-above), and patterns (argument+relationships) — each forms a natural rising arc. Rumination copy avoids medical claims and bedtime-ritual framing; mask copy keeps the sensitivity + no-medical framing ("room to breathe", not treating "sanity"). Typecheck clean for the funnel; 18 funnel-config tests pass.
+
+---
+
+## [2026-07-01] — Current-vs-Future screen redesigned — true split + row reveal
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2749ade2
 
 ### In plain English (for Keenan)
 The "here's the shift" screen (screen 9) used to be two stacked grey cards with grey-on-grey text — flat and easy to miss. It's now a true side-by-side split that makes the transformation land: on the LEFT, "You now" in muted grey; on the RIGHT, "You, a few weeks in" in bright coral that visually wins. Four transformation rows stack down the screen, and they animate one at a time — the drab "before" appears, a coral arrow sweeps left-to-right, then the vivid "after" pops in. The user literally watches themselves change, four times, before the footer and button appear. It's built to stay readable on a narrow phone, and anyone who prefers less motion sees the whole thing static.

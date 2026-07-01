@@ -1070,10 +1070,14 @@ export const SNAPSHOT_BOTTOM: Record<Branch, string> = {
 
 // ─── Timeline Templates (Screen 15) ─────────────────────────────────────────
 //
-// v6: the "what one week actually looks like" preview block was removed. The
-// timeline is now three near-term milestones — Week 1 / Week 2 / Week 4 — with
-// the first item badged "Starting now". Copy is branch-specific and avoids the
-// removed Life Matrix feature and any recording-duration claims.
+// v7: an aspirational Week 1 / Month 1 / Year 1 arc, made answer-aware with the
+// SAME base + keyed-insert mechanism as the Pain (7) and Current-vs-Future (9)
+// screens. Each node = a per-branch base line + an insert keyed to the user's
+// Q2 (shape-of-pain) + an insert keyed to their Q6 (cost), joined into one
+// natural, rising line: Week 1 = first relief, Month 1 = visible change + habit,
+// Year 1 = who they've become. Inserts are self-contained sentences so any
+// combination (including "all the above") reads cleanly. Avoids the removed Life
+// Matrix, recording-duration claims, medical claims, and bedtime-ritual framing.
 
 export interface TimelineWeek {
   week: string;
@@ -1081,36 +1085,287 @@ export interface TimelineWeek {
   badge?: string;
 }
 
-const TIMELINE_WEEKS: Record<Branch, TimelineWeek[]> = {
+interface TimelineNode {
+  week: string;
+  badge?: string;
+  base: string;
+  /** Keyed by exact Q2 option label → shape-of-pain insert for this node. */
+  q2: Record<string, string>;
+  /** Keyed by exact Q6 option label → cost insert for this node. */
+  q6: Record<string, string>;
+}
+
+const TIMELINE_NODES: Record<Branch, TimelineNode[]> = {
   overload: [
-    { week: "Week 1", badge: "Starting now", text: "The load starts leaving your head \u2014 you say it, Acuity holds it." },
-    { week: "Week 2", text: "You stop lying awake running the list. It\u2019s written where you can trust it." },
-    { week: "Week 4", text: "You\u2019ve stopped dropping things. There\u2019s room up there again." },
+    {
+      week: "Week 1", badge: "Starting now",
+      base: "The load starts leaving your head \u2014 you say it, Acuity holds it.",
+      q2: {
+        "I forget things I meant to do": "The things you meant to do stop vanishing the second something louder shows up.",
+        "I lie awake running through my list": "You\u2019re not lying awake running the list \u2014 it\u2019s written where you trust it.",
+        "I feel scattered and can\u2019t focus on one thing": "The scatter settles enough to hold one thing at a time.",
+        "I snap or shut down from the sheer volume": "The pressure eases, so you\u2019re not snapping from the sheer volume of it.",
+      },
+      q6: {
+        "People\u2019s trust in me": "And the small things people count on you for stop slipping.",
+        "My confidence in myself": "And you start to feel like you\u2019ve got a grip again.",
+        "My sense of peace and calm": "And there\u2019s a first flicker of calm.",
+        "All the above": "And trust, confidence, and calm all start to steady.",
+      },
+    },
+    {
+      week: "Month 1",
+      base: "You\u2019ve stopped white-knuckling your own life.",
+      q2: {
+        "I forget things I meant to do": "The things that used to slip now get caught before they fall.",
+        "I lie awake running through my list": "The 2am list-running is fading, and your head\u2019s quiet enough to rest.",
+        "I feel scattered and can\u2019t focus on one thing": "You move through the day focused instead of frayed.",
+        "I snap or shut down from the sheer volume": "You\u2019ve got margin again, so you respond instead of react.",
+      },
+      q6: {
+        "People\u2019s trust in me": "People have noticed you\u2019re back to being the one they can count on.",
+        "My confidence in myself": "You feel capable again, not like you\u2019re barely keeping up.",
+        "My sense of peace and calm": "Bracing for the next dropped ball isn\u2019t your default anymore.",
+        "All the above": "Trust, confidence, and calm are visibly coming back.",
+      },
+    },
+    {
+      week: "Year 1",
+      base: "You\u2019re the person who has it handled \u2014 without carrying all of it in your head.",
+      q2: {
+        "I forget things I meant to do": "The dropped balls are just\u2026 gone.",
+        "I lie awake running through my list": "The 2am panic is something you used to do.",
+        "I feel scattered and can\u2019t focus on one thing": "Scattered isn\u2019t who you are anymore.",
+        "I snap or shut down from the sheer volume": "You stay steady, even when the volume spikes.",
+      },
+      q6: {
+        "People\u2019s trust in me": "You\u2019re the one people trust to remember \u2014 and you do.",
+        "My confidence in myself": "You trust yourself again.",
+        "My sense of peace and calm": "Calm is your baseline now, not a rare good day.",
+        "All the above": "Trusted, sure of yourself, and genuinely calm.",
+      },
+    },
   ],
   patterns: [
-    { week: "Week 1", badge: "Starting now", text: "You start naming the cycle instead of just living it." },
-    { week: "Week 2", text: "You catch the buildup before the blowup." },
-    { week: "Week 4", text: "The same trigger stops leading to the same fight." },
+    {
+      week: "Week 1", badge: "Starting now",
+      base: "You start naming the cycle instead of just living it.",
+      q2: {
+        "The same argument, over and over": "That same fight starts to look like a pattern, not just a bad night.",
+        "The same mood or spiral, on repeat": "You catch the spiral starting instead of only noticing once you\u2019re in it.",
+        "The same situations blowing up the same way": "You see the setup before the same situation blows up again.",
+        "All the above": "The arguments, the spirals, the blow-ups \u2014 they start to show their shape.",
+      },
+      q6: {
+        "My closest relationships": "And the people closest to you feel the difference first.",
+        "My peace of mind": "And the constant bracing for the next round begins to ease.",
+        "The way I see myself": "And you stop reading it as something wrong with you.",
+        "My work performance": "And it stops quietly pulling focus from your work.",
+      },
+    },
+    {
+      week: "Month 1",
+      base: "You catch the buildup before the blowup.",
+      q2: {
+        "The same argument, over and over": "The same fight stops landing the same way.",
+        "The same mood or spiral, on repeat": "You step out of the spiral before it takes the whole evening.",
+        "The same situations blowing up the same way": "The same trigger starts leading somewhere different.",
+        "All the above": "The loops that used to run you start breaking, one by one.",
+      },
+      q6: {
+        "My closest relationships": "You\u2019re closer to the people you kept pushing away.",
+        "My peace of mind": "You\u2019re actually at rest between rounds \u2014 because the rounds are fewer.",
+        "The way I see myself": "You\u2019re kinder to yourself; it was a pattern, not a flaw.",
+        "My work performance": "You\u2019re present at work again instead of stuck replaying it.",
+      },
+    },
+    {
+      week: "Year 1",
+      base: "You\u2019re the person who sees the pattern coming \u2014 and chooses differently.",
+      q2: {
+        "The same argument, over and over": "That old fight doesn\u2019t own your nights anymore.",
+        "The same mood or spiral, on repeat": "The spiral doesn\u2019t get to decide how you feel.",
+        "The same situations blowing up the same way": "Same triggers, new outcomes \u2014 every time.",
+        "All the above": "The cycle that ran your life just\u2026 doesn\u2019t run it anymore.",
+      },
+      q6: {
+        "My closest relationships": "The people who matter are close, and they stay close.",
+        "My peace of mind": "You live at rest, not braced for the next round.",
+        "The way I see myself": "You see yourself clearly \u2014 no flaw, just a pattern you outgrew.",
+        "My work performance": "You show up clear-headed and fully present.",
+      },
+    },
   ],
   rumination: [
-    { week: "Week 1", badge: "Starting now", text: "You start emptying your head before bed instead of into it." },
-    { week: "Week 2", text: "The spiral gets shorter \u2014 you\u2019ve already said it, so it stops repeating." },
-    { week: "Week 4", text: "Your mind learns it can let go, because nothing gets lost." },
+    {
+      week: "Week 1", badge: "Starting now",
+      base: "You start getting it out of your head instead of letting it pile up.",
+      q2: {
+        "Replaying things I said or did": "The replays lose their grip once you\u2019ve actually said the thing out loud.",
+        "Running through everything I still have to do": "The list stops running in the dark \u2014 it\u2019s out of your head and somewhere you trust.",
+        "Worrying about things I can\u2019t control": "The what-ifs get named instead of spinning.",
+        "All the above": "The replays, the list, the worries \u2014 they stop piling up all at once.",
+      },
+      q6: {
+        "My sleep": "And your mind isn\u2019t fighting you when you finally get to rest.",
+        "My energy the next day": "And you\u2019re not starting the day already drained.",
+        "My peace of mind": "And there\u2019s a first stretch of quiet.",
+        "My health": "And your body gets a break it hasn\u2019t had in a while.",
+      },
+    },
+    {
+      week: "Month 1",
+      base: "The loop gets shorter \u2014 you\u2019ve already set it down, so it stops repeating.",
+      q2: {
+        "Replaying things I said or did": "You replay things far less; they don\u2019t follow you around.",
+        "Running through everything I still have to do": "The undone list stays out of your head, where you put it.",
+        "Worrying about things I can\u2019t control": "The worries you can\u2019t control take up less and less room.",
+        "All the above": "The whole pile-up loses its power to take over.",
+      },
+      q6: {
+        "My sleep": "Your mind lets go more easily, and rest comes easier.",
+        "My energy the next day": "You\u2019ve got more in the tank the next day.",
+        "My peace of mind": "Quiet stops being rare.",
+        "My health": "Your body\u2019s getting the rest it was missing.",
+      },
+    },
+    {
+      week: "Year 1",
+      base: "You\u2019re the person whose mind can actually settle.",
+      q2: {
+        "Replaying things I said or did": "The endless replays just aren\u2019t how your mind works anymore.",
+        "Running through everything I still have to do": "The list lives somewhere you trust, not on a loop in your head.",
+        "Worrying about things I can\u2019t control": "You\u2019ve made peace with what you can\u2019t control.",
+        "All the above": "The pile-up that ran on repeat is quiet now.",
+      },
+      q6: {
+        "My sleep": "Rest comes without a fight.",
+        "My energy the next day": "You wake up with energy that\u2019s actually yours.",
+        "My peace of mind": "A quiet mind is your normal now.",
+        "My health": "You feel it in your body \u2014 steadier, more rested.",
+      },
+    },
   ],
   stuck: [
-    { week: "Week 1", badge: "Starting now", text: "You start seeing where your energy actually goes." },
-    { week: "Week 2", text: "The goals you keep mentioning stop getting buried." },
-    { week: "Week 4", text: "You feel the difference between being busy and moving forward." },
+    {
+      week: "Week 1", badge: "Starting now",
+      base: "You start seeing where your energy actually goes.",
+      q2: {
+        "I\u2019m always busy but nothing feels like progress": "The gap between \u2018busy\u2019 and \u2018forward\u2019 finally becomes visible.",
+        "I end every week exhausted with nothing to show for it": "You can see why the week left you empty-handed.",
+        "I keep doing everything for everyone but me": "You notice how little of it ever came back to your own life.",
+        "All the above": "The busy, the burnout, the everyone-but-you \u2014 it all comes into view.",
+      },
+      q6: {
+        "The goals I keep putting off": "And the goals you keep parking stop disappearing.",
+        "My sense of purpose": "And there\u2019s a first sense that this is going somewhere.",
+        "Time I\u2019ll never get back": "And you stop losing whole weeks without noticing.",
+        "All the above": "And your goals, your purpose, and your time stop slipping unseen.",
+      },
+    },
+    {
+      week: "Month 1",
+      base: "You feel the difference between being busy and moving forward.",
+      q2: {
+        "I\u2019m always busy but nothing feels like progress": "Your effort starts landing on things that actually move you.",
+        "I end every week exhausted with nothing to show for it": "The week ends with something real to show for it.",
+        "I keep doing everything for everyone but me": "Some of your energy finally goes to your own life.",
+        "All the above": "You\u2019re busy with what matters, not just what\u2019s loud.",
+      },
+      q6: {
+        "The goals I keep putting off": "The goals you kept putting off are actually moving.",
+        "My sense of purpose": "There\u2019s a clear sense of what it\u2019s all for.",
+        "Time I\u2019ll never get back": "Your time goes toward what you\u2019ll be glad you did.",
+        "All the above": "Goals moving, purpose clear, time well spent.",
+      },
+    },
+    {
+      week: "Year 1",
+      base: "You\u2019re the person who\u2019s off the treadmill and actually going somewhere.",
+      q2: {
+        "I\u2019m always busy but nothing feels like progress": "Busy finally means forward for you.",
+        "I end every week exhausted with nothing to show for it": "You end weeks with something built, not just survived.",
+        "I keep doing everything for everyone but me": "Your own life gets your energy too.",
+        "All the above": "You\u2019re moving, on purpose, on your terms.",
+      },
+      q6: {
+        "The goals I keep putting off": "The goals that sat on \u2018someday\u2019 are behind you or underway.",
+        "My sense of purpose": "You know exactly where all this is headed.",
+        "Time I\u2019ll never get back": "Your time goes to what counts, and you can feel it.",
+        "All the above": "Real progress, real purpose, and time you\u2019re proud of.",
+      },
+    },
   ],
   mask: [
-    { week: "Week 1", badge: "Starting now", text: "You start telling the truth in one place, without editing it." },
-    { week: "Week 2", text: "The gap between \u2018I\u2019m fine\u2019 and how you actually feel gets smaller." },
-    { week: "Week 4", text: "You stop carrying all of it alone, even if you\u2019re not ready to tell anyone yet." },
+    {
+      week: "Week 1", badge: "Starting now",
+      base: "You start telling the truth in one place, without editing it.",
+      q2: {
+        "I\u2019m running on empty but no one can tell": "You finally have somewhere the \u2018running on empty\u2019 can be said out loud.",
+        "I keep it together all day, then fall apart alone": "You\u2019ve got a place to let it out before the door closes on you alone.",
+        "I say \u2018I\u2019m fine\u2019 when I\u2019m really not": "You stop having to say \u2018I\u2019m fine\u2019 in at least one place.",
+        "All the above": "The performing, the holding it together, the \u2018I\u2019m fine\u2019 \u2014 one place where you don\u2019t have to.",
+      },
+      q6: {
+        "My own sense of who I am": "And you start to hear your own voice under the performance again.",
+        "The energy it takes to keep pretending I\u2019m fine": "And keeping up \u2018I\u2019m fine\u2019 stops taking quite so much out of you.",
+        "My sanity": "And you get a little room to breathe.",
+        "All of the above": "And there\u2019s a first bit of room to just be yourself.",
+      },
+    },
+    {
+      week: "Month 1",
+      base: "The gap between \u2018I\u2019m fine\u2019 and how you actually feel gets smaller.",
+      q2: {
+        "I\u2019m running on empty but no one can tell": "You\u2019re not running on empty in secret anymore.",
+        "I keep it together all day, then fall apart alone": "You don\u2019t have to wait until you\u2019re alone to let it out.",
+        "I say \u2018I\u2019m fine\u2019 when I\u2019m really not": "\u2018I\u2019m fine\u2019 stops being the automatic answer.",
+        "All the above": "The mask spends more time down than up.",
+      },
+      q6: {
+        "My own sense of who I am": "You feel more like yourself and less like a performance.",
+        "The energy it takes to keep pretending I\u2019m fine": "You\u2019ve got energy back that the pretending used to eat.",
+        "My sanity": "You feel steadier, with more room to breathe.",
+        "All of the above": "You feel more yourself, with energy and room to breathe.",
+      },
+    },
+    {
+      week: "Year 1",
+      base: "You\u2019re the person who doesn\u2019t have to hold it all together alone.",
+      q2: {
+        "I\u2019m running on empty but no one can tell": "Running on empty behind a smile isn\u2019t your life anymore.",
+        "I keep it together all day, then fall apart alone": "You\u2019re not falling apart alone in the dark.",
+        "I say \u2018I\u2019m fine\u2019 when I\u2019m really not": "You say how you actually are \u2014 and it\u2019s usually true.",
+        "All the above": "The performance is over; you just get to be you.",
+      },
+      q6: {
+        "My own sense of who I am": "You know who you are underneath \u2014 and you like her.",
+        "The energy it takes to keep pretending I\u2019m fine": "The energy that went into hiding is yours again.",
+        "My sanity": "You feel like yourself, steady and clear.",
+        "All of the above": "Honest, steadier, and no longer carrying it alone.",
+      },
+    },
   ],
 };
 
-export function getTimelineWeeks(branch: Branch, _answers: Record<string, string | string[]>): TimelineWeek[] {
-  return TIMELINE_WEEKS[branch] ?? TIMELINE_WEEKS.patterns;
+/**
+ * Assemble the answer-aware timeline. Same mechanism as assemblePainCopy /
+ * assembleCurrentFuture: each node is a branch base line + an insert keyed to
+ * the user's Q2 tap + an insert keyed to their Q6 tap, joined into one line.
+ * Defaults gracefully to just the base if a tap has no matching insert, so
+ * every node always renders a complete, natural line.
+ */
+export function getTimelineWeeks(branch: Branch, answers: Record<string, string | string[]>): TimelineWeek[] {
+  const nodes = TIMELINE_NODES[branch] ?? TIMELINE_NODES.patterns;
+  const q2 = String(answers.branch_q2 ?? "");
+  const q6 = String(answers.branch_q6 ?? "");
+
+  return nodes.map((n) => {
+    const parts = [n.base];
+    if (n.q2[q2]) parts.push(n.q2[q2]);
+    if (n.q6[q6]) parts.push(n.q6[q6]);
+    return { week: n.week, badge: n.badge, text: parts.join(" ") };
+  });
 }
 
 // ─── Paywall Hooks (Screen 16) ──────────────────────────────────────────────
