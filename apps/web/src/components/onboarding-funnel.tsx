@@ -1197,16 +1197,12 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     insight: "In one debrief you named 7 things to remember. Acuity caught them all \u2014 and flagged 3 you\u2019d said before and still hadn\u2019t done.",
   },
   patterns: {
-    cards: (q2) => {
-      const who = q2.includes("partner") ? "your partner" : q2.includes("work") ? "your colleague" : q2.includes("family") ? "your family" : "them";
-      const cycle = q2.replace(/^The same /i, "").replace(/ with.*/, "").toLowerCase();
-      return [
-        { text: `Talk to ${who} about what happened Tuesday`, icon: "\u25A1" },
-        { text: `Break the ${cycle || "cycle"} cycle \u2014 Day 1`, icon: "\u25B2" },
-        { text: "Frustrated \u2192 Aware", icon: "\u25CF" },
-        { text: "The tension started 2 days before the argument \u2014 every time", icon: "\u25C6" },
-      ];
-    },
+    cards: () => [
+      { text: "Note what set it off before it escalated", icon: "\u25A1" },
+      { text: "Catch the buildup before the blowup \u2014 Day 1", icon: "\u25B2" },
+      { text: "Reactive \u2192 Aware", icon: "\u25CF" },
+      { text: "The tension started 2 days before the argument \u2014 every time", icon: "\u25C6" },
+    ],
     step3Sub: "",
     insight: "The argument happened Tuesday. The tension started Sunday. Same pattern, 3 weeks in a row.",
   },
