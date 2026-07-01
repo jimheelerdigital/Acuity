@@ -214,6 +214,7 @@ export default function GoalDetailScreen() {
             paddingTop: 60,
             paddingBottom: 80,
           }}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Area label */}
           <Text
