@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-01] — Current-vs-Future headers: revert underline, add panel dividers
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+The previous change (making the "YOU RIGHT NOW" / "YOU, A FEW WEEKS IN" headers bigger and underlined) broke on screen 9 — the right header wrapped to two lines and its underline split across both lines, which looked broken. This reverts that: the headers go back to their prior compact size with no underline on the text. Instead, each panel now has a clean divider line running under its header — grey on the left panel, coral on the right — so the header still clearly "splits off" from the rows below it, without the messy underline. The longer right header now wraps gracefully and the divider stays intact. Applies to all five funnels and fits small phones.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `CurrentFutureScreen` panel-header block: reverted size `text-[13px] sm:text-[15px]` → `text-[10px] sm:text-[11px]` and tracking `0.06em` → `0.12em`; removed all `underline`/`decoration-*`/`underline-offset-*` classes. Added a divider under each header via `border-b` (`border-zinc-300` left, `border-acuity-primary/30` right) with `pb-2` for text→divider spacing. Kept `leading-tight` for graceful wrap; container gap `mb-5` → `mb-4`. Colors unchanged (`text-zinc-400` left, `text-acuity-primary` right).
+- Single shared component renders for all 5 branches, so the one edit covers every branch.
+
+### Manual steps needed
+- None (pushed to main).
+
+### Notes
+- The `border-b` sits on the padded header `<p>` (a full-width block), so the divider spans the panel column regardless of the text's right/left alignment — it reads as a section divider, not an underline of the words.
+- Spacing stack: header text → `pb-2` (8px) → divider → `mb-4` (16px) → rows. Clean separation without cramping.
+- Mobile ~380px: back at 10/11px the headers are far less likely to wrap; if the right one does, `leading-tight` keeps it tidy and the divider (on the block, not the text) stays unbroken. Typecheck clean (no new errors); 18/18 funnel-config tests pass; tracking untouched.
+
+---
+
 ## [2026-07-01] — Current-vs-Future panel headers: bigger + underlined
 
 **Requested by:** Keenan

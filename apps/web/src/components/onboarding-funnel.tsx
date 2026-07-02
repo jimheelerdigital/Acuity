@@ -1231,14 +1231,16 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
 
           {/* Foreground — labels + rows, padded so text breathes inside panels */}
           <div className="relative z-10 py-4">
-            {/* Panel headers — deliberately larger + underlined so they read as
-                section headers with clear hierarchy above the rows. Tracking is
-                tightened vs the old captions so the bigger text still fits the
-                narrow panels at ~380px (wraps cleanly at word boundaries). */}
-            <div className={`${grid} mb-5`}>
-              <p className="text-right pr-2.5 sm:pr-3.5 pl-3 text-[13px] sm:text-[15px] font-bold uppercase tracking-[0.06em] leading-tight text-zinc-400 underline decoration-[1.5px] decoration-zinc-300 underline-offset-[6px]">{content.currentLabel}</p>
+            {/* Panel headers — compact caption size, NO text underline (the
+                underline wrapped badly across two lines). Instead a divider line
+                under each header (border-b: grey left / coral right) cleanly
+                splits the header off from its rows within each panel.
+                leading-tight lets the longer right header wrap gracefully at
+                ~380px without breaking the divider. */}
+            <div className={`${grid} mb-4`}>
+              <p className="text-right pr-2.5 sm:pr-3.5 pl-3 pb-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-zinc-400 border-b border-zinc-300">{content.currentLabel}</p>
               <span />
-              <p className="text-left pl-2.5 sm:pl-3.5 pr-3 text-[13px] sm:text-[15px] font-bold uppercase tracking-[0.06em] leading-tight text-acuity-primary underline decoration-[1.5px] decoration-acuity-primary/50 underline-offset-[6px]">{content.futureLabel}</p>
+              <p className="text-left pl-2.5 sm:pl-3.5 pr-3 pb-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-acuity-primary border-b border-acuity-primary/30">{content.futureLabel}</p>
             </div>
 
             {/* Transformation rows */}
