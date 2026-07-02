@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** 2cd0d8c3
 
 ### In plain English (for Keenan)
 On the Pattern Result screen (screen 14), the quote beneath the pattern name (e.g. the "mask" funnel's "You've gotten so good at 'I'm fine' that no one sees the weight you're actually carrying.") was left-aligned inside its box. It's now centered inside the box. The box itself stays where it is, and everything else on the screen — the "YOUR PATTERN" label, the pattern name, and the snapshot text below — is unchanged. Applies to all five funnels.
