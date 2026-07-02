@@ -6,10 +6,27 @@ import {
   TestimonialCarousel,
   STATIC_CAROUSEL_TESTIMONIALS,
 } from "@/components/testimonial-carousel";
+import { trackOnboardingEvent } from "@/lib/track-onboarding";
+import { useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
 export function SuccessPageClient() {
+  // Shared App Store CTA webview handling (see components/app-store-cta.tsx):
+  // in IG/FB webviews, drop target="_blank", auto-copy the link, show breakout
+  // instructions, and track taps + failed opens. The post-signup session cookie
+  // lets the events API attribute these to the user server-side.
+  const { browserEnv, copied, copyFailed, anchorProps } = useAppStoreCta({
+    track: (event, props) => trackOnboardingEvent(event, props),
+    events: {
+      webviewDetected: "onboarding_inapp_browser_detected",
+      autocopySuccess: "onboarding_autocopy_success",
+      autocopyFailed: "onboarding_autocopy_failed",
+      tap: "onboarding_app_store_clicked",
+      returned: "onboarding_app_store_returned",
+    },
+  });
+
   return (
     <div className="min-h-screen bg-acuity-bg text-[#F5EDE4]">
       {/* ── Hero section ── */}
@@ -34,15 +51,18 @@ export function SuccessPageClient() {
           {/* ── App Store hero button — pulsing purple ── */}
           <div className="mt-8">
             <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...anchorProps}
               className="group relative inline-flex items-center gap-3 rounded-full bg-acuity-primary px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-acuity-primary-lo hover:shadow-xl hover:shadow-acuity-glow-soft hover:-translate-y-0.5 active:scale-95"
             >
               <span className="absolute inset-0 rounded-full bg-acuity-primary/30 animate-pulse-ring" />
               <AppleLogo />
               Download on the App Store
             </a>
+            {browserEnv.isWebView && (
+              <div className="mx-auto mt-6 max-w-sm">
+                <WebviewBreakout browserEnv={browserEnv} copied={copied} copyFailed={copyFailed} />
+              </div>
+            )}
           </div>
 
           {/* QR Code — desktop only */}

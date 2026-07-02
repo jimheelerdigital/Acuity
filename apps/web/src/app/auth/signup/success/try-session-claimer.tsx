@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
+import { trackOnboardingEvent } from "@/lib/track-onboarding";
+import { useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
 
 /**
  * Client component that runs when a user arrives at /auth/signup/success
@@ -117,6 +119,21 @@ function DownloadCTAScreen() {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [counter, setCounter] = useState(0);
 
+  // Shared App Store CTA webview handling (see components/app-store-cta.tsx):
+  // in IG/FB webviews, drop target="_blank", auto-copy the link, show breakout
+  // instructions, and track taps + failed opens. The post-signup session cookie
+  // lets the events API attribute these to the user server-side.
+  const { browserEnv, copied, copyFailed, anchorProps } = useAppStoreCta({
+    track: (event, props) => trackOnboardingEvent(event, props),
+    events: {
+      webviewDetected: "onboarding_inapp_browser_detected",
+      autocopySuccess: "onboarding_autocopy_success",
+      autocopyFailed: "onboarding_autocopy_failed",
+      tap: "onboarding_app_store_clicked",
+      returned: "onboarding_app_store_returned",
+    },
+  });
+
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
@@ -170,9 +187,7 @@ function DownloadCTAScreen() {
 
         <div className={`text-center mb-5 transition-all duration-700 ${vis(2)}`}>
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            {...anchorProps}
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             style={{ background: "var(--acuity-grad-primary)", boxShadow: "0 8px 32px rgba(124,92,252,0.3), 0 2px 8px rgba(124,58,237,0.15)" }}
           >
@@ -183,6 +198,11 @@ function DownloadCTAScreen() {
               Download on the App Store
             </span>
           </a>
+          {browserEnv.isWebView && (
+            <div className="mx-auto mt-6 max-w-sm">
+              <WebviewBreakout browserEnv={browserEnv} copied={copied} copyFailed={copyFailed} />
+            </div>
+          )}
         </div>
 
         <div className={`text-center mb-10 transition-all duration-700 ${vis(2)}`}>

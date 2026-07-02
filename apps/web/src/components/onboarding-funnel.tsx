@@ -12,6 +12,7 @@ import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/tr
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
 import { fireFbq, waitForFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
+import { detectBrowserEnv, useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
 import {
   type Branch,
   type Question,
@@ -192,16 +193,9 @@ function useFunnelTracker() {
 }
 
 // ─── WebView Detection ──────────────────────────────────────────────────────
-
-function detectBrowserEnv(): { isWebView: boolean; label: string; ua: string } {
-  if (typeof navigator === "undefined") return { isWebView: false, label: "ssr", ua: "" };
-  const ua = navigator.userAgent;
-  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return { isWebView: true, label: "facebook", ua };
-  if (/Instagram/i.test(ua)) return { isWebView: true, label: "instagram", ua };
-  if (/LinkedInApp/i.test(ua)) return { isWebView: true, label: "linkedin", ua };
-  if (/Twitter|TwitterAndroid/i.test(ua)) return { isWebView: true, label: "twitter", ua };
-  return { isWebView: false, label: "browser", ua };
-}
+// detectBrowserEnv / useAppStoreCta / WebviewBreakout are the shared App Store
+// CTA webview helpers (see components/app-store-cta.tsx) — imported above so the
+// funnel and the post-signup success CTAs share one implementation.
 
 // PII-safe, pipe-delimited environment string for signup/OAuth diagnostics.
 // Mirrors DownloadScreen's diagContext so create-account events can be sliced by
@@ -2496,43 +2490,23 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   const { status: authStatus } = useSession();
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const celebratedRef = useRef(false);
-  const [copied, setCopied] = useState(false);
-  const [copyFailed, setCopyFailed] = useState(false);
-  // Return-to-site tracking: a user who taps the App Store CTA and then comes
-  // back to this tab (page never unloaded) is the clearest "got stuck" signal
-  // we can see — we cannot observe anything after the handoff.
-  const tappedAppStoreRef = useRef(false);
-  const tappedAtRef = useRef<number | null>(null);
-  const returnedFiredRef = useRef(false);
-  const browserEnv = typeof window !== "undefined" ? detectBrowserEnv() : { isWebView: false, label: "ssr", ua: "" };
 
-  // Diagnostic context string for download-step events (PII-safe: UA only, no email/name)
-  const diagContext = typeof window !== "undefined" ? [
-    `webview:${browserEnv.isWebView}`,
-    `label:${browserEnv.label}`,
-    `os:${/iPhone|iPad|iPod/i.test(browserEnv.ua) ? "ios" : /Android/i.test(browserEnv.ua) ? "android" : "other"}`,
-    `standalone:${typeof navigator !== "undefined" && ("standalone" in navigator ? (navigator as Record<string, unknown>).standalone : false)}`,
-    `windowOpen:${typeof window.open === "function"}`,
-  ].join("|") : "ssr";
+  // Shared App Store CTA webview handling: detection, clipboard auto-copy,
+  // target-less handoff, breakout instructions, tap + failed-open tracking.
+  const { browserEnv, copied, copyFailed, diagContext, anchorProps } = useAppStoreCta({
+    track,
+    events: {
+      webviewDetected: "funnel_inapp_browser_detected",
+      autocopySuccess: "funnel_autocopy_success",
+      autocopyFailed: "funnel_autocopy_failed",
+      tap: "funnel_app_store_clicked",
+      returned: "funnel_download_returned",
+    },
+  });
 
   useEffect(() => {
     track("funnel_download_screen_viewed", { value: diagContext });
-    if (browserEnv.isWebView) {
-      track("funnel_inapp_browser_detected", { value: browserEnv.label });
-      // Auto-copy App Store link to clipboard for webview users
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(APP_STORE_URL)
-          .then(() => { setCopied(true); track("funnel_autocopy_success", { value: diagContext }); })
-          .catch((err) => {
-            setCopyFailed(true);
-            track("funnel_autocopy_failed", { value: `${err instanceof Error ? err.message : String(err)}|${diagContext}` });
-          });
-      } else {
-        setCopyFailed(true);
-        track("funnel_autocopy_failed", { value: `no_clipboard_api|${diagContext}` });
-      }
-    }
-  }, [track, browserEnv.isWebView, browserEnv.label, diagContext]);
+  }, [track, diagContext]);
 
   useEffect(() => {
     if (paymentConfirmed && !celebratedRef.current) {
@@ -2550,33 +2524,6 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
     const interval = setInterval(() => setTestimonialIdx((i) => (i + 1) % DOWNLOAD_TESTIMONIALS.length), 4000);
     return () => clearInterval(interval);
   }, []);
-
-  // Fire `funnel_download_returned` when the user comes back to this screen
-  // after tapping the App Store CTA. We CANNOT track anything post-handoff, so a
-  // return (visibilitychange/focus, page never unloaded) is the best proxy for
-  // "tapped but didn't complete". appFirstOpenedAt (server-side) stays the source
-  // of truth for a real successful open. Fires at most once per screen mount.
-  useEffect(() => {
-    const onReturn = () => {
-      if (document.visibilityState !== "visible") return;
-      if (!tappedAppStoreRef.current || returnedFiredRef.current) return;
-      returnedFiredRef.current = true;
-      const awayMs = tappedAtRef.current ? Date.now() - tappedAtRef.current : 0;
-      track("funnel_download_returned", { value: `awayMs:${awayMs}|${diagContext}` });
-    };
-    document.addEventListener("visibilitychange", onReturn);
-    window.addEventListener("focus", onReturn);
-    return () => {
-      document.removeEventListener("visibilitychange", onReturn);
-      window.removeEventListener("focus", onReturn);
-    };
-  }, [track, diagContext]);
-
-  const handleAppStoreTap = () => {
-    tappedAppStoreRef.current = true;
-    tappedAtRef.current = Date.now();
-    track("funnel_app_store_clicked", { value: diagContext });
-  };
 
   const planPrice = selectedPlan === "yearly" ? formatDollars(ANNUAL_PRICE_CENTS) + "/yr" : formatDollars(MONTHLY_PRICE_CENTS) + "/mo";
 
@@ -2596,56 +2543,17 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </>
         )}
 
-        {browserEnv.isWebView ? (
-          <>
-            {/* ── Webview path: native anchor + prominent breakout instructions ── */}
-            <a
-              href={APP_STORE_URL}
-              onClick={handleAppStoreTap}
-              className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-              style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
-              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
-              <span className="relative">Download on the App Store</span>
-            </a>
-
-            {/* ── Prominent breakout instruction — this is the reliable path ── */}
-            <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-left">
-              <p className="text-[13px] font-semibold text-zinc-800 mb-2">
-                If the button above didn&rsquo;t open the App Store:
-              </p>
-              <ol className="text-[13px] text-zinc-600 space-y-1.5 list-decimal list-inside">
-                <li>Tap the <span className="inline-flex items-center font-semibold text-zinc-800">&nbsp;&#8943;&nbsp;</span> or <span className="inline-flex items-center font-semibold text-zinc-800">&nbsp;&#8226;&#8226;&#8226;&nbsp;</span> menu {browserEnv.label === "instagram" ? "at the bottom-right" : "in the top-right corner"}</li>
-                <li>Choose <span className="font-semibold text-zinc-800">&ldquo;Open in {/Android/i.test(browserEnv.ua) ? "Chrome" : "Safari"}&rdquo;</span></li>
-                <li>The App Store will open automatically</li>
-              </ol>
-              <div className="mt-3 pt-3 border-t border-zinc-200">
-                {copied ? (
-                  <p className="text-[12px] text-green-600 font-medium">&#10003; Link copied to clipboard &mdash; paste in {/Android/i.test(browserEnv.ua) ? "Chrome" : "Safari"} if needed</p>
-                ) : copyFailed ? (
-                  <div>
-                    <p className="text-[12px] text-zinc-500 mb-1">Long-press to copy this link:</p>
-                    <p className="text-[12px] text-acuity-primary font-mono break-all select-all">{APP_STORE_URL}</p>
-                  </div>
-                ) : (
-                  <p className="text-[12px] text-zinc-400">Copying link&hellip;</p>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* ── Regular browser path: unchanged ── */}
-            <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleAppStoreTap}
-              className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-              style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
-              <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
-              <span className="relative">Download on the App Store</span>
-            </a>
-          </>
+        {/* App Store CTA — anchorProps drops target="_blank" inside a webview
+            so iOS can hand off; the breakout card is the reliable fallback. */}
+        <a
+          {...anchorProps}
+          className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
+          style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
+          <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
+          <span className="relative">Download on the App Store</span>
+        </a>
+        {browserEnv.isWebView && (
+          <WebviewBreakout browserEnv={browserEnv} copied={copied} copyFailed={copyFailed} />
         )}
 
         <button disabled

@@ -32,6 +32,10 @@ const VALID_NON_FUNNEL_EVENTS = new Set([
   "onboarding_extraction_viewed",
   "onboarding_download_screen_viewed",
   "onboarding_app_store_clicked",
+  "onboarding_app_store_returned",
+  "onboarding_inapp_browser_detected",
+  "onboarding_autocopy_success",
+  "onboarding_autocopy_failed",
   "onboarding_continue_browser_clicked",
   "onboarding_skipped",
   // Try flow

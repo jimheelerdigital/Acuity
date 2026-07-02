@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-07-01] — Harden the 3 post-signup App Store CTAs for IG/FB webviews
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+About 85% of our traffic opens the site inside the Instagram or Facebook in-app browser on iPhone. In those in-app browsers, a normal "Download on the App Store" link often quietly fails — it opens a little tab-inside-the-app or does nothing, so people tap it but never actually reach the App Store, and we couldn't even see it happening. The funnel's final download screen was already fixed for this months ago. This change copies that exact same fix onto the three OTHER "Download on the App Store" buttons that live on the post-signup "You're in" pages. Now, when someone is in the Instagram/Facebook browser, those buttons hand off to the App Store the reliable way, the App Store link is auto-copied to their clipboard as a backup, and they see clear "Tap the ⋯ menu → Open in Safari" instructions. We also added tracking so a tap that never leaves the page is finally measurable — previously two of these three buttons had zero tracking, so failed downloads were completely invisible. URLs were not changed anywhere.
+
+### Technical changes (for Jimmy)
+- **New shared module** `apps/web/src/components/app-store-cta.tsx` — single implementation of the webview App Store handoff, extracted from the funnel `DownloadScreen`. Exports: `APP_STORE_URL`, `detectBrowserEnv()` (moved here as the canonical copy), `useAppStoreCta({ track, events })` hook (webview detection, clipboard auto-copy, `visibilitychange`/`focus` failed-open proxy, tap handler, and `anchorProps` that drops `target="_blank"` in a webview), and the `WebviewBreakout` instruction-card component. Event names are caller-supplied so each surface keeps its own `funnel_*` / `onboarding_*` naming.
+- `apps/web/src/components/onboarding-funnel.tsx` — removed the local `detectBrowserEnv` definition (now imported from the shared module; the two signup/OAuth diag call sites are unchanged) and refactored `DownloadScreen` to consume `useAppStoreCta` + `WebviewBreakout` instead of its inline copy. Behaviour and its `funnel_*` events are identical (`funnel_inapp_browser_detected`, `funnel_autocopy_success/failed`, `funnel_app_store_clicked`, `funnel_download_returned`); `funnel_download_screen_viewed` stays inline.
+- `apps/web/src/app/auth/signup/success/first-debrief-flow.tsx` — `CTAScreen` now uses the hook. Kept its existing `onboarding_app_store_clicked` tap event (now fired by the hook), added the failed-open proxy + webview/auto-copy events, and renders `WebviewBreakout` in a webview.
+- `apps/web/src/app/auth/signup/success/try-session-claimer.tsx` — `DownloadCTAScreen` now uses the hook. Previously had zero tracking; now fires tap + failed-open + webview/auto-copy events and shows the breakout card.
+- `apps/web/src/app/auth/signup/success/success-client.tsx` — `SuccessPageClient` hero CTA now uses the hook. Previously zero tracking; same additions as above.
+- `apps/web/src/app/api/onboarding-events/route.ts` — added four new `onboarding_*` events to `VALID_NON_FUNNEL_EVENTS` (`onboarding_app_store_returned`, `onboarding_inapp_browser_detected`, `onboarding_autocopy_success`, `onboarding_autocopy_failed`); without this the events API would 400-reject them.
+- All App Store URLs unchanged (`apps.apple.com/us/app/acuity-daily/id6762633410`). `/open` (server redirect) and the funnel `DownloadScreen`'s external behaviour untouched.
+
+### Manual steps needed
+- [ ] **Jimmy — review before merge (auth-adjacent surfaces).** These three files render on the post-signup `/auth/signup/success` route. This change only alters link/click behaviour and adds analytics events; **no auth or session logic was touched.** Flagging per protocol because they sit next to auth.
+- [ ] Push to main (Keenan — held per request until "push it").
+
+### Notes
+- **One implementation, not four copies.** All four App Store CTAs (funnel `DownloadScreen` + the 3 success CTAs) now route through the same `useAppStoreCta`/`WebviewBreakout`. The only per-surface differences are (a) the tracking event names (`funnel_*` vs `onboarding_*`, caller-supplied) and (b) the button's own visual styling, which stays with each caller — the `<a>` just spreads `anchorProps`.
+- **Identity:** the events API (`/api/onboarding-events`) resolves the user server-side via `getAnySessionUserId`, so the two previously-untracked success CTAs don't need a `userId` prop threaded in — the post-signup session cookie attributes the events. `first-debrief-flow` still passes `userId` explicitly (belt-and-suspenders for cookie-propagation lag), matching its prior behaviour.
+- **`success-client.tsx` appears to be legacy / not currently mounted.** `auth/signup/success/page.tsx` renders `FirstDebriefFlow` or `TrySessionClaimer`, not `SuccessPageClient` (the PROGRESS.md reference to it being rendered is a superseded entry). Hardened it anyway per the explicit request; if it's confirmed dead it could later be deleted, but that's out of scope here.
+- The breakout card is a light `bg-zinc-50` callout; it reads fine on both the light success/CTA screens and the dark `success-client` hero.
+- Typecheck: no new errors in any of the five changed files or the new module (remaining `tsc` errors are all pre-existing, in unrelated files — mri/insights, adlab/meta, auto-blog, landing, etc.).
+
+---
+
 ## [2026-07-01] — Pattern Result: center the quote text
 
 **Requested by:** Keenan

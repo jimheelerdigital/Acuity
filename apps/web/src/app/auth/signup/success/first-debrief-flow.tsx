@@ -16,6 +16,7 @@ import {
   type PolledEntry,
 } from "@/hooks/use-entry-polling";
 import { trackOnboardingEvent } from "@/lib/track-onboarding";
+import { useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -1325,6 +1326,20 @@ function CTAScreen({ userId }: { userId: string | null }) {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [counter, setCounter] = useState(0);
 
+  // Shared App Store CTA webview handling (see components/app-store-cta.tsx):
+  // in IG/FB webviews, drop target="_blank", auto-copy the link, show breakout
+  // instructions, and track taps + failed opens.
+  const { browserEnv, copied, copyFailed, anchorProps } = useAppStoreCta({
+    track: (event, props) => trackOnboardingEvent(event, { userId, ...props }),
+    events: {
+      webviewDetected: "onboarding_inapp_browser_detected",
+      autocopySuccess: "onboarding_autocopy_success",
+      autocopyFailed: "onboarding_autocopy_failed",
+      tap: "onboarding_app_store_clicked",
+      returned: "onboarding_app_store_returned",
+    },
+  });
+
   // Scroll to top on mount + track
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -1393,10 +1408,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
         {/* App Store button with shining ring */}
         <div className={`text-center mb-5 transition-all duration-700 ${vis(2)}`}>
           <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackOnboardingEvent("onboarding_app_store_clicked", { userId })}
+            {...anchorProps}
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             style={{
               background: "var(--acuity-grad-primary)",
@@ -1423,6 +1435,11 @@ function CTAScreen({ userId }: { userId: string | null }) {
               Download on the App Store
             </span>
           </a>
+          {browserEnv.isWebView && (
+            <div className="mx-auto mt-6 max-w-sm">
+              <WebviewBreakout browserEnv={browserEnv} copied={copied} copyFailed={copyFailed} />
+            </div>
+          )}
         </div>
 
         {/* Continue in browser with subtle shining ring */}
