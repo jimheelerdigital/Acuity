@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** e7e21174
 
 ### In plain English (for Keenan)
 On the "Here's the shift" screen (screen 9), the two little labels over the panels — "YOU RIGHT NOW" on the grey side and "YOU, A FEW WEEKS IN" on the coral side — were smaller than the rows underneath them, so they didn't read as proper headers. They're now noticeably bigger and underlined, so each side clearly has a title sitting above its rows. Left header stays muted grey to match its dim panel; right header stays coral to match the warm one. Everything else (panels, arrows, four rows, the row-by-row reveal, footer, button) is unchanged. Applies to all five funnels and still fits small phones.
