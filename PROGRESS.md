@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** 5aa23b83
 
 ### In plain English (for Keenan)
 Whenever someone pays for Pro, we already send an internal email to keenan@ and jim@heelerdigital.com. Until now that email just said "New payment" — it didn't tell us HOW they paid, so we couldn't tell an existing user upgrading from inside the app apart from someone converting on the sign-up funnel. Now every one of those alerts clearly labels the path right in the subject line: "In-app Pro upgrade", "Funnel conversion", or "Mobile IAP upgrade" — plus the same label inside the email — so at a glance we know which flow made the money. We also wired up the same alert for future mobile (Apple/Google) in-app purchases, so once we turn the mobile store purchases on, a real mobile upgrade will notify us too instead of being silent. This is alerts-only — nothing about charging, trials, or who gets access changed.
@@ -39,7 +39,7 @@ Whenever someone pays for Pro, we already send an internal email to keenan@ and 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** 6a16c463
 
 ### In plain English (for Keenan)
 About 85% of our traffic opens the site inside the Instagram or Facebook in-app browser on iPhone. In those in-app browsers, a normal "Download on the App Store" link often quietly fails — it opens a little tab-inside-the-app or does nothing, so people tap it but never actually reach the App Store, and we couldn't even see it happening. The funnel's final download screen was already fixed for this months ago. This change copies that exact same fix onto the three OTHER "Download on the App Store" buttons that live on the post-signup "You're in" pages. Now, when someone is in the Instagram/Facebook browser, those buttons hand off to the App Store the reliable way, the App Store link is auto-copied to their clipboard as a backup, and they see clear "Tap the ⋯ menu → Open in Safari" instructions. We also added tracking so a tap that never leaves the page is finally measurable — previously two of these three buttons had zero tracking, so failed downloads were completely invisible. URLs were not changed anywhere.
