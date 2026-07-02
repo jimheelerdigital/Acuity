@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** 6aec6bfb
 
 ### In plain English (for Keenan)
 Two changes to the "Here's the shift" screen (screen 9), on all five funnels. First, every row of text in both boxes is now black — the left "you right now" items were grey and the right "you a few weeks in" items were coral; now they're all black. Second, the short framing line that sat under each box header has moved down into the rows: it's now the first row of the comparison, with its own left → arrow → right pair just like the other rows (e.g. the "mask" funnel now leads with "Holding it together for everyone" → "Honest, and less alone"). The headers "YOU RIGHT NOW" / "YOU, A FEW WEEKS IN" now stand alone with nothing beneath them. Dividers, arrows, centered text, the paced reveal, footer and button are unchanged.
