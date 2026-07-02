@@ -1181,7 +1181,9 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
   const content = assembleCurrentFuture(branch, answers);
-  const rows = TRANSFORMATION_ROWS[branch];
+  // The branch framing pair (formerly the header subtext) now leads the rows as
+  // its own paired left→arrow→right row, consistent with the transformation rows.
+  const rows: [string, string][] = [[content.currentSub, content.futureSub], ...TRANSFORMATION_ROWS[branch]];
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   // Row-by-row reveal: activeRow is the highest row index shown (-1 = none);
@@ -1241,16 +1243,14 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                 leading-tight lets the longer right header wrap gracefully at
                 ~380px without breaking the divider. */}
             <div className={`${grid} mb-4`}>
-              {/* left: centered header + branch subtext, divider under the block */}
+              {/* left: standalone centered header, divider under it */}
               <div className="px-3 pb-2 border-b border-zinc-300">
                 <p className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-zinc-400">{content.currentLabel}</p>
-                <p className="text-center text-[9px] sm:text-[10px] leading-tight text-zinc-400/90 mt-1">{content.currentSub}</p>
               </div>
               <span />
-              {/* right: centered header + branch subtext, coral divider */}
+              {/* right: standalone centered header, coral divider */}
               <div className="px-3 pb-2 border-b border-acuity-primary/30">
                 <p className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-acuity-primary">{content.futureLabel}</p>
-                <p className="text-center text-[9px] sm:text-[10px] leading-tight text-acuity-primary/90 mt-1">{content.futureSub}</p>
               </div>
             </div>
 
@@ -1260,9 +1260,8 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                 const on = revealed(i);
                 return (
                   <div key={i} className={`${grid} items-center`}>
-                    {/* left — drab "you now" */}
-                    <p className={`text-center px-2.5 sm:px-3 text-[11px] sm:text-[12.5px] leading-snug text-zinc-400 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
-                      style={{ filter: "grayscale(0.5)" }}>
+                    {/* left — "you now" (black) */}
+                    <p className={`text-center px-2.5 sm:px-3 text-[11px] sm:text-[12.5px] leading-snug text-zinc-900 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}>
                       {before}
                     </p>
                     {/* arrow — bridges the gap left → right */}
@@ -1273,8 +1272,8 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                         <path d="M1 6 H20 M15 1 L21 6 L15 11" stroke="var(--acuity-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
-                    {/* right — coral pop "you, a few weeks in" */}
-                    <p className={`text-center px-2.5 sm:px-3 text-[11.5px] sm:text-[13px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
+                    {/* right — "you, a few weeks in" pop (black) */}
+                    <p className={`text-center px-2.5 sm:px-3 text-[11.5px] sm:text-[13px] font-semibold leading-snug text-zinc-900 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
                       style={{ transitionDelay: "720ms", transformOrigin: "center" }}>
                       {after}
                     </p>

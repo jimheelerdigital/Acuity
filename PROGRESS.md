@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-01] — Current-vs-Future: black rows + subtext moved into a row
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+Two changes to the "Here's the shift" screen (screen 9), on all five funnels. First, every row of text in both boxes is now black — the left "you right now" items were grey and the right "you a few weeks in" items were coral; now they're all black. Second, the short framing line that sat under each box header has moved down into the rows: it's now the first row of the comparison, with its own left → arrow → right pair just like the other rows (e.g. the "mask" funnel now leads with "Holding it together for everyone" → "Honest, and less alone"). The headers "YOU RIGHT NOW" / "YOU, A FEW WEEKS IN" now stand alone with nothing beneath them. Dividers, arrows, centered text, the paced reveal, footer and button are unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `CurrentFutureScreen`: `rows` now prepends the branch framing pair `[content.currentSub, content.futureSub]` to `TRANSFORMATION_ROWS[branch]`, so it renders as the first paired row and is picked up automatically by the existing reveal stagger / `done` / skip logic (all keyed on `rows.length`, now 5). Removed the two subtext `<p>` lines from the header cells (headers stand alone). Row text recolored to `text-zinc-900` on both sides (was `text-zinc-400` left / `text-acuity-primary` right); dropped the left `grayscale(0.5)` filter (no longer needed). Right keeps `font-semibold`; arrows keep coral stroke.
+- No config changes — `PANEL_SUBTEXT` / `currentSub` / `futureSub` from the prior entry are reused, just surfaced in the rows instead of the header.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Moved pair placed as the FIRST row for all 5 branches (consistent). Per-branch pairs: overload "Holding it all, alone" → "Lighter, clear, in control"; patterns "Stuck in the same loop" → "Free of the cycle"; rumination "A mind that won't quiet" → "Rested and clear"; stuck "Busy, but going nowhere" → "Moving forward, on purpose"; mask "Holding it together for everyone" → "Honest, and less alone".
+- Because the pair is prepended to `rows`, everything downstream (5-step stagger, `done` gate, tap-to-skip) adjusts automatically — no timing constants needed changing. The reveal now runs 5 rows instead of 4.
+- Grey/coral is now carried only by the panel backgrounds + dividers (unchanged), not the row text — the before/after contrast still reads via the panels while the words themselves are uniformly black. Typecheck clean (no new errors); 18/18 funnel-config tests pass; tracking untouched; mobile ~380px unaffected (same centered layout, one extra row).
+
+---
+
 ## [2026-07-01] — Current-vs-Future: centered text, smaller rows, header subtext
 
 **Requested by:** Keenan
