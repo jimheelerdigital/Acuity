@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-07-01] — Current-vs-Future row reveal slowed 50%
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+On the "Here's the shift" screen (screen 9), the rows reveal one at a time — the grey "before" appears, an arrow sweeps across, then the coral "after" pops in. That whole reveal now plays at half speed, so it feels more deliberate and paced instead of rushing by. Nothing else about it changed — same look, same order, same arrows — just slower. If someone has reduced-motion turned on, they still see everything instantly (no animation), and the button still appears right after the last row lands. Applies to all five funnels.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `CurrentFutureScreen` reveal timing doubled (2x = 50% slower): JS stagger `first` 300→600ms, `rowMs` 760→1520ms; per-row CSS transitions — left `duration-500`→`duration-1000`, arrow `duration-300`→`duration-[600ms]` with `transitionDelay` 170→340ms, right `duration-500`→`duration-1000` with `transitionDelay` 360→720ms.
+- No change to reveal order/style, `prefers-reduced-motion` handling (still static/all-visible), the tap-to-skip, or the footer/CTA fade (still gated on `done`, no extra CTA delay). Single shared component covers all 5 branches.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Every timing value was multiplied by exactly 2, so the intra-row sequencing (left → arrow → right overlap ratio) is preserved — it's the same animation at half speed, not a re-choreograph.
+- `done` fires at `first + rows.length * rowMs`, which naturally shifts later with the slower stagger; the CTA appears right after the final row with no separate delay added, per the ask. Typecheck clean (no new errors); 18/18 funnel-config tests pass; tracking untouched.
+
+---
+
 ## [2026-07-01] — Current-vs-Future headers: revert underline, add panel dividers
 
 **Requested by:** Keenan

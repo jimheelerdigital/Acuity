@@ -1193,8 +1193,11 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
   useEffect(() => {
     if (prefersReduced) return;
     const t: ReturnType<typeof setTimeout>[] = [];
-    const first = 300;
-    const rowMs = 760;
+    // Reveal timing slowed 50% (2x) for a more deliberate, paced feel — was
+    // first=300 / rowMs=760. The per-row CSS durations + transition-delays
+    // below are doubled to match so the whole reveal plays at half speed.
+    const first = 600;
+    const rowMs = 1520;
     for (let i = 0; i < rows.length; i++) {
       t.push(setTimeout(() => setActiveRow(i), first + i * rowMs));
     }
@@ -1250,21 +1253,21 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                 return (
                   <div key={i} className={`${grid} items-center`}>
                     {/* left — drab "you now" */}
-                    <p className={`text-right pr-2.5 sm:pr-3.5 pl-3 text-[12.5px] sm:text-sm leading-snug text-zinc-400 break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
+                    <p className={`text-right pr-2.5 sm:pr-3.5 pl-3 text-[12.5px] sm:text-sm leading-snug text-zinc-400 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
                       style={{ filter: "grayscale(0.5)" }}>
                       {before}
                     </p>
                     {/* arrow — bridges the gap left → right */}
                     <span className="flex items-center justify-center" aria-hidden>
                       <svg width="24" height="12" viewBox="0 0 24 12" fill="none"
-                        className="transition-all duration-300 ease-out"
-                        style={{ opacity: on ? 1 : 0, transform: on ? "translateX(0)" : "translateX(-6px)", transitionDelay: "170ms" }}>
+                        className="transition-all duration-[600ms] ease-out"
+                        style={{ opacity: on ? 1 : 0, transform: on ? "translateX(0)" : "translateX(-6px)", transitionDelay: "340ms" }}>
                         <path d="M1 6 H20 M15 1 L21 6 L15 11" stroke="var(--acuity-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
                     {/* right — coral pop "you, a few weeks in" */}
-                    <p className={`text-left pl-2.5 sm:pl-3.5 pr-3 text-[13px] sm:text-[15px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-500 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
-                      style={{ transitionDelay: "360ms", transformOrigin: "left center" }}>
+                    <p className={`text-left pl-2.5 sm:pl-3.5 pr-3 text-[13px] sm:text-[15px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
+                      style={{ transitionDelay: "720ms", transformOrigin: "left center" }}>
                       {after}
                     </p>
                   </div>
