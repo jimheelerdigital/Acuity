@@ -687,9 +687,23 @@ export interface CurrentFutureContent {
   footer: string;
   currentLabel: string;
   futureLabel: string;
+  /** Short framing subtitle under each panel header (grey left / coral right). */
+  currentSub: string;
+  futureSub: string;
   current: string[];
   future: string[];
 }
+
+// Short framing line shown under each panel header on screen 9 — branch-specific
+// so the "before/after" tone is set before the rows animate in. Left = pain
+// framing (grey), right = relief framing (coral).
+const PANEL_SUBTEXT: Record<Branch, { current: string; future: string }> = {
+  overload: { current: "Holding it all, alone", future: "Lighter, clear, in control" },
+  patterns: { current: "Stuck in the same loop", future: "Free of the cycle" },
+  rumination: { current: "A mind that won\u2019t quiet", future: "Rested and clear" },
+  stuck: { current: "Busy, but going nowhere", future: "Moving forward, on purpose" },
+  mask: { current: "Holding it together for everyone", future: "Honest, and less alone" },
+};
 
 interface CurrentFutureBank {
   header: string;
@@ -892,6 +906,8 @@ export function assembleCurrentFuture(
     footer: bank.footer,
     currentLabel: bank.currentLabel ?? "You right now",
     futureLabel: bank.futureLabel ?? "You, a few weeks in",
+    currentSub: PANEL_SUBTEXT[branch].current,
+    futureSub: PANEL_SUBTEXT[branch].future,
     current,
     future,
   };

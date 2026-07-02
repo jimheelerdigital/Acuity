@@ -1241,9 +1241,17 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                 leading-tight lets the longer right header wrap gracefully at
                 ~380px without breaking the divider. */}
             <div className={`${grid} mb-4`}>
-              <p className="text-right pr-2.5 sm:pr-3.5 pl-3 pb-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-zinc-400 border-b border-zinc-300">{content.currentLabel}</p>
+              {/* left: centered header + branch subtext, divider under the block */}
+              <div className="px-3 pb-2 border-b border-zinc-300">
+                <p className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-zinc-400">{content.currentLabel}</p>
+                <p className="text-center text-[9px] sm:text-[10px] leading-tight text-zinc-400/90 mt-1">{content.currentSub}</p>
+              </div>
               <span />
-              <p className="text-left pl-2.5 sm:pl-3.5 pr-3 pb-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-acuity-primary border-b border-acuity-primary/30">{content.futureLabel}</p>
+              {/* right: centered header + branch subtext, coral divider */}
+              <div className="px-3 pb-2 border-b border-acuity-primary/30">
+                <p className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-acuity-primary">{content.futureLabel}</p>
+                <p className="text-center text-[9px] sm:text-[10px] leading-tight text-acuity-primary/90 mt-1">{content.futureSub}</p>
+              </div>
             </div>
 
             {/* Transformation rows */}
@@ -1253,7 +1261,7 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                 return (
                   <div key={i} className={`${grid} items-center`}>
                     {/* left — drab "you now" */}
-                    <p className={`text-right pr-2.5 sm:pr-3.5 pl-3 text-[12.5px] sm:text-sm leading-snug text-zinc-400 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
+                    <p className={`text-center px-2.5 sm:px-3 text-[11px] sm:text-[12.5px] leading-snug text-zinc-400 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}
                       style={{ filter: "grayscale(0.5)" }}>
                       {before}
                     </p>
@@ -1266,8 +1274,8 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                       </svg>
                     </span>
                     {/* right — coral pop "you, a few weeks in" */}
-                    <p className={`text-left pl-2.5 sm:pl-3.5 pr-3 text-[13px] sm:text-[15px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
-                      style={{ transitionDelay: "720ms", transformOrigin: "left center" }}>
+                    <p className={`text-center px-2.5 sm:px-3 text-[11.5px] sm:text-[13px] font-semibold leading-snug text-acuity-primary break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
+                      style={{ transitionDelay: "720ms", transformOrigin: "center" }}>
                       {after}
                     </p>
                   </div>

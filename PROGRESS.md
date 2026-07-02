@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-07-01] — Current-vs-Future: centered text, smaller rows, header subtext
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+Three tweaks to the "Here's the shift" screen (screen 9), on all five funnels. First, the text inside both boxes is now centered instead of hugging the inner edges. Second, the row text is a step smaller so it feels lighter and fits more cleanly. Third, each box header now has a short framing line beneath it — under "YOU RIGHT NOW" and "YOU, A FEW WEEKS IN" — written specifically for each funnel (e.g. the "mask" funnel reads "Holding it together for everyone" on the left and "Honest, and less alone" on the right). Left line stays muted grey, right line stays coral. The dividers, arrows, four rows, the paced reveal, footer and button are all unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts` — added `currentSub`/`futureSub` to `CurrentFutureContent`; new `PANEL_SUBTEXT: Record<Branch, {current, future}>` map with the five branch-specific lines; `assembleCurrentFuture` now returns those two fields. (Used a standalone map rather than editing all five `CURRENT_FUTURE` bank objects.)
+- `apps/web/src/components/onboarding-funnel.tsx` — `CurrentFutureScreen`: header cells wrapped in a `div` (centered `text-center` header + new subtext `<p>`, `border-b` divider moved to the wrapper so it sits under header+subtext); subtext styled `text-[9px] sm:text-[10px]` tone-matched (`text-zinc-400/90` left, `text-acuity-primary/90` right). Row text centered (`text-right`/`text-left` → `text-center`, symmetric `px-2.5 sm:px-3`) and reduced a step (left `text-[12.5px] sm:text-sm` → `text-[11px] sm:text-[12.5px]`, right `text-[13px] sm:text-[15px]` → `text-[11.5px] sm:text-[13px]`). Right pop `transformOrigin` `left center` → `center` so the scale grows from center under the new centering.
+- Single shared component + config covers all 5 branches.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- Subtext copy verbatim per branch — overload: "Holding it all, alone" / "Lighter, clear, in control"; patterns: "Stuck in the same loop" / "Free of the cycle"; rumination: "A mind that won't quiet" / "Rested and clear"; stuck: "Busy, but going nowhere" / "Moving forward, on purpose"; mask: "Holding it together for everyone" / "Honest, and less alone".
+- Reveal timing/behavior, dividers, arrows, footer/CTA untouched — only alignment, row font size, and the added subtext changed. The one animation-adjacent change (`transformOrigin` → center) only re-anchors the existing 0.95→1 scale so it reads correctly with centered text; speed/sequence unchanged.
+- Mobile ~380px: panel ≈131px text width after `px-3`; smaller rows fit more comfortably than before, `leading-tight` keeps the longest subtext ("Holding it together for everyone") tidy across its wrap. Typecheck clean (no new errors); 18/18 funnel-config tests pass; tracking untouched.
+
+---
+
 ## [2026-07-01] — Current-vs-Future row reveal slowed 50%
 
 **Requested by:** Keenan
