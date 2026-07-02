@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** a08b549d
 
 ### In plain English (for Keenan)
 The previous change (making the "YOU RIGHT NOW" / "YOU, A FEW WEEKS IN" headers bigger and underlined) broke on screen 9 — the right header wrapped to two lines and its underline split across both lines, which looked broken. This reverts that: the headers go back to their prior compact size with no underline on the text. Instead, each panel now has a clean divider line running under its header — grey on the left panel, coral on the right — so the header still clearly "splits off" from the rows below it, without the messy underline. The longer right header now wraps gracefully and the divider stays intact. Applies to all five funnels and fits small phones.
