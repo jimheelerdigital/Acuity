@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-07-01] — V6 funnel dashboard view (post-rebuild stages)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a81e66e2
+
+### In plain English (for Keenan)
+The admin dashboard's Conversion Funnel now has a new "V6 — post-rebuild" view that matches the funnel as it actually is today, after this week's rebuild. The old V5 view was still showing stages that no longer exist (the Time-Math screen, Q7/Q8/Q9, and the two "Gap" screens) and was mislabeling Q6, so its drop-off numbers were meaningless for the current funnel. V6 lists the real 21 steps in the order a user hits them — Entry, Q2, Q3, Q4, Q5 (duration), Q6 (cost), Pain/Mirror, Relief Flip, Current-vs-Future, Mechanism, Value, Commit, Processing, Pattern Result, Timeline, Paywall, Create Account, Account Created, Trial Continued, Download — each with its count, its click-through from the previous step, and its share of everyone who entered. Entry counts a real first tap, not just the page loading, so the top number isn't inflated. The old V5 and V3 views are still there for looking back at historical data; V6 is now the default.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — bumped the funnel's emitted `flowVersion` from `"v5"` to `"v6"` (the single `trackOnboardingEvent` wrapper in `useFunnelTracker`). Post-rebuild sessions now tag cleanly as v6; pre-rebuild v5 data is untouched and stays under the V5 view.
+- `apps/web/src/app/api/admin/metrics/route.ts` — added `FUNNEL_STEPS_V6` (21 stages, keys chosen to preserve existing `stepReach` references: `commit_completed`, `account_created`, `trial_continued`, `download`). Key corrections vs V5: Q6 now maps to `funnel_branch_q6_viewed` (was `funnel_shared_q6_viewed`); cut stages removed (`timemath`, `shared_q7`, `shared_q8`, `shared_q9`, `gap2`, `gap3`); added `relief_flip`→`funnel_relief_flip_viewed` and `current_future`→`funnel_current_future_viewed`. Extended the `flow` query-param type union (route handler line ~152, default now `"v6"`), the `getFunnelAnalytics` `flowVersion` param union/default, the `FUNNEL_STEPS` selector, and `flowVersionWhere` (adds `{ flowVersion: "v6" }`). Paid/signup detection: v6 falls into the existing else branch (same `funnel_payment_completed || funnel_savings_locked_in` / `funnel_signup_completed || funnel_account_created` logic as v5) — no change needed.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx` — added `"v6"` to the `flowVersion` state union (default `"v6"`) and to the selector button list; button renders as "V6 — post-rebuild" with a tooltip. V5/V4/V3/V2/V1/All buttons unchanged.
+
+### Manual steps needed
+- [ ] Push to main (Keenan — held per request until "push it")
+
+### Notes
+- **No stages are missing a backing event.** All 21 V6 steps fire a real event in `onboarding-funnel.tsx` (verified: Relief Flip → `funnel_relief_flip_viewed` and Current-vs-Future → `funnel_current_future_viewed` both exist and fire — they were the risk items, and they're fine). Entry uses `funnel_entry_selected` (real first tap), not the page-load `funnel_entry_viewed`.
+- **flowVersion decision:** chose to bump the funnel tag to `"v6"` rather than keep reading `"v5"` data. Reason: the funnel was structurally rebuilt this session (new stages, cut stages), so a fresh tag cleanly separates post-rebuild data and prevents old v5 rows (with dead stages) from contaminating V6 metrics. Trade-off: V6 starts collecting from now — until enough post-rebuild sessions accrue it will look sparse, and any sessions captured earlier today under the old "v5" tag stay in the V5 view.
+- **Branch breakdown is a follow-up, not done here.** The existing `branchBreakdown` uses V5-shaped keys (`entryToQ4`/`q4ToMirror`/`mirrorToMechanism`) computed separately; a per-branch (overload/patterns/rumination/stuck/mask) V6 breakdown would need its own work. V6 aggregate click-through is working now, per the ask (get aggregate first, flag branch split as bigger lift).
+- Legacy dashboard sections (Gap 2 Feelings, Gap 3 Ready for Change, Tally Distribution) are conditionally rendered and simply won't show for V6 since no such data is produced — harmless.
+- Typecheck: metrics/route.ts error count identical before/after edits (47 pre-existing implicit-`any`/ambient-`PrismaClient` noise from bare `tsc`, 0 introduced). 18/18 funnel-config tests pass.
+
+---
+
 ## [2026-07-01] — Paywall polish: dropped subhead + cleaner social proof
 
 **Requested by:** Keenan
