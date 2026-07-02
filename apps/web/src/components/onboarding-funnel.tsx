@@ -1231,11 +1231,14 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
 
           {/* Foreground — labels + rows, padded so text breathes inside panels */}
           <div className="relative z-10 py-4">
-            {/* Panel captions */}
-            <div className={`${grid} mb-3`}>
-              <p className="text-right pr-2.5 sm:pr-3.5 pl-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">{content.currentLabel}</p>
+            {/* Panel headers — deliberately larger + underlined so they read as
+                section headers with clear hierarchy above the rows. Tracking is
+                tightened vs the old captions so the bigger text still fits the
+                narrow panels at ~380px (wraps cleanly at word boundaries). */}
+            <div className={`${grid} mb-5`}>
+              <p className="text-right pr-2.5 sm:pr-3.5 pl-3 text-[13px] sm:text-[15px] font-bold uppercase tracking-[0.06em] leading-tight text-zinc-400 underline decoration-[1.5px] decoration-zinc-300 underline-offset-[6px]">{content.currentLabel}</p>
               <span />
-              <p className="text-left pl-2.5 sm:pl-3.5 pr-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-acuity-primary">{content.futureLabel}</p>
+              <p className="text-left pl-2.5 sm:pl-3.5 pr-3 text-[13px] sm:text-[15px] font-bold uppercase tracking-[0.06em] leading-tight text-acuity-primary underline decoration-[1.5px] decoration-acuity-primary/50 underline-offset-[6px]">{content.futureLabel}</p>
             </div>
 
             {/* Transformation rows */}

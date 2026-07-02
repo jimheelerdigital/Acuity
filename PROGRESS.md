@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-01] — Current-vs-Future panel headers: bigger + underlined
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+On the "Here's the shift" screen (screen 9), the two little labels over the panels — "YOU RIGHT NOW" on the grey side and "YOU, A FEW WEEKS IN" on the coral side — were smaller than the rows underneath them, so they didn't read as proper headers. They're now noticeably bigger and underlined, so each side clearly has a title sitting above its rows. Left header stays muted grey to match its dim panel; right header stays coral to match the warm one. Everything else (panels, arrows, four rows, the row-by-row reveal, footer, button) is unchanged. Applies to all five funnels and still fits small phones.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `CurrentFutureScreen` panel-caption block: bumped both headers from `text-[10px] sm:text-[11px]` to `text-[13px] sm:text-[15px]` (now larger than the ~12.5–15px row text), added `underline decoration-[1.5px] underline-offset-[6px]` with tone-matched underline color (`decoration-zinc-300` left, `decoration-acuity-primary/50` right), tightened tracking `0.12em → 0.06em` and added `leading-tight` so the bigger uppercase text still wraps cleanly inside the narrow panels at ~380px, and increased the caption→rows gap `mb-3 → mb-5`. Left stays `text-zinc-400`, right stays `text-acuity-primary`.
+- Single shared component renders for every branch (labels default to "You right now"/"You, a few weeks in" for all 5, uppercased via CSS), so the one edit covers all branches.
+
+### Manual steps needed
+- None (pushed to main).
+
+### Notes
+- Headers are intentionally larger than the row text to establish hierarchy (title over rows), reversing the old caption sizing where headers were smaller than their rows.
+- `underline-offset-[6px]` chosen so the underline sits clearly below the text rather than cramped against the descenders; `decoration-[1.5px]` keeps the rule crisp, not heavy.
+- Mobile fit at 380px: `px-5` → ~340px content, `[1fr_30px_1fr]` → ~155px/side panel, minus padding ≈ 133px text. The longer right header ("YOU, A FEW WEEKS IN") wraps to two lines within the panel via `leading-tight` — acceptable header behavior, layout intact. Typecheck clean (no new errors); 18/18 funnel-config tests pass; tracking untouched.
+
+---
+
 ## [2026-07-01] — V6 funnel dashboard view (post-rebuild stages)
 
 **Requested by:** Keenan
