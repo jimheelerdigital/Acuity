@@ -1740,7 +1740,7 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
 
         {/* ── Description: loop line + reframe, directly under the pattern ── */}
         <div className={`mb-6 rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4 transition-all duration-[800ms] ${show(2)}`}>
-          <p className="text-[15px] font-semibold italic text-zinc-700 leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
+          <p className="text-center text-[15px] font-semibold italic text-zinc-700 leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
         </div>
         <div className={`mb-8 transition-all duration-[800ms] ${show(3)}`}>
           <p className="text-[15px] text-zinc-700 leading-relaxed">{labels.bodyCopy}</p>

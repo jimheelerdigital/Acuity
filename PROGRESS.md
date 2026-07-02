@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-07-01] — Pattern Result: center the quote text
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+On the Pattern Result screen (screen 14), the quote beneath the pattern name (e.g. the "mask" funnel's "You've gotten so good at 'I'm fine' that no one sees the weight you're actually carrying.") was left-aligned inside its box. It's now centered inside the box. The box itself stays where it is, and everything else on the screen — the "YOUR PATTERN" label, the pattern name, and the snapshot text below — is unchanged. Applies to all five funnels.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — `PatternResultScreen`: added `text-center` to the `loopLine` quote `<p>` (the italic quote in the `bg-zinc-50` bordered box). Single shared component renders every branch, so the one class covers all 5.
+
+### Manual steps needed
+- None (pushed to main).
+
+### Notes
+- Only the quote block's text alignment changed; the `bodyCopy` snapshot paragraph below it stays left-aligned/unchanged per the request. Typecheck clean (no new errors); 18/18 funnel-config tests pass; tracking untouched; mobile ~380px unaffected (centering only).
+
+---
+
 ## [2026-07-01] — Current-vs-Future: black rows + subtext moved into a row
 
 **Requested by:** Keenan
