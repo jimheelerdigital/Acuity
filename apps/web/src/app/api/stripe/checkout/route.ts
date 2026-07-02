@@ -99,7 +99,15 @@ export async function POST(req: NextRequest) {
       // which we keep for future correlation if anything fails.
       success_url: `${process.env.NEXTAUTH_URL}/account?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/upgrade`,
-      metadata: { userId: session.user.id, interval },
+      // Tag the source so the Stripe webhook's founder notification can
+      // tell an in-app upgrade (existing user via /upgrade) from an
+      // onboarding-funnel conversion. Set on BOTH the session and the
+      // subscription (matching the funnel's create-checkout) so
+      // subscription-scoped events carry it too.
+      subscription_data: {
+        metadata: { userId: session.user.id, interval, source: "in_app_upgrade" },
+      },
+      metadata: { userId: session.user.id, interval, source: "in_app_upgrade" },
     });
   } catch (err) {
     console.error("[stripe/checkout] session create failed:", err);

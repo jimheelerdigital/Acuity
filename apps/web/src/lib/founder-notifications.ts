@@ -108,8 +108,46 @@ export async function notifyFoundersOfSignup(params: {
 }
 
 /**
- * Notify founders when someone completes payment through the onboarding
- * funnel paywall. Same fail-soft pattern as signup notifications.
+ * Map a raw payment `source` tag to a human-readable label + a subject
+ * headline, so every founder payment email says AT A GLANCE which path
+ * paid. Sources in the wild:
+ *   - "in_app_upgrade"    → web /upgrade (existing user, Stripe)
+ *   - "onboarding_funnel" → web-to-app funnel paywall (Stripe, trial)
+ *   - "apple"             → mobile Apple IAP (verify-receipt write)
+ *   - "google_play"       → mobile Google Play IAP (verify-receipt write)
+ *   - anything else       → "Direct" fallback
+ */
+function describePaymentSource(source: string): {
+  label: string;
+  headline: string;
+} {
+  switch (source) {
+    case "in_app_upgrade":
+      return { label: "In-app upgrade", headline: "In-app Pro upgrade" };
+    case "onboarding_funnel":
+      return { label: "Onboarding funnel", headline: "Funnel conversion" };
+    case "apple":
+      return { label: "Mobile IAP (Apple)", headline: "Mobile IAP upgrade" };
+    case "google_play":
+      return {
+        label: "Mobile IAP (Google Play)",
+        headline: "Mobile IAP upgrade",
+      };
+    default:
+      return { label: "Direct", headline: "New payment" };
+  }
+}
+
+/**
+ * Notify founders when someone completes a paid subscription. Fired from
+ * the Stripe webhook (funnel + web /upgrade) and the IAP verify-receipt
+ * write path (mobile Apple/Google). Same fail-soft pattern as signup
+ * notifications. Idempotency is the CALLER's responsibility — the Stripe
+ * webhook dedups on event.id, and the IAP path only calls this on a
+ * genuinely new transaction (first write), so this never double-sends.
+ *
+ * The `source` tag drives a clear label in BOTH the subject and body so
+ * we can tell in-app upgrades from funnel conversions at a glance.
  */
 export async function notifyFoundersOfPayment(params: {
   userId: string;
@@ -121,6 +159,7 @@ export async function notifyFoundersOfPayment(params: {
   if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
 
   const { email, plan, source, timestamp } = params;
+  const { label, headline } = describePaymentSource(source);
 
   try {
     const { getResendClient } = await import("@/lib/resend");
@@ -130,14 +169,14 @@ export async function notifyFoundersOfPayment(params: {
     await resend.emails.send({
       from: EMAIL_FROM,
       to: FOUNDER_NOTIFICATION_RECIPIENTS,
-      subject: `\u{1F4B0} New payment: ${email} (${plan})`,
+      subject: `\u{1F4B0} ${headline} — ${email} (${plan})`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-          <h2 style="color:#C4451C;margin:0 0 16px;">New Payment</h2>
+          <h2 style="color:#C4451C;margin:0 0 16px;">${headline}</h2>
           <table style="width:100%;border-collapse:collapse;">
             <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;font-weight:600;">${email}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Plan</td><td style="padding:8px 0;font-weight:600;">${plan}</td></tr>
-            <tr><td style="padding:8px 0;color:#666;">Source</td><td style="padding:8px 0;">${source}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Source</td><td style="padding:8px 0;font-weight:600;">${label}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Time</td><td style="padding:8px 0;">${timeStr}</td></tr>
           </table>
         </div>

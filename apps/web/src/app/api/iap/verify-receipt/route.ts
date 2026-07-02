@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
       where: { id: userId },
       select: {
         id: true,
+        email: true,
         subscriptionStatus: true,
         subscriptionSource: true,
         appleOriginalTransactionId: true,
@@ -232,6 +233,26 @@ export async function POST(req: NextRequest) {
     expiresDate: apple.info.expiresDate,
   });
 
+  // Founder notification — only on a genuine NEW paid purchase (this
+  // "write" branch; a repeat verify of the same transaction returns
+  // "idempotent-noop" above and never reaches here, so this is
+  // idempotent on the Apple original transaction id). Fail-soft: a
+  // notification error must never affect entitlement.
+  try {
+    const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
+    await notifyFoundersOfPayment({
+      userId,
+      email: currentUser.email ?? "unknown",
+      plan: /annual|yearly/i.test(apple.info.productId) ? "yearly" : "monthly",
+      source: "apple",
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    safeLog.warn("iap.verify-receipt.founder-notification-failed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   return NextResponse.json({
     ok: true,
     subscriptionStatus: "PRO",
@@ -302,6 +323,7 @@ async function handleGoogleVerify(
       where: { id: userId },
       select: {
         id: true,
+        email: true,
         subscriptionStatus: true,
         subscriptionSource: true,
         googlePurchaseToken: true,
@@ -388,6 +410,24 @@ async function handleGoogleVerify(
     state: google.info.state,
     expiresDate: google.info.expiryDate,
   });
+
+  // Founder notification — same idempotency guarantee as the Apple
+  // branch: only the "write" path (new purchase token) reaches here;
+  // a repeat verify returns "idempotent-noop" above. Fail-soft.
+  try {
+    const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
+    await notifyFoundersOfPayment({
+      userId,
+      email: currentUser.email ?? "unknown",
+      plan: /annual|yearly/i.test(google.info.productId) ? "yearly" : "monthly",
+      source: "google_play",
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    safeLog.warn("iap.verify-receipt.google-founder-notification-failed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return NextResponse.json({
     ok: true,

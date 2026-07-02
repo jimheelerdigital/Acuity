@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-07-02] — Founder payment alerts now label the source (in-app upgrade vs funnel vs mobile)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** _pending push_
+
+### In plain English (for Keenan)
+Whenever someone pays for Pro, we already send an internal email to keenan@ and jim@heelerdigital.com. Until now that email just said "New payment" — it didn't tell us HOW they paid, so we couldn't tell an existing user upgrading from inside the app apart from someone converting on the sign-up funnel. Now every one of those alerts clearly labels the path right in the subject line: "In-app Pro upgrade", "Funnel conversion", or "Mobile IAP upgrade" — plus the same label inside the email — so at a glance we know which flow made the money. We also wired up the same alert for future mobile (Apple/Google) in-app purchases, so once we turn the mobile store purchases on, a real mobile upgrade will notify us too instead of being silent. This is alerts-only — nothing about charging, trials, or who gets access changed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/founder-notifications.ts` — refined `notifyFoundersOfPayment`. Added `describePaymentSource(source)` mapping `in_app_upgrade` → "In-app upgrade" / "In-app Pro upgrade", `onboarding_funnel` → "Onboarding funnel" / "Funnel conversion", `apple` → "Mobile IAP (Apple)" / "Mobile IAP upgrade", `google_play` → "Mobile IAP (Google Play)" / "Mobile IAP upgrade", else "Direct" / "New payment". The friendly headline goes in the subject (`💰 <headline> — <email> (<plan>)`) and the `<h2>`; the label goes in the Source row. Signature unchanged.
+- `apps/web/src/app/api/stripe/checkout/route.ts` — web `/upgrade` checkout now tags `source: "in_app_upgrade"` on BOTH top-level `metadata` and new `subscription_data.metadata` (mirrors how `onboarding/create-checkout` tags `onboarding_funnel`). The Stripe webhook already reads `session.metadata?.source ?? "direct"`, so no webhook change was needed — funnel and upgrade now self-label.
+- `apps/web/src/app/api/iap/verify-receipt/route.ts` — added `email` to both the Apple and Google `currentUser` selects, and fire `notifyFoundersOfPayment` on the `action === "write"` branch only (Apple `source: "apple"`, Google `source: "google_play"`), with plan derived from the productId (`/annual|yearly/i`). Wrapped in try/catch + `safeLog.warn` so a notification failure can't affect entitlement.
+- No change to `apps/web/src/app/api/stripe/webhook/route.ts` — it already calls `notifyFoundersOfPayment` on `checkout.session.completed` with the session's `source` metadata.
+
+### Manual steps needed
+- [ ] **Jimmy — review before merge (HIGH-RISK payment path).** Touches the Stripe checkout metadata, the Stripe-webhook-fed notification helper, and the IAP verify-receipt handlers. **No charging, entitlement, trial, or receipt-verification logic was changed** — only the notification side-effect and the `source` metadata tag. Please sanity-check the IAP write-branch call sites.
+- [ ] Push to main (Keenan — held per request until "push it").
+
+### Notes
+- **Idempotency.** Stripe path: guarded by the existing `StripeEvent` event-id dedup, so webhook retries don't re-send. IAP path: `notifyFoundersOfPayment` is called ONLY inside the `action === "write"` branch, which runs only for a genuinely new transaction — a repeat verify of the same Apple original-transaction-id / Google purchase-token returns `idempotent-noop` earlier and never reaches the write. So one email per real purchase, no duplicates on retry.
+- **Why verify-receipt and NOT the Apple Server Notification webhook for the initial purchase.** `api/iap/notifications` matches users by `appleOriginalTransactionId`, which is ONLY set by the verify-receipt write. A brand-new purchase's server notification can't yet resolve to a user (returns "ignore"), so verify-receipt's write branch is the only reliable place to catch the *initial* mobile purchase. Server notifications handle renewals/failures, which are not "upgrades," so no founder alert was added there (avoids double-send).
+- **Mobile IAP is flag-off in production** (`isIapEnabled()` defaults false, per the 2026-07-01 notes and `apps/mobile/lib/iap-config.ts`). This hook won't fire in prod until IAP is enabled; it's wired now so we don't silently miss mobile upgrades when the flag flips.
+- **Existing behaviour preserved:** the single `notifyFoundersOfPayment` email is refined in place (Option a) — no second email was added, so no double-emailing per payment.
+- Typecheck: no new errors in the four changed files (remaining `tsc` errors are pre-existing, in unrelated files).
+
+---
+
 ## [2026-07-01] — Harden the 3 post-signup App Store CTAs for IG/FB webviews
 
 **Requested by:** Keenan
