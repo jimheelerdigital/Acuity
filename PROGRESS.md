@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** ef672203
 
 ### In plain English (for Keenan)
 Three tweaks to the "Here's the shift" screen (screen 9), on all five funnels. First, the text inside both boxes is now centered instead of hugging the inner edges. Second, the row text is a step smaller so it feels lighter and fits more cleanly. Third, each box header now has a short framing line beneath it — under "YOU RIGHT NOW" and "YOU, A FEW WEEKS IN" — written specifically for each funnel (e.g. the "mask" funnel reads "Holding it together for everyone" on the left and "Honest, and less alone" on the right). Left line stays muted grey, right line stays coral. The dividers, arrows, four rows, the paced reveal, footer and button are all unchanged.
@@ -35,7 +35,7 @@ Three tweaks to the "Here's the shift" screen (screen 9), on all five funnels. F
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** _pending push_
+**Commit hash:** e45ac566
 
 ### In plain English (for Keenan)
 On the "Here's the shift" screen (screen 9), the rows reveal one at a time — the grey "before" appears, an arrow sweeps across, then the coral "after" pops in. That whole reveal now plays at half speed, so it feels more deliberate and paced instead of rushing by. Nothing else about it changed — same look, same order, same arrows — just slower. If someone has reduced-motion turned on, they still see everything instantly (no animation), and the button still appears right after the last row lands. Applies to all five funnels.
