@@ -1909,10 +1909,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
     { key: "pattern_result", event: "funnel_pattern_result_viewed", label: "Pattern Result" },
     { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline" },
-    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall" },
     { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account" },
     { key: "account_created", event: "funnel_account_created", label: "Account Created" },
-    { key: "trial_continued", event: "funnel_trial_continued", label: "Trial Continued" },
+    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall (optional)" },
+    { key: "trial_continued", event: "funnel_trial_continued", label: "Skipped (free)" },
     { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
 

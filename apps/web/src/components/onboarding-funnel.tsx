@@ -61,7 +61,7 @@ const STEP_ORDER: Step[] = [
   "shared-q5", "branch-q6",
   "pain", "relief-flip", "current-future", "mechanism", "value", "commit",
   "processing", "pattern-result", "timeline",
-  "savings", "create-account", "download",
+  "create-account", "savings", "download",
 ];
 
 const TOTAL_STEPS = STEP_ORDER.length;
@@ -270,9 +270,6 @@ export function OnboardingFunnel() {
   // would otherwise reappear as the default. Always lead with monthly on load;
   // the user can still switch, and the switch persists within the session.
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
-  // Payment intent: set when user taps "Lock In My Savings" on the paywall.
-  // After account creation, if true → route to Stripe checkout; if false → download.
-  const [wantsPayment, setWantsPayment] = useState(false);
   const track = useFunnelTracker();
 
   // Wrap setStep to persist state + push browser history on every transition.
@@ -357,7 +354,8 @@ export function OnboardingFunnel() {
       }
     } else if (stepParam === "post-signup") {
       // OAuth returnees land here after Google/Apple signup redirect.
-      // Account is now created — check if they intended to pay.
+      // Account is now created — surface the OPTIONAL paywall next (account is
+      // created BEFORE the pay decision, so there's no payment-intent to check).
       // Reconcile the pending-OAuth marker: this is the SUCCESS outcome.
       const pending = readOAuthPending();
       const envDiag = getSignupEnvDiag();
@@ -371,20 +369,9 @@ export function OnboardingFunnel() {
       if (typeof window !== "undefined" && "gtag" in window) {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
       }
-      let hadPaymentIntent = false;
-      try { hadPaymentIntent = sessionStorage.getItem("acuity_payment_intent") === "1"; } catch {}
-      if (hadPaymentIntent) {
-        // They tapped "Lock In My Savings" → account created via OAuth → proceed to checkout
-        resolvedStep = "create-account"; // briefly lands here while checkout triggers
-        setStepRaw("create-account");
-        // Trigger checkout after a tick so the component is mounted
-        setTimeout(() => handleCheckout(), 100);
-      } else {
-        // They tapped "Continue without paying" → account created → download
-        track("funnel_trial_continued");
-        resolvedStep = "download";
-        setStepRaw("download");
-      }
+      // Account exists → optional paywall. Pay or skip is decided there.
+      resolvedStep = "savings";
+      setStepRaw("savings");
     } else if (stepParam === "savings") {
       // Legacy URL or direct link — show the paywall
       resolvedStep = "savings";
@@ -814,38 +801,12 @@ export function OnboardingFunnel() {
 
       {/* ── Personalized Timeline (Screen 14 — includes weekly-report previews) ── */}
       {step === "timeline" && branch && (
-        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("savings")} track={track} />
+        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("create-account")} track={track} />
       )}
 
-      {/* ── Paywall (shown BEFORE account creation — price-anchor) ── */}
-      {step === "savings" && (
-        <SavingsScreen
-          key="savings"
-          branch={branch}
-          answers={answers}
-          track={track}
-          selectedPlan={selectedPlan}
-          onPlanChange={setSelectedPlan}
-          onCheckout={() => {
-            // User wants to pay — store intent, proceed to account creation
-            track("funnel_paywall_paid_selected", { value: selectedPlan });
-            setWantsPayment(true);
-            try { sessionStorage.setItem("acuity_payment_intent", "1"); } catch {}
-            setStep("create-account");
-          }}
-          onSkip={() => {
-            // User skips payment — proceed to account creation (free trial)
-            track("funnel_paywall_skip_selected");
-            setWantsPayment(false);
-            try { sessionStorage.removeItem("acuity_payment_intent"); } catch {}
-            setStep("create-account");
-          }}
-          loading={false}
-          error={null}
-        />
-      )}
-
-      {/* ── Create Account (after paywall — account must exist before any charge) ── */}
+      {/* ── Create Account (Screen 15 — now BEFORE the paywall) ──
+             Account is created + persisted here for EVERYONE (payers and
+             skippers) before any pay decision or Stripe charge. ── */}
       {step === "create-account" && <TrackCompleteRegistration />}
       {step === "create-account" && (
         <CreateAccountScreen
@@ -859,33 +820,61 @@ export function OnboardingFunnel() {
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
             }
-            if (wantsPayment) {
-              // They chose "Lock In My Savings" → account now exists → proceed to Stripe
-              handleCheckout();
-            } else {
-              // They chose "Continue without paying" → free trial → download
-              track("funnel_trial_continued");
-              setStep("download");
-            }
+            // Account now exists → surface the OPTIONAL paywall. The pay/skip
+            // decision (and any Stripe charge) happens there, never before.
+            setStep("savings");
           }}
         />
       )}
 
+      {/* ── Optional Paywall (Screen 16 — shown AFTER the account exists) ──
+             Pay → Stripe checkout → download. Skip → straight to download with
+             a valid FREE account (no Pro granted). Mounts CompleteRegistration
+             so OAuth signups (which return to this step, not create-account)
+             still fire the reg pixel; it's idempotent + CAPI-guarded so email
+             signups that already fired it are a no-op. ── */}
+      {step === "savings" && !paymentConfirmed && <TrackCompleteRegistration />}
+      {step === "savings" && (
+        <SavingsScreen
+          key="savings"
+          branch={branch}
+          answers={answers}
+          track={track}
+          selectedPlan={selectedPlan}
+          onPlanChange={setSelectedPlan}
+          onCheckout={() => {
+            // User chose to pay — the account already exists, so go straight to
+            // Stripe checkout (no account-creation detour).
+            track("funnel_paywall_paid_selected", { value: selectedPlan });
+            handleCheckout();
+          }}
+          onSkip={() => {
+            // User skips the paywall — keep the FREE account (no Pro), go to
+            // the download page. paywall_skipped + trial_continued make the
+            // skip measurable in the V6 dashboard.
+            track("funnel_paywall_skip_selected");
+            track("funnel_trial_continued");
+            setStep("download");
+          }}
+          loading={checkoutLoading}
+          error={apiError}
+        />
+      )}
+
       {/* ── Download (Screen 18) ── */}
-      {/* OAuth (Google/Apple) free-trial signups reach `download` straight from
-          the post-signup branch WITHOUT passing through `create-account`, so the
-          create-account tracker above never mounts for them — they'd otherwise
-          fire StartTrial but never CompleteRegistration. Mount the tracker here
-          for the unpaid case. It POSTs /api/capi/complete-registration first
+      {/* Backstop CompleteRegistration mount. The primary post-account surface is
+          now the optional paywall (savings) step, which every signup — email and
+          OAuth — passes through before download. This download mount stays as a
+          belt-and-suspenders for any path that reaches download without having
+          fired it yet. It POSTs /api/capi/complete-registration first
           (server-side CAPI, webview-proof — ~90% of this traffic is in-app
           webview where the browser pixel is unreliable), then fires the browser
           pixel with the same event_id for dedup.
-          Gated on !paymentConfirmed so OAuth-PAID users — who already fired
-          CompleteRegistration on the create-account step before Stripe — do not
-          double-fire when they return to download. Email free-trial is also
-          unpaid but already set the `acuity_reg_pixel_fired` sessionStorage guard
-          inline at signup, so the component early-returns for them. The CAPI
-          route's 5-minute new-signup guard is the final backstop against
+          Gated on !paymentConfirmed so PAID users — who already fired
+          CompleteRegistration on the paywall step before Stripe — do not
+          double-fire when they return to download. The component also early-
+          returns via the `acuity_reg_pixel_fired` sessionStorage guard, and the
+          CAPI route's 5-minute new-signup guard is the final backstop against
           returning/authenticated users landing on download. */}
       {step === "download" && !paymentConfirmed && <TrackCompleteRegistration />}
       {step === "download" && (
