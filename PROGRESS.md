@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-07-02] — Removed the "powered by Acuity" badge from the funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5de6df7c
+
+### In plain English (for Keenan)
+Took out the little "powered by Acuity" pill that floated at the bottom center of every step of the sign-up funnel. It's gone across all steps and all five funnel versions. Nothing else about the funnel changed — same screens, same flow, same buttons.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` — removed the fixed bottom-center powered-by badge block (`fixed bottom-3 … "powered by Acuity"`) that was rendered once at the root of the funnel render tree, so it disappears from every step. No logic, routing, or tracking touched.
+
+### Manual steps needed
+- None (pushed to main).
+
+### Notes
+- Purely a visual removal. The badge was a single shared element at the funnel root (not per-screen), so one deletion covers all steps/branches.
+
+---
+
 ## [2026-07-02] — Reordered funnel end: account creation now BEFORE an optional, skippable paywall
 
 **Requested by:** Keenan
