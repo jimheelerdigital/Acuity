@@ -880,14 +880,6 @@ export function OnboardingFunnel() {
       {step === "download" && (
         <DownloadScreen key="download" track={track} paymentConfirmed={paymentConfirmed} selectedPlan={selectedPlan} />
       )}
-
-      {/* Powered-by badge — shown on every funnel step. pointer-events-none so it never blocks a CTA. */}
-      <div className="fixed bottom-3 inset-x-0 z-40 flex justify-center pointer-events-none">
-        <span className="rounded-full border border-zinc-200/70 bg-white/70 px-3 py-1 text-[11px] font-medium text-zinc-800 shadow-sm backdrop-blur-sm">
-          powered by{" "}
-          <span className="font-bold bg-acuity-grad-primary bg-clip-text text-transparent">Acuity</span>
-        </span>
-      </div>
     </div>
   );
 }
