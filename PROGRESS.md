@@ -7,7 +7,40 @@
 
 ---
 
-## [2026-07-02] — Founder payment alerts now label the source (in-app upgrade vs funnel vs mobile)
+## [2026-07-02] — Reordered funnel end: account creation now BEFORE an optional, skippable paywall
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 8b9e9ce5
+
+### In plain English (for Keenan)
+We flipped the last two steps of the sign-up funnel to get more people into the app. Before, people saw the paywall FIRST and only created their account afterward. Now they create their free account first, and THEN see the paywall — and that paywall is completely optional. If someone wants to pay, they tap through to Stripe and land on the download page. If someone would rather not pay right now, there's a clear "Continue without paying" option that drops them straight onto the download page with a real, working free account. Either way, everyone ends up with an account and reaches the download page — we just make the money later instead of gating the door. Nothing changed about who gets charged or who gets Pro: people who skip stay on the free plan, people who pay get their 7-day trial and Pro exactly as before. This applies to all five funnel versions. One thing to be aware of: because more people now hit the account/sign-in step (and everyone must pass it before download), more of them will run into the known Instagram/Facebook in-app-browser sign-in problem — this change doesn't make that bug worse on its own, but it does put more people in front of it, so that leak still needs its own separate fix.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - `STEP_ORDER` end changed from `savings → create-account → download` to `create-account → savings → download`.
+  - `TimelineScreen.onContinue` now routes to `create-account` (was `savings`).
+  - `CreateAccountScreen.onAccountCreated` now always routes to `savings` after firing `funnel_account_created` + StartTrial + gtag `sign_up` (removed the old `wantsPayment` branch that called checkout-or-download).
+  - `SavingsScreen.onCheckout` now calls `handleCheckout()` directly (account already exists) after `funnel_paywall_paid_selected`; `onSkip` fires `funnel_paywall_skip_selected` + `funnel_trial_continued` then routes to `download`. Wired the real `checkoutLoading`/`apiError` into the paywall's loading/error props (were hard-coded `false`/`null`).
+  - Removed the now-unused `wantsPayment` state and the `acuity_payment_intent` sessionStorage flag (set/removed/read call sites all deleted). The OAuth `post-signup` URL handler no longer checks a payment intent — it routes straight to `savings`.
+  - `TrackCompleteRegistration` now also mounts on the `savings` step (gated on `!paymentConfirmed`) — this is the post-account surface every signup passes through, and it's the surface OAuth returnees land on (they return to `savings`, not `create-account`). It's idempotent (`acuity_reg_pixel_fired` guard + CAPI 5-min guard), so email signups that already fired it are a no-op. Kept the `download` backstop mount.
+  - Stripe `success_url`/`cancel_url` in `api/onboarding/create-checkout` already point at `?step=download` — no change needed; cancel still lands the user on download with their free account.
+- `apps/web/src/app/api/admin/metrics/route.ts`: reordered `FUNNEL_STEPS_V6` to `Timeline → Create Account → Account Created → Paywall (optional) → Skipped (free) → Download` and relabeled the savings/trial steps. All `stepReach` keys (`create_account`, `account_created`, `savings_offered`, `trial_continued`, `download`) are unchanged, so the KPI ratios and `STEP_PROGRESS`/`STEP_LABELS` maps (already account-first) keep working.
+- No changes to charging, entitlement, trial, receipt-verification, or auth mechanics — ordering/routing + tracking + dashboard order only.
+
+### Manual steps needed
+- [ ] **Jimmy — review before merge (HIGH-RISK: auth + Stripe + entitlement + attribution).** Account creation now precedes the paywall for all 5 branches. Please sanity-check: (a) skippers get a valid FREE account and never a Pro/trial; (b) payers still get the 7-day trial via Stripe; (c) UTM/funnel-session attribution still attaches at the earlier signup (email `signup` POST body + OAuth `set-attribution` backfill are unchanged, but confirm on a real Meta-paid session); (d) the `savings`-step `TrackCompleteRegistration` mount doesn't double-count.
+- [ ] **Existing OAuth-webview leak still needs its own fix (Jimmy).** This reorder increases how many users hit the IG/FB in-app-browser sign-in step (everyone passes it before download). We intentionally did NOT touch OAuth mechanics here and kept all email + Apple + Google options; the known webview OAuth failure is unchanged but now more exposed.
+- [ ] Push to main (Keenan — held per request until "push it").
+
+### Notes
+- **No new auth flow invented.** Reused the existing "account created before Stripe" pattern — the only difference is the account is now created before the pay *decision* (paywall) rather than after it. `handleCheckout()`, `/api/auth/signup`, `/api/onboarding/create-checkout`, and the Stripe webhook are all untouched.
+- **Payment-incomplete path preserved:** returning from a cancelled/failed Stripe session with `?step=download` (no `session_id`) lands on download; a failed verify sends the user back to `savings` with a retry/skip message — still valid since the account exists by then.
+- **Skip is prominent + reliable:** the paywall's "Continue without paying" control (sticky footer under the CTA) routes directly to download; both `funnel_paywall_skip_selected` and `funnel_trial_continued` fire so skip rate = `trial_continued / account_created` in the V6 dashboard.
+- **Attribution not regressed:** UTMs are captured into `acuity_funnel_utm` + the first-touch cookie at funnel entry, well before either signup path; moving signup one step earlier doesn't change where they're read. Email attaches them in the signup POST; OAuth carries them on the `callbackUrl` and the `SyncAttribution` effect backfills via `/api/auth/set-attribution` on `authenticated`.
+- **Typecheck:** `onboarding-funnel.tsx` clean (no new errors). `admin/metrics/route.ts` shows the same 48 pre-existing `tsc` errors (implicit-`any` params, `PrismaClient` name resolution) before and after this change — the reorder introduced none.
+
+
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
