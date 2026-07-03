@@ -26,6 +26,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   Text,
@@ -225,18 +226,21 @@ export default function SignInScreen() {
   }
 
   return (
-    // Sign-in screen intentionally does NOT use KeyboardAwareScreen.
-    // The expo-auth-session Google flow opens a SFAuthenticationSession
-    // browser modal via promptAsync(); on TestFlight Build 21 with the
-    // KeyboardAwareScreen wrapper (commit f4297d1, OTA shipped 2026-04-28)
-    // the parent ScrollView destabilized the auth-session promise so
-    // the user was bounced back to sign-in with no token. Reverting to
-    // the pre-wrapper layout. The sign-in screen has 2 short inputs and
-    // a tall stack of OAuth buttons — it doesn't actually need keyboard
-    // avoidance for the password field to stay visible (the page is
-    // already centered on viewport). Onboarding / sign-up / forgot-
-    // password / delete-modal keep the wrapper since they have more
-    // inputs and benefit from it.
+    // Sign-in screen intentionally does NOT use KeyboardAwareScreen (the
+    // shared ScrollView-based wrapper). The expo-auth-session Google flow
+    // opens a SFAuthenticationSession browser modal via promptAsync(); on
+    // TestFlight Build 21 with the KeyboardAwareScreen wrapper (commit
+    // f4297d1, OTA shipped 2026-04-28) the parent ScrollView destabilized
+    // the auth-session promise so the user was bounced back to sign-in with
+    // no token (reverted 0149c6f).
+    // 2026-07-02: on-device testing showed the keyboard DOES cover the
+    // password field, so the form BELOW the divider is wrapped in a
+    // form-scoped, padding-only KeyboardAvoidingView (NOT a ScrollView; the
+    // OAuth buttons + centering container stay outside it) — see that
+    // wrapper's comment for why it can't reproduce f4297d1. Do not reintroduce
+    // a ScrollView here, and do not move the OAuth buttons inside the wrapper.
+    // Onboarding / sign-up / forgot-password / delete-modal keep the shared
+    // KeyboardAwareScreen since they don't present an OAuth modal.
     <SafeAreaView
       className="flex-1 px-6"
       style={{ backgroundColor: tokens.bg }}
@@ -346,7 +350,19 @@ export default function SignInScreen() {
           />
         </View>
 
-        {/* Email + password */}
+        {/* Email + password — wrapped in a padding-only KeyboardAvoidingView
+            (NOT a ScrollView), scoped to the form below the divider so the
+            keyboard can't cover the password field / Sign-in button. The
+            OAuth buttons + the centering container above are left untouched,
+            so this cannot reproduce the f4297d1 regression (a parent
+            ScrollView re-layout tearing down the SFAuthenticationSession
+            OAuth modal). A KeyboardAvoidingView reacts only to keyboard-frame
+            events — none fire during an OAuth tap — never to scroll/content
+            re-layout. Keep this wrapper out of the OAuth render path. */}
+        <KeyboardAvoidingView
+          className="w-full"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -464,6 +480,7 @@ export default function SignInScreen() {
             Google client ID not set. Development build only.
           </Text>
         )}
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );
