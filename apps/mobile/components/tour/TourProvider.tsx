@@ -104,6 +104,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
             lastPathRef.current = path;
             router.navigate(path as never);
             await new Promise((r) => setTimeout(r, NAV_SETTLE_MS));
+          } else if (i === TOUR_STEP_INDEX.mic) {
+            // Step 0 (mic) opens on the same screen the tour started on, so
+            // the branch above skips the settle — but the raised,
+            // absolutely-positioned mic wrapper needs a beat to finish
+            // layout before measureInWindow, or its cutout mis-measures and
+            // lands mid-screen (vc24 bug: spotlight over the goal card
+            // instead of the mic FAB). Give it the same settle steps 1–6 get.
+            await new Promise((r) => setTimeout(r, NAV_SETTLE_MS));
           }
         },
         render: (props) => (
