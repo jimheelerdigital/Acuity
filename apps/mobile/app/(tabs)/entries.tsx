@@ -298,6 +298,8 @@ export default function EntriesTab() {
         <FlatList
           data={filtered}
           keyExtractor={(e) => e.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

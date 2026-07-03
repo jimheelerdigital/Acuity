@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -230,11 +229,13 @@ export default function TaskEditScreen() {
           <ActivityIndicator color={tokens.primary} />
         </View>
       ) : (
-        <KeyboardAvoidingView
+        <ScrollView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
         >
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
             {/* Title */}
             <Text
               className="text-xs font-medium mb-1"
@@ -431,7 +432,6 @@ export default function TaskEditScreen() {
               </Text>
             </Pressable>
           </ScrollView>
-        </KeyboardAvoidingView>
       )}
     </SafeAreaView>
   );
