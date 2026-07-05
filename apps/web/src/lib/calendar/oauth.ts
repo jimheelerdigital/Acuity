@@ -26,6 +26,8 @@ import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 
 import { google, type Auth } from "googleapis";
 
+import { CALENDAR_INTEGRATION_ENABLED } from "@acuity/shared";
+
 export const CALENDAR_SCOPES = [
   "openid",
   "email",
@@ -60,6 +62,12 @@ export function calendarOAuthClient(): Auth.OAuth2Client {
  * a different device would land here with no refresh token to store.
  */
 export function buildAuthUrl(state: string): string {
+  // Kill switch: never build a Google consent URL while the integration is
+  // off (Google verification pending). Defense-in-depth behind the route
+  // guard so no code path can start the broken flow.
+  if (!CALENDAR_INTEGRATION_ENABLED) {
+    throw new Error("calendar integration disabled");
+  }
   const oauth = calendarOAuthClient();
   return oauth.generateAuthUrl({
     access_type: "offline",

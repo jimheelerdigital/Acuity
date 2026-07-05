@@ -2,6 +2,19 @@ import type { Mood } from "./types";
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
+// Calendar integration kill switch (2026-07-05, temporary). Hard-off while
+// Google verification for the calendar.readonly scope is pending — the web
+// Google OAuth consent screen (client 657670168959) is in "Testing", so new
+// connects 403. When false:
+//   - every "Connect Google Calendar" / calendar-connect entry point (web
+//     cards + the two insights surfaces; the mobile connect is already a
+//     placeholder) renders a disabled "Coming soon" state, no clickable connect;
+//   - GET /api/calendar/connect + buildAuthUrl refuse instead of hitting Google.
+// EXISTING connections are untouched: the connected-state card, disconnect, and
+// entry-detail linked-events keep working; NO data is deleted.
+// Reversal: flip to `true` (single edit, no schema/env change).
+export const CALENDAR_INTEGRATION_ENABLED = false;
+
 export const APP_NAME = "Acuity";
 export const APP_TAGLINE = "The daily debrief that turns chaos into clarity.";
 

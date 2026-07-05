@@ -12,6 +12,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { CALENDAR_INTEGRATION_ENABLED } from "@acuity/shared";
+
 import { buildAuthUrl, signState } from "@/lib/calendar/oauth";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
@@ -19,6 +21,17 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  // Kill switch: while the calendar integration is off (Google verification
+  // pending), a stale "Connect" link or bookmark must NOT redirect to the
+  // broken Google consent flow. Return a plain 503 instead. Existing
+  // connections are unaffected — this only blocks starting a NEW connect.
+  if (!CALENDAR_INTEGRATION_ENABLED) {
+    return NextResponse.json(
+      { error: "Calendar integration temporarily unavailable" },
+      { status: 503 }
+    );
+  }
+
   const userId = await getAnySessionUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
