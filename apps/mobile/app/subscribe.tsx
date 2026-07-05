@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { CALENDAR_INTEGRATION_ENABLED } from "@acuity/shared";
+
 import { GradientCheckbox } from "@/components/acuity/GradientCheckbox";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
@@ -409,7 +411,11 @@ export default function SubscribeScreen() {
           />
           <ValueRow
             icon="link-outline"
-            text="Calendar sync — tasks land where you plan"
+            text={
+              CALENDAR_INTEGRATION_ENABLED
+                ? "Calendar sync — tasks land where you plan"
+                : "Calendar sync — coming soon"
+            }
             tokens={tokens}
           />
           <ValueRow

@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
+import { CALENDAR_INTEGRATION_ENABLED } from "@acuity/shared";
+
 import { Card, SectionHeader } from "@/components/acuity";
 import { BackButton } from "@/components/back-button";
 import { getAuthOptions } from "@/lib/auth";
@@ -91,16 +93,26 @@ export default async function CalendarInsightsPage() {
 
         {events.length === 0 ? (
           <Card variant="default" radius="xl" padding={6}>
-            <p className="text-[15px] leading-relaxed text-acuity-text-sec">
-              Nothing here yet. Connect Google Calendar from your{" "}
-              <a
-                href="/account#calendar"
-                className="underline decoration-acuity-text-ter underline-offset-2"
-              >
-                Account settings
-              </a>
-              {" "}and we&apos;ll pull the last 30 days in.
-            </p>
+            {!CALENDAR_INTEGRATION_ENABLED ? (
+              // Kill switch: don't steer users into the (disabled) connect flow.
+              <p className="text-[15px] leading-relaxed text-acuity-text-sec">
+                Calendar sync is{" "}
+                <span className="font-medium text-acuity-text">coming soon</span>
+                {" "}— temporarily unavailable while we finish setup. Once it&apos;s
+                back, we&apos;ll pull the last 30 days in here.
+              </p>
+            ) : (
+              <p className="text-[15px] leading-relaxed text-acuity-text-sec">
+                Nothing here yet. Connect Google Calendar from your{" "}
+                <a
+                  href="/account#calendar"
+                  className="underline decoration-acuity-text-ter underline-offset-2"
+                >
+                  Account settings
+                </a>
+                {" "}and we&apos;ll pull the last 30 days in.
+              </p>
+            )}
           </Card>
         ) : (
           <div className="space-y-2">

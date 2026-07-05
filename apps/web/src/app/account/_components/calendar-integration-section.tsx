@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { CALENDAR_INTEGRATION_ENABLED } from "@acuity/shared";
+
 import { Card, SectionHeader } from "@/components/acuity";
 
 /**
@@ -77,6 +79,10 @@ export function CalendarIntegrationSection({
   statusFlash,
 }: CalendarIntegrationSectionProps) {
   const isConnected = Boolean(connectedAt);
+  // Kill switch (D1a): block NEW connects only. Already-connected users keep
+  // the connected card + Sync + Disconnect. Not-connected users see a
+  // disabled "Coming soon" state instead of the connect CTA.
+  const showComingSoon = !CALENDAR_INTEGRATION_ENABLED && !isConnected;
   const [flash, setFlash] = useState<string | null>(statusFlash);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -142,7 +148,28 @@ export function CalendarIntegrationSection({
       </h2>
 
       <Card variant="default" radius="xl" padding={6}>
-        {!isConnected ? (
+        {showComingSoon ? (
+          <>
+            <p className="text-[15px] leading-relaxed text-acuity-text-sec">
+              Anchor your reflections to what actually happened that day —
+              the 3pm meeting, the lunch with your sister, the deadline you
+              almost forgot.
+            </p>
+            <div className="mt-5">
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                className="inline-flex cursor-not-allowed items-center gap-2 rounded-acuity-pill border border-acuity-card-border bg-acuity-card-bg-tint px-5 py-2.5 text-[14px] font-semibold text-acuity-text-ter opacity-70"
+              >
+                Connect Google Calendar
+                <span className="rounded-full bg-acuity-card-border px-2 py-0.5 text-[11px] font-medium text-acuity-text-ter">
+                  Coming soon
+                </span>
+              </button>
+            </div>
+          </>
+        ) : !isConnected ? (
           <>
             <p className="text-[15px] leading-relaxed text-acuity-text-sec">
               Connect Google Calendar and reflections get anchored to what

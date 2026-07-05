@@ -20,6 +20,8 @@
  * bundle stays minimal.
  */
 
+import { CALENDAR_INTEGRATION_ENABLED } from "@acuity/shared";
+
 import { ProLockedCard } from "@/components/pro-locked-card";
 
 import { IntegrationsSettings } from "./integrations-settings";
@@ -73,8 +75,35 @@ export function IntegrationsSection({
         up where you already plan your day.
       </p>
 
-      {!isConnected ? <ConnectOnMobileCard /> : <ConnectedStateCard connection={connection!} />}
+      {/* Kill switch (D1a): not-connected users see "Coming soon"; already-
+          connected users keep their connected-state card. */}
+      {!CALENDAR_INTEGRATION_ENABLED && !isConnected ? (
+        <CalendarComingSoonCard />
+      ) : !isConnected ? (
+        <ConnectOnMobileCard />
+      ) : (
+        <ConnectedStateCard connection={connection!} />
+      )}
     </section>
+  );
+}
+
+function CalendarComingSoonCard() {
+  return (
+    <div className="mt-5 rounded-lg border border-dashed border-zinc-200 dark:border-white/10 p-5 opacity-80">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+          Calendar sync
+        </h3>
+        <span className="rounded-full bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+          Coming soon
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+        Calendar sync is temporarily unavailable while we finish setup. It&apos;ll
+        be back shortly — nothing you need to do.
+      </p>
+    </div>
   );
 }
 
