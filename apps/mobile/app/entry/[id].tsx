@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -269,6 +270,22 @@ export default function EntryDetailScreen() {
     <ScrollView
       style={{ flex: 1, backgroundColor: tokens.bg }}
       contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 20 }}
+      // Keyboard handling for the inline transcript editor (Jennifer
+      // Snodgrass report, 2026-07-01). Without these, the iOS keyboard
+      // overlapped the transcript TextInput + "Save changes" button at the
+      // bottom of this scroll, and a tap on Save with the keyboard up was
+      // eaten by the dismiss gesture.
+      //   - automaticallyAdjustKeyboardInsets (iOS): auto-insets the scroll
+      //     content by the keyboard height and scrolls the focused input
+      //     into view. Handles the native Stack header offset for free —
+      //     no keyboardVerticalOffset guesswork. No-op on Android, which
+      //     resizes the window via adjustResize (parity preserved).
+      //   - keyboardShouldPersistTaps="handled": Save is tappable while the
+      //     keyboard is up instead of dismissing it first.
+      //   - keyboardDismissMode: interactive drag-to-dismiss on iOS.
+      automaticallyAdjustKeyboardInsets
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
     >
       <Stack.Screen options={{ headerRight }} />
 
