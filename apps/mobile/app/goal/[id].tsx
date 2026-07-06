@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -204,17 +203,17 @@ export default function GoalDetailScreen() {
       style={{ backgroundColor: tokens.bg }}
     >
       <StickyBackButton accessibilityLabel="Back to Goals" />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <ScrollView
         className="flex-1"
+        contentContainerStyle={{
+          padding: 20,
+          paddingTop: 60,
+          paddingBottom: 80,
+        }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
-        <ScrollView
-          contentContainerStyle={{
-            padding: 20,
-            paddingTop: 60,
-            paddingBottom: 80,
-          }}
-        >
           {/* Area label */}
           <Text
             className="text-xs font-semibold uppercase tracking-widest mb-2"
@@ -626,7 +625,6 @@ export default function GoalDetailScreen() {
             </Pressable>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

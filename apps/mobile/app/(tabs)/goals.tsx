@@ -1379,6 +1379,9 @@ function SuggestionsSheet({
           </View>
           <ScrollView
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            automaticallyAdjustKeyboardInsets
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           >
             {items === null ? (
               <View className="py-12 items-center">
