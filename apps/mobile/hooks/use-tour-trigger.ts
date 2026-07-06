@@ -67,7 +67,18 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
     if (firedRef.current) return;
     if (!user) return;
     if (!user.onboardingCompleted) return;
-    if ((user.totalRecordings ?? 0) > 0) return;
+    // Fail SAFE on not-yet-hydrated server fields (vc24 bug: tour fired for
+    // existing users on a fresh install). At sign-in the auth-context user
+    // can be set from a response that hasn't populated these yet; an
+    // `undefined` field must NOT read as "eligible" — `(undefined ?? 0) > 0`
+    // and `undefined != null` both silently pass. Treat unknown as "don't
+    // fire" and wait for /api/user/me to hydrate (this effect re-runs on the
+    // next `user` update). The reinstall-wiped AsyncStorage marker can't be
+    // relied on as the backstop.
+    if (user.totalRecordings === undefined || user.tourCompletedAt === undefined) {
+      return;
+    }
+    if (user.totalRecordings > 0) return;
     if (user.tourCompletedAt != null) return;
     if (queueHasItem) return;
 

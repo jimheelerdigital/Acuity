@@ -57,6 +57,11 @@ export async function POST(req: NextRequest) {
       emailVerified: true,
       subscriptionStatus: true,
       trialEndsAt: true,
+      // Surfaced so the first-login tour gate can decide at sign-in and not
+      // fire for existing users on a fresh install (vc24 bug — see
+      // docs/specs/onboarding-tour-and-keyboard-bugs.md #1).
+      totalRecordings: true,
+      tourCompletedAt: true,
       onboarding: { select: { completedAt: true, currentStep: true } },
     },
   });
