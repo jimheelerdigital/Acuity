@@ -124,22 +124,32 @@ export default function ProfileTab() {
   }
   const isAppleSub = subSource === "apple";
   const isStripeSub = subSource === "stripe";
+  // A TRIAL-status user with a real store/Stripe sub still needs a way to
+  // cancel BEFORE conversion (Beth + Sian were mid-trial when they wanted
+  // out — gating the manage rows on isPro alone hid the cancel path from
+  // them). The source/customer guards below still prevent a dead-end for
+  // app-side trials that have no sub to manage.
+  const isTrial = subStatus === "TRIAL";
+  const canManageSubscription = isPro || isTrial;
   // Only show Stripe "Manage subscription" when the user actually
-  // has a Stripe customer behind their PRO status. Comped / reviewer
+  // has a Stripe customer behind their status. Comped / reviewer
   // accounts are PRO without a Stripe row — the portal call would
   // 400 NoSubscription, surfacing as a confusing dead-end Alert.
   const canManageStripeSubscription =
-    isPro && isStripeSub && user?.hasStripeCustomer === true;
+    canManageSubscription && isStripeSub && user?.hasStripeCustomer === true;
   // Phase 3a — show in-app Subscribe entry point for FREE users on
   // iOS when the build-time IAP flag is on. Falls back to the web
   // "Manage plan on web" link when the flag is off OR on Android.
   const showInAppSubscribe =
     !isPro && Platform.OS === "ios" && isIapEnabled();
-  // For Apple-source PRO users, route Manage to iOS Settings
-  // (Apple's deep link). For Stripe-source PRO users, the existing
-  // openSubscriptionPortal flow handles it.
+  // For Apple-source users, route Manage to iOS Settings (Apple's deep
+  // link). For Stripe-source users, the existing openSubscriptionPortal
+  // flow handles it. Use the itms-apps:// scheme rather than the https
+  // universal link so iOS jumps straight into the App Store account's
+  // Subscriptions screen reliably (the https link can bounce through
+  // Safari first on some iOS versions).
   const handleManageAppleSubscription = () => {
-    void Linking.openURL("https://apps.apple.com/account/subscriptions");
+    void Linking.openURL("itms-apps://apps.apple.com/account/subscriptions");
   };
 
   // Days remaining on the current paid period — used by the delete
@@ -254,10 +264,11 @@ export default function ProfileTab() {
             />
           )}
 
-          {/* Phase 3a — Apple-source PRO users get the iOS Settings
-              deep-link instead of the Stripe Portal. Apple's only
-              supported subscription-management surface for IAP. */}
-          {isPro && isAppleSub && (
+          {/* Phase 3a — Apple-source users get the iOS Settings deep-link
+              instead of the Stripe Portal. Apple's only supported
+              subscription-management surface for IAP. Shown for TRIAL too
+              so a user can cancel before their intro/trial converts. */}
+          {canManageSubscription && isAppleSub && (
             <MenuItem
               icon="settings-outline"
               label="Manage in iOS Settings"
