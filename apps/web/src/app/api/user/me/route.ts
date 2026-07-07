@@ -51,6 +51,9 @@ export async function GET(req: NextRequest) {
       // subscriptionStatus flips to PRO. Exposed so the account-page
       // polling can render "Renews [date]" without a second fetch.
       stripeCurrentPeriodEnd: true,
+      // Drives the /account "canceled — access until [date]" copy and the
+      // post-portal-return confirmation. Additive boolean; mobile ignores it.
+      stripeCancelAtPeriodEnd: true,
       // Failure anchors — flattened to the `paymentFailed` boolean below
       // (not returned raw). Drive the recovery banner's 30-day window.
       stripeFirstFailureAt: true,
