@@ -48,7 +48,7 @@ export function founderWelcomeEmail(params: {
 
         <p style="margin:0 0 20px;font-size:16px;color:#1F2937;line-height:1.7;">${greeting}</p>
 
-        <p style="margin:0 0 20px;font-size:16px;color:#1F2937;line-height:1.7;">I'm Keenan, one of the founders of Acuity. Saw you just signed up &mdash; welcome! You're <strong style="color:#7C5CFC;">founding member #${memberNumber}</strong>.</p>
+        <p style="margin:0 0 20px;font-size:16px;color:#1F2937;line-height:1.7;">I'm Keenan, one of the founders of Ripple. Saw you just signed up &mdash; welcome! You're <strong style="color:#7C5CFC;">founding member #${memberNumber}</strong>.</p>
 
         <p style="margin:0 0 12px;font-size:16px;color:#1F2937;line-height:1.7;">If you haven't yet, here's the link to download the app in the App Store:</p>
 
@@ -69,11 +69,11 @@ export function founderWelcomeEmail(params: {
         <table role="presentation" cellpadding="0" cellspacing="0">
           <tr>
             <td valign="middle" style="padding-right:12px;">
-              <img src="https://www.getacuity.io/email/ka-headshot-email.png" alt="Keenan, co-founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
+              <img src="https://www.getacuity.io/email/ka-headshot-email.png" alt="Keenan, co-founder of Ripple" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
             </td>
             <td valign="middle">
               <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>
-              <p style="margin:0;font-size:13px;color:#6b7280;">Co-founder, Acuity</p>
+              <p style="margin:0;font-size:13px;color:#6b7280;">Co-founder, Ripple</p>
             </td>
           </tr>
         </table>
@@ -97,7 +97,7 @@ export function founderWelcomeEmail(params: {
 </html>`;
 
   return {
-    subject: "URGENT: Acuity; Next Steps",
+    subject: "URGENT: Ripple; Next Steps",
     html,
   };
 }

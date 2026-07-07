@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Acuity",
+    "name": "Ripple",
     "slug": "acuity",
     "version": "1.3.4",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#15131D"
+      "backgroundColor": "#3A3550"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -22,8 +22,8 @@
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:getacuity.io"],
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
-        "NSFaceIDUsageDescription": "Acuity uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",
+        "NSMicrophoneUsageDescription": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
+        "NSFaceIDUsageDescription": "Ripple uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleURLTypes": [
           {
@@ -159,7 +159,8 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#15131D"
+        "backgroundImage": "./assets/adaptive-background.png",
+        "backgroundColor": "#FBF6F1"
       },
       "package": "com.heelerdigital.acuity",
       "versionCode": 1,
@@ -196,13 +197,13 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
+          "microphonePermission": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
         }
       ],
       [
         "expo-notifications",
         {
-          "color": "#7C3AED"
+          "color": "#F2895E"
         }
       ],
       [
@@ -225,7 +226,7 @@
       [
         "expo-tracking-transparency",
         {
-          "userTrackingPermission": "Acuity uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes."
+          "userTrackingPermission": "Ripple uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes."
         }
       ],
       "./plugins/with-remove-ad-id.js",

@@ -19,7 +19,7 @@ export const patternTease: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-            ${name}, by day 7 Acuity will have noticed something about you that you didn't notice yourself.
+            ${name}, by day 7 Ripple will have noticed something about you that you didn't notice yourself.
           </p>
         </td>
       </tr>
@@ -63,7 +63,7 @@ export const patternTease: TrialEmailTemplate = {
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "By day 7, Acuity will catch something you haven't noticed.",
+      preheader: "By day 7, Ripple will catch something you haven't noticed.",
     });
   },
 };

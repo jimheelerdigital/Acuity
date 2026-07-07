@@ -34,7 +34,7 @@ export const keepMomentum: TrialEmailTemplate = {
       </tr>
       ${para(greeting)}
       ${para(`You\u2019ve recorded two debriefs now. That\u2019s further than most people get.`)}
-      ${para(`Here\u2019s the thing worth knowing: the value of Acuity isn\u2019t in any single debrief. It\u2019s in what shows up across them. One debrief is a snapshot. A handful is a pattern \u2014 the stuff you keep circling back to, the things that quietly run your week, the tasks you mention and then forget. Acuity is listening for that, and it gets sharper every time you talk.`)}
+      ${para(`Here\u2019s the thing worth knowing: the value of Ripple isn\u2019t in any single debrief. It\u2019s in what shows up across them. One debrief is a snapshot. A handful is a pattern \u2014 the stuff you keep circling back to, the things that quietly run your week, the tasks you mention and then forget. Ripple is listening for that, and it gets sharper every time you talk.`)}
       ${para(`You\u2019re two in. A few more and it starts handing real things back to you \u2014 patterns you didn\u2019t notice, tasks you\u2019d have lost, a clearer read on where your time and energy actually go.`)}
       ${para(`That\u2019s why the habit matters. Not because more is better for its own sake, but because the picture only forms when there\u2019s enough to see. The good news is it asks almost nothing of you \u2014 a few spoken minutes, whenever it suits you. No writing, no blank page.`)}
       ${para(`Keep going. It compounds.`)}

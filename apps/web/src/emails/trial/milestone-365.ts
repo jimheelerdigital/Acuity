@@ -30,7 +30,7 @@ export const milestone365: TrialEmailTemplate = {
       ${para(`Three hundred and sixty-five debriefs.`)}
       ${para(`I don\u2019t have a clever subject line for this one, because it deserves a straight one: that\u2019s a year\u2019s worth of showing up for yourself. A year of paying attention. Most people never do that for themselves once, let alone three hundred and sixty-five times.`)}
       ${para(`Somewhere in all those debriefs is a real record of your life \u2014 what you worried about, what you worked through, what mattered, how you changed. That\u2019s not a small thing. That\u2019s the whole point of this.`)}
-      ${para(`I just wanted to stop and acknowledge it. Thank you for trusting Acuity to hold all of that. And if you ever feel like telling me what this year of debriefs has meant to you, I will read every word.`)}
+      ${para(`I just wanted to stop and acknowledge it. Thank you for trusting Ripple to hold all of that. And if you ever feel like telling me what this year of debriefs has meant to you, I will read every word.`)}
       ${para(`Here\u2019s to the next one.`)}
       ${keenanSignature()}
     `;

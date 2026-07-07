@@ -114,10 +114,20 @@ const config: Config = {
           "system-ui",
           "sans-serif",
         ],
+        // Ripple: Quicksand is the display/wordmark face (tokens.type.display),
+        // Manrope (--font-display) is the graceful fallback + body.
         display: [
+          "var(--font-quicksand)",
           "var(--font-display)",
           "-apple-system",
           "BlinkMacSystemFont",
+          "system-ui",
+          "sans-serif",
+        ],
+        // Lowercase "ripple" wordmark + Quicksand display surfaces.
+        wordmark: [
+          "var(--font-quicksand)",
+          "var(--font-display)",
           "system-ui",
           "sans-serif",
         ],

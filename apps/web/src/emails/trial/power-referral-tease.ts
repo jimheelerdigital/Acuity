@@ -12,7 +12,7 @@ import type { TrialEmailTemplate, TrialVars } from "./types";
  */
 export const powerReferralTease: TrialEmailTemplate = {
   subject: (v) =>
-    `You've captured ${v.totalRecordings} things Acuity would have otherwise lost`,
+    `You've captured ${v.totalRecordings} things Ripple would have otherwise lost`,
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
@@ -42,13 +42,13 @@ export const powerReferralTease: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:28px;">
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-            Word-of-mouth from someone who actually uses it is how Acuity grows. I appreciate it.
+            Word-of-mouth from someone who actually uses it is how Ripple grows. I appreciate it.
           </p>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:8px;">
-          ${trialButton(appUrl, "Open Acuity")}
+          ${trialButton(appUrl, "Open Ripple")}
         </td>
       </tr>
       <tr>

@@ -21,7 +21,7 @@ import type { TrialEmailTemplate, TrialVars } from "./types";
  * separate this surface from in-app paywall hits.
  */
 export const trialEndedDay14: TrialEmailTemplate = {
-  subject: () => "Your Acuity trial just ended",
+  subject: () => "Your Ripple trial just ended",
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
@@ -31,14 +31,14 @@ export const trialEndedDay14: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:24px;">
           <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            Your Acuity trial just ended, ${name}.
+            Your Ripple trial just ended, ${name}.
           </h1>
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-            Acuity isn&rsquo;t going anywhere. Recording stays free forever &mdash; you can keep capturing your daily debriefs and we&rsquo;ll keep transcribing them.
+            Ripple isn&rsquo;t going anywhere. Recording stays free forever &mdash; you can keep capturing your daily debriefs and we&rsquo;ll keep transcribing them.
           </p>
         </td>
       </tr>

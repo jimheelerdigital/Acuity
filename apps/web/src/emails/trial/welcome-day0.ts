@@ -20,9 +20,9 @@ export const welcomeDay0: TrialEmailTemplate = {
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">Hey ${name} —</p>
         </td>
       </tr>
-      ${para("You just signed up for Acuity. Here's the short version of how it works.")}
+      ${para("You just signed up for Ripple. Here's the short version of how it works.")}
       ${para(`Open the app (<a href="${appUrl}" style="color:#C4451C;text-decoration:underline;">${appUrl}</a>), press record, and say whatever's on your mind. No script, no tidying it up first. Just a short debrief, out loud.`)}
-      ${para("Acuity listens and gives it back to you in a form you can use: the tasks hidden in what you said, the things you care about, where your mood is sitting, and how the different parts of your life are tracking. By the weekend, a weekly report that reads like someone was actually paying attention.")}
+      ${para("Ripple listens and gives it back to you in a form you can use: the tasks hidden in what you said, the things you care about, where your mood is sitting, and how the different parts of your life are tracking. By the weekend, a weekly report that reads like someone was actually paying attention.")}
       ${para("That's the whole thing. A few spoken minutes, and you get to see yourself a little more clearly.")}
       <tr>
         <td style="padding-bottom:28px;">
@@ -36,7 +36,7 @@ export const welcomeDay0: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-bottom:24px;">
-          <p style="margin:0;font-size:13px;color:#6b7280;">Cofounders, Acuity</p>
+          <p style="margin:0;font-size:13px;color:#6b7280;">Cofounders, Ripple</p>
         </td>
       </tr>
       <tr>

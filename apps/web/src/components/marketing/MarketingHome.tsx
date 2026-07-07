@@ -45,7 +45,7 @@ export function MarketingHome() {
         eyebrow="Your home"
         accent="var(--acuity-primary)"
         title="Your day, sorted into action."
-        body="Open Acuity and everything from last night is already organized — your streak, your tasks, the themes you keep circling, and your next gentle nudge to record."
+        body="Open Ripple and everything from last night is already organized — your streak, your tasks, the themes you keep circling, and your next gentle nudge to record."
         points={[
           "Tasks surface themselves from your voice",
           "Streaks and tiers that reward the habit",

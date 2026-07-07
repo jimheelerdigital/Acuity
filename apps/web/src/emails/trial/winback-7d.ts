@@ -32,12 +32,12 @@ export const winback7d: TrialEmailTemplate = {
       </tr>
       ${para(greeting)}
       ${para(`It\u2019s been about a week since your last debrief \u2014 and in that week, a lot went unspoken.`)}
-      ${para(`Every day you don\u2019t debrief is a day of tasks that slip through, patterns that go unnoticed, and a week that blurs together instead of coming into focus. That\u2019s the stuff Acuity catches for you \u2014 but only when you talk to it.`)}
+      ${para(`Every day you don\u2019t debrief is a day of tasks that slip through, patterns that go unnoticed, and a week that blurs together instead of coming into focus. That\u2019s the stuff Ripple catches for you \u2014 but only when you talk to it.`)}
       ${para(`The debriefs you already recorded are still here. But the real value is in what you\u2019re not capturing right now.`)}
       ${para(`And if something\u2019s holding you back \u2014 it felt like a hassle, you weren\u2019t sure it was working, anything \u2014 just hit reply and tell me. I read every one.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Acuity")}
+          ${primaryButton(appLink, "Open Ripple")}
         </td>
       </tr>
       <tr>

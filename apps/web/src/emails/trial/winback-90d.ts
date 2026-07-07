@@ -32,7 +32,7 @@ export const winback90d: TrialEmailTemplate = {
       </tr>
       ${para(greeting)}
       ${para(`It\u2019s been a few months, so this is the last one of these I\u2019ll send \u2014 I won\u2019t keep cluttering your inbox.`)}
-      ${para(`Before you go, though, I\u2019d ask one favor. You tried Acuity and decided not to stick with it, and honestly, knowing why would help me more than almost anything. So if you\u2019ve got thirty seconds, just hit reply and tell me:`)}
+      ${para(`Before you go, though, I\u2019d ask one favor. You tried Ripple and decided not to stick with it, and honestly, knowing why would help me more than almost anything. So if you\u2019ve got thirty seconds, just hit reply and tell me:`)}
       ${para(`\u2014 What was missing for you?<br/>
 \u2014 What could we have done better?<br/>
 \u2014 What made you decide not to continue?`)}

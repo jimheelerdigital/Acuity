@@ -55,7 +55,7 @@ export function emailLayout(opts: {
     }
   </div>
   <p style="color:#6b7280;font-size:12px;text-align:center;margin:20px 0 0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-    Acuity &middot; getacuity.io
+    Ripple &middot; getacuity.io
   </p>
 </body>
 </html>

@@ -27,7 +27,7 @@ export const reactivationSocial: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-            The average first-time user speaks for <strong style="color:#1a1a1a;">43 seconds</strong>, mostly rambles, and Acuity still extracts 2–3 tasks. The bar is low on purpose.
+            The average first-time user speaks for <strong style="color:#1a1a1a;">43 seconds</strong>, mostly rambles, and Ripple still extracts 2–3 tasks. The bar is low on purpose.
           </p>
         </td>
       </tr>

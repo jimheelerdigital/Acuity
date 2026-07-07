@@ -51,8 +51,8 @@ export function welcomeFounderEmail(
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">${greeting}</p>
         </td>
       </tr>
-      ${para("It's Keenan — I'm one of the people who built Acuity, and I wanted to reach out personally.")}
-      ${para("I'll keep this short, because I know your head's probably full enough already. That's kind of the whole point of Acuity: you talk through your day for a few spoken minutes, and it quietly catches the things you'd otherwise lose — the tasks, the patterns, the stuff that's been weighing on you that you can't quite name.")}
+      ${para("It's Keenan — I'm one of the people who built Ripple, and I wanted to reach out personally.")}
+      ${para("I'll keep this short, because I know your head's probably full enough already. That's kind of the whole point of Ripple: you talk through your day for a few spoken minutes, and it quietly catches the things you'd otherwise lose — the tasks, the patterns, the stuff that's been weighing on you that you can't quite name.")}
       ${para("Here's how to start:")}
       <tr>
         <td style="padding-bottom:4px;">
@@ -65,7 +65,7 @@ export function welcomeFounderEmail(
         </td>
       </tr>
       ${para("On Android? It's coming — we're building it now. Just reply to this email and I'll personally let you know the second it's ready.")}
-      ${para("One honest thing before you go: Acuity gets better the more you use it. The first debrief gives you a little. A week in, it starts surfacing patterns you didn't see. A month in, you can watch your life actually take shape across the things that matter. It compounds — quietly, in the background — but only if you keep showing up for a few minutes at a time.")}
+      ${para("One honest thing before you go: Ripple gets better the more you use it. The first debrief gives you a little. A week in, it starts surfacing patterns you didn't see. A month in, you can watch your life actually take shape across the things that matter. It compounds — quietly, in the background — but only if you keep showing up for a few minutes at a time.")}
       ${para("You don't have to be consistent to start. You just have to start. Talk through today, and let it do the rest.")}
       ${para("I read every reply to this email, so if anything's confusing or you just want to tell me what's on your mind — write back. A real person (me) will see it.")}
       <tr>

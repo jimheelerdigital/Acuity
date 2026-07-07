@@ -19,7 +19,7 @@ export const reactivationFriction: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-            You signed up for Acuity but haven't done your first debrief yet. That's 100% normal — most people hesitate the first time.
+            You signed up for Ripple but haven't done your first debrief yet. That's 100% normal — most people hesitate the first time.
           </p>
         </td>
       </tr>

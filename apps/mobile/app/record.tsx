@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
+import { RippleRingBurst } from "@/components/brand/ripple-ring-burst";
 import {
   RecordOrb,
   RecordWaveform,
@@ -901,6 +902,31 @@ export default function RecordScreen() {
           // before. Same button, same gap-14 spacing for breathing
           // room beneath the checklist.
           <View className="items-center gap-14">
+            {/* Ripple brand motif (STAGE 6 rebrand) — raindrop + concentric
+                rings, accent-tinted via tokens. Purely decorative; the
+                ProcessingProgressBar below still owns all phase/state
+                signals. The "Reflecting…" label uses the Ripple wordmark
+                face. Both light + dark resolve via tokens. */}
+            <View style={{ alignItems: "center", gap: 12 }}>
+              <RippleRingBurst size={160} markSize={40} />
+              <Text
+                style={{
+                  // fontWordmark exists on the tokens object at runtime
+                  // (lib/theme/tokens.ts) but isn't in the AcuityTokens
+                  // interface yet; read it defensively with a fallback
+                  // rather than widening the shared type from a screen.
+                  fontFamily:
+                    (tokens as unknown as { fontWordmark?: string })
+                      .fontWordmark ?? "Quicksand_600SemiBold",
+                  fontSize: 17,
+                  fontWeight: "600",
+                  letterSpacing: -0.2,
+                  color: tokens.text,
+                }}
+              >
+                Reflecting…
+              </Text>
+            </View>
             {state === "uploading" ? (
               <ProcessingProgressBar phase="uploading" elapsedSeconds={0} />
             ) : (
