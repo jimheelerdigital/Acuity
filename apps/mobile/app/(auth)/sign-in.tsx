@@ -37,11 +37,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import {
+  googlePlatformClientId,
   requestMagicLink,
   signInWithPassword,
-  useGoogleSignIn,
 } from "@/lib/auth";
 import { isAppleSignInAvailable, signInWithApple } from "@/lib/apple-auth";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { WARN_AMBER } from "@/lib/tone-colors";
 
 type Loading = "google" | "apple" | "password" | "magic" | null;
@@ -59,7 +60,11 @@ type Loading = "google" | "apple" | "password" | "magic" | null;
 export default function SignInScreen() {
   const { setAuthenticatedUser } = useAuth();
   const { tokens } = useTheme();
-  const { signIn: googleSignIn, ready, hasClientId } = useGoogleSignIn();
+  // Whether Google sign-in is configured for THIS platform. Plain check (no
+  // hook) so we can gate MOUNTING the Google hook: mounting `useGoogleSignIn`
+  // on Android with androidClientId unset throws on render and crashes the app
+  // on launch (fixed 2026-07-07 — render <GoogleSignInButton> only when true).
+  const hasGoogleClientId = Boolean(googlePlatformClientId());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -114,33 +119,6 @@ export default function SignInScreen() {
     // 27-28 relied on lib/auth's memoryToken closure populating
     // correctly, but production diagnostics showed the closure
     // wasn't holding — see lib/token-bridge.ts for the saga.
-    setAuthenticatedUser(result.user, result.sessionToken);
-  }
-
-  async function handleGoogle() {
-    if (!ready) {
-      Alert.alert(
-        "Not ready",
-        hasClientId
-          ? "Google SDK is still loading. Try again in a second."
-          : "Google sign-in is not configured. Contact support."
-      );
-      return;
-    }
-    setLoading("google");
-    const result = await googleSignIn();
-    setLoading(null);
-
-    if (!result.ok) {
-      if (result.reason === "cancelled") return;
-      Alert.alert(
-        "Sign-in failed",
-        result.detail ?? "Please try again or use email."
-      );
-      return;
-    }
-    // See handleApple comment — same SecureStore race avoidance,
-    // same build-29 tokenBridge hand-off.
     setAuthenticatedUser(result.user, result.sessionToken);
   }
 
@@ -304,29 +282,18 @@ export default function SignInScreen() {
           </View>
         )}
 
-        {/* Google */}
-        <Pressable
-          onPress={handleGoogle}
-          disabled={loading !== null}
-          className="w-full flex-row items-center justify-center gap-3 rounded-xl border px-4 py-3.5 mb-4"
-          style={{
-            borderColor: tokens.line,
-            backgroundColor: tokens.cardBg,
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading === "google" ? (
-            <ActivityIndicator size="small" color={tokens.textTer} />
-          ) : (
-            <Ionicons name="logo-google" size={18} color={tokens.textTer} />
-          )}
-          <Text
-            className="text-sm font-semibold"
-            style={{ color: tokens.text }}
-          >
-            {loading === "google" ? "Signing in…" : "Continue with Google"}
-          </Text>
-        </Pressable>
+        {/* Google — only MOUNTED when the platform's Google client id is
+            configured. On Android with androidClientId unset we skip it (and
+            the expo-auth-session hook it uses, which throws on render) so the
+            screen can't crash; users sign in with email or Apple instead. */}
+        {hasGoogleClientId && (
+          <GoogleSignInButton
+            loading={loading}
+            setLoading={setLoading}
+            onAuthenticated={setAuthenticatedUser}
+            tokens={tokens}
+          />
+        )}
 
         {/* Divider */}
         <View className="flex-row items-center gap-3 my-3">
@@ -454,9 +421,11 @@ export default function SignInScreen() {
           </Link>
         </View>
 
-        {!hasClientId && (
+        {__DEV__ && !hasGoogleClientId && (
           // WARN_AMBER from lib/tone-colors — single source of truth
           // for the warning-amber accent (palette has no warning token).
+          // Dev-only: in production a missing platform client id (e.g. Android)
+          // just hides the Google button; no user-facing note.
           <Text
             className="text-xs mt-6 text-center leading-relaxed"
             style={{ color: WARN_AMBER }}

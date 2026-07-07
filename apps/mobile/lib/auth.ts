@@ -466,6 +466,21 @@ function googleAndroidClientId(): string | undefined {
   );
 }
 
+/**
+ * The Google OAuth client id for the CURRENT platform, or undefined when it's
+ * not configured (e.g. Android with EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+ * unset). PLAIN function — NOT a hook — so callers can decide whether to
+ * render the Google button. `useGoogleSignIn` (and its expo-auth-session
+ * `Google.useAuthRequest`) must only be MOUNTED when this is defined: that
+ * hook throws on render if the platform's clientId is undefined (Android
+ * crash-on-launch, 2026-07-07). Coerces "" → undefined.
+ */
+export function googlePlatformClientId(): string | undefined {
+  const id =
+    Platform.OS === "android" ? googleAndroidClientId() : googleIosClientId();
+  return id || undefined;
+}
+
 function apiBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as
     | { apiUrl?: string }
