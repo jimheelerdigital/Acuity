@@ -314,6 +314,56 @@
   --acuity-secondary-h: 85;
 }
 
+/* ─── The remaining four Ripple handoff schemes (added 2026-07-07) ── */
+:root[data-palette="rose"] {
+  --acuity-primary: oklch(0.74 0.13 10);
+  --acuity-primary-hi: oklch(0.82 0.13 10);
+  --acuity-primary-lo: oklch(0.64 0.13 10);
+  --acuity-primary-soft: oklch(0.74 0.13 10 / 0.18);
+  --acuity-secondary: oklch(0.55 0.15 320);
+  --acuity-secondary-hi: oklch(0.63 0.15 320);
+  --acuity-secondary-lo: oklch(0.45 0.15 320);
+  --acuity-secondary-soft: oklch(0.55 0.15 320 / 0.18);
+  --acuity-primary-h: 10;
+  --acuity-secondary-h: 320;
+}
+:root[data-palette="amber"] {
+  --acuity-primary: oklch(0.79 0.15 65);
+  --acuity-primary-hi: oklch(0.87 0.15 65);
+  --acuity-primary-lo: oklch(0.69 0.15 65);
+  --acuity-primary-soft: oklch(0.79 0.15 65 / 0.18);
+  --acuity-secondary: oklch(0.55 0.16 275);
+  --acuity-secondary-hi: oklch(0.63 0.16 275);
+  --acuity-secondary-lo: oklch(0.45 0.16 275);
+  --acuity-secondary-soft: oklch(0.55 0.16 275 / 0.18);
+  --acuity-primary-h: 65;
+  --acuity-secondary-h: 275;
+}
+:root[data-palette="jade"] {
+  --acuity-primary: oklch(0.72 0.13 165);
+  --acuity-primary-hi: oklch(0.80 0.13 165);
+  --acuity-primary-lo: oklch(0.62 0.13 165);
+  --acuity-primary-soft: oklch(0.72 0.13 165 / 0.18);
+  --acuity-secondary: oklch(0.72 0.14 32);
+  --acuity-secondary-hi: oklch(0.80 0.14 32);
+  --acuity-secondary-lo: oklch(0.62 0.14 32);
+  --acuity-secondary-soft: oklch(0.72 0.14 32 / 0.18);
+  --acuity-primary-h: 165;
+  --acuity-secondary-h: 32;
+}
+:root[data-palette="sky"] {
+  --acuity-primary: oklch(0.72 0.13 235);
+  --acuity-primary-hi: oklch(0.80 0.13 235);
+  --acuity-primary-lo: oklch(0.62 0.13 235);
+  --acuity-primary-soft: oklch(0.72 0.13 235 / 0.18);
+  --acuity-secondary: oklch(0.75 0.12 5);
+  --acuity-secondary-hi: oklch(0.83 0.12 5);
+  --acuity-secondary-lo: oklch(0.65 0.12 5);
+  --acuity-secondary-soft: oklch(0.75 0.12 5 / 0.18);
+  --acuity-primary-h: 235;
+  --acuity-secondary-h: 5;
+}
+
 /* ─── Mode-independent tokens ───────────────────────────────────── */
 
 :root {

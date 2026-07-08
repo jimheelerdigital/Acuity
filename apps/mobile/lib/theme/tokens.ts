@@ -47,7 +47,15 @@ const toRgb = converter("rgb");
 
 // ─── Palette presets ──────────────────────────────────────────────
 
-export type AcuityAccent = "coral" | "sunset" | "citrus" | "cobalt";
+export type AcuityAccent =
+  | "coral"
+  | "sunset"
+  | "citrus"
+  | "cobalt"
+  | "rose"
+  | "amber"
+  | "jade"
+  | "sky";
 
 interface AccentPreset {
   /** Primary OKLCH [lightness 0..1, chroma 0..0.4, hue 0..360]. */
@@ -77,6 +85,26 @@ export const ACUITY_ACCENT_PRESETS: Record<AcuityAccent, AccentPreset> = {
     primary: [0.66, 0.18, 255],
     secondary: [0.78, 0.13, 85],
     name: "Cobalt × Lime",
+  },
+  rose: {
+    primary: [0.74, 0.13, 10],
+    secondary: [0.55, 0.15, 320],
+    name: "Rose × Plum",
+  },
+  amber: {
+    primary: [0.79, 0.15, 65],
+    secondary: [0.55, 0.16, 275],
+    name: "Amber × Indigo",
+  },
+  jade: {
+    primary: [0.72, 0.13, 165],
+    secondary: [0.72, 0.14, 32],
+    name: "Jade × Coral",
+  },
+  sky: {
+    primary: [0.72, 0.13, 235],
+    secondary: [0.75, 0.12, 5],
+    name: "Sky × Blush",
   },
 };
 

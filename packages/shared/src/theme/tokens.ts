@@ -20,7 +20,15 @@
 // the current hand-mirroring drift risk). Until then this is consumed by
 // the marketing site (page chrome + the live phone-mockup screens).
 
-export type AccentName = "coral" | "sunset" | "citrus" | "cobalt";
+export type AccentName =
+  | "coral"
+  | "sunset"
+  | "citrus"
+  | "cobalt"
+  | "rose"
+  | "amber"
+  | "jade"
+  | "sky";
 
 export interface AccentPreset {
   /** [L, C, H] oklch triplet — warm primary. */
@@ -40,6 +48,11 @@ export const ACUITY_ACCENT_PRESETS: Record<AccentName, AccentPreset> = {
   sunset: { primary: [0.73, 0.165, 18], secondary: [0.62, 0.2, 330], name: "Sunset × Magenta" },
   citrus: { primary: [0.8, 0.155, 70], secondary: [0.68, 0.165, 195], name: "Citrus × Teal" },
   cobalt: { primary: [0.66, 0.18, 255], secondary: [0.78, 0.13, 85], name: "Cobalt × Lime" },
+  // Added 2026-07-07 — the remaining four Ripple handoff schemes.
+  rose: { primary: [0.74, 0.13, 10], secondary: [0.55, 0.15, 320], name: "Rose × Plum" },
+  amber: { primary: [0.79, 0.15, 65], secondary: [0.55, 0.16, 275], name: "Amber × Indigo" },
+  jade: { primary: [0.72, 0.13, 165], secondary: [0.72, 0.14, 32], name: "Jade × Coral" },
+  sky: { primary: [0.72, 0.13, 235], secondary: [0.75, 0.12, 5], name: "Sky × Blush" },
 };
 
 function _oklch([l, c, h]: [number, number, number], a = 1): string {

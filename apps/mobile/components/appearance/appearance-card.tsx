@@ -36,6 +36,10 @@ const PALETTE_OPTIONS: AcuityAccent[] = [
   "sunset",
   "citrus",
   "cobalt",
+  "rose",
+  "amber",
+  "jade",
+  "sky",
 ];
 
 // Swatch gradient stops per design spec (slightly brighter than the
@@ -48,6 +52,10 @@ const SWATCH_GRADIENTS: Record<AcuityAccent, [string, string]> = {
   sunset: ["#ff8a76", "#c875c8"],
   citrus: ["#f7c264", "#5fc0c8"],
   cobalt: ["#6e8df0", "#cad88b"],
+  rose: ["#f08698", "#9750a7"],
+  amber: ["#fca443", "#5965cd"],
+  jade: ["#3fbe90", "#ef816b"],
+  sky: ["#3fb1ea", "#ed8da4"],
 };
 
 export function AppearanceCard() {
