@@ -37,6 +37,7 @@ const PLAY_STORE_LIVE = process.env.NEXT_PUBLIC_PLAY_STORE_LIVE === "true";
 const EXCLUDED_PREFIXES = [
   "/admin",
   "/api",
+  "/install", // the install page IS the conversion surface — no banner on it
   "/dashboard",
   "/home",
   "/account",

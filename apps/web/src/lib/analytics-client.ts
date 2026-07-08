@@ -33,7 +33,10 @@ export type ClientAnalyticsEvent =
   | "install_banner_render_skipped"
   // Inline install CTAs in marketing content — components/inline-install-cta.tsx
   | "install_banner_inline_shown"
-  | "install_banner_inline_clicked";
+  | "install_banner_inline_clicked"
+  // Desktop QR bridge — components/install-qr.tsx + app/install page
+  | "install_qr_shown"
+  | "install_page_visit";
 
 export function trackClient(
   event: ClientAnalyticsEvent,
