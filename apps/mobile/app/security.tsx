@@ -128,7 +128,7 @@ export default function SecurityScreen() {
         // Turning OFF — confirm so users don't tap it by accident.
         Alert.alert(
           "Turn off app lock?",
-          "Your entries will no longer require Face ID to open Acuity.",
+          "Your entries will no longer require Face ID to open Ripple.",
           [
             { text: "Cancel", style: "cancel", onPress: () => setBusy(false) },
             {
@@ -272,7 +272,7 @@ export default function SecurityScreen() {
             }}
           >
             We never lock the app while you&rsquo;re using it. Re-lock
-            only happens when Acuity has been backgrounded longer than
+            only happens when Ripple has been backgrounded longer than
             the interval above.
           </Text>
 

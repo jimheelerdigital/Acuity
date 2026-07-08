@@ -91,7 +91,7 @@ export default function IntegrationsScreen() {
             className="mt-1 text-sm"
             style={{ color: tokens.textTer }}
           >
-            Connect a calendar to send Acuity tasks where you already
+            Connect a calendar to send Ripple tasks where you already
             plan your day.
           </Text>
         </View>
@@ -209,7 +209,7 @@ function ConnectPlaceholderCard({ tokens }: { tokens: AcuityTokens }) {
             style={{ color: tokens.textSec }}
           >
             Reads your iOS calendar (which already aggregates your
-            Google and Outlook calendars) so Acuity can send tasks to
+            Google and Outlook calendars) so Ripple can send tasks to
             your real calendar and reference your meeting load in
             reflections.
           </Text>
@@ -230,7 +230,7 @@ function ConnectPlaceholderCard({ tokens }: { tokens: AcuityTokens }) {
           className="mt-1 text-xs leading-relaxed"
           style={{ color: tokens.textSec }}
         >
-          Calendar connect ships in the next mobile release. Acuity
+          Calendar connect ships in the next mobile release. Ripple
           will request iOS calendar access only when you tap Connect
           here — never at app launch.
         </Text>
@@ -262,9 +262,9 @@ function ConnectPlaceholderCard({ tokens }: { tokens: AcuityTokens }) {
         className="mt-4 text-[11px] leading-relaxed"
         style={{ color: tokens.textQuiet }}
       >
-        Acuity reads only event titles, times, and attendee counts.
+        Ripple reads only event titles, times, and attendee counts.
         Never location, notes, or attendee email addresses. Tasks
-        you send to your calendar use the &ldquo;Acuity:&rdquo; title
+        you send to your calendar use the &ldquo;Ripple:&rdquo; title
         prefix so they&apos;re always identifiable.
       </Text>
     </View>
@@ -335,7 +335,7 @@ function ConnectedCard({
   function handleDisconnect() {
     Alert.alert(
       "Disconnect calendar?",
-      "Acuity stops sending new tasks to your calendar. Events already created stay where they are. Your preferences are remembered if you reconnect.",
+      "Ripple stops sending new tasks to your calendar. Events already created stay where they are. Your preferences are remembered if you reconnect.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -503,7 +503,7 @@ function ConnectedCard({
           className="mt-2 text-[11px] leading-relaxed"
           style={{ color: tokens.textQuiet }}
         >
-          Choose a different calendar in the next update, after Acuity
+          Choose a different calendar in the next update, after Ripple
           reads your calendar list directly.
         </Text>
       </View>

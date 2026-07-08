@@ -26,6 +26,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   Pressable,
   Text,
@@ -102,7 +103,7 @@ export default function SignInScreen() {
           : result.reason === "NoIdentityToken"
             ? "Apple didn't return a sign-in token. Try again."
             : result.reason === "NetworkError"
-              ? "Can't reach Acuity. Check your connection and try again."
+              ? "Can't reach Ripple. Check your connection and try again."
               : "Please try again or use email."
       );
       return;
@@ -185,7 +186,7 @@ export default function SignInScreen() {
           className="text-sm text-center leading-relaxed mb-6"
           style={{ color: tokens.textSec }}
         >
-          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Acuity automatically.
+          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Ripple automatically.
         </Text>
         <Pressable
           onPress={() => {
@@ -224,16 +225,17 @@ export default function SignInScreen() {
           className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
           style={{ backgroundColor: tokens.primary }}
         >
-          <Text className="text-3xl" style={{ color: "#FFFFFF" }}>
-            A
-          </Text>
+          <Image
+            source={require("../../assets/brand/ripple-mark-white.png")}
+            style={{ width: 34, height: 34, resizeMode: "contain" }}
+          />
         </View>
 
         <Text
           className="text-2xl font-bold mb-1 text-center"
-          style={{ color: tokens.text }}
+          style={{ color: tokens.text, fontFamily: tokens.fontWordmark }}
         >
-          Sign in to Acuity
+          Sign in to Ripple
         </Text>
         <Text
           className="text-sm mb-8 text-center"

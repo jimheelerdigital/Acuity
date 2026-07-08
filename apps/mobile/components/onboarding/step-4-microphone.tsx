@@ -68,7 +68,7 @@ export function Step4Microphone() {
       Linking.openURL("app-settings:").catch(() =>
         Alert.alert(
           "Open Settings",
-          "In Settings, find Acuity and enable Microphone access."
+          "In Settings, find Ripple and enable Microphone access."
         )
       );
     } else {

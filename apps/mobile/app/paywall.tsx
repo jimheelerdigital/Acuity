@@ -280,7 +280,7 @@ export default function PaywallScreen() {
           >
             {showInAppSubscribe
               ? "Subscribe in the app or on the web. Either path unlocks the same Pro features across all your devices."
-              : "Subscriptions are managed through your Acuity web account. Manage or cancel any time at getacuity.io."}
+              : "Subscriptions are managed through your Ripple web account. Manage or cancel any time at getacuity.io."}
           </Text>
         </View>
       </ScrollView>

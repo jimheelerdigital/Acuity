@@ -300,7 +300,7 @@ export default function RecordScreen() {
       if (!req.granted) {
         Alert.alert(
           "Microphone access required",
-          "Enable Acuity's mic access in Settings → Acuity → Microphone, then tap record again.",
+          "Enable Ripple's mic access in Settings → Ripple → Microphone, then tap record again.",
           [{ text: "OK", onPress: () => router.back() }]
         );
         return;
@@ -381,7 +381,7 @@ export default function RecordScreen() {
       if (fresh && !fresh.granted) {
         Alert.alert(
           "Microphone access required",
-          "Enable in Settings → Acuity → Microphone, then try again.",
+          "Enable in Settings → Ripple → Microphone, then try again.",
           [{ text: "OK", onPress: () => router.back() }]
         );
         return;

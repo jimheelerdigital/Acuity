@@ -19,7 +19,7 @@ import { ScreenTestimonial } from "./_components/screen-testimonial";
 
 const TESTIMONIAL = {
   quote:
-    "I didn't realize I was living the same week on repeat until Acuity showed me.",
+    "I didn't realize I was living the same week on repeat until Ripple showed me.",
   name: "Priya R.",
 };
 

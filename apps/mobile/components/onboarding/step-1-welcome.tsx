@@ -39,7 +39,7 @@ export function Step1Welcome() {
         adjustsFontSizeToFit
         minimumFontScale={0.75}
       >
-        Welcome to Acuity
+        Welcome to Ripple
       </Text>
       <Text
         className="text-center text-base leading-relaxed max-w-xs"

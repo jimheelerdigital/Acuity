@@ -181,7 +181,7 @@ export function ExtractionReview({
               color: tokens.primary,
             }}
           >
-            Acuity reviewed your entry
+            Ripple reviewed your entry
           </Text>
         </View>
         <Text
@@ -237,7 +237,7 @@ export function ExtractionReview({
             color: tokens.primary,
           }}
         >
-          Review what Acuity extracted
+          Review what Ripple extracted
         </Text>
       </View>
 
@@ -284,7 +284,7 @@ export function ExtractionReview({
               textTransform: "uppercase",
             }}
           >
-            Tasks Acuity extracted ({tasks.length})
+            Tasks Ripple extracted ({tasks.length})
           </GradientText>
           <View style={{ marginTop: 10, gap: 8 }}>
             {tasks.map((t) => (
@@ -332,7 +332,7 @@ export function ExtractionReview({
               textTransform: "uppercase",
             }}
           >
-            Goals Acuity suggested ({goals.length})
+            Goals Ripple suggested ({goals.length})
           </GradientText>
           <View style={{ marginTop: 10, gap: 8 }}>
             {goals.map((g) => (
