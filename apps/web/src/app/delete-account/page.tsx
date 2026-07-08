@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Delete Your Account — Acuity",
+  title: "Delete Your Account — Ripple",
   description:
-    "How to request deletion of your Acuity account and data, what gets deleted, and what we retain for legal reasons.",
+    "How to request deletion of your Ripple account and data, what gets deleted, and what we retain for legal reasons.",
   robots: { index: true, follow: true },
 };
 
@@ -25,7 +25,7 @@ export default function DeleteAccountPage() {
           href="/"
           className="text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
-          &larr; Back to Acuity
+          &larr; Back to Ripple
         </Link>
 
         <h1 className="mt-8 text-3xl font-bold tracking-tight text-acuity-text sm:text-4xl">
@@ -38,9 +38,9 @@ export default function DeleteAccountPage() {
         <div className="mt-10 space-y-10 text-[15px] leading-relaxed">
           <section>
             <p>
-              Acuity is an AI-powered voice journaling app published by{" "}
+              Ripple is an AI-powered voice journaling app published by{" "}
               <strong>Heeler Digital LLC</strong>. You can request deletion
-              of your Acuity account and the personal data associated with it
+              of your Ripple account and the personal data associated with it
               at any time, using either of the options below. There is no
               charge, and you do not need an active subscription.
             </p>
@@ -51,7 +51,7 @@ export default function DeleteAccountPage() {
               Option 1 — Delete in the app (immediate)
             </h2>
             <p className="mt-3">
-              The fastest way is to delete your account directly from Acuity.
+              The fastest way is to delete your account directly from Ripple.
               This takes effect immediately.
             </p>
             <ul className="mt-3 list-disc space-y-1.5 pl-5 text-acuity-text-sec">
@@ -86,7 +86,7 @@ export default function DeleteAccountPage() {
             </h2>
             <p className="mt-3">
               You don&rsquo;t need to delete your account to remove specific
-              data. From within Acuity:
+              data. From within Ripple:
             </p>
             <ul className="mt-3 list-disc space-y-1.5 pl-5 text-acuity-text-sec">
               <li>
@@ -136,7 +136,7 @@ export default function DeleteAccountPage() {
                 <strong>&ldquo;Account Deletion Request&rdquo;</strong>.
               </li>
               <li>
-                Include the email address associated with your Acuity account
+                Include the email address associated with your Ripple account
                 so we can locate and verify it.
               </li>
             </ul>
@@ -202,7 +202,7 @@ export default function DeleteAccountPage() {
               >
                 hello@getacuity.io
               </a>
-              . Acuity is operated by Heeler Digital LLC. See also our{" "}
+              . Ripple is operated by Heeler Digital LLC. See also our{" "}
               <Link
                 href="/privacy"
                 className="text-acuity-primary underline-offset-4 hover:underline"

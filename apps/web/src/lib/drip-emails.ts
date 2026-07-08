@@ -17,7 +17,7 @@ function layout(content: string): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Acuity</title>
+  <title>Ripple</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0A0A0F;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A0F;">
@@ -78,7 +78,7 @@ function bullet(text: string): string {
 }
 
 /* ─────────────────────────────────────────
-   Email 2 — Day 2: What Acuity actually does
+   Email 2 — Day 2: What Ripple actually does
    ───────────────────────────────────────── */
 
 function email2(rawName: string): string {
@@ -88,7 +88,7 @@ function email2(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <h1 style="margin:0;font-size:28px;font-weight:800;color:#FFFFFF;letter-spacing:-0.5px;line-height:1.3;">
-                ${name}, here's how Acuity actually works.
+                ${name}, here's how Ripple actually works.
               </h1>
             </td>
           </tr>
@@ -182,7 +182,7 @@ function email2(rawName: string): string {
           <tr>
             <td style="padding-bottom:0;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">
-                — The Acuity Team
+                — The Ripple Team
               </p>
             </td>
           </tr>
@@ -207,7 +207,7 @@ function email3(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                Every Sunday morning, Acuity sends you a 400-word narrative about your week. Not bullet points. Not a summary. A <span style="color:#FFFFFF;font-weight:600;">story about your life</span> — written by AI from your own voice entries.
+                Every Sunday morning, Ripple sends you a 400-word narrative about your week. Not bullet points. Not a summary. A <span style="color:#FFFFFF;font-weight:600;">story about your life</span> — written by AI from your own voice entries.
               </p>
             </td>
           </tr>
@@ -278,7 +278,7 @@ function email3(rawName: string): string {
           <tr>
             <td style="padding-bottom:0;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">
-                — The Acuity Team
+                — The Ripple Team
               </p>
             </td>
           </tr>
@@ -303,7 +303,7 @@ function email4(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                Acuity is live — and as one of our earliest signups, you've got a head start most people won't get.
+                Ripple is live — and as one of our earliest signups, you've got a head start most people won't get.
               </p>
             </td>
           </tr>
@@ -327,7 +327,7 @@ function email4(rawName: string): string {
                     </p>
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
                       ${bullet("7-day free trial — no credit card required to start")}
-                      ${bullet("Lock in $4.99/month — the lowest price Acuity will ever be")}
+                      ${bullet("Lock in $4.99/month — the lowest price Ripple will ever be")}
                       ${bullet("This price goes up after the first 100 members. Your rate stays forever.")}
                       ${bullet("Founding Member status — permanently on your account")}
                     </table>
@@ -364,7 +364,7 @@ function email4(rawName: string): string {
           <tr>
             <td style="padding-bottom:0;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">
-                — The Acuity Team
+                — The Ripple Team
               </p>
             </td>
           </tr>
@@ -389,7 +389,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:24px;">
               <p style="margin:0;font-size:16px;color:#A0A0B8;line-height:1.7;">
-                Acuity is live and your founding member spot is still reserved. Here's a quick reminder of what's waiting for you.
+                Ripple is live and your founding member spot is still reserved. Here's a quick reminder of what's waiting for you.
               </p>
             </td>
           </tr>
@@ -423,7 +423,7 @@ function email5(rawName: string): string {
                 <tr>
                   <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
-                      As a founding member, you get a 7-day free trial and lock in $4.99/month — the lowest price Acuity will ever be.
+                      As a founding member, you get a 7-day free trial and lock in $4.99/month — the lowest price Ripple will ever be.
                     </p>
                   </td>
                 </tr>
@@ -450,7 +450,7 @@ function email5(rawName: string): string {
           <tr>
             <td style="padding-bottom:0;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">
-                — The Acuity Team
+                — The Ripple Team
               </p>
             </td>
           </tr>
@@ -473,7 +473,7 @@ export const DRIP_SEQUENCE: DripEmail[] = [
   {
     step: 2,
     daysAfterSignup: 2,
-    subject: "While you wait — here's what Acuity actually does",
+    subject: "While you wait — here's what Ripple actually does",
     buildHtml: email2,
   },
   {

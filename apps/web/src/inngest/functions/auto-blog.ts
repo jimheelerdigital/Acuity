@@ -268,7 +268,7 @@ function validateBlogPost(
 
   if (wrongDomainLinks.length > 0) {
     errors.push(
-      `Wrong Acuity domain (use internal /for/* or /blog/* paths instead): ${wrongDomainLinks.join(", ")}`
+      `Wrong Ripple domain (use internal /for/* or /blog/* paths instead): ${wrongDomainLinks.join(", ")}`
     );
   }
 
@@ -1233,7 +1233,7 @@ function buildSystemPrompt(
 ): string {
   const currentYear = new Date().getFullYear();
 
-  return `You are writing a blog post for Acuity — a voice journaling app.
+  return `You are writing a blog post for Ripple — a voice journaling app.
 
 CURRENT YEAR: ${currentYear}. Never reference ${currentYear - 1} or ${currentYear - 2} as the current year. All "best of" or "top X in [year]" content must use ${currentYear}. Do not use outdated years in titles, headings, or body copy.
 
@@ -1259,7 +1259,7 @@ BANNED PHRASES (never use these):
 "in today's fast-paced world", "revolutionize", "harness the power of", "empower",
 "cutting-edge", "leverage", "it's not X — it's Y" constructions
 
-NEVER frame Acuity as nightly/evening-only. Brain dumps any time of day.
+NEVER frame Ripple as nightly/evening-only. Brain dumps any time of day.
 "Brain dump" in public copy, "debrief" is internal-only.
 Don't position the weekly report as the only value. Rotate emphasis across: task recall,
 goal tracking, pattern detection, weekly reports, Life Matrix, mood scoring.
@@ -1271,15 +1271,15 @@ ${
 1. Short intro (2-3 sentences: who both apps are for)
 2. Feature comparison TABLE in HTML: side-by-side columns comparing voice input, AI extraction, task tracking, mood tracking, pattern detection, weekly reports, pricing, free trial, platforms. Use <table> with clear headers.
 3. Section "Where [Competitor] wins" — be honest and fair. Never trash them. This builds trust.
-4. Section "Where Acuity wins" — highlight voice-first input, 60-second brain dumps, automatic task extraction, weekly narrative report, Life Matrix, pattern detection.
+4. Section "Where Ripple wins" — highlight voice-first input, 60-second brain dumps, automatic task extraction, weekly narrative report, Life Matrix, pattern detection.
 5. Section "Who should choose [Competitor]" — be genuine about their strengths
-6. Section "Who should choose Acuity" — people who quit journaling because writing felt like work, people who want patterns surfaced automatically
-7. CTA at bottom: "Try Acuity free for 7 days — no card required" with link to /start
+6. Section "Who should choose Ripple" — people who quit journaling because writing felt like work, people who want patterns surfaced automatically
+7. CTA at bottom: "Try Ripple free for 7 days — no card required" with link to /start
 8. FAQ section with 3-4 comparison questions
 IMPORTANT: Do NOT fabricate competitor features or pricing. If unsure, say "check their website for current pricing." Be fair and honest — readers respect balanced comparisons.`
       : topic.searchIntent === "informational" ||
         topic.searchIntent === "problem-solving"
-        ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Acuity is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get early access. ${spotsLeft} spots left." Never CTA in first 40% of post.`
+        ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Ripple is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get early access. ${spotsLeft} spots left." Never CTA in first 40% of post.`
         : `NO CTA — this topic is a loose tangent. End with 2-3 internal links to related posts.`
   }
 
@@ -1299,8 +1299,8 @@ EXTERNAL CITATIONS — link to 2-4 authoritative external sources per post to su
 Rules for external links:
 - Every external link must use the EXACT, full URL you are confident exists (e.g., https://www.apa.org/monitor/2023/06/cover-story-expressive-writing)
 - Prefer homepage-level or well-known permalink URLs that are unlikely to break (e.g., https://www.psychologytoday.com rather than a deeply nested article you are not sure exists)
-- NEVER link to getacuity.io as an external link — all Acuity links must be internal (/for/*, /blog/*)
-- NEVER use these wrong domains for Acuity: acuity.how, acuity.app, acuityapp.com, acuity.com, useacuity.com
+- NEVER link to getacuity.io as an external link — all Ripple links must be internal (/for/*, /blog/*)
+- NEVER use these wrong domains for Ripple: acuity.how, acuity.app, acuityapp.com, acuity.com, useacuity.com
 - All external links must open in a new tab: target="_blank" rel="noopener noreferrer"
 - If you are not 100% certain a URL exists, do NOT include it. A post with zero external links is better than a post with broken external links.
 
@@ -1379,7 +1379,7 @@ async function refillTopicQueue(prisma: {
 
   const raw = await callClaude({
     purpose: "auto-blog-topic-generation",
-    systemPrompt: `You generate blog topic ideas for Acuity, a voice journaling app.
+    systemPrompt: `You generate blog topic ideas for Ripple, a voice journaling app.
 
 Each topic must target a long-tail keyword a real person would Google.
 Cover diverse personas: founders, therapists, knowledge workers, ADHD, sleep-issues,

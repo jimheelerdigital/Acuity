@@ -194,7 +194,7 @@ export function AppearanceSection() {
       <SectionHeader label="Appearance" />
 
       <p className="mt-3 text-base leading-relaxed text-acuity-text-sec">
-        Choose how Acuity looks for you.
+        Choose how Ripple looks for you.
       </p>
 
       {/* Mode toggle */}

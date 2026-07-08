@@ -101,7 +101,7 @@ export function PastDueBanner() {
           Your payment didn&rsquo;t go through
         </p>
         <p className="text-xs text-acuity-text-sec">
-          Update your payment method to get Acuity Pro back.
+          Update your payment method to get Ripple Pro back.
         </p>
       </div>
       <button

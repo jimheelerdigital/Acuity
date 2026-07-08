@@ -222,26 +222,38 @@ export default function SignInScreen() {
     >
       <View className="flex-1 justify-center">
         <View
-          className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
-          style={{ backgroundColor: tokens.primary }}
+          className="h-24 w-24 rounded-[28px] items-center justify-center mb-5 self-center"
+          style={{
+            backgroundColor: tokens.primary,
+            shadowColor: tokens.primary,
+            shadowOpacity: 0.4,
+            shadowRadius: 24,
+            shadowOffset: { width: 0, height: 10 },
+            elevation: 8,
+          }}
         >
           <Image
             source={require("../../assets/brand/ripple-mark-white.png")}
-            style={{ width: 34, height: 34, resizeMode: "contain" }}
+            style={{ width: 54, height: 54, resizeMode: "contain" }}
           />
         </View>
 
         <Text
-          className="text-2xl font-bold mb-1 text-center"
-          style={{ color: tokens.text, fontFamily: tokens.fontWordmark }}
+          className="text-center mb-1.5"
+          style={{
+            color: tokens.text,
+            fontFamily: tokens.fontWordmark,
+            fontSize: 40,
+            letterSpacing: -0.5,
+          }}
         >
-          Sign in to Ripple
+          ripple
         </Text>
         <Text
-          className="text-sm mb-8 text-center"
+          className="text-base mb-8 text-center"
           style={{ color: tokens.textTer }}
         >
-          Your nightly recording, pattern recognition across your own words.
+          Sign in to continue your reflections.
         </Text>
 
         {/* Apple — iOS only. Required by App Store Guideline 4.8

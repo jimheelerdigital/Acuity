@@ -12,7 +12,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Welcome to Acuity",
+  title: "Welcome to Ripple",
   robots: { index: false, follow: false },
 };
 

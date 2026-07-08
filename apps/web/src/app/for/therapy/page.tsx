@@ -36,7 +36,7 @@ export default function TherapyPage() {
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
               { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Acuity for Therapy", item: "https://getacuity.io/for/therapy" },
+              { "@type": "ListItem", position: 3, name: "Ripple for Therapy", item: "https://getacuity.io/for/therapy" },
             ],
           }),
         }}
@@ -52,7 +52,7 @@ export default function TherapyPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
-              Acuity listens to your daily debrief, tracks your emotional
+              Ripple listens to your daily debrief, tracks your emotional
               patterns, and writes your weekly mental health report — for less than
               the cost of one therapy copay.
             </p>
@@ -91,8 +91,8 @@ export default function TherapyPage() {
 
       {/* ───── SOLUTION ───── */}
       <SolutionSection
-        headline="Acuity fills the 6 days between sessions."
-        body="Every day you speak freely. Acuity tracks your mood, detects emotional patterns, flags recurring themes, and builds a mental health timeline that compounds over time. Show up to therapy with 7 days of actual data — not just how you feel in the moment."
+        headline="Ripple fills the 6 days between sessions."
+        body="Every day you speak freely. Ripple tracks your mood, detects emotional patterns, flags recurring themes, and builds a mental health timeline that compounds over time. Show up to therapy with 7 days of actual data — not just how you feel in the moment."
       />
 
       <TrustStrip />
@@ -111,7 +111,7 @@ export default function TherapyPage() {
             label: "Step 1",
             title: "Record",
             description:
-              "Open Acuity whenever you're ready. Hit record. Speak freely. No prompts, no structure, no judgment.",
+              "Open Ripple whenever you're ready. Hit record. Speak freely. No prompts, no structure, no judgment.",
           },
           {
             label: "Step 2",
@@ -149,11 +149,11 @@ export default function TherapyPage() {
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-12 text-white">
-              Therapy vs. Acuity
+              Therapy vs. Ripple
             </h2>
           </Reveal>
           <ComparisonTable
-            headers={["Therapy", "Acuity"]}
+            headers={["Therapy", "Ripple"]}
             rows={[
               { feature: "Cost", values: ["$150/session", "$4.99/month"] },
               { feature: "Frequency", values: ["Once a week", "Every single day"] },
@@ -170,7 +170,7 @@ export default function TherapyPage() {
                 values: ["Spotted over months", "Detected in days"],
               },
             ]}
-            note="Acuity is not a replacement for therapy. It's what makes therapy more effective."
+            note="Ripple is not a replacement for therapy. It's what makes therapy more effective."
           />
         </div>
       </section>
@@ -182,7 +182,7 @@ export default function TherapyPage() {
             icon: "moon",
             title: "Daily mood tracking",
             description:
-              "Log your emotional state every day with zero effort — just speak and Acuity captures it.",
+              "Log your emotional state every day with zero effort — just speak and Ripple captures it.",
           },
           {
             icon: "brain",
@@ -230,7 +230,7 @@ export default function TherapyPage() {
                 ))}
               </div>
               <blockquote className="text-base sm:text-lg text-acuity-text-sec leading-relaxed italic">
-                "I stopped going to therapy because of the cost. Acuity gives me the pattern recognition I was getting in sessions — at a fraction of the price."
+                "I stopped going to therapy because of the cost. Ripple gives me the pattern recognition I was getting in sessions — at a fraction of the price."
               </blockquote>
               <div className="mt-6 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-acuity-primary-soft text-sm font-bold text-acuity-primary">S</div>
@@ -285,7 +285,7 @@ export default function TherapyPage() {
           },
           {
             quote:
-              "Acuity caught a pattern my therapist and I had been trying to identify for months. It spotted it in 3 weeks.",
+              "Ripple caught a pattern my therapist and I had been trying to identify for months. It spotted it in 3 weeks.",
             name: "Marcus T.",
             role: "Designer",
           },

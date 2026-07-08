@@ -9,7 +9,7 @@ import { GoalDetail } from "./goal-detail";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Goal — Acuity",
+  title: "Goal — Ripple",
   robots: { index: false, follow: false },
 };
 

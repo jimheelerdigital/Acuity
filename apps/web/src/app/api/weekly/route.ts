@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     )
     .join("\n\n");
 
-  const systemPrompt = `You are Acuity's weekly synthesis engine. Analyse the user's brain dump entries from this week and produce a structured weekly report.
+  const systemPrompt = `You are Ripple's weekly synthesis engine. Analyse the user's brain dump entries from this week and produce a structured weekly report.
 
 Return ONLY valid JSON matching this exact schema — no markdown, no prose:
 

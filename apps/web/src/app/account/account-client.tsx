@@ -108,7 +108,7 @@ export default function AccountClient({
           Account
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Manage your Acuity account.
+          Manage your Ripple account.
         </p>
 
         {/* Account info */}
@@ -234,7 +234,7 @@ export default function AccountClient({
             Support &amp; safety
           </h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Acuity is a journaling tool, not a substitute for professional
+            Ripple is a journaling tool, not a substitute for professional
             support. If you&rsquo;re in crisis, please reach out to a hotline or
             emergency service.
           </p>
@@ -256,7 +256,7 @@ export default function AccountClient({
             Help &amp; onboarding
           </h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            New to Acuity, or want a refresher? Walk through the product tour
+            New to Ripple, or want a refresher? Walk through the product tour
             again.
           </p>
           {/* Replays the first-login product tour. ?replayTour=1 is
@@ -387,7 +387,7 @@ function DeleteConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white dark:bg-acuity-card-bg p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Delete your Acuity account?
+          Delete your Ripple account?
         </h3>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
           This will permanently delete your account and every entry,
@@ -626,7 +626,7 @@ function LocalTimezoneHint() {
 }
 
 const STATUS_LABELS: Record<string, { label: string; hint: string; tone: "default" | "warn" | "good" }> = {
-  PRO: { label: "Pro — active", hint: "Thanks for supporting Acuity.", tone: "good" },
+  PRO: { label: "Pro — active", hint: "Thanks for supporting Ripple.", tone: "good" },
   TRIAL: { label: "Free trial", hint: "You have full access during your trial.", tone: "default" },
   PAST_DUE: {
     label: "Payment needed",
@@ -837,7 +837,7 @@ function SubscriptionSection({
         <div className="mb-5 flex items-start justify-between gap-3 rounded-lg border border-acuity-primary-soft bg-acuity-primary-soft px-4 py-3 dark:border-acuity-primary-soft dark:bg-acuity-primary-soft">
           <div className="flex-1">
             <p className="text-sm font-semibold text-acuity-primary dark:text-acuity-primary">
-              🎉 Welcome to Acuity Pro.
+              🎉 Welcome to Ripple Pro.
             </p>
             <p className="mt-0.5 text-xs text-acuity-primary/80 dark:text-acuity-primary/80">
               Your receipt is on its way to your inbox. Full Pro access
@@ -1000,7 +1000,7 @@ function ReferralsSection() {
         Referrals
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Share Acuity with someone who might want it. They get an extra
+        Share Ripple with someone who might want it. They get an extra
         14 days on their trial, and you get 14 days added to your
         subscription when they convert to paid — up to{" "}
         {data?.annualCap ?? 12} rewarded conversions per year.
@@ -1269,7 +1269,7 @@ function DataExportSection() {
         Download my data
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Get a zip of everything Acuity has stored for you — entries,
+        Get a zip of everything Ripple has stored for you — entries,
         transcripts, goals, tasks, Life Matrix, weekly reports, audio
         where retained. The link expires in 24 hours.
       </p>

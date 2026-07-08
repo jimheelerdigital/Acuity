@@ -42,9 +42,9 @@ const WEB_TOUR_STEPS: WebTourStep[] = [
   { tourId: "record", route: HOME, title: "Record", description: "Click Record anytime to capture what's on your mind. Sixty seconds is enough.", side: "right" },
   { tourId: "dashboard", route: HOME, title: "Your dashboard", description: "Your home reflects your reflections. Patterns surface as you record.", side: "bottom" },
   { tourId: "entries", route: "/entries", title: "Entries", description: "Every voice note lives here, processed into transcript + themes + mood.", side: "right" },
-  { tourId: "tasks", route: "/tasks", title: "Tasks", description: "Acuity extracts to-dos from what you say — they land here.", side: "right" },
+  { tourId: "tasks", route: "/tasks", title: "Tasks", description: "Ripple extracts to-dos from what you say — they land here.", side: "right" },
   { tourId: "insights", route: "/insights", title: "Insights", description: "Patterns, themes, and your weekly report. The longer you use it, the sharper this gets.", side: "right" },
-  { tourId: "goals", route: "/goals", title: "Goals", description: "Set what you're working toward; Acuity nudges you when entries touch it.", side: "right" },
+  { tourId: "goals", route: "/goals", title: "Goals", description: "Set what you're working toward; Ripple nudges you when entries touch it.", side: "right" },
   { tourId: "settings", route: "/account", title: "Settings", description: "Themes, reminders, privacy, and replay-tour all live here.", side: "bottom" },
 ];
 

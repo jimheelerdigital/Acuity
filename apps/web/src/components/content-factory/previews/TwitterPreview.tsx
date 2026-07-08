@@ -18,7 +18,7 @@ export default function TwitterPreview({ piece }: { piece: PreviewPiece }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
-              <span className="text-sm font-bold text-white">Acuity</span>
+              <span className="text-sm font-bold text-white">Ripple</span>
               <span className="text-sm text-white/40">@getacuity</span>
             </div>
             {/* Body */}

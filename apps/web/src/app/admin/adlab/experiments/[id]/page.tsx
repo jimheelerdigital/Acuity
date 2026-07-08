@@ -2220,15 +2220,15 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
           </div>
           <div>
             <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 8 — Bridge (two sentences separated by period)</label>
-            <textarea value={bridge} onChange={(e) => setBridge(e.target.value)} className={inputClass} placeholder="You've tried to break the loop before. Acuity just asks for one minute." />
+            <textarea value={bridge} onChange={(e) => setBridge(e.target.value)} className={inputClass} placeholder="You've tried to break the loop before. Ripple just asks for one minute." />
           </div>
           <div>
             <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 9 — Promise</label>
-            <textarea value={promise} onChange={(e) => setPromise(e.target.value)} className={inputClass} placeholder="Acuity will show you the pattern inside the loop so you can finally step out of it." />
+            <textarea value={promise} onChange={(e) => setPromise(e.target.value)} className={inputClass} placeholder="Ripple will show you the pattern inside the loop so you can finally step out of it." />
           </div>
           <div>
             <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 14 — Paywall Hook</label>
-            <textarea value={paywallHook} onChange={(e) => setPaywallHook(e.target.value)} className={inputClass} placeholder="You've already seen the pattern. Now let Acuity track it for you." />
+            <textarea value={paywallHook} onChange={(e) => setPaywallHook(e.target.value)} className={inputClass} placeholder="You've already seen the pattern. Now let Ripple track it for you." />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={save} disabled={saving}

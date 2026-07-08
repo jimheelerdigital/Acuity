@@ -42,7 +42,7 @@ const DEFAULT_APP_URL = "https://www.getacuity.io";
  * keenan@getacuity.io is on the verified getacuity.io domain (SPF/DKIM
  * already cover it), so sending FROM it has no deliverability cost.
  */
-const LIFECYCLE_FROM = '"Keenan from Acuity" <keenan@getacuity.io>';
+const LIFECYCLE_FROM = '"Keenan from Ripple" <keenan@getacuity.io>';
 
 export interface MinimalUser {
   id: string;

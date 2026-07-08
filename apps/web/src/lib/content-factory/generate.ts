@@ -4,7 +4,7 @@ import { callClaude } from "./claude-client";
 
 // ─── Shared brand system prompt ──────────────────────────────────────────────
 
-const BRAND_SYSTEM_PROMPT = `You are writing content for Acuity — a nightly voice journaling app for iOS, Android, and web.
+const BRAND_SYSTEM_PROMPT = `You are writing content for Ripple — a nightly voice journaling app for iOS, Android, and web.
 
 Tagline: "Debrief daily. See your life clearly."
 
@@ -73,7 +73,7 @@ export async function generateBlogPost(
 
   const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-You are writing a blog post for the Acuity website.
+You are writing a blog post for the Ripple website.
 
 Requirements:
 - 1,400 to 1,600 words
@@ -132,13 +132,13 @@ export async function generateTwitterPosts(
     "tip — one actionable technique or habit",
     "question — a thought-provoking question that sparks replies",
     "product highlight — a specific feature moment (weekly report, life matrix, memoir)",
-    "founder observation — a build-in-public observation from making Acuity",
+    "founder observation — a build-in-public observation from making Ripple",
   ];
   const chosenType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
 
   const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-You are writing a Twitter/X post for Acuity.
+You are writing a Twitter/X post for Ripple.
 
 Content type for this post: ${chosenType}
 
@@ -154,7 +154,7 @@ Respond as a JSON array of objects:
     ? `\nContext from today's research: ${JSON.stringify(briefing.ga4Winners)}`
     : "";
 
-  const userPrompt = `Write ${count} tweet(s) for Acuity. Each should use a different angle.${briefingContext}`;
+  const userPrompt = `Write ${count} tweet(s) for Ripple. Each should use a different angle.${briefingContext}`;
 
   const raw = await callClaude({
     purpose: "generate-twitter-posts",
@@ -181,8 +181,8 @@ export async function generateTikTokScripts(
   const fewShot = await loadFewShotExamples();
 
   const contentTypes = [
-    "problem/solution — name a specific frustration, show Acuity's answer",
-    "founder story — a personal moment from building Acuity",
+    "problem/solution — name a specific frustration, show Ripple's answer",
+    "founder story — a personal moment from building Ripple",
     "product demo walkthrough — walk through a specific feature moment",
     "reaction/hot take — a strong opinion about journaling, productivity, or self-reflection",
     "day-in-the-life — how nightly debriefing fits into a real routine",
@@ -191,7 +191,7 @@ export async function generateTikTokScripts(
 
   const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-You are writing a TikTok video script for Acuity.
+You are writing a TikTok video script for Ripple.
 
 Content type for this script: ${chosenType}
 
@@ -210,7 +210,7 @@ Respond as a JSON array of objects:
     ? `\nContext from today's research: ${JSON.stringify(briefing.ga4Winners)}`
     : "";
 
-  const userPrompt = `Write ${count} TikTok script(s) for Acuity.${briefingContext}`;
+  const userPrompt = `Write ${count} TikTok script(s) for Ripple.${briefingContext}`;
 
   const raw = await callClaude({
     purpose: "generate-tiktok-scripts",
@@ -238,7 +238,7 @@ export async function generateAdCopy(
 
   const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-You are writing Meta (Facebook/Instagram) ad copy for Acuity.
+You are writing Meta (Facebook/Instagram) ad copy for Ripple.
 
 Requirements per variant:
 - Primary text: max 125 characters
@@ -284,7 +284,7 @@ export async function generateInstagramPost(
   const contentTypes = [
     "insight post — share one specific observation about self-reflection",
     "tip post — one actionable technique for nightly debriefing",
-    "social proof quote — a real pattern from Acuity users (anonymized)",
+    "social proof quote — a real pattern from Ripple users (anonymized)",
     "question post — ask a thought-provoking question about self-awareness",
     "product highlight — show what the weekly report reveals",
   ];
@@ -292,7 +292,7 @@ export async function generateInstagramPost(
 
   const systemPrompt = `${BRAND_SYSTEM_PROMPT}${fewShot}
 
-You are writing an Instagram post for Acuity.
+You are writing an Instagram post for Ripple.
 
 Content type for this post: ${chosenType}
 
@@ -314,7 +314,7 @@ Respond in JSON format:
     ? `\nTop blog pages for context: ${JSON.stringify(briefing.ga4Winners)}`
     : "";
 
-  const userPrompt = `Write 1 Instagram post for Acuity.${briefingContext}`;
+  const userPrompt = `Write 1 Instagram post for Ripple.${briefingContext}`;
 
   const raw = await callClaude({
     purpose: "generate-instagram-post",

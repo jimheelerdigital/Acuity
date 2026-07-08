@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Acuity for Founders — The 60-Second Daily Debrief for High Performers",
+  title: "Ripple for Founders — The 60-Second Daily Debrief for High Performers",
   description:
-    "Every night you go to bed with 40 unfinished thoughts. Acuity is the AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. The daily journal app built for founders and executives.",
+    "Every night you go to bed with 40 unfinished thoughts. Ripple is the AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. The daily journal app built for founders and executives.",
   robots: { index: true, follow: true },
   alternates: { canonical: "https://getacuity.io/for/founders" },
   openGraph: {
-    title: "Acuity for Founders — The 60-Second Daily Debrief for High Performers",
+    title: "Ripple for Founders — The 60-Second Daily Debrief for High Performers",
     description:
       "The AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. The daily journal app built for founders and executives.",
     url: "https://getacuity.io/for/founders",
-    siteName: "Acuity",
+    siteName: "Ripple",
     images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Acuity for Founders — The 60-Second Daily Debrief for High Performers",
+    title: "Ripple for Founders — The 60-Second Daily Debrief for High Performers",
     description:
       "The AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. Built for founders.",
     images: ["/og-image.png?v=3"],

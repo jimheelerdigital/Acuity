@@ -37,7 +37,7 @@ const MONTHLY_THRESHOLD_DAYS = 30;
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Person — Insights — Acuity",
+  title: "Person — Insights — Ripple",
   robots: { index: false, follow: false },
 };
 

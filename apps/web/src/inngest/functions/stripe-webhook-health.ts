@@ -79,7 +79,7 @@ export const stripeWebhookHealthFn = inngest.createFunction(
         await resend.emails.send({
           from: EMAIL_FROM,
           to: FOUNDER_RECIPIENTS,
-          subject: "[Acuity] 🚨 Stripe webhook appears DOWN (no events in >24h)",
+          subject: "[Ripple] 🚨 Stripe webhook appears DOWN (no events in >24h)",
           html: `
 <div style="font-family:-apple-system,system-ui,sans-serif;max-width:560px">
 <h2 style="margin:0 0 12px;color:#b91c1c">Stripe webhook health alert</h2>

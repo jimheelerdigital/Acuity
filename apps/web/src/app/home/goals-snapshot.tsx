@@ -55,7 +55,7 @@ export function GoalsSnapshotCard({
 
       {goals.length === 0 ? (
         <p className="mt-5 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-          Goals show up here as Acuity hears commitments in your debriefs.
+          Goals show up here as Ripple hears commitments in your debriefs.
           Mention something you want to do and it&rsquo;ll appear for you
           to accept.
         </p>

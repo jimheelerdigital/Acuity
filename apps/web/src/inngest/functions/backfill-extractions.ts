@@ -301,7 +301,7 @@ export const backfillExtractionsFn = inngest.createFunction(
         } = await import("@/emails/backfill-complete");
         const resend = getResendClient();
         await resend.emails.send({
-          from: process.env.EMAIL_FROM || "Acuity <hello@getacuity.io>",
+          from: process.env.EMAIL_FROM || "Ripple <hello@getacuity.io>",
           to: user.email,
           subject: backfillCompleteSubject(),
           html: backfillCompleteHtml({

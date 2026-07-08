@@ -219,7 +219,7 @@ export function LifeMatrixSnapshot({
               <p className="text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
                 Your six life areas — career, health, relationships,
                 finances, personal growth, other — get a score as
-                Acuity sees signal across your debriefs.
+                Ripple sees signal across your debriefs.
               </p>
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-white/10">

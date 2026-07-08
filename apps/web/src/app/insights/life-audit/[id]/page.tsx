@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const metadata = {
-  title: "Your Day 7 Life Audit — Acuity",
+  title: "Your Day 7 Life Audit — Ripple",
   description: "The pattern that showed up across your first seven days.",
   robots: { index: false, follow: false },
 };

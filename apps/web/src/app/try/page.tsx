@@ -10,9 +10,9 @@ const TryDebriefFlow = dynamic(
 );
 
 export const metadata: Metadata = {
-  title: "Try Acuity — Free",
+  title: "Try Ripple — Free",
   description:
-    "Record a 60-second voice debrief and see what Acuity extracts — tasks, goals, mood, and patterns. No signup required.",
+    "Record a 60-second voice debrief and see what Ripple extracts — tasks, goals, mood, and patterns. No signup required.",
   robots: { index: false, follow: false },
 };
 

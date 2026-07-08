@@ -14,7 +14,7 @@ import { ThemeMapClient } from "./theme-map-client";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Theme Map — Acuity",
+  title: "Theme Map — Ripple",
   robots: { index: false, follow: false },
 };
 

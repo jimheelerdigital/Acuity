@@ -8,7 +8,7 @@ import { AskPastClient } from "./ask-past-client";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Ask your past self — Acuity",
+  title: "Ask your past self — Ripple",
   robots: { index: false, follow: false },
 };
 

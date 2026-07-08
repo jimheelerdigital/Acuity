@@ -28,8 +28,8 @@ type InlineLocation = "hero" | "mid_page" | "footer";
 export function InlineInstallCTA({
   location,
   headline = "Ready to start journaling?",
-  eyebrow = "Acuity for iPhone",
-  sub = "Talk for a minute. Acuity turns it into tasks, moods, patterns, and a weekly report.",
+  eyebrow = "Ripple for iPhone",
+  sub = "Talk for a minute. Ripple turns it into tasks, moods, patterns, and a weekly report.",
 }: {
   location: InlineLocation;
   headline?: string;

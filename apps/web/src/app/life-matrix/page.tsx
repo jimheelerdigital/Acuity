@@ -24,7 +24,7 @@ const LifeMap = nextDynamic(
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Life Matrix — Acuity",
+  title: "Life Matrix — Ripple",
   robots: { index: false, follow: false },
 };
 

@@ -78,7 +78,7 @@ export function IntegrationsSettings({
 
   async function handleDisconnect() {
     const ok = window.confirm(
-      "Disconnect your calendar? Acuity stops sending new tasks to your calendar. Events already created stay where they are. Your preferences are remembered if you reconnect."
+      "Disconnect your calendar? Ripple stops sending new tasks to your calendar. Events already created stay where they are. Your preferences are remembered if you reconnect."
     );
     if (!ok) return;
     setIsDisconnecting(true);
@@ -180,7 +180,7 @@ export function IntegrationsSettings({
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
           Choose a different calendar from the iOS app today. The web
-          picker ships once Acuity reads your calendar list directly.
+          picker ships once Ripple reads your calendar list directly.
         </p>
       </div>
 

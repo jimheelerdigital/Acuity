@@ -38,7 +38,7 @@ const MORNING_COPY: ReadonlyArray<{ title: string; body: string }> = [
   { title: "Good morning", body: "What do you want to be clear on today?" },
   { title: "60 seconds", body: "Set the tone. One quick voice note." },
   { title: "Morning check-in", body: "What's on your mind before the day starts?" },
-  { title: "Start with intention", body: "Tell Acuity what matters today." },
+  { title: "Start with intention", body: "Tell Ripple what matters today." },
   { title: "One thing", body: "Name the one thing today is for." },
   { title: "First light", body: "A short note while it's still quiet." },
 ];
@@ -48,7 +48,7 @@ const EVENING_COPY: ReadonlyArray<{ title: string; body: string }> = [
   { title: "Evening shutdown", body: "Close the loop. Sixty seconds." },
   { title: "Today, in your words", body: "Before the noise starts again tomorrow." },
   { title: "End of day", body: "What deserves a name before you sleep?" },
-  { title: "Quick reflection", body: "Tell Acuity one true thing about today." },
+  { title: "Quick reflection", body: "Tell Ripple one true thing about today." },
   { title: "Closing ritual", body: "A short voice note. Then rest." },
 ];
 

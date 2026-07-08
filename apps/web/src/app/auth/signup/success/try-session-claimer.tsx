@@ -176,9 +176,9 @@ function DownloadCTAScreen() {
     <div className="min-h-screen bg-white px-6">
       <div className="mx-auto max-w-md">
         <div className={`text-center pt-16 pb-10 sm:pt-24 transition-all duration-700 ${vis(1)}`}>
-          <Image src="/AcuityLogo.png" alt="Acuity" width={40} height={40} className="mx-auto mb-6" />
+          <Image src="/AcuityLogo.png" alt="Ripple" width={40} height={40} className="mx-auto mb-6" />
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            Get Acuity on your phone so you can debrief&nbsp;anywhere.
+            Get Ripple on your phone so you can debrief&nbsp;anywhere.
           </h2>
           <p className="mt-3 text-sm text-zinc-500">
             Your recording has been saved. Pick up where you left off.
@@ -216,7 +216,7 @@ function DownloadCTAScreen() {
         <div className={`text-center mb-12 hidden sm:block transition-all duration-700 ${vis(2)}`}>
           <p className="text-xs text-zinc-400 mb-3">On desktop? Scan to download.</p>
           <div className="inline-block rounded-xl border border-zinc-200 p-3">
-            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`} alt="QR code to download Acuity" width={140} height={140} />
+            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`} alt="QR code to download Ripple" width={140} height={140} />
           </div>
         </div>
 

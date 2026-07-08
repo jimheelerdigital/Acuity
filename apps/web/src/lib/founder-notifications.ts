@@ -95,7 +95,7 @@ export async function notifyFoundersOfSignup(params: {
   const slackUrl = process.env.SLACK_FOUNDER_WEBHOOK_URL;
   if (slackUrl) {
     try {
-      const text = `\u{1F389} New Acuity signup: ${firstName} (${email}) via ${signupMethod}${campaign ? ` | campaign: ${campaign}` : ""}`;
+      const text = `\u{1F389} New Ripple signup: ${firstName} (${email}) via ${signupMethod}${campaign ? ` | campaign: ${campaign}` : ""}`;
       await fetch(slackUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
