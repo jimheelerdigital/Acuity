@@ -22,7 +22,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Link } from "expo-router";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -205,23 +206,22 @@ export default function SignInScreen() {
   }
 
   return (
-    // Sign-in screen intentionally does NOT use KeyboardAwareScreen.
-    // The expo-auth-session Google flow opens a SFAuthenticationSession
-    // browser modal via promptAsync(); on TestFlight Build 21 with the
-    // KeyboardAwareScreen wrapper (commit f4297d1, OTA shipped 2026-04-28)
-    // the parent ScrollView destabilized the auth-session promise so
-    // the user was bounced back to sign-in with no token. Reverting to
-    // the pre-wrapper layout. The sign-in screen has 2 short inputs and
-    // a tall stack of OAuth buttons — it doesn't actually need keyboard
-    // avoidance for the password field to stay visible (the page is
-    // already centered on viewport). Onboarding / sign-up / forgot-
-    // password / delete-modal keep the wrapper since they have more
-    // inputs and benefit from it.
+    // Keyboard handling is platform-split in <KeyboardLayout> (bottom of file):
+    //   ANDROID → a real ScrollView so the whole form scrolls above the
+    //     keyboard (Slack-style, nothing clipped). Safe here because Android
+    //     hides the Google button (no androidClientId), so there is NO
+    //     SFAuthenticationSession modal for a ScrollView re-layout to tear down.
+    //   iOS → padding-only KeyboardAvoidingView, NEVER a ScrollView. A parent
+    //     ScrollView is the f4297d1 regression path: it destabilizes the
+    //     expo-auth-session promptAsync() OAuth modal, bouncing the user back
+    //     with no token (TestFlight Build 21, reverted 0149c6f).
+    // AUTH-CRITICAL: re-run docs/AUTH_HARDENING.md iOS Google/Apple OAuth
+    // before merge; never wrap the iOS OAuth buttons in a ScrollView.
     <SafeAreaView
-      className="flex-1 px-6"
+      className="flex-1"
       style={{ backgroundColor: tokens.bg }}
     >
-      <View className="flex-1 justify-center">
+      <KeyboardLayout>
         <View
           className="h-24 w-24 rounded-[28px] items-center justify-center mb-5 self-center"
           style={{
@@ -328,20 +328,7 @@ export default function SignInScreen() {
           />
         </View>
 
-        {/* Email + password — wrapped in a padding-only KeyboardAvoidingView
-            (NOT a ScrollView), scoped to the form BELOW the OAuth divider so
-            the keyboard can't cover the password field / Sign-in button. The
-            OAuth buttons + centering container above stay untouched, so this
-            cannot reproduce the f4297d1 regression (a parent ScrollView
-            re-layout tearing down the SFAuthenticationSession OAuth modal):
-            a KeyboardAvoidingView reacts only to keyboard-frame events, never
-            to scroll/content re-layout. Keep this wrapper out of the OAuth
-            render path — do NOT move the OAuth buttons inside it, and do NOT
-            reintroduce a ScrollView here. (Mirrors PR #28.) */}
-        <KeyboardAvoidingView
-          className="w-full"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        {/* Email + password */}
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -461,8 +448,56 @@ export default function SignInScreen() {
             Google client ID not set. Development build only.
           </Text>
         )}
-        </KeyboardAvoidingView>
-      </View>
+      </KeyboardLayout>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Platform-split keyboard wrapper for the sign-in form.
+ *
+ * ANDROID: KeyboardAvoidingView + ScrollView (contentContainer centers when
+ * the form fits, scrolls when the keyboard shrinks the viewport) so the
+ * password field, Sign-in button, and links below always stay reachable —
+ * the "full page, then scroll in the condensed area above the keyboard"
+ * behaviour. Safe on Android: the Google button is hidden (no androidClientId),
+ * so no SFAuthenticationSession modal exists for a ScrollView re-layout to
+ * tear down.
+ *
+ * iOS: padding-only KeyboardAvoidingView, NO ScrollView — a parent ScrollView
+ * is the documented f4297d1 OAuth regression (see the SignInScreen return
+ * comment). AUTH-CRITICAL: keep it this way and re-test iOS OAuth before merge.
+ */
+function KeyboardLayout({ children }: { children: ReactNode }) {
+  if (Platform.OS === "android") {
+    return (
+      <KeyboardAvoidingView style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingHorizontal: 24,
+            paddingVertical: 32,
+          }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+  return (
+    <KeyboardAvoidingView
+      behavior="padding"
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        paddingHorizontal: 24,
+      }}
+    >
+      {children}
+    </KeyboardAvoidingView>
   );
 }
