@@ -27,6 +27,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   Text,
@@ -327,7 +328,20 @@ export default function SignInScreen() {
           />
         </View>
 
-        {/* Email + password */}
+        {/* Email + password — wrapped in a padding-only KeyboardAvoidingView
+            (NOT a ScrollView), scoped to the form BELOW the OAuth divider so
+            the keyboard can't cover the password field / Sign-in button. The
+            OAuth buttons + centering container above stay untouched, so this
+            cannot reproduce the f4297d1 regression (a parent ScrollView
+            re-layout tearing down the SFAuthenticationSession OAuth modal):
+            a KeyboardAvoidingView reacts only to keyboard-frame events, never
+            to scroll/content re-layout. Keep this wrapper out of the OAuth
+            render path — do NOT move the OAuth buttons inside it, and do NOT
+            reintroduce a ScrollView here. (Mirrors PR #28.) */}
+        <KeyboardAvoidingView
+          className="w-full"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -447,6 +461,7 @@ export default function SignInScreen() {
             Google client ID not set. Development build only.
           </Text>
         )}
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );

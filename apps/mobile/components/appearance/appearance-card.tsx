@@ -129,7 +129,9 @@ export function AppearanceCard() {
         >
           Palette
         </Text>
-        <View style={{ flexDirection: "row", gap: 12 }}>
+        {/* flexWrap so all 8 palettes stay on-screen (wraps to ~2 rows)
+            — added when the schemes went 4 → 8 (2026-07-08). */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: 16, columnGap: 16 }}>
           {PALETTE_OPTIONS.map((opt) => (
             <PaletteSwatch
               key={opt}
