@@ -588,18 +588,22 @@ export async function POST(req: NextRequest) {
           },
           select: { id: true, email: true, name: true },
         });
-        await prisma.user.updateMany({
-          where: {
-            stripeCustomerId: customerId,
-            subscriptionStatus: { not: "FREE" },
-          },
-          data: { subscriptionStatus: "FREE" },
-        });
-
+        // ORDER IS LOAD-BEARING (2026-07-09 fix): the anchor MUST be stamped
+        // BEFORE the downgrade. Both statements filter on
+        // `subscriptionStatus: { not: "FREE" }`; if the downgrade runs first it
+        // sets the row FREE and thereby falsifies the anchor statement's own
+        // WHERE, so stripeFirstFailureAt was never written. That silently broke
+        // BOTH the recovery banner and proRecoveryWhere()'s
+        // `stripeFirstFailureAt: { not: null }` disjunct — i.e. the entire
+        // failed-then-recovered path (Bug B) could never fire. Regression
+        // covered by route.test.ts "payment_failed drops PRO → FREE and stamps
+        // stripeFirstFailureAt".
+        //
         // Anchor the grace window at the FIRST failure only — set
         // stripeFirstFailureAt where it's still null so Stripe's subsequent
         // retry failures don't keep pushing the window out. Cleared on
-        // recovery (payment_succeeded) or cancel.
+        // recovery (payment_succeeded) or cancel. The `not: "FREE"` guard is
+        // still true at this point, so a cleanly-canceled user is untouched.
         await prisma.user.updateMany({
           where: {
             stripeCustomerId: customerId,
@@ -607,6 +611,15 @@ export async function POST(req: NextRequest) {
             stripeFirstFailureAt: null,
           },
           data: { stripeFirstFailureAt: new Date() },
+        });
+
+        // No-grace downgrade. Runs second, now that the anchor is safely set.
+        await prisma.user.updateMany({
+          where: {
+            stripeCustomerId: customerId,
+            subscriptionStatus: { not: "FREE" },
+          },
+          data: { subscriptionStatus: "FREE" },
         });
 
         // Best-effort email nudge so the user knows to update their
