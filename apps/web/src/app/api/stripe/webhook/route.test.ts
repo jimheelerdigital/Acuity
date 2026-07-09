@@ -38,8 +38,22 @@ type Row = {
   trialEndsAt: Date | null;
 };
 
+type RevRow = {
+  source: string;
+  type: string;
+  stripeEventId: string | null;
+  stripeChargeId: string;
+  customerEmail: string | null;
+  userId: string | null;
+  amountCents: number;
+  currency: string;
+  plan: string | null;
+  occurredAt: Date;
+};
+
 let users: Row[] = [];
 let stripeEvents: { id: string; type: string }[] = [];
+let revenue: RevRow[] = [];
 
 const user = (over: Partial<Row> = {}): Row => ({
   id: "u1",
@@ -101,6 +115,37 @@ const prismaMock = {
         }
         Object.assign(row, data);
         return row;
+      }
+    ),
+    findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
+      users.find((u) => matches(u, where)) ?? null
+    ),
+    findUnique: vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
+      users.find((u) => matches(u, where)) ?? null
+    ),
+  },
+  // Mirrors the real @@unique([stripeChargeId, type]) upsert key.
+  revenueEvent: {
+    upsert: vi.fn(
+      async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { stripeChargeId_type: { stripeChargeId: string; type: string } };
+        create: RevRow;
+        update: Partial<RevRow>;
+      }) => {
+        const { stripeChargeId, type } = where.stripeChargeId_type;
+        const existing = revenue.find(
+          (r) => r.stripeChargeId === stripeChargeId && r.type === type
+        );
+        if (existing) {
+          Object.assign(existing, update);
+          return existing;
+        }
+        revenue.push({ ...create });
+        return create;
       }
     ),
   },
@@ -181,8 +226,17 @@ async function send(type: string, object: unknown) {
 const invoice = (over: Record<string, unknown> = {}) => ({
   id: "in_1",
   customer: "cus_1",
+  customer_email: "a@b.com",
   subscription: "sub_1",
-  lines: { data: [{ period: { end: 1800000000 } }] },
+  charge: "ch_1",
+  amount_paid: 499,
+  currency: "usd",
+  created: 1780000000,
+  billing_reason: "subscription_cycle",
+  status_transitions: { paid_at: 1780000500 },
+  lines: {
+    data: [{ period: { end: 1800000000 }, price: { recurring: { interval: "month" } } }],
+  },
   ...over,
 });
 
@@ -195,9 +249,24 @@ const subscription = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const charge = (over: Record<string, unknown> = {}) => ({
+  id: "ch_1",
+  customer: "cus_1",
+  invoice: null,
+  paid: true,
+  amount: 499,
+  amount_refunded: 0,
+  currency: "usd",
+  created: 1780000000,
+  billing_details: { email: "a@b.com" },
+  refunds: { data: [] },
+  ...over,
+});
+
 beforeEach(() => {
   users = [];
   stripeEvents = [];
+  revenue = [];
   evtSeq = 0;
   customersRetrieve.mockReset();
   customersRetrieve.mockResolvedValue({ id: "cus_1", email: null, metadata: {} });
@@ -365,5 +434,133 @@ describe("incomplete (first charge pending)", () => {
     await send("customer.subscription.updated", subscription({ status: "incomplete" }));
 
     expect(users[0].subscriptionStatus).toBe("PRO");
+  });
+});
+
+// ─── 5. RevenueEvent ingestion (Stage 1) ──────────────────────────────────
+
+describe("RevenueEvent ingestion", () => {
+  it("books a renewal on invoice.payment_succeeded, linked to the user", async () => {
+    users = [user({ subscriptionStatus: "PRO" })];
+
+    await send("invoice.payment_succeeded", invoice());
+
+    expect(revenue).toHaveLength(1);
+    expect(revenue[0]).toMatchObject({
+      source: "stripe",
+      type: "renewal", // billing_reason: subscription_cycle
+      stripeChargeId: "ch_1",
+      amountCents: 499,
+      plan: "monthly",
+      userId: "u1",
+    });
+  });
+
+  it("classifies a first payment (subscription_create) as a charge, not a renewal", async () => {
+    users = [user()];
+
+    await send(
+      "invoice.payment_succeeded",
+      invoice({ billing_reason: "subscription_create" })
+    );
+
+    expect(revenue[0].type).toBe("charge");
+  });
+
+  it("derives plan=annual from the price interval", async () => {
+    users = [user()];
+
+    await send(
+      "invoice.payment_succeeded",
+      invoice({
+        amount_paid: 3999,
+        lines: {
+          data: [{ period: { end: 1800000000 }, price: { recurring: { interval: "year" } } }],
+        },
+      })
+    );
+
+    expect(revenue[0]).toMatchObject({ plan: "annual", amountCents: 3999 });
+  });
+
+  // The double-count guard. A subscription payment emits BOTH events.
+  it("does NOT double-count when charge.succeeded and invoice.paid describe the same charge", async () => {
+    users = [user()];
+
+    await send("invoice.payment_succeeded", invoice()); // books ch_1
+    await send("charge.succeeded", charge({ invoice: "in_1" })); // must skip
+
+    expect(revenue).toHaveLength(1);
+    expect(revenue.reduce((s, r) => s + r.amountCents, 0)).toBe(499);
+  });
+
+  it("upserts rather than appends when invoice.paid repeats the same charge", async () => {
+    users = [user()];
+
+    await send("invoice.payment_succeeded", invoice());
+    await send("invoice.paid", invoice());
+
+    expect(revenue).toHaveLength(1);
+    expect(revenue[0].amountCents).toBe(499);
+  });
+
+  it("books an invoice-less charge.succeeded as a one-off charge", async () => {
+    users = [user()];
+
+    await send("charge.succeeded", charge({ invoice: null, amount: 1500 }));
+
+    expect(revenue).toHaveLength(1);
+    expect(revenue[0]).toMatchObject({ type: "charge", amountCents: 1500, plan: null });
+  });
+
+  it("writes refunds as NEGATIVE amounts", async () => {
+    users = [user()];
+
+    await send(
+      "charge.refunded",
+      charge({ amount_refunded: 499, refunds: { data: [{ created: 1781000000 }] } })
+    );
+
+    expect(revenue).toHaveLength(1);
+    expect(revenue[0]).toMatchObject({ type: "refund", amountCents: -499 });
+  });
+
+  it("net cash = charge + refund sums to zero on a fully refunded charge", async () => {
+    users = [user()];
+
+    await send("invoice.payment_succeeded", invoice());
+    await send("charge.refunded", charge({ amount_refunded: 499 }));
+
+    expect(revenue).toHaveLength(2); // one money-in, one refund — distinct types
+    expect(revenue.reduce((s, r) => s + r.amountCents, 0)).toBe(0);
+  });
+
+  it("a partial refund followed by a larger one upserts to the cumulative total", async () => {
+    users = [user()];
+
+    await send("charge.refunded", charge({ amount_refunded: 200 }));
+    await send("charge.refunded", charge({ amount_refunded: 499 })); // cumulative
+
+    expect(revenue).toHaveLength(1);
+    expect(revenue[0].amountCents).toBe(-499);
+  });
+
+  it("still books revenue when the user cannot be resolved", async () => {
+    users = []; // nobody matches
+
+    await send("invoice.payment_succeeded", invoice());
+
+    expect(revenue).toHaveLength(1);
+    expect(revenue[0].userId).toBeNull();
+    expect(revenue[0].customerEmail).toBe("a@b.com");
+  });
+
+  it("does not book revenue on invoice.payment_failed (no money moved)", async () => {
+    users = [user({ subscriptionStatus: "PRO" })];
+
+    await send("invoice.payment_failed", invoice());
+
+    expect(revenue).toHaveLength(0);
+    expect(users[0].subscriptionStatus).toBe("FREE"); // dunning logic still runs
   });
 });

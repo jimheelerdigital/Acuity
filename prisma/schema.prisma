@@ -333,6 +333,7 @@ model User {
   themes                        Theme[]
   referralConversionsAsReferrer ReferralConversion[] @relation("ReferrerConversions")
   referralConversionsAsReferred ReferralConversion[] @relation("ReferredConversions")
+  revenueEvents                 RevenueEvent[]
   dataExports                   DataExport[]
   healthSnapshots               HealthSnapshot[]
   // Cascade-gap FK fix (2026-06-23): these were scalar-userId tables
@@ -1641,6 +1642,61 @@ model StripeEvent {
   id          String   @id // stripe event.id, e.g. "evt_1TL…"
   type        String
   processedAt DateTime @default(now())
+}
+
+// Event-sourced revenue ledger (revenue-accuracy-fix-plan.md RC3/RC6).
+// One row per money movement, all sources. Replaces the admin's
+// `subscriptionStatus = PRO × $4.99` placeholder, which measures a
+// run-rate, not collected cash.
+//
+// SIGN CONVENTION: amountCents is signed. Charges/renewals are positive,
+// refunds NEGATIVE, so lifetime net cash is a plain SUM(amountCents) with
+// no CASE. Gross = SUM(amountCents) WHERE amountCents > 0.
+//
+// IDEMPOTENCY — two independent guards, both required:
+//   1. stripeEventId @unique — blocks a redelivered webhook (Stripe is
+//      at-least-once). Null for backfilled + manual Apple/Google rows;
+//      Postgres treats NULLs as distinct, so those never collide.
+//   2. @@unique([stripeChargeId, type]) — blocks the SAME money being
+//      booked twice by two DIFFERENT events. A subscription payment emits
+//      BOTH `charge.succeeded` and `invoice.paid`, and the backfill
+//      re-reads charges the webhook already ingested. This constraint is
+//      what makes the table safe to rebuild at any time.
+//      It also makes partial refunds correct: `charge.refunded` carries a
+//      CUMULATIVE `amount_refunded`, so the refund row is upserted to the
+//      running total rather than appended once per refund.
+//
+// userId is SetNull (NOT Cascade): deleting a user must never erase the
+// record that they paid us. customerEmail remains as the durable human
+// handle once that FK goes null.
+model RevenueEvent {
+  id             String   @id @default(cuid())
+  // "stripe" | "apple" | "google"
+  source         String
+  // "charge" (one-off / first payment) | "renewal" (subscription_cycle)
+  // | "refund" (negative amountCents)
+  type           String
+  // Stripe `event.id`. Null for backfill + manual Apple/Google rows.
+  stripeEventId  String?  @unique
+  // Stripe `charge.id` — the natural key for a money movement.
+  stripeChargeId String?
+  customerEmail  String?
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Signed. Refunds negative. Minor units of `currency`.
+  amountCents    Int
+  currency       String   @default("usd")
+  // "monthly" | "annual" | null (unknown / non-subscription)
+  plan           String?
+  // When the money actually moved, per Stripe — NOT when we wrote the row.
+  // Backfilled rows carry their true historical date, so the time-series
+  // is correct from day one.
+  occurredAt     DateTime
+  createdAt      DateTime @default(now())
+
+  @@unique([stripeChargeId, type])
+  @@index([occurredAt])
+  @@index([source])
 }
 
 // One row per trial→paid conversion that had a referrer. Reward

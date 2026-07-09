@@ -54,6 +54,7 @@ ProgressSuggestion rls
 PruneLog no-rls    # legacy operational logging table from initial pruner implementation (commit c93ee17), no PII — superseded by BlogPrunerRun, kept for backwards compatibility, candidate for removal
 RedFlag rls
 ReferralConversion rls
+RevenueEvent rls    # business-sensitive revenue amounts; service-role only (deny-all policy)
 Session rls
 StateOfMeReport rls
 StripeEvent rls
