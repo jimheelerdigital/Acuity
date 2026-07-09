@@ -37,6 +37,243 @@ export const runtime = "nodejs";
  *     instead of bubbling to Next.js's 500 + Stripe's retry +
  *     eventual give-up.
  */
+
+/**
+ * Root rule (2026-07-07 recovery-bug fix): any transition into an
+ * active/paid Stripe state MUST leave the app user PRO, reliably — even
+ * when the customer was never linked (checkout.session.completed missed /
+ * threw / lacked metadata.userId) and even when a prior failed payment
+ * downgraded the user to FREE (dunning). A genuinely canceled subscription
+ * is still never resurrected.
+ */
+type WebhookDb = (typeof import("@/lib/prisma"))["prisma"];
+
+// A paid/active signal may upgrade a row to PRO when it is NOT FREE, OR when
+// it is FREE but still inside a dunning window (stripeFirstFailureAt set by
+// invoice.payment_failed's no-grace downgrade). A cleanly canceled row
+// (FREE, anchor cleared by subscription.deleted / a clean cancel) is
+// excluded — preserving the W-A audit's "never resurrect a canceled user"
+// guard while unblocking legitimate dunning recovery (Bug B).
+function recoverableOr() {
+  return [
+    { subscriptionStatus: { not: "FREE" } },
+    { stripeFirstFailureAt: { not: null } },
+  ];
+}
+
+function proRecoveryWhere(customerId: string) {
+  return { stripeCustomerId: customerId, OR: recoverableOr() };
+}
+
+/**
+ * Fallback (Bug A) for a PRO-granting event whose updateMany by
+ * stripeCustomerId matched 0 rows — the customer link was never written.
+ * Resolves the app user by, in order: (1) stripeSubscriptionId, (2) the
+ * Stripe customer's email (unlinked rows only, so we never steal a row that
+ * belongs to a different customer), (3) metadata.userId (event- then
+ * customer-supplied) — and back-fills stripeCustomerId + stripeSubscriptionId
+ * while granting PRO. Only ever invoked from active/paid contexts, so the PRO
+ * grant is always correct; the recoverableOr()/unlinked guards still stop it
+ * resurrecting a cleanly-canceled row. Returns true on link+upgrade.
+ */
+async function relinkAndGrantPro(
+  db: WebhookDb,
+  opts: {
+    customerId: string;
+    subscriptionId: string | null;
+    periodEnd: Date | null;
+    metadataUserId?: string | null;
+    context: string;
+  }
+): Promise<boolean> {
+  const { customerId, subscriptionId, periodEnd, metadataUserId, context } =
+    opts;
+  const data = {
+    subscriptionStatus: "PRO",
+    subscriptionSource: "stripe",
+    stripeCustomerId: customerId,
+    stripeFirstFailureAt: null,
+    ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
+    ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
+  };
+
+  // 1. by subscription id (recoverable rows only — never resurrect a cancel)
+  if (subscriptionId) {
+    const bySub = await db.user.updateMany({
+      where: { stripeSubscriptionId: subscriptionId, OR: recoverableOr() },
+      data,
+    });
+    if (bySub.count > 0) {
+      safeLog.warn("stripe-webhook.relinked-by-subscription-id", {
+        context,
+        customerId,
+        subscriptionId,
+      });
+      return true;
+    }
+  }
+
+  // Pull email + metadata.userId off the Stripe customer for steps 2 & 3.
+  let email: string | null = null;
+  let customerMetaUserId: string | null = null;
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (!("deleted" in customer && customer.deleted)) {
+      email = (customer as Stripe.Customer).email ?? null;
+      customerMetaUserId =
+        (customer as Stripe.Customer).metadata?.userId ?? null;
+    }
+  } catch (err) {
+    safeLog.warn("stripe-webhook.relink-customer-retrieve-failed", {
+      context,
+      customerId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // 2. by email — only rows not already linked to a customer.
+  if (email) {
+    const byEmail = await db.user.updateMany({
+      where: { email, stripeCustomerId: null },
+      data,
+    });
+    if (byEmail.count > 0) {
+      safeLog.warn("stripe-webhook.relinked-by-email", { context, customerId });
+      return true;
+    }
+  }
+
+  // 3. by metadata.userId (authoritative app id) — recoverable rows only.
+  const userId = metadataUserId ?? customerMetaUserId;
+  if (userId) {
+    const byId = await db.user.updateMany({
+      where: { id: userId, OR: recoverableOr() },
+      data,
+    });
+    if (byId.count > 0) {
+      safeLog.warn("stripe-webhook.relinked-by-metadata-user-id", {
+        context,
+        customerId,
+        userId,
+      });
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Shared handler for customer.subscription.created and .updated. Maps
+ * Stripe's status onto our vocab (active/trialing → PRO; past_due / unpaid /
+ * canceled / incomplete_expired → FREE; incomplete → leave alone until the
+ * first charge confirms) and applies it. The PRO direction uses
+ * proRecoveryWhere + the relink fallback so an unlinked or in-dunning user is
+ * reliably upgraded.
+ */
+async function applySubscriptionState(
+  db: WebhookDb,
+  sub: Stripe.Subscription,
+  context: string
+): Promise<void> {
+  const customerId = sub.customer as string;
+  if (!customerId) {
+    safeLog.warn("stripe-webhook.sub-missing-customer", {
+      context,
+      subscriptionId: sub.id,
+    });
+    return;
+  }
+
+  const status = sub.status;
+  const periodEnd = sub.current_period_end
+    ? new Date(sub.current_period_end * 1000)
+    : null;
+
+  let nextStatus: "PRO" | "FREE" | null = null;
+  if (status === "active" || status === "trialing") nextStatus = "PRO";
+  else if (
+    status === "past_due" ||
+    status === "unpaid" ||
+    status === "canceled" ||
+    status === "incomplete_expired"
+  )
+    nextStatus = "FREE";
+  // "incomplete" (first charge pending) → null: don't grant PRO yet and don't
+  // downgrade; invoice.payment_succeeded / a later update flips it to PRO.
+
+  if (nextStatus === "PRO") {
+    try {
+      const result = await db.user.updateMany({
+        where: proRecoveryWhere(customerId),
+        data: {
+          subscriptionStatus: "PRO",
+          subscriptionSource: "stripe",
+          stripeSubscriptionId: sub.id,
+          stripeFirstFailureAt: null,
+          ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
+        },
+      });
+      if (result.count === 0) {
+        const relinked = await relinkAndGrantPro(db, {
+          customerId,
+          subscriptionId: sub.id,
+          periodEnd,
+          metadataUserId: sub.metadata?.userId ?? null,
+          context,
+        });
+        if (!relinked) {
+          safeLog.error(
+            "stripe-webhook.active-sub-no-user-found",
+            new Error("active subscription matched 0 users; relink failed"),
+            {
+              context,
+              customerId,
+              subscriptionId: sub.id,
+              stripeStatus: status,
+            }
+          );
+        }
+      }
+    } catch (err) {
+      safeLog.error("stripe-webhook.sub-updated-update-failed", err, {
+        context,
+        customerId,
+        subscriptionId: sub.id,
+      });
+    }
+  } else if (nextStatus === "FREE") {
+    // Terminal/at-risk direction. Unguarded by design (FREE is a safe
+    // terminal write) and no relink fallback (downgrading a user we can't
+    // find is a correct no-op). Leaves stripeFirstFailureAt untouched so a
+    // failed-renewal recovery banner's window survives.
+    try {
+      await db.user.updateMany({
+        where: { stripeCustomerId: customerId },
+        data: {
+          subscriptionStatus: "FREE",
+          subscriptionSource: "stripe",
+          stripeSubscriptionId: sub.id,
+          ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
+        },
+      });
+    } catch (err) {
+      safeLog.error("stripe-webhook.sub-updated-update-failed", err, {
+        context,
+        customerId,
+        subscriptionId: sub.id,
+      });
+    }
+  } else {
+    safeLog.info("stripe-webhook.sub-unmapped-status", {
+      context,
+      customerId,
+      subscriptionId: sub.id,
+      stripeStatus: status,
+    });
+  }
+}
+
 export async function POST(req: NextRequest) {
   // First line: prove the function is invoked. Independent of body,
   // signature, env. If Vercel logs don't show this for an event
@@ -150,18 +387,31 @@ export async function POST(req: NextRequest) {
           select: { createdAt: true, trialEndsAt: true, email: true },
         });
       } catch (err) {
-        // Was an uncaught throw before 2026-06-01 — propagated to a
-        // 500 response, Stripe retried, eventually gave up. Now
-        // logged explicitly so the failure mode is visible. Stripe
-        // still 2xx-acks so retries stop (the eventual give-up is
-        // worse than a logged failure — it abandons the event).
+        // 2026-07-07 (Bug A §2): previously this swallowed the error and
+        // 200-acked, which stranded the user unlinked forever — nothing
+        // re-establishes the customer link on its own. Now we surface it
+        // AND force a redelivery: delete the idempotency row written at the
+        // top of POST (otherwise Stripe's retry is short-circuited as a
+        // duplicate) and return 500 so Stripe redelivers. The relink
+        // fallback on invoice/subscription events is the second safety net.
         safeLog.error("stripe-webhook.checkout-session-user-update-failed", err, {
           sessionId: session.id,
           userId,
           customerId:
             typeof session.customer === "string" ? session.customer : null,
         });
-        break;
+        try {
+          await prisma.stripeEvent.delete({ where: { id: event.id } });
+        } catch (delErr) {
+          safeLog.warn("stripe-webhook.dedup-cleanup-failed", {
+            id: event.id,
+            err: delErr instanceof Error ? delErr.message : String(delErr),
+          });
+        }
+        return NextResponse.json(
+          { error: "checkout-session-user-update-failed" },
+          { status: 500 }
+        );
       }
 
       // Analytics event (IMPLEMENTATION_PLAN_PAYWALL §8.3). Days-since-
@@ -257,41 +507,44 @@ export async function POST(req: NextRequest) {
       }
 
       const sub = invoice.subscription as string | null;
+      const periodEnd = invoice.lines.data[0]?.period?.end
+        ? new Date(invoice.lines.data[0].period.end * 1000)
+        : null;
 
-      // Status guard (W-A audit, 2026-05-03): never resurrect a
-      // canceled user (subscriptionStatus="FREE") back to PRO. A
-      // late or out-of-order Stripe event for a sub the user has
-      // already canceled would otherwise un-cancel them silently.
-      // The WHERE filter makes the no-op atomic — no read/write race.
-      // PAST_DUE → PRO is the intended dunning recovery path, so
-      // it's allowed (FREE is the only excluded state).
+      // Recovery (Bug B fix, 2026-07-07): proRecoveryWhere upgrades to PRO
+      // when the row is NOT FREE, OR when it is FREE-but-in-dunning
+      // (stripeFirstFailureAt set). This IS the failed-then-recovered path:
+      // invoice.payment_failed set the user FREE and stamped the failure
+      // anchor; this success clears the anchor and restores PRO. A cleanly
+      // canceled user (FREE, anchor cleared) is still never resurrected,
+      // preserving the W-A audit guard.
       try {
         const result = await prisma.user.updateMany({
-          where: {
-            stripeCustomerId: customerId,
-            subscriptionStatus: { not: "FREE" },
-          },
+          where: proRecoveryWhere(customerId),
           data: {
             subscriptionStatus: "PRO",
             subscriptionSource: "stripe",
-            // Recovery — clear the dunning anchor so a future failure starts
-            // a fresh grace window.
             stripeFirstFailureAt: null,
             ...(sub ? { stripeSubscriptionId: sub } : {}),
-            ...(invoice.lines.data[0]?.period?.end
-              ? {
-                  stripeCurrentPeriodEnd: new Date(
-                    invoice.lines.data[0].period.end * 1000
-                  ),
-                }
-              : {}),
+            ...(periodEnd ? { stripeCurrentPeriodEnd: periodEnd } : {}),
           },
         });
         if (result.count === 0) {
-          safeLog.warn("stripe-webhook.invoice-success-no-user-found", {
+          // Bug A fix: 0 rows means the customer was never linked. Don't
+          // no-op — resolve the user, back-fill the link, and grant PRO.
+          const relinked = await relinkAndGrantPro(prisma, {
             customerId,
-            invoiceId: invoice.id,
+            subscriptionId: sub,
+            periodEnd,
+            context: "invoice.payment_succeeded",
           });
+          if (!relinked) {
+            safeLog.error(
+              "stripe-webhook.invoice-success-no-user-found",
+              new Error("paid invoice matched 0 users; relink failed"),
+              { customerId, invoiceId: invoice.id }
+            );
+          }
         }
       } catch (err) {
         safeLog.error("stripe-webhook.invoice-success-update-failed", err, {
@@ -312,21 +565,21 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // Downgrade to PAST_DUE. The UI surfaces a soft banner on the
-      // dashboard keyed on this status. Stripe's own retry schedule
-      // will fire invoice.payment_succeeded when the card is fixed;
-      // that handler flips us back to PRO.
+      // No-grace downgrade (2026-06-12 spec): a failed charge sets the user
+      // FREE immediately — there is NO PAST_DUE intermediate state. The
+      // recovery banner is driven by stripeFirstFailureAt (stamped below),
+      // not by status, and invoice.payment_succeeded / subscription active
+      // lift the user back to PRO on recovery via that anchor (Bug B fix —
+      // see proRecoveryWhere). Stripe's own retry schedule fires
+      // invoice.payment_succeeded when the card is fixed.
       //
-      // Status guard (W-A audit §4.4 fix, 2026-05-03): the audit at
-      // docs/v1-1/stripe-webhook-audit.md §4.4 flagged a real race —
-      // a late Stripe retry for an old failed invoice could resurrect
-      // a user who has since canceled (FREE) back into PAST_DUE. The
-      // user would see Pro access and a "your payment failed" banner
-      // for a sub that no longer exists. WHERE filter blocks FREE →
-      // PAST_DUE so the update is a no-op for canceled users; we
-      // still 200-ack the webhook so Stripe stops retrying.
-      // The findMany also adds the same guard so we don't email a
-      // canceled user about a card that's no longer on file.
+      // Status guard (W-A audit §4.4 fix, 2026-05-03): a late Stripe retry
+      // for an old failed invoice must not drag a user who has since
+      // canceled (FREE) back into a paying-but-failing state. The WHERE
+      // filter blocks the write for already-FREE users so it's a no-op for
+      // canceled accounts; we still 200-ack so Stripe stops retrying. The
+      // findMany carries the same guard so we don't email a canceled user
+      // about a card that's no longer on file.
       try {
         const users = await prisma.user.findMany({
           where: {
@@ -335,18 +588,22 @@ export async function POST(req: NextRequest) {
           },
           select: { id: true, email: true, name: true },
         });
-        await prisma.user.updateMany({
-          where: {
-            stripeCustomerId: customerId,
-            subscriptionStatus: { not: "FREE" },
-          },
-          data: { subscriptionStatus: "FREE" },
-        });
-
+        // ORDER IS LOAD-BEARING (2026-07-09 fix): the anchor MUST be stamped
+        // BEFORE the downgrade. Both statements filter on
+        // `subscriptionStatus: { not: "FREE" }`; if the downgrade runs first it
+        // sets the row FREE and thereby falsifies the anchor statement's own
+        // WHERE, so stripeFirstFailureAt was never written. That silently broke
+        // BOTH the recovery banner and proRecoveryWhere()'s
+        // `stripeFirstFailureAt: { not: null }` disjunct — i.e. the entire
+        // failed-then-recovered path (Bug B) could never fire. Regression
+        // covered by route.test.ts "payment_failed drops PRO → FREE and stamps
+        // stripeFirstFailureAt".
+        //
         // Anchor the grace window at the FIRST failure only — set
         // stripeFirstFailureAt where it's still null so Stripe's subsequent
         // retry failures don't keep pushing the window out. Cleared on
-        // recovery (payment_succeeded) or cancel.
+        // recovery (payment_succeeded) or cancel. The `not: "FREE"` guard is
+        // still true at this point, so a cleanly-canceled user is untouched.
         await prisma.user.updateMany({
           where: {
             stripeCustomerId: customerId,
@@ -354,6 +611,15 @@ export async function POST(req: NextRequest) {
             stripeFirstFailureAt: null,
           },
           data: { stripeFirstFailureAt: new Date() },
+        });
+
+        // No-grace downgrade. Runs second, now that the anchor is safely set.
+        await prisma.user.updateMany({
+          where: {
+            stripeCustomerId: customerId,
+            subscriptionStatus: { not: "FREE" },
+          },
+          data: { subscriptionStatus: "FREE" },
         });
 
         // Best-effort email nudge so the user knows to update their
@@ -379,92 +645,15 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    case "customer.subscription.created":
     case "customer.subscription.updated": {
-      // Fires on plan change, cancel-at-period-end flags, trial
-      // conversions, etc. We reflect status transitions but don't
-      // over-infer — Stripe is the source of truth, so we mirror
-      // what it tells us.
+      // Both handled the same way (applySubscriptionState): map Stripe's
+      // status onto our vocab and apply it. Handling .created (added
+      // 2026-07-07, Bug A) means a subscription that reaches active without
+      // a corresponding checkout.session.completed still grants PRO — and
+      // the PRO path relinks an unlinked or in-dunning user.
       const sub = event.data.object as Stripe.Subscription;
-      const customerId = sub.customer as string;
-      if (!customerId) {
-        safeLog.warn("stripe-webhook.sub-updated-missing-customer", {
-          subscriptionId: sub.id,
-        });
-        break;
-      }
-
-      const status = sub.status;
-      // Map Stripe's granular statuses onto our vocab. NO grace (2026-06-12
-      // spec): active/trialing → PRO; any non-active state (past_due, unpaid,
-      // canceled, incomplete_expired) → FREE immediately. The recovery banner
-      // is driven by stripeFirstFailureAt (set by invoice.payment_failed), not
-      // by a PAST_DUE status.
-      let nextStatus: string | null = null;
-      if (status === "active" || status === "trialing") nextStatus = "PRO";
-      else if (
-        status === "past_due" ||
-        status === "unpaid" ||
-        status === "canceled" ||
-        status === "incomplete_expired"
-      )
-        nextStatus = "FREE";
-
-      if (nextStatus) {
-        // Status guard (W-A audit, 2026-05-03): same race shape as
-        // invoice.payment_failed/succeeded — a late subscription.updated
-        // with status="active" or "past_due" arriving after a user
-        // has been canceled (FREE) would resurrect them. WHERE
-        // filter blocks the upgrade direction; FREE → FREE (the
-        // canceled→canceled no-op) is also fine; FREE writes are
-        // unrestricted because they're terminal-direction (cancel).
-        const where =
-          nextStatus === "FREE"
-            ? { stripeCustomerId: customerId }
-            : { stripeCustomerId: customerId, subscriptionStatus: { not: "FREE" } };
-        try {
-          const result = await prisma.user.updateMany({
-            where,
-            data: {
-              subscriptionStatus: nextStatus,
-              subscriptionSource: "stripe",
-              stripeSubscriptionId: sub.id,
-              // Clear the failure anchor on recovery (PRO). On FREE, leave it
-              // — invoice.payment_failed sets it on a failed renewal and it
-              // drives the recovery banner's 30-day window. (A clean cancel
-              // never set it → no banner.)
-              ...(nextStatus === "PRO"
-                ? { stripeFirstFailureAt: null }
-                : {}),
-              ...(sub.current_period_end
-                ? {
-                    stripeCurrentPeriodEnd: new Date(
-                      sub.current_period_end * 1000
-                    ),
-                  }
-                : {}),
-            },
-          });
-          if (result.count === 0) {
-            safeLog.warn("stripe-webhook.sub-updated-no-user-found", {
-              customerId,
-              subscriptionId: sub.id,
-              stripeStatus: status,
-              mappedStatus: nextStatus,
-            });
-          }
-        } catch (err) {
-          safeLog.error("stripe-webhook.sub-updated-update-failed", err, {
-            customerId,
-            subscriptionId: sub.id,
-          });
-        }
-      } else {
-        safeLog.info("stripe-webhook.sub-updated-unmapped-status", {
-          customerId,
-          subscriptionId: sub.id,
-          stripeStatus: status,
-        });
-      }
+      await applySubscriptionState(prisma, sub, event.type);
       break;
     }
 
