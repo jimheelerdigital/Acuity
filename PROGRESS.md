@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-07-09] — Fixed the bug that stopped people from getting Pro back after a failed payment
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** b956d7d0
+
+### In plain English (for Keenan)
+When someone's card was declined, we downgraded them to the free plan — that part worked. But when they fixed their card and Stripe successfully charged them again, we never gave them Pro back. They stayed on the free plan while paying us. This was silent: no error, nothing in the dashboard. It's now fixed, and we added automated tests so it can't come back. Separately, we checked all 12 people who are on the free plan but have a Stripe record — good news, nobody is currently paying us while locked out. Four of them are mid-"your card failed" retries with Stripe; we repaired their records so that when their card goes through, they'll automatically get Pro back instead of staying stuck.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/stripe/webhook/route.ts` — in `invoice.payment_failed`, the `stripeFirstFailureAt` anchor `updateMany` now runs BEFORE the no-grace downgrade `updateMany`. Both filtered on `subscriptionStatus: { not: "FREE" }`, so the downgrade was falsifying the anchor statement's own WHERE and the anchor was never written. Preserves first-failure-only anchoring and the never-resurrect-a-canceled-user guard.
+- `apps/web/src/app/api/stripe/webhook/route.test.ts` — new (369 lines, 11 tests). Mocks `@/lib/prisma`, `@/lib/stripe`, `@/lib/safe-log`, `next/headers` and uses a small in-memory Prisma `where` evaluator (equality / `{ not }` / `OR`) so assertions are on resulting row state, not call arguments. Covers Bug B recovery, the 3 relink fallbacks, the canceled-user guard, and `incomplete` no-op. Verified failing on pre-merge `main` (6/11) and passing on the fix (11/11).
+- PR #32 squash-merged as `b956d7d0`; branch `fix/stripe-webhook-recovery-pro` deleted.
+- **Prod data (manual SQL, no migration):** backfilled `stripeFirstFailureAt` for 4 `past_due` users from their open invoice's `created` time (programmingnyc 2026-06-30, jbcwildmoon 2026-06-27, amandalwheatley79 2026-07-04, tclements222 2026-07-08); cleared the stale anchor on PRO user bselesnew@gmail.com and on canceled jwcunningham525@gmail.com. No `subscriptionStatus` was changed by any of these.
+
+### Manual steps needed
+- [ ] Watch for `stripe-webhook.invoice-success-no-user-found` / `active-sub-no-user-found` in Sentry — those now fire when the relink fallback fails (Jimmy).
+- [ ] Two pre-existing test failures on main are unrelated but still red: `src/lib/paywall.test.ts` (PAST_DUE grace) and `src/tests/auth-flows.test.ts` (`trialDaysForEmail`). 6 failures total. Worth a separate fix (Jimmy).
+- [ ] The `RevenueEvent` / refund-tracking plan (`docs/specs/revenue-accuracy-fix-plan.md`) remains entirely unimplemented — RC1–RC7 all open (Jimmy).
+
+### Notes
+- **The anchor ordering bug predates PR #32 and was invisible to the PR's own fix.** `proRecoveryWhere()` recovers on `OR[ status != FREE, anchor != null ]`; after a failed payment both disjuncts were false, so the flagship dunning-recovery path could never fire even with the relink work in place. The test spec is what surfaced it — writing tests that assert row state rather than mock call args is what made it visible.
+- **The fix is go-forward only.** Users already sitting at FREE-with-null-anchor could never self-recover: `payment_succeeded` matches 0 rows, and all three `relinkAndGrantPro` fallbacks are themselves guarded by `recoverableOr()`. Hence the manual backfill. Any future stranded user needs the same treatment.
+- Evidence the bug was live: the only anchors in prod were dated 2026-06-11/12/13, i.e. right around when the no-grace downgrade (PRO → FREE, no PAST_DUE) shipped. Before that change the downgrade wrote `PAST_DUE`, which still satisfied `not: "FREE"`, so the anchor landed. After it, zero new anchors for ~4 weeks.
+- All 12 FREE-with-`stripeCustomerId` users were cross-checked against the live Stripe API: 8 `canceled` (FREE correct), 4 `past_due` (FREE correct under the no-grace spec). **Zero stranded paying users.** Three of the 8 cancellations cite "no Android app" as the reason — relevant to the Play Store submission.
+- Anchor timestamps were taken from each open invoice's `created`, not `now()`, because `stripeFirstFailureAt` also drives the 30-day recovery-banner window; using `now()` would have shown a false "payment failed" banner for 30 days.
+
+---
+
 ## [2026-07-02] — Removed the "powered by Acuity" badge from the funnel
 
 **Requested by:** Keenan
