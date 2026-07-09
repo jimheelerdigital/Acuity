@@ -8,6 +8,11 @@ import {
   sendConversionEvent,
   generateEventId,
 } from "@/lib/meta-capi";
+import {
+  recordChargeRefunded,
+  recordChargeSucceeded,
+  recordInvoicePaid,
+} from "@/lib/revenue-events";
 
 export const dynamic = "force-dynamic";
 // Explicit Node.js runtime. Stripe signature verification requires the
@@ -552,6 +557,36 @@ export async function POST(req: NextRequest) {
           invoiceId: invoice.id,
         });
       }
+
+      // ── Revenue ingestion (additive, best-effort) ──────────────────────
+      // Books the money AFTER entitlement state is settled. recordInvoicePaid
+      // swallows its own errors, so a RevenueEvent failure can never 500 the
+      // webhook and make Stripe retry the subscription-state write above.
+      await recordInvoicePaid(prisma, invoice, event.id);
+      break;
+    }
+
+    // `invoice.paid` fires alongside `invoice.payment_succeeded` for the same
+    // money. It is NOT currently subscribed on the endpoint (see the Stage-1
+    // report), but if it is enabled later, the @@unique([stripeChargeId, type])
+    // upsert converges both events onto one row instead of double-counting.
+    // Revenue-only: no subscription-state logic lives here.
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      await recordInvoicePaid(prisma, invoice, event.id);
+      break;
+    }
+
+    // Revenue-only events. Neither touches subscription state.
+    case "charge.succeeded": {
+      const charge = event.data.object as Stripe.Charge;
+      await recordChargeSucceeded(prisma, charge, event.id);
+      break;
+    }
+
+    case "charge.refunded": {
+      const charge = event.data.object as Stripe.Charge;
+      await recordChargeRefunded(prisma, charge, event.id);
       break;
     }
 
