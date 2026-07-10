@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-07-10] — Restored payment tracking, fixed returning-user funnel, App Store copy, and recovery visibility
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6545f389 (payment) + af8600fa (funnel/UX)
+
+### In plain English (for Keenan)
+Six reliability fixes bundled together. The big one: we had gone blind on paid signups. Our "someone just paid" event stopped firing on June 2 when we rebuilt the funnel to create the account before the paywall — so for five weeks we couldn't see conversions in the funnel dashboard even though people were paying. It now fires from Stripe's own servers the moment a payment lands, so it can never be knocked out by a website change again. We also see the exact reason a card was declined in the admin view. Separately: (1) a signed-in person who left and came back was dumped at the very first screen instead of where they left off — now they resume at the paywall or download screen; (2) the "copy the App Store link" fallback inside Instagram/Facebook browsers was silently failing for most people — fixed so it copies reliably on tap; (3) the admin "Recovery" column was reading a dead field and showing "Pending" forever — it now shows which rescue email actually went out and when; (4) when a Google/Apple sign-in bounces back with an error, we now record the actual error code so we can debug it.
+
+### Technical changes (for Jimmy)
+- **JIMMY REVIEW REQUIRED (payment path):** `apps/web/src/app/api/stripe/webhook/route.ts` — fires `funnel_payment_completed` SERVER-SIDE: on `checkout.session.completed` (value `plan:first_payment`) and on `invoice.payment_succeeded` with `billing_reason=subscription_cycle` (value `plan:renewal`, so first payments aren't double-counted). On `invoice.payment_failed`, retrieves the PaymentIntent and logs `funnel_payment_failed` with `decline:<code>`. New helpers `resolveFunnelContext` / `logServerFunnelEvent` make server events inherit the user's original funnel `sessionToken` + `flowVersion` so they appear in `getFunnelAnalytics`. No entitlement, pricing, Price ID, or signature-verification changes.
+- `apps/web/src/app/api/stripe/webhook/route.test.ts` — 6 new tests (first-payment, renewal no-double-count, decline-code paths). 16/16 pass.
+- `apps/web/src/app/api/onboarding/resume/route.ts` (new) — GET returns furthest funnel step for a signed-in user (PRO/appFirstOpenedAt → `download`; else OnboardingEvent history → `download` or `savings`; never a pre-account step).
+- `apps/web/src/components/onboarding-funnel.tsx` — consumes `/api/onboarding/resume` and advances forward-only on return (skips if URL already has a `step` param); captures provider error code in `funnel_oauth_returned_error` value.
+- `apps/web/src/components/app-store-cta.tsx` — gesture-aware clipboard: `execCommand` under the tap gesture first, Clipboard API fallback, logged failure reason. Mount pre-copy is best-effort only (expected pre-gesture rejections no longer logged as failures).
+- `apps/web/src/app/api/admin/users/route.ts` — Recovery column now reads `TrialEmailLog` (the 4 rescue emails) instead of the disabled `downloadReminderSentAt`; shows `<label> · <date>` or "Not needed".
+- `apps/web/src/inngest/functions/recovery-email-orchestrator.ts` — added per-key `sentByKey` diagnostics to tick logs + return stats.
+
+### Manual steps needed
+- [ ] **Jimmy: review the Stripe webhook diff** (commit 6545f389) before pushing — it's the payment path.
+- [ ] Post-deploy verify payment telemetry: run a Stripe test-mode checkout end-to-end, then confirm a `funnel_payment_completed` OnboardingEvent row landed with the right `sessionToken`/`flowVersion` (SQL). Not verifiable locally — Stripe can't reach localhost (Keenan/Jimmy).
+- [ ] Post-deploy verify recovery emails: confirm one real rescue email was delivered (Resend log) and that the admin Recovery column shows its label + date instead of "Pending" (Keenan).
+- [ ] Post-deploy check Inngest orchestrator logs for the new `sentByKey` breakdown on the next tick (Jimmy).
+- [ ] Pre-existing red tests remain (not touched here): `src/lib/paywall.test.ts` PAST_DUE grace (2) and `src/tests/auth-flows.test.ts` `trialDaysForEmail` (4).
+
+### Notes
+- Root cause of the telemetry gap: the June 2 account-first restructure moved payment to a step where the old client-side `funnel_payment_completed` fire no longer ran. Firing from the webhook is intentionally decoupled from funnel UI so a future funnel change can't silently break conversion tracking again.
+- Server events must inherit the user's original funnel session or they won't group into `getFunnelAnalytics` (which filters `sessionToken: { not: null }`). `resolveFunnelContext` looks up the most recent `funnel_*` event with a session for that user; if none exists it logs a `funnel-event-no-session` breadcrumb rather than dropping silently.
+- Renewal vs first-payment is split on `billing_reason` (`subscription_create`/checkout = first, `subscription_cycle` = renewal) to avoid counting the initial charge twice.
+- Task 3 was NOT an Inngest `createFunction` syntax bug (the reported bug doesn't exist). The real defect was the admin column reading `downloadReminderSentAt`, which is dead since `recovery_download_reminder` is disabled in `email-enabled.ts`. Fix re-points it at the emails that actually send.
+- Task 4 root cause: funnel progress lived only in `sessionStorage`, cleared when the session ended, so a return visit ~hours later had no state. Server truth (DB + OnboardingEvent history) now drives resume.
+- Task 5 root cause: the old code copied on MOUNT with no user gesture; IG/FB iOS webviews require transient user activation for a clipboard write, so it reliably rejected (~20 fails vs 6 successes/week). The reliable copy is the in-gesture `execCommand` on tap.
+
+---
+
 ## [2026-07-09] — Fixed the bug that stopped people from getting Pro back after a failed payment
 
 **Requested by:** Jimmy
