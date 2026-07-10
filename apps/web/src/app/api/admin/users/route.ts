@@ -52,6 +52,27 @@ const DOWNLOAD_STAGE_EVENTS = [
 ];
 const EMPTY_EVENT_SET: Set<string> = new Set();
 
+// ── Recovery ("download rescue") emails ──────────────────────────
+// The admin "Recovery" column USED to read User.downloadReminderSentAt, but
+// that field is stamped only by recovery_download_reminder — an email that has
+// been DISABLED in email-enabled.ts (replaced 2026-06 by the 4 stage-specific
+// rescue emails below). So the column showed "Pending" forever even when a real
+// rescue email had gone out. It now reads TrialEmailLog for these keys, which is
+// where the recovery-email orchestrator actually records every send.
+const RECOVERY_EMAIL_KEYS = [
+  "rescue_signup_only",
+  "rescue_viewed_no_tap",
+  "rescue_tapped_app_store",
+  "rescue_webview_blocked",
+];
+// Short label per key for the compact "Recovery" cell (e.g. "webview · Jul 9").
+const RECOVERY_EMAIL_LABEL: Record<string, string> = {
+  rescue_signup_only: "signup",
+  rescue_viewed_no_tap: "viewed",
+  rescue_tapped_app_store: "tapped",
+  rescue_webview_blocked: "webview",
+};
+
 // Most-advanced (most actionable) download sub-step a user reached, derived from
 // their funnel events. Ordered so the strongest "got stuck" signal wins: a user
 // who tapped the store and came back is more telling than one who only viewed.
@@ -367,6 +388,20 @@ export async function GET(req: NextRequest) {
     set.add(e.event);
   }
 
+  // Real recovery-email sends for these users, straight from TrialEmailLog
+  // (the orchestrator's source of truth). Ordered newest-first so the first row
+  // we see per user is their most recent rescue email.
+  const recoveryLogs = await prisma.trialEmailLog.findMany({
+    where: { userId: { in: userIds }, emailKey: { in: RECOVERY_EMAIL_KEYS } },
+    orderBy: { sentAt: "desc" },
+    select: { userId: true, emailKey: true, sentAt: true },
+  });
+  const latestRecoveryByUser = new Map<string, { emailKey: string; sentAt: Date }>();
+  for (const r of recoveryLogs) {
+    if (!r.userId || latestRecoveryByUser.has(r.userId)) continue;
+    latestRecoveryByUser.set(r.userId, { emailKey: r.emailKey, sentAt: r.sentAt });
+  }
+
   const mappedUsers = page.map((u) => {
     const entryCount = u._count.entries;
     const entriesThisWeek = u.entries.length;
@@ -400,9 +435,16 @@ export async function GET(req: NextRequest) {
       weeklyReportCount: u._count.weeklyReports,
       lastActive,
       trialEndsAt: u.trialEndsAt,
-      downloadReminder: (u as Record<string, unknown>).downloadReminderSentAt
-        ? `Sent ${new Date((u as Record<string, unknown>).downloadReminderSentAt as string).toLocaleDateString()}`
-        : u.appFirstOpenedAt ? "Not needed" : "Pending",
+      downloadReminder: (() => {
+        const rec = latestRecoveryByUser.get(u.id);
+        if (rec) {
+          const label = RECOVERY_EMAIL_LABEL[rec.emailKey] ?? "sent";
+          return `${label} · ${new Date(rec.sentAt).toLocaleDateString()}`;
+        }
+        // No recovery email sent. If they already opened the app there was
+        // nothing to recover; otherwise a rescue is still eligible/pending.
+        return u.appFirstOpenedAt ? "Not needed" : "Pending";
+      })(),
     };
   });
 

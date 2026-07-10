@@ -391,19 +391,44 @@ export function OnboardingFunnel() {
     window.history.replaceState({ funnelStep: resolvedStep }, "", buildStepUrl(resolvedStep));
   }, []);
 
-  // If already logged in with active subscription, skip to download
+  // Resume a signed-in user at their furthest funnel step (server truth).
+  //
+  // Return-path fix (2026-07-10): funnel progress used to live only in
+  // sessionStorage, which is cleared when the tab/session ends. A user who
+  // created an account + selected a plan and came back ~2h later got dumped at
+  // the entry diagnostic. /api/onboarding/resume derives the furthest step from
+  // the DB + OnboardingEvent history, so a signed-in user never sees the entry
+  // screen again. We DON'T override an explicit ?step= return (Stripe success /
+  // OAuth callback), and we only ever move the user FORWARD — never backward
+  // past a step they'd already advanced to in this session.
+  const resumeChecked = useRef(false);
   useEffect(() => {
-    if (authStatus === "authenticated" && session?.user) {
-      fetch("/api/user/me")
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          if (data?.user?.subscriptionStatus === "PRO") {
-            setPaymentConfirmed(true);
-            setStep("download");
+    if (authStatus !== "authenticated" || !session?.user || resumeChecked.current) return;
+    resumeChecked.current = true;
+
+    // An explicit step param means this load is a deliberate return to a
+    // specific screen (Stripe/OAuth); its own effect owns the step. Skip resume.
+    const hasStepParam = new URLSearchParams(window.location.search).has("step");
+
+    fetch("/api/onboarding/resume")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const serverStep = data?.step as Step | undefined;
+        if (data?.subscriptionStatus === "PRO") {
+          setPaymentConfirmed(true);
+        }
+        if (hasStepParam || !serverStep || !STEP_SET.has(serverStep)) return;
+        // Only advance forward: never send a user back to an earlier step than
+        // the one they're already viewing (e.g. don't pull "download" → "savings").
+        setStepRaw((current) => {
+          if (STEP_ORDER.indexOf(serverStep) <= STEP_ORDER.indexOf(current)) {
+            return current;
           }
-        })
-        .catch(() => {});
-    }
+          window.history.replaceState({ funnelStep: serverStep }, "", buildStepUrl(serverStep));
+          return serverStep;
+        });
+      })
+      .catch(() => {});
   }, [authStatus, session]);
 
   // Sync UTM attribution to User record after OAuth signup in the funnel.
@@ -1884,12 +1909,20 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     // without completing (provider rejected the webview, or they hit back). A
     // genuine SUCCESS return arrives at ?step=post-signup and is handled by the
     // parent — skip here so we don't double-count that as an error.
-    const isPostSignupReturn = new URLSearchParams(window.location.search).get("step") === "post-signup";
+    const qs = new URLSearchParams(window.location.search);
+    const isPostSignupReturn = qs.get("step") === "post-signup";
     const pending = readOAuthPending();
     if (pending && !isPostSignupReturn) {
       const awayMs = Date.now() - pending.ts;
       const evt = awayMs > OAUTH_NEVER_RETURNED_MS ? "funnel_oauth_never_returned" : "funnel_oauth_returned_error";
-      track(evt, { value: `${pending.provider}|${pending.env}|awayMs:${awayMs}` });
+      // NextAuth appends ?error=<code> (and sometimes ?error_description=) to the
+      // return URL when the provider hand-off fails. Capture whichever the
+      // provider gave us so the reason is visible in admin instead of a bare
+      // "returned_error". Kept short + pipe-delimited to match the existing value
+      // grammar; sanitized to the safe funnel charset so it can't break parsing.
+      const errCode = qs.get("error") || qs.get("error_description") || qs.get("error_reason");
+      const errPart = errCode ? `|error:${errCode.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 60)}` : "";
+      track(evt, { value: `${pending.provider}|${pending.env}|awayMs:${awayMs}${errPart}` });
       clearOAuthPending();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

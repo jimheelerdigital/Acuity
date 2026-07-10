@@ -95,27 +95,83 @@ export function useAppStoreCta({
     `windowOpen:${typeof window.open === "function"}`,
   ].join("|") : "ssr";
 
-  // On mount in a webview: flag it and auto-copy the App Store URL so the
-  // "Open in Safari/Chrome" fallback has the link ready to paste.
+  // Copy the App Store URL to the clipboard.
+  //
+  // WHY THIS IS GESTURE-AWARE (2026-07-10 fix): the old code copied on MOUNT
+  // with no user gesture. Instagram/Facebook iOS webviews require *transient
+  // user activation* for a clipboard write, so the mount-time
+  // navigator.clipboard.writeText() reliably REJECTED there — that's the ~20
+  // fails vs 6 successes/week we saw. The reliable copy is the one triggered by
+  // the user's TAP, and inside a webview the synchronous legacy
+  // document.execCommand("copy") path succeeds under gesture more often than the
+  // async Clipboard API. So:
+  //   • trigger "tap"  → execCommand first (in-gesture), Clipboard API fallback,
+  //                       and a logged failure reason if BOTH fail.
+  //   • trigger "mount"→ best-effort Clipboard API only; a pre-gesture rejection
+  //                       is EXPECTED and is NOT logged as a failure (that noise
+  //                       is exactly what made the metric look broken).
+  const copyViaExecCommand = (): boolean => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = APP_STORE_URL;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const markCopied = (method: string, trigger: string) => {
+    setCopied(true);
+    setCopyFailed(false);
+    if (events.autocopySuccess) {
+      track(events.autocopySuccess, { value: `method:${method}|trigger:${trigger}|${diagContext}` });
+    }
+  };
+
+  const markFailed = (reason: string, trigger: string) => {
+    setCopyFailed(true);
+    if (events.autocopyFailed) {
+      track(events.autocopyFailed, { value: `reason:${reason}|trigger:${trigger}|${diagContext}` });
+    }
+  };
+
+  const copyAppStoreUrl = (trigger: "mount" | "tap") => {
+    if (trigger === "tap") {
+      // In-gesture: the legacy path is the most reliable in IG/FB iOS webviews.
+      if (copyViaExecCommand()) {
+        markCopied("execcommand", "tap");
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(APP_STORE_URL)
+          .then(() => markCopied("clipboard", "tap"))
+          .catch((err) => markFailed(err instanceof Error ? err.message : String(err), "tap"));
+        return;
+      }
+      markFailed("no_clipboard_api", "tap");
+      return;
+    }
+    // mount: best-effort prefill only. A pre-gesture rejection is expected —
+    // don't flip to the long-press fallback UI or log a failure for it.
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(APP_STORE_URL)
+        .then(() => markCopied("clipboard", "mount"))
+        .catch(() => {});
+    }
+  };
+
+  // On mount in a webview: flag it and best-effort pre-copy the App Store URL.
   useEffect(() => {
     if (!browserEnv.isWebView) return;
     if (events.webviewDetected) track(events.webviewDetected, { value: browserEnv.label });
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(APP_STORE_URL)
-        .then(() => {
-          setCopied(true);
-          if (events.autocopySuccess) track(events.autocopySuccess, { value: diagContext });
-        })
-        .catch((err) => {
-          setCopyFailed(true);
-          if (events.autocopyFailed) {
-            track(events.autocopyFailed, { value: `${err instanceof Error ? err.message : String(err)}|${diagContext}` });
-          }
-        });
-    } else {
-      setCopyFailed(true);
-      if (events.autocopyFailed) track(events.autocopyFailed, { value: `no_clipboard_api|${diagContext}` });
-    }
+    copyAppStoreUrl("mount");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browserEnv.isWebView, browserEnv.label]);
 
@@ -141,6 +197,10 @@ export function useAppStoreCta({
     tappedRef.current = true;
     tappedAtRef.current = Date.now();
     track(events.tap, { value: diagContext });
+    // Do the reliable, gesture-backed clipboard copy HERE — this tap is the
+    // transient user activation that IG/FB iOS webviews require. Runs
+    // synchronously inside the click handler so execCommand keeps the gesture.
+    if (browserEnv.isWebView) copyAppStoreUrl("tap");
   };
 
   // Inside a webview, drop target="_blank" so iOS can hand off to the App

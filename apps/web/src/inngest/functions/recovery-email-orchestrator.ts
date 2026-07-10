@@ -56,6 +56,12 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       let skipped = 0;
       let throttled = 0;
       let rateLimited = 0;
+      // Per-email-key send breakdown. Aggregate `sent` alone can't confirm the
+      // download-rescue emails actually went out on a given tick (a tick could
+      // be all winback + zero rescue). This makes each type verifiable straight
+      // from the Inngest Cloud run log, which is how we confirm recovery sends
+      // without a live mailbox.
+      const sentByKey: Record<string, number> = {};
 
       // ── Dry-run accumulator ──
       const dryRunCounts: Record<string, number> = {};
@@ -123,6 +129,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         const result = await sendTrialEmail(userId, emailKey, opts);
         if (result.sent) {
           sent++;
+          sentByKey[emailKey] = (sentByKey[emailKey] ?? 0) + 1;
           consumeBudget();
           return true;
         }
@@ -826,6 +833,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
 
       logger.info("[recovery-orchestrator] tick complete", {
         sent,
+        sentByKey,
         skipped,
         throttled,
         rateLimited,
@@ -833,7 +841,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         tickBudgetRemaining: tickBudget,
       });
 
-      return { sent, skipped, throttled, rateLimited };
+      return { sent, sentByKey, skipped, throttled, rateLimited };
     });
 
     return stats;
