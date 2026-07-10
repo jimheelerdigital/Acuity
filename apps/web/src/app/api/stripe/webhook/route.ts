@@ -274,6 +274,111 @@ async function applySubscriptionState(
   }
 }
 
+/**
+ * Server-side funnel telemetry (2026-07-10, Task 1 — restore payment tracking).
+ *
+ * `funnel_payment_completed` used to be fired client-side, but the 2026-06-02
+ * account-first funnel restructure dropped it, so payment telemetry went to
+ * ZERO even though Stripe kept collecting money. We now fire it from the
+ * webhook, which is the only place that observes a real charge.
+ *
+ * The admin funnel analytics (api/admin/metrics getFunnelAnalytics) only reads
+ * OnboardingEvent rows where `sessionToken IS NOT NULL`, groups by sessionToken,
+ * and filters by flowVersion. So a server-fired conversion is only visible if
+ * it carries the SAME sessionToken + flowVersion as the user's original funnel
+ * session. We resolve those from the user's most recent funnel_* event and
+ * copy the attribution columns forward so the conversion attributes to the same
+ * ad as the rest of the session.
+ */
+type FunnelContext = {
+  sessionToken: string | null;
+  flowVersion: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  utmTerm: string | null;
+  fbclid: string | null;
+};
+
+async function resolveFunnelContext(
+  db: WebhookDb,
+  userId: string
+): Promise<FunnelContext | null> {
+  return db.onboardingEvent.findFirst({
+    where: {
+      userId,
+      event: { startsWith: "funnel_" },
+      sessionToken: { not: null },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      sessionToken: true,
+      flowVersion: true,
+      utmSource: true,
+      utmMedium: true,
+      utmCampaign: true,
+      utmContent: true,
+      utmTerm: true,
+      fbclid: true,
+    },
+  });
+}
+
+/**
+ * Write a server-side funnel OnboardingEvent for `userId`, inheriting the
+ * session token / flowVersion / attribution of that user's original funnel
+ * session so it lands in admin funnel analytics under the same session. If the
+ * user has no funnel session (e.g. a subscription created outside the funnel),
+ * the row is still written with userId so it shows in the user's history, but
+ * with a null sessionToken (invisible to the session-grouped funnel view) —
+ * logged so we can see how often that happens.
+ */
+async function logServerFunnelEvent(
+  db: WebhookDb,
+  opts: { userId: string; event: string; value: string; context: string }
+): Promise<void> {
+  const { userId, event, value, context } = opts;
+  try {
+    const ctx = await resolveFunnelContext(db, userId);
+    await db.onboardingEvent.create({
+      data: {
+        userId,
+        sessionToken: ctx?.sessionToken ?? null,
+        event,
+        value,
+        flowVersion: ctx?.flowVersion ?? null,
+        utmSource: ctx?.utmSource ?? null,
+        utmMedium: ctx?.utmMedium ?? null,
+        utmCampaign: ctx?.utmCampaign ?? null,
+        utmContent: ctx?.utmContent ?? null,
+        utmTerm: ctx?.utmTerm ?? null,
+        fbclid: ctx?.fbclid ?? null,
+        isBot: false,
+      },
+    });
+    if (!ctx?.sessionToken) {
+      safeLog.info("stripe-webhook.funnel-event-no-session", {
+        context,
+        userId,
+        event,
+      });
+    }
+  } catch (err) {
+    safeLog.warn("stripe-webhook.funnel-event-write-failed", {
+      context,
+      event,
+      userId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/** Map a Stripe interval / checkout metadata interval to our plan label. */
+function planLabel(interval: string | null | undefined): "annual" | "monthly" {
+  return interval === "yearly" || interval === "year" ? "annual" : "monthly";
+}
+
 export async function POST(req: NextRequest) {
   // First line: prove the function is invoked. Independent of body,
   // signature, env. If Vercel logs don't show this for an event
@@ -493,6 +598,17 @@ export async function POST(req: NextRequest) {
           err: err instanceof Error ? err.message : String(err),
         });
       }
+
+      // Task 1 — restore payment telemetry. This is the FIRST charge of a new
+      // subscription (checkout just completed), so it's the funnel conversion.
+      // value = "<plan>:first_payment" (e.g. "annual:first_payment"), attached
+      // to the user's original funnel session so it appears as paid in admin.
+      await logServerFunnelEvent(prisma, {
+        userId,
+        event: "funnel_payment_completed",
+        value: `${planLabel(session.metadata?.interval)}:first_payment`,
+        context: "checkout.session.completed",
+      });
       break;
     }
 
@@ -551,6 +667,35 @@ export async function POST(req: NextRequest) {
           customerId,
           invoiceId: invoice.id,
         });
+      }
+
+      // Task 1 — renewal telemetry. invoice.payment_succeeded fires for BOTH the
+      // first charge (billing_reason "subscription_create", already tracked as
+      // first_payment by checkout.session.completed) and recurring renewals
+      // ("subscription_cycle"). Only emit here for renewals so we never
+      // double-count the first payment.
+      if (invoice.billing_reason === "subscription_cycle") {
+        try {
+          const payingUser = await prisma.user.findFirst({
+            where: { stripeCustomerId: customerId },
+            select: { id: true },
+          });
+          if (payingUser) {
+            const interval = invoice.lines.data[0]?.price?.recurring?.interval ?? null;
+            await logServerFunnelEvent(prisma, {
+              userId: payingUser.id,
+              event: "funnel_payment_completed",
+              value: `${planLabel(interval)}:renewal`,
+              context: "invoice.payment_succeeded.renewal",
+            });
+          }
+        } catch (err) {
+          safeLog.warn("stripe-webhook.renewal-telemetry-failed", {
+            customerId,
+            invoiceId: invoice.id,
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
       break;
     }
@@ -633,6 +778,40 @@ export async function POST(req: NextRequest) {
           }
         } catch (err) {
           safeLog.warn("stripe-webhook.payment-failed-email-failed", {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
+
+        // Task 2 — surface WHY the charge failed. Retrieve the failed
+        // PaymentIntent to read Stripe's decline code (card_declined,
+        // insufficient_funds, expired_card, …) and log it as a funnel event
+        // per downgraded user so it's visible in admin instead of an opaque
+        // "payment failed". Best-effort — never blocks the downgrade.
+        try {
+          const piId =
+            typeof invoice.payment_intent === "string"
+              ? invoice.payment_intent
+              : invoice.payment_intent?.id ?? null;
+          let declineCode = "unknown";
+          if (piId) {
+            const pi = await stripe.paymentIntents.retrieve(piId);
+            declineCode =
+              pi.last_payment_error?.decline_code ||
+              pi.last_payment_error?.code ||
+              "unknown";
+          }
+          for (const u of users) {
+            await logServerFunnelEvent(prisma, {
+              userId: u.id,
+              event: "funnel_payment_failed",
+              value: `decline:${declineCode}`,
+              context: "invoice.payment_failed",
+            });
+          }
+        } catch (err) {
+          safeLog.warn("stripe-webhook.payment-failed-decline-log-failed", {
+            customerId,
+            invoiceId: invoice.id,
             err: err instanceof Error ? err.message : String(err),
           });
         }

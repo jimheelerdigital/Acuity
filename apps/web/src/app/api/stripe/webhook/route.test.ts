@@ -40,6 +40,10 @@ type Row = {
 
 let users: Row[] = [];
 let stripeEvents: { id: string; type: string }[] = [];
+// Server-fired funnel telemetry (Task 1/2, 2026-07-10). Seeded with the user's
+// original funnel session so we can assert the webhook copies its sessionToken +
+// flowVersion forward onto the payment event.
+let onboardingEvents: Array<Record<string, unknown>> = [];
 
 const user = (over: Partial<Row> = {}): Row => ({
   id: "u1",
@@ -103,6 +107,43 @@ const prismaMock = {
         return row;
       }
     ),
+    findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
+      users.find((u) => matches(u, where)) ?? null
+    ),
+  },
+  onboardingEvent: {
+    // Resolves the user's most recent funnel session (resolveFunnelContext).
+    findFirst: vi.fn(
+      async ({
+        where,
+        orderBy,
+      }: {
+        where: Record<string, unknown>;
+        orderBy?: { createdAt?: "asc" | "desc" };
+      }) => {
+        let hits = onboardingEvents.filter((e) => {
+          const w = where as Record<string, unknown>;
+          if (w.userId && e.userId !== w.userId) return false;
+          const ev = w.event as { startsWith?: string; in?: string[] } | undefined;
+          if (ev?.startsWith && !String(e.event).startsWith(ev.startsWith)) return false;
+          if (ev?.in && !ev.in.includes(e.event as string)) return false;
+          const st = w.sessionToken as { not?: unknown } | undefined;
+          if (st && "not" in st && st.not === null && e.sessionToken == null) return false;
+          return true;
+        });
+        if (orderBy?.createdAt === "desc") {
+          hits = hits.sort(
+            (a, b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime()
+          );
+        }
+        return hits[0] ?? null;
+      }
+    ),
+    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+      const row = { id: `oe_${onboardingEvents.length + 1}`, createdAt: new Date(), ...data };
+      onboardingEvents.push(row);
+      return row;
+    }),
   },
   stripeEvent: {
     create: vi.fn(async ({ data }: { data: { id: string; type: string } }) => {
@@ -126,12 +167,14 @@ const prismaMock = {
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
 const customersRetrieve = vi.fn();
+const paymentIntentsRetrieve = vi.fn();
 
 vi.mock("@/lib/stripe", () => ({
   stripe: {
     // Signature verification is out of scope — the body IS the event.
     webhooks: { constructEvent: (body: string) => JSON.parse(body) },
     customers: { retrieve: (...a: unknown[]) => customersRetrieve(...a) },
+    paymentIntents: { retrieve: (...a: unknown[]) => paymentIntentsRetrieve(...a) },
   },
 }));
 
@@ -186,6 +229,26 @@ const invoice = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const checkoutSession = (over: Record<string, unknown> = {}) => ({
+  id: "cs_1",
+  customer: "cus_1",
+  subscription: "sub_1",
+  metadata: { userId: "u1", interval: "yearly" },
+  ...over,
+});
+
+// A seeded funnel event standing in for the user's original funnel session, so
+// the payment event we assert on has a sessionToken + flowVersion to inherit.
+const funnelSeed = (over: Record<string, unknown> = {}) => ({
+  id: "oe_seed",
+  userId: "u1",
+  event: "funnel_entry_viewed",
+  sessionToken: "sess_1",
+  flowVersion: "v6",
+  createdAt: new Date("2026-07-10T13:00:00Z"),
+  ...over,
+});
+
 const subscription = (over: Record<string, unknown> = {}) => ({
   id: "sub_1",
   customer: "cus_1",
@@ -198,10 +261,20 @@ const subscription = (over: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   users = [];
   stripeEvents = [];
+  onboardingEvents = [];
   evtSeq = 0;
   customersRetrieve.mockReset();
   customersRetrieve.mockResolvedValue({ id: "cus_1", email: null, metadata: {} });
+  paymentIntentsRetrieve.mockReset();
+  paymentIntentsRetrieve.mockResolvedValue({
+    last_payment_error: { decline_code: "insufficient_funds", code: "card_declined" },
+  });
 });
+
+// Convenience: the funnel_payment_completed / funnel_payment_failed row the
+// webhook wrote (if any), for the assertions below.
+const paymentEvent = (event: string) =>
+  onboardingEvents.find((e) => e.event === event);
 
 // ─── 1. Bug B — failed, then recovered ────────────────────────────────────
 
@@ -365,5 +438,93 @@ describe("incomplete (first charge pending)", () => {
     await send("customer.subscription.updated", subscription({ status: "incomplete" }));
 
     expect(users[0].subscriptionStatus).toBe("PRO");
+  });
+});
+
+// ─── 5. Task 1 — server-side payment telemetry (funnel_payment_completed) ──
+// The account-first funnel restructure (2026-06-02) dropped the client-side
+// funnel_payment_completed, so payment telemetry went to ZERO. The webhook now
+// re-fires it, inheriting the user's original funnel session so it lands in
+// admin funnel analytics (which only reads sessionToken-bearing rows).
+
+describe("Task 1: payment telemetry", () => {
+  it("checkout.session.completed writes funnel_payment_completed = <plan>:first_payment on the funnel session", async () => {
+    users = [user({ id: "u1", subscriptionStatus: "TRIAL" })];
+    onboardingEvents = [funnelSeed()];
+
+    await send(
+      "checkout.session.completed",
+      checkoutSession({ metadata: { userId: "u1", interval: "yearly" } })
+    );
+
+    const ev = paymentEvent("funnel_payment_completed");
+    expect(ev).toBeTruthy();
+    expect(ev!.value).toBe("annual:first_payment");
+    // Inherited from the seeded funnel session → visible in admin analytics.
+    expect(ev!.sessionToken).toBe("sess_1");
+    expect(ev!.flowVersion).toBe("v6");
+    expect(ev!.userId).toBe("u1");
+  });
+
+  it("renewal invoice (subscription_cycle) writes funnel_payment_completed = <plan>:renewal", async () => {
+    users = [user({ id: "u1", subscriptionStatus: "PRO" })];
+    onboardingEvents = [funnelSeed()];
+
+    await send(
+      "invoice.payment_succeeded",
+      invoice({
+        billing_reason: "subscription_cycle",
+        lines: { data: [{ period: { end: 1800000000 }, price: { recurring: { interval: "month" } } }] },
+      })
+    );
+
+    const ev = paymentEvent("funnel_payment_completed");
+    expect(ev).toBeTruthy();
+    expect(ev!.value).toBe("monthly:renewal");
+    expect(ev!.sessionToken).toBe("sess_1");
+  });
+
+  it("first invoice (subscription_create) does NOT double-count — checkout.session.completed owns first_payment", async () => {
+    users = [user({ id: "u1", subscriptionStatus: "PRO" })];
+    onboardingEvents = [funnelSeed()];
+
+    await send(
+      "invoice.payment_succeeded",
+      invoice({ billing_reason: "subscription_create" })
+    );
+
+    expect(paymentEvent("funnel_payment_completed")).toBeUndefined();
+  });
+});
+
+// ─── 6. Task 2 — decline-code telemetry on invoice.payment_failed ─────────
+
+describe("Task 2: decline-code telemetry", () => {
+  it("logs funnel_payment_failed carrying the Stripe decline code", async () => {
+    users = [user({ id: "u1", subscriptionStatus: "PRO" })];
+    onboardingEvents = [funnelSeed()];
+    paymentIntentsRetrieve.mockResolvedValue({
+      last_payment_error: { decline_code: "insufficient_funds" },
+    });
+
+    await send("invoice.payment_failed", invoice({ payment_intent: "pi_1" }));
+
+    const ev = paymentEvent("funnel_payment_failed");
+    expect(ev).toBeTruthy();
+    expect(ev!.value).toBe("decline:insufficient_funds");
+    expect(ev!.userId).toBe("u1");
+    // The downgrade still happened (decline logging is additive, best-effort).
+    expect(users[0].subscriptionStatus).toBe("FREE");
+  });
+
+  it("falls back to decline:unknown when no payment_intent is present", async () => {
+    users = [user({ id: "u1", subscriptionStatus: "PRO" })];
+    onboardingEvents = [funnelSeed()];
+
+    await send("invoice.payment_failed", invoice()); // no payment_intent
+
+    const ev = paymentEvent("funnel_payment_failed");
+    expect(ev).toBeTruthy();
+    expect(ev!.value).toBe("decline:unknown");
   });
 });
