@@ -175,7 +175,7 @@ export default function NotificationPreferencesScreen() {
             lineHeight: 24,
           }}
         >
-          What Acuity reaches out about, and how.
+          What Ripple reaches out about, and how.
         </Text>
 
         {/* Master channel — email is the only channel in v1. */}

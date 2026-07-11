@@ -115,12 +115,12 @@ function SignInForm() {
       <div className="mb-8 text-center">
         <img
           src="/AcuityLogo.png"
-          alt="Acuity logo"
+          alt="Ripple logo"
           className="mx-auto mb-4"
           style={{ width: 32, height: 32 }}
         />
         <h1 className="font-display text-2xl font-bold text-acuity-text">
-          Sign in to Acuity
+          Sign in to Ripple
         </h1>
       </div>
 
@@ -157,7 +157,7 @@ function SignInForm() {
 
       {/* Apple — branded affordance: keep the standard black-on-white
           Apple sign-in style. Apple's HIG mandates the black/white
-          treatment for "Sign in with Apple"; it's not Acuity design. */}
+          treatment for "Sign in with Apple"; it's not Ripple design. */}
       <button
         onClick={handleApple}
         disabled={loading !== null}

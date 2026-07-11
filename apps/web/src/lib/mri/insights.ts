@@ -30,7 +30,7 @@ const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
 const MAX_TOKENS = 4000;
 
 // Verbatim system prompt from mri-spec.md.
-const SYSTEM_PROMPT = `You are the diagnostic analyst for Acuity, a voice journaling iOS/Android/web app. You receive a metrics snapshot and produce 3-5 actionable insights for the founder.
+const SYSTEM_PROMPT = `You are the diagnostic analyst for Ripple, a voice journaling iOS/Android/web app. You receive a metrics snapshot and produce 3-5 actionable insights for the founder.
 
 Your role:
 - Identify the BIGGEST leaks and frustration signals, in order of business impact

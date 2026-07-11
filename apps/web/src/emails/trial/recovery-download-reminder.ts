@@ -14,7 +14,7 @@ const APP_STORE_URL =
 
 
 export const recoveryDownloadReminder: TrialEmailTemplate = {
-  subject: () => "Your Acuity app is waiting for you",
+  subject: () => "Your Ripple app is waiting for you",
   html: (v: TrialVars) => {
     const rawFirst = (v.firstName ?? "").trim();
     const greeting = rawFirst ? `Hi ${escapeHtml(rawFirst)},` : "Hi there,";

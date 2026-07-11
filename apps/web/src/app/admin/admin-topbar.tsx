@@ -28,7 +28,7 @@ export function AdminTopbar() {
           className="font-semibold"
           style={{ fontSize: 18, letterSpacing: "-0.2px" }}
         >
-          Acuity Admin
+          Ripple Admin
         </span>
       </Link>
       <SessionUserMenu />

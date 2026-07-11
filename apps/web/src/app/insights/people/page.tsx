@@ -28,7 +28,7 @@ const MAX_ROWS = 200;
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "People — Insights — Acuity",
+  title: "People — Insights — Ripple",
   robots: { index: false, follow: false },
 };
 
@@ -122,7 +122,7 @@ export default async function PeopleInsightsPage() {
         {rows.length === 0 ? (
           <Card variant="default" radius="xl" padding={6}>
             <p className="text-[15px] leading-relaxed text-acuity-text-sec">
-              Acuity hasn&apos;t surfaced anyone yet. People show up
+              Ripple hasn&apos;t surfaced anyone yet. People show up
               here once you&apos;ve mentioned them across a few entries.
             </p>
           </Card>

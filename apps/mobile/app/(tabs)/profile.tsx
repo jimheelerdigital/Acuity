@@ -97,7 +97,7 @@ export default function ProfileTab() {
     ]);
   };
 
-  const name = user?.name ?? "Acuity User";
+  const name = user?.name ?? "Ripple User";
   const email = user?.email ?? "—";
   const subStatus = user?.subscriptionStatus ?? "FREE";
   const subSource = user?.subscriptionSource ?? null;
@@ -245,7 +245,7 @@ export default function ProfileTab() {
             <MenuItem
               icon="sparkles-outline"
               label="Subscribe"
-              sublabel="Acuity Pro — full debriefs, weekly reports, calendar"
+              sublabel="Ripple Pro — full debriefs, weekly reports, calendar"
               onPress={() => router.push("/subscribe")}
             />
           )}
@@ -326,7 +326,7 @@ export default function ProfileTab() {
           <MenuItem
             icon="notifications-outline"
             label="Notifications"
-            sublabel="What Acuity reaches out about, and how"
+            sublabel="What Ripple reaches out about, and how"
             onPress={() => router.push("/notification-preferences" as never)}
           />
           {/* Replay product tour — clears User.tourCompletedAt + the
@@ -354,7 +354,7 @@ export default function ProfileTab() {
                   ? "Face ID, app lock, auto-lock interval"
                   : lockEnabled
                     ? "App lock on"
-                    : "Lock Acuity with Face ID or device passcode"
+                    : "Lock Ripple with Face ID or device passcode"
               }
               onPress={() => router.push("/security" as never)}
             />
@@ -383,7 +383,7 @@ export default function ProfileTab() {
           <MenuItem
             icon="link-outline"
             label="Connect Google Calendar"
-            sublabel="Acuity reads your day to ground reflections — opens on web"
+            sublabel="Ripple reads your day to ground reflections — opens on web"
             onPress={() => {
               const base =
                 process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";

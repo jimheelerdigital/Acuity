@@ -63,7 +63,7 @@ export function pickFallbackHeadshot(name: string): string {
 /** The shared set of testimonials used across all pages */
 export const STATIC_CAROUSEL_TESTIMONIALS: CarouselTestimonial[] = [
   {
-    quote: "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity and actually sleep.",
+    quote: "I used to let tasks pile up in my head until 2 AM. Now I debrief into Ripple and actually sleep.",
     name: "Sarah K.",
     role: "Product manager",
     initials: "SK",

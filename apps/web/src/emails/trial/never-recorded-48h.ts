@@ -33,7 +33,7 @@ export const neverRecorded48h: TrialEmailTemplate = {
       ${para(greeting)}
       ${para(`Still haven\u2019t recorded your first debrief \u2014 so let me tell you what\u2019s actually waiting on the other side of it, because right now you\u2019re skipping the whole point.`)}
       ${para(`One debrief gets you:<br/>
-\u2014 Your tasks, pulled out automatically. The stuff you mention and forget \u2014 Acuity catches it so you don\u2019t have to hold it in your head.<br/>
+\u2014 Your tasks, pulled out automatically. The stuff you mention and forget \u2014 Ripple catches it so you don\u2019t have to hold it in your head.<br/>
 \u2014 Patterns you can\u2019t see yourself. The things you keep circling back to, week after week, quietly running your mood and your time.<br/>
 \u2014 A clear read on where your energy actually goes \u2014 across work, health, relationships, money, all of it.`)}
       ${para(`None of that exists until you talk to it once. It\u2019s a few minutes. That\u2019s the whole ask.`)}

@@ -35,7 +35,7 @@ export default function WeeklyReportPage() {
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
               { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Acuity Weekly Report", item: "https://getacuity.io/for/weekly-report" },
+              { "@type": "ListItem", position: 3, name: "Ripple Weekly Report", item: "https://getacuity.io/for/weekly-report" },
             ],
           }),
         }}
@@ -114,7 +114,7 @@ export default function WeeklyReportPage() {
             label: "Step 1",
             title: "Record",
             description:
-              "Every day, open Acuity and speak freely. Your wins, your worries, your reflections — no structure needed.",
+              "Every day, open Ripple and speak freely. Your wins, your worries, your reflections — no structure needed.",
           },
           {
             label: "Step 2",
@@ -174,7 +174,7 @@ export default function WeeklyReportPage() {
               </h2>
               <p className="mt-4 text-acuity-text-sec text-base max-w-xl mx-auto">
                 Across Health, Wealth, Relationships, Spirituality, Career, and Growth
-                — Acuity tracks your scores over time and surfaces the patterns
+                — Ripple tracks your scores over time and surfaces the patterns
                 that weekly reports reveal.
               </p>
             </div>
@@ -288,7 +288,7 @@ export default function WeeklyReportPage() {
           },
           {
             quote:
-              "My Sunday morning ritual is now: coffee, Acuity report, intention for the week. It's the most grounding 10 minutes of my week.",
+              "My Sunday morning ritual is now: coffee, Ripple report, intention for the week. It's the most grounding 10 minutes of my week.",
             name: "Sarah K.",
             role: "Executive",
           },

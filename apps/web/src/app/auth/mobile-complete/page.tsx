@@ -74,7 +74,7 @@ function MobileCompleteInner() {
           <>
             <div className="mb-4 text-4xl">📱</div>
             <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
-              Opening Acuity…
+              Opening Ripple…
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
               If the app doesn&apos;t open automatically, tap the button below.
@@ -84,7 +84,7 @@ function MobileCompleteInner() {
                 href={deepLink}
                 className="mt-5 inline-block rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700"
               >
-                Open Acuity →
+                Open Ripple →
               </a>
             )}
           </>
@@ -96,7 +96,7 @@ function MobileCompleteInner() {
               Open this on your phone
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Magic-link sign-in finishes on the device where Acuity is installed. Open this email on the phone that has the app.
+              Magic-link sign-in finishes on the device where Ripple is installed. Open this email on the phone that has the app.
             </p>
             <Link
               href="/auth/signin"

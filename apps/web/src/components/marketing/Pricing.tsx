@@ -34,7 +34,7 @@ export function Pricing() {
           <div className="relative mx-auto max-w-[460px] overflow-hidden rounded-acuity-xl border border-acuity-card-border bg-acuity-card-bg px-[38px] py-10 shadow-acuity-lift">
             <div className="pointer-events-none absolute -right-10 -top-[60px] h-[220px] w-[220px] rounded-full bg-acuity-grad-mix-soft blur-[10px]" />
             <div className="relative">
-              <div className="mb-1.5 font-display text-[20px] font-bold text-acuity-text">Acuity Pro</div>
+              <div className="mb-1.5 font-display text-[20px] font-bold text-acuity-text">Ripple Pro</div>
               <div className="mb-1 flex items-baseline gap-2">
                 <span className="font-display text-[56px] font-extrabold tracking-[-2px] text-acuity-text">$4.99</span>
                 <span className="font-sans text-[17px] text-acuity-text-sec">/ month</span>

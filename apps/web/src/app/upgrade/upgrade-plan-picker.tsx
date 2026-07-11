@@ -19,7 +19,7 @@ type Interval = "monthly" | "yearly";
 // Terms §5b wording. Inlined here so the client bundle doesn't pull in
 // server-only Prisma code from that module.
 const WITHDRAWAL_ACK_TEXT =
-  "I want my paid Acuity features to start now, and I understand that " +
+  "I want my paid Ripple features to start now, and I understand that " +
   "by starting immediately I lose my 14-day right to cancel for any " +
   "content fully delivered, and that if I cancel within 14 days I'll be " +
   "refunded less a proportionate amount for the service already provided.";
@@ -190,7 +190,7 @@ export function UpgradePlanPicker() {
       <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 dark:border-white/10 dark:bg-[#13131F]">
         <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
           By tapping <span className="font-semibold">Subscribe Now</span>, I want
-          my paid Acuity features to start now, and I understand that by starting
+          my paid Ripple features to start now, and I understand that by starting
           immediately I lose my 14-day right to cancel for any content fully
           delivered, and that if I cancel within 14 days I&rsquo;ll be refunded
           less a proportionate amount for the service already provided.

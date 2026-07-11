@@ -18,7 +18,7 @@ export const weeklyReportCheckin: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:20px;">
           <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-            This is the whole thing — the weekly report is the output Acuity exists to produce. If the Sunday report didn't feel like it got you, tell me. We'll fix it.
+            This is the whole thing — the weekly report is the output Ripple exists to produce. If the Sunday report didn't feel like it got you, tell me. We'll fix it.
           </p>
         </td>
       </tr>

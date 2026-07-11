@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { AttachStep } from "react-native-spotlight-tour";
 
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
@@ -42,6 +42,25 @@ import { cachedGet, getCached, isStale } from "@/lib/cache";
 import { fetchUserProgression } from "@/lib/userProgression";
 
 const HOME_ENTRY_LIMIT = 5;
+
+// Ripple brand marks (STAGE 6 rebrand). require() rather than import —
+// this repo has no ambient `*.png` module declaration, so the import
+// form fails typecheck; require() resolves to `any` and Metro bundles
+// the asset. White mark reads on dark surfaces, coral on light.
+const RIPPLE_MARK_WHITE = require("@/assets/brand/ripple-mark-white.png");
+const RIPPLE_MARK_CORAL = require("@/assets/brand/ripple-mark-coral.png");
+
+// The tokens object exposes `fontWordmark` (Quicksand SemiBold) at
+// runtime (makeAcuityTokens in lib/theme/tokens.ts), but the exported
+// AcuityTokens interface doesn't declare it yet. Read it defensively —
+// falls back to the same family name the tokens module resolves — so
+// we don't have to widen the shared type from a screen file.
+function wordmarkFont(tokens: ReturnType<typeof useTheme>["tokens"]): string {
+  return (
+    (tokens as unknown as { fontWordmark?: string }).fontWordmark ??
+    "Quicksand_600SemiBold"
+  );
+}
 
 interface HomePayload {
   progression:
@@ -262,6 +281,13 @@ export default function DashboardTab() {
       edges={["top"]}
     >
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        {/* Ripple brand bar — mark + lowercase wordmark (STAGE 6
+            rebrand). Sits above the identity hero; token-driven so
+            it resolves in both light and dark. */}
+        <BrandBar />
+
+        <View style={{ height: 14 }} />
+
         {/* Identity hero — avatar + greeting + name + tier pill.
             Tour step 2 (dashboard): attached by index; the tour explains
             the dashboard right after the mic step. */}
@@ -498,6 +524,44 @@ export default function DashboardTab() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * BrandBar — Ripple mark + lowercase "ripple" wordmark (STAGE 6
+ * rebrand, branding/visual only). Rendered at the top of Home above
+ * the identity hero.
+ *
+ * The wordmark uses `tokens.fontWordmark` (Quicksand SemiBold) at
+ * ~21px / letterSpacing -0.3 in `tokens.text`. The mark swaps between
+ * the white and coral asset by mode so it reads on either surface.
+ * All colors come from the theme — nothing hardcoded — so light and
+ * dark both resolve correctly.
+ */
+function BrandBar() {
+  const { tokens } = useTheme();
+  const markSource =
+    tokens.mode === "dark" ? RIPPLE_MARK_WHITE : RIPPLE_MARK_CORAL;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+      <Image
+        source={markSource}
+        style={{ width: 30, height: 34 }}
+        resizeMode="contain"
+        accessibilityLabel="Ripple"
+      />
+      <Text
+        style={{
+          fontFamily: wordmarkFont(tokens),
+          fontSize: 21,
+          fontWeight: "600",
+          letterSpacing: -0.3,
+          color: tokens.text,
+        }}
+      >
+        ripple
+      </Text>
+    </View>
   );
 }
 

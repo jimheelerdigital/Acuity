@@ -60,7 +60,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 // the shared limiters export with a feature-specific budget.
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are Acuity's introspection assistant. A user has asked a question about their own journal history. You will receive up to 10 of their past entries (summaries + dates). Your job is to answer the question using ONLY what's in those entries.
+const SYSTEM_PROMPT = `You are Ripple's introspection assistant. A user has asked a question about their own journal history. You will receive up to 10 of their past entries (summaries + dates). Your job is to answer the question using ONLY what's in those entries.
 
 Rules:
 - Second person (you / your). Warm, non-judgmental.

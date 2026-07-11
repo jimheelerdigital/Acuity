@@ -33,7 +33,7 @@ export const rescueSignupOnly: TrialEmailTemplate = {
       ${para(greeting)}
       ${para(`So you signed up \u2014 and then life probably did what life does and pulled you somewhere else. Totally get it.`)}
       ${para(`But here\u2019s the thing: you\u2019ve already done the hard part. The app \u2014 the part that actually does the work \u2014 takes about thirty seconds to grab, and you haven\u2019t yet.`)}
-      ${para(`And it\u2019s a shame, because this is where it gets good. You talk for a few minutes about your day, and Acuity quietly catches what you\u2019d otherwise lose \u2014 the task buried in a sentence, the worry you keep circling back to, the honest picture of where your week actually went. No typing. No blank page staring back at you. You just talk, and it listens.`)}
+      ${para(`And it\u2019s a shame, because this is where it gets good. You talk for a few minutes about your day, and Ripple quietly catches what you\u2019d otherwise lose \u2014 the task buried in a sentence, the worry you keep circling back to, the honest picture of where your week actually went. No typing. No blank page staring back at you. You just talk, and it listens.`)}
       ${para(`Right now you\u2019ve got the door open and one foot through it. This is the other foot.`)}
       <tr>
         <td style="padding-bottom:8px;">

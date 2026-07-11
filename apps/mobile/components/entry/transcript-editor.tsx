@@ -170,7 +170,7 @@ export function TranscriptEditor({
             marginTop: 6,
           }}
         >
-          Acuity is re-deriving themes, mood, and people mentions
+          Ripple is re-deriving themes, mood, and people mentions
           from your edited transcript. About 30 seconds.
         </Text>
       </View>

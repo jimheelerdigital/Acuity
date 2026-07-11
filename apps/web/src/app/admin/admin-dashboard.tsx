@@ -137,7 +137,7 @@ export default function AdminDashboard() {
               className="font-semibold text-white"
               style={{ fontSize: 32, letterSpacing: "-0.4px" }}
             >
-              Acuity Admin
+              Ripple Admin
             </h1>
           </div>
           {showTimeRange && (

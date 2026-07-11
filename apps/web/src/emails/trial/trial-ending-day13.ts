@@ -6,7 +6,7 @@ import type { TrialEmailTemplate, TrialVars } from "./types";
 const PRICE = formatDollars(MONTHLY_PRICE_CENTS);
 
 export const trialEndingDay13: TrialEmailTemplate = {
-  subject: () => "Your Acuity trial ends tomorrow",
+  subject: () => "Your Ripple trial ends tomorrow",
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
@@ -32,7 +32,7 @@ export const trialEndingDay13: TrialEmailTemplate = {
         <td style="padding-bottom:24px;">
           ${trialCard(`
             <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
-              Acuity stays ${PRICE}/month — locked in for you as a Founding Member. Cancel anytime from the app.
+              Ripple stays ${PRICE}/month — locked in for you as a Founding Member. Cancel anytime from the app.
             </p>
           `)}
         </td>

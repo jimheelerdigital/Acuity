@@ -68,7 +68,7 @@ export function StepAiConsent() {
       </h1>
 
       <p className="mt-5 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-        Acuity sends your voice recordings to{" "}
+        Ripple sends your voice recordings to{" "}
         <span className="font-medium text-zinc-900 dark:text-zinc-100">
           OpenAI (Whisper)
         </span>{" "}

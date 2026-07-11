@@ -42,9 +42,9 @@ export async function GET(req: NextRequest) {
 
   if (kind === "async") {
     await Promise.reject(
-      new Error(`Acuity Sentry smoke test (async reject) — ${marker}`)
+      new Error(`Ripple Sentry smoke test (async reject) — ${marker}`)
     );
   }
 
-  throw new Error(`Acuity Sentry smoke test (sync throw) — ${marker}`);
+  throw new Error(`Ripple Sentry smoke test (sync throw) — ${marker}`);
 }

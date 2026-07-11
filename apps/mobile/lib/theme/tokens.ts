@@ -47,7 +47,15 @@ const toRgb = converter("rgb");
 
 // ─── Palette presets ──────────────────────────────────────────────
 
-export type AcuityAccent = "coral" | "sunset" | "citrus" | "cobalt";
+export type AcuityAccent =
+  | "coral"
+  | "sunset"
+  | "citrus"
+  | "cobalt"
+  | "rose"
+  | "amber"
+  | "jade"
+  | "sky";
 
 interface AccentPreset {
   /** Primary OKLCH [lightness 0..1, chroma 0..0.4, hue 0..360]. */
@@ -77,6 +85,26 @@ export const ACUITY_ACCENT_PRESETS: Record<AcuityAccent, AccentPreset> = {
     primary: [0.66, 0.18, 255],
     secondary: [0.78, 0.13, 85],
     name: "Cobalt × Lime",
+  },
+  rose: {
+    primary: [0.74, 0.13, 10],
+    secondary: [0.55, 0.15, 320],
+    name: "Rose × Plum",
+  },
+  amber: {
+    primary: [0.79, 0.15, 65],
+    secondary: [0.55, 0.16, 275],
+    name: "Amber × Indigo",
+  },
+  jade: {
+    primary: [0.72, 0.13, 165],
+    secondary: [0.72, 0.14, 32],
+    name: "Jade × Coral",
+  },
+  sky: {
+    primary: [0.72, 0.13, 235],
+    secondary: [0.75, 0.12, 5],
+    name: "Sky × Blush",
   },
 };
 
@@ -199,6 +227,8 @@ export interface AcuityTokens {
   // numeral family per design; consumers must pair every numeric
   // display with this family + fontVariant: ['tabular-nums'].
   fontDisplay: string;
+  /** Ripple display/wordmark face — Quicksand (lowercase "ripple" + headings). */
+  fontWordmark: string;
   fontSans: string;
   fontMono: string;
 
@@ -255,12 +285,14 @@ export function makeAcuityTokens({
   // Surfaces — note the +5 hue rotation on dark bg variants. Lifts
   // pure neutrals toward warm/cool depending on accent, the "warm
   // undertone charcoal" effect.
-  const bg = dark ? lchToHex(0.21, 0.022, sh + 5) : lchToHex(0.975, 0.005, sh);
+  // LIFTED charcoal (Ripple handoff: dark base bg oklch(.28 .028 <sh+5>)
+  // ≈ #3A3550; never #211E2C, never black).
+  const bg = dark ? lchToHex(0.28, 0.028, sh + 5) : lchToHex(0.975, 0.005, sh);
   const bgSub = dark
-    ? lchToHex(0.235, 0.024, sh + 5)
+    ? lchToHex(0.305, 0.03, sh + 5)
     : lchToHex(0.96, 0.007, sh);
   const bgInset = dark
-    ? lchToHex(0.185, 0.02, sh)
+    ? lchToHex(0.255, 0.026, sh)
     : lchToHex(0.95, 0.008, sh);
 
   // Hero blob radials. Two soft warm/cool spots at top corners
@@ -271,7 +303,7 @@ export function makeAcuityTokens({
         stops: [
           {
             color: dark
-              ? lchToHex8(0.36, 0.1, ph, 0.3)
+              ? lchToHex8(0.4, 0.1, ph, 0.3)
               : lchToHex8(0.96, 0.07, ph, 0.85),
             position: 0,
           },
@@ -284,7 +316,7 @@ export function makeAcuityTokens({
         stops: [
           {
             color: dark
-              ? lchToHex8(0.32, 0.12, sh, 0.3)
+              ? lchToHex8(0.36, 0.12, sh, 0.3)
               : lchToHex8(0.95, 0.06, sh, 0.85),
             position: 0,
           },
@@ -296,7 +328,7 @@ export function makeAcuityTokens({
     ],
     linear: {
       colors: dark
-        ? [lchToHex(0.24, 0.024, sh + 5), lchToHex(0.2, 0.022, sh)]
+        ? [lchToHex(0.3, 0.03, sh + 5), lchToHex(0.26, 0.026, sh)]
         : [lchToHex(0.985, 0.005, sh), lchToHex(0.97, 0.008, sh)],
       locations: [0, 1],
       start: { x: 0.5, y: 0 },
@@ -308,9 +340,9 @@ export function makeAcuityTokens({
   const recordGrad: RadialGradientStops = {
     stops: dark
       ? [
-          { color: lchToHex8(0.32, 0.1, ph, 0.55), position: 0 },
-          { color: lchToHex(0.22, 0.04, sh + 10), position: 0.45 },
-          { color: lchToHex(0.16, 0.018, sh), position: 1 },
+          { color: lchToHex8(0.38, 0.1, ph, 0.55), position: 0 },
+          { color: lchToHex(0.3, 0.04, sh + 10), position: 0.45 },
+          { color: lchToHex(0.26, 0.026, sh), position: 1 },
         ]
       : [
           { color: lchToHex8(0.93, 0.08, ph, 0.9), position: 0 },
@@ -325,9 +357,9 @@ export function makeAcuityTokens({
   const cosmosGrad: RadialGradientStops = {
     stops: dark
       ? [
-          { color: lchToHex(0.26, 0.08, sh), position: 0 },
-          { color: lchToHex(0.18, 0.02, sh), position: 0.55 },
-          { color: lchToHex(0.14, 0.014, sh), position: 1 },
+          { color: lchToHex(0.33, 0.08, sh), position: 0 },
+          { color: lchToHex(0.28, 0.026, sh), position: 0.55 },
+          { color: lchToHex(0.26, 0.02, sh), position: 1 },
         ]
       : [
           { color: lchToHex(0.95, 0.06, sh), position: 0 },
@@ -386,18 +418,19 @@ export function makeAcuityTokens({
     bgInset,
 
     text: dark ? lchToHex(0.98, 0.004, sh) : lchToHex(0.14, 0.012, sh),
-    textSec: dark ? lchToHex(0.74, 0.01, sh) : lchToHex(0.42, 0.01, sh),
-    textTer: dark ? lchToHex(0.56, 0.012, sh) : lchToHex(0.58, 0.012, sh),
+    textSec: dark ? lchToHex(0.62, 0.014, sh) : lchToHex(0.42, 0.01, sh),
+    textTer: dark ? lchToHex(0.48, 0.01, sh) : lchToHex(0.58, 0.012, sh),
     textQuiet: dark ? lchToHex(0.4, 0.008, sh) : lchToHex(0.74, 0.008, sh),
 
-    line: dark ? "#ffffff12" : "#0000000f",
-    lineStrong: dark ? "#ffffff21" : "#0000001a",
+    line: dark ? "#ffffff17" : "#0000000f",
+    lineStrong: dark ? "#ffffff24" : "#0000001a",
 
-    cardBg: dark ? lchToHex(0.245, 0.024, sh + 5) : "#ffffff",
+    // cardBgTint = Ripple "surface" oklch(.335 .038 <ph+5>) (warm card).
+    cardBg: dark ? lchToHex(0.32, 0.03, sh + 5) : "#ffffff",
     cardBgTint: dark
-      ? lchToHex(0.255, 0.034, ph + 5)
+      ? lchToHex(0.335, 0.038, ph + 5)
       : lchToHex(0.965, 0.012, ph),
-    cardBgRaised: dark ? lchToHex(0.27, 0.028, sh + 5) : "#ffffff",
+    cardBgRaised: dark ? lchToHex(0.35, 0.032, sh + 5) : "#ffffff",
     cardBorder: dark ? "#ffffff0d" : "#0000000d",
 
     gradPrimary,
@@ -429,6 +462,9 @@ export function makeAcuityTokens({
     // Resolved font families. These names match the @expo-google-fonts/*
     // package exports loaded in _layout.tsx via useFonts.
     fontDisplay: "Manrope_700Bold",
+    // Ripple display/wordmark face — lowercase "ripple" wordmark + Quicksand
+    // display headings (loaded in _layout.tsx via @expo-google-fonts/quicksand).
+    fontWordmark: "Quicksand_600SemiBold",
     fontSans: "System", // RN's default — SF Pro on iOS, Roboto on Android
     fontMono: "GeistMono_500Medium",
 

@@ -238,7 +238,7 @@ export function InstallBanner() {
 
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-[14px] font-bold leading-tight tracking-[-0.3px] text-acuity-text">
-            Acuity is better in the app
+            Ripple is better in the app
           </p>
           <p className="truncate text-[12px] leading-tight text-acuity-text-sec">
             Voice journal — faster, native, designed for your phone.

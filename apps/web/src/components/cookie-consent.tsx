@@ -172,7 +172,7 @@ export function CookieConsentBanner() {
         {state === "default" ? (
           <>
             <div className={`text-xs leading-relaxed ${isFunnel ? "text-zinc-500" : "text-zinc-700 dark:text-zinc-300"}`}>
-              Acuity uses cookies for essential app function and analytics.{" "}
+              Ripple uses cookies for essential app function and analytics.{" "}
               <a href="/privacy" className="underline hover:no-underline">
                 Privacy policy
               </a>

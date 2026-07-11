@@ -20,12 +20,12 @@ export interface PersonaPage {
 export const PERSONA_PAGES: PersonaPage[] = [
   {
     slug: "anxiety",
-    title: "Acuity for Anxiety — Daily Voice Journaling to Calm Your Mind",
+    title: "Ripple for Anxiety — Daily Voice Journaling to Calm Your Mind",
     metaDescription:
-      "Acuity helps you manage anxiety with daily voice journaling. AI detects anxiety triggers, breaks rumination loops, and tracks your patterns over time.",
+      "Ripple helps you manage anxiety with daily voice journaling. AI detects anxiety triggers, breaks rumination loops, and tracks your patterns over time.",
     headline: "What if your anxiety had somewhere to go every day?",
     subheadline:
-      "You can't think your way out of a thought spiral. Acuity gives your anxious mind a release valve — a place to talk whenever you need it, and AI that spots the patterns your worry hides from you.",
+      "You can't think your way out of a thought spiral. Ripple gives your anxious mind a release valve — a place to talk whenever you need it, and AI that spots the patterns your worry hides from you.",
     painPoints: [
       "You lie awake replaying conversations, rehearsing disasters, and spiraling into what-ifs that never resolve",
       "You've tried journaling but your anxious brain makes writing feel like another task to fail at",
@@ -33,12 +33,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Externalize the spiral. See the pattern. Break the loop.",
     solutionBody:
-      "Any time the spiral starts, just open the app and talk. Say whatever's circling in your head — the worry, the dread, the thing you can't stop replaying. Acuity's AI listens, extracts the recurring themes, and shows you your anxiety patterns over time. When you can see that every Sunday you spiral about Monday, or that specific people trigger specific fears, you stop being trapped inside the loop.",
+      "Any time the spiral starts, just open the app and talk. Say whatever's circling in your head — the worry, the dread, the thing you can't stop replaying. Ripple's AI listens, extracts the recurring themes, and shows you your anxiety patterns over time. When you can see that every Sunday you spiral about Monday, or that specific people trigger specific fears, you stop being trapped inside the loop.",
     features: [
       {
         title: "Anxiety Trigger Detection",
         description:
-          "Acuity's AI identifies the people, situations, and time patterns that consistently precede your anxiety spikes — things you'd never spot from inside the spiral.",
+          "Ripple's AI identifies the people, situations, and time patterns that consistently precede your anxiety spikes — things you'd never spot from inside the spiral.",
       },
       {
         title: "Cognitive Offloading",
@@ -53,7 +53,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I used to lie in bed for two hours with my brain on fire. Now I do my Acuity recording, and it's like I handed the worry to someone else to hold. The weekly report showed me that 80% of my anxiety was about one coworker. I never would've seen that on my own.",
+        "I used to lie in bed for two hours with my brain on fire. Now I do my Ripple recording, and it's like I handed the worry to someone else to hold. The weekly report showed me that 80% of my anxiety was about one coworker. I never would've seen that on my own.",
       name: "Rachel M.",
       detail: "34, marketing coordinator",
     },
@@ -62,25 +62,25 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "adhd",
-    title: "Acuity for ADHD — Voice-First Journaling That Works With Your Brain",
+    title: "Ripple for ADHD — Voice-First Journaling That Works With Your Brain",
     metaDescription:
-      "Acuity is built for ADHD brains. Just talk, and AI extracts your tasks and priorities. No writing, no apps to check. Just speak and let go.",
-    headline: "ADHD brains have 100 tabs open. Acuity catches what matters.",
+      "Ripple is built for ADHD brains. Just talk, and AI extracts your tasks and priorities. No writing, no apps to check. Just speak and let go.",
+    headline: "ADHD brains have 100 tabs open. Ripple catches what matters.",
     subheadline:
-      "You don't need another productivity app you'll abandon in a week. Acuity is just talking — voice-first, zero friction — and AI that catches the tasks and ideas your working memory is about to drop.",
+      "You don't need another productivity app you'll abandon in a week. Ripple is just talking — voice-first, zero friction — and AI that catches the tasks and ideas your working memory is about to drop.",
     painPoints: [
       "You have brilliant ideas at random moments that are completely gone an hour later, and no note-taking system has ever stuck",
       "Your to-do list is scattered across 6 apps, 3 notebooks, and 47 mental sticky notes you've already lost",
       "You know what you should be doing but you can't hold onto priorities long enough to actually do them",
     ],
-    solutionHeadline: "Talk it out. Acuity catches what your brain drops.",
+    solutionHeadline: "Talk it out. Ripple catches what your brain drops.",
     solutionBody:
-      "No opening an app, no finding a pen, no typing into a tiny box. Just talk. Acuity's AI automatically extracts every task, idea, and priority from your daily debrief. Your weekly report shows you what you keep saying you'll do but haven't — the accountability your ADHD brain actually needs.",
+      "No opening an app, no finding a pen, no typing into a tiny box. Just talk. Ripple's AI automatically extracts every task, idea, and priority from your daily debrief. Your weekly report shows you what you keep saying you'll do but haven't — the accountability your ADHD brain actually needs.",
     features: [
       {
         title: "Automatic Task Extraction",
         description:
-          "Mention something you need to do while rambling? Acuity catches it and adds it to your task list. No manual entry, no second step, no chance to forget.",
+          "Mention something you need to do while rambling? Ripple catches it and adds it to your task list. No manual entry, no second step, no chance to forget.",
       },
       {
         title: "Voice-First, Zero Friction",
@@ -90,12 +90,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Priority Pattern Tracking",
         description:
-          "Acuity spots what you keep mentioning but never acting on, what you're hyperfocusing on at the expense of everything else, and where your attention actually goes week to week.",
+          "Ripple spots what you keep mentioning but never acting on, what you're hyperfocusing on at the expense of everything else, and where your attention actually goes week to week.",
       },
     ],
     testimonial: {
       quote:
-        "Every productivity app becomes another thing I feel guilty about not using. Acuity is the first one that stuck because it's just talking. I ramble for a minute whenever I remember, and the next time I check I have a clean task list I didn't have to write. That's never happened before.",
+        "Every productivity app becomes another thing I feel guilty about not using. Ripple is the first one that stuck because it's just talking. I ramble for a minute whenever I remember, and the next time I check I have a clean task list I didn't have to write. That's never happened before.",
       name: "Devon K.",
       detail: "28, software developer with ADHD",
     },
@@ -104,12 +104,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "remote-workers",
-    title: "Acuity for Remote Workers — The Shutdown Ritual You're Missing",
+    title: "Ripple for Remote Workers — The Shutdown Ritual You're Missing",
     metaDescription:
-      "Remote workers need a way to leave work at work. Acuity's daily debrief creates the boundary your home office doesn't have.",
+      "Remote workers need a way to leave work at work. Ripple's daily debrief creates the boundary your home office doesn't have.",
     headline: "The daily debrief remote workers have been looking for.",
     subheadline:
-      "There\u2019s no commute to decompress. No door to close between you and your job. Acuity gives you a daily debrief that draws the line your apartment never will.",
+      "There\u2019s no commute to decompress. No door to close between you and your job. Ripple gives you a daily debrief that draws the line your apartment never will.",
     painPoints: [
       "You close your laptop at 6pm but you're still mentally answering Slack messages at midnight",
       "Your bedroom is your office is your break room is your everything — there's no physical boundary to signal 'work is over'",
@@ -117,7 +117,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Draw the line. Every night.",
     solutionBody:
-      "The commute used to be your transition. Now you need something else. Acuity's daily debrief is simple: say what happened today, what's lingering, what can wait until tomorrow. Your brain gets the signal that the workday is done. Over time, your weekly report shows whether your work-life boundary is holding — or slowly dissolving.",
+      "The commute used to be your transition. Now you need something else. Ripple's daily debrief is simple: say what happened today, what's lingering, what can wait until tomorrow. Your brain gets the signal that the workday is done. Over time, your weekly report shows whether your work-life boundary is holding — or slowly dissolving.",
     features: [
       {
         title: "Shutdown Ritual",
@@ -127,17 +127,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Work-Life Balance Tracking",
         description:
-          "Acuity tracks how often work dominates your entries. When your personal life starts disappearing from the data, you'll see it before you feel it.",
+          "Ripple tracks how often work dominates your entries. When your personal life starts disappearing from the data, you'll see it before you feel it.",
       },
       {
         title: "Tomorrow's Task Capture",
         description:
-          "Mention what needs to happen tomorrow and Acuity extracts it cleanly. You wake up to a list instead of a fog of half-remembered obligations.",
+          "Mention what needs to happen tomorrow and Ripple extracts it cleanly. You wake up to a list instead of a fog of half-remembered obligations.",
       },
     ],
     testimonial: {
       quote:
-        "I work from my kitchen table and I was never 'off.' My partner said I was always somewhere else even when I was right there. Acuity became my fake commute — a quick recording to dump the day, and then I'm actually present. The weekly report showed me I was mentioning work in every single entry. That was a wake-up call.",
+        "I work from my kitchen table and I was never 'off.' My partner said I was always somewhere else even when I was right there. Ripple became my fake commute — a quick recording to dump the day, and then I'm actually present. The weekly report showed me I was mentioning work in every single entry. That was a wake-up call.",
       name: "James L.",
       detail: "31, remote product manager",
     },
@@ -146,12 +146,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "new-parents",
-    title: "Acuity for New Parents — A Moment to Track Your Own Well-Being",
+    title: "Ripple for New Parents — A Moment to Track Your Own Well-Being",
     metaDescription:
-      "New parents track feedings, diapers, and naps — but who tracks you? Acuity's voice journal keeps you visible during the hardest season.",
+      "New parents track feedings, diapers, and naps — but who tracks you? Ripple's voice journal keeps you visible during the hardest season.",
     headline: "You're tracking your baby's everything. Who's tracking yours?",
     subheadline:
-      "You know exactly how many ounces they drank and when they last slept. But you couldn't tell your doctor when you last felt like yourself. Acuity takes no effort — because that's all you have.",
+      "You know exactly how many ounces they drank and when they last slept. But you couldn't tell your doctor when you last felt like yourself. Ripple takes no effort — because that's all you have.",
     painPoints: [
       "You haven't had a thought that wasn't about the baby in weeks, and you're not sure who you are outside of 'parent' anymore",
       "Everyone asks how the baby is doing — no one asks how you're actually holding up, and you've stopped asking yourself",
@@ -159,12 +159,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Eyes closed. Just your voice.",
     solutionBody:
-      "While the baby sleeps — or screams — just talk. No screen to stare at with blurry, sleep-deprived eyes. Just say how you're feeling. Acuity tracks your mood, energy, and emotional state across the weeks so you can see the trajectory you're too tired to notice. It's not self-care theater. It's a quick check-in with yourself.",
+      "While the baby sleeps — or screams — just talk. No screen to stare at with blurry, sleep-deprived eyes. Just say how you're feeling. Ripple tracks your mood, energy, and emotional state across the weeks so you can see the trajectory you're too tired to notice. It's not self-care theater. It's a quick check-in with yourself.",
     features: [
       {
         title: "Mood Tracking Through Exhaustion",
         description:
-          "Too tired to rate your mood on a scale? Just talk. Acuity's AI reads the emotional tenor of your voice entry and tracks it for you — no scales, no checkboxes.",
+          "Too tired to rate your mood on a scale? Just talk. Ripple's AI reads the emotional tenor of your voice entry and tracks it for you — no scales, no checkboxes.",
       },
       {
         title: "Hands-Free, Eyes-Free",
@@ -179,7 +179,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "At 3am I'd be nursing and crying and I couldn't even explain why. I started doing Acuity entries in the dark while she fed. My weekly report showed that I was happy during the day but falling apart every night. My midwife said that pattern was really important to catch early. That probably saved me.",
+        "At 3am I'd be nursing and crying and I couldn't even explain why. I started doing Ripple entries in the dark while she fed. My weekly report showed that I was happy during the day but falling apart every night. My midwife said that pattern was really important to catch early. That probably saved me.",
       name: "Priya N.",
       detail: "29, first-time mom, 4 months postpartum",
     },
@@ -188,13 +188,13 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "burnout",
-    title: "Acuity for Burnout — Detect the Patterns Before You Break",
+    title: "Ripple for Burnout — Detect the Patterns Before You Break",
     metaDescription:
-      "Burnout builds slowly in patterns you can't see. Acuity's AI tracks mood, work mentions, and energy over time to catch burnout before it catches you.",
+      "Burnout builds slowly in patterns you can't see. Ripple's AI tracks mood, work mentions, and energy over time to catch burnout before it catches you.",
     headline:
       "Burnout doesn't happen overnight. It builds in the patterns you can't see.",
     subheadline:
-      "By the time you realize you're burned out, you've been burning for months. Acuity watches for the signals — declining mood, shrinking personal life, creeping cynicism — and shows you the trajectory before you hit the wall.",
+      "By the time you realize you're burned out, you've been burning for months. Ripple watches for the signals — declining mood, shrinking personal life, creeping cynicism — and shows you the trajectory before you hit the wall.",
     painPoints: [
       "You keep saying 'I just need to get through this week' but it's been every week for six months",
       "You used to love your work. Now you feel nothing about it, and that absence of feeling scares you more than stress ever did",
@@ -202,12 +202,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "An early warning system for your own burnout.",
     solutionBody:
-      "Every day, just talk. Acuity's AI doesn't just listen — it watches the trends. When your entries start skewing more negative, when work takes over every single entry, when hobbies and friends stop appearing in your data, the weekly report flags it. You get a burnout signal weeks before you'd have noticed it yourself.",
+      "Every day, just talk. Ripple's AI doesn't just listen — it watches the trends. When your entries start skewing more negative, when work takes over every single entry, when hobbies and friends stop appearing in your data, the weekly report flags it. You get a burnout signal weeks before you'd have noticed it yourself.",
     features: [
       {
         title: "Burnout Pattern Detection",
         description:
-          "Acuity tracks the ratio of work-to-personal mentions, mood trajectory over weeks, and the disappearance of joy indicators — the classic burnout fingerprint.",
+          "Ripple tracks the ratio of work-to-personal mentions, mood trajectory over weeks, and the disappearance of joy indicators — the classic burnout fingerprint.",
       },
       {
         title: "Energy & Engagement Tracking",
@@ -217,12 +217,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Recovery Visibility",
         description:
-          "When you start making changes, Acuity shows whether they're working. See your mood trajectory bend back upward. Proof that the boundary you set or the vacation you took actually helped.",
+          "When you start making changes, Ripple shows whether they're working. See your mood trajectory bend back upward. Proof that the boundary you set or the vacation you took actually helped.",
       },
     ],
     testimonial: {
       quote:
-        "My Acuity report showed me that I hadn't mentioned a single friend, hobby, or anything non-work in three straight weeks. I thought I was 'busy.' The data said I was disappearing. I showed it to my therapist and she said that was textbook pre-burnout. I took a leave two weeks later. I'm glad I caught it.",
+        "My Ripple report showed me that I hadn't mentioned a single friend, hobby, or anything non-work in three straight weeks. I thought I was 'busy.' The data said I was disappearing. I showed it to my therapist and she said that was textbook pre-burnout. I took a leave two weeks later. I'm glad I caught it.",
       name: "Marcus T.",
       detail: "38, engineering director",
     },
@@ -231,12 +231,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "students",
-    title: "Acuity for Students — Track Stress, Capture Tasks, Stay on Top of It",
+    title: "Ripple for Students — Track Stress, Capture Tasks, Stay on Top of It",
     metaDescription:
-      "College and grad students: use Acuity's voice journal to manage stress, capture deadlines, and spot when you're overextending before you crash.",
+      "College and grad students: use Ripple's voice journal to manage stress, capture deadlines, and spot when you're overextending before you crash.",
     headline: "The study tool no one told you about: your own voice.",
     subheadline:
-      "You're juggling classes, deadlines, social pressure, and the creeping feeling that everyone else has it figured out. Acuity gives you a moment to dump it all — and AI that shows you what's actually overwhelming you versus what just feels that way.",
+      "You're juggling classes, deadlines, social pressure, and the creeping feeling that everyone else has it figured out. Ripple gives you a moment to dump it all — and AI that shows you what's actually overwhelming you versus what just feels that way.",
     painPoints: [
       "You have five deadlines, three group projects, and a social life you're failing at, and everything feels equally urgent and impossible",
       "You spend more time worrying about work than actually doing it, then pull all-nighters fueled by guilt and Red Bull",
@@ -244,12 +244,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Clear the noise. AI to find the signal.",
     solutionBody:
-      "Talk through your day whenever you have a minute. What's due, what's stressing you, what you're avoiding. Acuity extracts your tasks, tracks your stress levels across the semester, and shows you patterns — like how you always spiral on Sundays, or how your confidence drops after certain classes. It's the self-awareness you need to get through school without losing yourself.",
+      "Talk through your day whenever you have a minute. What's due, what's stressing you, what you're avoiding. Ripple extracts your tasks, tracks your stress levels across the semester, and shows you patterns — like how you always spiral on Sundays, or how your confidence drops after certain classes. It's the self-awareness you need to get through school without losing yourself.",
     features: [
       {
         title: "Deadline & Task Capture",
         description:
-          "Mention a paper due Thursday or a meeting with your advisor? Acuity catches it and puts it on your extracted task list. No planners to maintain, no apps to forget about.",
+          "Mention a paper due Thursday or a meeting with your advisor? Ripple catches it and puts it on your extracted task list. No planners to maintain, no apps to forget about.",
       },
       {
         title: "Stress Pattern Mapping",
@@ -259,12 +259,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Imposter Syndrome Tracker",
         description:
-          "Acuity detects recurring self-doubt themes and shows you how often you felt incapable versus how often things actually went wrong. Spoiler: the ratio will surprise you.",
+          "Ripple detects recurring self-doubt themes and shows you how often you felt incapable versus how often things actually went wrong. Spoiler: the ratio will surprise you.",
       },
     ],
     testimonial: {
       quote:
-        "I was pulling all-nighters every week and thought that was normal. My Acuity report showed that I only mentioned positive things about one class — everything else was dread. I dropped a course I was taking out of obligation and suddenly I could breathe again. I wish I'd had this freshman year.",
+        "I was pulling all-nighters every week and thought that was normal. My Ripple report showed that I only mentioned positive things about one class — everything else was dread. I dropped a course I was taking out of obligation and suddenly I could breathe again. I wish I'd had this freshman year.",
       name: "Aisha R.",
       detail: "21, junior studying biochemistry",
     },
@@ -273,12 +273,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "entrepreneurs",
-    title: "Acuity for Entrepreneurs — Your Personal Co-Founder for Mental Clarity",
+    title: "Ripple for Entrepreneurs — Your Personal Co-Founder for Mental Clarity",
     metaDescription:
-      "Solo entrepreneurs need someone to debrief with. Acuity's daily AI voice journal captures decisions, tracks mental load, and writes your weekly review.",
+      "Solo entrepreneurs need someone to debrief with. Ripple's daily AI voice journal captures decisions, tracks mental load, and writes your weekly review.",
     headline: "You run a business. Who's running your headspace?",
     subheadline:
-      "You make 200 decisions a day with no one to talk them through with. By the end of the day your brain is fried and you can't tell which fire actually matters. Acuity is the debrief partner your solo venture is missing.",
+      "You make 200 decisions a day with no one to talk them through with. By the end of the day your brain is fried and you can't tell which fire actually matters. Ripple is the debrief partner your solo venture is missing.",
     painPoints: [
       "You wear every hat — CEO, marketer, accountant, support — and by evening you can't remember what you actually accomplished versus just survived",
       "You have no co-founder, no manager, no one who asks 'how are you holding up?' with the context to understand the answer",
@@ -286,41 +286,41 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Debrief with AI that actually remembers your context.",
     solutionBody:
-      "Every day, dump the day in a quick recording. What shipped, what's stuck, what's on your mind. Acuity's AI extracts your action items, tracks your focus areas week over week, and generates the founder's weekly review you'd never sit down to write. See where your time and energy are actually going — not where you think they're going.",
+      "Every day, dump the day in a quick recording. What shipped, what's stuck, what's on your mind. Ripple's AI extracts your action items, tracks your focus areas week over week, and generates the founder's weekly review you'd never sit down to write. See where your time and energy are actually going — not where you think they're going.",
     features: [
       {
         title: "Founder's Weekly Review",
         description:
-          "Every week, Acuity writes a narrative review of your business and mental state — wins, blockers, shifting priorities, and patterns in your decision-making. The investor update for yourself.",
+          "Every week, Ripple writes a narrative review of your business and mental state — wins, blockers, shifting priorities, and patterns in your decision-making. The investor update for yourself.",
       },
       {
         title: "Decision Fatigue Tracking",
         description:
-          "Acuity spots when you're avoiding big decisions in favor of busywork, when your entries become more overwhelmed, and when your strategic thinking starts degrading.",
+          "Ripple spots when you're avoiding big decisions in favor of busywork, when your entries become more overwhelmed, and when your strategic thinking starts degrading.",
       },
       {
         title: "Goal Drift Detection",
         description:
-          "Said you'd focus on sales this quarter? Acuity shows you if your daily entries are about product, support, or anything but sales. Catch the drift before the quarter is gone.",
+          "Said you'd focus on sales this quarter? Ripple shows you if your daily entries are about product, support, or anything but sales. Catch the drift before the quarter is gone.",
       },
     ],
     testimonial: {
       quote:
-        "I was working 14-hour days and couldn't explain what I was actually building anymore. My Acuity weekly review showed that I spent 80% of my mental energy on customer support fires and almost none on the product roadmap. That one insight changed how I structured my entire week. It's like having a board advisor for $10 a month.",
+        "I was working 14-hour days and couldn't explain what I was actually building anymore. My Ripple weekly review showed that I spent 80% of my mental energy on customer support fires and almost none on the product roadmap. That one insight changed how I structured my entire week. It's like having a board advisor for $10 a month.",
       name: "Carlos V.",
       detail: "33, solo SaaS founder",
     },
-    ctaHeadline: "Build the business. Let Acuity watch your back.",
+    ctaHeadline: "Build the business. Let Ripple watch your back.",
     accentColor: "purple",
   },
   {
     slug: "creatives",
-    title: "Acuity for Creatives — Capture Ideas Before They Vanish",
+    title: "Ripple for Creatives — Capture Ideas Before They Vanish",
     metaDescription:
-      "Writers, artists, and musicians: Acuity captures your fleeting creative ideas with quick voice entries. Never lose an insight to sleep again.",
-    headline: "Your best ideas come at the worst times. Acuity catches them.",
+      "Writers, artists, and musicians: Ripple captures your fleeting creative ideas with quick voice entries. Never lose an insight to sleep again.",
+    headline: "Your best ideas come at the worst times. Ripple catches them.",
     subheadline:
-      "That perfect lyric at 2am. The plot twist in the shower. The design concept on the edge of sleep. By morning, they're ghosts. Acuity captures your creative sparks in a moment of voice — and connects them into patterns you'd never see in a sketchbook.",
+      "That perfect lyric at 2am. The plot twist in the shower. The design concept on the edge of sleep. By morning, they're ghosts. Ripple captures your creative sparks in a moment of voice — and connects them into patterns you'd never see in a sketchbook.",
     painPoints: [
       "You've lost more good ideas to sleep than you've ever captured in a notebook, and every morning feels like a creative crime scene",
       "Your emotional highs and lows fuel your best work, but you can't seem to channel them on demand — only in retrospect",
@@ -328,12 +328,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Turn fleeting sparks into a creative archive.",
     solutionBody:
-      "Talk whenever inspiration strikes. Dump the ideas, the frustrations, the breakthroughs, the fragments. Acuity doesn't just record — it extracts themes, connects recurring ideas across entries, and shows you the creative threads running through your subconscious. Your weekly report is a map of your creative mind that no journal could match.",
+      "Talk whenever inspiration strikes. Dump the ideas, the frustrations, the breakthroughs, the fragments. Ripple doesn't just record — it extracts themes, connects recurring ideas across entries, and shows you the creative threads running through your subconscious. Your weekly report is a map of your creative mind that no journal could match.",
     features: [
       {
         title: "Idea Extraction & Tagging",
         description:
-          "Every creative fragment you mention gets captured and tagged. Acuity connects today's offhand comment to last Tuesday's breakthrough — surfacing patterns in your creative thinking.",
+          "Every creative fragment you mention gets captured and tagged. Ripple connects today's offhand comment to last Tuesday's breakthrough — surfacing patterns in your creative thinking.",
       },
       {
         title: "Emotional-Creative Correlation",
@@ -343,12 +343,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Theme Tracking Across Entries",
         description:
-          "That thing you keep coming back to — the image, the idea, the obsession? Acuity tracks recurring creative themes so you can see what your subconscious is trying to tell you to make.",
+          "That thing you keep coming back to — the image, the idea, the obsession? Ripple tracks recurring creative themes so you can see what your subconscious is trying to tell you to make.",
       },
     ],
     testimonial: {
       quote:
-        "I'm a songwriter and my best lines always come right before I fall asleep. I used to grab my phone and type gibberish I couldn't read in the morning. Now I talk into Acuity. Last month's report showed me I'd been circling the same three metaphors for weeks — that became the backbone of my EP. It's like having a creative partner with perfect memory.",
+        "I'm a songwriter and my best lines always come right before I fall asleep. I used to grab my phone and type gibberish I couldn't read in the morning. Now I talk into Ripple. Last month's report showed me I'd been circling the same three metaphors for weeks — that became the backbone of my EP. It's like having a creative partner with perfect memory.",
       name: "Kai J.",
       detail: "26, indie singer-songwriter",
     },
@@ -357,12 +357,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "couples",
-    title: "Acuity for Couples — Individual Clarity for Better Relationships",
+    title: "Ripple for Couples — Individual Clarity for Better Relationships",
     metaDescription:
-      "Acuity helps couples communicate better. Individual voice journals reveal relationship patterns, unspoken needs, and what actually matters.",
+      "Ripple helps couples communicate better. Individual voice journals reveal relationship patterns, unspoken needs, and what actually matters.",
     headline: "The daily habit that's saving relationships.",
     subheadline:
-      "You don't fight about the dishes. You fight about what the dishes represent. Acuity's daily debrief helps each partner see their own patterns — what they're avoiding, what keeps coming up, what they actually need — so conversations start with clarity instead of accusations.",
+      "You don't fight about the dishes. You fight about what the dishes represent. Ripple's daily debrief helps each partner see their own patterns — what they're avoiding, what keeps coming up, what they actually need — so conversations start with clarity instead of accusations.",
     painPoints: [
       "You have the same argument every few weeks and neither of you can explain what it's really about underneath the surface trigger",
       "You hold things in all day and then unload on your partner at 10pm when neither of you has the bandwidth to listen",
@@ -370,7 +370,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Know yourself first. Show up to the conversation second.",
     solutionBody:
-      "Each partner does their own daily entry. Not about each other — about themselves. What stressed you, what you need, what you're grateful for. Acuity's AI reveals patterns: that you always get critical when you're anxious, or that your partner's complaints spike on days they feel unappreciated. You show up to difficult conversations already knowing what's underneath.",
+      "Each partner does their own daily entry. Not about each other — about themselves. What stressed you, what you need, what you're grateful for. Ripple's AI reveals patterns: that you always get critical when you're anxious, or that your partner's complaints spike on days they feel unappreciated. You show up to difficult conversations already knowing what's underneath.",
     features: [
       {
         title: "Individual Pattern Detection",
@@ -380,7 +380,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Recurring Theme Surfacing",
         description:
-          "Acuity shows you what you keep bringing up day after day. If 'feeling unheard' appears 12 times in a month, that's not a bad day — that's a pattern that needs addressing.",
+          "Ripple shows you what you keep bringing up day after day. If 'feeling unheard' appears 12 times in a month, that's not a bad day — that's a pattern that needs addressing.",
       },
       {
         title: "Gratitude & Appreciation Tracking",
@@ -390,7 +390,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "My wife and I both use Acuity separately. We don't share entries, but we share insights. I realized from my report that I mentioned feeling 'dismissed' almost every day — and I'd never once told her that directly. When I finally said it, she cried because she had no idea. That one word changed everything.",
+        "My wife and I both use Ripple separately. We don't share entries, but we share insights. I realized from my report that I mentioned feeling 'dismissed' almost every day — and I'd never once told her that directly. When I finally said it, she cried because she had no idea. That one word changed everything.",
       name: "David & Leah W.",
       detail: "Both 36, married 8 years, two kids",
     },
@@ -399,12 +399,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "grief",
-    title: "Acuity for Grief — A Safe Space to Talk Every Day",
+    title: "Ripple for Grief — A Safe Space to Talk Every Day",
     metaDescription:
-      "Processing grief is a journey. Acuity gives you a place each day to talk through loss, track healing over time, and see the progress you can\u2019t feel.",
+      "Processing grief is a journey. Ripple gives you a place each day to talk through loss, track healing over time, and see the progress you can\u2019t feel.",
     headline: "You don't have to process grief alone.",
     subheadline:
-      "Grief doesn't follow a schedule. It hits at 2pm on a Tuesday or 11pm when you hear their song. Acuity gives you a place to put it every day — not to fix it, not to analyze it, just to say it out loud and know that something is tracking the path even when you can't.",
+      "Grief doesn't follow a schedule. It hits at 2pm on a Tuesday or 11pm when you hear their song. Ripple gives you a place to put it every day — not to fix it, not to analyze it, just to say it out loud and know that something is tracking the path even when you can't.",
     painPoints: [
       "People stopped asking how you're doing after a few weeks, but the grief didn't stop — it just went underground where no one can see it",
       "Some days you feel okay and then feel guilty for feeling okay, and you can't tell if you're healing or just going numb",
@@ -412,17 +412,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "A place for your grief. Every day. No pressure.",
     solutionBody:
-      "Just talk. Say their name. Say what you miss. Say you're angry, or say nothing happened today and that felt wrong too. Acuity holds it all without judgment, and over weeks and months, your report shows you the shape of your grief — the slow, non-linear, real trajectory of healing that you can't feel from inside it.",
+      "Just talk. Say their name. Say what you miss. Say you're angry, or say nothing happened today and that felt wrong too. Ripple holds it all without judgment, and over weeks and months, your report shows you the shape of your grief — the slow, non-linear, real trajectory of healing that you can't feel from inside it.",
     features: [
       {
         title: "Grief Journey Tracking",
         description:
-          "Grief isn't linear and Acuity doesn't pretend it is. Your weekly report maps the real shape of your loss — the setbacks, the breakthroughs, the quiet plateaus — so you can see you're moving even when it doesn't feel like it.",
+          "Grief isn't linear and Ripple doesn't pretend it is. Your weekly report maps the real shape of your loss — the setbacks, the breakthroughs, the quiet plateaus — so you can see you're moving even when it doesn't feel like it.",
       },
       {
         title: "Safe Daily Ritual",
         description:
-          "The quiet moments are the hardest. Acuity gives you a structured moment to put down the weight whenever you need to. Not therapy, not advice — just a witness.",
+          "The quiet moments are the hardest. Ripple gives you a structured moment to put down the weight whenever you need to. Not therapy, not advice — just a witness.",
       },
       {
         title: "Memory Preservation",
@@ -432,7 +432,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "After my dad died, everyone moved on after a month but I was still drowning. I started talking to Acuity every day just to say his name. Three months later, my report showed me that I'd gone from talking about pain every day to talking about memories. I was healing and I didn't even know it. Seeing that saved me.",
+        "After my dad died, everyone moved on after a month but I was still drowning. I started talking to Ripple every day just to say his name. Three months later, my report showed me that I'd gone from talking about pain every day to talking about memories. I was healing and I didn't even know it. Seeing that saved me.",
       name: "Nina S.",
       detail: "41, lost her father to cancer",
     },
@@ -441,13 +441,13 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "career-change",
-    title: "Acuity for Career Change — Let Your Voice Notes Reveal the Answer",
+    title: "Ripple for Career Change — Let Your Voice Notes Reveal the Answer",
     metaDescription:
-      "Considering a career change? Acuity's AI analyzes your daily voice entries to surface what drains you, what energizes you, and what you really want.",
+      "Considering a career change? Ripple's AI analyzes your daily voice entries to surface what drains you, what energizes you, and what you really want.",
     headline:
       "Thinking about a career change? Your voice notes already know the answer.",
     subheadline:
-      "You've been going back and forth for months. Should you stay or go? What would you even do instead? Acuity doesn't tell you what to do — it shows you what you've already been telling yourself, night after night, in the patterns you can't see.",
+      "You've been going back and forth for months. Should you stay or go? What would you even do instead? Ripple doesn't tell you what to do — it shows you what you've already been telling yourself, night after night, in the patterns you can't see.",
     painPoints: [
       "You spend Sunday evenings dreading Monday but can't articulate exactly what's wrong — just a sinking feeling that this isn't it",
       "You keep waiting for clarity to strike but instead you just oscillate between 'it's not that bad' and 'I can't do this anymore'",
@@ -455,17 +455,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Stop guessing. Start listening to your own data.",
     solutionBody:
-      "Talk every day for a month. Don't try to figure anything out — just say what happened, how it felt, what drained you, what gave you energy. Acuity's AI finds the patterns: what you consistently complain about, what lights you up, what you keep fantasizing about, and what you're avoiding. After 30 entries, your weekly reports read like a career clarity roadmap written by someone who knows you better than you know yourself.",
+      "Talk every day for a month. Don't try to figure anything out — just say what happened, how it felt, what drained you, what gave you energy. Ripple's AI finds the patterns: what you consistently complain about, what lights you up, what you keep fantasizing about, and what you're avoiding. After 30 entries, your weekly reports read like a career clarity roadmap written by someone who knows you better than you know yourself.",
     features: [
       {
         title: "Energy & Drain Mapping",
         description:
-          "Acuity categorizes what consistently energizes you versus what drains you. After a few weeks, the data is undeniable — and it cuts through the noise of fear and obligation.",
+          "Ripple categorizes what consistently energizes you versus what drains you. After a few weeks, the data is undeniable — and it cuts through the noise of fear and obligation.",
       },
       {
         title: "Recurring Desire Detection",
         description:
-          "That thing you keep mentioning — the side project, the different field, the 'what if I just...' — Acuity tracks how often it appears and how your energy shifts when you talk about it.",
+          "That thing you keep mentioning — the side project, the different field, the 'what if I just...' — Ripple tracks how often it appears and how your energy shifts when you talk about it.",
       },
       {
         title: "Decision Clarity Report",
@@ -475,7 +475,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I was stuck for two years. Acuity showed me that I mentioned 'teaching' in 23 out of 30 entries. Not as a plan, just naturally — 'I wish I could explain this to someone,' 'I love when I get to mentor the junior team.' The data made it obvious. I'm getting my teaching certification now.",
+        "I was stuck for two years. Ripple showed me that I mentioned 'teaching' in 23 out of 30 entries. Not as a plan, just naturally — 'I wish I could explain this to someone,' 'I love when I get to mentor the junior team.' The data made it obvious. I'm getting my teaching certification now.",
       name: "Jordan P.",
       detail: "35, former data analyst, future teacher",
     },
@@ -484,10 +484,10 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "nurses",
-    title: "Acuity for Nurses — Process the Shift Before It Follows You Home",
+    title: "Ripple for Nurses — Process the Shift Before It Follows You Home",
     metaDescription:
-      "Nurses carry impossible emotional weight. Acuity's voice journal helps healthcare workers process the day and track compassion fatigue over time.",
-    headline: "12-hour shifts. Zero time to process. Acuity changes that.",
+      "Nurses carry impossible emotional weight. Ripple's voice journal helps healthcare workers process the day and track compassion fatigue over time.",
+    headline: "12-hour shifts. Zero time to process. Ripple changes that.",
     subheadline:
       "You held someone's hand while they died, then charted for an hour, then drove home and were supposed to be 'normal.' You don't need a 30-minute journaling practice. You need a way to put the shift down before it follows you to bed.",
     painPoints: [
@@ -497,12 +497,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Put the shift down. In private.",
     solutionBody:
-      "In the parking lot, in your car, on the drive home — just talk. Not a debrief for your charge nurse. For you. Say what hit you today, what you're carrying, what you need to let go of. Acuity tracks your compassion fatigue patterns over weeks, so you can see when you're depleting faster than you're recovering.",
+      "In the parking lot, in your car, on the drive home — just talk. Not a debrief for your charge nurse. For you. Say what hit you today, what you're carrying, what you need to let go of. Ripple tracks your compassion fatigue patterns over weeks, so you can see when you're depleting faster than you're recovering.",
     features: [
       {
         title: "Compassion Fatigue Tracking",
         description:
-          "Acuity detects the slow erosion — when your entries shift from processing emotions to flat, detached recounting. That shift is a signal, and Acuity catches it before you burn out.",
+          "Ripple detects the slow erosion — when your entries shift from processing emotions to flat, detached recounting. That shift is a signal, and Ripple catches it before you burn out.",
       },
       {
         title: "Quick Emotional Debrief",
@@ -517,7 +517,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I lost a pediatric patient and went straight to my next admit. Didn't process it for weeks. Started using Acuity in my car after shifts. My report showed I mentioned 'I'm fine' eleven times in two weeks, which is apparently what I say when I'm not fine at all. Now my charge nurse uses it too.",
+        "I lost a pediatric patient and went straight to my next admit. Didn't process it for weeks. Started using Ripple in my car after shifts. My report showed I mentioned 'I'm fine' eleven times in two weeks, which is apparently what I say when I'm not fine at all. Now my charge nurse uses it too.",
       name: "Bri C.",
       detail: "29, pediatric ICU nurse, night shift",
     },
@@ -526,12 +526,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "teachers",
-    title: "Acuity for Teachers — Manage Your Own Mind While Managing 30 Others",
+    title: "Ripple for Teachers — Manage Your Own Mind While Managing 30 Others",
     metaDescription:
-      "Teachers give everything to their students. Acuity's voice journal helps educators track burnout, process emotional labor, and protect their energy.",
+      "Teachers give everything to their students. Ripple's voice journal helps educators track burnout, process emotional labor, and protect their energy.",
     headline: "You manage 30 minds a day. Who manages yours?",
     subheadline:
-      "You're a teacher, counselor, referee, motivator, and admin — all before lunch. By 3pm you're empty. Acuity's daily debrief helps you see what's actually draining you, what still lights you up, and whether you're heading toward a wall.",
+      "You're a teacher, counselor, referee, motivator, and admin — all before lunch. By 3pm you're empty. Ripple's daily debrief helps you see what's actually draining you, what still lights you up, and whether you're heading toward a wall.",
     painPoints: [
       "You bring work home every night — not just papers to grade, but the kid who's struggling and the parent who yelled and the meeting that wasted an hour",
       "You became a teacher to make a difference but spend most of your energy on paperwork, politics, and managing behaviors instead of teaching",
@@ -539,27 +539,27 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "See what's draining you. Protect what fills you up.",
     solutionBody:
-      "After the school day ends, just talk. Talk about the wins, the frustrations, the kid who finally got it, the system that's failing you. Acuity's AI separates what energizes you from what depletes you and tracks those ratios over time. Your weekly report becomes the evidence you need — whether that's to set better boundaries, switch schools, or remember why you started.",
+      "After the school day ends, just talk. Talk about the wins, the frustrations, the kid who finally got it, the system that's failing you. Ripple's AI separates what energizes you from what depletes you and tracks those ratios over time. Your weekly report becomes the evidence you need — whether that's to set better boundaries, switch schools, or remember why you started.",
     features: [
       {
         title: "Energy Source vs. Drain Analysis",
         description:
-          "Acuity separates what fills your cup (the teaching moments) from what empties it (the admin, the politics). See the ratio shift week by week and intervene before the drains win.",
+          "Ripple separates what fills your cup (the teaching moments) from what empties it (the admin, the politics). See the ratio shift week by week and intervene before the drains win.",
       },
       {
         title: "Emotional Labor Tracking",
         description:
-          "Teaching is emotional labor disguised as a profession. Acuity tracks the weight of student needs, parent interactions, and administrative pressure so you can see the invisible load you're carrying.",
+          "Teaching is emotional labor disguised as a profession. Ripple tracks the weight of student needs, parent interactions, and administrative pressure so you can see the invisible load you're carrying.",
       },
       {
         title: "Burnout Early Warning",
         description:
-          "When your entries stop mentioning students and start focusing only on frustration and fatigue, Acuity flags the shift. Catch the slide before you become the teacher who stopped caring.",
+          "When your entries stop mentioning students and start focusing only on frustration and fatigue, Ripple flags the shift. Catch the slide before you become the teacher who stopped caring.",
       },
     ],
     testimonial: {
       quote:
-        "I cried in the supply closet three times last semester and told everyone I was fine. My Acuity report showed that I mentioned wanting to quit in 15 out of 20 entries — but also that every single positive entry was about one specific class. I transferred to teach that grade full-time. It changed everything.",
+        "I cried in the supply closet three times last semester and told everyone I was fine. My Ripple report showed that I mentioned wanting to quit in 15 out of 20 entries — but also that every single positive entry was about one specific class. I transferred to teach that grade full-time. It changed everything.",
       name: "Ms. Andrea T.",
       detail: "32, 5th grade teacher, public school",
     },
@@ -568,12 +568,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "therapists",
-    title: "Acuity for Therapists — Your Own Emotional Processing Tool",
+    title: "Ripple for Therapists — Your Own Emotional Processing Tool",
     metaDescription:
-      "Therapists absorb client emotions all day with nowhere to put them. Acuity's voice journal gives clinicians their own pattern detection system.",
+      "Therapists absorb client emotions all day with nowhere to put them. Ripple's voice journal gives clinicians their own pattern detection system.",
     headline: "You listen to everyone else all day. Who listens to you?",
     subheadline:
-      "You hold space for other people's darkest moments and then drive home and make dinner like nothing happened. You know better than anyone that unexpressed emotions compound. Acuity gives you your own tool — the one you'd prescribe to a client.",
+      "You hold space for other people's darkest moments and then drive home and make dinner like nothing happened. You know better than anyone that unexpressed emotions compound. Ripple gives you your own tool — the one you'd prescribe to a client.",
     painPoints: [
       "You absorb your clients' grief, anxiety, and trauma all day, and by evening you're carrying emotional weight that isn't yours but feels like it is",
       "You know you should have your own reflective practice, but after 8 sessions a day the last thing you want is more introspection",
@@ -581,12 +581,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Process your own patterns with the rigor you give your clients.",
     solutionBody:
-      "At the end of each day, just talk. Not clinical notes — your emotional residue from the day. What session stuck with you, where you felt activated, what you're carrying home. Acuity's AI detects your patterns the same way you detect your clients' patterns: recurring themes, emotional shifts, blind spots. Your weekly report is supervision between supervisions.",
+      "At the end of each day, just talk. Not clinical notes — your emotional residue from the day. What session stuck with you, where you felt activated, what you're carrying home. Ripple's AI detects your patterns the same way you detect your clients' patterns: recurring themes, emotional shifts, blind spots. Your weekly report is supervision between supervisions.",
     features: [
       {
         title: "Countertransference Awareness",
         description:
-          "Acuity tracks which clients and themes keep appearing in your entries, surfacing potential countertransference patterns you might not be catching in the session.",
+          "Ripple tracks which clients and themes keep appearing in your entries, surfacing potential countertransference patterns you might not be catching in the session.",
       },
       {
         title: "Vicarious Trauma Monitoring",
@@ -601,7 +601,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I see nine clients a day. I was going through the motions and calling it 'professional detachment.' My Acuity report showed that I mentioned feeling 'empty' after sessions 14 times in one month. I brought it to my supervisor and she said, 'This is exactly what vicarious trauma looks like.' I needed my own tool to see it.",
+        "I see nine clients a day. I was going through the motions and calling it 'professional detachment.' My Ripple report showed that I mentioned feeling 'empty' after sessions 14 times in one month. I brought it to my supervisor and she said, 'This is exactly what vicarious trauma looks like.' I needed my own tool to see it.",
       name: "Dr. Sam W.",
       detail: "44, licensed clinical psychologist, private practice",
     },
@@ -610,12 +610,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "overthinkers",
-    title: "Acuity for Overthinkers — Get It Out of Your Head, Into Something Useful",
+    title: "Ripple for Overthinkers — Get It Out of Your Head, Into Something Useful",
     metaDescription:
-      "Chronic overthinker? Acuity's voice journal gives racing thoughts somewhere to go. AI finds patterns in your mental loops so you can break them.",
+      "Chronic overthinker? Ripple's voice journal gives racing thoughts somewhere to go. AI finds patterns in your mental loops so you can break them.",
     headline: "Your brain won't stop. Give it somewhere to go.",
     subheadline:
-      "You've replayed that conversation 40 times. You've considered every possible outcome. You've made pro-con lists in your head for decisions that don't even matter. Acuity gives your overactive mind an exit ramp — talking it out turns circular thinking into linear insight.",
+      "You've replayed that conversation 40 times. You've considered every possible outcome. You've made pro-con lists in your head for decisions that don't even matter. Ripple gives your overactive mind an exit ramp — talking it out turns circular thinking into linear insight.",
     painPoints: [
       "You can't make a simple decision without considering 15 scenarios, second-guessing yourself, and then regretting whichever option you chose",
       "Your brain treats everything like a problem to solve, including things that aren't problems, and the processing never actually reaches a conclusion",
@@ -623,12 +623,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Externalize the loop. Watch the pattern dissolve.",
     solutionBody:
-      "Here's what overthinkers don't realize: the loop continues because the thought has nowhere to go. It stays in your head, circling. Acuity breaks the circuit. Speak the worry, the analysis, the spiral — out loud, into something external. When the thought is captured, your brain gets the signal that it's been processed. Your weekly report shows you which topics are genuinely worth thinking about and which ones are just your brain's screensaver.",
+      "Here's what overthinkers don't realize: the loop continues because the thought has nowhere to go. It stays in your head, circling. Ripple breaks the circuit. Speak the worry, the analysis, the spiral — out loud, into something external. When the thought is captured, your brain gets the signal that it's been processed. Your weekly report shows you which topics are genuinely worth thinking about and which ones are just your brain's screensaver.",
     features: [
       {
         title: "Loop Detection",
         description:
-          "Acuity identifies topics that appear in entry after entry without resolution. When you see that you've mentioned the same worry 12 days in a row, the loop becomes visible — and breakable.",
+          "Ripple identifies topics that appear in entry after entry without resolution. When you see that you've mentioned the same worry 12 days in a row, the loop becomes visible — and breakable.",
       },
       {
         title: "Cognitive Offloading",
@@ -643,7 +643,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I spent three weeks overthinking whether to text someone back. THREE WEEKS. When Acuity showed me I'd mentioned it in 19 out of 21 entries, I felt so absurd that I just texted them. It took 10 seconds. My brain had spent 60+ hours on a 10-second task. Seeing the pattern was the cure.",
+        "I spent three weeks overthinking whether to text someone back. THREE WEEKS. When Ripple showed me I'd mentioned it in 19 out of 21 entries, I felt so absurd that I just texted them. It took 10 seconds. My brain had spent 60+ hours on a 10-second task. Seeing the pattern was the cure.",
       name: "Tommy L.",
       detail: "25, grad student, chronic overthinker",
     },
@@ -652,12 +652,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "introverts",
-    title: "Acuity for Introverts — Process Internally, Understand Externally",
+    title: "Ripple for Introverts — Process Internally, Understand Externally",
     metaDescription:
-      "Introverts process deeply but rarely externalize. Acuity's private voice journal makes your inner world visible — no audience, no judgment.",
-    headline: "You process the world internally. Acuity makes it visible.",
+      "Introverts process deeply but rarely externalize. Ripple's private voice journal makes your inner world visible — no audience, no judgment.",
+    headline: "You process the world internally. Ripple makes it visible.",
     subheadline:
-      "You don't need to talk to more people. You need to talk to yourself — out loud, in private, where no one's watching. Acuity is the introvert's perfect tool: a voice journal with zero social energy required and AI that turns your inner world into patterns you can actually use.",
+      "You don't need to talk to more people. You need to talk to yourself — out loud, in private, where no one's watching. Ripple is the introvert's perfect tool: a voice journal with zero social energy required and AI that turns your inner world into patterns you can actually use.",
     painPoints: [
       "You process everything deeply but it all stays inside your head, where it becomes a tangled knot of half-formed thoughts no one else will ever see",
       "Journaling apps feel performative, therapy feels draining, and the idea of 'talking about your feelings' with another human sounds like punishment",
@@ -665,17 +665,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Private. Voice-only. No audience. Just clarity.",
     solutionBody:
-      "Acuity was practically designed for introverts. Talk in your room, in the dark, to no one. There's no social component, no sharing, no community feed. Just you, your voice, and AI that organizes the rich inner world you've been navigating alone. Your weekly report shows you the patterns of your internal life — made visible for the first time without requiring a single conversation.",
+      "Ripple was practically designed for introverts. Talk in your room, in the dark, to no one. There's no social component, no sharing, no community feed. Just you, your voice, and AI that organizes the rich inner world you've been navigating alone. Your weekly report shows you the patterns of your internal life — made visible for the first time without requiring a single conversation.",
     features: [
       {
         title: "Zero Social Energy Required",
         description:
-          "No profiles, no sharing, no community. Acuity is a completely private experience. Your entries exist only for you and the AI that processes them. The ultimate introvert-first design.",
+          "No profiles, no sharing, no community. Ripple is a completely private experience. Your entries exist only for you and the AI that processes them. The ultimate introvert-first design.",
       },
       {
         title: "Inner World Made Visible",
         description:
-          "You think deeply. Acuity shows you the shape of those thoughts — recurring themes, emotional patterns, evolving ideas — without requiring you to explain yourself to another person.",
+          "You think deeply. Ripple shows you the shape of those thoughts — recurring themes, emotional patterns, evolving ideas — without requiring you to explain yourself to another person.",
       },
       {
         title: "Voice in Private, Insights in Writing",
@@ -694,12 +694,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "managers",
-    title: "Acuity for Managers — Debrief Your Leadership, Not Just Your Team",
+    title: "Ripple for Managers — Debrief Your Leadership, Not Just Your Team",
     metaDescription:
-      "People managers carry invisible weight. Acuity's daily debrief tracks leadership patterns, team dynamics, and management growth over time.",
+      "People managers carry invisible weight. Ripple's daily debrief tracks leadership patterns, team dynamics, and management growth over time.",
     headline: "You're responsible for everyone else's growth. What about yours?",
     subheadline:
-      "You spent today in 1:1s, navigating team conflict, giving feedback that took more out of you than them, and wondering if you're actually good at this. Acuity's daily debrief captures the leadership experience no one sees — and shows you the patterns that make you better or burn you out.",
+      "You spent today in 1:1s, navigating team conflict, giving feedback that took more out of you than them, and wondering if you're actually good at this. Ripple's daily debrief captures the leadership experience no one sees — and shows you the patterns that make you better or burn you out.",
     painPoints: [
       "You absorb your team's stress, shield them from chaos above, and carry both loads home with no one to debrief with",
       "You had three difficult conversations today and you're replaying all of them, wondering if you said the right thing or made it worse",
@@ -707,12 +707,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Lead better by understanding how you lead now.",
     solutionBody:
-      "After work, just talk. What went well, what was hard, who needed what, and how you feel about all of it. Acuity extracts patterns in your leadership — which team members you mention most (and least), what types of situations drain you, whether your management style shifts under pressure. Your weekly report is a leadership development tool disguised as a journal.",
+      "After work, just talk. What went well, what was hard, who needed what, and how you feel about all of it. Ripple extracts patterns in your leadership — which team members you mention most (and least), what types of situations drain you, whether your management style shifts under pressure. Your weekly report is a leadership development tool disguised as a journal.",
     features: [
       {
         title: "Leadership Pattern Detection",
         description:
-          "Acuity tracks how you talk about your team, your decisions, and your stress. See if you're micromanaging when anxious, avoiding certain conversations, or consistently energized by specific types of work.",
+          "Ripple tracks how you talk about your team, your decisions, and your stress. See if you're micromanaging when anxious, avoiding certain conversations, or consistently energized by specific types of work.",
       },
       {
         title: "Team Dynamic Tracking",
@@ -727,7 +727,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I realized from Acuity that I mentioned one team member in 90% of my entries — always about problems. My report made it clear I was spending all my energy on one person and neglecting a team of eight. I restructured my 1:1s, addressed the pattern, and my whole team's engagement scores went up. I couldn't see the imbalance until the data showed me.",
+        "I realized from Ripple that I mentioned one team member in 90% of my entries — always about problems. My report made it clear I was spending all my energy on one person and neglecting a team of eight. I restructured my 1:1s, addressed the pattern, and my whole team's engagement scores went up. I couldn't see the imbalance until the data showed me.",
       name: "Rashid M.",
       detail: "39, VP of Engineering, manages 12 direct reports",
     },
@@ -736,12 +736,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "freelancers",
-    title: "Acuity for Freelancers — The Accountability System You Actually Need",
+    title: "Ripple for Freelancers — The Accountability System You Actually Need",
     metaDescription:
-      "Freelancers lack structure and accountability. Acuity's daily debrief tracks goals, surfaces procrastination, and writes your weekly review.",
+      "Freelancers lack structure and accountability. Ripple's daily debrief tracks goals, surfaces procrastination, and writes your weekly review.",
     headline: "No structure. No boss. No accountability. Until now.",
     subheadline:
-      "Freedom was the dream. But no one told you freedom comes with no guardrails, no feedback loops, and no one to tell you that you've been 'about to start that project' for three weeks. Acuity is the structure you need without the structure you left behind.",
+      "Freedom was the dream. But no one told you freedom comes with no guardrails, no feedback loops, and no one to tell you that you've been 'about to start that project' for three weeks. Ripple is the structure you need without the structure you left behind.",
     painPoints: [
       "You set ambitious goals every Monday and by Friday you've done a fraction of them, but you're not sure where the time went",
       "You have no one checking in on you, no performance review, no team standup — and the freedom that felt liberating now feels like floating",
@@ -749,27 +749,27 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Build your own guardrails with a daily debrief.",
     solutionBody:
-      "Every day, debrief: what you did, what you avoided, what's due. Acuity automatically tracks your goals, captures your tasks, and writes the weekly review you'd never write yourself. Over time, it surfaces your procrastination patterns — which projects you avoid, when in the week you lose momentum, what you say you'll do but never actually start. It's accountability without a boss.",
+      "Every day, debrief: what you did, what you avoided, what's due. Ripple automatically tracks your goals, captures your tasks, and writes the weekly review you'd never write yourself. Over time, it surfaces your procrastination patterns — which projects you avoid, when in the week you lose momentum, what you say you'll do but never actually start. It's accountability without a boss.",
     features: [
       {
         title: "Procrastination Pattern Detection",
         description:
-          "Acuity tracks what you keep saying you'll do but don't. When the same task appears in 10 entries without completion, the pattern is undeniable — and that awareness is the first step to breaking it.",
+          "Ripple tracks what you keep saying you'll do but don't. When the same task appears in 10 entries without completion, the pattern is undeniable — and that awareness is the first step to breaking it.",
       },
       {
         title: "Automated Weekly Review",
         description:
-          "Every Sunday, Acuity generates a narrative review of your week — what shipped, what slipped, where your energy went, and how your goals are tracking. The review you need but would never sit down to write.",
+          "Every Sunday, Ripple generates a narrative review of your week — what shipped, what slipped, where your energy went, and how your goals are tracking. The review you need but would never sit down to write.",
       },
       {
         title: "Goal Tracking & Drift Alerts",
         description:
-          "Set a quarterly goal in your entries and Acuity tracks whether your daily actions align with it. When you drift — and you will — the weekly report calls it out before a month disappears.",
+          "Set a quarterly goal in your entries and Ripple tracks whether your daily actions align with it. When you drift — and you will — the weekly report calls it out before a month disappears.",
       },
     ],
     testimonial: {
       quote:
-        "I quit my job for freelance freedom and then spent six months watching Netflix until 2pm. Acuity showed me that I mentioned 'I need to start' 47 times in one month without ever starting. Seeing that number broke the spell. I restructured my entire workflow. Now my weekly Acuity review is my Monday morning standup — with myself.",
+        "I quit my job for freelance freedom and then spent six months watching Netflix until 2pm. Ripple showed me that I mentioned 'I need to start' 47 times in one month without ever starting. Seeing that number broke the spell. I restructured my entire workflow. Now my weekly Ripple review is my Monday morning standup — with myself.",
       name: "Sasha D.",
       detail: "27, freelance brand designer",
     },
@@ -778,12 +778,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "athletes",
-    title: "Acuity for Athletes — Track the Mental Game That Wins Championships",
+    title: "Ripple for Athletes — Track the Mental Game That Wins Championships",
     metaDescription:
-      "Athletes track physical performance but ignore the mental game. Acuity's voice journal tracks confidence, focus, and competitive mindset over time.",
+      "Athletes track physical performance but ignore the mental game. Ripple's voice journal tracks confidence, focus, and competitive mindset over time.",
     headline: "The mental game is the game. Start tracking it.",
     subheadline:
-      "You track every rep, every split, every macro. But the thing that actually decides game day — your confidence, your focus, your pre-competition headspace — goes completely unmeasured. Acuity brings the same data-driven approach to your mental performance.",
+      "You track every rep, every split, every macro. But the thing that actually decides game day — your confidence, your focus, your pre-competition headspace — goes completely unmeasured. Ripple brings the same data-driven approach to your mental performance.",
     painPoints: [
       "You've had your best training weeks followed by your worst performances and you don't understand why — because you're only tracking the physical half",
       "Pre-competition anxiety makes you perform below your ability, and 'just relax' is about as useful as 'just run faster'",
@@ -791,17 +791,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Your mental performance log. Every day.",
     solutionBody:
-      "After training, after competition, after rest days — a moment of voice. How do you feel about your performance? What's your confidence level? Are you dreading or excited about tomorrow? Acuity tracks your mental state alongside your physical calendar, revealing the mental patterns that predict peak performance and the ones that predict collapse.",
+      "After training, after competition, after rest days — a moment of voice. How do you feel about your performance? What's your confidence level? Are you dreading or excited about tomorrow? Ripple tracks your mental state alongside your physical calendar, revealing the mental patterns that predict peak performance and the ones that predict collapse.",
     features: [
       {
         title: "Confidence Trajectory Tracking",
         description:
-          "Acuity maps your self-belief over time. See how confidence builds during training blocks and how it responds to wins, losses, injuries, and coaching feedback.",
+          "Ripple maps your self-belief over time. See how confidence builds during training blocks and how it responds to wins, losses, injuries, and coaching feedback.",
       },
       {
         title: "Pre-Competition Mental Patterns",
         description:
-          "Your entries before competitions reveal your mental state going in. Over a season, Acuity shows which pre-competition mindsets correlate with your best and worst performances.",
+          "Your entries before competitions reveal your mental state going in. Over a season, Ripple shows which pre-competition mindsets correlate with your best and worst performances.",
       },
       {
         title: "Recovery Mindset Monitoring",
@@ -811,7 +811,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "My coach kept telling me my losses were mental. I didn't know what that meant until Acuity showed me that my confidence tanked every time I had a bad practice the week before a meet. My physical training was fine — my self-talk was sabotaging me. Now I use my Acuity report in my sports psych sessions. It's changed my competitive career.",
+        "My coach kept telling me my losses were mental. I didn't know what that meant until Ripple showed me that my confidence tanked every time I had a bad practice the week before a meet. My physical training was fine — my self-talk was sabotaging me. Now I use my Ripple report in my sports psych sessions. It's changed my competitive career.",
       name: "Elijah R.",
       detail: "22, Division I swimmer, 200m butterfly",
     },
@@ -820,12 +820,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "chronic-pain",
-    title: "Acuity for Chronic Pain — Track Flares, Mood, and Patterns in Your Words",
+    title: "Ripple for Chronic Pain — Track Flares, Mood, and Patterns in Your Words",
     metaDescription:
-      "Living with chronic pain? Acuity's voice journal tracks flare triggers, mood-pain links, and energy patterns. Real data for real appointments.",
+      "Living with chronic pain? Ripple's voice journal tracks flare triggers, mood-pain links, and energy patterns. Real data for real appointments.",
     headline: "Track what your body is telling you — in your own words.",
     subheadline:
-      "Pain scales lie. '7 out of 10' doesn't capture what it's actually like — the frustration, the grief, the way it steals your plans and your patience. Acuity lets you describe your experience in your own voice, then finds the patterns that pain diaries miss.",
+      "Pain scales lie. '7 out of 10' doesn't capture what it's actually like — the frustration, the grief, the way it steals your plans and your patience. Ripple lets you describe your experience in your own voice, then finds the patterns that pain diaries miss.",
     painPoints: [
       "Doctors ask you to rate your pain 1-10 but that number means nothing — it can't capture the difference between 'managing' and 'barely surviving'",
       "You've tried tracking with apps and spreadsheets but when you're flaring, the last thing you can do is fill out a form with tiny checkboxes",
@@ -833,17 +833,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Your voice captures what pain scales can't.",
     solutionBody:
-      "Just talk. Describe today — the pain, the mood, what you ate, how you slept, what you could and couldn't do. Acuity's AI finds the correlations you're too exhausted to track: sleep-to-flare patterns, stress-to-pain links, which treatments actually change your baseline. Print your weekly report and bring it to your next appointment. Give your doctor the data that actually matters.",
+      "Just talk. Describe today — the pain, the mood, what you ate, how you slept, what you could and couldn't do. Ripple's AI finds the correlations you're too exhausted to track: sleep-to-flare patterns, stress-to-pain links, which treatments actually change your baseline. Print your weekly report and bring it to your next appointment. Give your doctor the data that actually matters.",
     features: [
       {
         title: "Flare Trigger Correlation",
         description:
-          "Acuity analyzes your entries for patterns before flare-ups — sleep changes, stress spikes, weather mentions, food, activity levels. Over time, your triggers become visible in the data.",
+          "Ripple analyzes your entries for patterns before flare-ups — sleep changes, stress spikes, weather mentions, food, activity levels. Over time, your triggers become visible in the data.",
       },
       {
         title: "Mood-Pain Connection Mapping",
         description:
-          "Chronic pain and mental health are inseparable. Acuity tracks how your mood and pain levels interact — showing whether emotional stress is preceding physical flares or the other way around.",
+          "Chronic pain and mental health are inseparable. Ripple tracks how your mood and pain levels interact — showing whether emotional stress is preceding physical flares or the other way around.",
       },
       {
         title: "Appointment-Ready Reports",
@@ -853,7 +853,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I have fibromyalgia and my doctor kept asking me to keep a symptom diary. I couldn't — on bad days I can barely hold my phone. With Acuity I just talk from bed. My report showed that my worst flares happened 2-3 days after high-stress entries. My rheumatologist said that correlation was more useful than a year of pain scales. I cried in her office.",
+        "I have fibromyalgia and my doctor kept asking me to keep a symptom diary. I couldn't — on bad days I can barely hold my phone. With Ripple I just talk from bed. My report showed that my worst flares happened 2-3 days after high-stress entries. My rheumatologist said that correlation was more useful than a year of pain scales. I cried in her office.",
       name: "Laura B.",
       detail: "45, living with fibromyalgia for 12 years",
     },

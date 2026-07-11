@@ -35,12 +35,12 @@ export const stall3plus: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(greeting)}
-      ${para(`You\u2019ve been recording debriefs for a bit now \u2014 enough that Acuity\u2019s actually started to know your patterns. But it\u2019s been a few days since your last one, so I wanted to check in.`)}
+      ${para(`You\u2019ve been recording debriefs for a bit now \u2014 enough that Ripple\u2019s actually started to know your patterns. But it\u2019s been a few days since your last one, so I wanted to check in.`)}
       ${para(`No pressure at all. Life gets busy, and a gap here and there is normal. But you\u2019ve built something real \u2014 a real picture of your weeks, your tasks, the things that keep coming up. The longer the gap, the more that picture goes stale, and I\u2019d hate for the work you\u2019ve already put in to fade out.`)}
       ${para(`If something changed, or it stopped being useful, I\u2019d genuinely like to know \u2014 just hit reply. And if you\u2019ve just been busy, picking it back up takes a couple of minutes.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Acuity")}
+          ${primaryButton(appLink, "Open Ripple")}
         </td>
       </tr>
       <tr>

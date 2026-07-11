@@ -26,7 +26,7 @@ export const PROCESSING_SLIDES: ProcessingSlide[] = [
     text: "Tasks extracted. Goals tracked. Mood captured.",
     testimonial: {
       quote:
-        "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity and actually sleep.",
+        "I used to let tasks pile up in my head until 2 AM. Now I debrief into Ripple and actually sleep.",
       name: "Sarah K.",
     },
   },
@@ -43,7 +43,7 @@ export const PROCESSING_SLIDES: ProcessingSlide[] = [
     text: "Patterns emerge across your life.",
     testimonial: {
       quote:
-        "I didn't realize I was most productive on Tuesdays until Acuity showed me.",
+        "I didn't realize I was most productive on Tuesdays until Ripple showed me.",
       name: "Jamie L.",
     },
   },

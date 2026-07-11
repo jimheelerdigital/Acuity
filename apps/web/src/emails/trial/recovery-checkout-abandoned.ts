@@ -46,7 +46,7 @@ export const recoveryCheckoutAbandoned: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(`Hey ${name},`)}
-      ${para(`I\u2019m Keenan, one of the founders of Acuity.`)}
+      ${para(`I\u2019m Keenan, one of the founders of Ripple.`)}
       ${para(`You went through our whole quiz. You told us ${branchLine(v)}. We built your insight profile.`)}
       ${para(`Then something stopped you at checkout. No pressure \u2014 but your profile is still here.`)}
       ${para(`7-day free trial. You won\u2019t be charged today. If it\u2019s not useful by Day 5, cancel with one tap.`)}

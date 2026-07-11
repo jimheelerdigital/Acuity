@@ -380,7 +380,7 @@ export async function sendCountdownEmail(
       // inbox), not no-reply. Hardcoded, not env-driven (prod EMAIL_FROM is
       // the system no-reply address). Currently paused via kill switches;
       // this keeps them correct if re-enabled.
-      from: '"Keenan from Acuity" <keenan@getacuity.io>',
+      from: '"Keenan from Ripple" <keenan@getacuity.io>',
       to: user.email,
       subject,
       html,

@@ -30,7 +30,7 @@ import {
 // inbox), not no-reply. Hardcoded, not env-driven: prod EMAIL_FROM is the
 // system no-reply address used by transactional senders. From=keenan@ also
 // routes any replies to keenan@ without a separate reply-to.
-const EMAIL_FROM = '"Keenan from Acuity" <keenan@getacuity.io>';
+const EMAIL_FROM = '"Keenan from Ripple" <keenan@getacuity.io>';
 
 export interface WeeklyDigestInput {
   to: string;

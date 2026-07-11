@@ -355,7 +355,7 @@ export default function PaywallScreen() {
               marginTop: 12,
             }}
           >
-            You&apos;ve been carrying this for {duration}. Acuity shows you the
+            You&apos;ve been carrying this for {duration}. Ripple shows you the
             pattern in 7 days.
           </Text>
 

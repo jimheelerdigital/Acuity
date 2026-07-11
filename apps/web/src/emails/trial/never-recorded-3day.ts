@@ -32,7 +32,7 @@ export const neverRecorded3day: TrialEmailTemplate = {
       </tr>
       ${para(greeting)}
       ${para(`Your free trial has three days left, and you still haven\u2019t recorded a single debrief. I\u2019d hate for the whole thing to come and go without you ever seeing what it does.`)}
-      ${para(`You don\u2019t have to commit to anything. Just try it once. Open the app, talk for a few minutes, and let Acuity show you what it pulls out \u2014 the tasks, the patterns, the picture of your week. If it\u2019s not for you after that, no harm done.`)}
+      ${para(`You don\u2019t have to commit to anything. Just try it once. Open the app, talk for a few minutes, and let Ripple show you what it pulls out \u2014 the tasks, the patterns, the picture of your week. If it\u2019s not for you after that, no harm done.`)}
       ${para(`But don\u2019t let it end on nothing. Give it the one shot it needs.`)}
       <tr>
         <td style="padding-bottom:8px;">

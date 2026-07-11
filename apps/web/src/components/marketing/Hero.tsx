@@ -42,7 +42,7 @@ export function Hero() {
             </h1>
 
             <p className="m-0 mb-8 max-w-[480px] font-sans text-[19px] leading-[1.55] text-acuity-text-sec text-pretty">
-              Acuity is the voice journal that listens. Talk through your day — it catches your
+              Ripple is the voice journal that listens. Talk through your day — it catches your
               tasks, tracks your goals, and surfaces the patterns you can&rsquo;t see on your own.
             </p>
 

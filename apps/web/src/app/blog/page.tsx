@@ -6,21 +6,21 @@ import { BLOG_POSTS } from "@/lib/blog-posts";
 export const revalidate = 300; // 5 minutes
 
 export const metadata: Metadata = {
-  title: "Blog — Acuity",
+  title: "Blog — Ripple",
   description:
     "Articles on AI journaling, voice journaling, personal productivity, mood tracking, goal tracking, and building a daily journal habit.",
   alternates: { canonical: "https://getacuity.io/blog" },
   openGraph: {
-    title: "Blog — Acuity",
+    title: "Blog — Ripple",
     description:
       "Articles on AI journaling, voice journaling, personal productivity, mood tracking, and building a daily journal habit.",
     url: "https://getacuity.io/blog",
-    siteName: "Acuity",
+    siteName: "Ripple",
     images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog — Acuity",
+    title: "Blog — Ripple",
     description:
       "Articles on AI journaling, voice journaling, personal productivity, and mood tracking.",
     images: ["/og-image.png?v=3"],

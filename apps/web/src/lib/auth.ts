@@ -144,7 +144,7 @@ export function getAuthOptions(): NextAuthOptions {
                   pass: process.env.RESEND_API_KEY ?? "",
                 },
               },
-              from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+              from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
               sendVerificationRequest: async ({
                 identifier: email,
                 url,
@@ -152,7 +152,7 @@ export function getAuthOptions(): NextAuthOptions {
                 const { getResendClient } = await import("@/lib/resend");
                 const { subject, html } = magicLinkEmail(url);
                 await getResendClient().emails.send({
-                  from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+                  from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
                   to: email,
                   subject,
                   html,

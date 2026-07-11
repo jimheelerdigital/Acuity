@@ -164,7 +164,7 @@ function BlogJsonLdStatic({
         },
         publisher: {
           "@type": "Organization",
-          name: "Acuity",
+          name: "Ripple",
           url: "https://getacuity.io",
           logo: {
             "@type": "ImageObject",
@@ -220,7 +220,7 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
         },
         publisher: {
           "@type": "Organization",
-          name: "Acuity",
+          name: "Ripple",
           url: "https://getacuity.io",
           logo: {
             "@type": "ImageObject",
@@ -435,7 +435,7 @@ function BlogCta() {
           Brain dump daily. Get your life back.
         </h2>
         <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-          Try Acuity free for 7 days. Just talk. No typing. Just
+          Try Ripple free for 7 days. Just talk. No typing. Just
           talk.
         </p>
         <BlogCtaButtons />

@@ -4,9 +4,9 @@ import { StartPageClient } from "./client";
 import { ENTRY_QUESTION } from "@/lib/funnel-config";
 
 export const metadata: Metadata = {
-  title: "Start Free Trial — Acuity",
+  title: "Start Free Trial — Ripple",
   description:
-    "Start your Acuity journey. See what one 60-second debrief can tell you about your life.",
+    "Start your Ripple journey. See what one 60-second debrief can tell you about your life.",
   robots: { index: false, follow: false },
 };
 

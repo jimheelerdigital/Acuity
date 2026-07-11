@@ -35,34 +35,34 @@ export function getPersonalizedPromise(answers: {
     q2 === "over_a_year" &&
     q4.includes("relationships_suffering")
   ) {
-    return "You've been stuck in this loop for over a year, and your relationships are paying the price. Acuity will show you the pattern in 60 seconds of your voice.";
+    return "You've been stuck in this loop for over a year, and your relationships are paying the price. Ripple will show you the pattern in 60 seconds of your voice.";
   }
   if (q1 === "work_bleeds" && q4.includes("dont_recognize_self")) {
-    return "Work has been swallowing your life and you don't even recognize yourself anymore. Acuity will show you exactly where you disappeared.";
+    return "Work has been swallowing your life and you don't even recognize yourself anymore. Ripple will show you exactly where you disappeared.";
   }
   if (q1 === "goals_not_real" && q5 === "follow_through") {
-    return "You know what you want. Acuity catches the goals you mention and holds you to them — so this time, you actually follow through.";
+    return "You know what you want. Ripple catches the goals you mention and holds you to them — so this time, you actually follow through.";
   }
   if (q1 === "same_fights" && q4.includes("relationships_suffering")) {
-    return "The same arguments keep cycling and your relationships are paying for it. Acuity surfaces the pattern so you can finally break it.";
+    return "The same arguments keep cycling and your relationships are paying for it. Ripple surfaces the pattern so you can finally break it.";
   }
 
   // ── Loop + duration fallbacks ──
   if (q1 === "blurry_days" && q2 === "over_a_year") {
-    return "You've been stuck in this loop for over a year. Acuity will show you the pattern in 60 seconds of your voice.";
+    return "You've been stuck in this loop for over a year. Ripple will show you the pattern in 60 seconds of your voice.";
   }
   if (q1 === "work_bleeds" && (q2 === "few_months" || q2 === "over_a_year")) {
-    return "Work has been bleeding into your life for months. Acuity will show you exactly where the line disappears.";
+    return "Work has been bleeding into your life for months. Ripple will show you exactly where the line disappears.";
   }
 
   // ── Loop-only fallbacks ──
   if (q1 === "same_fights") {
-    return "The same conversations keep happening because the same patterns keep running. Acuity will show you the loop.";
+    return "The same conversations keep happening because the same patterns keep running. Ripple will show you the loop.";
   }
   if (q1 === "goals_not_real") {
-    return "Your goals stay abstract because nothing holds you accountable daily. Acuity extracts action from intention.";
+    return "Your goals stay abstract because nothing holds you accountable daily. Ripple extracts action from intention.";
   }
 
   // ── Generic ──
-  return "Acuity will show you the pattern in 60 seconds of your voice.";
+  return "Ripple will show you the pattern in 60 seconds of your voice.";
 }

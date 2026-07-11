@@ -85,7 +85,7 @@ export const APP_VERSION_CONFIG: Record<AppPlatform, AppVersionConfig> = {
     // build ships (currently v1.1 is in review; will become "1.1.0"
     // once it's released, then "1.2.0" when v1.2 lands).
     recommendedVersion: "1.1.0",
-    headline: "A new version of Acuity is ready.",
+    headline: "A new version of Ripple is ready.",
     body: "We've shipped improvements to the Life Matrix, Theme Map, and the way your insights surface. Update in the App Store to get them.",
     ctaText: "Update",
     dismissible: true,
@@ -101,7 +101,7 @@ export const APP_VERSION_CONFIG: Record<AppPlatform, AppVersionConfig> = {
   android: {
     minimumVersion: "1.0.0",
     recommendedVersion: "1.0.0",
-    headline: "A new version of Acuity is ready.",
+    headline: "A new version of Ripple is ready.",
     body: "We've shipped improvements to the Life Matrix, Theme Map, and the way your insights surface. Update in the Play Store to get them.",
     ctaText: "Update",
     dismissible: true,

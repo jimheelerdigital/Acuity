@@ -31,11 +31,11 @@ export const winback14d: TrialEmailTemplate = {
       </tr>
       ${para(greeting)}
       ${para(`A couple weeks since your last debrief now. No pitch here \u2014 just one thing worth knowing.`)}
-      ${para(`Acuity compounds. Every debrief makes the next insight sharper, the patterns clearer, the picture of your life more complete. It\u2019s not about any single recording \u2014 it\u2019s about what builds up across them. A handful of debriefs is a moment. Dozens is a mirror.`)}
+      ${para(`Ripple compounds. Every debrief makes the next insight sharper, the patterns clearer, the picture of your life more complete. It\u2019s not about any single recording \u2014 it\u2019s about what builds up across them. A handful of debriefs is a moment. Dozens is a mirror.`)}
       ${para(`That\u2019s all. The door\u2019s open whenever you want to keep building it.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Acuity")}
+          ${primaryButton(appLink, "Open Ripple")}
         </td>
       </tr>
       <tr>

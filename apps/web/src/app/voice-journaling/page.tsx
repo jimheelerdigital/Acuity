@@ -12,7 +12,7 @@ export const metadata: Metadata = {
       "Learn how voice journaling works, why a voice journal app beats written journaling, and how to build a daily debrief habit with AI insights.",
     url: "https://getacuity.io/voice-journaling",
     type: "article",
-    siteName: "Acuity",
+    siteName: "Ripple",
     images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },
   twitter: {
@@ -36,12 +36,12 @@ const jsonLd = {
       dateModified: "2026-04-17",
       author: {
         "@type": "Organization",
-        name: "Acuity",
+        name: "Ripple",
         url: "https://getacuity.io",
       },
       publisher: {
         "@type": "Organization",
-        name: "Acuity",
+        name: "Ripple",
         url: "https://getacuity.io",
         logo: {
           "@type": "ImageObject",
@@ -96,7 +96,7 @@ const jsonLd = {
           name: "How long should a voice journal entry be?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Even a short entry is enough to get a meaningful brain dump. Most voice journaling apps, including Acuity, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.",
+            text: "Even a short entry is enough to get a meaningful brain dump. Most voice journaling apps, including Ripple, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.",
           },
         },
         {
@@ -104,7 +104,7 @@ const jsonLd = {
           name: "Can AI transcribe and analyze voice journal entries?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. Modern AI voice journaling apps like Acuity automatically transcribe your voice entries, then use AI to extract tasks, detect emotional patterns, track mood over time, and generate weekly narrative reports. This turns a simple voice recording into structured life intelligence.",
+            text: "Yes. Modern AI voice journaling apps like Ripple automatically transcribe your voice entries, then use AI to extract tasks, detect emotional patterns, track mood over time, and generate weekly narrative reports. This turns a simple voice recording into structured life intelligence.",
           },
         },
         {
@@ -112,7 +112,7 @@ const jsonLd = {
           name: "What is the best voice journaling app?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 7-day free trial.",
+            text: "Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 7-day free trial.",
           },
         },
       ],
@@ -205,7 +205,7 @@ export default function VoiceJournalingPage() {
               Try voice journaling tonight
             </h2>
             <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 7-day free trial.
+              Ripple turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 7-day free trial.
             </p>
             <Link
               href="/start?utm_campaign=voice-journaling-guide"
@@ -393,7 +393,7 @@ export default function VoiceJournalingPage() {
             Advanced: AI voice journaling apps
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Acuity don't just transcribe — they <em>understand</em>. After you record an entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-acuity-primary hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
+            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Ripple don't just transcribe — they <em>understand</em>. After you record an entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-acuity-primary hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
           </p>
 
           {/* ──── Who Voice Journaling Is For ──── */}
@@ -434,21 +434,21 @@ export default function VoiceJournalingPage() {
             How long should a voice journal entry be?
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Even a short entry is enough to get a meaningful brain dump. Most AI voice journaling apps, including Acuity, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.
+            Even a short entry is enough to get a meaningful brain dump. Most AI voice journaling apps, including Ripple, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
             Can AI transcribe and analyze voice journal entries?
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Yes. Modern AI voice journaling apps like Acuity automatically transcribe your voice entries, then use AI to extract tasks, detect emotional patterns, track mood over time, and generate weekly narrative reports. This turns a simple voice recording into structured life intelligence.
+            Yes. Modern AI voice journaling apps like Ripple automatically transcribe your voice entries, then use AI to extract tasks, detect emotional patterns, track mood over time, and generate weekly narrative reports. This turns a simple voice recording into structured life intelligence.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
             What is the best voice journaling app?
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Acuity is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 7-day free trial.
+            Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 7-day free trial.
           </p>
 
           {/* ──── Bottom CTA ──── */}
@@ -457,7 +457,7 @@ export default function VoiceJournalingPage() {
               Start voice journaling tonight
             </h2>
             <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-              Acuity turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 7-day free trial.
+              Ripple turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 7-day free trial.
             </p>
             <Link
               href="/start?utm_campaign=voice-journaling-guide"

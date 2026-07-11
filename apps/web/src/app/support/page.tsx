@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Support · Acuity",
+  title: "Support · Ripple",
   description:
-    "Get help with Acuity — contact support, read our privacy policy and terms of service.",
+    "Get help with Ripple — contact support, read our privacy policy and terms of service.",
   robots: { index: true, follow: true },
 };
 
@@ -26,7 +26,7 @@ export default function SupportPage() {
           href="/"
           className="inline-flex items-center gap-1 text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
-          ← Back to Acuity
+          ← Back to Ripple
         </Link>
 
         <h1 className="mt-8 text-4xl font-bold tracking-tight sm:text-5xl">
@@ -90,7 +90,7 @@ export default function SupportPage() {
                 <>
                   iOS microphone permission lives in{" "}
                   <span className="font-medium text-acuity-text">
-                    Settings → Acuity → Microphone
+                    Settings → Ripple → Microphone
                   </span>
                   . If you denied it on first launch, toggle it on there,
                   then reopen the app. On Safari (web), the permission
@@ -134,7 +134,7 @@ export default function SupportPage() {
         <section className="mt-12 rounded-lg border border-amber-500/20 bg-amber-500/5 p-5 text-sm leading-relaxed text-amber-100/90">
           <p className="font-semibold text-amber-100">In crisis?</p>
           <p className="mt-1 text-amber-100/80">
-            Acuity is a journaling tool, not a substitute for professional
+            Ripple is a journaling tool, not a substitute for professional
             support. If you or someone you know is in crisis, please reach out.{" "}
             <Link
               href="/support/crisis"

@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   try {
     const { getResendClient } = await import("@/lib/resend");
     await getResendClient().emails.send({
-      from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+      from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
       to: email,
       subject,
       html,

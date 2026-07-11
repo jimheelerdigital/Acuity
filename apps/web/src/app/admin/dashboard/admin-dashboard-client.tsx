@@ -19,7 +19,7 @@ interface DashboardData {
 const STEP_LABELS: Record<number, string> = {
   0: "Step 0 — Not yet emailed",
   1: "Step 1 — Welcome email",
-  2: "Step 2 — What Acuity does",
+  2: "Step 2 — What Ripple does",
   3: "Step 3 — Weekly reports feature",
   4: "Step 4 — Founding member pricing",
   5: "Step 5 — Doors opening soon",
@@ -84,7 +84,7 @@ export default function AdminDashboardClient() {
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-10 text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-8 text-2xl font-bold">Acuity Admin Dashboard</h1>
+        <h1 className="mb-8 text-2xl font-bold">Ripple Admin Dashboard</h1>
 
         {/* ── AI SPEND ── */}
         {overBudget && (

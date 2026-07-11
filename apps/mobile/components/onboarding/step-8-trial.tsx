@@ -101,7 +101,7 @@ export function Step8Trial() {
         className="mt-1 text-sm leading-relaxed"
         style={{ color: tokens.textTer }}
       >
-        Acuity gets better with daily reflection. Pick a starting
+        Ripple gets better with daily reflection. Pick a starting
         cadence — you can change it anytime.
       </Text>
       <View className="mt-3 gap-2">

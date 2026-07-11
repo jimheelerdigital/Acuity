@@ -25,7 +25,7 @@ export function InsightCard({ text }: { text: string }) {
           marginBottom: 10,
         }}
       >
-        What Acuity notices
+        What Ripple notices
       </p>
       <p
         style={{

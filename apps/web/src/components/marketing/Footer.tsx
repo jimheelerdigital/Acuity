@@ -30,7 +30,7 @@ export function Footer() {
         <div>
           <div className="mb-3.5 flex items-center gap-2.5">
             <span className="h-6 w-6 rounded-[8px] bg-acuity-grad-primary" />
-            <span className="font-display text-[19px] font-extrabold text-acuity-text">Acuity</span>
+            <span className="font-display text-[19px] font-extrabold text-acuity-text">Ripple</span>
           </div>
           <p className="m-0 max-w-[260px] font-sans text-[14.5px] leading-[1.55] text-acuity-text-ter">
             The AI voice journal for your daily debrief. One minute a day, a life of clarity.
@@ -52,7 +52,7 @@ export function Footer() {
         ))}
       </div>
       <div className="mx-auto mt-10 flex max-w-[1180px] flex-wrap justify-between gap-3 border-t border-acuity-line pt-6">
-        <span className="font-sans text-[13.5px] text-acuity-text-ter">© 2026 Acuity. All rights reserved.</span>
+        <span className="font-sans text-[13.5px] text-acuity-text-ter">© 2026 Ripple. All rights reserved.</span>
         <span className="font-sans text-[13.5px] text-acuity-text-ter">Made for quiet, consistent reflection.</span>
       </div>
     </footer>

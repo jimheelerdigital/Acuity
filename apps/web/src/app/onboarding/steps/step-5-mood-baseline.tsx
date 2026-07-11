@@ -56,7 +56,7 @@ export function Step5MoodBaseline() {
       </div>
 
       <p className="mt-10 text-xs text-zinc-400 dark:text-zinc-500">
-        No right answer. This shapes how Acuity reads your first
+        No right answer. This shapes how Ripple reads your first
         week&rsquo;s entries against your own baseline instead of
         everyone else&rsquo;s.
       </p>

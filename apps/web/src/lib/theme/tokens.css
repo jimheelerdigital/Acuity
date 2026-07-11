@@ -184,28 +184,30 @@
      tokens. Gradients + glows still resolve through var() and
      auto-pick up the active palette. */
 
-  /* Dark surfaces (sh+5 = 290 for the OKLCH neutral) */
-  --acuity-bg: oklch(0.21 0.022 290);
-  --acuity-bg-sub: oklch(0.235 0.024 290);
-  --acuity-bg-inset: oklch(0.185 0.020 285);
-  --acuity-card-bg: oklch(0.245 0.024 290);
+  /* Dark surfaces — LIFTED charcoal (Ripple handoff: base bg
+     oklch(.28 .028 290) ≈ #3A3550; never #211E2C, never black).
+     card-bg-tint mixes toward Ripple "surface" oklch(.335 .038 43). */
+  --acuity-bg: oklch(0.28 0.028 290);
+  --acuity-bg-sub: oklch(0.305 0.030 290);
+  --acuity-bg-inset: oklch(0.255 0.026 285);
+  --acuity-card-bg: oklch(0.32 0.030 290);
   --acuity-card-bg-tint: color-mix(
     in oklch,
     var(--acuity-card-bg),
     var(--acuity-primary) 8%
   );
-  --acuity-card-bg-raised: oklch(0.27 0.028 290);
+  --acuity-card-bg-raised: oklch(0.35 0.032 290);
   --acuity-card-border: oklch(1 0 0 / 0.05);
 
-  /* Dark text */
+  /* Dark text — aligned to Ripple (secondary .62, muted .48) */
   --acuity-text: oklch(0.98 0.004 285);
-  --acuity-text-sec: oklch(0.74 0.010 285);
-  --acuity-text-ter: oklch(0.56 0.012 285);
+  --acuity-text-sec: oklch(0.62 0.014 285);
+  --acuity-text-ter: oklch(0.48 0.010 285);
   --acuity-text-quiet: oklch(0.40 0.008 285);
 
-  /* Dark hairlines */
-  --acuity-line: oklch(1 0 0 / 0.07);
-  --acuity-line-strong: oklch(1 0 0 / 0.13);
+  /* Dark hairlines — Ripple line oklch(1 0 0 / .09) */
+  --acuity-line: oklch(1 0 0 / 0.09);
+  --acuity-line-strong: oklch(1 0 0 / 0.14);
 
   /* Dark shadows — heavier outer + inset highlight to lift cards */
   --acuity-shadow-soft:
@@ -310,6 +312,56 @@
   --acuity-secondary-soft: oklch(0.78 0.13 85 / 0.18);
   --acuity-primary-h: 255;
   --acuity-secondary-h: 85;
+}
+
+/* ─── The remaining four Ripple handoff schemes (added 2026-07-07) ── */
+:root[data-palette="rose"] {
+  --acuity-primary: oklch(0.74 0.13 10);
+  --acuity-primary-hi: oklch(0.82 0.13 10);
+  --acuity-primary-lo: oklch(0.64 0.13 10);
+  --acuity-primary-soft: oklch(0.74 0.13 10 / 0.18);
+  --acuity-secondary: oklch(0.55 0.15 320);
+  --acuity-secondary-hi: oklch(0.63 0.15 320);
+  --acuity-secondary-lo: oklch(0.45 0.15 320);
+  --acuity-secondary-soft: oklch(0.55 0.15 320 / 0.18);
+  --acuity-primary-h: 10;
+  --acuity-secondary-h: 320;
+}
+:root[data-palette="amber"] {
+  --acuity-primary: oklch(0.79 0.15 65);
+  --acuity-primary-hi: oklch(0.87 0.15 65);
+  --acuity-primary-lo: oklch(0.69 0.15 65);
+  --acuity-primary-soft: oklch(0.79 0.15 65 / 0.18);
+  --acuity-secondary: oklch(0.55 0.16 275);
+  --acuity-secondary-hi: oklch(0.63 0.16 275);
+  --acuity-secondary-lo: oklch(0.45 0.16 275);
+  --acuity-secondary-soft: oklch(0.55 0.16 275 / 0.18);
+  --acuity-primary-h: 65;
+  --acuity-secondary-h: 275;
+}
+:root[data-palette="jade"] {
+  --acuity-primary: oklch(0.72 0.13 165);
+  --acuity-primary-hi: oklch(0.80 0.13 165);
+  --acuity-primary-lo: oklch(0.62 0.13 165);
+  --acuity-primary-soft: oklch(0.72 0.13 165 / 0.18);
+  --acuity-secondary: oklch(0.72 0.14 32);
+  --acuity-secondary-hi: oklch(0.80 0.14 32);
+  --acuity-secondary-lo: oklch(0.62 0.14 32);
+  --acuity-secondary-soft: oklch(0.72 0.14 32 / 0.18);
+  --acuity-primary-h: 165;
+  --acuity-secondary-h: 32;
+}
+:root[data-palette="sky"] {
+  --acuity-primary: oklch(0.72 0.13 235);
+  --acuity-primary-hi: oklch(0.80 0.13 235);
+  --acuity-primary-lo: oklch(0.62 0.13 235);
+  --acuity-primary-soft: oklch(0.72 0.13 235 / 0.18);
+  --acuity-secondary: oklch(0.75 0.12 5);
+  --acuity-secondary-hi: oklch(0.83 0.12 5);
+  --acuity-secondary-lo: oklch(0.65 0.12 5);
+  --acuity-secondary-soft: oklch(0.75 0.12 5 / 0.18);
+  --acuity-primary-h: 235;
+  --acuity-secondary-h: 5;
 }
 
 /* ─── Mode-independent tokens ───────────────────────────────────── */

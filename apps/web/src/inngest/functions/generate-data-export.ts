@@ -161,7 +161,7 @@ export const generateDataExportFn = inngest.createFunction(
         // Transcript-only entries: drop a README explaining the policy.
         audioFolder.file(
           "README.txt",
-          `Acuity processes audio to produce a transcript and then deletes the original recording unless you configured retention otherwise. If any .m4a / .webm files were still on disk, they're included in this folder. Entries without audio were either processed before the file was persisted or had the audio removed per our retention policy.\n`
+          `Ripple processes audio to produce a transcript and then deletes the original recording unless you configured retention otherwise. If any .m4a / .webm files were still on disk, they're included in this folder. Entries without audio were either processed before the file was persisted or had the audio removed per our retention policy.\n`
         );
       }
 
@@ -169,7 +169,7 @@ export const generateDataExportFn = inngest.createFunction(
       zip.file(
         "README.txt",
         [
-          `Acuity data export — ${new Date().toISOString()}`,
+          `Ripple data export — ${new Date().toISOString()}`,
           ``,
           `Account: ${user.email ?? "(no email)"}`,
           `User id: ${user.id}`,

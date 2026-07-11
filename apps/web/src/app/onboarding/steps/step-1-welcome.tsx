@@ -24,7 +24,7 @@ export function Step1Welcome() {
       </p>
 
       <p className="mt-4 text-base leading-relaxed text-acuity-text-sec sm:text-lg">
-        The answers shape what Acuity pays attention to on your behalf —
+        The answers shape what Ripple pays attention to on your behalf —
         your baseline mood, the areas of your life you&rsquo;re here to
         work on, how often you think you&rsquo;ll actually record.
       </p>

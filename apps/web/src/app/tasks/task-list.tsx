@@ -1075,7 +1075,7 @@ function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
     open: {
       icon: "✅",
       title: "No tasks yet",
-      desc: "Record a session and Acuity will extract them for you.",
+      desc: "Record a session and Ripple will extract them for you.",
     },
     snoozed: {
       icon: "😴",

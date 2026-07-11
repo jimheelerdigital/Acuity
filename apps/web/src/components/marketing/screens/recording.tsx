@@ -172,7 +172,7 @@ export function RecordingScreen({ t }: { t: AcuityTokens }) {
             lineHeight: 1.4,
           }}
         >
-          Talk through your day. Acuity is listening.
+          Talk through your day. Ripple is listening.
         </p>
       </div>
     </AcuityDevice>
