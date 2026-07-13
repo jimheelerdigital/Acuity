@@ -52,7 +52,7 @@ export const recoveryPaidNoApp: TrialEmailTemplate = {
           </table>
         </td>
       </tr>
-      ${para(`That\u2019s it. Acuity does the rest \u2014 it pulls out your tasks, keeps track of what you care about, and picks up on how you\u2019re actually feeling.`)}
+      ${para(`That\u2019s it. Ripple does the rest \u2014 it pulls out your tasks, keeps track of what you care about, and picks up on how you\u2019re actually feeling.`)}
       ${para(`Your first weekly report comes together once you have a few entries in. Most people just start with how the day went and go from there.`)}
       ${para(`Download the app on iPhone or Android \u2014 or if you would rather not install anything, use the web app right in your browser:`)}
       <tr>

@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — Acuity",
+  title: "Privacy Policy — Ripple",
   description:
-    "How Acuity collects, uses, stores, and protects your voice journal data. GDPR + UK GDPR compliant.",
+    "How Ripple collects, uses, stores, and protects your voice journal data. GDPR + UK GDPR compliant.",
   robots: { index: true, follow: true },
 };
 
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
           href="/"
           className="text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
-          &larr; Back to Acuity
+          &larr; Back to Ripple
         </Link>
 
         <h1 className="mt-8 text-3xl font-bold tracking-tight text-acuity-text sm:text-4xl">
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
         <div className="mt-10 space-y-10 text-[15px] leading-relaxed">
           <section>
             <p>
-              Acuity is a nightly voice journal that uses AI to extract
+              Ripple is a nightly voice journal that uses AI to extract
               insights from your spoken brain dumps. This Privacy Policy
               explains what data we collect, why we collect it, who we
               share it with, how long we keep it, the lawful basis for
@@ -72,16 +72,16 @@ export default function PrivacyPage() {
             </p>
             <p className="mt-4">
               <strong className="text-acuity-text">Data controller.</strong>{" "}
-              Heeler Digital, LLC (&ldquo;Acuity&rdquo;, &ldquo;we&rdquo;,
+              Heeler Digital, LLC (&ldquo;Ripple&rdquo;, &ldquo;we&rdquo;,
               &ldquo;us&rdquo;) is the data controller for personal data
-              processed via the Acuity service. We are established in the
+              processed via the Ripple service. We are established in the
               United States. Contact details for our privacy contact
               appear in Section 12.
             </p>
           </section>
 
           <Section id="data-we-collect" title="1. Data we collect">
-            <p>To run Acuity, we collect the following categories of personal data:</p>
+            <p>To run Ripple, we collect the following categories of personal data:</p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>
                 <strong className="text-acuity-text">Account data.</strong> Email
@@ -208,7 +208,7 @@ export default function PrivacyPage() {
                       Art. 9(2)(a) &mdash; explicit consent
                     </td>
                     <td className="py-2 align-top">
-                      When you first set up Acuity we ask you to give
+                      When you first set up Ripple we ask you to give
                       separate, explicit consent (an affirmative,
                       unticked confirmation) to transcribe and analyse
                       voice entries that may contain special-category
@@ -373,7 +373,7 @@ export default function PrivacyPage() {
             title="4. Subprocessors and international transfers"
           >
             <p>
-              Acuity is operated from the United States. The following
+              Ripple is operated from the United States. The following
               third parties process personal data on our behalf as
               subprocessors under Article 28 GDPR Data Processing
               Agreements (DPAs). Personal data may be transferred to
@@ -723,7 +723,7 @@ export default function PrivacyPage() {
             </p>
             <p className="mt-4">
               No system is perfectly secure. If you suspect a security
-              issue with Acuity, please email{" "}
+              issue with Ripple, please email{" "}
               <a
                 href="mailto:security@heelerdigital.com"
                 className="underline hover:text-acuity-text"
@@ -752,7 +752,7 @@ export default function PrivacyPage() {
 
           <Section id="cookies" title="9. Cookies and tracking">
             <p>
-              Acuity uses a small number of strictly-necessary cookies
+              Ripple uses a small number of strictly-necessary cookies
               (session, theme preference, consent record) that load
               regardless of consent because the site can&rsquo;t
               function without them.
@@ -769,7 +769,7 @@ export default function PrivacyPage() {
 
           <Section id="children" title="10. Children">
             <p>
-              Acuity is intended for adults and is not directed to
+              Ripple is intended for adults and is not directed to
               anyone under 18. We do not knowingly collect personal
               data from anyone under 18, and we design the service with
               the ICO&rsquo;s Children&rsquo;s Code in mind. If you

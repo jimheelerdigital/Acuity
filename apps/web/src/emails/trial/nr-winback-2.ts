@@ -31,7 +31,7 @@ export const nrWinback2: TrialEmailTemplate = {
       ${para(greeting)}
       ${para(`Still haven\u2019t recorded your first debrief \u2014 so let me show you what\u2019s actually waiting, because it\u2019s more than you\u2019d think for a few spoken minutes.`)}
       ${para(`One debrief gets you:<br/>
-\u2014 Your tasks, pulled out automatically. The stuff you mention and forget \u2014 Acuity catches it so you don\u2019t have to hold it in your head.<br/>
+\u2014 Your tasks, pulled out automatically. The stuff you mention and forget \u2014 Ripple catches it so you don\u2019t have to hold it in your head.<br/>
 \u2014 Patterns you can\u2019t see yourself. The things you keep circling back to, quietly running your mood and your time.<br/>
 \u2014 A clear read on where your energy actually goes \u2014 across work, health, relationships, money, all of it.`)}
       ${para(`None of that exists until you talk to it once. No writing, no blank page, no setup. Just talk.`)}

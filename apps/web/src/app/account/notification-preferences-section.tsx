@@ -116,7 +116,7 @@ export function NotificationPreferencesSection() {
         Notifications
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Choose what Acuity reaches out about, and when. Everything here is
+        Choose what Ripple reaches out about, and when. Everything here is
         optional and easy to turn off.
       </p>
 

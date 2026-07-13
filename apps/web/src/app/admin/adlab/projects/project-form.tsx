@@ -228,7 +228,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
                 }
               }}
               className={inputClass}
-              placeholder="Acuity"
+              placeholder="Ripple"
             />
           </Field>
           <Field label="Slug" error={errors.slug}>

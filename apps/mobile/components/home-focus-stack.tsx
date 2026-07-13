@@ -88,17 +88,17 @@ const UNLOCK_TITLES: Record<UnlockKey, string> = {
 
 const UNLOCK_BODIES: Record<UnlockKey, string> = {
   lifeMatrix:
-    "Acuity now has enough entries across enough life areas to show meaningful scores. Swipe to acknowledge.",
+    "Ripple now has enough entries across enough life areas to show meaningful scores. Swipe to acknowledge.",
   goalSuggestions:
-    "Acuity will propose goals from your recordings. Review them on the Goals tab.",
+    "Ripple will propose goals from your recordings. Review them on the Goals tab.",
   patternInsights:
-    "Acuity starts calling out patterns it sees across your entries. Find them on the Insights tab.",
+    "Ripple starts calling out patterns it sees across your entries. Find them on the Insights tab.",
   themeMap:
     "Your recurring themes now render as a constellation. Open the Theme Map from Insights.",
   weeklyReport:
     "A week of entries + day 7 means your first report is on the way.",
   lifeAudit:
-    "One week in. Acuity has generated a long-form letter from your own entries.",
+    "One week in. Ripple has generated a long-form letter from your own entries.",
 };
 
 const UNLOCK_HREFS: Record<UnlockKey, string> = {
@@ -251,7 +251,7 @@ function StreakResting({ progression }: { progression: UserProgression }) {
         </Text>
       ) : (
         <Text className="mt-2 text-sm" style={{ color: tokens.textSec }}>
-          You&rsquo;ve cleared every milestone Acuity tracks. Keep going.
+          You&rsquo;ve cleared every milestone Ripple tracks. Keep going.
         </Text>
       )}
       {streakAtRisk && (

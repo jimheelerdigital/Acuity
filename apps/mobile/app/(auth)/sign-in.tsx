@@ -22,12 +22,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Link } from "expo-router";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -102,7 +105,7 @@ export default function SignInScreen() {
           : result.reason === "NoIdentityToken"
             ? "Apple didn't return a sign-in token. Try again."
             : result.reason === "NetworkError"
-              ? "Can't reach Acuity. Check your connection and try again."
+              ? "Can't reach Ripple. Check your connection and try again."
               : "Please try again or use email."
       );
       return;
@@ -185,7 +188,7 @@ export default function SignInScreen() {
           className="text-sm text-center leading-relaxed mb-6"
           style={{ color: tokens.textSec }}
         >
-          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Acuity automatically.
+          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Ripple automatically.
         </Text>
         <Pressable
           onPress={() => {
@@ -203,43 +206,55 @@ export default function SignInScreen() {
   }
 
   return (
-    // Sign-in screen intentionally does NOT use KeyboardAwareScreen.
-    // The expo-auth-session Google flow opens a SFAuthenticationSession
-    // browser modal via promptAsync(); on TestFlight Build 21 with the
-    // KeyboardAwareScreen wrapper (commit f4297d1, OTA shipped 2026-04-28)
-    // the parent ScrollView destabilized the auth-session promise so
-    // the user was bounced back to sign-in with no token. Reverting to
-    // the pre-wrapper layout. The sign-in screen has 2 short inputs and
-    // a tall stack of OAuth buttons — it doesn't actually need keyboard
-    // avoidance for the password field to stay visible (the page is
-    // already centered on viewport). Onboarding / sign-up / forgot-
-    // password / delete-modal keep the wrapper since they have more
-    // inputs and benefit from it.
+    // Keyboard handling is platform-split in <KeyboardLayout> (bottom of file):
+    //   ANDROID → a real ScrollView so the whole form scrolls above the
+    //     keyboard (Slack-style, nothing clipped). Safe here because Android
+    //     hides the Google button (no androidClientId), so there is NO
+    //     SFAuthenticationSession modal for a ScrollView re-layout to tear down.
+    //   iOS → padding-only KeyboardAvoidingView, NEVER a ScrollView. A parent
+    //     ScrollView is the f4297d1 regression path: it destabilizes the
+    //     expo-auth-session promptAsync() OAuth modal, bouncing the user back
+    //     with no token (TestFlight Build 21, reverted 0149c6f).
+    // AUTH-CRITICAL: re-run docs/AUTH_HARDENING.md iOS Google/Apple OAuth
+    // before merge; never wrap the iOS OAuth buttons in a ScrollView.
     <SafeAreaView
-      className="flex-1 px-6"
+      className="flex-1"
       style={{ backgroundColor: tokens.bg }}
     >
-      <View className="flex-1 justify-center">
+      <KeyboardLayout>
         <View
-          className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
-          style={{ backgroundColor: tokens.primary }}
+          className="h-24 w-24 rounded-[28px] items-center justify-center mb-5 self-center"
+          style={{
+            backgroundColor: tokens.primary,
+            shadowColor: tokens.primary,
+            shadowOpacity: 0.4,
+            shadowRadius: 24,
+            shadowOffset: { width: 0, height: 10 },
+            elevation: 8,
+          }}
         >
-          <Text className="text-3xl" style={{ color: "#FFFFFF" }}>
-            A
-          </Text>
+          <Image
+            source={require("../../assets/brand/ripple-mark-white.png")}
+            style={{ width: 54, height: 54, resizeMode: "contain" }}
+          />
         </View>
 
         <Text
-          className="text-2xl font-bold mb-1 text-center"
-          style={{ color: tokens.text }}
+          className="text-center mb-1.5"
+          style={{
+            color: tokens.text,
+            fontFamily: tokens.fontWordmark,
+            fontSize: 40,
+            letterSpacing: -0.5,
+          }}
         >
-          Sign in to Acuity
+          ripple
         </Text>
         <Text
-          className="text-sm mb-8 text-center"
+          className="text-base mb-8 text-center"
           style={{ color: tokens.textTer }}
         >
-          Your nightly recording, pattern recognition across your own words.
+          Sign in to continue your reflections.
         </Text>
 
         {/* Apple — iOS only. Required by App Store Guideline 4.8
@@ -433,7 +448,56 @@ export default function SignInScreen() {
             Google client ID not set. Development build only.
           </Text>
         )}
-      </View>
+      </KeyboardLayout>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Platform-split keyboard wrapper for the sign-in form.
+ *
+ * ANDROID: KeyboardAvoidingView + ScrollView (contentContainer centers when
+ * the form fits, scrolls when the keyboard shrinks the viewport) so the
+ * password field, Sign-in button, and links below always stay reachable —
+ * the "full page, then scroll in the condensed area above the keyboard"
+ * behaviour. Safe on Android: the Google button is hidden (no androidClientId),
+ * so no SFAuthenticationSession modal exists for a ScrollView re-layout to
+ * tear down.
+ *
+ * iOS: padding-only KeyboardAvoidingView, NO ScrollView — a parent ScrollView
+ * is the documented f4297d1 OAuth regression (see the SignInScreen return
+ * comment). AUTH-CRITICAL: keep it this way and re-test iOS OAuth before merge.
+ */
+function KeyboardLayout({ children }: { children: ReactNode }) {
+  if (Platform.OS === "android") {
+    return (
+      <KeyboardAvoidingView style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingHorizontal: 24,
+            paddingVertical: 32,
+          }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+  return (
+    <KeyboardAvoidingView
+      behavior="padding"
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        paddingHorizontal: 24,
+      }}
+    >
+      {children}
+    </KeyboardAvoidingView>
   );
 }

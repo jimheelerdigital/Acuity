@@ -17,7 +17,7 @@ export function Step2ValueProp() {
       </h1>
 
       <p className="mt-3 text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
-        What you do. What Acuity does in return.
+        What you do. What Ripple does in return.
       </p>
 
       <div className="mt-10 space-y-3">
@@ -28,7 +28,7 @@ export function Step2ValueProp() {
         />
         <ValueCard
           mark={<ExtractMark />}
-          title="Acuity pulls out the signal."
+          title="Ripple pulls out the signal."
           body="Tasks, goals, mood, recurring themes — lifted from what you said and placed on your dashboard. Takes a minute or two."
         />
         <ValueCard
@@ -39,7 +39,7 @@ export function Step2ValueProp() {
       </div>
 
       <p className="mt-8 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-        Acuity is a journaling tool, not a substitute for professional support.
+        Ripple is a journaling tool, not a substitute for professional support.
         If you&rsquo;re in crisis,{" "}
         <a
           href="/support/crisis"

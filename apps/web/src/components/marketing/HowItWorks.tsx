@@ -35,7 +35,7 @@ const STEPS: Step[] = [
     n: "02",
     icon: "sparkle",
     title: "AI does the sorting",
-    body: "Acuity transcribes and pulls out your tasks, goals, themes, and mood automatically.",
+    body: "Ripple transcribes and pulls out your tasks, goals, themes, and mood automatically.",
     iconBg: "var(--acuity-grad-secondary)",
     blob: "var(--acuity-secondary)",
   },
@@ -56,7 +56,7 @@ export function HowItWorks() {
         <Reveal>
           <div className="mb-14 text-center">
             <div className="mb-[18px] font-mono text-[12px] font-semibold uppercase tracking-[0.2em] text-acuity-primary">
-              How Acuity works
+              How Ripple works
             </div>
             <h2 className="m-0 font-display text-[42px] font-extrabold tracking-[-1.2px] text-acuity-text">
               Three steps. Then it&rsquo;s automatic.

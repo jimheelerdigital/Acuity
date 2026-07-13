@@ -85,7 +85,7 @@ function htmlResponse(html: string, status: number): Response {
 
 function pageShell(body: string): string {
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe · Acuity</title>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe · Ripple</title>
 <style>
 body{margin:0;background:#0D0D0F;color:#FAFAFA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px}
 .card{max-width:480px;background:#18181B;border:1px solid #27272A;border-radius:16px;padding:40px;text-align:center}
@@ -103,7 +103,7 @@ function confirmedPage(kind: "weekly" | "monthly" | "onboarding" | "waitlist"): 
     return pageShell(`
       <div class="logo">✦</div>
       <h1>You're unsubscribed.</h1>
-      <p>You won't receive any more emails from Acuity about your waitlist spot. If you change your mind, you can always sign up at <a href="https://getacuity.io">getacuity.io</a>.</p>
+      <p>You won't receive any more emails from Ripple about your waitlist spot. If you change your mind, you can always sign up at <a href="https://getacuity.io">getacuity.io</a>.</p>
     `);
   }
   if (kind === "onboarding") {

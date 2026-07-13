@@ -259,7 +259,7 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
   },
   7: {
     title: "A full week.",
-    body: "You've shown up seven days. Acuity has enough to start noticing things about you.",
+    body: "You've shown up seven days. Ripple has enough to start noticing things about you.",
   },
   14: {
     title: "Two weeks of showing up.",
@@ -267,7 +267,7 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
   },
   30: {
     title: "A month of daily debriefs.",
-    body: "Thirty days of data is when patterns stop being noise. Acuity's Life Matrix is actually tracking your life now — not extrapolating.",
+    body: "Thirty days of data is when patterns stop being noise. Ripple's Life Matrix is actually tracking your life now — not extrapolating.",
   },
   60: {
     title: "Two months in.",
@@ -285,5 +285,5 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
 
 const MILESTONE_COPY_DEFAULT = {
   title: "Streak milestone",
-  body: "Another day on the board. Acuity sees you.",
+  body: "Another day on the board. Ripple sees you.",
 };

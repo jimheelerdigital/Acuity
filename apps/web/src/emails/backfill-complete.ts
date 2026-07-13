@@ -3,7 +3,7 @@
  * "Process my history" Inngest run. One email per backfill, per
  * docs/v1-1/free-tier-phase2-plan.md §A.5.
  *
- * Subject: "Acuity processed your past entries"
+ * Subject: "Ripple processed your past entries"
  * Body shape:
  *   Hey {{name}},
  *
@@ -17,7 +17,7 @@
  *   account settings: getacuity.io/account
  *   {{/if}}
  *
- *   — Acuity
+ *   — Ripple
  *
  * Same brand layout as the other transactional emails in this dir.
  */
@@ -39,7 +39,7 @@ function esc(s: string): string {
 }
 
 export function backfillCompleteSubject(): string {
-  return "Acuity processed your past entries";
+  return "Ripple processed your past entries";
 }
 
 export function backfillCompleteHtml(v: BackfillCompleteVars): string {
@@ -55,7 +55,7 @@ export function backfillCompleteHtml(v: BackfillCompleteVars): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Acuity processed your past entries</title>
+  <title>Ripple processed your past entries</title>
 </head>
 <body style="margin:0;padding:0;background:#FAFAF7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;">
@@ -67,12 +67,12 @@ export function backfillCompleteHtml(v: BackfillCompleteVars): string {
               <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.55;">Hey ${name},</p>
               <p style="margin:0;font-size:15px;line-height:1.55;color:#374151;">${esc(recentLine)}</p>
               ${olderBlock}
-              <p style="margin:24px 0 0;font-size:15px;color:#9CA3AF;">— Acuity</p>
+              <p style="margin:24px 0 0;font-size:15px;color:#9CA3AF;">— Ripple</p>
             </td>
           </tr>
         </table>
         <p style="margin:24px 0 0;font-size:11px;color:#9CA3AF;">
-          You're receiving this because you upgraded to Acuity Pro and asked
+          You're receiving this because you upgraded to Ripple Pro and asked
           us to process your past recordings.
         </p>
       </td>

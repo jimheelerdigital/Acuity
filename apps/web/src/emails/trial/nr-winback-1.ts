@@ -29,8 +29,8 @@ export const nrWinback1: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(greeting)}
-      ${para(`A while back you signed up for Acuity \u2014 and then never actually recorded anything. No judgment; life gets in the way and most good intentions quietly stall.`)}
-      ${para(`But I didn\u2019t want you to miss what you signed up for. Acuity isn\u2019t something you read or set up \u2014 it\u2019s something you talk to. You open it, say what\u2019s on your mind for a few minutes, and it does the rest: pulls out your tasks, notices your patterns, and gives you a clearer read on your own life.`)}
+      ${para(`A while back you signed up for Ripple \u2014 and then never actually recorded anything. No judgment; life gets in the way and most good intentions quietly stall.`)}
+      ${para(`But I didn\u2019t want you to miss what you signed up for. Ripple isn\u2019t something you read or set up \u2014 it\u2019s something you talk to. You open it, say what\u2019s on your mind for a few minutes, and it does the rest: pulls out your tasks, notices your patterns, and gives you a clearer read on your own life.`)}
       ${para(`That\u2019s it. One debrief and you\u2019ll get what it\u2019s actually about.`)}
       <tr>
         <td style="padding-bottom:8px;">
@@ -48,7 +48,7 @@ export const nrWinback1: TrialEmailTemplate = {
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You signed up for Acuity \u2014 but never actually tried it.",
+      preheader: "You signed up for Ripple \u2014 but never actually tried it.",
     });
   },
 };

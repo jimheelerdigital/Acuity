@@ -160,7 +160,7 @@ export default function PrivacyScreen() {
             className="mt-2 text-sm leading-relaxed"
             style={{ color: tokens.textSec }}
           >
-            Help us improve Acuity by sharing anonymous usage data. We use
+            Help us improve Ripple by sharing anonymous usage data. We use
             this to understand which features help users most. We never
             sell this data or share it for advertising.
           </Text>
@@ -184,7 +184,7 @@ export default function PrivacyScreen() {
             className="mt-2 text-sm leading-relaxed"
             style={{ color: tokens.textSec }}
           >
-            At sign-up you explicitly consented to Acuity transcribing and
+            At sign-up you explicitly consented to Ripple transcribing and
             analysing voice entries that may contain special-category
             information (such as health or beliefs). You can withdraw that
             consent at any time.

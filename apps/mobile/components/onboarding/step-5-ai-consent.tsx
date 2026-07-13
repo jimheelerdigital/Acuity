@@ -73,7 +73,7 @@ export function Step5AiConsent() {
   const handleDecline = () => {
     Alert.alert(
       "AI processing required",
-      "Acuity's debriefs, themes, and weekly reports all depend on AI processing your transcripts. Without consent we can't deliver the core product. Would you like to reconsider, or delete your account?",
+      "Ripple's debriefs, themes, and weekly reports all depend on AI processing your transcripts. Without consent we can't deliver the core product. Would you like to reconsider, or delete your account?",
       [
         {
           text: "Try again",
@@ -123,7 +123,7 @@ export function Step5AiConsent() {
         className="mt-3 text-base leading-relaxed"
         style={{ color: tokens.textSec }}
       >
-        Acuity sends your voice recordings to{" "}
+        Ripple sends your voice recordings to{" "}
         <Text className="font-semibold" style={{ color: tokens.text }}>
           OpenAI (Whisper)
         </Text>{" "}
@@ -154,7 +154,7 @@ export function Step5AiConsent() {
         <GradientCheckbox
           checked={accepted}
           onPress={() => setAccepted((v) => !v)}
-          accessibilityLabel="I explicitly consent to Acuity transcribing and analysing voice entries that may contain special-category information"
+          accessibilityLabel="I explicitly consent to Ripple transcribing and analysing voice entries that may contain special-category information"
         />
         <Text
           className="flex-1 text-sm leading-relaxed"
@@ -162,7 +162,7 @@ export function Step5AiConsent() {
         >
           I understand my voice entries may contain special-category
           information (such as health, religious or political beliefs,
-          or sexuality), and I explicitly consent to Acuity transcribing
+          or sexuality), and I explicitly consent to Ripple transcribing
           and analysing that content to provide the service. I can
           withdraw this consent at any time by deleting entries or my
           account.
@@ -170,7 +170,7 @@ export function Step5AiConsent() {
       </Pressable>
 
       <Text className="mt-3 text-xs leading-relaxed" style={{ color: tokens.textTer }}>
-        You choose what to say. You can use Acuity without sharing
+        You choose what to say. You can use Ripple without sharing
         sensitive details, and you can withdraw consent anytime in
         Profile &rarr; Privacy.
       </Text>

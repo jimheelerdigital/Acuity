@@ -22,6 +22,12 @@ import {
   GeistMono_500Medium,
   GeistMono_600SemiBold,
 } from "@expo-google-fonts/geist-mono";
+import {
+  Quicksand_400Regular,
+  Quicksand_500Medium,
+  Quicksand_600SemiBold,
+  Quicksand_700Bold,
+} from "@expo-google-fonts/quicksand";
 
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
@@ -265,6 +271,11 @@ function RootLayout() {
     GeistMono_400Regular,
     GeistMono_500Medium,
     GeistMono_600SemiBold,
+    // Ripple display/wordmark face
+    Quicksand_400Regular,
+    Quicksand_500Medium,
+    Quicksand_600SemiBold,
+    Quicksand_700Bold,
   });
   if (!fontsLoaded) {
     // Splash is already held open by preventAutoHideAsync above.

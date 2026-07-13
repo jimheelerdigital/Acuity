@@ -76,8 +76,8 @@ export function Step9Reminders() {
       Alert.alert(
         "Notifications off",
         Platform.OS === "ios"
-          ? "Acuity can't send reminders without notification permission. Enable it in iOS Settings, then toggle this back on."
-          : "Acuity can't send reminders without notification permission. Enable it in system settings, then toggle this back on."
+          ? "Ripple can't send reminders without notification permission. Enable it in iOS Settings, then toggle this back on."
+          : "Ripple can't send reminders without notification permission. Enable it in system settings, then toggle this back on."
       );
     }
     return false;

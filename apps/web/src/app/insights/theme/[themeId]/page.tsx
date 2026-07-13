@@ -9,7 +9,7 @@ import { ThemeDetailClient } from "./theme-detail-client";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Theme — Acuity",
+  title: "Theme — Ripple",
   robots: { index: false, follow: false },
 };
 

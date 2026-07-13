@@ -21,13 +21,13 @@ function p(text: string): string {
 }
 
 function sig(): string {
-  return `<tr><td style="padding-bottom:0;"><p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p><p style="margin:4px 0 0;font-size:14px;color:#6b7280;">Cofounders, Acuity</p></td></tr>`;
+  return `<tr><td style="padding-bottom:0;"><p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">— Jim &amp; Keenan</p><p style="margin:4px 0 0;font-size:14px;color:#6b7280;">Cofounders, Ripple</p></td></tr>`;
 }
 
 // ─── Email 1 ────────────────────────────────────────────────────────
 
 export function waitlistReactivation1Subject(firstName: string): string {
-  return `Acuity is live, ${firstName} — and you're in`;
+  return `Ripple is live, ${firstName} — and you're in`;
 }
 
 export function waitlistReactivation1Html(opts: {
@@ -39,10 +39,10 @@ export function waitlistReactivation1Html(opts: {
   const content = `
     ${p(`Hey ${name} —`)}
     ${p(
-      `You signed up for the Acuity waitlist a while back. The wait's over — Acuity is live, and your spot is held.`
+      `You signed up for the Ripple waitlist a while back. The wait's over — Ripple is live, and your spot is held.`
     )}
     ${p(
-      `What it does: you just open the app and talk, any time of day. Acuity catches the tasks you mentioned, the goals you keep circling, and by Sunday morning, writes you a 400-word narrative of your week that reads like someone was paying attention.`
+      `What it does: you just open the app and talk, any time of day. Ripple catches the tasks you mentioned, the goals you keep circling, and by Sunday morning, writes you a 400-word narrative of your week that reads like someone was paying attention.`
     )}
     ${p(
       `Because you signed up early, you get 7 days free. No card required. If you don't love it, delete it and I'll buy your next coffee.`
@@ -76,7 +76,7 @@ export function waitlistReactivation2Html(opts: {
   const content = `
     ${p(`Hey ${name} —`)}
     ${p(
-      `Quick follow-up. You signed up for the Acuity waitlist but haven't claimed your spot yet.`
+      `Quick follow-up. You signed up for the Ripple waitlist but haven't claimed your spot yet.`
     )}
     ${p(
       `Here's what I want to be honest about: the Founding Member offer (locked-in pricing forever) only goes to the first 100 people. We're closing in on that. Once it caps, that's it.`

@@ -154,7 +154,7 @@ export function TranscriptEditor({
           Re-processing…
         </p>
         <p className="mt-2 text-[14px] leading-relaxed text-acuity-text-sec">
-          Acuity is re-deriving themes, mood, and people mentions from
+          Ripple is re-deriving themes, mood, and people mentions from
           your edited transcript. This usually takes about 30 seconds.
         </p>
       </Card>

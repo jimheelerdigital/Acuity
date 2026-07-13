@@ -54,7 +54,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
   <meta name="supported-color-schemes" content="light dark" />
-  <title>Acuity</title>
+  <title>Ripple</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F9FAFB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">${pre}</span>
@@ -89,7 +89,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
           <tr>
             <td align="center">
               <p style="margin:0;font-size:11px;color:#9CA3AF;">
-                Acuity &middot; getacuity.io
+                Ripple &middot; getacuity.io
               </p>
             </td>
           </tr>
@@ -112,11 +112,11 @@ export function keenanSignature(): string {
           <table role="presentation" cellpadding="0" cellspacing="0">
             <tr>
               <td valign="middle" style="padding-right:12px;">
-                <img src="${KEENAN_HEADSHOT_URL}" alt="Keenan, co-founder of Acuity" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
+                <img src="${KEENAN_HEADSHOT_URL}" alt="Keenan, co-founder of Ripple" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
               </td>
               <td valign="middle">
                 <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>
-                <p style="margin:0;font-size:13px;color:#6b7280;">Co-founder, Acuity</p>
+                <p style="margin:0;font-size:13px;color:#6b7280;">Co-founder, Ripple</p>
               </td>
             </tr>
           </table>

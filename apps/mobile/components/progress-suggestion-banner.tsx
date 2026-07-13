@@ -118,7 +118,7 @@ export function ProgressSuggestionBanner({
           className="text-xs font-semibold uppercase tracking-widest"
           style={{ color: tokens.primary }}
         >
-          Acuity noticed progress
+          Ripple noticed progress
         </Text>
       </View>
       <View className="gap-3">

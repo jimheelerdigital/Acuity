@@ -105,7 +105,7 @@ export function LockScreenOverlay() {
             className="text-2xl font-semibold text-center"
             style={{ color: tokens.text }}
           >
-            Acuity is locked
+            Ripple is locked
           </Text>
           <Text
             className="mt-3 text-base text-center leading-relaxed"

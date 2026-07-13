@@ -29,7 +29,7 @@ export const recoveryDay6Nudge: TrialEmailTemplate = {
       </tr>
       ${para(`Hey ${name},`)}
       ${para(`Tomorrow morning, you\u2019ll get your first weekly report.`)}
-      ${para(`It\u2019s a 400-word narrative of your week \u2014 written from everything you told Acuity this week. Patterns you mentioned without noticing. Tasks that kept coming up. How your mood shifted day to day.`)}
+      ${para(`It\u2019s a 400-word narrative of your week \u2014 written from everything you told Ripple this week. Patterns you mentioned without noticing. Tasks that kept coming up. How your mood shifted day to day.`)}
       ${para(`One more entry today will make it sharper. Even 60 seconds.`)}
       <tr>
         <td style="padding-bottom:28px;">

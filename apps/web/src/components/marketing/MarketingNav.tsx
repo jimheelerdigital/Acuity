@@ -34,7 +34,7 @@ export function MarketingNav() {
             <span className="h-2 w-2 rounded-[5px] bg-white/95" />
           </span>
           <span className="font-display text-[20px] font-extrabold tracking-[-0.4px] text-acuity-text">
-            Acuity
+            Ripple
           </span>
         </a>
 

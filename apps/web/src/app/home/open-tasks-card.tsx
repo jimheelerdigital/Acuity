@@ -147,7 +147,7 @@ export function OpenTasksCard({
             Nothing on the list
           </p>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Acuity extracts tasks from your debriefs as you record.
+            Ripple extracts tasks from your debriefs as you record.
           </p>
           <a
             href="/home#record"

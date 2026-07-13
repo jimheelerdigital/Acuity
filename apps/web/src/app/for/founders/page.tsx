@@ -36,7 +36,7 @@ export default function FoundersPage() {
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
               { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Acuity for Founders", item: "https://getacuity.io/for/founders" },
+              { "@type": "ListItem", position: 3, name: "Ripple for Founders", item: "https://getacuity.io/for/founders" },
             ],
           }),
         }}
@@ -52,7 +52,7 @@ export default function FoundersPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
-              Every day you carry 40 unfinished thoughts. Acuity captures
+              Every day you carry 40 unfinished thoughts. Ripple captures
               every task, tracks every goal, and writes your weekly debrief
               automatically.
             </p>
@@ -94,7 +94,7 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-center mb-10 text-white">
-              Founders who use Acuity report
+              Founders who use Ripple report
             </h2>
           </Reveal>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -123,10 +123,10 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">
-              What Acuity extracts from a founder debrief
+              What Ripple extracts from a founder debrief
             </h2>
             <p className="text-center text-acuity-text-sec mb-12">
-              From a single recording, Acuity automatically extracts:
+              From a single recording, Ripple automatically extracts:
             </p>
           </Reveal>
 
@@ -303,7 +303,7 @@ export default function FoundersPage() {
               The longer you use it, the smarter it gets about you.
             </h2>
             <p className="mt-6 text-lg text-zinc-400 leading-relaxed">
-              After 90 days, Acuity has processed everything you've said about your
+              After 90 days, Ripple has processed everything you've said about your
               business, your team, your goals, and your mental state. It knows your
               patterns better than your co-founder. It remembers every goal you've
               set, every concern you've voiced, every decision you've been
@@ -321,11 +321,11 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-4xl">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-12">
-              How Acuity compares
+              How Ripple compares
             </h2>
           </Reveal>
           <ComparisonTable
-            headers={["Executive Coach", "Therapy", "Acuity"]}
+            headers={["Executive Coach", "Therapy", "Ripple"]}
             rows={[
               { feature: "Cost", values: ["$500+/month", "$600+/month", "$4.99/month"] },
               {
@@ -400,7 +400,7 @@ export default function FoundersPage() {
         testimonials={[
           {
             quote:
-              "I replaced my $500/month executive coach with Acuity. Not because it's cheaper. Because it's available whenever I actually need to process.",
+              "I replaced my $500/month executive coach with Ripple. Not because it's cheaper. Because it's available whenever I actually need to process.",
             name: "David L.",
             role: "CEO",
           },
@@ -412,7 +412,7 @@ export default function FoundersPage() {
           },
           {
             quote:
-              "I've tried every productivity system. Acuity is the only one that requires no setup, no maintenance, and gets more valuable over time.",
+              "I've tried every productivity system. Ripple is the only one that requires no setup, no maintenance, and gets more valuable over time.",
             name: "James K.",
             role: "Founder",
           },

@@ -19,7 +19,7 @@ type ParsedReport = {
   topThemes: string[];
 };
 
-const WEEKLY_SYSTEM_PROMPT = `You are Acuity's weekly synthesis engine. Analyse the user's brain dump entries from this week and produce a structured weekly report.
+const WEEKLY_SYSTEM_PROMPT = `You are Ripple's weekly synthesis engine. Analyse the user's brain dump entries from this week and produce a structured weekly report.
 
 Return ONLY valid JSON matching this exact schema — no markdown, no prose:
 

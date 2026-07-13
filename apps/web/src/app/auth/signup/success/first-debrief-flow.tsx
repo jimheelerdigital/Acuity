@@ -42,7 +42,7 @@ const VALUE_PROPS = [
 
 // Short punchy quotes for rotating social proof on record screen
 const MINI_TESTIMONIALS = [
-  { quote: "I just talk. Acuity handles everything else.", name: "Jamie L." },
+  { quote: "I just talk. Ripple handles everything else.", name: "Jamie L." },
   { quote: "The weekly reports changed how I see my week.", name: "Marcus T." },
   { quote: "I actually sleep now. Tasks out of my head.", name: "Sarah K." },
 ];
@@ -648,7 +648,7 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
     label: "Day 1",
     text: "Tasks extracted. Goals tracked. Mood captured.",
     testimonial: {
-      quote: "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity and actually sleep.",
+      quote: "I used to let tasks pile up in my head until 2 AM. Now I debrief into Ripple and actually sleep.",
       name: "Sarah K.",
     },
   },
@@ -664,7 +664,7 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
     label: "Day 30",
     text: "Patterns emerge across your life.",
     testimonial: {
-      quote: "I didn\u2019t realize I was most productive on Tuesdays until Acuity showed me.",
+      quote: "I didn\u2019t realize I was most productive on Tuesdays until Ripple showed me.",
       name: "Jamie L.",
     },
   },
@@ -688,7 +688,7 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
     label: "Task Management",
     text: "Never forget a task again. Every to-do pulled from your own words.",
     testimonial: {
-      quote: "I stopped using my notes app entirely. Acuity catches things I didn\u2019t even realize I committed to.",
+      quote: "I stopped using my notes app entirely. Ripple catches things I didn\u2019t even realize I committed to.",
       name: "David P.",
     },
   },
@@ -696,7 +696,7 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
     label: "Goal Tracking",
     text: "Real-time progress tracking on the goals that matter to you.",
     testimonial: {
-      quote: "I mentioned wanting to run a marathon once. Three weeks later Acuity asked me how training was going.",
+      quote: "I mentioned wanting to run a marathon once. Three weeks later Ripple asked me how training was going.",
       name: "Rachel W.",
     },
   },
@@ -720,7 +720,7 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
     label: "Coming Soon",
     text: "Your calendar meets your debrief. See how you spend your time vs. how you feel about it.",
     comingSoon: true,
-    description: "Connect Google Calendar and Acuity shows you the gap between what you planned and what actually happened.",
+    description: "Connect Google Calendar and Ripple shows you the gap between what you planned and what actually happened.",
   },
   {
     label: "Coming Soon",
@@ -732,7 +732,7 @@ const PROCESSING_SLIDES: ProcessingSlide[] = [
     label: "Coming Soon",
     text: "Nudges on tasks and goals you mentioned but haven\u2019t acted on.",
     comingSoon: true,
-    description: "Acuity notices when you keep mentioning something but never do it \u2014 and gently calls it out.",
+    description: "Ripple notices when you keep mentioning something but never do it \u2014 and gently calls it out.",
   },
 ];
 
@@ -1396,12 +1396,12 @@ function CTAScreen({ userId }: { userId: string | null }) {
         <div className={`text-center pt-16 pb-10 sm:pt-24 transition-all duration-700 ${vis(1)}`}>
           <img
             src="/AcuityLogo.png"
-            alt="Acuity"
+            alt="Ripple"
             className="mx-auto mb-6"
             style={{ width: 40, height: 40 }}
           />
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            Get Acuity on your phone so you can debrief&nbsp;anywhere.
+            Get Ripple on your phone so you can debrief&nbsp;anywhere.
           </h2>
         </div>
 
@@ -1472,7 +1472,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
           <div className="inline-block rounded-xl border border-zinc-200 p-3">
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`}
-              alt="QR code to download Acuity"
+              alt="QR code to download Ripple"
               width={140}
               height={140}
             />

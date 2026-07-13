@@ -161,7 +161,7 @@ function buildExtractionSystemPrompt(useDispositional: boolean): string {
   const themeGuideline = useDispositional
     ? DISPOSITIONAL_THEME_GUIDELINE
     : LEGACY_THEME_GUIDELINE;
-  return `You are Acuity's extraction engine. Your job is to analyse a user's nightly voice debrief and return a structured JSON object. Be empathetic, precise, and actionable.
+  return `You are Ripple's extraction engine. Your job is to analyse a user's nightly voice debrief and return a structured JSON object. Be empathetic, precise, and actionable.
 
 Return ONLY valid JSON matching this exact schema — no markdown, no prose:
 
@@ -250,7 +250,7 @@ export async function extractFromTranscript(
   calendarContextBlock = ""
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
-    ? `Here is what you know about this user from their entire history with Acuity:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
+    ? `Here is what you know about this user from their entire history with Ripple:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
     : "";
 
   // Life-dimension context: when the recorder was opened from a

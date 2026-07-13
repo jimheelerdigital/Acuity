@@ -15,7 +15,7 @@ import type { Mood } from "./types";
 // Reversal: flip to `true` (single edit, no schema/env change).
 export const CALENDAR_INTEGRATION_ENABLED = false;
 
-export const APP_NAME = "Acuity";
+export const APP_NAME = "Ripple";
 export const APP_TAGLINE = "The daily debrief that turns chaos into clarity.";
 
 // ─── Recording ────────────────────────────────────────────────────────────────
@@ -382,7 +382,7 @@ export const PRIORITY_COLOR: Record<string, string> = {
 // ─── Stripe ───────────────────────────────────────────────────────────────────
 
 export const PLAN_FREE_ENTRY_LIMIT = 7; // entries per week on free plan
-export const PLAN_PRO_NAME = "Acuity Pro";
+export const PLAN_PRO_NAME = "Ripple Pro";
 
 // ─── Whisper ──────────────────────────────────────────────────────────────────
 

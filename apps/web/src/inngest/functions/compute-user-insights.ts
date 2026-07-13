@@ -83,7 +83,7 @@ export function weekStartOf(d: Date): Date {
   return base;
 }
 
-const OBSERVATION_SYSTEM_PROMPT = `You are Acuity's weekly observer. Read the user's 14-day journaling context + the numeric signals below and return 2-3 observations as JSON.
+const OBSERVATION_SYSTEM_PROMPT = `You are Ripple's weekly observer. Read the user's 14-day journaling context + the numeric signals below and return 2-3 observations as JSON.
 
 Tone:
 - Second person ("you"), warm, non-judgmental.

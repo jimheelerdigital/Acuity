@@ -23,7 +23,7 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "SoftwareApplication",
-      name: "Acuity",
+      name: "Ripple",
       description:
         "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, mood tracking, pattern detection, and weekly reports — all from a daily voice recording.",
       url: "https://getacuity.io",
@@ -54,34 +54,34 @@ const jsonLd = {
       mainEntity: [
         {
           "@type": "Question",
-          name: "What is Acuity?",
+          name: "What is Ripple?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity is an AI voice journal where you speak freely each day. AI automatically extracts your tasks, tracks your goals, detects life patterns, and writes a weekly report about your week.",
+            text: "Ripple is an AI voice journal where you speak freely each day. AI automatically extracts your tasks, tracks your goals, detects life patterns, and writes a weekly report about your week.",
           },
         },
         {
           "@type": "Question",
-          name: "How does Acuity work?",
+          name: "How does Ripple work?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Open Acuity any time of day, hit record, and just open the app and talk. The AI voice journal transcribes your daily debrief, extracts tasks, tracks goals, scores your mood, detects patterns, and every Sunday delivers your weekly report.",
+            text: "Open Ripple any time of day, hit record, and just open the app and talk. The AI voice journal transcribes your daily debrief, extracts tasks, tracks goals, scores your mood, detects patterns, and every Sunday delivers your weekly report.",
           },
         },
         {
           "@type": "Question",
-          name: "How much does Acuity cost?",
+          name: "How much does Ripple cost?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Acuity costs $4.99/month with a 7-day free trial. No card required. Quick setup.",
+            text: "Ripple costs $4.99/month with a 7-day free trial. No card required. Quick setup.",
           },
         },
         {
           "@type": "Question",
-          name: "Is Acuity a replacement for therapy?",
+          name: "Is Ripple a replacement for therapy?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "No. Acuity is not a replacement for therapy. It fills the gap between sessions by tracking your mood, detecting emotional patterns, and helping you show up to therapy with real data instead of vague feelings.",
+            text: "No. Ripple is not a replacement for therapy. It fills the gap between sessions by tracking your mood, detecting emotional patterns, and helping you show up to therapy with real data instead of vague feelings.",
           },
         },
         {

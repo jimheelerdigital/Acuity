@@ -25,7 +25,7 @@ export function AccountDeletedBanner() {
     <div className="fixed left-1/2 top-4 z-50 -translate-x-1/2 transform">
       <div className="flex items-center gap-3 rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-3 shadow-lg backdrop-blur">
         <span className="text-sm font-medium text-emerald-100">
-          Your Acuity account and all your data have been permanently
+          Your Ripple account and all your data have been permanently
           deleted.
         </span>
         <button

@@ -159,6 +159,30 @@ const PALETTE_PREVIEWS: Array<{
     primary: "oklch(0.66 0.18 255)",
     secondary: "oklch(0.78 0.13 85)",
   },
+  {
+    palette: "rose",
+    label: "Rose",
+    primary: "oklch(0.74 0.13 10)",
+    secondary: "oklch(0.55 0.15 320)",
+  },
+  {
+    palette: "amber",
+    label: "Amber",
+    primary: "oklch(0.79 0.15 65)",
+    secondary: "oklch(0.55 0.16 275)",
+  },
+  {
+    palette: "jade",
+    label: "Jade",
+    primary: "oklch(0.72 0.13 165)",
+    secondary: "oklch(0.72 0.14 32)",
+  },
+  {
+    palette: "sky",
+    label: "Sky",
+    primary: "oklch(0.72 0.13 235)",
+    secondary: "oklch(0.75 0.12 5)",
+  },
 ];
 
 export function AppearanceSection() {
@@ -170,7 +194,7 @@ export function AppearanceSection() {
       <SectionHeader label="Appearance" />
 
       <p className="mt-3 text-base leading-relaxed text-acuity-text-sec">
-        Choose how Acuity looks for you.
+        Choose how Ripple looks for you.
       </p>
 
       {/* Mode toggle */}

@@ -46,7 +46,7 @@ export function Step6WeeklyReportPriming() {
         A report like this lands in your inbox.
       </h1>
       <p className="mt-3 text-base leading-relaxed text-acuity-text-sec">
-        You talk for a minute each night. Acuity stitches the week into
+        You talk for a minute each night. Ripple stitches the week into
         a 400-word read on Sunday morning — your patterns, your wins,
         the names that kept coming up.
       </p>

@@ -559,8 +559,8 @@ export function LandingNav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
-            <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
+            <Image src="/AcuityLogoDark.png" alt="Ripple logo" width={24} height={24} className="shrink-0" />
+            <span className="text-lg font-bold tracking-tight text-white">Ripple</span>
           </Link>
           <div className="hidden sm:flex items-center gap-6 text-sm text-acuity-text-sec">
             <LandingWhoItsFor />
@@ -608,8 +608,8 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
-              <span className="text-lg font-bold tracking-tight text-white">Acuity</span>
+              <Image src="/AcuityLogoDark.png" alt="Ripple logo" width={24} height={24} className="shrink-0" />
+              <span className="text-lg font-bold tracking-tight text-white">Ripple</span>
             </div>
             <p className="mt-2 text-sm text-acuity-text-sec max-w-xs">
               Debrief daily. See your life clearly.
@@ -645,7 +645,7 @@ export function Footer() {
         </div>
         <div className="mt-8 pt-6 border-t border-acuity-line text-center">
           <p className="text-xs text-acuity-text-sec">
-            &copy; {new Date().getFullYear()} Acuity. All rights reserved.
+            &copy; {new Date().getFullYear()} Ripple. All rights reserved.
           </p>
         </div>
       </div>
@@ -1594,7 +1594,7 @@ export function BeforeAfterSection({
           <Reveal>
             <div className="rounded-2xl bg-acuity-card-bg p-8">
               <h3 className="text-lg font-bold text-acuity-text-sec/60 mb-6 uppercase tracking-wider text-sm">
-                Before Acuity
+                Before Ripple
               </h3>
               <ul className="space-y-4">
                 {before.map((item, i) => (
@@ -1612,7 +1612,7 @@ export function BeforeAfterSection({
           <Reveal delay={1}>
             <div className="rounded-2xl bg-acuity-primary/5 border border-acuity-primary/20 p-8">
               <h3 className="text-lg font-bold text-acuity-primary mb-6 uppercase tracking-wider text-sm">
-                After Acuity
+                After Ripple
               </h3>
               <ul className="space-y-4">
                 {after.map((item, i) => (
@@ -1788,7 +1788,7 @@ export function SocialProofBar() {
             <span className="text-amber-400 font-bold text-sm">{SOCIAL_PROOF.rating} ★</span>
           </div>
           <p className="text-sm text-acuity-text-sec">
-            Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
+            Join {SOCIAL_PROOF.underHeroCount} people already using Ripple
           </p>
         </div>
       </Reveal>

@@ -25,7 +25,7 @@ import { TranscriptEditor } from "./transcript-editor";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Entry — Acuity",
+  title: "Entry — Ripple",
   robots: { index: false, follow: false },
 };
 

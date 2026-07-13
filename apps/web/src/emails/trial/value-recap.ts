@@ -17,7 +17,7 @@ function statRow(label: string, value: string): string {
 }
 
 export const valueRecap: TrialEmailTemplate = {
-  subject: () => "12 days in — here's what Acuity has of yours",
+  subject: () => "12 days in — here's what Ripple has of yours",
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
@@ -28,7 +28,7 @@ export const valueRecap: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:24px;">
           <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            ${name}, here's what Acuity has of yours.
+            ${name}, here's what Ripple has of yours.
           </h1>
         </td>
       </tr>

@@ -58,15 +58,15 @@ export async function POST(
 
     const raw = await callAdLabClaude({
       purpose: "funnel-copy",
-      systemPrompt: `You are a conversion copywriter for Acuity, an AI voice journal app. Generate pain-specific funnel copy for an ad campaign.
+      systemPrompt: `You are a conversion copywriter for Ripple, an AI voice journal app. Generate pain-specific funnel copy for an ad campaign.
 
 ${context}
 
 Generate these 4 pieces of copy as JSON:
 1. "painHook": { "headline": "short gut-punch headline, 6-10 words", "subheadline": "one sentence expanding on the pain, under 20 words" }
-2. "bridge": "Two sentences. First acknowledges what they've tried. Second positions Acuity as the answer. Under 30 words total."
-3. "promise": "One sentence promise of what Acuity will do for this specific pain. Under 25 words. Second person."
-4. "paywallHook": "One sentence that assumes they've already experienced Acuity and nudges them to commit. Under 20 words."
+2. "bridge": "Two sentences. First acknowledges what they've tried. Second positions Ripple as the answer. Under 30 words total."
+3. "promise": "One sentence promise of what Ripple will do for this specific pain. Under 25 words. Second person."
+4. "paywallHook": "One sentence that assumes they've already experienced Ripple and nudges them to commit. Under 20 words."
 
 Rules:
 - Write in second person

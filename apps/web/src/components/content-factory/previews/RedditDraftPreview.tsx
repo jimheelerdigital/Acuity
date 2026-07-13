@@ -10,7 +10,7 @@ function parseRedditMeta(cta: string) {
   return {
     subreddit: parts[0] ?? "r/unknown",
     angle: parts[1] ?? "",
-    dontMention: parts[2] ?? "Do not link Acuity in the post body.",
+    dontMention: parts[2] ?? "Do not link Ripple in the post body.",
   };
 }
 
@@ -135,7 +135,7 @@ export default function RedditDraftPreview({ piece }: { piece: PreviewPiece }) {
             `Check ${subreddit}'s rules for self-promotion`,
             "Post at peak time for that subreddit (Tuesday 8am ET is usually best)",
             "Reply to every comment within 15 minutes for first 2 hours",
-            "Do NOT link Acuity in the post body — only in comments when asked",
+            "Do NOT link Ripple in the post body — only in comments when asked",
           ].map((item, i) => (
             <li key={i} className="flex items-start gap-2">
               <span className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/20 flex items-center justify-center text-[10px] text-white/20">

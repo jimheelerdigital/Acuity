@@ -34,7 +34,7 @@ export interface LifeAuditEntryInput {
   blockers: string[];
 }
 
-export const LIFE_AUDIT_SYSTEM_PROMPT = `You are Acuity's Life Audit writer. After 7 nights of voice journal entries, you produce a long-form reflective letter that names the pattern only the user themselves could have produced.
+export const LIFE_AUDIT_SYSTEM_PROMPT = `You are Ripple's Life Audit writer. After 7 nights of voice journal entries, you produce a long-form reflective letter that names the pattern only the user themselves could have produced.
 
 Voice:
 - Second-person ("you" / "your"), never first-person.

@@ -49,10 +49,27 @@ import {
 
 export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
-export type Palette = "coral" | "sunset" | "citrus" | "cobalt";
+export type Palette =
+  | "coral"
+  | "sunset"
+  | "citrus"
+  | "cobalt"
+  | "rose"
+  | "amber"
+  | "jade"
+  | "sky";
 
 const VALID_THEMES: ThemePreference[] = ["light", "dark", "system"];
-const VALID_PALETTES: Palette[] = ["coral", "sunset", "citrus", "cobalt"];
+const VALID_PALETTES: Palette[] = [
+  "coral",
+  "sunset",
+  "citrus",
+  "cobalt",
+  "rose",
+  "amber",
+  "jade",
+  "sky",
+];
 
 interface AppearanceContextValue {
   /** What the user picked. `"system"` follows OS. */

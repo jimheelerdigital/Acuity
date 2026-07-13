@@ -12,7 +12,7 @@ import { EntriesListSkeleton } from "./_sections/skeletons";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "All entries — Acuity",
+  title: "All entries — Ripple",
   robots: { index: false, follow: false },
 };
 

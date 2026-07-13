@@ -29,7 +29,7 @@ export const powerDeepen: TrialEmailTemplate = {
           ${trialCard(`
             <p style="margin:0 0 10px;font-size:12px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:700;">What most people miss</p>
             <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
-              Acuity catches goals in every debrief — even the ones you mention in passing. They stack up in the Goals tab. Go in, pick one, and tap "Record about this goal" — your next debrief gets anchored to it and the AI contextualizes the transcript around it.
+              Ripple catches goals in every debrief — even the ones you mention in passing. They stack up in the Goals tab. Go in, pick one, and tap "Record about this goal" — your next debrief gets anchored to it and the AI contextualizes the transcript around it.
             </p>
           `)}
         </td>

@@ -19,18 +19,18 @@ export async function POST() {
   });
 
   if (existing) {
-    return NextResponse.json({ message: "Acuity project already exists", id: existing.id });
+    return NextResponse.json({ message: "Ripple project already exists", id: existing.id });
   }
 
   const project = await prisma.adLabProject.create({
     data: {
-      name: "Acuity",
+      name: "Ripple",
       slug: "acuity",
       brandVoiceGuide: `Direct, specific, zero-fluff. Smart friend explaining, not marketing blog.
 Short paragraphs (max 2 sentences). Tight. Every sentence earns its place.
 Specifics over abstractions.
 No fabricated stats — cite real sources or frame qualitatively.
-Acuity is a daily debrief, not a journal. Never use "journaling" in acquisition copy.
+Ripple is a daily debrief, not a journal. Never use "journaling" in acquisition copy.
 The hero conversion driver is the weekly report, not the daily recording.
 Under-claim the AI. Never say "AI-powered" above the fold.
 Use the customer's exact language — if it can't be found in a Reddit thread, it doesn't belong.
@@ -110,5 +110,5 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
     },
   });
 
-  return NextResponse.json({ message: "Acuity project seeded", id: project.id }, { status: 201 });
+  return NextResponse.json({ message: "Ripple project seeded", id: project.id }, { status: 201 });
 }

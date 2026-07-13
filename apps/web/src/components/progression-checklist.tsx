@@ -86,7 +86,7 @@ export function ProgressionChecklist({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-            Getting to know Acuity
+            Getting to know Ripple
           </h2>
           <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
             {done} of {localItems.length} complete · unlocks over your first

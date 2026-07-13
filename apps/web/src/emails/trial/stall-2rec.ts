@@ -33,11 +33,11 @@ export const stall2rec: TrialEmailTemplate = {
       </tr>
       ${para(greeting)}
       ${para(`You recorded two debriefs and then went quiet on me \u2014 and I wanted to nudge you before the thread goes cold.`)}
-      ${para(`You\u2019re actually right at the point where this starts to pay off. Two debriefs is enough for Acuity to begin noticing things; a few more and it starts handing real stuff back to you \u2014 patterns you didn\u2019t see, tasks you\u2019d have lost, a clearer read on where your week actually went.`)}
+      ${para(`You\u2019re actually right at the point where this starts to pay off. Two debriefs is enough for Ripple to begin noticing things; a few more and it starts handing real stuff back to you \u2014 patterns you didn\u2019t see, tasks you\u2019d have lost, a clearer read on where your week actually went.`)}
       ${para(`You\u2019ve got momentum. It\u2019s a shame to let it stall right before the good part. A few minutes is all it takes to pick it back up.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Acuity")}
+          ${primaryButton(appLink, "Open Ripple")}
         </td>
       </tr>
       <tr>

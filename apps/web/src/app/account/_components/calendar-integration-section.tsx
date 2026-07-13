@@ -144,7 +144,7 @@ export function CalendarIntegrationSection({
     <section className="mb-6">
       <SectionHeader label="Calendar" />
       <h2 className="mt-3 mb-4 font-display text-2xl font-bold tracking-tight text-acuity-text sm:text-3xl">
-        Acuity reads your calendar to understand context
+        Ripple reads your calendar to understand context
       </h2>
 
       <Card variant="default" radius="xl" padding={6}>

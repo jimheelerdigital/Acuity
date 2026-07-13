@@ -35,7 +35,7 @@ export default function SleepPage() {
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
               { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Acuity for Sleep", item: "https://getacuity.io/for/sleep" },
+              { "@type": "ListItem", position: 3, name: "Ripple for Sleep", item: "https://getacuity.io/for/sleep" },
             ],
           }),
         }}
@@ -52,7 +52,7 @@ export default function SleepPage() {
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
               Racing thoughts at night aren't a sleep problem — they're an
-              unprocessed thoughts problem. Acuity gives you a place to get it all
+              unprocessed thoughts problem. Ripple gives you a place to get it all
               out before bed.
             </p>
           </Reveal>
@@ -112,7 +112,7 @@ export default function SleepPage() {
                 active, consuming energy, until they're acknowledged and filed. The
                 debrief is the oldest sleep trick in existence — getting
                 thoughts out of your head and onto something external so your brain
-                finally lets go. Acuity makes it effortless. And then organizes
+                finally lets go. Ripple makes it effortless. And then organizes
                 everything automatically.
               </p>
             </div>
@@ -134,7 +134,7 @@ export default function SleepPage() {
             label: "Step 1",
             title: "Debrief",
             description:
-              "Open Acuity. Hit record. Say everything that's on your mind. Tasks, worries, wins, frustrations. No filter.",
+              "Open Ripple. Hit record. Say everything that's on your mind. Tasks, worries, wins, frustrations. No filter.",
           },
           {
             label: "Step 2",
@@ -203,7 +203,7 @@ export default function SleepPage() {
               Make it part of your daily wind-down.
             </h2>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed">
-              Acuity works best as a daily ritual. Same time
+              Ripple works best as a daily ritual. Same time
               each day — many people use it right before they put their phone down. Everything out. Mind clear.
             </p>
           </Reveal>
@@ -243,13 +243,13 @@ export default function SleepPage() {
         testimonials={[
           {
             quote:
-              "I used to lie awake for an hour running through my to-do list. One quick Acuity recording and I'm asleep in 10 minutes.",
+              "I used to lie awake for an hour running through my to-do list. One quick Ripple recording and I'm asleep in 10 minutes.",
             name: "Rachel T.",
             role: "Project Manager",
           },
           {
             quote:
-              "My therapist suggested journaling before bed. I could never make myself write. Acuity is the first thing that actually worked.",
+              "My therapist suggested journaling before bed. I could never make myself write. Ripple is the first thing that actually worked.",
             name: "James K.",
             role: "Founder",
           },

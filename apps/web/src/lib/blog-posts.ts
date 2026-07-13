@@ -119,7 +119,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Imagine you spend a few minutes talking about your day. You mention a frustrating meeting, a deadline you’re worried about, a compliment your manager gave you, and a reminder to call the dentist. A smart voice journaling app like Acuity will take that single entry and produce: a summary of your day, a mood assessment (mixed — frustrated but also validated), an extracted task (call the dentist), and a flag that work stress has been a recurring theme this week.",
+        text: "Imagine you spend a few minutes talking about your day. You mention a frustrating meeting, a deadline you’re worried about, a compliment your manager gave you, and a reminder to call the dentist. A smart voice journaling app like Ripple will take that single entry and produce: a summary of your day, a mood assessment (mixed — frustrated but also validated), an extracted task (call the dentist), and a flag that work stress has been a recurring theme this week.",
       },
       {
         tag: "p",
@@ -211,7 +211,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Acuity is designed around exactly this workflow. You speak for a few minutes before bed, and by morning, your entry has been transformed into a structured summary with mood analysis, extracted tasks, and connections to your previous entries. It’s the fastest path from thought to insight available today.",
+        text: "Ripple is designed around exactly this workflow. You speak for a few minutes before bed, and by morning, your entry has been transformed into a structured summary with mood analysis, extracted tasks, and connections to your previous entries. It’s the fastest path from thought to insight available today.",
       },
       {
         tag: "p",
@@ -348,7 +348,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "After a few weeks of nightly brain dumps, patterns start to emerge. I noticed I was mentioning the same colleague in stressed tones three nights in a row. I noticed energy dips every Wednesday. I noticed that my most creative ideas came on days when I walked at lunch. These patterns were always there, but I couldn’t see them when my thoughts were trapped inside my head. I use Acuity for my brain dumps, and its AI surfaces these patterns automatically, connecting threads across entries that I would never have noticed on my own.",
+        text: "After a few weeks of nightly brain dumps, patterns start to emerge. I noticed I was mentioning the same colleague in stressed tones three nights in a row. I noticed energy dips every Wednesday. I noticed that my most creative ideas came on days when I walked at lunch. These patterns were always there, but I couldn’t see them when my thoughts were trapped inside my head. I use Ripple for my brain dumps, and its AI surfaces these patterns automatically, connecting threads across entries that I would never have noticed on my own.",
       },
       {
         tag: "h2",
@@ -384,7 +384,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `The basic brain dump is powerful on its own. But when you add AI to the mix, it becomes transformative. An AI-powered app like Acuity takes your raw, unstructured voice dump and automatically extracts tasks, identifies emotional themes, tracks mood over time, and connects tonight\u2019s entry to patterns from previous nights. If you struggle with <a href="/for/sleep">racing thoughts before sleep</a>, this is the fastest way to quiet your mind and wake up organized.`,
+        text: `The basic brain dump is powerful on its own. But when you add AI to the mix, it becomes transformative. An AI-powered app like Ripple takes your raw, unstructured voice dump and automatically extracts tasks, identifies emotional themes, tracks mood over time, and connects tonight\u2019s entry to patterns from previous nights. If you struggle with <a href="/for/sleep">racing thoughts before sleep</a>, this is the fastest way to quiet your mind and wake up organized.`,
       },
       {
         tag: "p",
@@ -556,7 +556,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "This is the newest and fastest-growing category. Voice-first apps are designed from the ground up around spoken input. You talk, the app listens, and AI transforms your words into structured journal entries with summaries, mood analysis, extracted tasks, and pattern connections. The key advantage is speed and naturalness — you can complete a meaningful journal entry in just a few minutes while lying in bed. Acuity sits in this category, combining high-quality voice transcription with deep AI analysis to turn a quick voice note into a rich, structured journal entry.",
+        text: "This is the newest and fastest-growing category. Voice-first apps are designed from the ground up around spoken input. You talk, the app listens, and AI transforms your words into structured journal entries with summaries, mood analysis, extracted tasks, and pattern connections. The key advantage is speed and naturalness — you can complete a meaningful journal entry in just a few minutes while lying in bed. Ripple sits in this category, combining high-quality voice transcription with deep AI analysis to turn a quick voice note into a rich, structured journal entry.",
       },
       {
         tag: "h3",
@@ -652,7 +652,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Acuity is already building toward several of these trends, with a voice-first approach that combines AI analysis, pattern detection, and task extraction in a single, frictionless experience. If you’re ready to try an AI journaling app that represents where the field is headed, it’s worth a look.",
+        text: "Ripple is already building toward several of these trends, with a voice-first approach that combines AI analysis, pattern detection, and task extraction in a single, frictionless experience. If you’re ready to try an AI journaling app that represents where the field is headed, it’s worth a look.",
       },
       {
         tag: "p",
@@ -833,7 +833,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "An app like Acuity is designed to work with all of these approaches. You talk in whatever style feels natural, and the AI organizes your output into a structured entry with mood analysis, key themes, and extracted tasks. You don’t need to follow a template because the AI creates the structure from your raw input.",
+        text: "An app like Ripple is designed to work with all of these approaches. You talk in whatever style feels natural, and the AI organizes your output into a structured entry with mood analysis, key themes, and extracted tasks. You don’t need to follow a template because the AI creates the structure from your raw input.",
       },
       {
         tag: "h2",
@@ -1030,7 +1030,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "If you do voice dumps consistently using an AI-powered app like Acuity, you’ll start to see patterns in your nighttime thoughts. Maybe you always worry about work on Sunday nights. Maybe financial anxiety peaks at the end of the month. Maybe social interactions leave you ruminating more than solo activities. Seeing these patterns helps you address root causes rather than just managing symptoms. The AI connects your nightly entries over time and surfaces these trends automatically.",
+        text: "If you do voice dumps consistently using an AI-powered app like Ripple, you’ll start to see patterns in your nighttime thoughts. Maybe you always worry about work on Sunday nights. Maybe financial anxiety peaks at the end of the month. Maybe social interactions leave you ruminating more than solo activities. Seeing these patterns helps you address root causes rather than just managing symptoms. The AI connects your nightly entries over time and surfaces these trends automatically.",
       },
       {
         tag: "h2",
@@ -1054,7 +1054,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `Racing thoughts before sleep don\u2019t have to be your nightly reality. The solution isn\u2019t to force your brain to be quiet \u2014 it\u2019s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It takes just a few minutes. It works tonight. And it gets more powerful every night you do it. Learn more about how <a href="/for/sleep">Acuity\u2019s nightly brain dump fixes racing thoughts before bed</a>.`,
+        text: `Racing thoughts before sleep don\u2019t have to be your nightly reality. The solution isn\u2019t to force your brain to be quiet \u2014 it\u2019s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It takes just a few minutes. It works tonight. And it gets more powerful every night you do it. Learn more about how <a href="/for/sleep">Ripple\u2019s nightly brain dump fixes racing thoughts before bed</a>.`,
       },
     ],
   },
@@ -1226,19 +1226,19 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "h2",
-        text: "Why We Built Acuity as Voice-First",
+        text: "Why We Built Ripple as Voice-First",
       },
       {
         tag: "p",
-        text: "Full disclosure: we’re biased. We built Acuity specifically to solve the consistency problem in journaling. After studying why people fail at journaling habits, we concluded that the single most impactful change was removing the need to write entirely.",
+        text: "Full disclosure: we’re biased. We built Ripple specifically to solve the consistency problem in journaling. After studying why people fail at journaling habits, we concluded that the single most impactful change was removing the need to write entirely.",
       },
       {
         tag: "p",
-        text: "Acuity is designed around a quick voice entry before bed. You speak your thoughts — as messy, unstructured, and stream-of-consciousness as they come — and our AI transforms them into a structured journal entry with mood analysis, key themes, extracted tasks, and connections to your previous entries. The whole experience, from opening the app to finishing your entry, takes just a couple of minutes.",
+        text: "Ripple is designed around a quick voice entry before bed. You speak your thoughts — as messy, unstructured, and stream-of-consciousness as they come — and our AI transforms them into a structured journal entry with mood analysis, key themes, extracted tasks, and connections to your previous entries. The whole experience, from opening the app to finishing your entry, takes just a couple of minutes.",
       },
       {
         tag: "p",
-        text: "We’re not the only voice journaling app, and we’re not the right fit for everyone. If you love writing and want a beautiful text editor, Acuity isn’t the right tool. But if you’ve tried traditional journaling and couldn’t make it stick, or if you want the benefits of reflection without the time commitment, voice-first is worth trying.",
+        text: "We’re not the only voice journaling app, and we’re not the right fit for everyone. If you love writing and want a beautiful text editor, Ripple isn’t the right tool. But if you’ve tried traditional journaling and couldn’t make it stick, or if you want the benefits of reflection without the time commitment, voice-first is worth trying.",
       },
       {
         tag: "h2",
@@ -1399,7 +1399,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Acuity was designed with this insight at its core. By making the entry process as frictionless as possible — one tap, a few minutes of speaking, done — it removes the barriers that prevent people from accessing the mental health benefits of journaling. The AI handles the organization, summarization, and pattern detection so that you get the value of a comprehensive journaling practice with the effort of a brief voice note.",
+        text: "Ripple was designed with this insight at its core. By making the entry process as frictionless as possible — one tap, a few minutes of speaking, done — it removes the barriers that prevent people from accessing the mental health benefits of journaling. The AI handles the organization, summarization, and pattern detection so that you get the value of a comprehensive journaling practice with the effort of a brief voice note.",
       },
       {
         tag: "h2",
@@ -1407,7 +1407,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `AI in journaling apps is not a therapist, and it shouldn\u2019t try to be. But used appropriately, it can be a powerful complement to mental health care. See how <a href="/for/therapy">Acuity tracks emotional patterns between therapy sessions</a>.`,
+        text: `AI in journaling apps is not a therapist, and it shouldn\u2019t try to be. But used appropriately, it can be a powerful complement to mental health care. See how <a href="/for/therapy">Ripple tracks emotional patterns between therapy sessions</a>.`,
       },
       {
         tag: "p",
@@ -1592,7 +1592,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `Acuity automates much of this process. It takes your daily voice entries from the week, identifies recurring themes and tasks, tracks your mood and energy patterns, and generates a weekly summary that highlights what went well, what needs attention, and where your time actually went. The weekly review that used to take an hour now takes five minutes of reading. See how <a href="/for/founders">founders use Acuity as a nightly debrief system</a>, or learn more about the <a href="/for/weekly-report">AI-generated weekly report</a>.`,
+        text: `Ripple automates much of this process. It takes your daily voice entries from the week, identifies recurring themes and tasks, tracks your mood and energy patterns, and generates a weekly summary that highlights what went well, what needs attention, and where your time actually went. The weekly review that used to take an hour now takes five minutes of reading. See how <a href="/for/founders">founders use Ripple as a nightly debrief system</a>, or learn more about the <a href="/for/weekly-report">AI-generated weekly report</a>.`,
       },
       {
         tag: "h2",
@@ -1644,7 +1644,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "If you want the AI analysis — the automatic task extraction, pattern detection, and weekly reviews — an app like Acuity adds that layer without adding friction. You do the same two-minute voice debrief, and the AI handles the analysis, organization, and synthesis.",
+        text: "If you want the AI analysis — the automatic task extraction, pattern detection, and weekly reviews — an app like Ripple adds that layer without adding friction. You do the same two-minute voice debrief, and the AI handles the analysis, organization, and synthesis.",
       },
       {
         tag: "p",
@@ -1824,7 +1824,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Acuity, for example, takes your daily voice entries and generates a weekly summary that covers wins, challenges, mood patterns, recurring themes, task completion, and energy trends. The seven-section template described above is essentially automated. You still need to read the summary, reflect on it, and make decisions about the week ahead — that’s the part AI can’t do for you. But the data gathering, pattern recognition, and synthesis are handled automatically.",
+        text: "Ripple, for example, takes your daily voice entries and generates a weekly summary that covers wins, challenges, mood patterns, recurring themes, task completion, and energy trends. The seven-section template described above is essentially automated. You still need to read the summary, reflect on it, and make decisions about the week ahead — that’s the part AI can’t do for you. But the data gathering, pattern recognition, and synthesis are handled automatically.",
       },
       {
         tag: "p",
@@ -1868,7 +1868,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "If you want the AI-assisted version, start doing short daily voice entries this week using Acuity or a similar app. By the weekend, you’ll have seven entries for the AI to analyze, and your first automated weekly review will be waiting for you.",
+        text: "If you want the AI-assisted version, start doing short daily voice entries this week using Ripple or a similar app. By the weekend, you’ll have seven entries for the AI to analyze, and your first automated weekly review will be waiting for you.",
       },
       {
         tag: "p",
@@ -2053,7 +2053,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "The post-dump processing described above is valuable but time-consuming. This is exactly where AI shines. An AI-powered app like Acuity takes your raw, unstructured brain dump and does the processing for you automatically.",
+        text: "The post-dump processing described above is valuable but time-consuming. This is exactly where AI shines. An AI-powered app like Ripple takes your raw, unstructured brain dump and does the processing for you automatically.",
       },
       {
         tag: "p",

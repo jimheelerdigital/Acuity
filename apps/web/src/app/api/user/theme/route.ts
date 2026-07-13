@@ -34,7 +34,16 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const VALID_THEMES = new Set(["light", "dark", "system"]);
-const VALID_PALETTES = new Set(["coral", "sunset", "citrus", "cobalt"]);
+const VALID_PALETTES = new Set([
+  "coral",
+  "sunset",
+  "citrus",
+  "cobalt",
+  "rose",
+  "amber",
+  "jade",
+  "sky",
+]);
 
 export async function POST(req: NextRequest) {
   const userId = await getAnySessionUserId(req);

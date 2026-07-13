@@ -240,7 +240,7 @@ export function Step3Demographics() {
             value={primaryReasonsCustom}
             onChange={(e) => setPrimaryReasonsCustom(e.target.value)}
             maxLength={200}
-            placeholder="Tell Acuity more — what brings you here?"
+            placeholder="Tell Ripple more — what brings you here?"
             className="mt-3 w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-acuity-primary"
             aria-label="What brings you here (freeform)"
           />
