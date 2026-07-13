@@ -4,10 +4,10 @@
  * Sends REAL email to REAL users. Safeguards are not optional and run in a
  * strict order, with a hard stop between each stage:
  *
- *   1) dry-run  (default)  — prints the full recipient list per segment as a
- *                            table. NOTHING is sent. Keenan approves the list.
- *   2) test                — sends both templates to keenan@heelerdigital.com
- *                            ONLY. No DB writes, no dedup.
+ *   1) dry-run  (default)  — prints the full recipient list as a table.
+ *                            NOTHING is sent. Keenan approves the list.
+ *   2) test                — sends the email to keenan@heelerdigital.com ONLY.
+ *                            No DB writes, no dedup.
  *   3) live  --yes         — sends to the real list. Every send is claimed and
  *                            logged in TrialEmailLog BEFORE the network call, so
  *                            a re-run can never double-send. Rate-limited.
@@ -19,35 +19,30 @@
  *   npx tsx scripts/android-launch-send.ts test            # test send to Keenan
  *   npx tsx scripts/android-launch-send.ts live --yes      # LIVE send
  *
- * Segments (see docs/acuity-positioning.md for the copy voice):
- *   A = signup events show os:android  AND 0 recordings                → "Android is live"
- *   B = (os:ios OR unknown/desktop) AND 0 recordings AND no app        → App Store re-nudge
- *       platform registered
+ * Audience — a single segment, one email:
+ *   Every user with NO native-app history (devicePlatform, appFirstOpenedAt,
+ *   and pushTokenPlatform all null) who is not unsubscribed. That's web-app
+ *   users and people who signed up but never installed. Anyone already on the
+ *   native app is excluded — they don't need the Android launch nudge.
  *
- * Global exclusions (both segments): any recording, active in-app in the last
- * 7 days, onboardingUnsubscribed, or listed in the Resend suppression file.
+ * Exclusions: onboardingUnsubscribed, or listed in the Resend suppression file.
  */
 
-import { config } from "dotenv";
+// Load env BEFORE any "@/..." import so prisma is built with valid creds.
+import "./load-env";
+
 import { resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-
-config({ path: resolve(__dirname, "..", ".env.local") });
-// Root .env holds the valid Resend key + secrets; override placeholders.
-config({ path: resolve(__dirname, "../../..", ".env"), override: true });
 
 import { prisma } from "@/lib/prisma";
 import { getResendClient } from "@/lib/resend";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
-import { androidLaunchA, type AnnouncementVars } from "@/emails/announcements/android-launch-a";
-import { androidLaunchB, type SegmentBVariant } from "@/emails/announcements/android-launch-b";
+import { androidLaunch, type AnnouncementVars } from "@/emails/announcements/android-launch";
 
 // ── Config ───────────────────────────────────────────────────────────────
-const KEY_A = "android_launch_a";
-const KEY_B = "android_launch_b";
+const EMAIL_KEY = "android_launch";
 const TEST_TO = "keenan@heelerdigital.com";
 const APP_ORIGIN = "https://www.getacuity.io";
-const ACTIVE_WINDOW_DAYS = 7;
 const SEND_INTERVAL_MS = Number(process.env.SEND_INTERVAL_MS ?? 600); // ~2/s Resend limit
 const SUPPRESSION_FILE = resolve(__dirname, "android-launch-suppression.txt");
 
@@ -59,14 +54,10 @@ const FROM = HEELER_VERIFIED
   : '"Keenan at Acuity" <hello@getacuity.io>';
 const REPLY_TO = HEELER_VERIFIED ? "keenan@heelerdigital.com" : "keenan@getacuity.io";
 
-type Segment = "A" | "B";
-
 interface Recipient {
   userId: string;
   email: string;
   firstName: string | null;
-  segment: Segment;
-  variant: SegmentBVariant | null;
   createdAt: Date;
   lastEvent: { event: string; createdAt: Date } | null;
   alreadySent: boolean;
@@ -80,10 +71,6 @@ function firstNameOf(name: string | null): string | null {
   return n || null;
 }
 
-function keyFor(segment: Segment): string {
-  return segment === "A" ? KEY_A : KEY_B;
-}
-
 function unsubUrl(userId: string): string {
   const token = signUnsubscribeToken(userId, "onboarding");
   return `${APP_ORIGIN}/api/emails/unsubscribe?token=${encodeURIComponent(token)}`;
@@ -91,9 +78,7 @@ function unsubUrl(userId: string): string {
 
 function render(r: Recipient): { subject: string; html: string } {
   const vars: AnnouncementVars = { firstName: r.firstName, unsubscribeUrl: unsubUrl(r.userId) };
-  return r.segment === "A"
-    ? androidLaunchA(vars)
-    : androidLaunchB({ ...vars, variant: r.variant ?? "generic" });
+  return androidLaunch(vars);
 }
 
 function loadSuppression(): Set<string> {
@@ -106,82 +91,34 @@ function loadSuppression(): Set<string> {
   return set;
 }
 
-// ── Segmentation ─────────────────────────────────────────────────────────
+// ── Audience ─────────────────────────────────────────────────────────────
 async function buildRecipients(suppression: Set<string>): Promise<Recipient[]> {
-  const activeCutoff = new Date(Date.now() - ACTIVE_WINDOW_DAYS * 86_400_000);
-
-  // Base pool: never recorded, not unsubscribed, not active in the last 7 days.
+  // Single segment: no native-app history, not unsubscribed.
   const candidates = await prisma.user.findMany({
     where: {
-      totalRecordings: 0,
-      firstRecordingAt: null,
       onboardingUnsubscribed: false,
-      OR: [{ lastSeenAt: null }, { lastSeenAt: { lt: activeCutoff } }],
+      devicePlatform: null,
+      appFirstOpenedAt: null,
+      pushTokenPlatform: null,
     },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      createdAt: true,
-      devicePlatform: true,
-      appFirstOpenedAt: true,
-      pushTokenPlatform: true,
-    },
+    select: { id: true, email: true, name: true, createdAt: true },
   });
   const candidateIds = candidates.map((c) => c.id);
   if (candidateIds.length === 0) return [];
 
-  // OS is encoded inside OnboardingEvent.value as "os:android" / "os:ios"
-  // (pipe-delimited PII-safe diagContext). A user counts as that OS if ANY of
-  // their events carries it.
-  const [androidRows, iosRows, sentRows] = await Promise.all([
-    prisma.onboardingEvent.findMany({
-      where: { userId: { in: candidateIds }, value: { contains: "os:android" } },
-      select: { userId: true },
-      distinct: ["userId"],
-    }),
-    prisma.onboardingEvent.findMany({
-      where: { userId: { in: candidateIds }, value: { contains: "os:ios" } },
-      select: { userId: true },
-      distinct: ["userId"],
-    }),
-    prisma.trialEmailLog.findMany({
-      where: { userId: { in: candidateIds }, emailKey: { in: [KEY_A, KEY_B] } },
-      select: { userId: true },
-    }),
-  ]);
-  const androidSet = new Set(androidRows.map((r) => r.userId!));
-  const iosSet = new Set(iosRows.map((r) => r.userId!));
+  const sentRows = await prisma.trialEmailLog.findMany({
+    where: { userId: { in: candidateIds }, emailKey: EMAIL_KEY },
+    select: { userId: true },
+  });
   const sentSet = new Set(sentRows.map((r) => r.userId!));
 
   const recipients: Recipient[] = [];
   for (const u of candidates) {
     if (suppression.has(u.email.toLowerCase())) continue;
-
-    const isAndroid = androidSet.has(u.id);
-    const isIos = iosSet.has(u.id);
-    const appRegistered =
-      u.devicePlatform !== null || u.appFirstOpenedAt !== null || u.pushTokenPlatform !== null;
-
-    let segment: Segment | null = null;
-    let variant: SegmentBVariant | null = null;
-
-    if (isAndroid) {
-      // Segment A — Android signup, app now available.
-      segment = "A";
-    } else if (!appRegistered) {
-      // Segment B — iOS or unknown/desktop, and never registered any app.
-      segment = "B";
-      variant = isIos ? "ios" : "generic";
-    }
-    if (!segment) continue;
-
     recipients.push({
       userId: u.id,
       email: u.email,
       firstName: firstNameOf(u.name),
-      segment,
-      variant,
       createdAt: u.createdAt,
       lastEvent: null,
       alreadySent: sentSet.has(u.id),
@@ -212,27 +149,20 @@ function iso(d: Date | null): string {
   return d ? d.toISOString().slice(0, 10) : "—";
 }
 
-function printTable(segment: Segment, rows: Recipient[]): void {
-  const title =
-    segment === "A"
-      ? "SEGMENT A — Android is live (Play Store)"
-      : "SEGMENT B — App Store re-nudge (ios / generic variants)";
-  console.log(`\n${title}  [${rows.length} recipients]`);
-  console.log("─".repeat(110));
+function printTable(rows: Recipient[]): void {
+  console.log(`\nANDROID LAUNCH — one email, all no-app-history users  [${rows.length} recipients]`);
+  console.log("─".repeat(104));
   console.log(
     "email".padEnd(38) +
-      "seg".padEnd(6) +
       "signup".padEnd(12) +
       "lastEvent".padEnd(38) +
       "lastAt".padEnd(12) +
       "status"
   );
-  console.log("─".repeat(110));
+  console.log("─".repeat(104));
   for (const r of rows) {
-    const segLabel = r.segment === "B" ? `B/${r.variant}` : "A";
     console.log(
       r.email.slice(0, 37).padEnd(38) +
-        segLabel.padEnd(6) +
         iso(r.createdAt).padEnd(12) +
         (r.lastEvent?.event ?? "—").slice(0, 37).padEnd(38) +
         iso(r.lastEvent?.createdAt ?? null).padEnd(12) +
@@ -247,51 +177,39 @@ async function runDryRun(): Promise<void> {
   const recipients = await buildRecipients(suppression);
   await attachLastEvents(recipients);
 
-  const segA = recipients.filter((r) => r.segment === "A");
-  const segB = recipients.filter((r) => r.segment === "B");
-
   console.log("\n=== DRY RUN — nothing will be sent ===");
-  console.log(`Suppression file: ${existsSync(SUPPRESSION_FILE) ? `${SUPPRESSION_FILE} (${suppression.size} addresses)` : "NOT FOUND — no bounced/complained addresses excluded"}`);
+  console.log(
+    `Suppression file: ${existsSync(SUPPRESSION_FILE) ? `${SUPPRESSION_FILE} (${suppression.size} addresses)` : "NOT FOUND — no bounced/complained addresses excluded"}`
+  );
   console.log(`Sender: ${FROM}  (reply-to ${REPLY_TO}, heelerdigital verified=${HEELER_VERIFIED})`);
 
-  printTable("A", segA);
-  printTable("B", segB);
+  printTable(recipients);
 
-  const queuedA = segA.filter((r) => !r.alreadySent).length;
-  const queuedB = segB.filter((r) => !r.alreadySent).length;
+  const queued = recipients.filter((r) => !r.alreadySent).length;
   console.log("\n── Summary ──");
-  console.log(`Segment A: ${segA.length} total, ${queuedA} to send (${segA.length - queuedA} already sent)`);
-  console.log(`Segment B: ${segB.length} total, ${queuedB} to send (${segB.length - queuedB} already sent)`);
-  console.log(`TOTAL to send on live run: ${queuedA + queuedB}`);
+  console.log(`${recipients.length} total, ${queued} to send (${recipients.length - queued} already sent)`);
   console.log("\nNext: review this list. If approved, run `test` then `live --yes`.");
 }
 
 async function runTest(): Promise<void> {
   const resend = getResendClient();
   const vars: AnnouncementVars = { firstName: "Keenan", unsubscribeUrl: unsubUrl("test-user-id") };
-  const samples = [
-    { label: "A (android launch)", ...androidLaunchA(vars) },
-    { label: "B/ios (app store re-nudge)", ...androidLaunchB({ ...vars, variant: "ios" }) },
-    { label: "B/generic (unknown OS)", ...androidLaunchB({ ...vars, variant: "generic" }) },
-  ];
+  const { subject, html } = androidLaunch(vars);
   console.log(`\n=== TEST SEND → ${TEST_TO} (no DB writes) ===`);
   console.log(`Sender: ${FROM}  (reply-to ${REPLY_TO})`);
-  for (const s of samples) {
-    const res = await resend.emails.send({
-      from: FROM,
-      replyTo: REPLY_TO,
-      to: TEST_TO,
-      subject: `[TEST] ${s.subject}`,
-      html: s.html,
-      headers: {
-        "List-Unsubscribe": `<${vars.unsubscribeUrl}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-    });
-    console.log(`${s.label}: id=${res.data?.id ?? "ERR"} err=${JSON.stringify(res.error)}`);
-    await sleep(SEND_INTERVAL_MS);
-  }
-  console.log("\nCheck both templates render correctly, then run `live --yes`.");
+  const res = await resend.emails.send({
+    from: FROM,
+    replyTo: REPLY_TO,
+    to: TEST_TO,
+    subject: `[TEST] ${subject}`,
+    html,
+    headers: {
+      "List-Unsubscribe": `<${vars.unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  });
+  console.log(`sent: id=${res.data?.id ?? "ERR"} err=${JSON.stringify(res.error)}`);
+  console.log("\nCheck the template renders correctly, then run `live --yes`.");
 }
 
 async function runLive(flags: Set<string>): Promise<void> {
@@ -315,7 +233,7 @@ async function runLive(flags: Set<string>): Promise<void> {
   console.log(`\n=== LIVE SEND — ${recipients.length} recipients ===`);
   console.log(`Sender: ${FROM}  (reply-to ${REPLY_TO})`);
   console.log(`Suppression: ${suppressionExists ? `${suppression.size} addresses` : "NONE (override in effect)"}`);
-  console.log("email\ttemplate\tsentAt\tresendId");
+  console.log("email\tsentAt\tresendId");
 
   const resend = getResendClient();
   let sent = 0;
@@ -323,14 +241,12 @@ async function runLive(flags: Set<string>): Promise<void> {
   let failed = 0;
 
   for (const r of recipients) {
-    const emailKey = keyFor(r.segment);
-
     // Claim BEFORE sending. The @@unique([userId, emailKey]) constraint makes
     // this the idempotency guard: if the row already exists (a prior run or a
     // concurrent run), we skip — so the same user can never be emailed twice.
     try {
       await prisma.trialEmailLog.create({
-        data: { userId: r.userId, emailKey, sentAt: new Date() },
+        data: { userId: r.userId, emailKey: EMAIL_KEY, sentAt: new Date() },
       });
     } catch {
       skipped++;
@@ -355,14 +271,14 @@ async function runLive(flags: Set<string>): Promise<void> {
       // Leave the claim row (resendId stays null) so this address is NOT auto-
       // retried on a re-run — a null-resendId row flags a send that needs manual
       // review rather than a silent double-send.
-      console.error(`FAILED ${r.email} (${emailKey}): ${JSON.stringify(res.error)}`);
+      console.error(`FAILED ${r.email}: ${JSON.stringify(res.error)}`);
     } else {
       await prisma.trialEmailLog.update({
-        where: { userId_emailKey: { userId: r.userId, emailKey } },
+        where: { userId_emailKey: { userId: r.userId, emailKey: EMAIL_KEY } },
         data: { resendId: res.data?.id ?? null },
       });
       sent++;
-      console.log(`${r.email}\t${emailKey}\t${new Date().toISOString()}\t${res.data?.id ?? ""}`);
+      console.log(`${r.email}\t${new Date().toISOString()}\t${res.data?.id ?? ""}`);
     }
     await sleep(SEND_INTERVAL_MS);
   }

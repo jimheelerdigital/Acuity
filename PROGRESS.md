@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-07-13] — Android launch email simplified to one send, SENT LIVE to 266 users
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+We simplified the Android launch email and actually sent it. Instead of two different emails split by how people signed up, it's now a single, clean announcement — "Acuity is on Android now" with one Google Play button — sent to everyone who has never used the phone app (web users and people who signed up but never installed). Anyone already on the app was skipped. After a dry-run preview and a test to Keenan's inbox, it went out for real to 266 people; every send is logged so nobody can ever be emailed it twice. Keenan chose to skip the bounce/suppression list for this one.
+
+### Technical changes (for Jimmy)
+- Replaced the two-segment design with a single template `apps/web/src/emails/announcements/android-launch.ts` (`androidLaunch()`), exclusively about the Android release: one `primaryButton` → Google Play, audience-neutral copy (no assumption about signup OS). Deleted `android-launch-a.ts` and `android-launch-b.ts`.
+- Rewrote `apps/web/scripts/android-launch-send.ts` to a single audience / single email:
+  - Audience = `User.onboardingUnsubscribed=false AND devicePlatform=null AND appFirstOpenedAt=null AND pushTokenPlatform=null` (no native-app history), minus the suppression file. Dropped the prior recordings / `lastSeenAt`-7d filters per Keenan's instruction (only filter is "no app history").
+  - One `emailKey` = `android_launch`. Same claim-before-send dedup via `TrialEmailLog` `@@unique([userId, emailKey])`; same `dry-run` / `test` / `live --yes` staging; same 600ms rate limit.
+  - Play link UTM unchanged: `…&utm_source=email&utm_medium=rescue&utm_campaign=android_launch`.
+- New `apps/web/scripts/load-env.ts` — side-effect env loader imported FIRST, fixing an import-ordering bug: tsx/esbuild hoisted the `@/lib/prisma` import above the inline dotenv `config()` calls, so prisma was built before `DATABASE_URL` existed (client came back null). Loading env via a first side-effect import guarantees creds are present at prisma construction.
+- Live send result: **sent=266, skipped=1, failed=0** (the 1 skip = idempotency guard; that user already had an `android_launch` row). Sent from `hello@getacuity.io` (reply-to keenan@getacuity.io) — heelerdigital domain not verified. Suppression list intentionally skipped via `--no-suppression-file` at Keenan's direction.
+- No Prisma schema changes; no migration.
+
+### Manual steps needed
+- [ ] The Supabase DB password had rotated; updated it locally in `apps/web/.env.local` and root `.env` (both gitignored — NOT committed). If other local dev environments exist, they need the same update (Jimmy/Keenan).
+- [ ] Optional: verify `keenan@heelerdigital.com` as a Resend sending domain if future one-offs should come from that address (Jimmy).
+- [ ] Optional post-send: spot-check `funnel_*` signups tagged `utm_campaign=android_launch` to confirm attribution (Keenan).
+
+### Notes
+- The prior same-day entry below (b125fa51) documents the original two-segment build; this entry supersedes it — the A/B templates were deleted before sending.
+- The import-ordering bug in `load-env.ts` also affected the old script; it only surfaced now because this was the first time the script actually queried the DB. Flagged for Jimmy since it lives in the send path.
+- Suppression was skipped by explicit request. Deliverability risk is that any addresses that previously hard-bounced or complained were re-hit; if inbox placement dips on future sends, re-introduce the suppression export.
+
+---
+
 ## [2026-07-13] — Android launch announcement email (safeguarded one-off send)
 
 **Requested by:** Keenan
