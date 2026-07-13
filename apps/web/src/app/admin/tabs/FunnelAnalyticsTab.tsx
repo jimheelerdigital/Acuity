@@ -10,7 +10,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
-  const [flowVersion, setFlowVersion] = useState<"v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all">("v6");
+  const [flowVersion, setFlowVersion] = useState<"v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all">("v7");
 
   useEffect(() => {
     setLoading(true);
@@ -93,13 +93,13 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 4 }}>
-          {(["v6", "v5", "v4", "v3", "v2", "v1", "all"] as const).map((v) => (
+          {(["v7", "v6", "v5", "v4", "v3", "v2", "v1", "all"] as const).map((v) => (
             <button key={v} onClick={() => setFlowVersion(v)}
-              title={v === "v6" ? "V6 — post-rebuild (current live funnel)" : undefined}
+              title={v === "v7" ? "V7 — two-equal-buttons paywall (current live funnel)" : v === "v6" ? "V6 — post-rebuild" : undefined}
               style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
                 background: flowVersion === v ? "#7C5CFC" : "rgba(255,255,255,0.06)",
                 color: flowVersion === v ? "#fff" : "rgba(255,255,255,0.35)" }}>
-              {v === "all" ? "All" : v === "v6" ? "V6 — post-rebuild" : v.toUpperCase()}
+              {v === "all" ? "All" : v === "v7" ? "V7 — paywall split" : v === "v6" ? "V6 — post-rebuild" : v.toUpperCase()}
             </button>
           ))}
         </div>

@@ -189,7 +189,7 @@ function useFunnelTracker() {
   const utmRef = useRef<UtmParams>({});
   useEffect(() => { utmRef.current = captureUtmParams(); }, []);
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v6", ...props });
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v7", ...props });
   }, []);
 }
 
@@ -869,16 +869,20 @@ export function OnboardingFunnel() {
           selectedPlan={selectedPlan}
           onPlanChange={setSelectedPlan}
           onCheckout={() => {
-            // User chose to pay — the account already exists, so go straight to
-            // Stripe checkout (no account-creation detour).
+            // "Lock in founders rate" — the account already exists, so go
+            // straight to Stripe checkout (no account-creation detour).
+            // paid_selected kept for legacy dashboards; lock_in_selected is the
+            // v7 split event for the two-equal-buttons layout.
             track("funnel_paywall_paid_selected", { value: selectedPlan });
+            track("funnel_paywall_lock_in_selected", { value: selectedPlan });
             handleCheckout();
           }}
           onSkip={() => {
-            // User skips the paywall — keep the FREE account (no Pro), go to
-            // the download page. paywall_skipped + trial_continued make the
-            // skip measurable in the V6 dashboard.
+            // "Continue to download" — keep the FREE account (no Pro), go to
+            // the download page. skip_selected + trial_continued kept for
+            // legacy dashboards; continue_selected is the v7 split event.
             track("funnel_paywall_skip_selected");
+            track("funnel_paywall_continue_selected");
             track("funnel_trial_continued");
             setStep("download");
           }}
@@ -2242,6 +2246,12 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
+  // What Stripe actually charges after the 7-day trial for the selected plan —
+  // drives the reassurance line under the lock-in button so it always matches
+  // the checkout the user is about to enter.
+  const afterTrialPrice = selectedPlan === "yearly"
+    ? `${formatDollars(ANNUAL_PRICE_CENTS)}/yr`
+    : `${formatDollars(MONTHLY_PRICE_CENTS)}/mo`;
   // Branch-matched social-proof pool for the "What our users say" popup.
   const testimonialPool = getPaywallTestimonialPool(branch);
   const [testimonialsOpen, setTestimonialsOpen] = useState(false);
@@ -2296,6 +2306,12 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           )}
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">{paywallHeadline}</h2>
           <p className="text-sm text-zinc-500 mt-3">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
+          {/* Plain pricing overview — states the founders rate and both intervals
+              up front, no hard sell. Uses formatDollars so it always matches
+              Stripe (env price IDs → $4.99/mo, $39.99/yr). */}
+          <p className="text-[13px] text-zinc-600 mt-2 leading-relaxed">
+            <span className="font-semibold text-zinc-800">{formatDollars(MONTHLY_PRICE_CENTS)}/mo</span> founders rate &mdash; or <span className="font-semibold text-zinc-800">{formatDollars(ANNUAL_PRICE_CENTS)}/yr</span>. The founding price rises as we grow. 7-day free trial either way.
+          </p>
         </section>
 
         {/* Section 2 — Free vs Pro split (trimmed, no table) */}
@@ -2418,37 +2434,53 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <span className="text-acuity-primary text-[16px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
             <button
               type="button"
-              onClick={() => { setTestimonialsOpen(true); track("funnel_testimonials_opened", { value: branch ?? "unknown" }); }}
-              className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[12px] font-semibold text-zinc-700 shadow-sm transition hover:border-acuity-primary hover:text-acuity-primary active:scale-[0.98]">
+              onClick={() => { const next = !testimonialsOpen; setTestimonialsOpen(next); if (next) track("funnel_testimonials_opened", { value: branch ?? "unknown" }); }}
+              aria-expanded={testimonialsOpen}
+              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[12px] font-semibold text-zinc-700 shadow-sm transition hover:border-acuity-primary hover:text-acuity-primary active:scale-[0.98]">
               What our users say
+              {/* Chevron affordance — signals the pill expands, rotates when open */}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${testimonialsOpen ? "rotate-180" : ""}`} aria-hidden>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
             </button>
           </div>
 
-          {/* No-charge-until-trial-end framing — pricing is what you pay LATER */}
-          <p className="text-[12px] text-center mt-3 text-zinc-500">You won&rsquo;t be charged until your 7 days are up &mdash; <span className="font-semibold text-zinc-700">cancel anytime before then.</span></p>
+          {/* Charge-timing reassurance intentionally moved to sit directly under
+              the "Lock in founders rate" button — the cardless "Continue"
+              path needs no charge warning. */}
         </section>
       </div>
 
-      {/* Sticky CTA + skip + crisis line */}
+      {/* Sticky two-equal-choice footer + crisis line. Both buttons are the
+          same size and weight — no primary/secondary hierarchy, no shame copy.
+          Lock-in leads to Stripe (7-day trial); Continue is the cardless free
+          path straight to download. */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-3 safe-area-pb">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
-          <button onClick={onCheckout} disabled={loading}
-            className="relative w-full overflow-hidden rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
-            <span className="relative z-10">{loading ? "Loading\u2026" : "Start My 7 Days Free"}</span>
-            {/* Decorative shimmer sweep — does not gate tappability */}
-            {!loading && !prefersReduced && (
-              <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                style={{ animation: "pw-cta-shimmer 2.8s ease-in-out infinite" }} />
-            )}
-          </button>
-          <p className="text-[14px] text-center mt-2.5 font-semibold text-zinc-700">
-            <span className="text-emerald-600 font-bold">Free for 7 days.</span> Cancel anytime. <span className="text-zinc-900 font-bold">You won&rsquo;t be charged today.</span>
-          </p>
-          <div className="text-center mt-2.5">
-            <button onClick={onSkip} className="text-[13px] text-zinc-500 hover:text-zinc-700 underline underline-offset-2 transition">
-              Continue without paying
+          <div className="flex flex-col gap-2.5">
+            {/* Choice A — Lock in founders rate (→ Stripe Checkout, trial_period_days:7) */}
+            <button onClick={onCheckout} disabled={loading}
+              className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50">
+              {loading ? "Loading\u2026" : "Lock in founders rate"}
             </button>
+            {/* Charge-timing reassurance — scoped to the lock-in path only, and
+                matches the Stripe checkout the user is about to enter. */}
+            <p className="text-[12px] text-center -mt-0.5 text-zinc-500">
+              <span className="font-semibold text-zinc-700">$0 today.</span> {afterTrialPrice} after your free week. Cancel anytime.
+            </p>
+            {/* Choice B — Continue to download (cardless free path, no charge) */}
+            <button onClick={onSkip} disabled={loading}
+              className="w-full rounded-full bg-zinc-900 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50">
+              Continue to download
+            </button>
+            {/* Free-version reassurance — a real free tier exists post-trial
+                (verified via entitlementsFor: canRecord + one-line summary +
+                canViewHistory stay true on FREE). Claims only what's true —
+                extraction/insights are Pro. */}
+            <p className="text-[12px] text-center -mt-0.5 text-zinc-500">
+              There&rsquo;s a free version too &mdash; <span className="font-semibold text-zinc-700">you never need to pay to keep using Acuity.</span> Record any time, get a quick summary, and revisit your history for free.
+            </p>
           </div>
           <p className="text-[9px] text-zinc-300 text-center mt-2">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>

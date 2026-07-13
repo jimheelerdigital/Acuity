@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-07-13] — Onboarding paywall: two equal choices (lock-in vs continue free), v7 cohort
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING-PAYWALL-V7
+
+> **BILLING-ADJACENT — Jimmy review requested.** This touches the onboarding
+> paywall copy, the Stripe-checkout trigger button, and the funnel event/dashboard
+> wiring. No Stripe/webhook/entitlement *logic* changed (checkout route and webhook
+> were verified already-correct and left untouched), but because it sits on the
+> money path, Jimmy should eyeball the two-button behavior + the v7 dashboard split
+> before/after the first live cohort.
+
+### In plain English (for Keenan)
+The paywall at the end of onboarding used to be a hard sell — one big "Start My 7 Days Free" button with a smaller, slightly shaming "Continue without paying" link underneath. It now presents two genuinely equal choices, same size and weight, no guilt: **"Lock in founders rate"** (starts the 7-day free trial, then $4.99/mo — the card path) and **"Continue to download"** (keeps the free version, no card). Pricing is now stated plainly up top ($4.99/mo founders rate, or $39.99/yr, 7-day trial either way). Under the lock-in button it says exactly what Stripe will do: "$0 today. $4.99/mo after your free week. Cancel anytime." Under the continue button we now reassure people that a real free version exists and they never have to pay to keep using Acuity. The tier comparison card, the coffee-price line, and the testimonials are all kept; the "What our users say" pill now has a little chevron so it clearly reads as tappable and toggles open/closed. Because the paywall changed shape, we started a fresh measurement cohort ("v7") so before/after numbers stay clean.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - `useFunnelTracker`: `flowVersion` bumped `"v6"` → `"v7"` (all funnel events now tagged v7).
+  - Paywall (`SavingsScreen`) sticky footer rebuilt: single glowing CTA + skip link replaced with **two equal full-width buttons** — "Lock in founders rate" (`onCheckout` → existing `handleCheckout` → `/api/onboarding/create-checkout`, unchanged, already `trial_period_days:7`) and "Continue to download" (`onSkip` → `setStep("download")`). Same size/font/weight, coral vs zinc-900 fills, no shame copy. Removed the emphasis glow/shimmer so neither button dominates.
+  - New split events fired alongside the legacy ones: `funnel_paywall_lock_in_selected` (with the old `funnel_paywall_paid_selected`) and `funnel_paywall_continue_selected` (with the old `funnel_paywall_skip_selected` + `funnel_trial_continued`). Both new events auto-pass the `/api/onboarding-events` allowlist (`/^funnel_[a-z0-9_]+$/`).
+  - Header: added a plain pricing-overview line (`{formatDollars(MONTHLY_PRICE_CENTS)}/mo founders rate — or {formatDollars(ANNUAL_PRICE_CENTS)}/yr … 7-day free trial either way`), pulled from `pricing.ts` so it always matches Stripe.
+  - Charge reassurance scoped **under the lock-in button only** ("$0 today. {plan price} after your free week. Cancel anytime.", dynamic per selected plan); removed the old global no-charge line so the cardless path carries no charge warning.
+  - Free-version reassurance line added under the continue button — worded to only true FREE-tier capabilities (record, one-line summary, view history), verified against `entitlementsFor` in `src/lib/entitlements.ts`.
+  - Testimonials pill: now toggles open/closed and shows a rotating chevron (`aria-expanded`); tier comparison card, coffee-price line, price-slash animation, and testimonial modal all preserved.
+- `apps/web/src/app/api/admin/metrics/route.ts`: added `FUNNEL_STEPS_V7` (v6 stages + a "Locked in (paid)" / "Continued (free)" split at the paywall), added `"v7"` to the flow-type union (now the default), `flowVersionWhere`, the `FUNNEL_STEPS` selector, and the step-order map (`funnel_paywall_lock_in_selected`/`funnel_paywall_continue_selected` → step 18). Paid/signup detection needs no change — `funnel_payment_completed` (server-side, real Stripe success) stays the paid signal; `lock_in_selected` is intent-only.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: added the `V7` flow toggle button (default selection) + label/tooltip.
+- No schema change, no migration. Stripe checkout route + webhook left untouched (verified already-correct in this session).
+
+### Manual steps needed
+- [ ] **Jimmy:** review the two-button paywall + v7 dashboard split before relying on the numbers (billing-adjacent).
+- [ ] **After deploy (Keenan/Jimmy):** confirm real rows land — `SELECT event, count(*) FROM "OnboardingEvent" WHERE event IN ('funnel_paywall_lock_in_selected','funnel_paywall_continue_selected') AND "flowVersion"='v7' GROUP BY event;`. These events only fire when live users hit the paywall, so they cannot be verified pre-deploy (allowlist acceptance was verified via the `funnel_` regex).
+- [ ] **Keenan — copy decision:** the tier card's "Free forever" row still lists **"Voice debrief & task extraction … action items pulled out automatically."** Per `entitlementsFor`, task/action **extraction is Pro-gated** (`canExtractEntries` is false on FREE) — free users get recording + a one-line summary + history only. You asked to keep the tier card exactly as-is, so it's unchanged, but this row is **not true for the free tier**. Decide whether to move "task extraction" under Pro or reword it. My new free-version line avoids the claim.
+
+### Notes
+- The prompt's suggested plain-pricing wording included "$14.99 after the founding period," but **no code enforces a $14.99 price** — `pricing.ts` only has $4.99/$39.99, and the decorative price-slash anchor on the pricing cards is $19.99. Rather than assert an unverifiable/again-inconsistent number (Step 0's rule: write only copy the product makes true), the header states the honest, enforceable version ($4.99 founders rate, "the founding price rises as we grow"). If Keenan wants a specific "after founding" number shown, we should first make it real in Stripe/pricing.ts and reconcile the $19.99 decorative anchor so the screen isn't self-contradicting.
+- Post-trial fate verified earlier this session: a cardless user who continues drops to a genuine FREE tier (not a lock) — `entitlementsFor` keeps `canRecord`, one-line summary, and `canViewHistory` true; only extraction/insights/reports/calendar are Pro. That's what makes the "there's a free version too" line true.
+- Both new split events are additive — the legacy `funnel_paywall_paid_selected` / `funnel_paywall_skip_selected` / `funnel_trial_continued` still fire, so older dashboards keep working during the v6→v7 transition.
+- Return-path resume already satisfied (no change needed): unseen users resume at the paywall; users past it resume at download.
+
+---
+
 ## [2026-07-13] — Homepage hero: quiz-first CTA + App Store / Google Play / web app split
 
 **Requested by:** Keenan
