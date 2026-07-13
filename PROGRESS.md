@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 24dadcd1
 
 ### In plain English (for Keenan)
 We simplified the Android launch email and actually sent it. Instead of two different emails split by how people signed up, it's now a single, clean announcement — "Acuity is on Android now" with one Google Play button — sent to everyone who has never used the phone app (web users and people who signed up but never installed). Anyone already on the app was skipped. After a dry-run preview and a test to Keenan's inbox, it went out for real to 266 people; every send is logged so nobody can ever be emailed it twice. Keenan chose to skip the bounce/suppression list for this one.
