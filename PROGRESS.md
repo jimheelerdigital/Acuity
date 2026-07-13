@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING-PAYWALL-V7
+**Commit hash:** 486d1cd6
 
 > **BILLING-ADJACENT — Jimmy review requested.** This touches the onboarding
 > paywall copy, the Stripe-checkout trigger button, and the funnel event/dashboard
