@@ -241,7 +241,7 @@
       },
       "apiUrl": "https://getacuity.io",
       "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
-      "googleAndroidClientId": "",
+      "googleAndroidClientId": "657670168959-86k8sv93dplkepo973kn25cfjnv07egv.apps.googleusercontent.com",
       "iapEnabled": true,
       "facebookPixelId": "869829585445303",
       "eas": {
