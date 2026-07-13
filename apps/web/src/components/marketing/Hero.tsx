@@ -9,6 +9,7 @@ import { makeAcuityTokens } from "@acuity/shared";
 import { GradientText } from "@/components/acuity";
 import { Reveal } from "@/components/landing-shared";
 
+import { HeroCta } from "./HeroCta";
 import { PhoneFrame } from "./PhoneFrame";
 import { HomeDashboard } from "./screens/home";
 import { RecordingScreen } from "./screens/recording";
@@ -46,27 +47,7 @@ export function Hero() {
               tasks, tracks your goals, and surfaces the patterns you can&rsquo;t see on your own.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <a
-                href="/start"
-                className="inline-flex items-center gap-2.5 rounded-acuity-pill border-[0.5px] border-white/25 bg-acuity-grad-primary px-[26px] py-[15px] font-sans text-[16px] font-bold tracking-[-0.2px] text-white shadow-acuity-glow-primary transition-transform hover:-translate-y-0.5"
-              >
-                Start free trial
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </a>
-              <a
-                href="#how"
-                className="inline-flex items-center gap-2.5 rounded-acuity-pill border-[0.5px] border-acuity-line-strong px-[26px] py-[15px] font-sans text-[16px] font-bold tracking-[-0.2px] text-acuity-text shadow-acuity-soft transition-transform hover:-translate-y-0.5"
-                style={{ background: "color-mix(in oklch, var(--acuity-bg), transparent 30%)" }}
-              >
-                See how it works
-              </a>
-            </div>
-            <div className="mt-[18px] font-sans text-[14px] text-acuity-text-ter">
-              No credit card · 7-day free trial · iPhone
-            </div>
+            <HeroCta />
           </div>
         </Reveal>
 

@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-07-13] — Homepage hero: quiz-first CTA + App Store / Google Play / web app split
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b2c3104e
+
+### In plain English (for Keenan)
+The homepage hero now gives visitors a clearer choice. The big coral button up top is now "Is this for me? Find out →" and sends people into the quiz, so undecided visitors get qualified instead of dropped straight onto a trial. Directly under it is a row of three equal options — the official App Store badge, the official Google Play badge (Android is live now), and a matching "Web App" button for people who'd rather not download anything. The small print under it now reads "Free 7-day trial · Free version forever · iPhone & Android," and "See how it works" is still there as a quiet text link just below. Every one of those four buttons is tracked separately, so we'll be able to see exactly which path people take from the hero.
+
+### Technical changes (for Jimmy)
+- New client component `apps/web/src/components/marketing/HeroCta.tsx` (`"use client"`) holding the whole CTA block. Hero itself stays a Server Component; it now just renders `<HeroCta />`.
+- `apps/web/src/components/marketing/Hero.tsx`: replaced the old two-button row ("Start free trial" / "See how it works") + subtext with `<HeroCta />`; added the import. Headline, subhead, and rating badge untouched.
+- Primary CTA: "Is this for me? Find out →" → `/start`, reusing the coral primary treatment (`bg-acuity-grad-primary`, white, `rounded-acuity-pill`, `shadow-acuity-glow-primary`), made dominant (full-width in the copy column, larger padding + 18px text).
+- Store row: three equals. Official black badge assets used unmodified — `public/badges/apple-app-store.svg` → App Store listing (`id6762633410`); `public/badges/google-play.svg` → `play.google.com/store/apps/details?id=com.heelerdigital.acuity&utm_source=site&utm_medium=hero&utm_campaign=play_badge`. Web-app button is a badge-shaped black button (40px tall, matching corner radius/border) → `/auth/signup`. Row is `flex-col` under 520px (stacks) and `flex-row` above.
+- Subtext changed to "Free 7-day trial · Free version forever · iPhone & Android". "See how it works" moved to a quiet underlined text link directly below the subtext (still → `#how`).
+- Events: four distinct `funnel_hero_*` events via `trackOnboardingEvent` — `funnel_hero_quiz_clicked`, `funnel_hero_app_store_clicked`, `funnel_hero_play_store_clicked`, `funnel_hero_web_app_clicked`. `funnel_*` auto-passes the `/api/onboarding-events` allowlist and lands in the `OnboardingEvent` table. All four SQL-verified against the local DB (then the 5 verification rows were deleted).
+- No schema changes, no migration, no auth/payment/funnel logic touched — UI + links + events only.
+
+### Manual steps needed
+- [ ] None required to ship. Optional: after deploy, watch `OnboardingEvent` for the four `funnel_hero_*` events to confirm the split is populating in prod (Keenan/Jimmy).
+
+### Notes
+- Verified rendering with headless Chrome at 1440px desktop and 380px mobile (screenshots in `.tmp/hero-shots/`). At 380px the store row stacks vertically (three equals, one per line) — no bad wrapping. The slight right-edge clipping visible in the 380px shot is pre-existing page-level overflow (the headline and phone mockup below also clip), not introduced by this block.
+- Web-app destination chosen as `/auth/signup` (login/signup) over `/home` so logged-out visitors land on the signup surface directly rather than bouncing through `/auth/signin`.
+- Badges are the official Apple/Google black assets, used as-is per branding rules — not recreated or restyled. The "Web App" button deliberately mirrors their black/height/radius so the row reads as three equals.
+
+---
+
 ## [2026-07-13] — Android launch email simplified to one send, SENT LIVE to 266 users
 
 **Requested by:** Keenan
