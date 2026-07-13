@@ -23,7 +23,7 @@ import { trackOnboardingEvent } from "@/lib/track-onboarding";
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity&utm_source=site&utm_medium=hero&utm_campaign=play_badge";
-const WEB_APP_URL = "/auth/signup";
+const WEB_APP_URL = "/home";
 
 export function HeroCta() {
   return (

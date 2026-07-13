@@ -30,7 +30,7 @@ The homepage hero now gives visitors a clearer choice. The big coral button up t
 
 ### Notes
 - Verified rendering with headless Chrome at 1440px desktop and 380px mobile (screenshots in `.tmp/hero-shots/`). At 380px the store row stacks vertically (three equals, one per line) — no bad wrapping. The slight right-edge clipping visible in the 380px shot is pre-existing page-level overflow (the headline and phone mockup below also clip), not introduced by this block.
-- Web-app destination chosen as `/auth/signup` (login/signup) over `/home` so logged-out visitors land on the signup surface directly rather than bouncing through `/auth/signin`.
+- Web-app destination is `/home` (per Keenan): visitors are already in a browser, so `/home` drops them straight into the web app / initial onboarding rather than a separate signup surface.
 - Badges are the official Apple/Google black assets, used as-is per branding rules — not recreated or restyled. The "Web App" button deliberately mirrors their black/height/radius so the row reads as three equals.
 
 ---
