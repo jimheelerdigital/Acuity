@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** b125fa51
 
 ### In plain English (for Keenan)
 Built the one-time email that tells people the Android app is finally here, split into two audiences. People who originally signed up on an Android phone but never recorded get "Acuity is on Android now" with the Play Store link. People who signed up on iPhone (or desktop/unknown) and never recorded get a gentle "your first debrief is still waiting" nudge toward the App Store or web app. The whole thing has heavy safety rails so we can't accidentally spam anyone or email the same person twice: it first prints the exact recipient list for you to approve, then sends test copies to your inbox only, and only then sends for real — logging every single send so a re-run can never double-email. It automatically skips anyone who already recorded, was active in the app in the last week, unsubscribed, or is on the Resend bounce list. Nothing sends on its own — every stage is a manual command.
