@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING-HERO-CENTER
+**Commit hash:** 431ff2c4
 
 ### In plain English (for Keenan)
 On the homepage, everything under the coral "Is this for me? Find out →" button — the three app badges (App Store / Google Play / Web App), the "Free 7-day trial · Free version forever · iPhone & Android" line, and the "See how it works" link — is now centered under the button instead of left-aligned. The button itself is unchanged.
