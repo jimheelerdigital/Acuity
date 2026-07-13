@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-07-13] — Homepage hero: center the store row, subtext, and "See how it works"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING-HERO-CENTER
+
+### In plain English (for Keenan)
+On the homepage, everything under the coral "Is this for me? Find out →" button — the three app badges (App Store / Google Play / Web App), the "Free 7-day trial · Free version forever · iPhone & Android" line, and the "See how it works" link — is now centered under the button instead of left-aligned. The button itself is unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/marketing/HeroCta.tsx`, UI only:
+  - Store row: `items-center` + `min-[520px]:justify-center` (was left-aligned; dropped `flex-wrap`'s left default). Badges now center whether stacked (<520px) or in a row.
+  - Subtext `<div>`: added `text-center`.
+  - "See how it works" wrapper `<div>`: added `text-center`.
+- No changes to links, events, or the button.
+
+### Manual steps needed
+- [ ] None (Keenan/Jimmy). Auto-deploys on push.
+
+### Notes
+- Verified with headless Chrome at 1440px desktop and 380px mobile (`.tmp/hero-shots/hero-desktop-v3.png`, `hero-mobile-380-v3.png`): badges + subtext + link are centered under the CTA at both widths. The subtext's right-edge clip at 380px is the same pre-existing page-level overflow (headline + phone mockup also clip), not from this change.
+
+---
+
 ## [2026-07-13] — Paywall: one price mention; hero CTA shrunk to badge height
 
 **Requested by:** Keenan

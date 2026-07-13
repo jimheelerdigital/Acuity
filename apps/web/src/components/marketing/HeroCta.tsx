@@ -40,8 +40,8 @@ export function HeroCta() {
         </svg>
       </a>
 
-      {/* Store row — three equals; stacks vertically under 520px */}
-      <div className="mt-5 flex flex-col gap-3 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-center">
+      {/* Store row — three equals; stacks vertically under 520px, centered */}
+      <div className="mt-5 flex flex-col items-center gap-3 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:justify-center">
         <a
           href={APP_STORE_URL}
           target="_blank"
@@ -84,12 +84,12 @@ export function HeroCta() {
         </a>
       </div>
 
-      <div className="mt-[18px] font-sans text-[14px] text-acuity-text-ter">
+      <div className="mt-[18px] text-center font-sans text-[14px] text-acuity-text-ter">
         Free 7-day trial · Free version forever · iPhone &amp; Android
       </div>
 
       {/* Quieter "See how it works" — moved here from the primary button row */}
-      <div className="mt-2.5">
+      <div className="mt-2.5 text-center">
         <a
           href="#how"
           className="font-sans text-[14px] font-medium text-acuity-text-sec underline decoration-acuity-line-strong underline-offset-4 transition-colors hover:text-acuity-text"
