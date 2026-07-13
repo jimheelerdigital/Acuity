@@ -32,10 +32,10 @@ export function HeroCta() {
       <a
         href="/start"
         onClick={() => trackOnboardingEvent("funnel_hero_quiz_clicked")}
-        className="flex w-full items-center justify-center gap-2.5 rounded-acuity-pill border-[0.5px] border-white/25 bg-acuity-grad-primary px-[26px] py-[18px] font-sans text-[18px] font-bold tracking-[-0.2px] text-white shadow-acuity-glow-primary transition-transform hover:-translate-y-0.5"
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-acuity-pill border-[0.5px] border-white/25 bg-acuity-grad-primary px-4 font-sans text-[15px] font-bold tracking-[-0.2px] text-white shadow-acuity-glow-primary transition-transform hover:-translate-y-0.5"
       >
         Is this for me? Find out
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M5 12h14M13 6l6 6-6 6" />
         </svg>
       </a>

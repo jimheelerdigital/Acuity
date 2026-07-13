@@ -2306,12 +2306,6 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
           )}
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">{paywallHeadline}</h2>
           <p className="text-sm text-zinc-500 mt-3">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
-          {/* Plain pricing overview — states the founders rate and both intervals
-              up front, no hard sell. Uses formatDollars so it always matches
-              Stripe (env price IDs → $4.99/mo, $39.99/yr). */}
-          <p className="text-[13px] text-zinc-600 mt-2 leading-relaxed">
-            <span className="font-semibold text-zinc-800">{formatDollars(MONTHLY_PRICE_CENTS)}/mo</span> founders rate &mdash; or <span className="font-semibold text-zinc-800">{formatDollars(ANNUAL_PRICE_CENTS)}/yr</span>. The founding price rises as we grow. 7-day free trial either way.
-          </p>
         </section>
 
         {/* Section 2 — Free vs Pro split (trimmed, no table) */}

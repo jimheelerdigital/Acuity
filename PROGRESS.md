@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-07-13] — Paywall: one price mention; hero CTA shrunk to badge height
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING-UI-TWEAKS
+
+### In plain English (for Keenan)
+Two small visual cleanups. (1) On the onboarding paywall, the standalone pricing sentence near the top ("$4.99/mo founders rate — or $39.99/yr…") is gone. The only price on the screen is now the small line right under the "Lock in founders rate" button ("$0 today. $4.99/mo after your free week. Cancel anytime."), so people still see the price before they hit Stripe — just once, in the right spot. Everything else on that screen is unchanged. (2) On the homepage, the big coral "Is this for me? Find out →" button was taller than the App Store / Google Play / Web App badges under it; it's now the same height and scale as those badges, so the hero reads as one tidy stack instead of one oversized button.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx` (`SavingsScreen` header): removed the standalone plain-pricing `<p>` line. The per-plan microcopy under the lock-in button (`$0 today. {afterTrialPrice} after your free week. Cancel anytime.`) is untouched and is now the screen's only price mention. Tier card, two equal buttons, testimonials dropdown, coffee line all unchanged. `formatDollars`/`MONTHLY_PRICE_CENTS`/`ANNUAL_PRICE_CENTS` still used elsewhere — no dead imports.
+- `apps/web/src/components/marketing/HeroCta.tsx` (primary CTA): `py-[18px] text-[18px] px-[26px] gap-2.5` → `h-10 px-4 text-[15px] gap-2` (40px tall, matching the `h-10` store badges); arrow SVG 18→15px. Still coral (`bg-acuity-grad-primary`), still full-width of the copy column, glow + hover-lift preserved.
+- UI only — no logic, events, schema, or link changes.
+
+### Manual steps needed
+- [ ] None required to ship (Keenan/Jimmy). Auto-deploys on push.
+
+### Notes
+- Verified with headless Chrome at 1440px desktop and 380px mobile (`.tmp/hero-shots/hero-desktop-v2.png`, `hero-mobile-380-v2.png`): the coral CTA now sits at the same 40px height as the three badges; at 380px the badges stack one-per-line and the button matches. The slight right-edge clipping in the 380px shot is the same pre-existing page-level overflow (headline + phone mockup also clip), not from this change.
+
+---
+
 ## [2026-07-13] — Onboarding paywall: two equal choices (lock-in vs continue free), v7 cohort
 
 **Requested by:** Keenan
