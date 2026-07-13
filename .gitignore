@@ -69,3 +69,7 @@ apps/mobile/dist/
 # Visual-audit screenshots (scripts/visual-audit.ts) — contain real
 # user data from AUDIT_USER_ID and regenerate per run.
 .tmp/
+
+# Android-launch suppression list — real bounced/unsubscribed addresses
+# exported from Resend. Never commit real user emails.
+apps/web/scripts/android-launch-suppression.txt

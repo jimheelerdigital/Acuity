@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-07-13] — Android launch announcement email (safeguarded one-off send)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+Built the one-time email that tells people the Android app is finally here, split into two audiences. People who originally signed up on an Android phone but never recorded get "Acuity is on Android now" with the Play Store link. People who signed up on iPhone (or desktop/unknown) and never recorded get a gentle "your first debrief is still waiting" nudge toward the App Store or web app. The whole thing has heavy safety rails so we can't accidentally spam anyone or email the same person twice: it first prints the exact recipient list for you to approve, then sends test copies to your inbox only, and only then sends for real — logging every single send so a re-run can never double-email. It automatically skips anyone who already recorded, was active in the app in the last week, unsubscribed, or is on the Resend bounce list. Nothing sends on its own — every stage is a manual command.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/emails/announcements/android-launch-a.ts` (Segment A) and `android-launch-b.ts` (Segment B, with `ios` and `generic` variants). Light-mode, reuse `trialLayout` + `primaryButton`/`secondaryButton`/`para`/`keenanSignature`, marketing footer with one-click unsubscribe. Copy follows `docs/acuity-positioning.md`.
+- New `apps/web/scripts/android-launch-send.ts` — one-off runner with three modes: `dry-run` (default, prints per-segment recipient tables, no send), `test` (sends both templates to keenan@heelerdigital.com only, no DB writes), `live --yes` (real send).
+  - Segmentation: base pool = `User.totalRecordings=0 AND firstRecordingAt=null AND onboardingUnsubscribed=false AND (lastSeenAt<7d ago OR null)`. OS is read from `OnboardingEvent.value` substrings `os:android` / `os:ios` (pipe-delimited diagContext; there is no os column). Segment A = any `os:android` event. Segment B = (`os:ios` or neither) AND no app registered (`devicePlatform`/`appFirstOpenedAt`/`pushTokenPlatform` all null); variant `ios` vs `generic`.
+  - Exclusions: recordings, active-7d (`lastSeenAt`), `onboardingUnsubscribed`, and the Resend suppression file.
+  - Dedup: reuses `TrialEmailLog` with `emailKey` `android_launch_a` / `android_launch_b`. Claim-before-send — the row is created (guarded by `@@unique([userId, emailKey])`) BEFORE the Resend call, so a re-run or crash can never double-send. Failed sends leave a null-`resendId` row flagged for manual review.
+  - Rate limit: `SEND_INTERVAL_MS` (default 600ms, ~2/s Resend cap).
+  - UTMs (exact): Segment A Play link = `…?id=com.heelerdigital.acuity&utm_source=email&utm_medium=rescue&utm_campaign=android_launch`; Segment B uses `utm_campaign=ios_renudge` on App Store / Play / web links.
+  - Sender: `keenan@heelerdigital.com` only if `HEELERDIGITAL_SENDER_VERIFIED=true`, else falls back to `hello@getacuity.io` with reply-to `keenan@getacuity.io`.
+- `.gitignore`: added `apps/web/scripts/android-launch-suppression.txt` so the real bounced/unsubscribed export is never committed.
+- No Prisma schema changes (reuses `TrialEmailLog`); no migration needed.
+
+### Manual steps needed
+- [ ] **Confirm the drafted copy** — I wrote both templates per the positioning doc; they are NOT yet Keenan-authored. Review in the test send and edit if needed (Keenan).
+- [ ] **Export the Resend suppression list** (bounced + complained + unsubscribed) into `apps/web/scripts/android-launch-suppression.txt`, one email per line. Required for the live send — the script hard-stops without it (Keenan).
+- [ ] **Verify sender domain** — is `keenan@heelerdigital.com` a verified sending domain in Resend? If yes, set `HEELERDIGITAL_SENDER_VERIFIED=true` before the live run; if not, it safely falls back to `hello@getacuity.io` (Jimmy/Keenan).
+- [ ] **Run the safeguard sequence, in order** from `apps/web`: (1) `npx tsx scripts/android-launch-send.ts` → approve the printed list; (2) `... test` → confirm both templates render in light mode; (3) `... live --yes` → only after approval (Keenan).
+- [ ] After the live send, spot-check a few `funnel_*` signups tagged `utm_campaign=android_launch` / `ios_renudge` to confirm attribution (Keenan).
+
+### Notes
+- Claim-before-send is the core anti-double-send guarantee: the unique `TrialEmailLog` row is written before the network call. A crash between claim and send leaves a null-`resendId` row that is intentionally NOT retried automatically — it's surfaced in the run summary for manual review instead.
+- `lastSeenAt` is used as the "active in-app in the last 7 days" signal; it covers both web and app activity, so it's a conservative (safe) exclusion.
+- Segment A does not apply the "no app registered" filter (the Android app only just launched, so registration is expected to be empty); Segment B does.
+- The Play Store base URL already carries `?id=…`, so UTM params are appended with `&` (not `?`) — easy to get wrong.
+- Everything is inert until run by hand; there is no cron/Inngest trigger and nothing fires on deploy.
+
+---
+
 ## [2026-07-13] — Google Play launch: added the Android app everywhere across web, emails, and tracking
 
 **Requested by:** Keenan
