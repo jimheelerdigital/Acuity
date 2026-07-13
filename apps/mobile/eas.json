@@ -62,6 +62,13 @@
     }
   },
   "submit": {
+    "internal": {
+      "android": {
+        "serviceAccountKeyPath": "./secrets/play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
     "preview": {
       "ios": {
         "appleId": "jim@heelerdigital.com",
