@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** fd4c1d8e
+**Commit hash:** 7c8b1d14
 
 ### In plain English (for Keenan)
 The Android app is live on Google Play, so we now offer it everywhere we previously only offered the iPhone app. On the sign-up funnel's final download screen, we detect the visitor's phone: Android users see the "Get it on Google Play" button, iPhone users see the App Store button (unchanged), and desktop visitors see both. Crucially, Android users tapping from inside the Instagram/Facebook in-app browser go straight to the Play Store — none of the copy-the-link workaround the iPhone still needs. The marketing site (homepage, /for pages, footers, the install bar, and the mid-page install sections) now shows both store badges. Welcome and reminder emails now offer both an App Store and a Google Play button, and all the old "Android coming soon" wording is gone. Finally, our admin dashboard now counts an Android store tap exactly like an iPhone store tap, so the "Tapped App Store / Bounced from store" stages stay accurate now that most of our traffic is Android. This matters because the majority of our Meta ad traffic is Android and, until now, those people had no app to install.
