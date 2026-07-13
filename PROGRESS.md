@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b2c3104e
+**Commit hash:** 0d7c56a6
 
 ### In plain English (for Keenan)
 The homepage hero now gives visitors a clearer choice. The big coral button up top is now "Is this for me? Find out →" and sends people into the quiz, so undecided visitors get qualified instead of dropped straight onto a trial. Directly under it is a row of three equal options — the official App Store badge, the official Google Play badge (Android is live now), and a matching "Web App" button for people who'd rather not download anything. The small print under it now reads "Free 7-day trial · Free version forever · iPhone & Android," and "See how it works" is still there as a quiet text link just below. Every one of those four buttons is tracked separately, so we'll be able to see exactly which path people take from the hero.
