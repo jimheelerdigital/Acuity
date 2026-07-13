@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING-UI-TWEAKS
+**Commit hash:** 1713e994
 
 ### In plain English (for Keenan)
 Two small visual cleanups. (1) On the onboarding paywall, the standalone pricing sentence near the top ("$4.99/mo founders rate — or $39.99/yr…") is gone. The only price on the screen is now the small line right under the "Lock in founders rate" button ("$0 today. $4.99/mo after your free week. Cancel anytime."), so people still see the price before they hit Stripe — just once, in the right spot. Everything else on that screen is unchanged. (2) On the homepage, the big coral "Is this for me? Find out →" button was taller than the App Store / Google Play / Web App badges under it; it's now the same height and scale as those badges, so the hero reads as one tidy stack instead of one oversized button.
