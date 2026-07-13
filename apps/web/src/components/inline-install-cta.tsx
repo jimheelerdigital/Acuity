@@ -9,7 +9,7 @@ import { trackClient } from "@/lib/analytics-client";
  * Inline install CTA — a marketing-page content section (NOT the sticky
  * banner) that gives scrolling readers a second/third chance to install
  * after they've absorbed the value props. Renders both official store
- * badges (Play gated behind NEXT_PUBLIC_PLAY_STORE_LIVE), on desktop + mobile
+ * badges (App Store + Google Play — both apps are live), on desktop + mobile
  * since it's page content, not a device-targeted bar.
  *
  * Visual language per _design/DESIGN_SYSTEM.md: mono eyebrow, display
@@ -21,14 +21,12 @@ import { trackClient } from "@/lib/analytics-client";
  * tap. Both carry `location` (hero | mid_page | footer) for placement context.
  */
 
-const PLAY_STORE_LIVE = process.env.NEXT_PUBLIC_PLAY_STORE_LIVE === "true";
-
 type InlineLocation = "hero" | "mid_page" | "footer";
 
 export function InlineInstallCTA({
   location,
   headline = "Ready to start journaling?",
-  eyebrow = "Acuity for iPhone",
+  eyebrow = "Acuity for iPhone & Android",
   sub = "Talk for a minute. Acuity turns it into tasks, moods, patterns, and a weekly report.",
 }: {
   location: InlineLocation;
@@ -66,7 +64,6 @@ export function InlineInstallCTA({
       <div className="mx-auto flex max-w-xl flex-col items-center gap-5 text-center">
         <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-primary">
           {eyebrow}
-          {PLAY_STORE_LIVE ? " & Android" : ""}
         </p>
         <h3 className="font-display text-[26px] font-bold leading-[1.1] tracking-[-0.6px] text-acuity-text sm:text-[30px]">
           {headline}
@@ -92,23 +89,21 @@ export function InlineInstallCTA({
               style={{ height: 48, width: "auto", display: "block" }}
             />
           </a>
-          {PLAY_STORE_LIVE && (
-            <a
-              href={APP_VERSION_CONFIG.android.appStoreUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => handleClick("play_store")}
-              aria-label="Get it on Google Play"
-              className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/badges/google-play.svg"
-                alt="Get it on Google Play"
-                style={{ height: 48, width: "auto", display: "block" }}
-              />
-            </a>
-          )}
+          <a
+            href={APP_VERSION_CONFIG.android.appStoreUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => handleClick("play_store")}
+            aria-label="Get it on Google Play"
+            className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/badges/google-play.svg"
+              alt="Get it on Google Play"
+              style={{ height: 48, width: "auto", display: "block" }}
+            />
+          </a>
         </div>
       </div>
     </section>

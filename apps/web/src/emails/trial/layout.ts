@@ -162,6 +162,34 @@ export function trialButton(href: string, label: string): string {
   return primaryButton(href, label);
 }
 
+/** Canonical store URLs — both apps are live (Android launched 2026-07). */
+export const APP_STORE_URL =
+  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+export const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
+
+/**
+ * Cross-platform download CTA: App Store + Google Play side by side.
+ *
+ * Emails can't OS-detect (static HTML) and SVG store badges are unreliable
+ * across mail clients (Gmail strips SVG), so these are text buttons where the
+ * store NAME is the label and the tap target. That also removes any ambiguity
+ * about which app to install — the button says the store. Two-column table is
+ * the most mail-client-safe way to lay them out; falls back to stacked on
+ * narrow widths.
+ */
+export function appStoreAndPlayButtons(
+  appStoreUrl: string = APP_STORE_URL,
+  playStoreUrl: string = PLAY_STORE_URL,
+): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:8px 0;">
+    <tr>
+      <td width="50%" valign="top" style="padding-right:5px;">${primaryButton(appStoreUrl, "App Store")}</td>
+      <td width="50%" valign="top" style="padding-left:5px;">${primaryButton(playStoreUrl, "Google Play")}</td>
+    </tr>
+  </table>`;
+}
+
 /** Subtle inset card — coral left-accent. Used for quotes, insights. */
 export function trialCard(inner: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">

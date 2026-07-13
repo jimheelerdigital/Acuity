@@ -43,12 +43,14 @@ type LifecycleStage =
 const DL_SCREEN_VIEWED = "funnel_download_screen_viewed";
 const DL_WEBVIEW_BLOCKED = "funnel_inapp_browser_detected";
 const DL_APP_STORE_CLICKED = "funnel_app_store_clicked";
+// Android store tap — treated identically to an App Store tap for lifecycle.
+const DL_PLAY_STORE_CLICKED = "funnel_play_store_clicked";
 const DL_RETURNED = "funnel_download_returned";
 const DL_WEB_APP_CLICKED = "funnel_continue_web_app_clicked";
 // Legacy aliases still present in older OnboardingEvent rows
 const DL_LEGACY_VIEWED = ["funnel_download_viewed", "onboarding_app_store_clicked"];
 const DOWNLOAD_STAGE_EVENTS = [
-  DL_SCREEN_VIEWED, DL_WEBVIEW_BLOCKED, DL_APP_STORE_CLICKED, DL_RETURNED, DL_WEB_APP_CLICKED, ...DL_LEGACY_VIEWED,
+  DL_SCREEN_VIEWED, DL_WEBVIEW_BLOCKED, DL_APP_STORE_CLICKED, DL_PLAY_STORE_CLICKED, DL_RETURNED, DL_WEB_APP_CLICKED, ...DL_LEGACY_VIEWED,
 ];
 const EMPTY_EVENT_SET: Set<string> = new Set();
 
@@ -77,8 +79,11 @@ const RECOVERY_EMAIL_LABEL: Record<string, string> = {
 // their funnel events. Ordered so the strongest "got stuck" signal wins: a user
 // who tapped the store and came back is more telling than one who only viewed.
 function downloadSubstage(ev: Set<string>): LifecycleStage {
-  if (ev.has(DL_APP_STORE_CLICKED) && ev.has(DL_RETURNED)) return "Bounced from store";
-  if (ev.has(DL_APP_STORE_CLICKED) || ev.has("onboarding_app_store_clicked")) return "Tapped App Store";
+  // Play Store taps count exactly like App Store taps — the majority of our
+  // Meta traffic is Android, so a Play tap is the same "reached the store" signal.
+  const clickedStore = ev.has(DL_APP_STORE_CLICKED) || ev.has(DL_PLAY_STORE_CLICKED);
+  if (clickedStore && ev.has(DL_RETURNED)) return "Bounced from store";
+  if (clickedStore || ev.has("onboarding_app_store_clicked")) return "Tapped App Store";
   if (ev.has(DL_WEBVIEW_BLOCKED)) return "Blocked in webview";
   if (ev.has(DL_SCREEN_VIEWED) || ev.has(DL_WEB_APP_CLICKED) || ev.has("funnel_download_viewed")) return "Viewed download";
   return "Attempted download";

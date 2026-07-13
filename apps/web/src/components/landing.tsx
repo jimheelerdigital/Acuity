@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
-import { APP_STORE_URL, AppStoreBadge, useCtaHref } from "@/components/landing-shared";
+import { APP_STORE_URL, PLAY_STORE_URL, AppStoreBadge, GooglePlayBadge, useCtaHref } from "@/components/landing-shared";
 import { TestimonialCarousel, STATIC_CAROUSEL_TESTIMONIALS } from "@/components/testimonial-carousel";
 
 /* ═══════════════════════════════════════════
@@ -1768,9 +1768,15 @@ export function LandingPage() {
                 Just talk. Get a clearer picture of your life. Your daily debrief.
               </p>
               <div className="mt-6 flex flex-col gap-3">
-                <AppStoreBadge />
+                <div className="flex flex-wrap items-center gap-3">
+                  <AppStoreBadge />
+                  <GooglePlayBadge />
+                </div>
                 <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-[#A0A0B8] transition hover:text-white hover:underline underline-offset-4">
                   Download on the App Store
+                </a>
+                <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-[#A0A0B8] transition hover:text-white hover:underline underline-offset-4">
+                  Get it on Google Play
                 </a>
               </div>
               <p className="mt-6 text-xs text-[#A0A0B8]">
@@ -1784,6 +1790,7 @@ export function LandingPage() {
               <ul className="space-y-3 text-sm text-[#A0A0B8]">
                 <li><a href="/" className="transition hover:text-white hover:underline underline-offset-4">Home</a></li>
                 <li><a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-white hover:underline underline-offset-4">Download on App Store</a></li>
+                <li><a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-white hover:underline underline-offset-4">Get it on Google Play</a></li>
                 <li><a href="/auth/signin" className="transition hover:text-white hover:underline underline-offset-4">Sign In</a></li>
                 <li><a href="/#how-it-works" className="transition hover:text-white hover:underline underline-offset-4">How It Works</a></li>
                 <li><a href="/#pricing" className="transition hover:text-white hover:underline underline-offset-4">Pricing</a></li>

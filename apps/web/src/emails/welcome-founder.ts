@@ -19,7 +19,7 @@
 import { escapeHtml } from "@/lib/escape-html";
 import {
   keenanSignature,
-  primaryButton,
+  appStoreAndPlayButtons,
   secondaryButton,
   trialLayout,
 } from "./trial/layout";
@@ -56,7 +56,7 @@ export function welcomeFounderEmail(
       ${para("Here's how to start:")}
       <tr>
         <td style="padding-bottom:4px;">
-          ${primaryButton(APP_STORE_URL, "Get the iPhone app")}
+          ${appStoreAndPlayButtons(APP_STORE_URL)}
         </td>
       </tr>
       <tr>
@@ -64,7 +64,7 @@ export function welcomeFounderEmail(
           ${secondaryButton(WEB_APP_URL, "Open the web app")}
         </td>
       </tr>
-      ${para("On Android? It's coming — we're building it now. Just reply to this email and I'll personally let you know the second it's ready.")}
+      ${para("Prefer not to install anything? Use the web app right in your browser — same debrief, nothing to download.")}
       ${para("One honest thing before you go: Acuity gets better the more you use it. The first debrief gives you a little. A week in, it starts surfacing patterns you didn't see. A month in, you can watch your life actually take shape across the things that matter. It compounds — quietly, in the background — but only if you keep showing up for a few minutes at a time.")}
       ${para("You don't have to be consistent to start. You just have to start. Talk through today, and let it do the rest.")}
       ${para("I read every reply to this email, so if anything's confusing or you just want to tell me what's on your mind — write back. A real person (me) will see it.")}

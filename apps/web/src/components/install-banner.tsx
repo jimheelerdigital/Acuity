@@ -23,16 +23,14 @@ import { trackClient } from "@/lib/analytics-client";
  * the page's own fixed top-navs offset below it.
  *
  * Gating: public marketing + conversion routes; iOS → App Store, Android →
- * Play (only when NEXT_PUBLIC_PLAY_STORE_LIVE, else render_skipped); 7-day
- * dismiss cookie. Analytics: shown / clicked / dismissed / render_skipped.
+ * Play (both apps are live); 7-day dismiss cookie. Analytics: shown / clicked
+ * / dismissed.
  */
 
 const COOKIE_NAME = "acuity_install_banner_dismissed_at";
 const COOKIE_DAYS = 7;
 const BANNER_HEIGHT = 60; // px — tight; the badge carries the weight, not the bar
 const SLIDE_MS = 220;
-
-const PLAY_STORE_LIVE = process.env.NEXT_PUBLIC_PLAY_STORE_LIVE === "true";
 
 const EXCLUDED_PREFIXES = [
   "/admin",
@@ -155,14 +153,6 @@ export function InstallBanner() {
       pathname,
       ...attributionProps(),
     };
-
-    if (p === "android" && !PLAY_STORE_LIVE) {
-      trackClient("install_banner_render_skipped", {
-        ...base,
-        reason: "play_not_live",
-      });
-      return;
-    }
 
     const reduce =
       typeof window !== "undefined" &&

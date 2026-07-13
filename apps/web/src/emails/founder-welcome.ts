@@ -7,6 +7,8 @@
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
 
 function button(href: string, label: string, style: "primary" | "secondary" = "primary"): string {
   const bg = style === "primary" ? "#7C5CFC" : "#F3F4F6";
@@ -50,11 +52,13 @@ export function founderWelcomeEmail(params: {
 
         <p style="margin:0 0 20px;font-size:16px;color:#1F2937;line-height:1.7;">I'm Keenan, one of the founders of Acuity. Saw you just signed up &mdash; welcome! You're <strong style="color:#7C5CFC;">founding member #${memberNumber}</strong>.</p>
 
-        <p style="margin:0 0 12px;font-size:16px;color:#1F2937;line-height:1.7;">If you haven't yet, here's the link to download the app in the App Store:</p>
+        <p style="margin:0 0 12px;font-size:16px;color:#1F2937;line-height:1.7;">If you haven't yet, here's the link to download the app &mdash; on iPhone or Android:</p>
 
         ${button(APP_STORE_URL, "\u{1F4F1}  Download on the App Store")}
 
-        <p style="margin:20px 0 12px;font-size:15px;color:#6B7280;line-height:1.7;">If you're an Android user, the app should be live within the next week! In the meantime, use our web app:</p>
+        ${button(PLAY_STORE_URL, "\u{1F4F1}  Get it on Google Play")}
+
+        <p style="margin:20px 0 12px;font-size:15px;color:#6B7280;line-height:1.7;">Prefer not to install anything? Use our web app right in your browser:</p>
 
         ${button("https://getacuity.io/auth/signin", "\u{1F310}  Use the web app", "secondary")}
 

@@ -10,7 +10,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, trialLayout , para } from "./layout";
+import { keenanSignature, appStoreAndPlayButtons, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL =
@@ -38,7 +38,7 @@ export const rescueWebviewBlocked: TrialEmailTemplate = {
       ${para(`Good news: you\u2019re out of that now. Just tap below and it\u2019ll take you straight there:`)}
       <tr>
         <td style="padding-bottom:20px;">
-          ${primaryButton(APP_STORE_URL, "Open in the App Store")}
+          ${appStoreAndPlayButtons(APP_STORE_URL)}
         </td>
       </tr>
       ${para(`That\u2019s it \u2014 no wall this time.`)}

@@ -6,7 +6,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialButton, trialLayout , para } from "./layout";
+import { keenanSignature, trialButton, appStoreAndPlayButtons, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL =
@@ -28,13 +28,13 @@ export const recoveryDownloadReminder: TrialEmailTemplate = {
         "It looks like you signed up but haven\u2019t downloaded the app or recorded your first debrief yet."
       )}
       ${para(
-        "Here\u2019s the link to download the app in the App Store:"
+        "Here\u2019s the link to download the app \u2014 on iPhone or Android:"
       )}
       <tr><td style="padding-bottom:16px;">
-        ${trialButton(APP_STORE_URL, "Download on the App Store")}
+        ${appStoreAndPlayButtons(APP_STORE_URL)}
       </td></tr>
       ${para(
-        "On Android? It\u2019s coming soon \u2014 for now, the web app has everything:"
+        "Prefer not to install anything? The web app has everything:"
       )}
       <tr><td style="padding-bottom:20px;">
         ${trialButton("https://getacuity.io/auth/signin", "Use the web app")}

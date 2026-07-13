@@ -13,6 +13,9 @@ import { SOCIAL_PROOF } from "@/lib/social-proof";
 export const APP_STORE_URL =
   "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
+export const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
+
 /** Returns true on iPhone/iPad (client-side only). SSR returns false. */
 export function useIsIOS(): boolean {
   const [isIOS, setIsIOS] = useState(false);
@@ -86,6 +89,23 @@ export function AppStoreBadge({ className = "", svgClassName = "h-10" }: { class
           App Store
         </text>
       </svg>
+    </a>
+  );
+}
+
+/** Official "Get it on Google Play" badge (unmodified asset, per Google Play
+ *  brand guidelines). Matches AppStoreBadge's height so the pair reads evenly. */
+export function GooglePlayBadge({ className = "", imgClassName = "h-10" }: { className?: string; imgClassName?: string }) {
+  return (
+    <a
+      href={PLAY_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-block ${className}`}
+      aria-label="Get it on Google Play"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/badges/google-play.svg" alt="Get it on Google Play" className={`${imgClassName} w-auto`} />
     </a>
   );
 }
@@ -594,8 +614,9 @@ export function Footer() {
             <p className="mt-2 text-sm text-acuity-text-sec max-w-xs">
               Debrief daily. See your life clearly.
             </p>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               <AppStoreBadge />
+              <GooglePlayBadge />
             </div>
           </div>
           <div>
@@ -603,6 +624,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-acuity-text-sec">
               <li><a href="/" className="transition hover:text-acuity-text">Home</a></li>
               <li><a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-acuity-text">Download on App Store</a></li>
+              <li><a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-acuity-text">Get it on Google Play</a></li>
             </ul>
           </div>
           <div>

@@ -1703,7 +1703,7 @@ export async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, 
       funnel_account_created: 16,
       funnel_savings_viewed: 17,
       funnel_savings_locked_in: 18, funnel_trial_continued: 18,
-      funnel_download_viewed: 19, funnel_download_screen_viewed: 19, funnel_app_store_clicked: 19, funnel_continue_web_app_clicked: 19, funnel_web_app_clicked: 19,
+      funnel_download_viewed: 19, funnel_download_screen_viewed: 19, funnel_app_store_clicked: 19, funnel_play_store_clicked: 19, funnel_continue_web_app_clicked: 19, funnel_web_app_clicked: 19,
       // v2 legacy compat
       funnel_paywall_viewed: 15,
       funnel_signup_attempted: 16, funnel_signup_completed: 16,
@@ -1736,7 +1736,7 @@ export async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, 
         const last = sorted[sorted.length - 1];
         const maxStep = Math.max(...events.map((e) => STEP_PROGRESS[e.event] ?? 0));
         const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
-        const clickedAppStore = events.some((e) => e.event === "funnel_app_store_clicked");
+        const clickedAppStore = events.some((e) => e.event === "funnel_app_store_clicked" || e.event === "funnel_play_store_clicked");
         const clickedWebApp = events.some((e) => e.event === "funnel_continue_web_app_clicked" || e.event === "funnel_web_app_clicked");
         const completed = clickedAppStore || clickedWebApp || events.some((e) => e.event === "funnel_download_viewed");
         // v2 default: only count savings_locked_in as paid (not legacy payment_completed)
@@ -2143,7 +2143,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     }
 
     const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
-    const clickedAppStore = eventNames.has("funnel_app_store_clicked");
+    const clickedAppStore = eventNames.has("funnel_app_store_clicked") || eventNames.has("funnel_play_store_clicked");
     const clickedWebApp = eventNames.has("funnel_continue_web_app_clicked") || eventNames.has("funnel_web_app_clicked");
     const completed = clickedAppStore || clickedWebApp || eventNames.has("funnel_download_viewed");
     // Flow-aware paid detection: v2 only counts savings_locked_in, v1 only counts payment_completed

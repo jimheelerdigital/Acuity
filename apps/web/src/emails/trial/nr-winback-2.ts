@@ -6,7 +6,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, secondaryButton, trialLayout, para } from "./layout";
+import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout, para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL =
@@ -37,7 +37,7 @@ export const nrWinback2: TrialEmailTemplate = {
       ${para(`None of that exists until you talk to it once. No writing, no blank page, no setup. Just talk.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(APP_STORE_URL, "Open Acuity")}
+          ${appStoreAndPlayButtons(APP_STORE_URL)}
         </td>
       </tr>
       <tr>

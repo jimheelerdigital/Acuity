@@ -69,6 +69,7 @@ const TOTAL_STEPS = STEP_ORDER.length;
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
 
 // Testimonials used on Download screen
 const DOWNLOAD_TESTIMONIALS = [
@@ -2507,6 +2508,8 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 
   // Shared App Store CTA webview handling: detection, clipboard auto-copy,
   // target-less handoff, breakout instructions, tap + failed-open tracking.
+  // This drives the iOS badge only — the App Store handoff is the flow that
+  // needs the webview copy-link fallback.
   const { browserEnv, copied, copyFailed, diagContext, anchorProps } = useAppStoreCta({
     track,
     events: {
@@ -2517,6 +2520,23 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
       returned: "funnel_download_returned",
     },
   });
+
+  // OS detection for the store CTA. Android → Play badge primary; iOS →
+  // App Store badge (unchanged webview handoff); desktop/unknown → both.
+  const isAndroid = /Android/i.test(browserEnv.ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(browserEnv.ua);
+
+  // Google Play tap: mirror funnel_app_store_clicked's payload (the same
+  // PII-safe webview/os/label diagContext string). Inside an Android FB/IG
+  // webview a direct anchor to the Play URL opens the native Play Store app
+  // and escapes the webview — so no target-less handoff / copy-link card is
+  // needed here (that dance is only required for the iOS App Store).
+  const handlePlayTap = () => track("funnel_play_store_clicked", { value: diagContext });
+  const playAnchorProps = browserEnv.isWebView
+    ? { href: PLAY_STORE_URL, onClick: handlePlayTap }
+    : { href: PLAY_STORE_URL, target: "_blank" as const, rel: "noopener noreferrer" as const, onClick: handlePlayTap };
+
+  const badgeClass = "inline-block transition hover:brightness-105 active:scale-[0.98]";
 
   useEffect(() => {
     track("funnel_download_screen_viewed", { value: diagContext });
@@ -2557,23 +2577,42 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </>
         )}
 
-        {/* App Store CTA — anchorProps drops target="_blank" inside a webview
-            so iOS can hand off; the breakout card is the reliable fallback. */}
-        <a
-          {...anchorProps}
-          className="relative block w-full rounded-full px-8 py-3.5 text-[15px] font-semibold text-white text-center transition hover:brightness-110 active:scale-[0.98] overflow-hidden funnel-bounce"
-          style={{ background: "var(--acuity-grad-primary)", boxShadow: "var(--acuity-glow-primary)" }}>
-          <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)", backgroundSize: "200% 100%", animation: "funnel-shimmer 2s ease-in-out infinite" }} />
-          <span className="relative">Download on the App Store</span>
-        </a>
-        {browserEnv.isWebView && (
-          <WebviewBreakout browserEnv={browserEnv} copied={copied} copyFailed={copyFailed} />
+        {/* Official OS-detected store badges (per Apple / Google Play brand
+            guidelines — not restyled). Android → Play badge (direct Play URL,
+            escapes FB/IG webviews natively, no copy-link card). iOS → App Store
+            badge with the existing webview handoff + breakout fallback.
+            Desktop/unknown → both badges side by side. */}
+        {isAndroid ? (
+          <div className="flex justify-center">
+            <a {...playAnchorProps} aria-label="Get it on Google Play" className={`${badgeClass} funnel-bounce`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/badges/google-play.svg" alt="Get it on Google Play" style={{ height: 56, width: "auto", display: "block" }} />
+            </a>
+          </div>
+        ) : isIOS ? (
+          <>
+            <div className="flex justify-center">
+              <a {...anchorProps} aria-label="Download on the App Store" className={`${badgeClass} funnel-bounce`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/badges/apple-app-store.svg" alt="Download on the App Store" style={{ height: 56, width: "auto", display: "block" }} />
+              </a>
+            </div>
+            {browserEnv.isWebView && (
+              <WebviewBreakout browserEnv={browserEnv} copied={copied} copyFailed={copyFailed} />
+            )}
+          </>
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a {...anchorProps} aria-label="Download on the App Store" className={badgeClass}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/badges/apple-app-store.svg" alt="Download on the App Store" style={{ height: 56, width: "auto", display: "block" }} />
+            </a>
+            <a {...playAnchorProps} aria-label="Get it on Google Play" className={badgeClass}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/badges/google-play.svg" alt="Get it on Google Play" style={{ height: 56, width: "auto", display: "block" }} />
+            </a>
+          </div>
         )}
-
-        <button disabled
-          className="w-full mt-3 rounded-full border border-zinc-200 bg-zinc-100 px-8 py-3.5 text-[15px] font-semibold text-zinc-400 cursor-not-allowed">
-          Google Play — Coming soon!
-        </button>
 
         <button
           onClick={async () => {

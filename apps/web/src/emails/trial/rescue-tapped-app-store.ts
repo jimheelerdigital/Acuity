@@ -7,7 +7,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, trialLayout , para } from "./layout";
+import { keenanSignature, appStoreAndPlayButtons, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL =
@@ -35,7 +35,7 @@ export const rescueTappedAppStore: TrialEmailTemplate = {
       ${para(`Here\u2019s the direct link to pick up where you left off:`)}
       <tr>
         <td style="padding-bottom:20px;">
-          ${primaryButton(APP_STORE_URL, "Open in the App Store")}
+          ${appStoreAndPlayButtons(APP_STORE_URL)}
         </td>
       </tr>
       ${para(`One tip: if you\u2019re tapping this from inside Instagram or Facebook, those apps have a built-in browser that can block the App Store. If it won\u2019t open, open this email from your Mail app instead and tap the link there \u2014 it\u2019ll go straight through.`)}

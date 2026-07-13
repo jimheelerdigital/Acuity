@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-07-13] — Google Play launch: added the Android app everywhere across web, emails, and tracking
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** fd4c1d8e
+
+### In plain English (for Keenan)
+The Android app is live on Google Play, so we now offer it everywhere we previously only offered the iPhone app. On the sign-up funnel's final download screen, we detect the visitor's phone: Android users see the "Get it on Google Play" button, iPhone users see the App Store button (unchanged), and desktop visitors see both. Crucially, Android users tapping from inside the Instagram/Facebook in-app browser go straight to the Play Store — none of the copy-the-link workaround the iPhone still needs. The marketing site (homepage, /for pages, footers, the install bar, and the mid-page install sections) now shows both store badges. Welcome and reminder emails now offer both an App Store and a Google Play button, and all the old "Android coming soon" wording is gone. Finally, our admin dashboard now counts an Android store tap exactly like an iPhone store tap, so the "Tapped App Store / Bounced from store" stages stay accurate now that most of our traffic is Android. This matters because the majority of our Meta ad traffic is Android and, until now, those people had no app to install.
+
+### Technical changes (for Jimmy)
+- **Funnel download screen** — `apps/web/src/components/onboarding-funnel.tsx`: added `PLAY_STORE_URL` const; in `DownloadScreen` added `isAndroid`/`isIOS` UA detection off `browserEnv.ua`. Replaced the App Store gradient button + disabled "Google Play — Coming soon!" button with official OS-detected store badges (`/badges/google-play.svg`, `/badges/apple-app-store.svg`, height 56, unmodified per brand guidelines): Android → Play badge only (direct Play URL; in-webview it opens the native Play Store, so NO copy-link breakout card); iOS → App Store badge + existing `WebviewBreakout` fallback; desktop/unknown → both side by side. New tap handler fires `funnel_play_store_clicked` with the same PII-safe `diagContext` value payload as `funnel_app_store_clicked`. QR code (desktop) left on App Store URL — out of scope.
+- **New tracking event** `funnel_play_store_clicked` — no allowlist change needed (auto-allowed by the `/^funnel_[a-z0-9_]+$/` prefix rule in the onboarding-events route).
+- **Admin lifecycle parity** — `apps/web/src/app/api/admin/users/route.ts`: added `DL_PLAY_STORE_CLICKED` to `DOWNLOAD_STAGE_EVENTS`; `downloadSubstage` now treats a Play tap identically to an App Store tap for "Tapped App Store" / "Bounced from store". `apps/web/src/app/api/admin/metrics/route.ts`: added `funnel_play_store_clicked: 19` to `STEP_PROGRESS` and OR'd it into the two `clickedAppStore` checks (`getWebOnboardingFunnel` + `getFunnelAnalytics`).
+- **Marketing site** — `apps/web/src/components/landing-shared.tsx`: exported `PLAY_STORE_URL` + new `GooglePlayBadge` component; footer now renders both badges + a "Get it on Google Play" text link. `apps/web/src/components/landing.tsx` (/for pages): imported `PLAY_STORE_URL`/`GooglePlayBadge`, added Play badge next to App Store badge and Play text links in both footer blocks. `apps/web/src/components/inline-install-cta.tsx` + `install-banner.tsx`: **removed the `NEXT_PUBLIC_PLAY_STORE_LIVE` env gate entirely** — Play badge/eyebrow now always render (banner already had iOS→App Store / Android→Play detection). Also removed the now-dead `install_banner_render_skipped` (`reason: play_not_live`) analytics path.
+- **Emails** — `apps/web/src/emails/trial/layout.ts`: new `appStoreAndPlayButtons(appStoreUrl?, playStoreUrl?)` helper (two-column table of text buttons labelled "App Store" / "Google Play" — SVG store badges are unreliable in mail clients, and the store name as the label removes any which-app ambiguity) plus exported `APP_STORE_URL`/`PLAY_STORE_URL`. Swapped the single App Store button → `appStoreAndPlayButtons` in the install-intent templates: `never-recorded-24h/48h/3day/lastday`, `nr-winback-1/2/3`, `recovery-download-reminder`, `recovery-paid-no-app`, `rescue-signup-only/tapped-app-store/viewed-no-tap/webview-blocked`, and the two founder welcomes (`emails/welcome-founder.ts` active, `emails/founder-welcome.ts` dormant behind the `founder_welcome` kill-switch but still reachable via the admin resend route). Rewrote all "Android coming soon / next week" copy to cross-platform wording. Re-engagement/milestone emails for already-recorded (historically iOS) users and the web-only `welcome-day0` were intentionally left unchanged.
+
+### Manual steps needed
+- [ ] **SQL-verify the new event after deploy** (team standard — don't call it wired until a real row exists): after one real Android tap, run `select id, event, value, "sessionToken", "createdAt" from "OnboardingEvent" where event = 'funnel_play_store_clicked' order by "createdAt" desc limit 5;` and confirm the `value` carries the same webview/os/label diagContext as `funnel_app_store_clicked` (Keenan/Jimmy).
+- [ ] **`NEXT_PUBLIC_PLAY_STORE_LIVE` is now unused** — the flag was removed from the code (only referenced in `inline-install-cta.tsx` + `install-banner.tsx`). Safe to delete from Vercel env vars whenever convenient (Jimmy).
+- [ ] Post-deploy, preview a couple of the edited emails in Resend (or send test) to confirm the two-column App Store / Google Play buttons render side by side and both links resolve (Keenan).
+- [ ] Spot-check the funnel download screen on a real Android device inside the IG/FB in-app browser: tapping the Play badge should open the native Play Store, not the copy-link card (Keenan).
+
+### Notes
+- Android does NOT need the iOS copy-link/breakout dance: a direct anchor to the Play URL from inside an FB/IG Android webview opens the native Play Store app and escapes the webview. The copy-link fallback (`WebviewBreakout`) is therefore wired to the iOS App Store badge only.
+- `funnel_play_store_clicked` reuses the exact `diagContext` value string from the App Store CTA hook so both events group and compare cleanly in the funnel analytics.
+- Store badge SVGs live in `apps/web/public/badges/` (`google-play.svg`, `apple-app-store.svg`) — used as-is, never restyled, per Apple/Google brand guidelines. Emails use text buttons instead because Gmail and others strip inline SVG.
+- Scope was UI/links/emails/tracking only — no auth, payment, paywall, or entitlement logic touched.
+- Play listing app name is "Acuity Daily" (id `com.heelerdigital.acuity`); the store badge is the tap target so users aren't confused about which app to install.
+- Pre-existing type errors in `install-banner.tsx` (nullable `pathname`) and `landing.tsx` (stats `prefix`) confirmed present on `main` before these edits (verified by stashing) — not introduced here.
+
+---
+
 ## [2026-07-10] — Restored payment tracking, fixed returning-user funnel, App Store copy, and recovery visibility
 
 **Requested by:** Keenan

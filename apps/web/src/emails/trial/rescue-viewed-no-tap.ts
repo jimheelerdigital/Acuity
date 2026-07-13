@@ -10,11 +10,8 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, secondaryButton, trialLayout , para } from "./layout";
+import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
-
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
 
 export const rescueViewedNoTap: TrialEmailTemplate = {
@@ -39,7 +36,7 @@ export const rescueViewedNoTap: TrialEmailTemplate = {
       ${para(`And if you\u2019re ready, here are both ways in:`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(APP_STORE_URL, "Get the app")}
+          ${appStoreAndPlayButtons()}
         </td>
       </tr>
       <tr>
