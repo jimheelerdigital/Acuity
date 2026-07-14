@@ -11,7 +11,7 @@
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** 0fe6d063
 
 ### In plain English (for Keenan)
 Everywhere a visitor or user reads the product's name — the website, the web app, the onboarding funnel, all emails, the legal pages, and the little link previews that show up when someone shares us — it now says "Ripple" instead of "Acuity," matching the renamed iOS and Android apps. This is name-only: the website address, every link, and sign-in all still work exactly as before (the domain change is a separate Phase 2). One thing to know: the logo and favicon still show the old Acuity mark for now, because the Ripple image files aren't in the project yet — you need to drop them in (see manual steps). Nothing about pricing, features, or how anything works changed.
