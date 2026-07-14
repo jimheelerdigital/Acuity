@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Acuity GradientCheckbox — web mirror of `apps/mobile/components/
+ * Ripple GradientCheckbox — web mirror of `apps/mobile/components/
  * acuity/GradientCheckbox.tsx`. Per DESIGN_SYSTEM.md §5.9.
  *
  * Circular checkbox primitive. Visual layer only — toggle behavior

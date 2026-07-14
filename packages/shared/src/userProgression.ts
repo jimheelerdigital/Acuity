@@ -1,6 +1,6 @@
 /**
  * userProgression — single source of truth for the guided 7-day
- * first-experience on Acuity. Pure function; no DB access. Callers
+ * first-experience on Ripple. Pure function; no DB access. Callers
  * (web lib + mobile via API) fetch the user + entries + themes +
  * goals, then pipe them in.
  *
@@ -17,7 +17,7 @@
  * mean anything. This prevents empty-state theater on features that
  * need minimum data to be useful.
  *
- * All user-facing strings say "Acuity" (the product voice). Never
+ * All user-facing strings say "Ripple" (the product voice). Never
  * "Claude" — that's the underlying model, not the brand.
  */
 
@@ -151,7 +151,7 @@ const UNLOCK_PRIORITY: UnlockKey[] = [
 ];
 
 /**
- * Human-readable labels for unlock keys. Acuity voice — plain,
+ * Human-readable labels for unlock keys. Ripple voice — plain,
  * confident, no model-marketing noise.
  */
 const UNLOCK_LABELS: Record<UnlockKey, string> = {
@@ -467,7 +467,7 @@ function pickNextUnlock(args: {
       condition:
         entryGap > 0
           ? recordMore(entryGap)
-          : `Keep recording — Acuity needs to see ${themeGap} more recurring theme${themeGap === 1 ? "" : "s"}`,
+          : `Keep recording — Ripple needs to see ${themeGap} more recurring theme${themeGap === 1 ? "" : "s"}`,
       progress:
         entryGap > 0
           ? { current: entriesCount, target: 10 }
@@ -549,8 +549,8 @@ export function lockedFeatureCopy(
         headline: "Your Life Matrix unlocks soon.",
         body:
           entryGap > 0
-            ? `Acuity needs 5 entries across at least 3 life areas to show meaningful patterns. You have ${progression.entriesCount} of 5.`
-            : `Acuity has ${progression.entriesCount} entries, but only ${progression.dimensionsCovered} of the 3 life areas needed. Record about more sides of your life — work, health, relationships, money, personal, other.`,
+            ? `Ripple needs 5 entries across at least 3 life areas to show meaningful patterns. You have ${progression.entriesCount} of 5.`
+            : `Ripple has ${progression.entriesCount} entries, but only ${progression.dimensionsCovered} of the 3 life areas needed. Record about more sides of your life — work, health, relationships, money, personal, other.`,
         progress:
           entryGap > 0
             ? { current: progression.entriesCount, target: 5 }
@@ -560,13 +560,13 @@ export function lockedFeatureCopy(
     case "goalSuggestions": {
       return {
         headline: "Goal suggestions come after a few entries.",
-        body: `Acuity reads your entries, then surfaces goals you're already working toward. You have ${progression.entriesCount} of the 5 needed.`,
+        body: `Ripple reads your entries, then surfaces goals you're already working toward. You have ${progression.entriesCount} of the 5 needed.`,
         progress: { current: progression.entriesCount, target: 5 },
       };
     }
     case "patternInsights": {
       return {
-        headline: "Pattern insights open once Acuity has enough signal.",
+        headline: "Pattern insights open once Ripple has enough signal.",
         body: `A week of entries is roughly when patterns emerge. You have ${progression.entriesCount} of 7.`,
         progress: { current: progression.entriesCount, target: 7 },
       };
@@ -577,8 +577,8 @@ export function lockedFeatureCopy(
         headline: "Your Theme Map is still forming.",
         body:
           entryGap > 0
-            ? `Acuity needs 10 entries and 3 recurring themes before the map is meaningful. You have ${progression.entriesCount} of 10.`
-            : `Acuity has ${progression.entriesCount} entries but only ${progression.themesDetected} recurring themes. Keep recording — themes repeat as you return to the same topics.`,
+            ? `Ripple needs 10 entries and 3 recurring themes before the map is meaningful. You have ${progression.entriesCount} of 10.`
+            : `Ripple has ${progression.entriesCount} entries but only ${progression.themesDetected} recurring themes. Keep recording — themes repeat as you return to the same topics.`,
         progress:
           entryGap > 0
             ? { current: progression.entriesCount, target: 10 }
@@ -593,7 +593,7 @@ export function lockedFeatureCopy(
         body:
           dayGap > 0
             ? `You're on day ${progression.dayOfTrial} of 7. Your first report will arrive in ${dayGap} day${dayGap === 1 ? "" : "s"} — assuming at least 3 entries in the past week.`
-            : `You're on day ${progression.dayOfTrial}. Acuity needs 3 entries in the past 7 days to write your report. You have ${progression.entriesInLast7Days}.`,
+            : `You're on day ${progression.dayOfTrial}. Ripple needs 3 entries in the past 7 days to write your report. You have ${progression.entriesInLast7Days}.`,
         progress:
           dayGap > 0
             ? { current: progression.dayOfTrial, target: 7 }
@@ -606,7 +606,7 @@ export function lockedFeatureCopy(
         headline: "Your Day 7 Life Audit is coming.",
         body:
           dayGap > 0
-            ? `This is the long-form letter Acuity writes about your first week. It lands in ${dayGap} day${dayGap === 1 ? "" : "s"}.`
+            ? `This is the long-form letter Ripple writes about your first week. It lands in ${dayGap} day${dayGap === 1 ? "" : "s"}.`
             : `You're on day ${progression.dayOfTrial}. Your Life Audit should be generating — if it hasn't appeared, try recording one more entry.`,
         progress: { current: progression.dayOfTrial, target: 7 },
       };

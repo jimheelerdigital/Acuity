@@ -108,7 +108,7 @@ export function ProgressSuggestionBanner({
   return (
     <section className="rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-acuity-primary-soft dark:bg-acuity-primary-soft p-5">
       <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
-        Acuity noticed progress
+        Ripple noticed progress
       </p>
       <div className="mt-3 space-y-4">
         {suggestions.map((s) => {

@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-07-14] — Rebrand Phase 1: renamed Acuity → Ripple across all web copy
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+Everywhere a visitor or user reads the product's name — the website, the web app, the onboarding funnel, all emails, the legal pages, and the little link previews that show up when someone shares us — it now says "Ripple" instead of "Acuity," matching the renamed iOS and Android apps. This is name-only: the website address, every link, and sign-in all still work exactly as before (the domain change is a separate Phase 2). One thing to know: the logo and favicon still show the old Acuity mark for now, because the Ripple image files aren't in the project yet — you need to drop them in (see manual steps). Nothing about pricing, features, or how anything works changed.
+
+### Technical changes (for Jimmy)
+- Word-boundary rename `\bAcuity\b` → `Ripple` across 250 files (`apps/web/src/**`, `apps/web/public/site.webmanifest`, `apps/web/public/llms.txt`, and web-rendered copy in `packages/shared/src/**`). 850 user-facing string occurrences changed.
+- Surfaces updated: metadata title/description/OG/Twitter + schema.org `name`/`siteName` (`app/layout.tsx`, `app/page.tsx`, `voice-journaling`, `blog`, all `/for/*` layouts), PWA manifest `name`/`short_name`, onboarding funnel copy (`components/onboarding-funnel.tsx`), marketing components (`components/marketing/**`, `landing.tsx`, `landing-shared.tsx`), persona/landing pages (`lib/persona-pages.ts`), blog bodies (`lib/blog-posts.ts`), every Resend template (`src/emails/**`), web-app UI (account/home/insights/entries/goals/tasks), admin dashboard, terms + privacy legal copy, email From display-names (`"Acuity <hello@getacuity.io>"` → `"Ripple <…>"`, domain untouched), image `alt` text, and download/QR copy ("download Acuity" → "download Ripple").
+- `packages/shared/src/constants.ts`: `APP_NAME` "Acuity"→"Ripple", `PLAN_PRO_NAME` "Acuity Pro"→"Ripple Pro"; plus web-rendered locked-card (`copy/free-tier.ts`), progression (`progression.ts`, `userProgression.ts`), and notification-preference (`notifications.ts`) copy.
+- Deliberately NOT changed (out of Phase-1 name-only scope): domains/URLs (`getacuity.io`), OAuth/webhook endpoints, env vars, cookie name (`acuity_appearance`), package/bundle IDs (`com.heelerdigital.acuity`), repo name, Tailwind/CSS tokens (`bg-acuity-*`, `--acuity-*`), the `@acuity/shared` package + component identifiers (`AcuityTokens`, `AcuityDevice`, `makeAcuityTokens`, `AcuityTabBar`, etc.), asset filenames (`AcuityLogo.png`/`AcuityLogoDark.png`), `.well-known` deep-link route files, code comments/doc-path refs (`docs/Acuity_SalesCopy.md`), and two Meta Pixel `content_name` analytics labels on the payment path (`onboarding-funnel.tsx:343`, `stripe/webhook/route.ts:564`) to preserve Events-Manager continuity.
+- Verified: `tsc --noEmit` shows zero new errors attributable to the rename. Pre-existing type errors trace to an already-modified `next-env.d.ts` (adds the `next/navigation-types/compat` reference — nullable `useSearchParams`/`useParams`), which predates this session and is unrelated. Every changed line is a pure brand-word swap in copy/metadata/alt/comment text; none are structural.
+
+### Manual steps needed
+- [ ] **Keenan:** drop the Ripple brand-kit images into `apps/web/public`, keeping the existing filenames so no URLs change this phase: `AcuityLogo.png`, `AcuityLogoDark.png`, `og-image.png`, `favicon.ico`, `favicon-96x96.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`. (Assets were intentionally NOT swapped — halted per instructions because the Ripple files aren't in the repo yet.)
+- [ ] **Jimmy:** the two payment-path Meta Pixel `content_name` labels still read "Acuity Pro" on purpose — decide in Phase 2 whether/when to rename them (affects Meta Events Manager continuity).
+- [ ] **Both — Phase 2 (separate):** domain cutover (`getacuity.io` → new domain), OAuth redirect URIs, webhook endpoints, env vars, cookie name, package IDs, repo rename, and the `@acuity/*` package + `acuity-*` design-token identifier renames.
+- [ ] **Keenan/Jimmy:** dev-only scripts under `apps/web/scripts/*` (email previews, `seed-comparison-topics`, `theme-prompt-bench`) still say "Acuity" — not shipped to users; update when content/prompts are regenerated under the new brand.
+- [ ] Push is held per instruction — awaiting "push it".
+
+### Notes
+- Scope call: swept `packages/shared/src` copy (not just `apps/web`) because the web app renders those strings (free-tier locked cards, progression checklist, notification-preference descriptions, `APP_NAME`/`PLAN_PRO_NAME`). Mobile is also rebranding to Ripple, so shared→Ripple serves both platforms with no conflict and is idempotent.
+- The `\bAcuity\b` regex is provably identifier-safe: every code identifier/asset/domain/doc-ref has an adjoining word-char or is lowercase (`makeAcuityTokens`, `AcuityLogo.png`, `getacuity.io`, `Acuity_SalesCopy.md`, `AcuityBot`), so none matched. Lines containing `content_name` were skipped to protect the two payment analytics labels.
+- Grep proof (item 5): after the sweep, every remaining case-insensitive "acuity" in `apps/web` + `packages/shared` is a KEEP — asset filenames, code identifiers, domains, cookie name, package IDs, comments/doc-path refs, the two payment `content_name` labels, and non-shipped dev scripts. Zero user-facing shipped strings missed.
+
+---
+
 ## [2026-07-13] — Homepage hero: center the store row, subtext, and "See how it works"
 
 **Requested by:** Keenan

@@ -50,10 +50,10 @@ export type CalendarProviderId = "ios_eventkit" | "google" | "outlook";
  *     for any subsequent edit (title/dueDate/time change) on a task
  *     that already has a calendarEventId.
  *   - complete: rewrite the event title with strikethrough markers
- *     (per scoping doc §6: "~Acuity: Buy birthday gift~"). Fired
+ *     (per scoping doc §6: "~Ripple: Buy birthday gift~"). Fired
  *     when Task.status transitions to DONE.
  *   - delete: remove the event from the user's calendar. Fired when
- *     a task is deleted in Acuity.
+ *     a task is deleted in Ripple.
  */
 export type CalendarSyncOpKind = "upsert" | "complete" | "delete";
 
@@ -361,7 +361,7 @@ export class MobileQueueExecutor implements CalendarSyncExecutor {
   async execute(op: CalendarSyncOp): Promise<CalendarSyncOpResult> {
     // For deletes, mobile still has work to do (delete the
     // existing event). Same enqueue-only semantics. The terminal
-    // state for delete is "task row removed from Acuity" plus
+    // state for delete is "task row removed from Ripple" plus
     // "event removed from calendar"; neither happens here.
     return {
       taskId: op.taskId,

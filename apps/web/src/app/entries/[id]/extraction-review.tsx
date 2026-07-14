@@ -24,7 +24,7 @@ type ReviewGoal = {
 
 /**
  * Review banner on the entry detail page. Surfaces the tasks + goals
- * Acuity extracted from the recording and lets the user tick what to
+ * Ripple extracted from the recording and lets the user tick what to
  * commit.
  *
  * Default state (2026-05-25): everything starts UNCHECKED. Mobile
@@ -198,7 +198,7 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
     <section className="rounded-2xl border border-acuity-primary-soft dark:border-acuity-primary-soft bg-gradient-to-br from-acuity-primary-soft to-white dark:from-acuity-primary-soft dark:to-acuity-card-bg p-5 mb-8">
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-acuity-primary dark:text-acuity-primary">
-          Review what Acuity extracted
+          Review what Ripple extracted
         </p>
         <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-300">
           Tick what to keep, then commit. Items you don&rsquo;t select are
@@ -209,7 +209,7 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
       {tasks.length > 0 && (
         <div className="mb-5">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Tasks Acuity extracted ({tasks.length})
+            Tasks Ripple extracted ({tasks.length})
           </h3>
           <div className="space-y-2">
             {tasks.map((t) => (
@@ -245,7 +245,7 @@ export function ExtractionReview({ entryId }: { entryId: string }) {
       {goals.length > 0 && (
         <div className="mb-5">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Goals Acuity suggested ({goals.length})
+            Goals Ripple suggested ({goals.length})
           </h3>
           <div className="space-y-2">
             {goals.map((g) => (

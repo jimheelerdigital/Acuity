@@ -26,7 +26,7 @@ export async function sendDataExportReadyEmail(params: {
   });
 
   const html = emailLayout({
-    title: "Your Acuity export is ready",
+    title: "Your Ripple export is ready",
     preheader: "Download your data — link expires in 24 hours.",
     intro: `Hi ${firstName} — your data export is ready. The zip contains all your entries, goals, tasks, Life Matrix history, weekly reports, and any retained audio files. The link expires at ${expires} (24 hours from now).`,
     ctaLabel: "Download export",
@@ -38,7 +38,7 @@ export async function sendDataExportReadyEmail(params: {
   await resend.emails.send({
     from: EMAIL_FROM,
     to: params.to,
-    subject: "Your Acuity data export is ready",
+    subject: "Your Ripple data export is ready",
     html,
   });
 }

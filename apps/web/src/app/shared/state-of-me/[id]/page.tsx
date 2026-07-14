@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return {
-    title: "State of Me · Acuity",
+    title: "State of Me · Ripple",
     description: "A quarterly reflection shared by its author.",
     robots: { index: false, follow: false },
     other: { "X-Robots-Tag": "noindex, nofollow" },
@@ -57,7 +57,7 @@ export default async function SharedStateOfMePage({
               href="/"
               className="font-medium text-acuity-primary dark:text-acuity-primary hover:text-violet-500"
             >
-              Acuity
+              Ripple
             </a>
             {" — notice patterns across your own words."}
           </p>
@@ -76,14 +76,14 @@ function ExpiredState() {
           This share link has expired.
         </h1>
         <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-          Ask the person who sent it for a fresh link, or visit Acuity
+          Ask the person who sent it for a fresh link, or visit Ripple
           to write your own quarterly reflection.
         </p>
         <a
           href="/"
           className="mt-6 inline-block rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary-soft0"
         >
-          Visit Acuity
+          Visit Ripple
         </a>
       </div>
     </div>

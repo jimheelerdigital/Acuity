@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     select: { stripeCustomerId: true, email: true },
   });
 
-  // Trial handled by Acuity's User.trialEndsAt, not Stripe. Subscription
+  // Trial handled by Ripple's User.trialEndsAt, not Stripe. Subscription
   // starts paid immediately on checkout completion — avoids the
   // 14+7=21-day compound trial the old code created, and keeps the
   // trial clock in one place (IMPLEMENTATION_PLAN_PAYWALL §1.5).

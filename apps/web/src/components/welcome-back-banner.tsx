@@ -48,7 +48,7 @@ export function WelcomeBackBanner({ reduced, daysLeft }: Props) {
     <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 dark:border-violet-900/40 dark:bg-violet-950/30">
       <div className="flex-1 text-sm leading-relaxed text-violet-900 dark:text-violet-200">
         <strong>Welcome back.</strong> You have{" "}
-        {daysLeft === 1 ? "1 day" : `${daysLeft} days`} to try Acuity again
+        {daysLeft === 1 ? "1 day" : `${daysLeft} days`} to try Ripple again
         before subscribing — we shorten the trial for returning accounts so the
         clock doesn&rsquo;t reset every time.
       </div>

@@ -31,7 +31,7 @@ export const userStory: TrialEmailTemplate = {
               <strong style="color:#1a1a1a;">Day 1.</strong> Signs up skeptical. "A short recording can't do anything." Records about a cofounder argument anyway.
             </p>
             <p style="margin:0 0 12px;font-size:15px;color:#374151;line-height:1.7;">
-              <strong style="color:#1a1a1a;">Day 3.</strong> Acuity has flagged "cofounder" in every debrief so far. He hadn't realized.
+              <strong style="color:#1a1a1a;">Day 3.</strong> Ripple has flagged "cofounder" in every debrief so far. He hadn't realized.
             </p>
             <p style="margin:0 0 12px;font-size:15px;color:#374151;line-height:1.7;">
               <strong style="color:#1a1a1a;">Day 5.</strong> First weekly report lands. Mood drops every Tuesday. He has a standing Tuesday call with the cofounder.

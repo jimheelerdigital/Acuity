@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
 /**
- * Acuity Card primitive — slice 1 web foundation.
+ * Ripple Card primitive — slice 1 web foundation.
  *
  * Per DESIGN_SYSTEM.md §5.15:
  *   - default: bg-acuity-card-bg, card-border hairline, radius lg (22)

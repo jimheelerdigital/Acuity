@@ -12,7 +12,7 @@ import {
 /**
  * AppearanceProvider — web-side theme + palette state.
  *
- * Replaces `next-themes` for Acuity surfaces. next-themes only knows
+ * Replaces `next-themes` for Ripple surfaces. next-themes only knows
  * about `theme`; we also need `palette` (coral/sunset/citrus/cobalt)
  * and the `data-theme` / `data-palette` attribute pair on `<html>`.
  * Building our own provider keeps both concerns in a single context.

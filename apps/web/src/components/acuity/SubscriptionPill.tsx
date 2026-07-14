@@ -1,5 +1,5 @@
 /**
- * Acuity SubscriptionPill — web mirror of `apps/mobile/components/
+ * Ripple SubscriptionPill — web mirror of `apps/mobile/components/
  * acuity/SubscriptionPill.tsx`. Slice 1 web foundation.
  *
  * Per DESIGN_SYSTEM.md §5.3: subscription state badge.

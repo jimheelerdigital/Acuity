@@ -34,7 +34,7 @@ export default function DecodedPage() {
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
               { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Acuity Decoded", item: "https://getacuity.io/for/decoded" },
+              { "@type": "ListItem", position: 3, name: "Ripple Decoded", item: "https://getacuity.io/for/decoded" },
             ],
           }),
         }}
@@ -50,7 +50,7 @@ export default function DecodedPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
-              Most people have no idea what's actually driving their moods, decisions, and habits. Acuity reveals the patterns you can't see from the inside.
+              Most people have no idea what's actually driving their moods, decisions, and habits. Ripple reveals the patterns you can't see from the inside.
             </p>
           </Reveal>
           <Reveal delay={2}>
@@ -81,7 +81,7 @@ export default function DecodedPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <p className="text-2xl sm:text-4xl font-bold text-white leading-snug tracking-tight">
-              After 7 days, most Acuity users discover something that surprises
+              After 7 days, most Ripple users discover something that surprises
               them.
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
@@ -97,7 +97,7 @@ export default function DecodedPage() {
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-12 text-white">
-              What Acuity reveals
+              What Ripple reveals
             </h2>
           </Reveal>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -161,7 +161,7 @@ export default function DecodedPage() {
             label: "Step 2",
             title: "Detect",
             description:
-              "Acuity's AI builds a pattern map from every word you say — tracking themes, emotions, people, goals, and contradictions across every entry.",
+              "Ripple's AI builds a pattern map from every word you say — tracking themes, emotions, people, goals, and contradictions across every entry.",
           },
           {
             label: "Step 3",
@@ -260,7 +260,7 @@ export default function DecodedPage() {
             </h2>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed">
               Most users describe receiving their first weekly report as the moment
-              Acuity became real. Not because it told them something new. Because it
+              Ripple became real. Not because it told them something new. Because it
               showed them something they already knew — but had never seen
               clearly.
             </p>
@@ -274,7 +274,7 @@ export default function DecodedPage() {
         testimonials={[
           {
             quote:
-              "Day 23: Acuity told me I'd mentioned my job in 21 of 23 debriefs but only mentioned my family 4 times. I hadn't realized how consumed I'd become.",
+              "Day 23: Ripple told me I'd mentioned my job in 21 of 23 debriefs but only mentioned my family 4 times. I hadn't realized how consumed I'd become.",
             name: "Alex R.",
             role: "Consultant",
           },
@@ -286,7 +286,7 @@ export default function DecodedPage() {
           },
           {
             quote:
-              "I thought I wanted a promotion. Acuity showed me I mention feeling trapped every time I talk about work. That changed everything.",
+              "I thought I wanted a promotion. Ripple showed me I mention feeling trapped every time I talk about work. That changed everything.",
             name: "David L.",
             role: "Marketing Director",
           },

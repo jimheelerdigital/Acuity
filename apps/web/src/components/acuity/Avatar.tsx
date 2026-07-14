@@ -1,5 +1,5 @@
 /**
- * Acuity Avatar — web mirror of `apps/mobile/components/acuity/Avatar.tsx`.
+ * Ripple Avatar — web mirror of `apps/mobile/components/acuity/Avatar.tsx`.
  * Slice 1 web foundation.
  *
  * Per DESIGN_SYSTEM.md §5.1: gradient circle with initial. `gradMix`

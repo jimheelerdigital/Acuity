@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 /**
  * Public read-only weekly report page. Served from a share link the
  * owner generated (/insights/weekly/[id] → POST share). No auth
- * required. Unbranded-but-attributed — the footer credits Acuity
+ * required. Unbranded-but-attributed — the footer credits Ripple
  * without making the page feel like a product landing.
  *
  * Indexing: robots=noindex + X-Robots-Tag header. A therapist or
@@ -22,7 +22,7 @@ type Params = { params: { id: string } };
 export async function generateMetadata({ params }: Params) {
   // Minimal metadata — we don't want OG cards to leak content.
   return {
-    title: "Weekly reflection · Acuity",
+    title: "Weekly reflection · Ripple",
     description: "A weekly reflection shared by its author.",
     robots: { index: false, follow: false },
     other: {
@@ -170,7 +170,7 @@ export default async function SharedWeeklyPage({ params }: Params) {
               href="/"
               className="font-medium text-acuity-primary dark:text-acuity-primary hover:text-violet-500"
             >
-              Acuity
+              Ripple
             </a>
             {" — notice patterns across your own words."}
           </p>
@@ -189,14 +189,14 @@ function ExpiredState() {
           This share link has expired.
         </h1>
         <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-          Ask the person who sent it for a fresh link, or visit Acuity
+          Ask the person who sent it for a fresh link, or visit Ripple
           to start your own weekly reflections.
         </p>
         <a
           href="/"
           className="mt-6 inline-block rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-primary-soft0"
         >
-          Visit Acuity
+          Visit Ripple
         </a>
       </div>
     </div>

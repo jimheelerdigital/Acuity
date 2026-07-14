@@ -60,7 +60,7 @@ export async function POST(
   const { subject, html } = passwordResetEmail(resetUrl);
   const { getResendClient } = await import("@/lib/resend");
   await getResendClient().emails.send({
-    from: process.env.EMAIL_FROM ?? "Acuity <hello@getacuity.io>",
+    from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
     to: user.email,
     subject,
     html,

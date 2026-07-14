@@ -67,9 +67,9 @@ export async function POST(req: NextRequest) {
     try {
       const [notifResult, welcomeResult] = await Promise.allSettled([
         resend.emails.send({
-          from: "Acuity <hello@getacuity.io>",
+          from: "Ripple <hello@getacuity.io>",
           to: "keenan@heelerdigital.com",
-          subject: `New Acuity waitlist signup — ${email}`,
+          subject: `New Ripple waitlist signup — ${email}`,
           html: [
             `<p><strong>Name:</strong> ${escapeHtml(name) || "Not provided"}</p>`,
             `<p><strong>Email:</strong> ${escapeHtml(email)}</p>`,
@@ -79,9 +79,9 @@ export async function POST(req: NextRequest) {
           ].join("\n"),
         }),
         resend.emails.send({
-          from: "Acuity <hello@getacuity.io>",
+          from: "Ripple <hello@getacuity.io>",
           to: email,
-          subject: "You're on the Acuity waitlist — here's what's coming",
+          subject: "You're on the Ripple waitlist — here's what's coming",
           html: buildWelcomeEmail(name),
         }),
       ]);
@@ -132,7 +132,7 @@ function buildWelcomeEmail(name: string | null): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to Acuity</title>
+  <title>Welcome to Ripple</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0A0A0F;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A0A0F;">
@@ -160,7 +160,7 @@ function buildWelcomeEmail(name: string | null): string {
           <tr>
             <td align="center" style="padding-bottom:40px;">
               <p style="margin:0;font-size:18px;color:#A0A0B8;line-height:1.6;">
-                You're on the Acuity early access waitlist.
+                You're on the Ripple early access waitlist.
               </p>
             </td>
           </tr>
@@ -238,7 +238,7 @@ function buildWelcomeEmail(name: string | null): string {
           <tr>
             <td style="padding-bottom:40px;">
               <p style="margin:0;font-size:16px;color:#FFFFFF;font-weight:600;">
-                — The Acuity Team
+                — The Ripple Team
               </p>
             </td>
           </tr>

@@ -18,7 +18,7 @@
  * consumed it.
  *
  * Desktop users who click the email link see instructions instead
- * of an auto-redirect — there's no Acuity app to receive acuity:// on
+ * of an auto-redirect — there's no Ripple app to receive acuity:// on
  * desktop.
  */
 
@@ -55,7 +55,7 @@ function MobileCompleteInner() {
 
     setPhase("redirecting");
     // Trigger the OS to route the custom scheme. On iOS this opens
-    // Acuity (or prompts "Open in Acuity?" on first use).
+    // Ripple (or prompts "Open in Ripple?" on first use).
     window.location.href = url;
   }, [token]);
 
@@ -74,7 +74,7 @@ function MobileCompleteInner() {
           <>
             <div className="mb-4 text-4xl">📱</div>
             <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
-              Opening Acuity…
+              Opening Ripple…
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
               If the app doesn&apos;t open automatically, tap the button below.
@@ -84,7 +84,7 @@ function MobileCompleteInner() {
                 href={deepLink}
                 className="mt-5 inline-block rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700"
               >
-                Open Acuity →
+                Open Ripple →
               </a>
             )}
           </>
@@ -96,7 +96,7 @@ function MobileCompleteInner() {
               Open this on your phone
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Magic-link sign-in finishes on the device where Acuity is installed. Open this email on the phone that has the app.
+              Magic-link sign-in finishes on the device where Ripple is installed. Open this email on the phone that has the app.
             </p>
             <Link
               href="/auth/signin"

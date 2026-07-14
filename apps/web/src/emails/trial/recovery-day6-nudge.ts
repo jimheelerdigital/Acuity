@@ -4,7 +4,7 @@
  * Trigger: User has 3+ recordings, Day 6 of trial (Saturday).
  *          Their weekly report generates tomorrow.
  * Subject: "Your first report arrives tomorrow"
- * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
+ * From: Keenan from Ripple <keenan@getacuity.io> (set centrally in sendTrialEmail)
  */
 
 import { escapeHtml } from "@/lib/escape-html";
@@ -29,7 +29,7 @@ export const recoveryDay6Nudge: TrialEmailTemplate = {
       </tr>
       ${para(`Hey ${name},`)}
       ${para(`Tomorrow morning, you\u2019ll get your first weekly report.`)}
-      ${para(`It\u2019s a 400-word narrative of your week \u2014 written from everything you told Acuity this week. Patterns you mentioned without noticing. Tasks that kept coming up. How your mood shifted day to day.`)}
+      ${para(`It\u2019s a 400-word narrative of your week \u2014 written from everything you told Ripple this week. Patterns you mentioned without noticing. Tasks that kept coming up. How your mood shifted day to day.`)}
       ${para(`One more entry today will make it sharper. Even 60 seconds.`)}
       <tr>
         <td style="padding-bottom:28px;">

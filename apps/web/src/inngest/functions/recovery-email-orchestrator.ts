@@ -603,7 +603,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
-      // (6. FIRST INSIGHT removed 2026-07-01 — the "Acuity noticed
+      // (6. FIRST INSIGHT removed 2026-07-01 — the "Ripple noticed
       //  something" email surfaced low-value non-insight text and was
       //  deleted entirely, along with its dedicated same-day generation.)
       // ═══════════════════════════════════════════════════════════

@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Crisis resources · Acuity",
+  title: "Crisis resources · Ripple",
   description:
-    "If you're in crisis, here are 24/7 hotlines and text lines. Acuity is a journaling tool — not a substitute for professional support.",
+    "If you're in crisis, here are 24/7 hotlines and text lines. Ripple is a journaling tool — not a substitute for professional support.",
   robots: { index: true, follow: true },
 };
 
@@ -37,7 +37,7 @@ export default function CrisisResourcesPage() {
         </h1>
 
         <p className="mt-6 text-base leading-relaxed text-acuity-text-sec">
-          Acuity is a journaling tool. It&rsquo;s not a substitute for professional
+          Ripple is a journaling tool. It&rsquo;s not a substitute for professional
           mental-health care, and it&rsquo;s not an appropriate first stop if
           you&rsquo;re in crisis. If you or someone you know is in immediate danger,
           please use the resources below.
@@ -108,7 +108,7 @@ export default function CrisisResourcesPage() {
 
         <section className="mt-12 border-t border-acuity-line pt-8 text-sm text-acuity-text-sec">
           <p>
-            Acuity doesn&rsquo;t detect crisis signals in your entries and doesn&rsquo;t
+            Ripple doesn&rsquo;t detect crisis signals in your entries and doesn&rsquo;t
             alert anyone based on what you write. The content you save here stays
             private — see our{" "}
             <Link
@@ -118,7 +118,7 @@ export default function CrisisResourcesPage() {
               privacy policy
             </Link>{" "}
             for the full retention + sub-processor detail. If you want to stop
-            using Acuity, you can{" "}
+            using Ripple, you can{" "}
             <Link
               href="/account"
               className="text-acuity-primary hover:underline"

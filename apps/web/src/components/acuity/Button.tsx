@@ -3,7 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 /**
- * Acuity Button primitive — slice 1 web foundation.
+ * Ripple Button primitive — slice 1 web foundation.
  *
  * Per DESIGN_SYSTEM.md §5.14:
  *   - primary:     gradPrimary fill, white text, rounded-full,

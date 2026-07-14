@@ -4,7 +4,7 @@
  * Three comparison groups for the Insights comparison card:
  *   1. This week vs last week   — sessions, mood avg, top theme
  *   2. This month vs last month — same shape
- *   3. Since starting Acuity    — total sessions, days journaled, longest streak
+ *   3. Since starting Ripple    — total sessions, days journaled, longest streak
  *
  * Computed server-side. Cache-Control: private, max-age=3600 — the
  * counts only change when a new entry lands, and the card tolerates
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
   const twoMonthsAgo = new Date(now - 2 * MONTH_MS);
 
   // Pull last 2 months of completed entries — covers all three groups
-  // except "since starting Acuity", which we compute from totals.
+  // except "since starting Ripple", which we compute from totals.
   const [recent, user, allCount] = await Promise.all([
     prisma.entry.findMany({
       where: {

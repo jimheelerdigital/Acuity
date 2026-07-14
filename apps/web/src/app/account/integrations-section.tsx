@@ -71,7 +71,7 @@ export function IntegrationsSection({
         Calendar
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Send Acuity tasks with due dates to your calendar so they show
+        Send Ripple tasks with due dates to your calendar so they show
         up where you already plan your day.
       </p>
 
@@ -114,9 +114,9 @@ function ConnectOnMobileCard() {
         Connect from the iOS app
       </h3>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-        Acuity reads your Apple Calendar — which already includes any
+        Ripple reads your Apple Calendar — which already includes any
         Google or Outlook calendars you&apos;ve added on iOS — through
-        the system EventKit framework. Open the Acuity iOS app, then
+        the system EventKit framework. Open the Ripple iOS app, then
         Profile → Integrations to connect.
       </p>
       <p className="mt-3 text-[11px] text-zinc-400 dark:text-zinc-500">

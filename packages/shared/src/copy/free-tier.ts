@@ -88,7 +88,7 @@ export const FREE_TIER_LOCKED_COPY: Record<
     id: "goals_suggestions_locked",
     eyebrow: "Pro",
     title: "Goals you didn't know you set",
-    body: "When you mention something you're working toward, Acuity flags it as a candidate sub-goal. You stay in control — accept the ones that fit, dismiss the rest.",
+    body: "When you mention something you're working toward, Ripple flags it as a candidate sub-goal. You stay in control — accept the ones that fit, dismiss the rest.",
     ctaLabel: "Continue on web →",
   },
 
@@ -96,7 +96,7 @@ export const FREE_TIER_LOCKED_COPY: Record<
   tasks_empty_state: {
     id: "tasks_empty_state",
     title: "No tasks here yet",
-    body: 'Acuity used to spot these in your recordings — "I should email Sarah", "I want to look into that course" — and queue them up. Pro keeps that running.',
+    body: 'Ripple used to spot these in your recordings — "I should email Sarah", "I want to look into that course" — and queue them up. Pro keeps that running.',
     ctaLabel: "Continue on web →",
   },
 

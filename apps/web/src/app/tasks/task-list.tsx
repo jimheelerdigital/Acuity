@@ -1039,7 +1039,7 @@ function TaskEditModal({
 function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
   // §B.2.4 — when the user is FREE post-trial AND the open-tab
   // list is empty, the empty state is the conversion surface
-  // ("No tasks here yet — Acuity used to spot these..."). Other
+  // ("No tasks here yet — Ripple used to spot these..."). Other
   // tabs (snoozed/completed) keep the generic empty state since
   // they're not the primary conversion moment.
   if (isLocked && tab === "open") {
@@ -1075,7 +1075,7 @@ function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
     open: {
       icon: "✅",
       title: "No tasks yet",
-      desc: "Record a session and Acuity will extract them for you.",
+      desc: "Record a session and Ripple will extract them for you.",
     },
     snoozed: {
       icon: "😴",

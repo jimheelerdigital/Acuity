@@ -988,14 +988,14 @@ const LOOP_LINES: Record<Branch, string> = {
   mask: "You\u2019ve gotten so good at \u2018I\u2019m fine\u2019 that no one sees the weight you\u2019re actually carrying.",
 };
 
-// bodyCopy carries the Screen-14 snapshot — the concrete "here's what Acuity
+// bodyCopy carries the Screen-14 snapshot — the concrete "here's what Ripple
 // caught" moment that makes the pattern feel specific rather than generic.
 const BODY_COPY: Record<Branch, string> = {
-  overload: "In a single debrief, you mentioned 7 things you needed to remember. Acuity caught all of them \u2014 and flagged 3 you\u2019d already mentioned before and still hadn\u2019t done. This is the load you\u2019ve been carrying in your head.",
-  patterns: "Across your debriefs, the tension started Sunday \u2014 and the argument landed Tuesday, the same way it did the week before. Acuity spotted the fuse, not just the explosion. This is the pattern you\u2019ve been living inside.",
-  rumination: "You recorded this debrief at 10:47pm \u2014 but the thing keeping you up actually started at 2:15 that afternoon. Acuity traced the worry back to where it began. The loop has a source, and now you can see it.",
+  overload: "In a single debrief, you mentioned 7 things you needed to remember. Ripple caught all of them \u2014 and flagged 3 you\u2019d already mentioned before and still hadn\u2019t done. This is the load you\u2019ve been carrying in your head.",
+  patterns: "Across your debriefs, the tension started Sunday \u2014 and the argument landed Tuesday, the same way it did the week before. Ripple spotted the fuse, not just the explosion. This is the pattern you\u2019ve been living inside.",
+  rumination: "You recorded this debrief at 10:47pm \u2014 but the thing keeping you up actually started at 2:15 that afternoon. Ripple traced the worry back to where it began. The loop has a source, and now you can see it.",
   stuck: "Across your debriefs, almost all your energy went to maintenance \u2014 keeping things running \u2014 and almost none to the goals you actually mentioned wanting. You\u2019re not doing too little. You\u2019re spending it all on staying in place.",
-  mask: "You said \u2018I\u2019m fine\u2019 in three separate debriefs this week \u2014 and each of those days, your mood was among your lowest. Acuity noticed the gap between what you say and what you carry. You\u2019ve been holding more than you let on.",
+  mask: "You said \u2018I\u2019m fine\u2019 in three separate debriefs this week \u2014 and each of those days, your mood was among your lowest. Ripple noticed the gap between what you say and what you carry. You\u2019ve been holding more than you let on.",
 };
 
 // Per-branch default area (used when branch_q6 has no explicit area mapping).
@@ -1077,9 +1077,9 @@ export function getPatternLabels(branch: Branch, answers: Record<string, string 
 // ─── Snapshot: Bottom Line (Screen 14, Section 3) ───────────────────────────
 
 export const SNAPSHOT_BOTTOM: Record<Branch, string> = {
-  overload: "You\u2019ve been holding all of it in your head. Acuity is where you finally set it down.",
+  overload: "You\u2019ve been holding all of it in your head. Ripple is where you finally set it down.",
   patterns: "The cycle has a trigger you\u2019ve never been able to see. This is where it becomes visible.",
-  rumination: "You don\u2019t have to carry it into the night. Acuity is somewhere to set it down first.",
+  rumination: "You don\u2019t have to carry it into the night. Ripple is somewhere to set it down first.",
   stuck: "Your effort was never the problem. It just never had anywhere to land. Now it does.",
   mask: "You\u2019ve held it together for everyone else. This is the one place you don\u2019t have to.",
 };
@@ -1115,7 +1115,7 @@ const TIMELINE_NODES: Record<Branch, TimelineNode[]> = {
   overload: [
     {
       week: "Week 1", badge: "Starting now",
-      base: "The load starts leaving your head \u2014 you say it, Acuity holds it.",
+      base: "The load starts leaving your head \u2014 you say it, Ripple holds it.",
       q2: {
         "I forget things I meant to do": "The things you meant to do stop vanishing the second something louder shows up.",
         "I lie awake running through my list": "You\u2019re not lying awake running the list \u2014 it\u2019s written where you trust it.",
@@ -1397,7 +1397,7 @@ export const PAYWALL_HOOKS: Record<Branch, string> = {
 
 // Subhead directly under the paywall headline (spec copy, per branch).
 export const PAYWALL_SUBHEAD: Record<Branch, string> = {
-  overload: "Put the list down. Acuity remembers so you don\u2019t have to.",
+  overload: "Put the list down. Ripple remembers so you don\u2019t have to.",
   patterns: "See what keeps setting it off \u2014 and finally break the cycle.",
   rumination: "Give it somewhere to put everything down \u2014 and finally rest.",
   stuck: "See where your effort actually goes \u2014 and point it somewhere that matters.",
@@ -1466,14 +1466,14 @@ export function getCreateAccountHeadline(branch: Branch): string {
 export const PAYWALL_TESTIMONIALS_V2 = [
   // 0-2: original pool. MechanismScreen renders index [0] — do NOT reorder.
   { quote: "I found out I mention quitting my job every Monday. I never noticed until the weekly report showed me. That one pattern changed everything.", name: "Sarah M." },
-  { quote: "My therapist asked what changed. I showed her my Acuity report. She said \u2018this is what I try to do in sessions.\u2019", name: "James K." },
-  { quote: "Week 3, Acuity told me I bring up my mom every time I\u2019m stressed about work. I\u2019ve been in therapy for a year and never connected those.", name: "Priya R." },
+  { quote: "My therapist asked what changed. I showed her my Ripple report. She said \u2018this is what I try to do in sessions.\u2019", name: "James K." },
+  { quote: "Week 3, Ripple told me I bring up my mom every time I\u2019m stressed about work. I\u2019ve been in therapy for a year and never connected those.", name: "Priya R." },
   // 3-7: branch-matched quotes (spec, one per branch).
-  { quote: "It felt like I had 47 tabs open in my brain at all times. Work stuff, kid stuff, my mom\u2019s appointment, bills, groceries. Acuity gave me a place to dump it all without organizing first. That alone felt like breathing again.", name: "Monica R." },
-  { quote: "I thought my partner and I were fighting about different things every week. Acuity helped me see it was actually the same pattern repeating: I was overloaded, didn\u2019t ask for help, then exploded when he didn\u2019t notice. That insight changed the conversation.", name: "Jennifer H." },
-  { quote: "At night, my brain used to replay everything: what I forgot, what I said wrong, what I still needed to do. Acuity gave me a way to get it out before bed. I didn\u2019t need to solve everything. I just needed somewhere to put it.", name: "Megan R." },
-  { quote: "I was constantly busy but never felt like I was moving forward. Acuity helped me see that most of my energy was going to maintenance, not progress. That insight was uncomfortable, but it was exactly what I needed.", name: "Stephanie K." },
-  { quote: "Everyone thinks I have it together because I\u2019m the reliable one. Acuity is the one place where I don\u2019t have to perform. I can say the thing underneath the thing.", name: "Sarah J." },
+  { quote: "It felt like I had 47 tabs open in my brain at all times. Work stuff, kid stuff, my mom\u2019s appointment, bills, groceries. Ripple gave me a place to dump it all without organizing first. That alone felt like breathing again.", name: "Monica R." },
+  { quote: "I thought my partner and I were fighting about different things every week. Ripple helped me see it was actually the same pattern repeating: I was overloaded, didn\u2019t ask for help, then exploded when he didn\u2019t notice. That insight changed the conversation.", name: "Jennifer H." },
+  { quote: "At night, my brain used to replay everything: what I forgot, what I said wrong, what I still needed to do. Ripple gave me a way to get it out before bed. I didn\u2019t need to solve everything. I just needed somewhere to put it.", name: "Megan R." },
+  { quote: "I was constantly busy but never felt like I was moving forward. Ripple helped me see that most of my energy was going to maintenance, not progress. That insight was uncomfortable, but it was exactly what I needed.", name: "Stephanie K." },
+  { quote: "Everyone thinks I have it together because I\u2019m the reliable one. Ripple is the one place where I don\u2019t have to perform. I can say the thing underneath the thing.", name: "Sarah J." },
 ];
 
 // Branch-matched paywall testimonial (real quotes only — no fabrication).

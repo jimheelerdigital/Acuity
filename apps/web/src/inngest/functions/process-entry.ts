@@ -1242,7 +1242,7 @@ export const processEntryFn = inngest.createFunction(
 
     // (First-insight activation trigger removed 2026-07-01. The 5-recording
     //  crossing used to emit "first-insight/generate.requested" to power the
-    //  "Acuity noticed something" email via same-day insight generation. That
+    //  "Ripple noticed something" email via same-day insight generation. That
     //  email and its dedicated generation function were deleted; in-app
     //  insights are still populated by the weekly compute-user-insights cron.)
 

@@ -30,9 +30,9 @@ export const milestone25: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(greeting)}
-      ${para(`Twenty-five debriefs. Acuity\u2019s clearly become part of your routine \u2014 and before I assume it\u2019s all working perfectly, I\u2019d rather just ask you.`)}
+      ${para(`Twenty-five debriefs. Ripple\u2019s clearly become part of your routine \u2014 and before I assume it\u2019s all working perfectly, I\u2019d rather just ask you.`)}
       ${para(`How\u2019s it actually going? Is it catching what matters? Is there something that annoys you, something missing, something you wish it did better? We\u2019re a small team and still shaping this, so your honest take genuinely changes what we build. Just hit reply \u2014 I read every one.`)}
-      ${para(`And if you\u2019re loving it \u2014 would you mind leaving us a positive review in the App Store? It\u2019s the single biggest thing that helps other people find Acuity, and it takes about twenty seconds.`)}
+      ${para(`And if you\u2019re loving it \u2014 would you mind leaving us a positive review in the App Store? It\u2019s the single biggest thing that helps other people find Ripple, and it takes about twenty seconds.`)}
       <tr>
         <td style="padding-bottom:20px;">
           ${primaryButton(REVIEW_URL, "Leave a review")}

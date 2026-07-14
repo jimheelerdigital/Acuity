@@ -38,7 +38,7 @@ export default function EmailPreview({ piece }: { piece: PreviewPiece }) {
         <div className="border-b border-white/10 px-5 py-3 space-y-1.5">
           <div className="flex items-center gap-2 text-xs">
             <span className="text-white/30 w-12">From:</span>
-            <span className="text-white/70">Acuity &lt;hello@getacuity.io&gt;</span>
+            <span className="text-white/70">Ripple &lt;hello@getacuity.io&gt;</span>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-white/30 w-12">To:</span>

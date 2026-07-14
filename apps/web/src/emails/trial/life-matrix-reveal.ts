@@ -3,7 +3,7 @@ import { trialButton, trialCard, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 export const lifeMatrixReveal: TrialEmailTemplate = {
-  subject: () => "You haven't seen this part of Acuity yet",
+  subject: () => "You haven't seen this part of Ripple yet",
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
@@ -13,7 +13,7 @@ export const lifeMatrixReveal: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:24px;">
           <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            ${name}, you haven't seen this part of Acuity yet.
+            ${name}, you haven't seen this part of Ripple yet.
           </h1>
         </td>
       </tr>

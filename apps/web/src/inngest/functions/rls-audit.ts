@@ -106,7 +106,7 @@ for the prevention plan and the 2026-04-29 incident context.
       const result = await resend.emails.send({
         from: EMAIL_FROM,
         to: FOUNDER_RECIPIENTS,
-        subject: `[Acuity] RLS audit — ${exposed.length} ${
+        subject: `[Ripple] RLS audit — ${exposed.length} ${
           exposed.length === 1 ? "table" : "tables"
         } exposed`,
         html,

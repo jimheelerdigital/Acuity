@@ -28,7 +28,7 @@ import {
  * already reflects the persisted preference via SSR (see slice 21).
  *
  * Voice (Accountability per Acuity_SalesCopy.md §8): short, matter-
- * of-fact, no transformation language. "Choose how Acuity looks for
+ * of-fact, no transformation language. "Choose how Ripple looks for
  * you." is the rubric-compliant framing — specific (looks), neutral
  * (not "personalize", not "transform").
  */
@@ -170,7 +170,7 @@ export function AppearanceSection() {
       <SectionHeader label="Appearance" />
 
       <p className="mt-3 text-base leading-relaxed text-acuity-text-sec">
-        Choose how Acuity looks for you.
+        Choose how Ripple looks for you.
       </p>
 
       {/* Mode toggle */}

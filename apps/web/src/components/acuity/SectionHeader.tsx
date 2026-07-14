@@ -1,5 +1,5 @@
 /**
- * Acuity SectionHeader — web foundation. Slice 1.
+ * Ripple SectionHeader — web foundation. Slice 1.
  *
  * Per DESIGN_SYSTEM.md §3.3 eyebrow / overline rules: mono family,
  * uppercase, 10-11pt, 700 weight, 1.4 letter-spacing.

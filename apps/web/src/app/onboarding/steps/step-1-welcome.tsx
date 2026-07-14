@@ -3,7 +3,7 @@
  *
  * Intent: warm handshake before the product pitch (that's step 2).
  * Signals that the flow is short (a couple of minutes) and that the
- * questions have a purpose (shape what Acuity pays attention to).
+ * questions have a purpose (shape what Ripple pays attention to).
  * No captured data, no interaction beyond the shell's Continue
  * button. onboarding_started fires on mount from the shell.
  *
@@ -24,7 +24,7 @@ export function Step1Welcome() {
       </p>
 
       <p className="mt-4 text-base leading-relaxed text-acuity-text-sec sm:text-lg">
-        The answers shape what Acuity pays attention to on your behalf —
+        The answers shape what Ripple pays attention to on your behalf —
         your baseline mood, the areas of your life you&rsquo;re here to
         work on, how often you think you&rsquo;ll actually record.
       </p>

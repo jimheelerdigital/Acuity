@@ -92,7 +92,7 @@ function ResetPasswordForm() {
           Sign in →
         </Link>
         <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
-          Using the mobile app? Open Acuity and sign in with your new password.
+          Using the mobile app? Open Ripple and sign in with your new password.
         </p>
       </div>
     );

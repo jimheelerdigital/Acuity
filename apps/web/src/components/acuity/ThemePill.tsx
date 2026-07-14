@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 /**
- * Acuity ThemePill — web mirror of `apps/mobile/components/acuity/
+ * Ripple ThemePill — web mirror of `apps/mobile/components/acuity/
  * ThemePill.tsx`. Slice 1 web foundation.
  *
  * Per DESIGN_SYSTEM.md §5.4 + §2.8 canonical theme palette:

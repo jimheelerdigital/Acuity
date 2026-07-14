@@ -10,7 +10,7 @@ export const SOCIAL_PROOF = {
   users: "127+",
   /** Total debriefs recorded */
   debriefs: "1,400+",
-  /** % who say they'd miss Acuity if gone */
+  /** % who say they'd miss Ripple if gone */
   wouldMiss: "94%",
   /** App star rating */
   rating: "4.9",

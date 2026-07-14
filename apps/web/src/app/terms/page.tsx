@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — Acuity",
+  title: "Terms of Service — Ripple",
   description:
-    "The terms governing your use of Acuity, the nightly voice journaling service.",
+    "The terms governing your use of Ripple, the nightly voice journaling service.",
   robots: { index: true, follow: true },
 };
 
@@ -17,7 +17,7 @@ export default function TermsPage() {
           href="/"
           className="text-sm text-acuity-text-sec transition hover:text-acuity-text"
         >
-          &larr; Back to Acuity
+          &larr; Back to Ripple
         </Link>
 
         <h1 className="mt-8 text-3xl font-bold tracking-tight text-acuity-text sm:text-4xl">
@@ -31,7 +31,7 @@ export default function TermsPage() {
           <section>
             <p>
               These Terms of Service (&ldquo;Terms&rdquo;) govern your
-              use of Acuity, a nightly voice journaling service operated
+              use of Ripple, a nightly voice journaling service operated
               by Heeler Digital. By creating an account or using the
               service, you agree to these Terms. If you don&rsquo;t agree,
               don&rsquo;t use the service.
@@ -40,7 +40,7 @@ export default function TermsPage() {
 
           <Section id="service" title="1. The service">
             <p>
-              Acuity lets you record short voice journal entries (up to
+              Ripple lets you record short voice journal entries (up to
               120 seconds), automatically transcribes them, and uses AI
               to extract themes, mood, tasks, goals, and life-area
               insights. The service is delivered via the web at{" "}
@@ -56,7 +56,7 @@ export default function TermsPage() {
 
           <Section id="eligibility" title="2. Eligibility">
             <p>
-              To use Acuity, you must be at least 18 years old and have
+              To use Ripple, you must be at least 18 years old and have
               the legal capacity to enter into a binding contract in
               your jurisdiction. By creating an account you represent
               that both of those things are true.
@@ -99,7 +99,7 @@ export default function TermsPage() {
               </li>
               <li>
                 Harass, threaten, or impersonate any person, including
-                Acuity employees and other users.
+                Ripple employees and other users.
               </li>
               <li>
                 Attempt to reverse-engineer, decompile, scrape, or
@@ -113,7 +113,7 @@ export default function TermsPage() {
               </li>
               <li>
                 Resell, sublicense, or redistribute the service or any
-                of its outputs in a way that competes with Acuity.
+                of its outputs in a way that competes with Ripple.
               </li>
             </ul>
             <p className="mt-4">
@@ -175,7 +175,7 @@ export default function TermsPage() {
                 Store under Payments &amp; subscriptions &rarr;
                 Subscriptions. Refunds for Google Play purchases are
                 governed by Google&rsquo;s policy and requested through
-                Google Play; Acuity cannot process Play Store refunds
+                Google Play; Ripple cannot process Play Store refunds
                 directly.
               </li>
               <li>
@@ -201,7 +201,7 @@ export default function TermsPage() {
                 >
                   reportaproblem.apple.com
                 </a>
-                . Acuity cannot process refunds for App Store
+                . Ripple cannot process refunds for App Store
                 transactions directly.
               </li>
               <li>
@@ -286,7 +286,7 @@ export default function TermsPage() {
             </p>
             <blockquote className="mt-3 border-l-2 border-acuity-line pl-4 text-acuity-text-sec">
               &ldquo;To Heeler Digital, LLC: I hereby give notice that I
-              withdraw from my contract for the Acuity subscription.
+              withdraw from my contract for the Ripple subscription.
               Ordered on [date] / my account email is [email]. [Your
               name]. [Date].&rdquo;
             </blockquote>
@@ -303,7 +303,7 @@ export default function TermsPage() {
           <Section id="ownership" title="6. Content ownership">
             <p>
               You own the audio you record and the transcripts and
-              extracted data derived from it. By using Acuity, you grant
+              extracted data derived from it. By using Ripple, you grant
               us a limited, non-exclusive licence to process that
               content solely for the purpose of providing the service to
               you &mdash; transcribing, extracting structured data,
@@ -325,10 +325,10 @@ export default function TermsPage() {
 
           <Section
             id="not-therapy"
-            title="7. Acuity is not a therapy or medical service"
+            title="7. Ripple is not a therapy or medical service"
           >
             <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-amber-100">
-              Acuity is a journaling tool that uses AI to help you see
+              Ripple is a journaling tool that uses AI to help you see
               patterns in your own thinking. It is{" "}
               <strong className="text-acuity-text">not</strong> a substitute
               for therapy, counselling, psychiatric care, medical advice,
@@ -402,7 +402,7 @@ export default function TermsPage() {
               and do not reduce your non-excludable statutory rights.
             </p>
             <p>
-              To the maximum extent permitted by law, Acuity, Heeler
+              To the maximum extent permitted by law, Ripple, Heeler
               Digital, and our officers, employees, agents, and
               affiliates will not be liable for any indirect, incidental,
               special, consequential, or punitive damages arising from

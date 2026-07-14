@@ -56,7 +56,7 @@ export default function BlogPreview({ piece }: { piece: PreviewPiece }) {
             </p>
           )}
           <div className="mt-2 flex items-center gap-3 text-xs text-white/40">
-            <span>Acuity Team</span>
+            <span>Ripple Team</span>
             <span>&middot;</span>
             <span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
           </div>
@@ -69,7 +69,7 @@ export default function BlogPreview({ piece }: { piece: PreviewPiece }) {
             <div className="mt-8 rounded-lg bg-[#7C5CFC]/10 border border-[#7C5CFC]/20 p-5 text-center">
               <p className="text-sm font-medium text-white/90">{piece.cta}</p>
               <button className="mt-3 rounded-lg bg-[#7C5CFC] px-6 py-2 text-sm font-medium text-white">
-                Try Acuity Free
+                Try Ripple Free
               </button>
             </div>
           )}

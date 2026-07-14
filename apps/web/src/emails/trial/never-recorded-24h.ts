@@ -31,7 +31,7 @@ export const neverRecorded24h: TrialEmailTemplate = {
         </td>
       </tr>
       ${para(greeting)}
-      ${para(`You did the hard part (signing up), but looks like you dropped the whole point of Acuity... using it!`)}
+      ${para(`You did the hard part (signing up), but looks like you dropped the whole point of Ripple... using it!`)}
       ${para(`Here\u2019s all it is: open the app, tap record, and talk for a few minutes about whatever\u2019s on your mind \u2014 your day, what\u2019s weighing on you, what you need to get done. We handle the rest \u2014 life insights, pattern tracking, and a little more peace of mind.`)}
       ${para(`The first one\u2019s the only one that ever feels unfamiliar. After that, it\u2019s just talking.`)}
       <tr>

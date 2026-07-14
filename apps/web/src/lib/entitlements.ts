@@ -50,7 +50,7 @@ export interface Entitlement {
   /** Can refresh the Life Map (gates POST /api/lifemap/refresh). */
   canRefreshLifeMap: boolean;
   /**
-   * Can connect a calendar and sync Acuity tasks to it (v1.1 calendar
+   * Can connect a calendar and sync Ripple tasks to it (v1.1 calendar
    * integration). Same semantics as canExtractEntries: PRO/TRIAL/
    * PAST_DUE only. FREE/post-trial-free does not get calendar
    * integration — gating it is a deliberate conversion lever

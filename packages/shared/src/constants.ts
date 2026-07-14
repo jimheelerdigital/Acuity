@@ -15,7 +15,7 @@ import type { Mood } from "./types";
 // Reversal: flip to `true` (single edit, no schema/env change).
 export const CALENDAR_INTEGRATION_ENABLED = false;
 
-export const APP_NAME = "Acuity";
+export const APP_NAME = "Ripple";
 export const APP_TAGLINE = "The daily debrief that turns chaos into clarity.";
 
 // ─── Recording ────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ export const SUPPORTED_AUDIO_TYPES = [
 
 // ─── Life Areas (canonical 10 — Phase D, 2026-05-21) ────────────────────────
 //
-// Acuity moved from 6 axes to 10 axes in Phase D. The 6-axis vocabulary
+// Ripple moved from 6 axes to 10 axes in Phase D. The 6-axis vocabulary
 // is preserved as `LIFE_AREAS_V1` for two reasons:
 //
 //   1. Mobile build-42 (live since 2026-05-15) sends 6-axis priorities on
@@ -382,7 +382,7 @@ export const PRIORITY_COLOR: Record<string, string> = {
 // ─── Stripe ───────────────────────────────────────────────────────────────────
 
 export const PLAN_FREE_ENTRY_LIMIT = 7; // entries per week on free plan
-export const PLAN_PRO_NAME = "Acuity Pro";
+export const PLAN_PRO_NAME = "Ripple Pro";
 
 // ─── Whisper ──────────────────────────────────────────────────────────────────
 

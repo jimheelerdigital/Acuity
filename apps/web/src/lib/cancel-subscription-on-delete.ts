@@ -35,7 +35,7 @@ export type DeletionUser = {
   stripeCustomerId: string | null;
 };
 
-// Acuity subscriptionStatus values that imply a live/convertible plan.
+// Ripple subscriptionStatus values that imply a live/convertible plan.
 const BILLABLE_STATUS = new Set(["TRIAL", "PRO", "PAST_DUE"]);
 // Stripe subscription.status values that are still live (would bill).
 const LIVE_SUB_STATUS = new Set(["trialing", "active", "past_due", "unpaid"]);

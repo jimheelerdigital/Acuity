@@ -1,5 +1,5 @@
 /**
- * Acuity design-system primitives — web (Slice 1 + slice 8, 2026-05-22).
+ * Ripple design-system primitives — web (Slice 1 + slice 8, 2026-05-22).
  *
  * Reference: `_design/DESIGN_SYSTEM.md` §5 primitives spec.
  * Tokens: `src/lib/theme/tokens.css` + `tailwind.config.ts`.

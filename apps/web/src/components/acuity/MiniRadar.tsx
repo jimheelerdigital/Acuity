@@ -1,5 +1,5 @@
 /**
- * Acuity MiniRadar — web mirror of `apps/mobile/components/acuity/
+ * Ripple MiniRadar — web mirror of `apps/mobile/components/acuity/
  * MiniRadar.tsx`. Per DESIGN_SYSTEM.md §5.12.
  *
  * Small N-axis radar polygon. Web port lands on the **10-axis canon**

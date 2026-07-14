@@ -144,7 +144,7 @@ function SimpleHowItWorks() {
         <Reveal><h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-14">How it works</h2></Reveal>
         <div className="grid gap-8 sm:grid-cols-3">
           {[
-            { step: "01", title: "Record", desc: "Open Acuity at night. Hit record. Talk freely. No prompts, no structure, no judgment." },
+            { step: "01", title: "Record", desc: "Open Ripple at night. Hit record. Talk freely. No prompts, no structure, no judgment." },
             { step: "02", title: "AI Extracts", desc: "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word." },
             { step: "03", title: "You See Results", desc: "Your summary card appears instantly. Every Sunday, get a weekly narrative report about your life." },
           ].map((item, i) => (

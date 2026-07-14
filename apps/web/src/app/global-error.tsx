@@ -94,7 +94,7 @@ export default function GlobalError({
                 textDecoration: "none",
               }}
             >
-              Back to Acuity
+              Back to Ripple
             </a>
             {/* Silence the eslint-unused warning without extra scope */}
             <div style={{ display: "none" }}>

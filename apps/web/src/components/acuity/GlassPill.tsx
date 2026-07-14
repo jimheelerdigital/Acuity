@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
 /**
- * Acuity GlassPill — web mirror of `apps/mobile/components/acuity/
+ * Ripple GlassPill — web mirror of `apps/mobile/components/acuity/
  * GlassPill.tsx`. Per DESIGN_SYSTEM.md §5.7.
  *
  * Translucent surface for floating chrome. CSS `backdrop-filter`

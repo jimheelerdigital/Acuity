@@ -1,5 +1,5 @@
 /**
- * "Getting to know Acuity" 7-day discovery checklist. Surfaces as a
+ * "Getting to know Ripple" 7-day discovery checklist. Surfaces as a
  * small card on Home for new users. Items unlock progressively (by
  * days-since-signup) — cheap-to-detect items auto-complete from
  * server state; the rest require a manual tap to mark.
@@ -41,7 +41,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
     key: "day2",
     unlockAfterDays: 0,
     title: "Review your first transcript",
-    description: "See what Acuity pulled from your words.",
+    description: "See what Ripple pulled from your words.",
     href: "/entries",
     autoComplete: null,
   },
@@ -57,7 +57,7 @@ export const PROGRESSION_ITEMS: ProgressionItem[] = [
     key: "day5",
     unlockAfterDays: 2,
     title: "Set your first goal",
-    description: "Something you'd like Acuity to help you track.",
+    description: "Something you'd like Ripple to help you track.",
     href: "/goals",
     autoComplete: null,
   },

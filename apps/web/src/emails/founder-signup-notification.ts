@@ -35,7 +35,7 @@ export interface FounderNotificationVars {
 }
 
 export function founderNotificationSubject(v: FounderNotificationVars): string {
-  return `\u{1F389} New Acuity signup \u2014 ${v.firstName} (${v.signupMethod})`;
+  return `\u{1F389} New Ripple signup \u2014 ${v.firstName} (${v.signupMethod})`;
 }
 
 export function founderNotificationHtml(v: FounderNotificationVars): string {
@@ -55,7 +55,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
     <tr>
       <td style="padding-bottom:20px;">
         <p style="margin:0;font-size:16px;color:#374151;line-height:1.7;">
-          A new user just signed up for Acuity.
+          A new user just signed up for Ripple.
         </p>
       </td>
     </tr>
@@ -79,7 +79,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
     </tr>
     <tr>
       <td>
-        <p style="margin:0;font-size:14px;color:#9ca3af;">\u2014 Acuity bot</p>
+        <p style="margin:0;font-size:14px;color:#9ca3af;">\u2014 Ripple bot</p>
       </td>
     </tr>
   `;

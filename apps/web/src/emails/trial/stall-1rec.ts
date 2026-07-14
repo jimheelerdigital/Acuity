@@ -35,11 +35,11 @@ export const stall1rec: TrialEmailTemplate = {
       </tr>
       ${para(greeting)}
       ${para(`You recorded one debrief a couple days ago \u2014 and then it went quiet.`)}
-      ${para(`Here\u2019s the thing about that first one: on its own, it\u2019s just a moment. The magic doesn\u2019t happen until there\u2019s a second, a third, a few more \u2014 because that\u2019s when Acuity starts connecting the dots. The patterns, the things you keep coming back to, the quiet stuff running your week \u2014 none of that shows up from a single debrief. It needs a little more to work with.`)}
+      ${para(`Here\u2019s the thing about that first one: on its own, it\u2019s just a moment. The magic doesn\u2019t happen until there\u2019s a second, a third, a few more \u2014 because that\u2019s when Ripple starts connecting the dots. The patterns, the things you keep coming back to, the quiet stuff running your week \u2014 none of that shows up from a single debrief. It needs a little more to work with.`)}
       ${para(`You already did the hard part once. The next one\u2019s easier \u2014 you know how it feels now. Just a few minutes, whenever it suits you.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Acuity")}
+          ${primaryButton(appLink, "Open Ripple")}
         </td>
       </tr>
       <tr>

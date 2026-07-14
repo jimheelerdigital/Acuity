@@ -1,5 +1,5 @@
 /**
- * Acuity achievement badge renderer — ported verbatim from the design
+ * Ripple achievement badge renderer — ported verbatim from the design
  * handoff (`marketing_handoff/badge-system.js`). Pure string-building (no
  * deps, no DOM) → `renderBadge(cfg, state, opts)` returns a 200×200 <svg>
  * string. Used by the Consistency section.

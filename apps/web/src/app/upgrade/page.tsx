@@ -42,7 +42,7 @@ export default async function UpgradePage({
         <div className="acuity-fade-up w-full max-w-md">
           <div className="mb-6 text-center">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
-              Acuity Pro
+              Ripple Pro
             </p>
             <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-acuity-text">
               Keep what you&rsquo;ve built.

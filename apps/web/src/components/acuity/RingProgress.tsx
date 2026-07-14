@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
- * Acuity RingProgress — web mirror of `apps/mobile/components/acuity/
+ * Ripple RingProgress — web mirror of `apps/mobile/components/acuity/
  * RingProgress.tsx`. Per DESIGN_SYSTEM.md §5.5.
  *
  * SVG circular progress ring with gradient stroke + optional center

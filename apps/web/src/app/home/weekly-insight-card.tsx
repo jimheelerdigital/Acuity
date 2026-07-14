@@ -178,7 +178,7 @@ function pickSnippet(
   }
   if (report.narrative && report.narrative.trim().length > 0) {
     // Naive first-sentence split — handles "Mr. " etc poorly, but
-    // for AI-generated narratives in the Acuity voice (no
+    // for AI-generated narratives in the Ripple voice (no
     // abbreviations, plain declarative sentences) this is robust
     // enough. Worst case the user gets a slightly long quote.
     const trimmed = report.narrative.trim();

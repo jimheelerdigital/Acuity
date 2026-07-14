@@ -12,7 +12,7 @@ export default function AdCopyPreview({ piece }: { piece: PreviewPiece }) {
             A
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Acuity</p>
+            <p className="text-sm font-semibold text-white">Ripple</p>
             <p className="text-[11px] text-white/40">Sponsored</p>
           </div>
         </div>

@@ -73,7 +73,7 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
     label: "Goal check-ins",
     description: "An occasional check-in on a goal you've set.",
     // Opt-in: goals are auto-created from voice entries, so a goal check-in
-    // references something Acuity inferred from your speech. Single rule —
+    // references something Ripple inferred from your speech. Single rule —
     // anything inferred from speech is opt-in. See the spec.
     defaultOn: false,
     group: "personalized",
@@ -122,13 +122,13 @@ export const NOTIFICATION_GROUPS: readonly NotificationGroupDef[] = [
     key: "stay_on_track",
     heading: "Stay on track",
     subheading:
-      "Gentle nudges based on how you use Acuity — never on what you talked about.",
+      "Gentle nudges based on how you use Ripple — never on what you talked about.",
   },
   {
     key: "personalized",
     heading: "Personalized from your entries — off by default",
     subheading:
-      "Anything Acuity picked up from what you said — goals, tasks, themes, life areas. Always your choice to turn on.",
+      "Anything Ripple picked up from what you said — goals, tasks, themes, life areas. Always your choice to turn on.",
   },
 ];
 

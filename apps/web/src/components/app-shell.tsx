@@ -263,7 +263,7 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
             className="font-display font-semibold tracking-tight text-acuity-text"
             style={{ fontSize: 20 }}
           >
-            Acuity
+            Ripple
           </span>
         </Link>
       </div>

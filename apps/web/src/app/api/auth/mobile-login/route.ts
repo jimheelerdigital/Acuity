@@ -11,7 +11,7 @@
  * the CredentialsProvider authorize() in auth.ts).
  *
  * Rate limiting: deliberately not applied here (2026-05-22, v1.1
- * ship-blocker fix). Acuity is a personal journaling app, not a
+ * ship-blocker fix). Ripple is a personal journaling app, not a
  * banking app — the credential-stuffing risk that justifies harsh
  * lockouts doesn't apply, and App Review reviewers + real users
  * mistyping once shouldn't get a one-hour wall. Forgot-password

@@ -38,7 +38,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 const MIN_ENTRIES_FOR_FLAGSHIP = 10;
 
-const SYSTEM_PROMPT = `You are Acuity's quarterly introspection writer. You have 90 days of a user's voice-journal entries + their life-matrix deltas + their goal status + their relationships (from extractions). Your job is to produce a State-of-Me report as JSON.
+const SYSTEM_PROMPT = `You are Ripple's quarterly introspection writer. You have 90 days of a user's voice-journal entries + their life-matrix deltas + their goal status + their relationships (from extractions). Your job is to produce a State-of-Me report as JSON.
 
 Return ONLY valid JSON matching this schema:
 {

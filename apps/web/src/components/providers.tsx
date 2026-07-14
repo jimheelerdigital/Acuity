@@ -21,7 +21,7 @@ import {
  *
  * Slice 21 (2026-05-24): replaced `next-themes` with the in-house
  * `<AppearanceProvider>`. next-themes only modeled `theme` and used
- * `attribute="class"`; Acuity needs theme + palette as data attribute
+ * `attribute="class"`; Ripple needs theme + palette as data attribute
  * pair on `<html>` so the parametric tokens.css cascade works. SSR
  * passes initial values from User.theme + User.themePalette via
  * layout.tsx so first paint matches the persisted preference.

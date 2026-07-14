@@ -62,7 +62,7 @@ export function Step3MicrophonePermission() {
   return (
     <div className="flex flex-col">
       <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-        Acuity needs your microphone.
+        Ripple needs your microphone.
       </h1>
 
       <p className="mt-5 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">

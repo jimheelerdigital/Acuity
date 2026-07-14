@@ -787,7 +787,7 @@ function LifeMatrixRadar() {
 const matrixFeatures = [
   {
     title: "Week 1 — Surface level",
-    desc: "Acuity learns your recurring tasks, basic mood patterns, and top-of-mind goals.",
+    desc: "Ripple learns your recurring tasks, basic mood patterns, and top-of-mind goals.",
   },
   {
     title: "Month 1 — Connections form",
@@ -1035,8 +1035,8 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={24} height={24} className="shrink-0" />
-              <span className="text-lg font-bold tracking-tight">Acuity</span>
+              <Image src="/AcuityLogoDark.png" alt="Ripple logo" width={24} height={24} className="shrink-0" />
+              <span className="text-lg font-bold tracking-tight">Ripple</span>
             </Link>
             <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
               <a
@@ -1105,7 +1105,7 @@ export function LandingPage() {
               </h1>
 
               <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto">
-                Acuity is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
+                Ripple is the AI voice journal that turns your daily debrief into action. Talk any time of day — it catches your tasks, tracks the goals you keep circling, and surfaces the patterns you can&rsquo;t see on your own.
               </p>
 
               {/* CTA buttons — centered within the left column */}
@@ -1260,7 +1260,7 @@ export function LandingPage() {
               <span className="text-[#F5C518] text-sm">★</span>
             </div>
             <p className="text-sm text-[#A0A0B8]">
-              Join {SOCIAL_PROOF.underHeroCount} people already using Acuity
+              Join {SOCIAL_PROOF.underHeroCount} people already using Ripple
             </p>
               </div>
           </div>
@@ -1541,7 +1541,7 @@ export function LandingPage() {
               Fits your life. Not the other way around.
             </h2>
             <p className="text-center text-[#A0A0B8] text-lg mb-16 max-w-xl mx-auto">
-              People use Acuity at different times, in different places, for different reasons. Here are two.
+              People use Ripple at different times, in different places, for different reasons. Here are two.
             </p>
             </div>
 
@@ -1558,7 +1558,7 @@ export function LandingPage() {
                   &ldquo;Yesterday&rsquo;s meeting with the team still bothers me. I think what&rsquo;s really going on is I feel like no one heard my idea. Also need to call the insurance company and finish that proposal...&rdquo;
                 </p>
                 <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#252220] p-3">
-                  <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
+                  <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Ripple extracted</div>
                   <div className="text-xs text-[#A0A0B8] space-y-1">
                     <div>&#x2022; Feeling unheard at work (recurring theme — 4th mention)</div>
                     <div>&#x2022; Call insurance company</div>
@@ -1579,7 +1579,7 @@ export function LandingPage() {
                   &ldquo;Good day actually. Got through the presentation and it went better than I expected. I&rsquo;m proud of myself for not overthinking it. Need to remember to book the flights for next month...&rdquo;
                 </p>
                 <div className="mt-4 rounded-lg border border-white/[0.04] bg-[#252220] p-3">
-                  <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Acuity extracted</div>
+                  <div className="text-[10px] text-violet-400 uppercase tracking-wider mb-1">Ripple extracted</div>
                   <div className="text-xs text-[#A0A0B8] space-y-1">
                     <div>&#x2022; Mood: confident, relieved (up from anxious yesterday)</div>
                     <div>&#x2022; Book flights for next month</div>
@@ -1673,25 +1673,25 @@ export function LandingPage() {
               FAQ
             </span>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4 text-white">
-              Frequently asked questions about Acuity
+              Frequently asked questions about Ripple
             </h2>
             <p className="text-[#A0A0B8] mb-4 max-w-xl mx-auto">
-              Have questions about Acuity and how it turns your daily debrief into action? Our FAQs cover everything you need to get started.
+              Have questions about Ripple and how it turns your daily debrief into action? Our FAQs cover everything you need to get started.
             </p>
         </div>
         <div className="mx-auto max-w-3xl mt-8" data-animate="">
             <div className="rounded-2xl border border-white/[0.06] bg-[#1E1C1A] divide-y divide-white/[0.06]">
               {[
-                { q: "What is Acuity and how does it work?", a: "Acuity is an AI voice journal. You just open the app and talk about whatever\u2019s on your mind \u2014 tasks, worries, wins, random thoughts. Within minutes, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Acuity does the rest." },
+                { q: "What is Ripple and how does it work?", a: "Ripple is an AI voice journal. You just open the app and talk about whatever\u2019s on your mind \u2014 tasks, worries, wins, random thoughts. Within minutes, your tasks are on a list, your mood is scored, and your goals are tracked. Every Sunday, a 400-word story of your week lands on your phone. You talk. Ripple does the rest." },
                 { q: "Is this actually private?", a: "Your audio is deleted within 24 hours of transcription. Transcripts are encrypted at rest. We use OpenAI Whisper for transcription and Anthropic Claude for analysis — under their API terms, your data is processed and returned, never used to train their models. We never sell your data." },
                 { q: "Do I have to use it every day?", a: "No. But people who record 4+ times in week one see dramatically better weekly reports. The AI needs a few data points before it can spot patterns. Most people settle into 4\u20135 recordings per week." },
-                { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Acuity pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
-                { q: "Is this just a journaling app?", a: "No. You don\u2019t write anything. You just open the app and talk, and within minutes your tasks are extracted, your mood is scored, and your goals are tracked. A journal records what you write down. Acuity catches what you\u2019d otherwise forget." },
-                { q: "How is Acuity different from voice notes or other recording apps?", a: "Voice notes store audio. Acuity processes it. Within minutes, your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
-                { q: "How much does Acuity cost?", a: "$4.99/month after a 7-day free trial. No credit card required to start. Cancel anytime with one tap." },
-                { q: "What AI does Acuity use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
-                { q: "Can I use Acuity on my phone?", a: "Yes. Acuity works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
-                { q: "What is the weekly report?", a: "Every Sunday morning, Acuity writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
+                { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Ripple pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
+                { q: "Is this just a journaling app?", a: "No. You don\u2019t write anything. You just open the app and talk, and within minutes your tasks are extracted, your mood is scored, and your goals are tracked. A journal records what you write down. Ripple catches what you\u2019d otherwise forget." },
+                { q: "How is Ripple different from voice notes or other recording apps?", a: "Voice notes store audio. Ripple processes it. Within minutes, your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
+                { q: "How much does Ripple cost?", a: "$4.99/month after a 7-day free trial. No credit card required to start. Cancel anytime with one tap." },
+                { q: "What AI does Ripple use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
+                { q: "Can I use Ripple on my phone?", a: "Yes. Ripple works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
+                { q: "What is the weekly report?", a: "Every Sunday morning, Ripple writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
               ].map((faq, i) => (
                 <details key={i} className="group">
                   <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left">
@@ -1759,9 +1759,9 @@ export function LandingPage() {
             {/* Brand column */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2">
-                <Image src="/AcuityLogoDark.png" alt="Acuity logo" width={28} height={28} className="shrink-0" />
+                <Image src="/AcuityLogoDark.png" alt="Ripple logo" width={28} height={28} className="shrink-0" />
                 <span className="text-xl font-bold tracking-tight">
-                  Acuity
+                  Ripple
                 </span>
               </div>
               <p className="mt-3 text-sm text-[#A0A0B8] max-w-xs leading-relaxed">
@@ -1819,7 +1819,7 @@ export function LandingPage() {
 
           <div className="mt-12 pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-[#A0A0B8]">
-              &copy; {new Date().getFullYear()} Acuity. All rights reserved.
+              &copy; {new Date().getFullYear()} Ripple. All rights reserved.
             </p>
             <div className="flex items-center gap-6 text-xs text-[#A0A0B8]">
               <a href="/terms" className="transition hover:text-white">Terms</a>
@@ -1894,7 +1894,7 @@ const featureData = [
   {
     iconKey: "target" as const,
     title: "Goals That Remember",
-    desc: "Mention \"get back to the gym\" in week one and again in week four. Acuity notices and tracks it.",
+    desc: "Mention \"get back to the gym\" in week one and again in week four. Ripple notices and tracks it.",
   },
   {
     iconKey: "heart" as const,

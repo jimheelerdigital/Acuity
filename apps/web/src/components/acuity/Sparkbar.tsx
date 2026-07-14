@@ -1,5 +1,5 @@
 /**
- * Acuity Sparkbar — web mirror of `apps/mobile/components/acuity/
+ * Ripple Sparkbar — web mirror of `apps/mobile/components/acuity/
  * Sparkbar.tsx`. Per DESIGN_SYSTEM.md §5.10.
  *
  * Small bar chart for weekly cards. The last bar (today / most-recent)

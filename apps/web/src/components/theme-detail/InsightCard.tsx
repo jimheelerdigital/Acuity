@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * "What Acuity notices" card — soft purple gradient background,
+ * "What Ripple notices" card — soft purple gradient background,
  * uppercase accent label, readable body copy. Web parity with the
  * mobile InsightCard.
  */
@@ -25,7 +25,7 @@ export function InsightCard({ text }: { text: string }) {
           marginBottom: 10,
         }}
       >
-        What Acuity notices
+        What Ripple notices
       </p>
       <p
         style={{

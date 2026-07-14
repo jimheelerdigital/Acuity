@@ -81,7 +81,7 @@ export function classifyVerifyResponse(
         route: "contact-support",
         message:
           error ??
-          "This Apple subscription is already attached to another Acuity account. Contact support to resolve.",
+          "This Apple subscription is already attached to another Ripple account. Contact support to resolve.",
       };
     }
     return {
@@ -100,7 +100,7 @@ export function classifyVerifyResponse(
         kind: "ux-conflict",
         route: "show-error",
         message:
-          "This product is no longer available. Please update Acuity.",
+          "This product is no longer available. Please update Ripple.",
       };
     }
     if (code === "EXPIRED_RECEIPT") {

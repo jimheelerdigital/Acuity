@@ -33,7 +33,7 @@ export async function sendPaymentFailedEmail({
   const html = emailLayout({
     title: "Quick heads-up on your subscription",
     preheader: "Stripe couldn't charge your card — a small fix keeps things running.",
-    intro: `Hi ${firstName} — Stripe couldn't charge your card for this month's Acuity subscription. Your account is still active for now while Stripe retries, but updating your card keeps everything running smoothly.`,
+    intro: `Hi ${firstName} — Stripe couldn't charge your card for this month's Ripple subscription. Your account is still active for now while Stripe retries, but updating your card keeps everything running smoothly.`,
     ctaLabel: "Update payment method",
     ctaUrl: portalUrl,
     footnote:

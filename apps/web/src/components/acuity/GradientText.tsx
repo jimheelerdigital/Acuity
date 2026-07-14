@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
 /**
- * Acuity GradientText — web mirror of `apps/mobile/components/acuity/
+ * Ripple GradientText — web mirror of `apps/mobile/components/acuity/
  * GradientText.tsx`. Per DESIGN_SYSTEM.md §5.8.
  *
  * Text rendered with a gradient fill via `background-clip: text`.

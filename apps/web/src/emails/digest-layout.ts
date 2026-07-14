@@ -64,7 +64,7 @@ export function digestLayout(opts: {
     </div>
   </div>
   <p style="color:#6b7280;font-size:11px;text-align:center;margin:16px 0 0;">
-    Acuity &middot; getacuity.io
+    Ripple &middot; getacuity.io
   </p>
 </body>
 </html>`.trim();

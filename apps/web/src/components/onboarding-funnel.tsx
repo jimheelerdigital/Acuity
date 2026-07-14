@@ -74,8 +74,8 @@ const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.heeler
 // Testimonials used on Download screen
 const DOWNLOAD_TESTIMONIALS = [
   { quote: "I found out I mention quitting my job every Monday. That one pattern changed everything.", name: "Sarah M." },
-  { quote: "My therapist asked what changed. I showed her my Acuity report.", name: "James K." },
-  { quote: "Week 3, Acuity connected my mom to my work stress. A year of therapy never did.", name: "Priya R." },
+  { quote: "My therapist asked what changed. I showed her my Ripple report.", name: "James K." },
+  { quote: "Week 3, Ripple connected my mom to my work stress. A year of therapy never did.", name: "Priya R." },
 ];
 
 // ── Reusable social proof (reuses the EXISTING 4.9/127+ rating + real testimonials) ──
@@ -1323,7 +1323,7 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
       { text: "You mentioned 3 of these before and still haven\u2019t done them", icon: "\u25C6" },
     ],
     step3Sub: "",
-    insight: "In one debrief you named 7 things to remember. Acuity caught them all \u2014 and flagged 3 you\u2019d said before and still hadn\u2019t done.",
+    insight: "In one debrief you named 7 things to remember. Ripple caught them all \u2014 and flagged 3 you\u2019d said before and still hadn\u2019t done.",
   },
   patterns: {
     cards: () => [
@@ -1422,7 +1422,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
       {/* ── STEP 2: WE EXTRACT (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(2200)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 2</p>
-        <p className="mb-1.5 text-xl font-bold text-zinc-900">Acuity pulls out what matters.</p>
+        <p className="mb-1.5 text-xl font-bold text-zinc-900">Ripple pulls out what matters.</p>
         <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, moods, patterns &mdash; so nothing you said falls through the cracks, and nothing sits on your shoulders alone.</p>
         <div className="space-y-2">
           {cards.map((c, i) => (
@@ -1439,7 +1439,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
       <div className="mb-8" style={fadeUp(3800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 3</p>
         <p className="mb-1.5 text-xl font-bold text-zinc-900">See the patterns running your weeks.</p>
-        <p className="mb-5 text-sm leading-5 text-zinc-500">Within a few debriefs, Acuity starts showing you the patterns you can&rsquo;t see from inside them. Seeing them is how they finally change.</p>
+        <p className="mb-5 text-sm leading-5 text-zinc-500">Within a few debriefs, Ripple starts showing you the patterns you can&rsquo;t see from inside them. Seeing them is how they finally change.</p>
         <div className="mb-4 flex items-center justify-between px-2">
           {["M","T","W","T","F","S","S"].map((d, i) => {
             const filled = i < 5;
@@ -1472,7 +1472,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
 
       {/* ── Closing line ── */}
       <p className="mb-6 text-center text-base font-bold italic text-zinc-900" style={fadeUp(5000)}>
-        You already think about your life every day. Acuity just makes sure it counts.
+        You already think about your life every day. Ripple just makes sure it counts.
       </p>
 
       {/* ── Social proof — reused real testimonial validating the weekly-report mechanism ── */}
@@ -1765,9 +1765,9 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
           </div>
         </div>
 
-        {/* ── How Acuity Helps — actionable, breaking-free focused ── */}
+        {/* ── How Ripple Helps — actionable, breaking-free focused ── */}
         <div className={`mb-10 transition-all duration-[800ms] ${show(5)}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">How Acuity helps</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">How Ripple helps</p>
           <div className="space-y-3">
             {[
               { label: "Surface the triggers you can\u2019t see from inside the pattern", icon: "\u25C6" },
@@ -1789,7 +1789,7 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
         <div className={`text-center transition-all duration-500 ${show(6)}`}>
           <button onClick={onContinue}
             className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-            See what Acuity finds &rarr;
+            See what Ripple finds &rarr;
           </button>
         </div>
       </div>
@@ -2305,7 +2305,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-2">{paywallHook}</p>
           )}
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">{paywallHeadline}</h2>
-          <p className="text-sm text-zinc-500 mt-3">Try all of Acuity <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
+          <p className="text-sm text-zinc-500 mt-3">Try all of Ripple <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
         </section>
 
         {/* Section 2 — Free vs Pro split (trimmed, no table) */}
@@ -2344,7 +2344,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
             <span className="text-zinc-500 font-semibold">Therapy: $150/session.</span>{" "}
             <span className="text-zinc-500 font-semibold">A coach: $200/month.</span>
           </p>
-          <p className="text-[17px] font-bold mt-1 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Acuity: less than a coffee a month.</p>
+          <p className="text-[17px] font-bold mt-1 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Ripple: less than a coffee a month.</p>
         </section>
 
         {/* Section 4 — Pricing cards with price-slash animation */}
@@ -2473,7 +2473,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
                 canViewHistory stay true on FREE). Claims only what's true —
                 extraction/insights are Pro. */}
             <p className="text-[12px] text-center -mt-0.5 text-zinc-500">
-              There&rsquo;s a free version too &mdash; <span className="font-semibold text-zinc-700">you never need to pay to keep using Acuity.</span> Record any time, get a quick summary, and revisit your history for free.
+              There&rsquo;s a free version too &mdash; <span className="font-semibold text-zinc-700">you never need to pay to keep using Ripple.</span> Record any time, get a quick summary, and revisit your history for free.
             </p>
           </div>
           <p className="text-[9px] text-zinc-300 text-center mt-2">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
@@ -2592,13 +2592,13 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
       <div className="max-w-sm w-full text-center funnel-screen">
         {paymentConfirmed ? (
           <>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">You&rsquo;re locked in at {planPrice}. Welcome to Acuity.</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">You&rsquo;re locked in at {planPrice}. Welcome to Ripple.</h2>
             <p className="text-sm text-zinc-500 mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         ) : (
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is active.</h2>
-            <p className="text-sm text-zinc-500 mb-2">You have 7 days to explore everything Acuity offers.</p>
+            <p className="text-sm text-zinc-500 mb-2">You have 7 days to explore everything Ripple offers.</p>
             <p className="text-sm text-zinc-500 mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         )}

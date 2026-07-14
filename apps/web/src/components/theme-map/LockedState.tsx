@@ -105,7 +105,7 @@ export function LockedState({ count }: { count: number }) {
         className="text-zinc-500 dark:text-zinc-400 mb-6"
         style={{ fontSize: 14, lineHeight: 1.55, maxWidth: 300 }}
       >
-        Record {remaining} more session{remaining === 1 ? "" : "s"} and Acuity
+        Record {remaining} more session{remaining === 1 ? "" : "s"} and Ripple
         will surface the patterns hiding in your words.
       </p>
 

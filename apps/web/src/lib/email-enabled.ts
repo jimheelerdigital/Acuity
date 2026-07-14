@@ -66,7 +66,7 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get
-  // welcome_day0 AND the founder "URGENT: Acuity; Next Steps" email
+  // welcome_day0 AND the founder "URGENT: Ripple; Next Steps" email
   // back-to-back. They are replaced by the single welcome_founder below.
   // Reversible — flip back to true to restore the old behaviour.
   welcome_day0: false, // #1 welcome_day0 (sendTrialEmail, inline in bootstrap)

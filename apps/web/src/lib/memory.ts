@@ -1,5 +1,5 @@
 /**
- * Acuity Memory Architecture
+ * Ripple Memory Architecture
  *
  * Manages the compressed longitudinal memory store that powers the Life Matrix.
  * Each user has a UserMemory record that accumulates with every debrief,

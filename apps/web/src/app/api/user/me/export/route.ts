@@ -9,7 +9,7 @@
  * v1 (this slice): synchronous JSON response. We compute the dump
  * server-side and stream it back with `Content-Disposition: attachment`
  * so the browser triggers a download. Suitable for accounts up to
- * ~50k entries — Acuity's median user is well under 100 entries so
+ * ~50k entries — Ripple's median user is well under 100 entries so
  * the synchronous path is fine.
  *
  * v2 (future): for very large accounts (multi-year power users) we
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
 
   // Per the Prisma docs, `findUnique` + `include` is a single round-
-  // trip for related rows. Acuity's data model has too many
+  // trip for related rows. Ripple's data model has too many
   // independent tables to use a single include — we batch parallel
   // findMany calls instead. Each call is keyed on userId so it's a
   // single index seek; the parallelism is a slight speedup over a

@@ -183,7 +183,7 @@ describe("trial_ended_day14 — template registry + render", () => {
       foundingMemberNumber: null,
       unsubscribeUrl: "https://www.getacuity.io/api/emails/unsubscribe?token=x",
     });
-    expect(subject).toBe("Your Acuity trial just ended");
+    expect(subject).toBe("Your Ripple trial just ended");
   });
 
   it("html renders firstName, the new-tier framing, and the Option-C-compliant CTA", () => {

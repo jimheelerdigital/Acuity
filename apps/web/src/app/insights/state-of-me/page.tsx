@@ -11,7 +11,7 @@ import { StateOfMeGenerateButton } from "./generate-button";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "State of Me — Acuity",
+  title: "State of Me — Ripple",
   robots: { index: false, follow: false },
 };
 

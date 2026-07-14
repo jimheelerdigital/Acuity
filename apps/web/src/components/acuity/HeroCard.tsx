@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
 /**
- * Acuity HeroCard — web mirror of `apps/mobile/components/acuity/
+ * Ripple HeroCard — web mirror of `apps/mobile/components/acuity/
  * HeroCard.tsx`. Per DESIGN_SYSTEM.md §5.2.
  *
  * Large gradient-backed card with an optional corner glow blob.

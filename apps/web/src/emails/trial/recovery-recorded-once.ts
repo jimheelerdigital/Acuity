@@ -4,7 +4,7 @@
  * Trigger: User has 1 recording but none in the last 48 hours.
  *          48 hours after first recording.
  * Subject: "Your second entry changes everything"
- * From: Keenan from Acuity <keenan@getacuity.io> (set centrally in sendTrialEmail)
+ * From: Keenan from Ripple <keenan@getacuity.io> (set centrally in sendTrialEmail)
  */
 
 import { escapeHtml } from "@/lib/escape-html";

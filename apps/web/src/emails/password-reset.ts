@@ -2,10 +2,10 @@ import { emailLayout } from "./layout";
 
 export function passwordResetEmail(url: string): { subject: string; html: string } {
   return {
-    subject: "Reset your Acuity password",
+    subject: "Reset your Ripple password",
     html: emailLayout({
       title: "Reset your password",
-      preheader: "Pick a new password for Acuity.",
+      preheader: "Pick a new password for Ripple.",
       intro:
         "We received a request to reset your password. Tap the button below to pick a new one. This link expires in 1 hour and can only be used once.",
       ctaLabel: "Reset password",

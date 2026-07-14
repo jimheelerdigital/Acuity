@@ -13,7 +13,7 @@ import { milestoneTier, type MilestoneTier } from "@acuity/shared";
  *   big     (100)           — full-bleed gradient, confetti
  *   biggest (365)           — gold + sustained confetti
  *
- * Copy is Acuity voice — honest, direct, not cheerleader-y.
+ * Copy is Ripple voice — honest, direct, not cheerleader-y.
  */
 export function MilestoneCard({ milestone }: { milestone: number }) {
   const tier = milestoneTier(milestone);
@@ -172,7 +172,7 @@ function Confetti({ sustained }: { sustained: boolean }) {
 }
 
 // ─── Copy ───────────────────────────────────────────────────────
-// Acuity voice: honest, direct, observational. Not "🎉 AMAZING JOB!"
+// Ripple voice: honest, direct, observational. Not "🎉 AMAZING JOB!"
 // Not "You're a rockstar!" Just what this streak means.
 
 const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
@@ -182,7 +182,7 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
   },
   7: {
     title: "A full week.",
-    body: "You've shown up seven nights. Acuity has enough to start noticing things about you.",
+    body: "You've shown up seven nights. Ripple has enough to start noticing things about you.",
   },
   14: {
     title: "Two weeks of showing up.",
@@ -190,7 +190,7 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
   },
   30: {
     title: "A month of nightly debriefs.",
-    body: "Thirty days of data is when patterns stop being noise. Acuity's Life Matrix is actually tracking your life now — not extrapolating.",
+    body: "Thirty days of data is when patterns stop being noise. Ripple's Life Matrix is actually tracking your life now — not extrapolating.",
   },
   60: {
     title: "Two months in.",
@@ -208,5 +208,5 @@ const MILESTONE_COPY: Record<number, { title: string; body: string }> = {
 
 const MILESTONE_COPY_DEFAULT = {
   title: "Streak milestone",
-  body: "Another day on the board. Acuity sees you.",
+  body: "Another day on the board. Ripple sees you.",
 };

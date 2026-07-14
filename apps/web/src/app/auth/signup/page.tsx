@@ -321,7 +321,7 @@ function SignUpForm() {
               <div className="mb-6 text-center">
                 <Image
                   src="/AcuityLogo.png"
-                  alt="Acuity"
+                  alt="Ripple"
                   width={36}
                   height={36}
                   className="mx-auto mb-3"

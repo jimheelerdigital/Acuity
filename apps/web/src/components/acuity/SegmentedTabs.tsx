@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
- * Acuity SegmentedTabs — web mirror of `apps/mobile/components/acuity/
+ * Ripple SegmentedTabs — web mirror of `apps/mobile/components/acuity/
  * SegmentedTabs.tsx`. Per DESIGN_SYSTEM.md §5.6.
  *
  * Pill-shaped horizontal tab strip with a gradMix indicator that slides

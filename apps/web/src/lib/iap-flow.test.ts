@@ -76,7 +76,7 @@ describe("classifyVerifyResponse", () => {
     });
     expect(r.kind).toBe("ux-conflict");
     if (r.kind === "ux-conflict") {
-      expect(r.message).toMatch(/update Acuity/i);
+      expect(r.message).toMatch(/update Ripple/i);
     }
   });
 
@@ -230,7 +230,7 @@ describe("classifyPurchaseError", () => {
       classifyPurchaseError({ code: "E_UNKNOWN", message: "You're already subscribed to this." })
     ).toEqual({ kind: "already-owned", silent: false });
     expect(
-      classifyPurchaseError({ message: "You are currently subscribed to Acuity Pro." })
+      classifyPurchaseError({ message: "You are currently subscribed to Ripple Pro." })
     ).toEqual({ kind: "already-owned", silent: false });
   });
 

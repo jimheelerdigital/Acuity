@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import type { ProgressionItemKey } from "@acuity/shared";
 
 /**
- * "Getting to know Acuity" discovery card. Rendered on Home during
+ * "Getting to know Ripple" discovery card. Rendered on Home during
  * the first 7 days of a user's account. Server decides visibility +
  * which items are unlocked (see lib/progression.ts); this client
  * component handles rendering + the manual "mark done" + dismiss
@@ -86,7 +86,7 @@ export function ProgressionChecklist({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-            Getting to know Acuity
+            Getting to know Ripple
           </h2>
           <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
             {done} of {localItems.length} complete · unlocks over your first

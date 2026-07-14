@@ -285,7 +285,7 @@ export async function bootstrapNewUser(params: {
     }
   }
 
-  // Old founder "URGENT: Acuity; Next Steps" welcome. Kept here behind
+  // Old founder "URGENT: Ripple; Next Steps" welcome. Kept here behind
   // the kill-switch (key "founder_welcome", currently OFF) so it can be
   // restored by flipping one value, but superseded by welcome_founder
   // above. Routed through the central email-enabled.ts kill-switch so

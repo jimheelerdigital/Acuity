@@ -150,7 +150,7 @@ export async function exchangeCode(code: string): Promise<{
 
   // Pull the connecting account's email from the id_token so the UI
   // can show "Connected as foo@gmail.com" — this is the calendar
-  // owner's address, which may differ from the Acuity sign-in email
+  // owner's address, which may differ from the Ripple sign-in email
   // (e.g. user signed up with personal Gmail, connects work calendar).
   let email: string | null = null;
   if (tokens.id_token) {
