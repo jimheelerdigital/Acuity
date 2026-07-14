@@ -19,12 +19,16 @@
 //
 // See docs/AUTH_HARDENING.md for the full test checklist.
 
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Platform } from "react-native";
 
 // Required for expo-auth-session on web + some Expo Go edge cases.
@@ -467,6 +471,24 @@ function googleAndroidClientId(): string | undefined {
 }
 
 /**
+ * The Google WEB OAuth client id — required by @react-native-google-signin on
+ * Android as `webClientId`. The native picker mints an id_token whose `aud` is
+ * THIS web client (NOT the Android client id, which only binds via package +
+ * SHA-1). The server's mobile-callback accepts it via GOOGLE_CLIENT_ID. Coerces
+ * "" → undefined so a missing value disables Android Google (email still works).
+ */
+function googleWebClientId(): string | undefined {
+  const extra = Constants.expoConfig?.extra as
+    | { googleWebClientId?: string }
+    | undefined;
+  return (
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+    extra?.googleWebClientId ||
+    undefined
+  );
+}
+
+/**
  * The Google OAuth client id for the CURRENT platform, or undefined when it's
  * not configured (e.g. Android with EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
  * unset). PLAIN function — NOT a hook — so callers can decide whether to
@@ -507,7 +529,12 @@ export type AuthDebug = {
   hasAuthentication?: boolean;
   hasAuthenticationIdToken?: boolean;
   hasParamsIdToken?: boolean;
-  idTokenSource?: "authentication.idToken" | "params.id_token" | "exchange" | "none";
+  idTokenSource?:
+    | "authentication.idToken"
+    | "params.id_token"
+    | "exchange"
+    | "native-google-signin"
+    | "none";
   // Manual PKCE code-exchange diagnostics. Set when the flow reaches
   // the explicit exchange call (see 2026-04-20 sign-in revision —
   // Google's iOS code flow returns an auth code, not an id_token, so
@@ -553,6 +580,21 @@ export type SignInResult =
 export function useGoogleSignIn() {
   const iosClientId = googleIosClientId();
   const androidClientId = googleAndroidClientId();
+  const webClientId = googleWebClientId();
+
+  // ── Android: native Google Sign-In (2026-07-13). ────────────────────────
+  // Replaces the expo-auth-session browser+redirect flow on Android, which
+  // hung because the reversed-client-id redirect scheme was never registered
+  // as an intent-filter (the browser completed OAuth but had nowhere to hand
+  // back). The native picker returns an id_token directly — no browser, no
+  // custom scheme. Configure once with the WEB client id (the id_token's
+  // audience). iOS is unaffected: it never enters this branch and keeps using
+  // Google.useAuthRequest below.
+  useEffect(() => {
+    if (Platform.OS === "android" && webClientId) {
+      GoogleSignin.configure({ webClientId });
+    }
+  }, [webClientId]);
 
   // Google's iOS OAuth clients only accept the reversed-client-ID scheme
   // as a redirect URI at the token-exchange endpoint. expo-auth-session's
@@ -616,6 +658,56 @@ export function useGoogleSignIn() {
     // Accumulator — every failure return attaches this so the UI can
     // surface a readable diagnostic. Temporary debug aid.
     const debug: AuthDebug = { redirectUri };
+
+    // ── Android: native path. Returns an id_token (aud = webClientId), then
+    // reuses the SAME callMobileCallback the iOS flow uses. No browser. ──
+    if (Platform.OS === "android") {
+      if (!webClientId) {
+        return {
+          ok: false,
+          reason: "server_error",
+          detail: "Google web client id not configured (googleWebClientId).",
+          debug,
+        };
+      }
+      try {
+        await GoogleSignin.hasPlayServices({
+          showPlayServicesUpdateDialog: true,
+        });
+        const info = await GoogleSignin.signIn();
+        // v13+ returns { type, data: { idToken } }; guard the older
+        // { idToken } shape too so a version bump can't silently break this.
+        const idToken =
+          (info as { data?: { idToken?: string | null } })?.data?.idToken ??
+          (info as { idToken?: string | null })?.idToken ??
+          null;
+        debug.idTokenSource = "native-google-signin";
+        debug.hasParamsIdToken = Boolean(idToken);
+        if (!idToken) {
+          if ((info as { type?: string })?.type === "cancelled") {
+            return { ok: false, reason: "cancelled", debug };
+          }
+          return { ok: false, reason: "no_token", debug };
+        }
+        return await callMobileCallback(idToken, debug);
+      } catch (err) {
+        const code = (err as { code?: string })?.code;
+        if (code === statusCodes.SIGN_IN_CANCELLED) {
+          return { ok: false, reason: "cancelled", debug };
+        }
+        return {
+          ok: false,
+          reason: "server_error",
+          detail:
+            code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE
+              ? "Google Play Services is unavailable or needs an update."
+              : err instanceof Error
+                ? err.message
+                : "native sign-in failed",
+          debug,
+        };
+      }
+    }
 
     if (!iosClientId) {
       return {
@@ -776,7 +868,14 @@ export function useGoogleSignIn() {
 
   return {
     signIn,
-    ready: Boolean(request) && Boolean(iosClientId),
-    hasClientId: Boolean(iosClientId),
+    // Android is ready once the web client id is present (native SDK
+    // configured in the effect above); iOS needs the expo-auth-session
+    // request built AND its client id.
+    ready:
+      Platform.OS === "android"
+        ? Boolean(webClientId)
+        : Boolean(request) && Boolean(iosClientId),
+    hasClientId:
+      Platform.OS === "android" ? Boolean(webClientId) : Boolean(iosClientId),
   };
 }
