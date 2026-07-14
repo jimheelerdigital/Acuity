@@ -19,10 +19,12 @@
 //
 // See docs/AUTH_HARDENING.md for the full test checklist.
 
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+// TYPE-ONLY import — erased by the compiler, produces NO runtime require, so the
+// native module is never loaded on iOS from this line. The actual module is
+// require()'d ONLY inside `Platform.OS === "android"` blocks below, so iOS never
+// pulls in @react-native-google-signin at runtime (and it's excluded from the
+// iOS Podfile via react-native.config.js). iOS keeps the expo-auth-session flow.
+import type * as GoogleSigninModule from "@react-native-google-signin/google-signin";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
@@ -592,6 +594,8 @@ export function useGoogleSignIn() {
   // Google.useAuthRequest below.
   useEffect(() => {
     if (Platform.OS === "android" && webClientId) {
+      const { GoogleSignin } =
+        require("@react-native-google-signin/google-signin") as typeof GoogleSigninModule;
       GoogleSignin.configure({ webClientId });
     }
   }, [webClientId]);
@@ -662,6 +666,10 @@ export function useGoogleSignIn() {
     // ── Android: native path. Returns an id_token (aud = webClientId), then
     // reuses the SAME callMobileCallback the iOS flow uses. No browser. ──
     if (Platform.OS === "android") {
+      // require() (not a top-level import) so this native module loads ONLY on
+      // Android — never on iOS. Scoped to the branch so it's in view for catch.
+      const { GoogleSignin, statusCodes } =
+        require("@react-native-google-signin/google-signin") as typeof GoogleSigninModule;
       if (!webClientId) {
         return {
           ok: false,

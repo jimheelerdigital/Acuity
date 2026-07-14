@@ -229,12 +229,6 @@
           "userTrackingPermission": "Ripple uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes."
         }
       ],
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl"
-        }
-      ],
       "./plugins/with-remove-ad-id.js",
       "./plugins/with-folly-mobile-flag.js"
     ],
