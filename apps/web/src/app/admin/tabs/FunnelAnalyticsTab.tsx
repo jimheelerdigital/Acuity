@@ -25,7 +25,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   if (error) return (
     <div style={{ color: "#ef4444", padding: 40, textAlign: "center" }}>
       Error: {error}
-      <button onClick={() => window.location.reload()} style={{ marginLeft: 12, background: "#7C5CFC", color: "#fff", border: "none", borderRadius: 6, padding: "6px 16px", cursor: "pointer" }}>Retry</button>
+      <button onClick={() => window.location.reload()} style={{ marginLeft: 12, background: "#8E6FE6", color: "#fff", border: "none", borderRadius: 6, padding: "6px 16px", cursor: "pointer" }}>Retry</button>
     </div>
   );
   if (!data) return <div style={{ color: "#888", padding: 40, textAlign: "center" }}>No data</div>;
@@ -97,7 +97,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
             <button key={v} onClick={() => setFlowVersion(v)}
               title={v === "v7" ? "V7 — two-equal-buttons paywall (current live funnel)" : v === "v6" ? "V6 — post-rebuild" : undefined}
               style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
-                background: flowVersion === v ? "#7C5CFC" : "rgba(255,255,255,0.06)",
+                background: flowVersion === v ? "#8E6FE6" : "rgba(255,255,255,0.06)",
                 color: flowVersion === v ? "#fff" : "rgba(255,255,255,0.35)" }}>
               {v === "all" ? "All" : v === "v7" ? "V7 — paywall split" : v === "v6" ? "V6 — post-rebuild" : v.toUpperCase()}
             </button>
@@ -443,7 +443,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                 type="checkbox"
                 checked={showPageLoadOnly}
                 onChange={(e) => setShowPageLoadOnly(e.target.checked)}
-                style={{ accentColor: "#7C5CFC" }}
+                style={{ accentColor: "#8E6FE6" }}
               />
               Show page-load-only sessions
             </label>

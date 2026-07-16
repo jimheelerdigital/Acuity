@@ -120,7 +120,7 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "bg-zinc-500/20 text-zinc-400",
   awaiting_approval: "bg-amber-500/20 text-amber-400",
   live: "bg-emerald-500/20 text-emerald-400",
-  concluded: "bg-[#7C5CFC]/20 text-[#7C5CFC]",
+  concluded: "bg-[#8E6FE6]/20 text-[#8E6FE6]",
 };
 
 const COMPLIANCE_COLORS: Record<string, string> = {
@@ -838,7 +838,7 @@ export default function ExperimentDetailPage() {
           <div className="px-5 pb-5 border-t border-white/5 pt-4">
             {/* Upload area with drag-and-drop */}
             <label
-              className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed ${dragOver ? "border-[#7C5CFC] bg-[#7C5CFC]/5" : "border-white/10 hover:border-[#7C5CFC]/30 bg-white/[0.02]"} px-6 py-5 cursor-pointer transition mb-4`}
+              className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed ${dragOver ? "border-[#8E6FE6] bg-[#8E6FE6]/5" : "border-white/10 hover:border-[#8E6FE6]/30 bg-white/[0.02]"} px-6 py-5 cursor-pointer transition mb-4`}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {
@@ -887,7 +887,7 @@ export default function ExperimentDetailPage() {
                       defaultValue={img.caption || ""}
                       placeholder="Caption..."
                       onBlur={(e) => updateRefCaption(img.id, e.target.value)}
-                      className="mt-1.5 w-full rounded border border-white/10 bg-transparent px-2 py-1 text-[10px] text-[#A0A0B8] outline-none focus:border-[#7C5CFC] placeholder-[#A0A0B8]/40"
+                      className="mt-1.5 w-full rounded border border-white/10 bg-transparent px-2 py-1 text-[10px] text-[#A0A0B8] outline-none focus:border-[#8E6FE6] placeholder-[#A0A0B8]/40"
                     />
                   </div>
                 ))}
@@ -897,12 +897,12 @@ export default function ExperimentDetailPage() {
             {/* Toggle: use reference images as creative direction */}
             <label className="mt-3 flex items-center gap-2 cursor-pointer">
               <div
-                className={`relative h-4 w-7 rounded-full transition-colors ${useRefImages ? "bg-[#7C5CFC]" : "bg-white/10"}`}
+                className={`relative h-4 w-7 rounded-full transition-colors ${useRefImages ? "bg-[#8E6FE6]" : "bg-white/10"}`}
                 onClick={() => setUseRefImages(!useRefImages)}
               >
                 <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${useRefImages ? "translate-x-3" : "translate-x-0.5"}`} />
               </div>
-              <span className={`text-[10px] ${useRefImages ? "text-[#7C5CFC]" : "text-[#A0A0B8]/60"}`}>Use as creative direction</span>
+              <span className={`text-[10px] ${useRefImages ? "text-[#8E6FE6]" : "text-[#A0A0B8]/60"}`}>Use as creative direction</span>
               <div className="group relative">
                 <Info className="h-3 w-3 text-[#A0A0B8]/40" />
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block rounded bg-[#1E1E2E] border border-white/10 px-2 py-1 text-[9px] text-[#A0A0B8] whitespace-nowrap z-10">
@@ -921,7 +921,7 @@ export default function ExperimentDetailPage() {
           <button
             onClick={advanceSelected}
             disabled={selected.size === 0 || advancing}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
           >
             {advancing && <Loader2 className="h-4 w-4 animate-spin" />}
             Advance Selected ({selected.size})
@@ -940,7 +940,7 @@ export default function ExperimentDetailPage() {
             <button
               onClick={generateAllCreatives}
               disabled={generateAllRunning}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
             >
               {generateAllRunning ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1025,7 +1025,7 @@ export default function ExperimentDetailPage() {
         {experiment.status === "concluded" && (
           <button
             onClick={cloneWinningAds}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6] hover:bg-[#8E6FE6]/20 transition"
           >
             <Copy className="h-4 w-4" />
             Clone winning ads with new variants
@@ -1038,7 +1038,7 @@ export default function ExperimentDetailPage() {
         <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-[#7C5CFC]" />
+              <ClipboardCheck className="h-5 w-5 text-[#8E6FE6]" />
               <h3 className="text-base font-semibold text-white">Pre-Launch Checklist</h3>
               {validationSkipped && (
                 <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-400">
@@ -1147,23 +1147,23 @@ export default function ExperimentDetailPage() {
 
       {/* Post-launch reminder */}
       {showPostLaunchReminder && experiment.status === "live" && (
-        <div className="mb-6 rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/5 p-5">
+        <div className="mb-6 rounded-xl border border-[#8E6FE6]/30 bg-[#8E6FE6]/5 p-5">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
-              <Info className="h-5 w-5 text-[#7C5CFC] shrink-0 mt-0.5" />
+              <Info className="h-5 w-5 text-[#8E6FE6] shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-white mb-2">Campaign launched in PAUSED state. After activating:</p>
                 <ul className="space-y-1.5 text-xs text-[#A0A0B8]">
                   <li className="flex items-start gap-2">
-                    <span className="text-[#7C5CFC] mt-0.5">&#8226;</span>
+                    <span className="text-[#8E6FE6] mt-0.5">&#8226;</span>
                     <span>Don&#39;t edit the ad set for 7 days (resets learning phase)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[#7C5CFC] mt-0.5">&#8226;</span>
+                    <span className="text-[#8E6FE6] mt-0.5">&#8226;</span>
                     <span>First performance check at 48 hours</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[#7C5CFC] mt-0.5">&#8226;</span>
+                    <span className="text-[#8E6FE6] mt-0.5">&#8226;</span>
                     <span>Kill criteria: $15/creative with zero clicks, $30/creative with zero signups</span>
                   </li>
                 </ul>
@@ -1362,7 +1362,7 @@ export default function ExperimentDetailPage() {
             {/* Creative count tracking */}
             <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
               <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="h-4 w-4 text-[#7C5CFC]" />
+                <TrendingUp className="h-4 w-4 text-[#8E6FE6]" />
                 <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider">Creative Tracking</p>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -1393,9 +1393,9 @@ export default function ExperimentDetailPage() {
             </div>
 
             {/* Generate More Creatives */}
-            <div className="rounded-xl border border-[#7C5CFC]/20 bg-[#13131F] p-5">
+            <div className="rounded-xl border border-[#8E6FE6]/20 bg-[#13131F] p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-[#7C5CFC]" />
+                <Sparkles className="h-4 w-4 text-[#8E6FE6]" />
                 <p className="text-sm font-medium text-white">Generate More Creatives</p>
               </div>
 
@@ -1404,7 +1404,7 @@ export default function ExperimentDetailPage() {
                 <select
                   value={scalingMode}
                   onChange={(e) => setScalingMode(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                  className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
                 >
                   <option value="more_of_type">More of what&apos;s working</option>
                   <option value="new_angles">Test new angles</option>
@@ -1415,7 +1415,7 @@ export default function ExperimentDetailPage() {
                   <select
                     value={preferredType}
                     onChange={(e) => setPreferredType(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                    className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
                   >
                     <option value="mechanism">Mechanism</option>
                     <option value="pain_point">Pain-Point</option>
@@ -1426,7 +1426,7 @@ export default function ExperimentDetailPage() {
                 <button
                   onClick={generateMoreCreatives}
                   disabled={generatingMore}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
                 >
                   {generatingMore ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
@@ -1657,7 +1657,7 @@ function AngleCard({
         angle.advanced
           ? "border-emerald-500/30"
           : isSelected
-            ? "border-[#7C5CFC]/50"
+            ? "border-[#8E6FE6]/50"
             : "border-white/10"
       }`}
     >
@@ -1667,7 +1667,7 @@ function AngleCard({
             onClick={onToggle}
             className={`mt-0.5 shrink-0 h-5 w-5 rounded border transition ${
               isSelected
-                ? "bg-[#7C5CFC] border-[#7C5CFC]"
+                ? "bg-[#8E6FE6] border-[#8E6FE6]"
                 : "border-white/20 hover:border-white/40"
             } flex items-center justify-center`}
           >
@@ -1702,7 +1702,7 @@ function AngleCard({
               <button
                 onClick={onGenerate}
                 disabled={generating}
-                className="flex items-center gap-1 text-xs text-[#7C5CFC] hover:text-[#9B7FFF] transition-colors"
+                className="flex items-center gap-1 text-xs text-[#8E6FE6] hover:text-[#AD92E9] transition-colors"
               >
                 {generating ? (
                   <><Loader2 className="h-3 w-3 animate-spin" /> Generating...</>
@@ -1814,8 +1814,8 @@ function AngleCard({
               {scriptDraft && !videoConfirming && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Video className="h-3.5 w-3.5 text-[#7C5CFC]" />
-                    <span className="text-[10px] font-medium text-[#7C5CFC] uppercase tracking-wider">Video Script — Review & Edit</span>
+                    <Video className="h-3.5 w-3.5 text-[#8E6FE6]" />
+                    <span className="text-[10px] font-medium text-[#8E6FE6] uppercase tracking-wider">Video Script — Review & Edit</span>
                     <span className="text-[10px] text-[#A0A0B8]">
                       Avatars: {scriptDraft.primaryAvatar.name}
                       {scriptDraft.secondaryAvatar?.id ? ` + ${scriptDraft.secondaryAvatar.name}` : ""}
@@ -1827,7 +1827,7 @@ function AngleCard({
                       type="text"
                       value={editedHook}
                       onChange={(e) => setEditedHook(e.target.value)}
-                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#7C5CFC]"
+                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#8E6FE6]"
                     />
                   </div>
                   <div>
@@ -1836,7 +1836,7 @@ function AngleCard({
                       value={editedScript}
                       onChange={(e) => setEditedScript(e.target.value)}
                       rows={4}
-                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#7C5CFC] resize-y"
+                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#8E6FE6] resize-y"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -1945,14 +1945,14 @@ function CreativeCard({
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             {creative.batchNumber > 0 && (
-              <span className="rounded px-1.5 py-0.5 text-[9px] font-medium bg-[#7C5CFC]/10 text-[#7C5CFC] border border-[#7C5CFC]/20">
+              <span className="rounded px-1.5 py-0.5 text-[9px] font-medium bg-[#8E6FE6]/10 text-[#8E6FE6] border border-[#8E6FE6]/20">
                 batch {creative.batchNumber}
               </span>
             )}
             <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
               creative.creativeType === "video"
                 ? "bg-sky-500/15 text-sky-400"
-                : "bg-[#7C5CFC]/15 text-[#7C5CFC]"
+                : "bg-[#8E6FE6]/15 text-[#8E6FE6]"
             }`}>
               {creative.creativeType}
             </span>
@@ -2035,7 +2035,7 @@ function LandingPageSection({
             Ad clicks go directly to the onboarding funnel with UTM tracking.
           </p>
           <div className="flex items-center gap-2 flex-wrap">
-            <LinkIcon className="h-3.5 w-3.5 text-[#7C5CFC] shrink-0" />
+            <LinkIcon className="h-3.5 w-3.5 text-[#8E6FE6] shrink-0" />
             <span className="text-xs text-[#A0A0B8] font-mono break-all">{funnelUrl}</span>
             <button
               onClick={() => onCopy(funnelUrl)}
@@ -2070,12 +2070,12 @@ function LandingPageSection({
       {landingPage ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <LinkIcon className="h-3.5 w-3.5 text-[#7C5CFC] shrink-0" />
+            <LinkIcon className="h-3.5 w-3.5 text-[#8E6FE6] shrink-0" />
             <a
               href={landingPageUrl!}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-[#7C5CFC] hover:text-[#9B7FFF] font-mono transition truncate"
+              className="text-sm text-[#8E6FE6] hover:text-[#AD92E9] font-mono transition truncate"
             >
               {landingPageUrl}
             </a>
@@ -2111,7 +2111,7 @@ function LandingPageSection({
           <button
             onClick={onGenerate}
             disabled={generatingLandingPage}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6] hover:bg-[#8E6FE6]/20 transition disabled:opacity-50"
           >
             {generatingLandingPage ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
@@ -2187,7 +2187,7 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
     setGenerating(false);
   }
 
-  const inputClass = "w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#7C5CFC] resize-y min-h-[60px]";
+  const inputClass = "w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#8E6FE6] resize-y min-h-[60px]";
 
   return (
     <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] overflow-hidden">
@@ -2196,7 +2196,7 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
           <span className="text-sm font-medium text-white">
             Custom Funnel Copy
             {(painHook || bridge || promise || paywallHook) && (
-              <span className="ml-1.5 rounded-full bg-[#7C5CFC]/20 px-2 py-0.5 text-[9px] text-[#7C5CFC]">configured</span>
+              <span className="ml-1.5 rounded-full bg-[#8E6FE6]/20 px-2 py-0.5 text-[9px] text-[#8E6FE6]">configured</span>
             )}
           </span>
         </div>
@@ -2209,7 +2209,7 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
           </p>
           <div className="flex gap-2 mb-3">
             <button onClick={generateCopy} disabled={generating}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-3 py-1.5 text-xs text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-3 py-1.5 text-xs text-[#8E6FE6] hover:bg-[#8E6FE6]/20 transition disabled:opacity-50">
               {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
               Generate from Topic Brief
             </button>
@@ -2232,7 +2232,7 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={save} disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-xs font-semibold text-white hover:bg-[#6B4FE0] transition disabled:opacity-50">
+              className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-xs font-semibold text-white hover:bg-[#7D62CA] transition disabled:opacity-50">
               {saving && <Loader2 className="h-3 w-3 animate-spin" />}
               Save Funnel Copy
             </button>
@@ -2245,7 +2245,7 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
           {hasAnyCopy && (
             <div className="mt-3 rounded-lg border border-white/10 bg-[#1E1E2E] p-3 space-y-2">
               <a href={previewUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7C5CFC] hover:text-[#A78BFA] transition">
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8E6FE6] hover:text-[#B99EE4] transition">
                 Preview Funnel &rarr;
               </a>
               <div className="flex items-center gap-2">

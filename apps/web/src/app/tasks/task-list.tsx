@@ -823,8 +823,8 @@ function Checkbox({
         borderRadius: 4,
         borderWidth: 2,
         borderStyle: muted ? "dashed" : "solid",
-        borderColor: checked ? "#7C3AED" : "#A1A1AA",
-        backgroundColor: checked ? "#7C3AED" : "transparent",
+        borderColor: checked ? "#8E6FE6" : "#A1A1AA",
+        backgroundColor: checked ? "#8E6FE6" : "transparent",
       }}
     >
       {checked ? (

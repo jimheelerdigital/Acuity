@@ -15,7 +15,7 @@ interface Props {
 // Drop% between funnel steps drives the bar color: red = heavy leak,
 // amber = soft, green = healthy. Matches the rest of the MRI palette.
 function dropColor(pctOfPrev: number | null): string {
-  if (pctOfPrev == null) return "bg-[#7C5CFC]";
+  if (pctOfPrev == null) return "bg-[#8E6FE6]";
   const drop = 100 - pctOfPrev;
   if (drop > 25) return "bg-red-500";
   if (drop >= 10) return "bg-amber-500";
@@ -173,7 +173,7 @@ export default function ActivationFunnelSection({ start, end }: Props) {
                     {h.count}
                   </span>
                   <div
-                    className="w-full rounded-t bg-[#7C5CFC]/70 transition-all"
+                    className="w-full rounded-t bg-[#8E6FE6]/70 transition-all"
                     style={{ height: `${heightPct}%` }}
                   />
                   <span className="mt-2 text-center text-[10px] leading-tight text-white/40">

@@ -55,7 +55,7 @@ export default function AdLabDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          icon={<Zap className="h-5 w-5 text-[#7C5CFC]" />}
+          icon={<Zap className="h-5 w-5 text-[#8E6FE6]" />}
           label="Total Spend (Month)"
           value={`$${(s.totalSpendCents / 100).toFixed(2)}`}
         />
@@ -121,9 +121,9 @@ export default function AdLabDashboard() {
           <h2 className="text-lg font-semibold text-white mb-2">Getting Started</h2>
           <p className="text-sm text-[#A0A0B8] leading-relaxed">
             Configure a project in{" "}
-            <Link href="/admin/adlab/projects" className="text-[#7C5CFC] hover:underline">Projects</Link>,
+            <Link href="/admin/adlab/projects" className="text-[#8E6FE6] hover:underline">Projects</Link>,
             then create an experiment in{" "}
-            <Link href="/admin/adlab/experiments" className="text-[#7C5CFC] hover:underline">Experiments</Link>.
+            <Link href="/admin/adlab/experiments" className="text-[#8E6FE6] hover:underline">Experiments</Link>.
           </p>
         </div>
       )}

@@ -43,7 +43,7 @@ export default function ProjectsPage() {
         </div>
         <Link
           href="/admin/adlab/projects/new"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6B4FE0]"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA]"
         >
           <Plus className="h-4 w-4" /> New Project
         </Link>

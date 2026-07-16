@@ -8,7 +8,7 @@ export default function AdCopyPreview({ piece }: { piece: PreviewPiece }) {
       <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-4 py-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#7C5CFC] to-[#5A3FD4] flex items-center justify-center text-[10px] font-bold text-white">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#8E6FE6] to-[#6C52BE] flex items-center justify-center text-[10px] font-bold text-white">
             A
           </div>
           <div>

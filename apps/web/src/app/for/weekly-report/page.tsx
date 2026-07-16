@@ -264,7 +264,7 @@ export default function WeeklyReportPage() {
                   style={{
                     width: "40px",
                     height: `${40 + i * 8}px`,
-                    backgroundColor: `rgba(124, 58, 237, ${0.1 + i * 0.075})`,
+                    backgroundColor: `rgba(125, 98, 202, ${0.1 + i * 0.075})`,
                   }}
                 />
               ))}

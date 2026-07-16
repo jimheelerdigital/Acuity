@@ -112,7 +112,7 @@ export default function AdminDashboardClient() {
           {/* Total */}
           <Card>
             <p className="text-sm text-white/50">Total Waitlist Signups</p>
-            <p className="mt-1 text-4xl font-bold text-[#7C5CFC]">
+            <p className="mt-1 text-4xl font-bold text-[#8E6FE6]">
               {data.totalSignups.toLocaleString()}
             </p>
           </Card>
@@ -127,7 +127,7 @@ export default function AdminDashboardClient() {
                   </span>
                   <div className="relative h-6 flex-1 overflow-hidden rounded bg-white/5">
                     <div
-                      className="h-full rounded bg-[#7C5CFC]"
+                      className="h-full rounded bg-[#8E6FE6]"
                       style={{
                         width: `${(s.count / maxSource) * 100}%`,
                       }}
@@ -151,7 +151,7 @@ export default function AdminDashboardClient() {
                   style={{ height: "100%" }}
                 >
                   <div
-                    className="absolute bottom-0 w-full rounded-t bg-[#7C5CFC] transition-colors group-hover:bg-[#9B80FF]"
+                    className="absolute bottom-0 w-full rounded-t bg-[#8E6FE6] transition-colors group-hover:bg-[#9B80FF]"
                     style={{
                       height: `${(d.count / maxDaily) * 100}%`,
                       minHeight: d.count > 0 ? 2 : 0,
@@ -241,7 +241,7 @@ export default function AdminDashboardClient() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-xl bg-[#13131F] px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-[#1a1a2e] hover:text-[#7C5CFC]"
+                className="rounded-xl bg-[#13131F] px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-[#1a1a2e] hover:text-[#8E6FE6]"
               >
                 {link.label} &rarr;
               </a>

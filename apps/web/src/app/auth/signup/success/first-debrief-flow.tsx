@@ -159,7 +159,7 @@ function IntroAnimation({ onComplete }: { onComplete: () => void }) {
       // Fire confetti burst
       const duration = 1500;
       const end = Date.now() + duration;
-      const colors = ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E", "#60A5FA", "#F472B6"];
+      const colors = ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E", "#60A5FA", "#F472B6"];
 
       (function frame() {
         confetti({
@@ -475,21 +475,21 @@ function RecordScreen({
                 <span
                   className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36"
                   style={{
-                    background: "radial-gradient(circle, rgba(124,92,252,0.25) 0%, rgba(167,139,250,0.08) 70%, transparent 100%)",
+                    background: "radial-gradient(circle, rgba(142,111,230,0.25) 0%, rgba(167,139,250,0.08) 70%, transparent 100%)",
                   }}
                 />
                 <span
                   className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36"
                   style={{
                     animationDelay: "1s",
-                    background: "radial-gradient(circle, rgba(124,92,252,0.18) 0%, rgba(196,181,253,0.05) 70%, transparent 100%)",
+                    background: "radial-gradient(circle, rgba(142,111,230,0.18) 0%, rgba(196,181,253,0.05) 70%, transparent 100%)",
                   }}
                 />
                 <span
                   className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36"
                   style={{
                     animationDelay: "2s",
-                    background: "radial-gradient(circle, rgba(124,92,252,0.12) 0%, rgba(221,214,254,0.03) 70%, transparent 100%)",
+                    background: "radial-gradient(circle, rgba(142,111,230,0.12) 0%, rgba(221,214,254,0.03) 70%, transparent 100%)",
                   }}
                 />
               </>
@@ -518,7 +518,7 @@ function RecordScreen({
                     ? undefined
                     : {
                         background: "var(--acuity-grad-primary)",
-                        boxShadow: "0 8px 40px rgba(124,92,252,0.3), 0 2px 12px rgba(124,58,237,0.2)",
+                        boxShadow: "0 8px 40px rgba(142,111,230,0.3), 0 2px 12px rgba(125,98,202,0.2)",
                       }
               }
             >
@@ -743,12 +743,12 @@ const SLIDE_MS = 4000;
 
 // Gradient orb colors per slide (12 + summary)
 const SLIDE_ORBS = [
-  "radial-gradient(circle, rgba(124,92,252,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(142,111,230,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(196,181,253,0.12) 0%, transparent 70%)",
-  "radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(124,92,252,0.06) 40%, transparent 70%)",
-  "radial-gradient(circle, rgba(124,92,252,0.09) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(142,111,230,0.06) 40%, transparent 70%)",
+  "radial-gradient(circle, rgba(142,111,230,0.09) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(196,181,253,0.10) 0%, transparent 70%)",
@@ -931,7 +931,7 @@ function ProcessingScreen({
                       ) : (
                         <span
                           className="text-sm font-bold uppercase tracking-[0.25em] text-acuity-primary sm:text-base"
-                          style={{ textShadow: "0 0 20px rgba(124,92,252,0.3)" }}
+                          style={{ textShadow: "0 0 20px rgba(142,111,230,0.3)" }}
                         >
                           {slide.label}
                         </span>
@@ -991,13 +991,13 @@ function ProcessingScreen({
                             width: 20,
                             height: 5,
                             background: "var(--acuity-grad-primary)",
-                            boxShadow: "0 0 8px 2px rgba(124,92,252,0.3)",
+                            boxShadow: "0 0 8px 2px rgba(142,111,230,0.3)",
                           }
                         : i < slideIndex
                           ? {
                               width: 5,
                               height: 5,
-                              backgroundColor: "rgba(124,92,252,0.3)",
+                              backgroundColor: "rgba(142,111,230,0.3)",
                             }
                           : {
                               width: 5,
@@ -1125,7 +1125,7 @@ function ExtractionScreen({
         particleCount: 40,
         spread: 70,
         origin: { x: 0.5, y: 0.3 },
-        colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"],
+        colors: ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"],
         zIndex: 9999,
         startVelocity: 20,
         gravity: 1.2,
@@ -1199,7 +1199,7 @@ function ExtractionScreen({
                 <div
                   key={i}
                   className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(taskItemAt(i))}`}
-                  style={{ borderLeft: "3px solid #7C5CFC" }}
+                  style={{ borderLeft: "3px solid #8E6FE6" }}
                 >
                   <CheckboxIcon />
                   <div className="min-w-0 flex-1">
@@ -1236,7 +1236,7 @@ function ExtractionScreen({
                 <div
                   key={i}
                   className={`flex items-start gap-3 rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(goalItemAt(i))}`}
-                  style={{ borderLeft: "3px solid #A78BFA" }}
+                  style={{ borderLeft: "3px solid #B99EE4" }}
                 >
                   <FlagIcon />
                   <div className="min-w-0 flex-1">
@@ -1412,7 +1412,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
             style={{
               background: "var(--acuity-grad-primary)",
-              boxShadow: "0 8px 32px rgba(124,92,252,0.3), 0 2px 8px rgba(124,58,237,0.15)",
+              boxShadow: "0 8px 32px rgba(142,111,230,0.3), 0 2px 8px rgba(125,98,202,0.15)",
             }}
           >
             {/* Shining ring overlay */}
@@ -1455,7 +1455,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
             <span
               className="absolute inset-[-1px] rounded-full pointer-events-none"
               style={{
-                background: "conic-gradient(from 0deg, transparent 0%, transparent 75%, rgba(124,92,252,0.25) 82%, transparent 89%, transparent 100%)",
+                background: "conic-gradient(from 0deg, transparent 0%, transparent 75%, rgba(142,111,230,0.25) 82%, transparent 89%, transparent 100%)",
                 animation: "shine-ring 3s linear infinite",
               }}
             />

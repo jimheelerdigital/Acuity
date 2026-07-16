@@ -302,7 +302,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
           </div>
         ))}
         <button type="button" onClick={() => updateField("usps", [...data.usps, ""])}
-          className="flex items-center gap-1.5 text-xs text-[#7C5CFC] hover:text-[#9B7FFF] transition-colors">
+          className="flex items-center gap-1.5 text-xs text-[#8E6FE6] hover:text-[#AD92E9] transition-colors">
           <Plus className="h-3 w-3" /> Add USP
         </button>
       </Section>
@@ -329,7 +329,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
             className={inputClass} placeholder="https://getacuity.io" />
         </Field>
         <label className="flex items-center gap-3 cursor-pointer">
-          <div className={`relative h-5 w-9 rounded-full transition-colors ${data.imageEnabled ? "bg-[#7C5CFC]" : "bg-white/20"}`}
+          <div className={`relative h-5 w-9 rounded-full transition-colors ${data.imageEnabled ? "bg-[#8E6FE6]" : "bg-white/20"}`}
             onClick={() => updateField("imageEnabled", !data.imageEnabled)}>
             <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${data.imageEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
           </div>
@@ -394,7 +394,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
       {/* Submit */}
       <div className="flex items-center gap-4 pt-4">
         <button type="submit" disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] disabled:opacity-50">
+          className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           {mode === "create" ? "Create Project" : "Save Changes"}
         </button>
@@ -407,7 +407,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
 // ─── Sub-components ────────────────────────────────────────────────────────
 
 const inputClass =
-  "w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-[#7C5CFC] transition-colors";
+  "w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-[#8E6FE6] transition-colors";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -437,7 +437,7 @@ function TagField({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
       {label && <label className="block text-xs text-[#A0A0B8] mb-1.5">{label}</label>}
       <div className="flex flex-wrap gap-1.5 mb-2">
         {tags.map((tag, i) => (
-          <span key={i} className="inline-flex items-center gap-1 rounded-md bg-[#7C5CFC]/15 px-2 py-0.5 text-xs text-[#7C5CFC]">
+          <span key={i} className="inline-flex items-center gap-1 rounded-md bg-[#8E6FE6]/15 px-2 py-0.5 text-xs text-[#8E6FE6]">
             {tag}
             <button type="button" onClick={() => onRemove(i)}><X className="h-3 w-3" /></button>
           </span>
@@ -487,7 +487,7 @@ function InterestSearch({ selected, onAdd, onRemove }: {
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {selected.map((i) => (
-            <span key={i.id} className="inline-flex items-center gap-1 rounded-md bg-[#7C5CFC]/15 px-2 py-0.5 text-xs text-[#7C5CFC]">
+            <span key={i.id} className="inline-flex items-center gap-1 rounded-md bg-[#8E6FE6]/15 px-2 py-0.5 text-xs text-[#8E6FE6]">
               {i.name}
               <button type="button" onClick={() => onRemove(i.id)}><X className="h-3 w-3" /></button>
             </span>

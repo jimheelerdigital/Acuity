@@ -21,7 +21,7 @@ export function FoundingMemberBanner() {
   if (spotsLeft === null || spotsLeft <= 0) return null;
 
   return (
-    <div className="w-full bg-gradient-to-r from-[#7C5CFC] to-[#6B4FE0] text-white text-center text-xs sm:text-sm py-2.5 sm:py-2 px-4 font-medium z-[60] relative">
+    <div className="w-full bg-gradient-to-r from-[#8E6FE6] to-[#7D62CA] text-white text-center text-xs sm:text-sm py-2.5 sm:py-2 px-4 font-medium z-[60] relative">
       <span className="inline-block leading-snug">
         🔥 First 100 founding members get early access — only{" "}
         <span className="font-bold text-sm sm:text-base">{spotsLeft}</span>{" "}

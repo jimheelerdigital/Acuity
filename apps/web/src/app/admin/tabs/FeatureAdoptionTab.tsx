@@ -38,7 +38,7 @@ function Row({ f, muted }: { f: Feature; muted?: boolean }) {
           className="h-2 rounded"
           style={{
             width: `${Math.min(100, f.pct)}%`,
-            background: muted ? "#3a3a4a" : "#7C5CFC",
+            background: muted ? "#3a3a4a" : "#8E6FE6",
           }}
         />
       </div>

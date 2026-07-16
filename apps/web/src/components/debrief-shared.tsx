@@ -140,12 +140,12 @@ export const CORE_SLIDE_COUNT = 9;
 export const SLIDE_MS = 4000;
 
 export const SLIDE_ORBS = [
-  "radial-gradient(circle, rgba(124,92,252,0.08) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(142,111,230,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(196,181,253,0.12) 0%, transparent 70%)",
-  "radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(124,92,252,0.06) 40%, transparent 70%)",
-  "radial-gradient(circle, rgba(124,92,252,0.09) 0%, transparent 70%)",
+  "radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(142,111,230,0.06) 40%, transparent 70%)",
+  "radial-gradient(circle, rgba(142,111,230,0.09) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
   "radial-gradient(circle, rgba(196,181,253,0.10) 0%, transparent 70%)",
@@ -231,7 +231,7 @@ export function CheckboxIcon() {
 
 export function FlagIcon() {
   return (
-    <svg className="h-5 w-5 shrink-0 mt-0.5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className="h-5 w-5 shrink-0 mt-0.5 text-[#B99EE4]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
     </svg>
   );

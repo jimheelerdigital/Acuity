@@ -3,7 +3,7 @@
  * a User account. Sent as a one-shot campaign from the admin dashboard.
  *
  * Uses the same trialLayout shell as the onboarding sequence for brand
- * consistency: dark canvas, #7C5CFC accent, Ripple logo header.
+ * consistency: dark canvas, #8E6FE6 accent, Ripple logo header.
  */
 
 import { trialLayout, trialButton } from "./trial/layout";

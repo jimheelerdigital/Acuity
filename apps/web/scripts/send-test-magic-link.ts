@@ -38,7 +38,7 @@ function emailLayout(opts: {
     <p style="color:#A1A1AA;font-size:15px;line-height:1.6;margin:0 0 32px;">
       ${intro}
     </p>
-    <a href="${ctaUrl}" style="display:block;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 24px;border-radius:10px;font-weight:600;font-size:15px;margin-bottom:24px;">
+    <a href="${ctaUrl}" style="display:block;background:linear-gradient(135deg,#8E6FE6,#4F46E5);color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 24px;border-radius:10px;font-weight:600;font-size:15px;margin-bottom:24px;">
       ${ctaLabel} →
     </a>
     ${

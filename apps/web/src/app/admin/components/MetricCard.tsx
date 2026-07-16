@@ -101,7 +101,7 @@ export default function MetricCard({
                     ? "bg-red-500"
                     : budgetBar.current / budgetBar.max > 0.75
                       ? "bg-amber-500"
-                      : "bg-[#7C5CFC]"
+                      : "bg-[#8E6FE6]"
                 }`}
                 style={{
                   width: `${Math.min((budgetBar.current / budgetBar.max) * 100, 100)}%`,
@@ -116,7 +116,7 @@ export default function MetricCard({
         return (
           <div className="mt-2 flex items-end gap-px h-8">
             {sparklineData.map((d, i) => (
-              <div key={i} className="flex-1 rounded-t bg-[#7C5CFC]/40" style={{ height: `${Math.max(2, (d.v / max) * 100)}%` }} />
+              <div key={i} className="flex-1 rounded-t bg-[#8E6FE6]/40" style={{ height: `${Math.max(2, (d.v / max) * 100)}%` }} />
             ))}
           </div>
         );

@@ -49,7 +49,7 @@ export function TrySessionClaimer() {
     const t1 = setTimeout(() => setStage("text"), 500);
     const t2 = setTimeout(() => {
       setStage("confetti");
-      const colors = ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E", "#60A5FA", "#F472B6"];
+      const colors = ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E", "#60A5FA", "#F472B6"];
       const duration = 1500;
       const end = Date.now() + duration;
       (function frame() {
@@ -189,7 +189,7 @@ function DownloadCTAScreen() {
           <a
             {...anchorProps}
             className="group relative inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-95 overflow-hidden"
-            style={{ background: "var(--acuity-grad-primary)", boxShadow: "0 8px 32px rgba(124,92,252,0.3), 0 2px 8px rgba(124,58,237,0.15)" }}
+            style={{ background: "var(--acuity-grad-primary)", boxShadow: "0 8px 32px rgba(142,111,230,0.3), 0 2px 8px rgba(125,98,202,0.15)" }}
           >
             <span className="absolute inset-[-2px] rounded-full pointer-events-none" style={{ background: "conic-gradient(from 0deg, transparent 0%, transparent 70%, rgba(255,255,255,0.5) 78%, transparent 86%, transparent 100%)", animation: "shine-ring 2.5s linear infinite" }} />
             <span className="absolute inset-[2px] rounded-full pointer-events-none" style={{ background: "var(--acuity-grad-primary)" }} />
@@ -207,7 +207,7 @@ function DownloadCTAScreen() {
 
         <div className={`text-center mb-10 transition-all duration-700 ${vis(2)}`}>
           <a href="/home" className="group relative inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-zinc-600 transition-all duration-300 hover:scale-[1.02] hover:text-zinc-900 active:scale-95 overflow-hidden" style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.08)" }}>
-            <span className="absolute inset-[-1px] rounded-full pointer-events-none" style={{ background: "conic-gradient(from 0deg, transparent 0%, transparent 75%, rgba(124,92,252,0.25) 82%, transparent 89%, transparent 100%)", animation: "shine-ring 3s linear infinite" }} />
+            <span className="absolute inset-[-1px] rounded-full pointer-events-none" style={{ background: "conic-gradient(from 0deg, transparent 0%, transparent 75%, rgba(142,111,230,0.25) 82%, transparent 89%, transparent 100%)", animation: "shine-ring 3s linear infinite" }} />
             <span className="absolute inset-[1px] rounded-full bg-white pointer-events-none" />
             <span className="relative z-10">Continue in your browser &rarr;</span>
           </a>

@@ -446,7 +446,7 @@ function UserTable({
                 </td>
               )}
               <td className="px-3 py-2.5 text-right">
-                <span className="text-xs text-[#A78BFA]">view →</span>
+                <span className="text-xs text-[#B99EE4]">view →</span>
               </td>
             </tr>
           ))}

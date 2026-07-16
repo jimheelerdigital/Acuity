@@ -290,11 +290,11 @@ export default function ContentFactoryClient({
               )
             }
             disabled={isGenerating}
-            className="rounded-xl bg-gradient-to-br from-[#7C5CFC]/20 to-[#7C5CFC]/5 border border-[#7C5CFC]/20 px-4 py-4 text-left transition hover:from-[#7C5CFC]/30 hover:to-[#7C5CFC]/10 disabled:opacity-50"
+            className="rounded-xl bg-gradient-to-br from-[#8E6FE6]/20 to-[#8E6FE6]/5 border border-[#8E6FE6]/20 px-4 py-4 text-left transition hover:from-[#8E6FE6]/30 hover:to-[#8E6FE6]/10 disabled:opacity-50"
           >
             <div className="flex items-center gap-2">
               <span className="text-lg">✨</span>
-              <span className="text-sm font-medium text-[#9B7DFF]">
+              <span className="text-sm font-medium text-[#AD90E9]">
                 Generate All
               </span>
             </div>
@@ -316,7 +316,7 @@ export default function ContentFactoryClient({
                   onClick={() => setContentTab(i)}
                   className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
                     contentTab === i
-                      ? "bg-[#7C5CFC] text-white"
+                      ? "bg-[#8E6FE6] text-white"
                       : "text-white/60 hover:text-white/90"
                   }`}
                 >
@@ -417,7 +417,7 @@ function GenerationProgress({
   }
 
   return (
-    <div className="rounded-xl bg-[#13131F] border border-[#7C5CFC]/20 px-5 py-4">
+    <div className="rounded-xl bg-[#13131F] border border-[#8E6FE6]/20 px-5 py-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-white/80">
           Generating {label}…
@@ -428,7 +428,7 @@ function GenerationProgress({
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#7C5CFC] to-[#9B7DFF] transition-all duration-500 ease-out"
+          className="h-full rounded-full bg-gradient-to-r from-[#8E6FE6] to-[#AD90E9] transition-all duration-500 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -573,7 +573,7 @@ function ContentCard({
                     download
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium transition hover:bg-[#6B4DE6]"
+                    className="rounded-md bg-[#8E6FE6] px-3 py-1.5 text-sm font-medium transition hover:bg-[#7D60D0]"
                   >
                     Download Image
                   </a>
@@ -605,7 +605,7 @@ function ContentCard({
                       : piece.body;
                     handleCopy(text, "text");
                   }}
-                  className="rounded-md bg-[#7C5CFC] px-3 py-1.5 text-sm font-medium transition hover:bg-[#6B4DE6]"
+                  className="rounded-md bg-[#8E6FE6] px-3 py-1.5 text-sm font-medium transition hover:bg-[#7D60D0]"
                 >
                   {copied === "text" ? "Copied!" : "Copy"}
                 </button>

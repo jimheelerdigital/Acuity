@@ -49,7 +49,7 @@ export default function AdminError({
           onClick={handleRetry}
           disabled={retrying}
           style={{
-            background: retrying ? "#333" : "#7C5CFC",
+            background: retrying ? "#333" : "#8E6FE6",
             color: "#fff",
             border: "none",
             borderRadius: 8,
@@ -63,7 +63,7 @@ export default function AdminError({
           {retrying ? "Retrying..." : "Retry"}
         </button>
         <div style={{ marginTop: 16 }}>
-          <a href="/home" style={{ color: "#7C5CFC", fontSize: 13, textDecoration: "none" }}>
+          <a href="/home" style={{ color: "#8E6FE6", fontSize: 13, textDecoration: "none" }}>
             Back to app
           </a>
         </div>

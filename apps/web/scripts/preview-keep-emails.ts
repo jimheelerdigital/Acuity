@@ -4,7 +4,7 @@
  *
  * Context: the lifecycle/marketing email kill-switch (2026-06-24) paused
  * everything except 12 KEEP emails. This script renders those 12 so we
- * can eyeball brand (violet #7C5CFC vs the coral brand) + stale copy
+ * can eyeball brand (violet #8E6FE6 vs the coral brand) + stale copy
  * ("14 days", "nightly", "60-second", "$12.99", jargon) before rebuild.
  *
  * Usage:

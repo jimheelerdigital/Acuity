@@ -73,7 +73,7 @@ if (!guard.ok) return guard.response;
 | `SkeletonCard.tsx` | `SkeletonMetric/Chart/Table` loading states |
 | `TabError.tsx`, `EmptyState.tsx`, `DrilldownModal.tsx` | error / empty / row-drilldown |
 
-**Visual style — distinct dark admin tool, NOT the Acuity marketing brand:** bg `#0A0A0F`, cards `#13131F`, text `white/50–75`, accent purple **`#7C5CFC`**; secondary `#22D3EE` (Meta/cyan), `#34D399` (organic/green), `#FBBF24` (referral/amber). System sans, compact density. Tailwind primitives (no shadcn imports in admin).
+**Visual style — distinct dark admin tool, NOT the Acuity marketing brand:** bg `#0A0A0F`, cards `#13131F`, text `white/50–75`, accent purple **`#8E6FE6`**; secondary `#22D3EE` (Meta/cyan), `#34D399` (organic/green), `#FBBF24` (referral/amber). System sans, compact density. Tailwind primitives (no shadcn imports in admin).
 
 **Data-fetching:** tabs are **client components** (`"use client"`) calling API routes via the `useTabData` hook — *not* server-component direct fetch. Match this: `/admin/analytics/*` pages = client components that fetch their `/api/admin/analytics/*` route.
 
@@ -120,7 +120,7 @@ There are **already five analytics-ish tabs**, all fed by `/api/admin/metrics?ta
 
 **Auth I'll reuse:** `requireAdmin()` from `apps/web/src/lib/admin-guard.ts` on every `/api/admin/analytics/*` route (`const guard = await requireAdmin(); if (!guard.ok) return guard.response;`). Pages need **zero** auth code — `admin/layout.tsx` already guards all `/admin/*` children (redirect `/dashboard` if `!isAdmin`).
 
-**Styling I'll match:** dark admin theme (`#0A0A0F`/`#13131F`/`#7C5CFC`) reusing `MetricCard`, `ChartCard`, `TimeRangeSelector`, `SafeChart`, `SkeletonCard`, `TabError` from `admin/components/`. Client-component pages + `fetch` to the API route (the `useTabData` pattern).
+**Styling I'll match:** dark admin theme (`#0A0A0F`/`#13131F`/`#8E6FE6`) reusing `MetricCard`, `ChartCard`, `TimeRangeSelector`, `SafeChart`, `SkeletonCard`, `TabError` from `admin/components/`. Client-component pages + `fetch` to the API route (the `useTabData` pattern).
 
 **Blockers / surprises:**
 1. **Architecture mismatch** — admin is one *tabbed* dashboard; the spec wants *separate routed pages*. Both are viable; separate pages reuse the layout auth cleanly. **Needs your call** (Option A vs B below).

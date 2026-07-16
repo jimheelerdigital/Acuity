@@ -48,7 +48,7 @@ async function handle410(
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; color: #333; }
     h1 { font-size: 1.5rem; }
-    a { color: #7C5CFC; }
+    a { color: #8E6FE6; }
   </style>
 </head>
 <body>

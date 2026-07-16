@@ -23,7 +23,7 @@ const COHORT_BANDS: {
   { key: "oneAndDone", label: "One & done (1 entry)", color: "#EF4444" },
   { key: "dabbled", label: "Dabbled (2-4)", color: "#F59E0B" },
   { key: "engaged", label: "Engaged (5-14)", color: "#3B82F6" },
-  { key: "habit", label: "Habit (15+)", color: "#7C5CFC" },
+  { key: "habit", label: "Habit (15+)", color: "#8E6FE6" },
 ];
 
 function retentionColor(pct: number): string {

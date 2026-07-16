@@ -499,9 +499,9 @@ function RadarChart({
             vertex dots unchanged. */}
         <polygon
           points={polyPoints}
-          fill="#7C3AED"
+          fill="#8E6FE6"
           fillOpacity="0.50"
-          stroke="#7C3AED"
+          stroke="#8E6FE6"
           strokeWidth="1.5"
           className="transition-all duration-700"
         />

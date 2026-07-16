@@ -159,7 +159,7 @@ export default function SettingsPage() {
           <button
             onClick={testMeta}
             disabled={testingMeta}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#6B4FE0] transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#7D62CA] transition disabled:opacity-50"
           >
             {testingMeta ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
             Test Meta Connection

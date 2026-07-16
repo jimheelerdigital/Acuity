@@ -210,7 +210,7 @@ export default function AutoBlogTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-[#7C5CFC]" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-[#8E6FE6]" />
       </div>
     );
   }
@@ -260,7 +260,7 @@ export default function AutoBlogTab() {
           <button
             onClick={handleGenerateNow}
             disabled={generating}
-            className="rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+            className="rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
           >
             {generating ? "Generating..." : "Generate Now"}
           </button>
@@ -269,12 +269,12 @@ export default function AutoBlogTab() {
 
       {/* Action results */}
       {fixYearsResult && (
-        <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC]">
+        <div className="rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6]">
           {fixYearsResult}
         </div>
       )}
       {backfillResult && (
-        <div className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-sm text-[#7C5CFC]">
+        <div className="rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6]">
           {backfillResult}
         </div>
       )}
@@ -384,7 +384,7 @@ export default function AutoBlogTab() {
                             href={`/blog/${post.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-[#7C5CFC] hover:underline"
+                            className="hover:text-[#8E6FE6] hover:underline"
                           >
                             {post.title}
                           </a>
@@ -434,7 +434,7 @@ export default function AutoBlogTab() {
                             <button
                               onClick={() => handleRegenImage(post.id)}
                               disabled={regenImageId === post.id}
-                              className="rounded px-2 py-1 text-xs text-[#7C5CFC] transition hover:bg-[#7C5CFC]/10 disabled:opacity-50"
+                              className="rounded px-2 py-1 text-xs text-[#8E6FE6] transition hover:bg-[#8E6FE6]/10 disabled:opacity-50"
                             >
                               {regenImageId === post.id ? "..." : "Regen Image"}
                             </button>

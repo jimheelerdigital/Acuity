@@ -26,7 +26,7 @@ export const objection60sec: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:24px;">
           ${trialCard(`
-            <p style="margin:0 0 8px;font-size:12px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:700;">After 7 days of short debriefs</p>
+            <p style="margin:0 0 8px;font-size:12px;color:#8E6FE6;text-transform:uppercase;letter-spacing:1px;font-weight:700;">After 7 days of short debriefs</p>
             <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
               Ripple has roughly 2,000 words of your honest interior. That's more than most therapists hear in a month. Enough signal to catch the word you keep repeating, the person who shows up in every rough day, the goal you mention but never write down.
             </p>

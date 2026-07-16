@@ -350,9 +350,9 @@ function TryRecordScreen({
           <div className="relative flex items-center justify-center">
             {phase === "idle" && (
               <>
-                <span className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36" style={{ background: "radial-gradient(circle, rgba(124,92,252,0.25) 0%, rgba(167,139,250,0.08) 70%, transparent 100%)" }} />
-                <span className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36" style={{ animationDelay: "1s", background: "radial-gradient(circle, rgba(124,92,252,0.18) 0%, rgba(196,181,253,0.05) 70%, transparent 100%)" }} />
-                <span className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36" style={{ animationDelay: "2s", background: "radial-gradient(circle, rgba(124,92,252,0.12) 0%, rgba(221,214,254,0.03) 70%, transparent 100%)" }} />
+                <span className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36" style={{ background: "radial-gradient(circle, rgba(142,111,230,0.25) 0%, rgba(167,139,250,0.08) 70%, transparent 100%)" }} />
+                <span className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36" style={{ animationDelay: "1s", background: "radial-gradient(circle, rgba(142,111,230,0.18) 0%, rgba(196,181,253,0.05) 70%, transparent 100%)" }} />
+                <span className="absolute h-32 w-32 rounded-full animate-mic-ripple sm:h-36 sm:w-36" style={{ animationDelay: "2s", background: "radial-gradient(circle, rgba(142,111,230,0.12) 0%, rgba(221,214,254,0.03) 70%, transparent 100%)" }} />
               </>
             )}
             <button
@@ -366,7 +366,7 @@ function TryRecordScreen({
               style={
                 phase === "recording"
                   ? { background: "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)", boxShadow: "0 8px 32px rgba(239,68,68,0.35), 0 2px 8px rgba(239,68,68,0.2)" }
-                  : { background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #7C3AED 100%)", boxShadow: "0 8px 40px rgba(124,92,252,0.3), 0 2px 12px rgba(124,58,237,0.2)" }
+                  : { background: "linear-gradient(135deg, #8E6FE6 0%, #9F7AEA 50%, #7D62CA 100%)", boxShadow: "0 8px 40px rgba(142,111,230,0.3), 0 2px 12px rgba(125,98,202,0.2)" }
               }
             >
               {phase === "recording" && (
@@ -415,8 +415,8 @@ function TryRecordScreen({
               href="/auth/signup"
               className="inline-block rounded-full px-8 py-3.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
               style={{
-                background: "linear-gradient(135deg, #7C5CFC 0%, #9F7AEA 50%, #6D28D9 100%)",
-                boxShadow: "0 4px 16px rgba(124,92,252,0.3)",
+                background: "linear-gradient(135deg, #8E6FE6 0%, #9F7AEA 50%, #6D28D9 100%)",
+                boxShadow: "0 4px 16px rgba(142,111,230,0.3)",
               }}
             >
               Start Free Trial
@@ -453,7 +453,7 @@ function TryRecordScreen({
             </div>
             <a
               href="/auth/signup"
-              className="text-sm text-[#7C5CFC] hover:text-[#6B4FE0] transition font-medium"
+              className="text-sm text-[#8E6FE6] hover:text-[#7D62CA] transition font-medium"
             >
               Or start your free trial &rarr;
             </a>
@@ -601,7 +601,7 @@ function TryProcessingScreen({
         {Array.from({ length: 10 }).map((_, i) => (
           <span
             key={i}
-            className="absolute rounded-full bg-[#7C5CFC]/[0.03]"
+            className="absolute rounded-full bg-[#8E6FE6]/[0.03]"
             style={{
               width: 3 + (i % 3) * 3,
               height: 3 + (i % 3) * 3,
@@ -658,8 +658,8 @@ function TryProcessingScreen({
                     </span>
                   ) : (
                     <span
-                      className="text-sm font-bold uppercase tracking-[0.25em] text-[#7C5CFC] sm:text-base"
-                      style={{ textShadow: "0 0 20px rgba(124,92,252,0.3)" }}
+                      className="text-sm font-bold uppercase tracking-[0.25em] text-[#8E6FE6] sm:text-base"
+                      style={{ textShadow: "0 0 20px rgba(142,111,230,0.3)" }}
                     >
                       {slide.label}
                     </span>
@@ -688,9 +688,9 @@ function TryProcessingScreen({
                   {slide.testimonial && (
                     <div className="max-w-sm mx-auto">
                       <p className="text-sm text-zinc-500 italic leading-relaxed">
-                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&ldquo;</span>
+                        <span className="text-[#8E6FE6]/40 text-lg not-italic">&ldquo;</span>
                         {slide.testimonial.quote}
-                        <span className="text-[#7C5CFC]/40 text-lg not-italic">&rdquo;</span>
+                        <span className="text-[#8E6FE6]/40 text-lg not-italic">&rdquo;</span>
                       </p>
                       <p className="mt-2 text-xs text-zinc-400">
                         &mdash; {slide.testimonial.name}
@@ -718,14 +718,14 @@ function TryProcessingScreen({
                     ? {
                         width: 20,
                         height: 5,
-                        background: "linear-gradient(90deg, #7C5CFC, #9F7AEA)",
-                        boxShadow: "0 0 8px 2px rgba(124,92,252,0.3)",
+                        background: "linear-gradient(90deg, #8E6FE6, #9F7AEA)",
+                        boxShadow: "0 0 8px 2px rgba(142,111,230,0.3)",
                       }
                     : i < slideIndex
                       ? {
                           width: 5,
                           height: 5,
-                          backgroundColor: "rgba(124,92,252,0.3)",
+                          backgroundColor: "rgba(142,111,230,0.3)",
                         }
                       : {
                           width: 5,
@@ -744,8 +744,8 @@ function TryProcessingScreen({
         <div className="text-center mb-3">
           <div className="inline-flex items-center gap-2 px-4 py-2">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C5CFC] opacity-50" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#7C5CFC]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#8E6FE6] opacity-50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#8E6FE6]" />
             </span>
             <span className="text-xs text-zinc-400">{processingLabel}</span>
           </div>
@@ -755,7 +755,7 @@ function TryProcessingScreen({
             className="h-full rounded-full transition-all duration-1000 ease-out"
             style={{
               width: `${simProgressPct}%`,
-              background: "linear-gradient(90deg, #7C5CFC, #9F7AEA, #7C3AED)",
+              background: "linear-gradient(90deg, #8E6FE6, #9F7AEA, #7D62CA)",
             }}
           />
         </div>
@@ -835,7 +835,7 @@ function TryExtractionScreen({
         particleCount: 40,
         spread: 70,
         origin: { x: 0.5, y: 0.3 },
-        colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"],
+        colors: ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"],
         zIndex: 9999,
         startVelocity: 20,
         gravity: 1.2,
@@ -941,13 +941,13 @@ function TryExtractionScreen({
         {/* Tasks */}
         {hasTasks && (
           <div className={`mb-5 transition-all duration-500 ${vis(tasksHeaderAt)}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Tasks</p>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#8E6FE6] mb-3">Tasks</p>
             <div className="space-y-2">
               {extraction.tasks.map((t, i) => (
                 <div
                   key={i}
                   className={`rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(taskItemAt(i))}`}
-                  style={{ borderLeft: "3px solid #7C5CFC" }}
+                  style={{ borderLeft: "3px solid #8E6FE6" }}
                 >
                   <div className="flex items-start gap-3">
                     <CheckboxIcon />
@@ -975,13 +975,13 @@ function TryExtractionScreen({
         {/* Goals */}
         {hasGoals && (
           <div className={`mb-5 transition-all duration-500 ${vis(goalsHeaderAt)}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">Goals</p>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#8E6FE6] mb-3">Goals</p>
             <div className="space-y-2">
               {extraction.goals.map((g, i) => (
                 <div
                   key={i}
                   className={`rounded-xl bg-white border border-zinc-200 px-4 py-3 transition-all duration-400 ${vis(goalItemAt(i))}`}
-                  style={{ borderLeft: "3px solid #A78BFA" }}
+                  style={{ borderLeft: "3px solid #B99EE4" }}
                 >
                   <div className="flex items-start gap-3">
                     <FlagIcon />
@@ -1003,12 +1003,12 @@ function TryExtractionScreen({
         {/* Themes */}
         {hasThemes && (
           <div className={`mb-8 transition-all duration-500 ${vis(themesHeaderAt)}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#7C5CFC] mb-3">What&rsquo;s on your mind</p>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#8E6FE6] mb-3">What&rsquo;s on your mind</p>
             <div className="flex flex-wrap gap-2">
               {extraction.themes.map((t, i) => (
                 <span
                   key={t}
-                  className={`rounded-full bg-[#7C5CFC]/8 border border-[#7C5CFC]/15 px-3.5 py-1.5 text-sm font-medium text-[#7C5CFC] transition-all duration-300 ${scaleVis(themeItemAt(i))}`}
+                  className={`rounded-full bg-[#8E6FE6]/8 border border-[#8E6FE6]/15 px-3.5 py-1.5 text-sm font-medium text-[#8E6FE6] transition-all duration-300 ${scaleVis(themeItemAt(i))}`}
                 >
                   {t}
                 </span>
@@ -1066,7 +1066,7 @@ function TryExtractionScreen({
 
             <a
               href="/auth/signup"
-              className="block w-full text-center rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/5 px-4 py-3.5 text-sm font-semibold text-[#7C5CFC] transition hover:bg-[#7C5CFC]/10 active:scale-[0.98]"
+              className="block w-full text-center rounded-xl border border-[#8E6FE6]/30 bg-[#8E6FE6]/5 px-4 py-3.5 text-sm font-semibold text-[#8E6FE6] transition hover:bg-[#8E6FE6]/10 active:scale-[0.98]"
             >
               Sign up with email
             </a>
@@ -1148,7 +1148,7 @@ function TryBlockedScreen({ errorMessage, trackTry }: { errorMessage: string | n
 
         <a
           href="/auth/signup"
-          className="block w-full max-w-sm mx-auto text-center rounded-xl border border-[#7C5CFC]/30 bg-[#7C5CFC]/5 px-4 py-3.5 text-sm font-semibold text-[#7C5CFC] transition hover:bg-[#7C5CFC]/10 active:scale-[0.98]"
+          className="block w-full max-w-sm mx-auto text-center rounded-xl border border-[#8E6FE6]/30 bg-[#8E6FE6]/5 px-4 py-3.5 text-sm font-semibold text-[#8E6FE6] transition hover:bg-[#8E6FE6]/10 active:scale-[0.98]"
         >
           Sign up with email
         </a>
@@ -1170,7 +1170,7 @@ function CelebrationScreen() {
     const t1 = setTimeout(() => setStage("text"), 500);
     const t2 = setTimeout(() => {
       setStage("confetti");
-      const colors = ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E", "#60A5FA", "#F472B6"];
+      const colors = ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E", "#60A5FA", "#F472B6"];
       const duration = 1500;
       const end = Date.now() + duration;
       (function frame() {

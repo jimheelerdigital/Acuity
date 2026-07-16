@@ -1599,7 +1599,7 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
       if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([30, 50, 30]);
       import("canvas-confetti").then((mod) => {
         const confetti = mod.default;
-        confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 }, colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
+        confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 }, colors: ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
         setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.3 } }), 200);
         setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.7 } }), 350);
       });
@@ -2573,7 +2573,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
       celebratedRef.current = true;
       import("canvas-confetti").then((mod) => {
         const confetti = mod.default;
-        confetti({ particleCount: 120, spread: 90, origin: { y: 0.4 }, colors: ["#7C5CFC", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
+        confetti({ particleCount: 120, spread: 90, origin: { y: 0.4 }, colors: ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
         setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.35, x: 0.3 } }), 250);
         setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.35, x: 0.7 } }), 400);
       });

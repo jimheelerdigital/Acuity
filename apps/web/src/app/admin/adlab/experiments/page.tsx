@@ -18,7 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "bg-zinc-500/20 text-zinc-400",
   awaiting_approval: "bg-amber-500/20 text-amber-400",
   live: "bg-emerald-500/20 text-emerald-400",
-  concluded: "bg-[#7C5CFC]/20 text-[#7C5CFC]",
+  concluded: "bg-[#8E6FE6]/20 text-[#8E6FE6]",
 };
 
 export default function ExperimentsPage() {
@@ -67,7 +67,7 @@ export default function ExperimentsPage() {
         </div>
         <Link
           href="/admin/adlab/experiments/new"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6B4FE0]"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA]"
         >
           <Plus className="h-4 w-4" /> New Experiment
         </Link>
@@ -87,7 +87,7 @@ export default function ExperimentsPage() {
             <div key={exp.id} className="relative group">
               <Link
                 href={`/admin/adlab/experiments/${exp.id}`}
-                className="block rounded-xl border border-white/10 bg-[#13131F] p-5 transition hover:border-[#7C5CFC]/30"
+                className="block rounded-xl border border-white/10 bg-[#13131F] p-5 transition hover:border-[#8E6FE6]/30"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">

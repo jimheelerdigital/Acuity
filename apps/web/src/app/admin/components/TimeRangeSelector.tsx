@@ -45,7 +45,7 @@ export default function TimeRangeSelector({
             onClick={() => onChange(opt.value)}
             className={`rounded-md transition ${
               value === opt.value
-                ? "bg-[#7C5CFC] text-white"
+                ? "bg-[#8E6FE6] text-white"
                 : "text-white/55 hover:text-white/85"
             }`}
             style={{ fontSize: 13, fontWeight: 500, padding: "9px 16px" }}

@@ -227,7 +227,7 @@ export default function UsersTab() {
         </button>
         <button
           onClick={() => setShowBulkEmail(true)}
-          className="rounded-md bg-[#7C5CFC] px-3 py-2 text-xs font-medium text-white hover:bg-[#6B4FE0]"
+          className="rounded-md bg-[#8E6FE6] px-3 py-2 text-xs font-medium text-white hover:bg-[#7D62CA]"
         >
           Send Email
         </button>
@@ -240,7 +240,7 @@ export default function UsersTab() {
       )}
 
       {nextCursor && (
-        <button onClick={() => load()} className="text-sm text-[#A78BFA] hover:underline">
+        <button onClick={() => load()} className="text-sm text-[#B99EE4] hover:underline">
           Load more…
         </button>
       )}
@@ -362,7 +362,7 @@ export default function UsersTab() {
 
                   {/* View */}
                   <td className="px-3 py-2.5 text-right">
-                    <button onClick={() => setSelected(u.id)} className="text-[11px] text-[#A78BFA] hover:underline">
+                    <button onClick={() => setSelected(u.id)} className="text-[11px] text-[#B99EE4] hover:underline">
                       view
                     </button>
                   </td>
@@ -594,7 +594,7 @@ function UserDetailModal({
               <div className="col-span-2">
                 <dt className="text-white/40">Stripe</dt>
                 <dd>{data.user.stripeCustomerId ? (
-                  <a href={`https://dashboard.stripe.com/customers/${data.user.stripeCustomerId}`} target="_blank" rel="noopener noreferrer" className="text-[#A78BFA] hover:underline">{data.user.stripeCustomerId}</a>
+                  <a href={`https://dashboard.stripe.com/customers/${data.user.stripeCustomerId}`} target="_blank" rel="noopener noreferrer" className="text-[#B99EE4] hover:underline">{data.user.stripeCustomerId}</a>
                 ) : "—"}</dd>
               </div>
             </dl>
@@ -626,7 +626,7 @@ function UserDetailModal({
             <div className="rounded-md bg-[#13131F] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-xs font-semibold uppercase tracking-wider text-white/40">Emails ({sentEmails?.length ?? 0})</div>
-                <button onClick={() => setShowCompose(!showCompose)} className="text-xs text-[#A78BFA] hover:underline">{showCompose ? "Cancel" : "Send Email"}</button>
+                <button onClick={() => setShowCompose(!showCompose)} className="text-xs text-[#B99EE4] hover:underline">{showCompose ? "Cancel" : "Send Email"}</button>
               </div>
               {showCompose && <ComposeEmail toEmail={data.user.email} targetUserId={data.user.id} onSent={() => { setShowCompose(false); loadEmails(); }} onError={setError} />}
               {sentEmails && sentEmails.length > 0 && (
@@ -642,7 +642,7 @@ function UserDetailModal({
             <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
               <button onClick={resendWelcome} disabled={busy} className="rounded-md bg-emerald-500/20 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-500/30">Resend welcome</button>
               <button onClick={sendMagicLink} disabled={busy} className="rounded-md bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/20">Password reset</button>
-              <button onClick={extendTrial} disabled={busy} className="rounded-md bg-[#7C5CFC] px-3 py-2 text-xs font-medium">Extend trial…</button>
+              <button onClick={extendTrial} disabled={busy} className="rounded-md bg-[#8E6FE6] px-3 py-2 text-xs font-medium">Extend trial…</button>
               <button onClick={softDelete} disabled={busy} className="rounded-md bg-red-500/20 px-3 py-2 text-xs font-medium text-red-300 hover:bg-red-500/30">Delete…</button>
             </div>
           </div>
@@ -725,7 +725,7 @@ function ComposeEmail({ toEmail, targetUserId, onSent, onError }: { toEmail: str
       <div className="text-xs text-white/40">From: Keenan &lt;keenan@getacuity.io&gt; → {toEmail}</div>
       <input type="text" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full rounded-md bg-[#0A0A0F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30" />
       <textarea placeholder="Email body" value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="w-full rounded-md bg-[#0A0A0F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 resize-y" />
-      <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className="rounded-md bg-[#7C5CFC] px-4 py-2 text-xs font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
+      <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className="rounded-md bg-[#8E6FE6] px-4 py-2 text-xs font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
     </div>
   );
 }
@@ -772,7 +772,7 @@ function BulkEmailModal({ onClose }: { onClose: () => void }) {
             <textarea placeholder="Email body" value={body} onChange={(e) => { setBody(e.target.value); setConfirming(false); }} rows={6} className="w-full rounded-md bg-[#13131F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 resize-y" />
             {confirming && <div className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Are you sure? This sends to every user (excluding founders).</div>}
             <div className="flex gap-2">
-              <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className={`rounded-md px-4 py-2 text-xs font-medium text-white disabled:opacity-50 ${confirming ? "bg-amber-600" : "bg-[#7C5CFC]"}`}>{sending ? "Sending…" : confirming ? "Yes, send" : "Send to all"}</button>
+              <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className={`rounded-md px-4 py-2 text-xs font-medium text-white disabled:opacity-50 ${confirming ? "bg-amber-600" : "bg-[#8E6FE6]"}`}>{sending ? "Sending…" : confirming ? "Yes, send" : "Send to all"}</button>
               <button onClick={onClose} className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20">Cancel</button>
             </div>
           </div>

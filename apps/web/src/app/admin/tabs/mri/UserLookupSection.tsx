@@ -52,7 +52,7 @@ function statusColor(status: TimelineEvent["status"]): string {
       return "#F87171"; // red
     case "info":
     default:
-      return "#7C5CFC"; // accent
+      return "#8E6FE6"; // accent
   }
 }
 
@@ -357,7 +357,7 @@ export default function UserLookupSection(_props: Props) {
           disabled={searching || !query.trim()}
           className="rounded-lg font-medium text-white disabled:opacity-40"
           style={{
-            background: "#7C5CFC",
+            background: "#8E6FE6",
             padding: "10px 20px",
             fontSize: 14,
             border: "none",

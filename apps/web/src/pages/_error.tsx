@@ -21,7 +21,7 @@ function ErrorPage({ statusCode }: { statusCode?: number }) {
         <p style={{ fontSize: 16, color: "#71717a", marginTop: 8 }}>
           {statusCode === 404 ? "This page could not be found." : "An error occurred."}
         </p>
-        <a href="/" style={{ display: "inline-block", marginTop: 24, color: "#7C5CFC", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+        <a href="/" style={{ display: "inline-block", marginTop: 24, color: "#8E6FE6", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
           Go home
         </a>
       </div>

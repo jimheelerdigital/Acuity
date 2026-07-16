@@ -11,7 +11,7 @@ const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
 
 function button(href: string, label: string, style: "primary" | "secondary" = "primary"): string {
-  const bg = style === "primary" ? "#7C5CFC" : "#F3F4F6";
+  const bg = style === "primary" ? "#8E6FE6" : "#F3F4F6";
   const color = style === "primary" ? "#FFFFFF" : "#374151";
   const border = style === "secondary" ? "border:1px solid #D1D5DB;" : "";
   return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:4px 0;">
@@ -43,14 +43,14 @@ export function founderWelcomeEmail(params: {
     <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
 
       <!-- Header accent bar -->
-      <tr><td style="height:4px;background:linear-gradient(90deg,#7C5CFC,#A78BFA,#7C5CFC);"></td></tr>
+      <tr><td style="height:4px;background:linear-gradient(90deg,#8E6FE6,#B99EE4,#8E6FE6);"></td></tr>
 
       <!-- Content -->
       <tr><td style="padding:24px 36px 36px;">
 
         <p style="margin:0 0 20px;font-size:16px;color:#1F2937;line-height:1.7;">${greeting}</p>
 
-        <p style="margin:0 0 20px;font-size:16px;color:#1F2937;line-height:1.7;">I'm Keenan, one of the founders of Ripple. Saw you just signed up &mdash; welcome! You're <strong style="color:#7C5CFC;">founding member #${memberNumber}</strong>.</p>
+        <p style="margin:0 0 20px;font-size:16px;color:#1F2937;line-height:1.7;">I'm Keenan, one of the founders of Ripple. Saw you just signed up &mdash; welcome! You're <strong style="color:#8E6FE6;">founding member #${memberNumber}</strong>.</p>
 
         <p style="margin:0 0 12px;font-size:16px;color:#1F2937;line-height:1.7;">If you haven't yet, here's the link to download the app &mdash; on iPhone or Android:</p>
 
@@ -89,7 +89,7 @@ export function founderWelcomeEmail(params: {
     <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
       <tr><td align="center" style="padding:20px 0;">
         <p style="margin:0;font-size:12px;color:#9CA3AF;">
-          <a href="https://getacuity.io" style="color:#7C5CFC;text-decoration:none;">getacuity.io</a>
+          <a href="https://getacuity.io" style="color:#8E6FE6;text-decoration:none;">getacuity.io</a>
           &nbsp;&middot;&nbsp; One minute a day.
         </p>
       </td></tr>

@@ -112,7 +112,7 @@ export default function NewExperimentPage() {
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
               >
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -127,7 +127,7 @@ export default function NewExperimentPage() {
               <textarea
                 value={topicBrief}
                 onChange={(e) => setTopicBrief(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-[#7C5CFC] min-h-[120px]"
+                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-[#8E6FE6] min-h-[120px]"
                 placeholder="e.g. Test pain-point hooks against outcome hooks for Founder/Executive persona, focused on Weekly Report value surface"
               />
             </div>
@@ -137,7 +137,7 @@ export default function NewExperimentPage() {
               <select
                 value={campaignType}
                 onChange={(e) => setCampaignType(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
               >
                 <option value="website">Website conversion (default)</option>
                 <option value="app_install">App install</option>
@@ -155,7 +155,7 @@ export default function NewExperimentPage() {
                 <select
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
                 >
                   <option value="direct_funnel">Direct to Funnel (/start) — recommended</option>
                   <option value="landing_page">Landing Page (/for/*)</option>
@@ -174,7 +174,7 @@ export default function NewExperimentPage() {
                 <select
                   value={campaignObjective}
                   onChange={(e) => setCampaignObjective(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#7C5CFC]"
+                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
                 >
                   <option value="OUTCOME_TRAFFIC">Traffic (Link Clicks) — recommended</option>
                   <option value="OUTCOME_TRAFFIC_LPV">Traffic (Landing Page Views)</option>
@@ -194,7 +194,7 @@ export default function NewExperimentPage() {
           <button
             type="submit"
             disabled={submitting || !topicBrief.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#7C5CFC] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {researching

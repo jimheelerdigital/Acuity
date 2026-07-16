@@ -177,31 +177,31 @@ function buildWelcomeEmail(name: string | null): string {
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
                       <tr>
                         <td style="padding:10px 0;font-size:15px;color:#A0A0B8;line-height:1.6;">
-                          <span style="color:#7C5CFC;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
+                          <span style="color:#8E6FE6;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
                           nightly voice brain dump
                         </td>
                       </tr>
                       <tr>
                         <td style="padding:10px 0;font-size:15px;color:#A0A0B8;line-height:1.6;">
-                          <span style="color:#7C5CFC;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
+                          <span style="color:#8E6FE6;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
                           AI extracts your tasks, goals, mood, and insights automatically
                         </td>
                       </tr>
                       <tr>
                         <td style="padding:10px 0;font-size:15px;color:#A0A0B8;line-height:1.6;">
-                          <span style="color:#7C5CFC;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
+                          <span style="color:#8E6FE6;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
                           Weekly narrative report written by AI — about your week, starring you
                         </td>
                       </tr>
                       <tr>
                         <td style="padding:10px 0;font-size:15px;color:#A0A0B8;line-height:1.6;">
-                          <span style="color:#7C5CFC;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
+                          <span style="color:#8E6FE6;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
                           Life Matrix — your life scored across 6 areas and tracked over time
                         </td>
                       </tr>
                       <tr>
                         <td style="padding:10px 0;font-size:15px;color:#A0A0B8;line-height:1.6;">
-                          <span style="color:#7C5CFC;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
+                          <span style="color:#8E6FE6;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
                           Mental pattern detection that surfaces what you can't see
                         </td>
                       </tr>
@@ -217,7 +217,7 @@ function buildWelcomeEmail(name: string | null): string {
             <td style="padding-bottom:32px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;">
+                  <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #8E6FE6;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
                       You'll be among the first to try it — and you'll get your first month completely free.
                     </p>
@@ -246,7 +246,7 @@ function buildWelcomeEmail(name: string | null): string {
           <!-- Purple Divider -->
           <tr>
             <td style="padding-bottom:24px;">
-              <div style="height:2px;background:linear-gradient(to right,transparent,#7C5CFC,transparent);"></div>
+              <div style="height:2px;background:linear-gradient(to right,transparent,#8E6FE6,transparent);"></div>
             </td>
           </tr>
 
@@ -254,7 +254,7 @@ function buildWelcomeEmail(name: string | null): string {
           <tr>
             <td align="center" style="padding-bottom:16px;">
               <p style="margin:0;font-size:13px;color:#A0A0B8;">
-                <a href="https://getacuity.io" style="color:#7C5CFC;text-decoration:none;font-weight:600;">getacuity.io</a>
+                <a href="https://getacuity.io" style="color:#8E6FE6;text-decoration:none;font-weight:600;">getacuity.io</a>
                 <span style="margin:0 10px;color:#2A2A3A;">|</span>
                 <a href="https://getacuity.io/unsubscribe" style="color:#A0A0B8;text-decoration:none;">Unsubscribe</a>
               </p>

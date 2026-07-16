@@ -48,7 +48,7 @@ export function backfillCompleteHtml(v: BackfillCompleteVars): string {
   const recentLine = `We extracted themes, tasks, and goal flags from ${v.recentCount} of your recordings. They're live on your dashboard now.`;
   const olderBlock =
     v.olderCount > 0
-      ? `<p style="margin:16px 0 0;font-size:15px;line-height:1.55;color:#374151;">You have ${v.olderCount} older ${v.olderCount === 1 ? "entry" : "entries"} (recorded more than 60 days ago) that we didn't process this round. If you'd like ${v.olderCount === 1 ? "it" : "those"} extracted too, you can kick off a second pass from your <a href="${baseUrl}/account#integrations" style="color:#7C3AED;text-decoration:underline;">account settings</a>.</p>`
+      ? `<p style="margin:16px 0 0;font-size:15px;line-height:1.55;color:#374151;">You have ${v.olderCount} older ${v.olderCount === 1 ? "entry" : "entries"} (recorded more than 60 days ago) that we didn't process this round. If you'd like ${v.olderCount === 1 ? "it" : "those"} extracted too, you can kick off a second pass from your <a href="${baseUrl}/account#integrations" style="color:#8E6FE6;text-decoration:underline;">account settings</a>.</p>`
       : "";
   return `<!DOCTYPE html>
 <html>

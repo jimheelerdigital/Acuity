@@ -177,14 +177,14 @@ export function LifeMatrixSnapshot({
 
           {/* The user's score polygon — filled violet at higher
               opacity than the page-level radar so it pops on the
-              compact card. Stroke is #A78BFA (violet-400) for clear
+              compact card. Stroke is #B99EE4 (violet-400) for clear
               outline contrast on dark mode without being neon-loud
               on light. In empty state the polygon is a dashed flat
               circle so it reads as "scaffolding waiting for data". */}
           <polygon
             points={polygonPoints}
             fill={isEmpty ? "rgba(167,139,250,0.10)" : "rgba(167,139,250,0.32)"}
-            stroke={isEmpty ? "rgba(167,139,250,0.40)" : "#A78BFA"}
+            stroke={isEmpty ? "rgba(167,139,250,0.40)" : "#B99EE4"}
             strokeWidth={isEmpty ? 1 : 2.25}
             strokeDasharray={isEmpty ? "4 4" : undefined}
           />

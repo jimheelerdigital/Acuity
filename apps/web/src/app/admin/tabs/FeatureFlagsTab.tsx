@@ -254,7 +254,7 @@ function RolloutEditor({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuetext={`${sliderValue} percent`}
-        className="accent-[#7C5CFC] flex-1 max-w-[160px]"
+        className="accent-[#8E6FE6] flex-1 max-w-[160px]"
       />
       <input
         type="number"
@@ -297,7 +297,7 @@ function RolloutEditor({
         <button
           onClick={() => commit()}
           disabled={disabled}
-          className="rounded-md bg-[#7C5CFC] px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+          className="rounded-md bg-[#8E6FE6] px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
         >
           Save
         </button>
@@ -393,7 +393,7 @@ function UserOverridesSection({ onMutation }: { onMutation: () => void }) {
           />
           <button
             onClick={lookup}
-            className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-medium"
+            className="rounded-md bg-[#8E6FE6] px-4 py-2 text-sm font-medium"
           >
             Look up
           </button>
@@ -532,7 +532,7 @@ function NewOverrideForm({
             setReason("");
           }}
           disabled={!canSubmit}
-          className="rounded-md bg-[#7C5CFC] px-4 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-md bg-[#8E6FE6] px-4 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Save
         </button>

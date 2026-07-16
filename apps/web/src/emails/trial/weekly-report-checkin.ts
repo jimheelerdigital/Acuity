@@ -32,9 +32,9 @@ export const weeklyReportCheckin: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:12px;">
           <p style="margin:0;font-size:16px;color:#1a1a1a;line-height:1.8;">
-            <strong style="color:#7C5CFC;">Yes</strong> — it got me.<br/>
-            <strong style="color:#7C5CFC;">No</strong> — felt generic.<br/>
-            <strong style="color:#7C5CFC;">Didn't read it</strong> — and I'll send you the top insight inline.
+            <strong style="color:#8E6FE6;">Yes</strong> — it got me.<br/>
+            <strong style="color:#8E6FE6;">No</strong> — felt generic.<br/>
+            <strong style="color:#8E6FE6;">Didn't read it</strong> — and I'll send you the top insight inline.
           </p>
         </td>
       </tr>

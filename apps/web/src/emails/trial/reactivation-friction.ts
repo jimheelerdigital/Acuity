@@ -26,7 +26,7 @@ export const reactivationFriction: TrialEmailTemplate = {
       <tr>
         <td style="padding-bottom:24px;">
           ${trialCard(`
-            <p style="margin:0 0 10px;font-size:12px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:700;">The #1 reason people stall</p>
+            <p style="margin:0 0 10px;font-size:12px;color:#8E6FE6;text-transform:uppercase;letter-spacing:1px;font-weight:700;">The #1 reason people stall</p>
             <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
               They don't know what to say. Here's a starter question you can literally just answer out loud:
             </p>

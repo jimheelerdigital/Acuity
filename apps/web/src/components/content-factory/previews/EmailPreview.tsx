@@ -57,7 +57,7 @@ export default function EmailPreview({ piece }: { piece: PreviewPiece }) {
             style={{ maxWidth: view === "desktop" ? 600 : "100%" }}
           >
             <div
-              className="p-6 text-sm leading-relaxed text-gray-800 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_a]:text-[#7C5CFC] [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_img]:max-w-full"
+              className="p-6 text-sm leading-relaxed text-gray-800 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_p]:mb-3 [&_a]:text-[#8E6FE6] [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_img]:max-w-full"
               dangerouslySetInnerHTML={{ __html: sanitized }}
             />
           </div>

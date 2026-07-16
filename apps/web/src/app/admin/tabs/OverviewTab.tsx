@@ -97,7 +97,7 @@ const SEVERITY_STYLES: Record<string, { border: string; bg: string; text: string
   INFO: { border: "border-blue-500/30", bg: "bg-blue-900/10", text: "text-blue-300", badge: "bg-blue-500/20 text-blue-400" },
 };
 
-const PIE_COLORS = ["#7C5CFC", "#9B7DFF", "#D4A843", "#4EBAAA", "#E06C75", "#56B6C2", "#98C379"];
+const PIE_COLORS = ["#8E6FE6", "#AD90E9", "#D4A843", "#4EBAAA", "#E06C75", "#56B6C2", "#98C379"];
 
 const STEP_KEY: Record<string, string> = {
   "Waitlist Signups": "waitlist",
@@ -231,7 +231,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
                   </div>
                 </div>
                 <div className="h-7 w-full overflow-hidden rounded bg-white/5">
-                  <div className="h-full rounded bg-gradient-to-r from-[#7C5CFC] to-[#9B7DFF] transition-all" style={{ width: `${Math.max(pct, 2)}%` }} />
+                  <div className="h-full rounded bg-gradient-to-r from-[#8E6FE6] to-[#AD90E9] transition-all" style={{ width: `${Math.max(pct, 2)}%` }} />
                 </div>
               </button>
             );
@@ -250,7 +250,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
               <div className="flex items-end gap-1 h-48 pt-4">
                 {signupsOverTimeData.map((d, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: ${d.count}`}>
-                    <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, (d.count / max) * 100)}%` }} />
+                    <div className="w-full rounded-t bg-[#8E6FE6]" style={{ height: `${Math.max(2, (d.count / max) * 100)}%` }} />
                     {signupsOverTimeData.length <= 14 && (
                       <span className="text-[8px] text-white/30 mt-1 tabular-nums">{d.date.slice(5)}</span>
                     )}
@@ -322,7 +322,7 @@ export default function OverviewTab({ start, end }: { start: string; end: string
             </p>
           </div>
           <button onClick={() => router.push("/admin?tab=funnel-analytics")}
-            className="rounded-lg border border-[#7C5CFC]/30 bg-[#7C5CFC]/10 px-4 py-2 text-xs text-[#7C5CFC] hover:bg-[#7C5CFC]/20 transition">
+            className="rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-xs text-[#8E6FE6] hover:bg-[#8E6FE6]/20 transition">
             View Funnel Analytics &rarr;
           </button>
         </div>

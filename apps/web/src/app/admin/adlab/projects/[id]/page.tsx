@@ -127,7 +127,7 @@ export default function ProjectDetailPage() {
             <ul className="space-y-1.5">
               {usps.map((usp, i) => (
                 <li key={i} className="text-sm text-[#A0A0B8] flex gap-2">
-                  <span className="text-[#7C5CFC] shrink-0">-</span>
+                  <span className="text-[#8E6FE6] shrink-0">-</span>
                   {usp}
                 </li>
               ))}
@@ -204,7 +204,7 @@ function TagRow({ label, tags }: { label: string; tags: string[] }) {
       {tags.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {tags.map((tag, i) => (
-            <span key={i} className="rounded-md bg-[#7C5CFC]/10 px-2 py-0.5 text-xs text-[#7C5CFC]">
+            <span key={i} className="rounded-md bg-[#8E6FE6]/10 px-2 py-0.5 text-xs text-[#8E6FE6]">
               {tag}
             </span>
           ))}

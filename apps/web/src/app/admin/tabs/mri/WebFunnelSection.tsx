@@ -26,7 +26,7 @@ type BrowserSplit = {
 // (>25%), amber = soft (10–25%), green = healthy (<10%). Matches the rest of
 // the MRI palette.
 function dropColor(dropPct: number | null): string {
-  if (dropPct == null) return "bg-[#7C5CFC]";
+  if (dropPct == null) return "bg-[#8E6FE6]";
   if (dropPct > 25) return "bg-red-500";
   if (dropPct >= 10) return "bg-amber-500";
   return "bg-green-500";

@@ -104,13 +104,13 @@ function fmtMonth(iso: string): string {
 /* ------------------------------------------------------------------ */
 
 const SOURCE_COLORS: Record<string, string> = {
-  direct: "#7C5CFC",
+  direct: "#8E6FE6",
   meta: "#22D3EE",
   organic: "#34D399",
   referral: "#FBBF24",
 };
 
-function BarChart({ data, labelKey, valueKey, color = "#7C5CFC", formatLabel, formatValue }: {
+function BarChart({ data, labelKey, valueKey, color = "#8E6FE6", formatLabel, formatValue }: {
   data?: Record<string, unknown>[] | null;
   labelKey: string;
   valueKey: string;
@@ -269,7 +269,7 @@ export default function GrowthMetricsTab({
       </ChartCard>
 
       <ChartCard title="Cumulative Users">
-        <BarChart data={data.cumulativeUsers} labelKey="week" valueKey="total" color="#9B7DFF" formatLabel={fmtWeek} />
+        <BarChart data={data.cumulativeUsers} labelKey="week" valueKey="total" color="#AD90E9" formatLabel={fmtWeek} />
       </ChartCard>
 
       <ChartCard title="Signups by Source">
@@ -347,9 +347,9 @@ export default function GrowthMetricsTab({
             Currently at{" "}
             <span className="font-semibold text-white">{data.projections.current} users</span>.
             At current growth:{" "}
-            <span className="text-[#A78BFA] font-medium">100 users</span> by {fmtWeek(data.projections.growth100)},{" "}
-            <span className="text-[#A78BFA] font-medium">500</span> by {fmtWeek(data.projections.growth500)},{" "}
-            <span className="text-[#A78BFA] font-medium">1,000</span> by {fmtWeek(data.projections.growth1000)}.
+            <span className="text-[#B99EE4] font-medium">100 users</span> by {fmtWeek(data.projections.growth100)},{" "}
+            <span className="text-[#B99EE4] font-medium">500</span> by {fmtWeek(data.projections.growth500)},{" "}
+            <span className="text-[#B99EE4] font-medium">1,000</span> by {fmtWeek(data.projections.growth1000)}.
           </p>
         </div>
       )}
@@ -427,7 +427,7 @@ export default function GrowthMetricsTab({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Trial → Paid Rate">
-          <BarChart data={data.trialToPaidRate} labelKey="week" valueKey="rate" color="#7C5CFC" formatLabel={fmtWeek} formatValue={(v) => `${v.toFixed(1)}%`} />
+          <BarChart data={data.trialToPaidRate} labelKey="week" valueKey="rate" color="#8E6FE6" formatLabel={fmtWeek} formatValue={(v) => `${v.toFixed(1)}%`} />
         </ChartCard>
 
         <ChartCard title="Median Time to First Recording">
@@ -441,7 +441,7 @@ export default function GrowthMetricsTab({
       <SectionHeader>Revenue Growth</SectionHeader>
 
       <ChartCard title="MRR Over Time">
-        <BarChart data={data.mrrOverTime} labelKey="month" valueKey="mrr" color="#7C5CFC" formatLabel={fmtMonth} formatValue={(v) => fmtDollars(v)} />
+        <BarChart data={data.mrrOverTime} labelKey="month" valueKey="mrr" color="#8E6FE6" formatLabel={fmtMonth} formatValue={(v) => fmtDollars(v)} />
       </ChartCard>
 
       <ChartCard title="Paying Users Over Time">

@@ -127,7 +127,7 @@ export default function AIInsightsPanel() {
   return (
     <div
       className="rounded-xl border p-5"
-      style={{ borderColor: "rgba(124,92,252,0.3)", background: "#13131F" }}
+      style={{ borderColor: "rgba(142,111,230,0.3)", background: "#13131F" }}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -152,7 +152,7 @@ export default function AIInsightsPanel() {
           onClick={regenerate}
           disabled={regenerating || retryAfter != null}
           className="rounded-md px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
-          style={{ background: "#7C5CFC", color: "#fff" }}
+          style={{ background: "#8E6FE6", color: "#fff" }}
         >
           {regenerating
             ? "Generating…"

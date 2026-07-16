@@ -131,7 +131,7 @@ export default function AICostsTab({
                   </span>
                   <div className="relative h-6 flex-1 overflow-hidden rounded bg-white/5">
                     <div
-                      className="h-full rounded bg-[#7C5CFC]"
+                      className="h-full rounded bg-[#8E6FE6]"
                       style={{
                         width: `${(p.totalCents / maxCents) * 100}%`,
                       }}
@@ -162,7 +162,7 @@ export default function AICostsTab({
             <div className="flex items-end gap-1 h-48 pt-4">
               {data.byDay.map((d: { date: string; totalCents: number }, i: number) => (
                 <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: $${(d.totalCents / 100).toFixed(2)}`}>
-                  <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, (d.totalCents / max) * 100)}%` }} />
+                  <div className="w-full rounded-t bg-[#8E6FE6]" style={{ height: `${Math.max(2, (d.totalCents / max) * 100)}%` }} />
                 </div>
               ))}
             </div>

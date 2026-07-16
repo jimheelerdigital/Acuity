@@ -199,7 +199,7 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
                 <div key={c.campaign} className="flex items-center gap-3">
                   <span className="w-28 shrink-0 truncate text-sm text-white/70 capitalize">{c.campaign}</span>
                   <div className="relative h-6 flex-1 overflow-hidden rounded bg-white/5">
-                    <div className="h-full rounded bg-[#7C5CFC]" style={{ width: `${(c.cents / maxCents) * 100}%` }} />
+                    <div className="h-full rounded bg-[#8E6FE6]" style={{ width: `${(c.cents / maxCents) * 100}%` }} />
                   </div>
                   <span className="w-16 text-right text-sm font-medium text-white/80">${(c.cents / 100).toFixed(0)}</span>
                 </div>
@@ -227,7 +227,7 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
             </div>
           ))}
         </div>
-        <button onClick={handleSaveSpend} disabled={saving} className="mt-4 rounded-lg bg-[#7C5CFC] px-4 py-2 text-sm font-medium transition hover:bg-[#6B4DE6] disabled:opacity-50">
+        <button onClick={handleSaveSpend} disabled={saving} className="mt-4 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-medium transition hover:bg-[#7D60D0] disabled:opacity-50">
           {saving ? "Saving…" : "Save Spend"}
         </button>
       </div>

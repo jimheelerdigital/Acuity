@@ -51,7 +51,7 @@ export default function BlogPreview({ piece }: { piece: PreviewPiece }) {
             {piece.title}
           </h1>
           {piece.targetKeyword && (
-            <p className="mt-2 text-xs text-[#7C5CFC]">
+            <p className="mt-2 text-xs text-[#8E6FE6]">
               Target keyword: {piece.targetKeyword}
             </p>
           )}
@@ -62,13 +62,13 @@ export default function BlogPreview({ piece }: { piece: PreviewPiece }) {
           </div>
           <hr className="my-6 border-white/10" />
           <div
-            className="prose prose-invert prose-sm max-w-none prose-headings:text-white prose-headings:font-semibold prose-p:text-white/80 prose-a:text-[#7C5CFC] prose-strong:text-white/90 prose-li:text-white/80 prose-code:text-[#7C5CFC]/80 prose-blockquote:border-[#7C5CFC]/40 prose-blockquote:text-white/60"
+            className="prose prose-invert prose-sm max-w-none prose-headings:text-white prose-headings:font-semibold prose-p:text-white/80 prose-a:text-[#8E6FE6] prose-strong:text-white/90 prose-li:text-white/80 prose-code:text-[#8E6FE6]/80 prose-blockquote:border-[#8E6FE6]/40 prose-blockquote:text-white/60"
             dangerouslySetInnerHTML={{ __html: sanitized }}
           />
           {piece.cta && (
-            <div className="mt-8 rounded-lg bg-[#7C5CFC]/10 border border-[#7C5CFC]/20 p-5 text-center">
+            <div className="mt-8 rounded-lg bg-[#8E6FE6]/10 border border-[#8E6FE6]/20 p-5 text-center">
               <p className="text-sm font-medium text-white/90">{piece.cta}</p>
-              <button className="mt-3 rounded-lg bg-[#7C5CFC] px-6 py-2 text-sm font-medium text-white">
+              <button className="mt-3 rounded-lg bg-[#8E6FE6] px-6 py-2 text-sm font-medium text-white">
                 Try Ripple Free
               </button>
             </div>

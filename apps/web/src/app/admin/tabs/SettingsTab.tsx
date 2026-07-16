@@ -39,7 +39,7 @@ export default function SettingsTab() {
             onClick={() => setSection(s.key)}
             className={`rounded-md px-4 py-2 text-sm font-medium transition ${
               section === s.key
-                ? "bg-[#7C5CFC] text-white"
+                ? "bg-[#8E6FE6] text-white"
                 : "text-white/50 hover:text-white/80"
             }`}
           >

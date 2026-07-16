@@ -91,8 +91,8 @@ body{margin:0;background:#0D0D0F;color:#FAFAFA;font-family:-apple-system,BlinkMa
 .card{max-width:480px;background:#18181B;border:1px solid #27272A;border-radius:16px;padding:40px;text-align:center}
 h1{font-size:22px;margin:0 0 16px}
 p{color:#A1A1AA;line-height:1.6;margin:0 0 20px;font-size:15px}
-a{color:#A78BFA;text-decoration:none;font-weight:500}
-.logo{width:48px;height:48px;background:linear-gradient(135deg,#7C3AED,#4F46E5);border-radius:12px;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;font-size:22px}
+a{color:#B99EE4;text-decoration:none;font-weight:500}
+.logo{width:48px;height:48px;background:linear-gradient(135deg,#8E6FE6,#4F46E5);border-radius:12px;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;font-size:22px}
 </style>
 </head>
 <body><div class="card">${body}</div></body></html>`;

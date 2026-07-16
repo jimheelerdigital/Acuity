@@ -150,7 +150,7 @@ export default function BusinessMetricsTab({
                   <div className="flex items-end gap-1 h-48 pt-4">
                     {data.mrrTrend.map((d: { month: string; mrr: number }, i: number) => (
                       <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.month}: ${fmtDollars(d.mrr)}`}>
-                        <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, (d.mrr / max) * 100)}%` }} />
+                        <div className="w-full rounded-t bg-[#8E6FE6]" style={{ height: `${Math.max(2, (d.mrr / max) * 100)}%` }} />
                       </div>
                     ))}
                   </div>

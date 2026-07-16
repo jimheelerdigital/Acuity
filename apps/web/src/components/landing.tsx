@@ -115,7 +115,7 @@ function WhoItsForDropdown() {
           {/* Featured column */}
           <div className="w-[280px] border-r border-white/[0.04] py-3">
             <div className="px-4 pb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC]">Featured</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#8E6FE6]">Featured</span>
             </div>
             {WHO_FEATURED.map((item) => (
               <Link
@@ -134,7 +134,7 @@ function WhoItsForDropdown() {
           <div className="flex-1 py-3 px-4">
             <div className="grid grid-cols-3 gap-x-4">
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Mental Health</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#8E6FE6] block mb-2">Mental Health</span>
                 {WHO_MENTAL.map((item) => (
                   <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
                     {item.label}
@@ -142,7 +142,7 @@ function WhoItsForDropdown() {
                 ))}
               </div>
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Lifestyle</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#8E6FE6] block mb-2">Lifestyle</span>
                 {WHO_LIFESTYLE.map((item) => (
                   <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
                     {item.label}
@@ -150,7 +150,7 @@ function WhoItsForDropdown() {
                 ))}
               </div>
               <div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7C5CFC] block mb-2">Professionals</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#8E6FE6] block mb-2">Professionals</span>
                 {WHO_PROS.map((item) => (
                   <Link key={item.href} href={item.href} onClick={close} className="block py-1.5 text-sm text-[#A0A0B8] transition hover:text-white">
                     {item.label}
@@ -665,9 +665,9 @@ function LifeMatrixRadar() {
             {litCount > 0 && (
               <polygon
                 points={polyStr}
-                fill="#7C3AED"
+                fill="#8E6FE6"
                 fillOpacity="0.1"
-                stroke="#7C3AED"
+                stroke="#8E6FE6"
                 strokeWidth="2"
                 strokeLinejoin="round"
                 className="transition-all duration-700 ease-out"
@@ -1076,7 +1076,7 @@ export function LandingPage() {
             <a
               href={ctaHref}
               onClick={trackInitiateCheckout}
-              className="rounded-full bg-[#7C5CFC] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#6B4FE0] hover:shadow-lg hover:shadow-[#7C5CFC]/40 active:scale-95"
+              className="rounded-full bg-[#8E6FE6] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#7D62CA] hover:shadow-lg hover:shadow-[#8E6FE6]/40 active:scale-95"
             >
               Start Free Trial
             </a>
@@ -1101,7 +1101,7 @@ export function LandingPage() {
             <div className="flex-1 max-w-2xl text-center mx-auto lg:mx-0">
               <h1 className="font-black tracking-tight">
                 <span className="block text-white text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.1] mb-2 sm:mb-3">One minute a day.</span>
-                <span className="block bg-gradient-to-r from-[#B8A5FF] to-[#7C5CFC] bg-clip-text text-transparent text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.2] pb-1">A life of clarity.</span>
+                <span className="block bg-gradient-to-r from-[#CAB8E9] to-[#8E6FE6] bg-clip-text text-transparent text-4xl sm:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] leading-[1.2] pb-1">A life of clarity.</span>
               </h1>
 
               <p className="mt-8 text-base text-[#C0C0D0] leading-relaxed max-w-lg mx-auto">
@@ -1116,8 +1116,8 @@ export function LandingPage() {
                     onClick={trackInitiateCheckout}
                     className="group relative rounded-full p-[2px] transition active:scale-95 hover:scale-[1.02] overflow-hidden"
                   >
-                    <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                    <span className="relative flex items-center justify-center rounded-full bg-[#7C5CFC] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+                    <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #CAB8E9 85%, transparent 100%)' }} />
+                    <span className="relative flex items-center justify-center rounded-full bg-[#8E6FE6] px-7 py-3.5 text-sm font-semibold text-white transition group-hover:bg-[#7D62CA]">
                       Start Free Trial
                     </span>
                   </a>
@@ -1136,7 +1136,7 @@ export function LandingPage() {
             <div className="flex-1 mt-10 lg:mt-0 hidden lg:flex justify-center lg:justify-end">
               <div className="relative w-[320px] h-[540px] sm:w-[360px] sm:h-[600px] lg:w-[400px] lg:h-[660px] xl:w-[440px] xl:h-[720px]">
                 {/* Ambient glow behind phones */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#7C5CFC]/15 blur-[80px] animate-pulse-slow" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] lg:w-[400px] lg:h-[400px] rounded-full bg-[#8E6FE6]/15 blur-[80px] animate-pulse-slow" />
 
                 {/* Phone 1 (back) — Weekly Report — LIGHT MODE */}
                 <div data-hero-phone className="absolute right-0 top-6 w-[200px] sm:w-[230px] lg:w-[260px] xl:w-[280px] h-[400px] sm:h-[450px] lg:h-[500px] xl:h-[540px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/30 hero-float" style={{ animationDelay: "0.5s", "--phone-rotate": "3deg" } as React.CSSProperties}>
@@ -1221,7 +1221,7 @@ export function LandingPage() {
           {/* ───── MOBILE PHONE PREVIEW (compact, single card) ───── */}
           <div className="mt-8 flex justify-center lg:hidden">
               <div className="relative">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#7C5CFC]/15 blur-[60px] animate-pulse-slow" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full bg-[#8E6FE6]/15 blur-[60px] animate-pulse-slow" />
                 <div data-hero-phone className="relative w-[220px] h-[380px] rounded-[2rem] bg-white p-2 shadow-2xl shadow-black/20 hero-float">
                   <div className="h-full w-full rounded-[1.5rem] bg-[#FAFAF7] p-4 flex flex-col gap-2 overflow-hidden">
                     <div className="flex items-center justify-between mb-1">
@@ -1308,7 +1308,7 @@ export function LandingPage() {
               </div>
             ))}
             <div
-              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#181614] bg-[#7C5CFC] text-xs font-semibold text-white transition-all hover:scale-110 opacity-0 animate-fade-in-up"
+              className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#181614] bg-[#8E6FE6] text-xs font-semibold text-white transition-all hover:scale-110 opacity-0 animate-fade-in-up"
               style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}
             >
               +99
@@ -1518,7 +1518,7 @@ export function LandingPage() {
             <a
               href={ctaHref}
               onClick={trackInitiateCheckout}
-              className="inline-flex items-center gap-2 rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#6B4FE0] hover:shadow-xl hover:shadow-[#7C5CFC]/10 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-[#8E6FE6] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#7D62CA] hover:shadow-xl hover:shadow-[#8E6FE6]/10 active:scale-95"
             >
               Start Free Trial
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1626,7 +1626,7 @@ export function LandingPage() {
                   {pricingFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-2.5">
                       <svg
-                        className="mt-0.5 h-4 w-4 shrink-0 text-[#7C5CFC]"
+                        className="mt-0.5 h-4 w-4 shrink-0 text-[#8E6FE6]"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1648,8 +1648,8 @@ export function LandingPage() {
                       onClick={trackInitiateCheckout}
                   className="group relative mt-8 block w-full rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
-                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                  <span className="relative block w-full rounded-full bg-[#7C5CFC] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#6B4FE0]">
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #CAB8E9 85%, transparent 100%)' }} />
+                  <span className="relative block w-full rounded-full bg-[#8E6FE6] py-3.5 text-center text-sm font-semibold text-white transition group-hover:bg-[#7D62CA]">
                     Start Free Trial
                   </span>
                 </a>
@@ -1739,8 +1739,8 @@ export function LandingPage() {
                       onClick={trackInitiateCheckout}
                   className="group relative rounded-full p-[2px] transition active:scale-95 overflow-hidden"
                 >
-                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #B8A5FF 85%, transparent 100%)' }} />
-                  <span className="relative block rounded-full bg-[#7C5CFC] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#7C5CFC]/10 transition group-hover:bg-[#6B4FE0]">
+                  <span className="absolute inset-[-100%] animate-cta-shine" style={{ background: 'conic-gradient(from 0deg, transparent 0%, transparent 60%, #ffffff 75%, #CAB8E9 85%, transparent 100%)' }} />
+                  <span className="relative block rounded-full bg-[#8E6FE6] px-8 py-4 text-sm font-bold text-white shadow-lg shadow-[#8E6FE6]/10 transition group-hover:bg-[#7D62CA]">
                     Start Free Trial
                   </span>
                 </a>

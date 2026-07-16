@@ -109,7 +109,7 @@ const $ = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 const pct = (v: number) => `${v.toFixed(2)}%`;
 
 const EXP_COLORS = [
-  "#7C5CFC", "#10B981", "#F59E0B", "#EF4444", "#06B6D4",
+  "#8E6FE6", "#10B981", "#F59E0B", "#EF4444", "#06B6D4",
   "#EC4899", "#8B5CF6", "#14B8A6", "#F97316", "#6366F1",
 ];
 
@@ -120,14 +120,14 @@ const STATUS_COLORS: Record<string, string> = {
   killed: "bg-red-500/20 text-red-400",
   draft: "bg-zinc-500/20 text-zinc-400",
   awaiting_approval: "bg-amber-500/20 text-amber-400",
-  concluded: "bg-[#7C5CFC]/20 text-[#7C5CFC]",
+  concluded: "bg-[#8E6FE6]/20 text-[#8E6FE6]",
 };
 
 const DECISION_COLORS: Record<string, string> = {
   kill: "bg-red-500/15 text-red-400",
   scale: "bg-emerald-500/15 text-emerald-400",
   maintain: "bg-zinc-500/15 text-zinc-400",
-  manual: "bg-[#7C5CFC]/15 text-[#7C5CFC]",
+  manual: "bg-[#8E6FE6]/15 text-[#8E6FE6]",
 };
 
 type DatePreset = "7d" | "14d" | "30d" | "90d" | "all" | "custom";
@@ -273,7 +273,7 @@ export default function PerformancePage() {
               onClick={() => setPreset(p)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 preset === p
-                  ? "bg-[#7C5CFC] text-white"
+                  ? "bg-[#8E6FE6] text-white"
                   : "border border-white/10 text-[#A0A0B8] hover:text-white hover:border-white/20"
               }`}
             >
@@ -284,7 +284,7 @@ export default function PerformancePage() {
             onClick={() => setPreset("custom")}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               preset === "custom"
-                ? "bg-[#7C5CFC] text-white"
+                ? "bg-[#8E6FE6] text-white"
                 : "border border-white/10 text-[#A0A0B8] hover:text-white hover:border-white/20"
             }`}
           >
@@ -296,14 +296,14 @@ export default function PerformancePage() {
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="rounded-lg border border-white/10 bg-[#1E1E2E] px-2 py-1 text-xs text-white outline-none focus:border-[#7C5CFC]"
+                className="rounded-lg border border-white/10 bg-[#1E1E2E] px-2 py-1 text-xs text-white outline-none focus:border-[#8E6FE6]"
               />
               <span className="text-xs text-[#A0A0B8]">to</span>
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="rounded-lg border border-white/10 bg-[#1E1E2E] px-2 py-1 text-xs text-white outline-none focus:border-[#7C5CFC]"
+                className="rounded-lg border border-white/10 bg-[#1E1E2E] px-2 py-1 text-xs text-white outline-none focus:border-[#8E6FE6]"
               />
             </>
           )}
@@ -400,7 +400,7 @@ export default function PerformancePage() {
                     <div className="flex items-end gap-1 h-48 pt-4">
                       {series.map((d, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: $${((d.spendCents ?? 0) / 100).toFixed(2)} spend, ${d.conversions ?? 0} conv`}>
-                          <div className="w-full rounded-t bg-[#7C5CFC]" style={{ height: `${Math.max(2, ((d.spendCents ?? 0) / maxSpend) * 100)}%` }} />
+                          <div className="w-full rounded-t bg-[#8E6FE6]" style={{ height: `${Math.max(2, ((d.spendCents ?? 0) / maxSpend) * 100)}%` }} />
                           {series.length <= 14 && <span className="text-[8px] text-white/30 mt-1">{d.date?.slice(5)}</span>}
                         </div>
                       ))}
@@ -533,8 +533,8 @@ export default function PerformancePage() {
                           <td className="px-3 py-2.5 text-white text-right font-medium">{$(totals.claudeCost + totals.imageCost)}</td>
                         </tr>
                         <tr className="bg-white/[0.02]">
-                          <td className="px-3 py-2.5 text-[#7C5CFC] font-semibold" colSpan={7}>All-In (AI + Ad Spend)</td>
-                          <td className="px-3 py-2.5 text-[#7C5CFC] text-right font-bold">
+                          <td className="px-3 py-2.5 text-[#8E6FE6] font-semibold" colSpan={7}>All-In (AI + Ad Spend)</td>
+                          <td className="px-3 py-2.5 text-[#8E6FE6] text-right font-bold">
                             {$(totals.claudeCost + totals.imageCost + totalAdSpend)}
                           </td>
                         </tr>
@@ -587,7 +587,7 @@ function SortTh({ label, k, sort, onSort }: {
     >
       <span className="inline-flex items-center gap-1">
         {label}
-        <ArrowUpDown className={`h-3 w-3 ${sort.key === k ? "text-[#7C5CFC]" : "opacity-30"}`} />
+        <ArrowUpDown className={`h-3 w-3 ${sort.key === k ? "text-[#8E6FE6]" : "opacity-30"}`} />
       </span>
     </th>
   );
@@ -608,7 +608,7 @@ function AdDetailRow({ ad, expanded, onToggle }: { ad: AdRow; expanded: boolean;
             <Link
               href={`/admin/adlab/experiments/${ad.experimentId}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-white hover:text-[#7C5CFC] transition-colors line-clamp-1"
+              className="text-white hover:text-[#8E6FE6] transition-colors line-clamp-1"
             >
               {ad.headline}
             </Link>

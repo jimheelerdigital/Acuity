@@ -42,7 +42,7 @@ export default function GlobalError({
               style={{
                 width: 48,
                 height: 48,
-                background: "linear-gradient(135deg,#7C3AED,#4F46E5)",
+                background: "linear-gradient(135deg,#8E6FE6,#4F46E5)",
                 borderRadius: 12,
                 margin: "0 auto 24px",
                 display: "flex",
@@ -85,7 +85,7 @@ export default function GlobalError({
               href="/"
               style={{
                 display: "inline-block",
-                background: "linear-gradient(135deg,#7C3AED,#4F46E5)",
+                background: "linear-gradient(135deg,#8E6FE6,#4F46E5)",
                 color: "#FFFFFF",
                 padding: "12px 20px",
                 borderRadius: 10,

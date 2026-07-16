@@ -57,7 +57,7 @@ export default function AdLabLayout({
                 href={href}
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors mb-0.5 ${
                   isActive
-                    ? "bg-[#7C5CFC]/15 text-[#7C5CFC] font-medium"
+                    ? "bg-[#8E6FE6]/15 text-[#8E6FE6] font-medium"
                     : "text-[#A0A0B8] hover:text-white hover:bg-white/5"
                 }`}
               >

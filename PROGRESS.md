@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-07-16] — Rebrand Phase 2: migrated the accent violet to the new Ripple brand violet
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+Everywhere the site used the old purple accent, it now uses Ripple's new brand violet. That covers the marketing pages (hero buttons, the "A life of clarity" gradient headline, the Life Matrix radar graphic), the funnel and try-it-now flows, the post-signup success screens, all the transactional emails, and the entire internal admin dashboard. The change is subtle — it's a slightly warmer, softer purple — but it makes the whole product match the new brand instead of the old one. Nothing about layout, copy, pricing, or how anything works changed; only the shade of purple. A few purples were **intentionally left alone** because they aren't the brand accent — the multi-colour confetti bursts, the Theme Map feature's own colour system, and the task-group category colours all keep their existing palette on purpose (details in Notes).
+
+### Technical changes (for Jimmy)
+- **Hand-built brand-violet ramp migrated across 60 files** (case-insensitive), base → new base plus every derived hover-dark / light-tint shade:
+  - `#7C5CFC` → `#8E6FE6` (base, 231 occ), `#6B4FE0` → `#7D62CA` (hover-dark), `#6B4DE6` → `#7D60D0`, `#9B7DFF` → `#AD90E9`, `#9B7FFF` → `#AD92E9`, `#B8A5FF` → `#CAB8E9` (light tint), `#5A3FD4` → `#6C52BE`.
+- **Old-violet `rgba()` glow/shadow/radial values migrated** (mic-ripple halos, button box-shadows, pulse-glow keyframes, text-shadows): `rgba(124,92,252,x)` → `rgba(142,111,230,x)` (all files); `rgba(124,58,237,x)` → `rgba(125,98,202,x)` (excluding Theme Map dirs). Touches `app/globals.css` pulse-glow keyframes, success screens, `try-debrief-flow.tsx`, `debrief-shared.tsx`, `admin/tabs/mri/AIInsightsPanel.tsx`, `for/weekly-report/page.tsx`.
+- **Mixed-use Tailwind purples (`#7C3AED` violet-600, `#A78BFA` violet-400) converted ONLY where they act as a brand accent**, not as a category/chart colour:
+  - `#7C3AED` → `#8E6FE6` (gradient-start / link / Life Matrix radar / task-checkbox checked-state): `landing.tsx` (Life Matrix polygon), `insights/life-map.tsx`, `global-error.tsx`, `api/emails/unsubscribe/route.ts`, `emails/backfill-complete.ts`, `tasks/task-list.tsx`, dev `scripts/send-test-magic-link.ts`.
+  - `#7C3AED` → `#7D62CA` (dark END stop of 3-stop brand button gradients): `try-it-now-button.tsx`, `try-debrief-flow.tsx`.
+  - `#A78BFA` → `#B99EE4` (light brand companion / accent link / border): `emails/founder-welcome.ts`, `unsubscribe/route.ts`, `debrief-shared.tsx`, `home/life-matrix-snapshot.tsx`, `admin/components/DrilldownModal.tsx`, `admin/tabs/GrowthMetricsTab.tsx`, `admin/tabs/UsersTab.tsx`, `try-debrief-flow.tsx` (goal-item border), `success/first-debrief-flow.tsx` (goal-item border), `admin/adlab/experiments/[id]/page.tsx` (hover).
+- **Left the `.broken.tsx` backup file untouched** (dead code, not shipped).
+- Pure colour-literal changes — no type/logic changes; zero new type errors beyond the pre-existing `next-env.d.ts` baseline.
+
+### Manual steps needed
+- [ ] Jimmy: quick visual QA of the admin dashboard + emails in a preview deploy — the violet shift is broad; confirm no low-contrast text appeared (the new violet is close in lightness to the old, so contrast should hold).
+- [ ] None blocking.
+
+### Notes
+- **This is the scoped colour pass flagged in the previous entry** ("Color-system migration deliberately NOT done"). Scope confirmed with Keenan as "whole ramp" (base + hover-dark + light-tint) and "everything incl. admin".
+- **The canonical theme token `--acuity-primary` is CORAL** (`oklch(0.76 0.155 38)`, hue 38), not violet — the app's theme/palette system is coral-based and was NOT touched. The violet migrated here is a set of **hardcoded hex accents** on specific violet-branded surfaces (landing CTAs, funnel, emails, admin), independent of the token system.
+- **Intentionally EXCLUDED (not the brand accent):** (1) multi-colour confetti arrays (`#A78BFA`/`#C4B5FD` as decorative spread entries in onboarding, try-debrief, success screens); (2) the **Theme Map** feature's own colour system (`components/theme-map/*`, `theme-tokens.ts`, `theme-detail-client.tsx` neutral, plus its `rgba(124,58,237)` glows); (3) `lib/task-groups.ts` "Personal" category colour; (4) the deprecated Tailwind `brand-*` scale in `tailwind.config.ts` (marked "slated for removal"); (5) chart-series/channel colours (e.g. `FunnelAnalyticsTab` "App Store" `#a78bfa`, life-dimension presets `#8B5CF6`/`#A855F7`/`#6366F1`). These are distinct semantic palettes, not the brand violet — swapping them would corrupt category/chart meaning. Documented here so a future pass doesn't "finish the job" by mistake.
+- Migration executed with scripted `perl` case-insensitive replacements for the unambiguous ramp + rgba values, and surgical per-line edits for the mixed-use purples in files that also contain excluded confetti/category colours.
+
 ## [2026-07-16] — Rebrand Phase 1 assets: swapped Acuity logos/icons for the Ripple brand kit
 
 **Requested by:** Both

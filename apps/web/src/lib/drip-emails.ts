@@ -38,7 +38,7 @@ function layout(content: string): string {
           <!-- Purple Divider -->
           <tr>
             <td style="padding:32px 0 24px;">
-              <div style="height:2px;background:linear-gradient(to right,transparent,#7C5CFC,transparent);"></div>
+              <div style="height:2px;background:linear-gradient(to right,transparent,#8E6FE6,transparent);"></div>
             </td>
           </tr>
 
@@ -46,7 +46,7 @@ function layout(content: string): string {
           <tr>
             <td align="center" style="padding-bottom:16px;">
               <p style="margin:0;font-size:13px;color:#A0A0B8;">
-                <a href="https://getacuity.io" style="color:#7C5CFC;text-decoration:none;font-weight:600;">getacuity.io</a>
+                <a href="https://getacuity.io" style="color:#8E6FE6;text-decoration:none;font-weight:600;">getacuity.io</a>
                 <span style="margin:0 10px;color:#2A2A3A;">|</span>
                 <a href="https://getacuity.io/unsubscribe" style="color:#A0A0B8;text-decoration:none;">Unsubscribe</a>
               </p>
@@ -71,7 +71,7 @@ function layout(content: string): string {
 function bullet(text: string): string {
   return `<tr>
   <td style="padding:10px 0;font-size:15px;color:#A0A0B8;line-height:1.6;">
-    <span style="color:#7C5CFC;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
+    <span style="color:#8E6FE6;font-weight:bold;margin-right:10px;font-size:18px;">&#8226;</span>
     ${text}
   </td>
 </tr>`;
@@ -135,8 +135,8 @@ function email2(rawName: string): string {
             <td style="padding-bottom:8px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:20px;border-left:4px solid #7C5CFC;">
-                    <p style="margin:0 0 4px 0;font-size:11px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Tasks extracted</p>
+                  <td style="background-color:#13131F;border-radius:12px;padding:20px;border-left:4px solid #8E6FE6;">
+                    <p style="margin:0 0 4px 0;font-size:11px;color:#8E6FE6;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Tasks extracted</p>
                     <p style="margin:0;font-size:14px;color:#A0A0B8;line-height:1.6;">
                       &#9745; Follow up with Sarah<br/>
                       &#9744; Review the Q2 proposal<br/>
@@ -151,8 +151,8 @@ function email2(rawName: string): string {
             <td style="padding-bottom:8px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:20px;border-left:4px solid #7C5CFC;">
-                    <p style="margin:0 0 4px 0;font-size:11px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Mood</p>
+                  <td style="background-color:#13131F;border-radius:12px;padding:20px;border-left:4px solid #8E6FE6;">
+                    <p style="margin:0 0 4px 0;font-size:11px;color:#8E6FE6;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Mood</p>
                     <p style="margin:0;font-size:14px;color:#A0A0B8;">Tired but optimistic</p>
                   </td>
                 </tr>
@@ -163,8 +163,8 @@ function email2(rawName: string): string {
             <td style="padding-bottom:24px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:20px;border-left:4px solid #7C5CFC;">
-                    <p style="margin:0 0 4px 0;font-size:11px;color:#7C5CFC;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Goal detected</p>
+                  <td style="background-color:#13131F;border-radius:12px;padding:20px;border-left:4px solid #8E6FE6;">
+                    <p style="margin:0 0 4px 0;font-size:11px;color:#8E6FE6;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Goal detected</p>
                     <p style="margin:0;font-size:14px;color:#A0A0B8;">"Launch the MVP by end of month"</p>
                   </td>
                 </tr>
@@ -225,7 +225,7 @@ function email3(rawName: string): string {
             <td style="padding-bottom:24px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:28px;border-left:4px solid #7C5CFC;">
+                  <td style="background-color:#13131F;border-radius:12px;padding:28px;border-left:4px solid #8E6FE6;">
                     <p style="margin:0 0 12px 0;font-size:18px;color:#FFFFFF;font-style:italic;line-height:1.6;">
                       "It reads like a therapist's notes about my life. Except I never had to explain anything — it already knew."
                     </p>
@@ -342,7 +342,7 @@ function email4(rawName: string): string {
             <td style="padding-bottom:24px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;">
+                  <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #8E6FE6;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
                       <span style="font-size:32px;font-weight:800;">$4.99</span><span style="color:#A0A0B8;">/month</span>
                       <br/>
@@ -421,7 +421,7 @@ function email5(rawName: string): string {
             <td style="padding-bottom:24px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #7C5CFC;">
+                  <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #8E6FE6;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
                       As a founding member, you get a 7-day free trial and lock in $4.99/month — the lowest price Ripple will ever be.
                     </p>
