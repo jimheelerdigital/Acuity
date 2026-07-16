@@ -3,6 +3,8 @@
  * handoff (`marketing.jsx → Footer`). On-page anchors for product links;
  * real routes for Privacy/Terms.
  */
+import Image from "next/image";
+
 const COLS: { head: string; links: [string, string][] }[] = [
   {
     head: "Product",
@@ -29,7 +31,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-8 min-[700px]:grid-cols-[1.4fr_1fr_1fr]">
         <div>
           <div className="mb-3.5 flex items-center gap-2.5">
-            <span className="h-6 w-6 rounded-[8px] bg-acuity-grad-primary" />
+            <Image src="/ripple-mark-coral.png" alt="Ripple" width={40} height={24} className="shrink-0" />
             <span className="font-display text-[19px] font-extrabold text-acuity-text">Ripple</span>
           </div>
           <p className="m-0 max-w-[260px] font-sans text-[14.5px] leading-[1.55] text-acuity-text-ter">

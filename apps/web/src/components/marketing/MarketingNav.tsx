@@ -10,6 +10,8 @@
  * <html data-theme> exactly like the in-app settings toggle, and the
  * whole page (Tailwind acuity-* tokens) re-tints.
  */
+import Image from "next/image";
+
 import { useAppearance } from "@/contexts/appearance-context";
 
 const LINKS: [string, string][] = [
@@ -30,9 +32,7 @@ export function MarketingNav() {
     >
       <div className="mx-auto flex max-w-[1180px] items-center justify-between px-7 py-[15px]">
         <a href="/" className="flex items-center gap-2.5">
-          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[9px] bg-acuity-grad-primary shadow-acuity-glow-soft">
-            <span className="h-2 w-2 rounded-[5px] bg-white/95" />
-          </span>
+          <Image src="/ripple-mark-coral.png" alt="Ripple" width={50} height={30} priority className="shrink-0" />
           <span className="font-display text-[20px] font-extrabold tracking-[-0.4px] text-acuity-text">
             Ripple
           </span>
