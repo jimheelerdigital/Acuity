@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-16] — Rebrand Phase 1 follow-up: renamed Meta Pixel purchase labels Acuity → Ripple
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+When someone buys a subscription, we send Meta (Facebook) an event labelled with the product name so our ad reporting can attribute the sale. Those two purchase labels still said "Acuity Pro" — they now say "Ripple Pro," matching the rebrand. Nothing about pricing, checkout, or how payments work changed; this is only the text label attached to the tracking event. Heads-up: in Meta Ads Manager you may briefly see both the old "Acuity Pro" and new "Ripple Pro" values while historical data ages out — that's expected.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx:343` — Meta Pixel `Purchase` payload `content_name: "Acuity Pro Subscription"` → `"Ripple Pro Subscription"`.
+- `apps/web/src/app/api/stripe/webhook/route.ts:564` — Meta CAPI `Purchase` payload `content_name: \`Acuity Pro ${interval}\`` → `\`Ripple Pro ${interval}\``.
+- Payload string literals only. Event names (`Purchase`), pixel/CAPI IDs, `content_ids`, `content_type`, and all webhook/payment logic untouched.
+- Codebase-wide grep of analytics payload keys (`content_name`, `content_category`, `item_name`, `content_ids`, `fbq`/GA4 params) confirmed these were the ONLY two payload strings containing "Acuity". All other "Acuity" hits are asset filenames (`AcuityLogo.png`), code identifiers (`AcuityTokens`, `AcuityIcons`, `makeAcuityTokens`), doc refs (`Acuity_SalesCopy.md`), the `getacuity.io` domain, deep-link comments, and the `AcuityBot` crawler user-agent — none are analytics payloads.
+
+### Manual steps needed
+- [ ] Jimmy: review `apps/web/src/app/api/stripe/webhook/route.ts` before merge — payment-adjacent file (change is a string literal only, no logic touched).
+- [ ] Keenan: expect a temporary split in Meta Ads Manager between old `Acuity Pro` and new `Ripple Pro` `content_name` values as historical purchase events age out. No action required.
+
+### Notes
+- Deliberately excluded pre-existing unrelated working-tree changes (`apps/web/next-env.d.ts` modification, `apps/web/public/email/keenan-headshot.png` deletion) from this commit — not part of this task.
+- These two labels were the ones flagged as KEEP in the Phase 1 (`0fe6d063`) grep proof; this follow-up finishes the rebrand for the payment-analytics surface now that continuity concerns are accepted.
+
 ## [2026-07-14] — Rebrand Phase 1: renamed Acuity → Ripple across all web copy
 
 **Requested by:** Both

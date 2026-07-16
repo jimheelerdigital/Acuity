@@ -561,7 +561,7 @@ export async function POST(req: NextRequest) {
           customData: {
             currency: "USD",
             value: purchaseValue,
-            content_name: `Acuity Pro ${interval}`,
+            content_name: `Ripple Pro ${interval}`,
             content_type: "product",
             content_ids: [session.subscription as string],
           },

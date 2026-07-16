@@ -340,7 +340,7 @@ export function OnboardingFunnel() {
               setPaymentConfirmed(true);
               setStep("download");
               track("funnel_savings_locked_in", { value: selectedPlan });
-              fireFbq("Purchase", { value: selectedPlan === "yearly" ? 39.99 : 4.99, currency: "USD", content_name: "Acuity Pro Subscription" });
+              fireFbq("Purchase", { value: selectedPlan === "yearly" ? 39.99 : 4.99, currency: "USD", content_name: "Ripple Pro Subscription" });
             } else {
               setStep("savings");
               setApiError("Payment incomplete. Try again or continue with your free trial.");
