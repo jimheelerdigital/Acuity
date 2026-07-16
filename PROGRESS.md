@@ -11,7 +11,7 @@
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** b1d34ed6
 
 ### In plain English (for Keenan)
 The website now shows the new **Ripple** raindrop logo everywhere the old Acuity mark used to appear — the top navigation, the footer, the logged-in app sidebar, the admin dashboard, the sign-in and sign-up pages, and the post-signup success screens. The browser tab icon (favicon), the phone home-screen app icon (when someone saves the site to their home screen), and the little logo that shows up in Google's rich results all use the new Ripple raindrop too. On dark pages we use the white version of the mark; on light pages we use the coral one, so it always stays crisp. One transactional email header that still said "acuity" in lowercase now says "ripple." **Two things are still on the old brand and need you:** (1) the social-share preview image — see the manual step below — and (2) the legacy `.ico` fallback icon, which almost no modern browser uses. Nothing about pricing, features, links, or how anything works changed.
