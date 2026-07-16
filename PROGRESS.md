@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-07-16] — Rebrand Phase 1 assets: swapped Acuity logos/icons for the Ripple brand kit
+
+**Requested by:** Both
+**Committed by:** Claude Code
+**Commit hash:** _pending_
+
+### In plain English (for Keenan)
+The website now shows the new **Ripple** raindrop logo everywhere the old Acuity mark used to appear — the top navigation, the footer, the logged-in app sidebar, the admin dashboard, the sign-in and sign-up pages, and the post-signup success screens. The browser tab icon (favicon), the phone home-screen app icon (when someone saves the site to their home screen), and the little logo that shows up in Google's rich results all use the new Ripple raindrop too. On dark pages we use the white version of the mark; on light pages we use the coral one, so it always stays crisp. One transactional email header that still said "acuity" in lowercase now says "ripple." **Two things are still on the old brand and need you:** (1) the social-share preview image — see the manual step below — and (2) the legacy `.ico` fallback icon, which almost no modern browser uses. Nothing about pricing, features, links, or how anything works changed.
+
+### Technical changes (for Jimmy)
+- **New assets added to `apps/web/public/`** from the Ripple handoff kit: `ripple-mark-coral.png` (206×123, light-bg mark), `ripple-mark-white.png` (dark-bg mark), `ripple-lockup-cream.png`, `ripple-lockup-dusk.png` (wordmark lockups, available for email/marketing), `icon-512-maskable.png` (PWA maskable).
+- **Overwrote existing icon files** with resized Ripple art: `icon-512.png` (kit 512), `icon-192.png` (sips-resized from 512), `apple-touch-icon.png` (180, resized), `favicon-96x96.png` (resized from kit favicon-256).
+- **Deleted** `apps/web/public/AcuityLogo.png` and `AcuityLogoDark.png` (were byte-identical; now zero shipped refs).
+- **Logo `<Image>`/`<img>` src swaps** (mark variant chosen by background; width fixed to the mark's 206:123 ratio so it isn't distorted from the old square dims):
+  - White mark (dark bg): `components/landing.tsx` (nav + footer), `components/landing-shared.tsx` (nav + footer), `app/admin/admin-topbar.tsx`, `app/auth/signup/success/success-client.tsx`.
+  - Coral mark (light/adaptive bg): `components/nav-bar.tsx`, `components/app-shell.tsx`, `app/auth/signin/page.tsx`, `app/auth/signup/page.tsx`, `app/auth/signup/success/try-session-claimer.tsx`, `app/auth/signup/success/first-debrief-flow.tsx`.
+- **Schema.org / publisher `logo` absolute URLs** repointed `https://getacuity.io/AcuityLogo.png` → `https://getacuity.io/icon-512.png`: `app/layout.tsx`, `app/blog/[slug]/page.tsx` (×2), `app/voice-journaling/page.tsx`, `app/api/admin/adlab/projects/seed/route.ts` (sample project logo), `app/admin/adlab/projects/project-form.tsx` (input placeholder). Dev script `scripts/send-test-magic-link.ts` updated too.
+- **`public/site.webmanifest`**: added maskable icon entry (`purpose: "maskable"`); `theme_color` `#7C5CFC` → `#F2895E` (coral); `background_color` `#0D0A19` → `#211E2C` (dusk).
+- **`app/layout.tsx`**: `other["theme-color"]` `#7C5CFC` → `#F2895E`.
+- **`emails/trial/layout.ts`**: header wordmark text `acuity` → `ripple` (Phase 1 only swept capital-A; this was lowercase).
+- Typecheck: the swaps are pure `src`/dimension attribute changes — zero new type errors. (Pre-existing baseline errors from the `next-env.d.ts` working-tree mod remain, untouched.)
+
+### Manual steps needed
+- [ ] **Keenan: supply a Ripple OG social-share card** (`apps/web/public/og-image.png`, 1200×630). The current file still shows Acuity branding. This is the preview image that renders when a getacuity.io link is pasted into iMessage, WhatsApp, Facebook, LinkedIn, X/Twitter, Slack, etc. It's referenced from the homepage, blog, and all `/for/*` ad landers. Drop a 1200×630 PNG at that path (keep the filename) and it propagates everywhere. (The `?v=3` cache-buster in the code may need bumping to `?v=4` to force social platforms to re-scrape.)
+- [ ] **Keenan/Jimmy: regenerate `favicon.ico`** from the Ripple mark (low priority — legacy fallback; modern browsers use the PNG `favicon-96x96.png` which is already updated). The kit didn't include an `.ico`.
+- [ ] Jimmy: after deploy, hard-refresh / clear CDN cache if the old favicon or app icon sticks (browsers + Apple cache these aggressively).
+
+### Notes
+- **Color-system migration deliberately NOT done.** The old violet accent `#7C5CFC` appears in ~57 files (emails, admin, funnel, banners). The new brand's violet is `#8E6FE6` and primary is coral `#F2895E`. Swapping every hex is a broad, contrast/WCAG-sensitive color migration that goes beyond "logos/branding" and belongs in its own scoped pass — flagged here rather than silently swept.
+- Mark variant is chosen per-surface background (white on dark, coral on light) because a single static PNG can't respond to theme; coral reads fine on the adaptive surfaces (nav, app-shell) in both light and dark.
+- Kept the `getacuity.io` domain and `com.heelerdigital.acuity` package IDs untouched — still Phase 2.
+- Excluded pre-existing unrelated working-tree changes (`next-env.d.ts`, `public/email/keenan-headshot.png` deletion, untracked dev scripts) from the commit.
+
 ## [2026-07-16] — Rebrand Phase 1 follow-up: renamed Meta Pixel purchase labels Acuity → Ripple
 
 **Requested by:** Both

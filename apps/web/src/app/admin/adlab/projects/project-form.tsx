@@ -322,7 +322,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
         </Field>
         <Field label="Logo URL">
           <input type="url" value={data.logoUrl} onChange={(e) => updateField("logoUrl", e.target.value)}
-            className={inputClass} placeholder="https://getacuity.io/AcuityLogo.png" />
+            className={inputClass} placeholder="https://getacuity.io/icon-512.png" />
         </Field>
         <Field label="Landing Page URL">
           <input type="url" value={data.landingPageUrl} onChange={(e) => updateField("landingPageUrl", e.target.value)}

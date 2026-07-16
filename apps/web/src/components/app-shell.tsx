@@ -254,10 +254,10 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
       <div className="flex h-[68px] items-center border-b border-acuity-line px-5">
         <Link href="/home" className="flex items-center gap-2 group">
           <img
-            src="/AcuityLogoDark.png"
+            src="/ripple-mark-coral.png"
             alt=""
             className="shrink-0"
-            style={{ width: 28, height: 28 }}
+            style={{ width: 47, height: 28 }}
           />
           <span
             className="font-display font-semibold tracking-tight text-acuity-text"

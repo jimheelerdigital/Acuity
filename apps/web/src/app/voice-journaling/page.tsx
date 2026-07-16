@@ -45,7 +45,7 @@ const jsonLd = {
         url: "https://getacuity.io",
         logo: {
           "@type": "ImageObject",
-          url: "https://getacuity.io/AcuityLogo.png",
+          url: "https://getacuity.io/icon-512.png",
         },
       },
       mainEntityOfPage: {

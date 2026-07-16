@@ -249,7 +249,7 @@ export function NavBar() {
             href="/home"
             className="flex items-center gap-2 group"
           >
-            <Image src="/AcuityLogoDark.png" alt="Ripple logo" width={24} height={24} className="shrink-0" />
+            <Image src="/ripple-mark-coral.png" alt="Ripple logo" width={40} height={24} className="shrink-0" />
             <span className="font-semibold text-zinc-900 dark:text-zinc-50 hidden sm:block tracking-tight">
               Ripple
             </span>

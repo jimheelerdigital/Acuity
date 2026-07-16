@@ -19,10 +19,10 @@ export function AdminTopbar() {
         className="flex items-center gap-2.5 text-white"
       >
         <img
-          src="/AcuityLogoDark.png"
+          src="/ripple-mark-white.png"
           alt=""
           className="shrink-0"
-          style={{ width: 28, height: 28 }}
+          style={{ width: 47, height: 28 }}
         />
         <span
           className="font-semibold"

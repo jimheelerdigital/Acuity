@@ -1035,7 +1035,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <Image src="/AcuityLogoDark.png" alt="Ripple logo" width={24} height={24} className="shrink-0" />
+              <Image src="/ripple-mark-white.png" alt="Ripple logo" width={40} height={24} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight">Ripple</span>
             </Link>
             <div className="hidden sm:flex items-center gap-6 text-sm text-[#A0A0B8]">
@@ -1759,7 +1759,7 @@ export function LandingPage() {
             {/* Brand column */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2">
-                <Image src="/AcuityLogoDark.png" alt="Ripple logo" width={28} height={28} className="shrink-0" />
+                <Image src="/ripple-mark-white.png" alt="Ripple logo" width={47} height={28} className="shrink-0" />
                 <span className="text-xl font-bold tracking-tight">
                   Ripple
                 </span>

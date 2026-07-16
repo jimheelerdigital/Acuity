@@ -85,7 +85,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   other: {
-    "theme-color": "#7C5CFC",
+    "theme-color": "#F2895E",
   },
 };
 
@@ -119,7 +119,7 @@ export default function RootLayout({
         "@type": "Organization",
         name: "Ripple",
         url: "https://getacuity.io",
-        logo: "https://getacuity.io/AcuityLogo.png",
+        logo: "https://getacuity.io/icon-512.png",
         description:
           "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, pattern detection, and weekly reports — all from a daily voice recording.",
         email: "hello@getacuity.io",

@@ -70,7 +70,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
           </tr>
           <tr>
             <td style="padding-bottom:28px;">
-              <p style="margin:0;font-size:18px;font-weight:700;color:#E06B46;letter-spacing:1.5px;text-transform:lowercase;">acuity</p>
+              <p style="margin:0;font-size:18px;font-weight:700;color:#E06B46;letter-spacing:1.5px;text-transform:lowercase;">ripple</p>
             </td>
           </tr>
           <!-- ── Content ── -->

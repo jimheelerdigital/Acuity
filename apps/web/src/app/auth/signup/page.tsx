@@ -320,9 +320,9 @@ function SignUpForm() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
               <div className="mb-6 text-center">
                 <Image
-                  src="/AcuityLogo.png"
+                  src="/ripple-mark-coral.png"
                   alt="Ripple"
-                  width={36}
+                  width={60}
                   height={36}
                   className="mx-auto mb-3"
                 />
