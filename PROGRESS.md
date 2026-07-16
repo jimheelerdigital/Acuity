@@ -11,7 +11,7 @@
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** _pending_
+**Commit hash:** 4c9f5640
 
 ### In plain English (for Keenan)
 When someone buys a subscription, we send Meta (Facebook) an event labelled with the product name so our ad reporting can attribute the sale. Those two purchase labels still said "Acuity Pro" — they now say "Ripple Pro," matching the rebrand. Nothing about pricing, checkout, or how payments work changed; this is only the text label attached to the tracking event. Heads-up: in Meta Ads Manager you may briefly see both the old "Acuity Pro" and new "Ripple Pro" values while historical data ages out — that's expected.
