@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-16] — Fix: Ripple logo now actually shows on the live homepage nav + footer
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 87258d3a
+
+### In plain English (for Keenan)
+The new Ripple raindrop logo wasn't showing up on the live homepage even after the Phase 1 logo swap — the top nav and footer were still drawing a generic coral square placeholder. Turns out the earlier swap updated an old homepage file that isn't used anymore, plus the logged-in app screens, but NOT the actual marketing homepage people land on. This points the homepage nav and footer at the real raindrop mark, so it now appears. (If your browser still shows the old purple diamond in the tab, that's just a cached favicon — hard-refresh or wait for the CDN to clear; the icon file itself is already the raindrop.)
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/marketing/MarketingNav.tsx` — replaced the CSS placeholder logo (`<span>` coral gradient square + white inner dot) with `<Image src="/ripple-mark-coral.png" width={50} height={30} priority>`. Kept the adaptive `text-acuity-text` wordmark span so it still re-tints with the theme toggle.
+- `apps/web/src/components/marketing/Footer.tsx` — same placeholder (`h-6 w-6 rounded-[8px] bg-acuity-grad-primary`) → raindrop `<Image>` (40×24).
+- Root cause: `/` renders `components/marketing/MarketingHome` (→ MarketingNav/Footer). The Phase 1 swap (`b1d34ed6`) touched `components/landing.tsx` — which is **dead code, imported nowhere** — plus `nav-bar.tsx`/`app-shell.tsx` (logged-in routes only). The `/for/*` ad landers use `landing-shared.tsx` and were correctly swapped.
+- `Pricing.tsx:47` coral grad-square is a feature-list checkmark bullet, not a logo — intentionally left.
+
+### Manual steps needed
+- [ ] Keenan/Jimmy: after Vercel redeploys, hard-refresh getacuity.io (Cmd+Shift+R) — the browser caches the old favicon aggressively.
+- [ ] Optional cleanup (Jimmy): delete `components/landing.tsx` (dead code, no importers) in a future pass.
+
+### Notes
+- Used the coral mark on the marketing nav/footer (not a theme-swapped pair) because the marketing surfaces have a light/dark toggle and a single static PNG can't respond; coral reads acceptably on both the cream (light) and dusk (dark) backgrounds, matching how `nav-bar.tsx` handles the adaptive app shell.
+- This is why "no changes" appeared despite Phase 1 being pushed — the visible homepage component was never in the swap set. Lesson for future asset work: trace the actual root-route render tree (`app/page.tsx` → `MarketingHome`), not just files matching `landing`.
+
 ## [2026-07-16] — Rebrand Phase 2: migrated the accent violet to the new Ripple brand violet
 
 **Requested by:** Both
