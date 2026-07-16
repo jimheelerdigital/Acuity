@@ -11,7 +11,7 @@
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 30a4d185
 
 ### In plain English (for Keenan)
 Everywhere the site used the old purple accent, it now uses Ripple's new brand violet. That covers the marketing pages (hero buttons, the "A life of clarity" gradient headline, the Life Matrix radar graphic), the funnel and try-it-now flows, the post-signup success screens, all the transactional emails, and the entire internal admin dashboard. The change is subtle — it's a slightly warmer, softer purple — but it makes the whole product match the new brand instead of the old one. Nothing about layout, copy, pricing, or how anything works changed; only the shade of purple. A few purples were **intentionally left alone** because they aren't the brand accent — the multi-colour confetti bursts, the Theme Map feature's own colour system, and the task-group category colours all keep their existing palette on purpose (details in Notes).
