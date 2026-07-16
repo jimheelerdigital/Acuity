@@ -173,9 +173,9 @@ export default function RootLayout({
             cookie banner. The <noscript> tracking image is also
             removed: without JS the consent banner can't appear, so
             firing the Pixel anyway would defeat the consent gate. */}
-        <link rel="icon" type="image/png" href="/favicon-96x96.png?v=2" sizes="96x96" />
-        <link rel="shortcut icon" href="/favicon.ico?v=2" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
+        <link rel="icon" type="image/png" href="/favicon-96x96.png?v=3" sizes="96x96" />
+        <link rel="shortcut icon" href="/favicon.ico?v=3" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className="bg-acuity-bg text-acuity-text antialiased">
