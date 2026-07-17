@@ -242,7 +242,18 @@ export async function reconcileStripe(opts: ReconcileOptions): Promise<Reconcile
       stripeCurrentPeriodEnd: user.stripeCurrentPeriodEnd,
     };
 
-    if (user.subscriptionStatus !== desired) {
+    // FREE and PAST_DUE are access-equivalent (entitlements.ts:171-173 — both
+    // no-access, both satisfy proRecoveryWhere), so normalize PAST_DUE→FREE
+    // before comparing and never flag one as the other. This reconciler is
+    // about access correctness, not label cosmetics.
+    // TODO(billing): the webhook maps Stripe `unpaid`→FREE while the admin
+    // stripe-sync route (app/api/admin/stripe-sync/route.ts) maps `unpaid`→
+    // PAST_DUE. They disagree but gate identically; unify to one representation
+    // in a follow-up — NOT this PR.
+    const actualCmp =
+      user.subscriptionStatus === "PAST_DUE" ? "FREE" : user.subscriptionStatus;
+
+    if (desired !== actualCmp) {
       const hasAccess = ACCESS_STATUSES.has(user.subscriptionStatus);
       let cls: DriftClass;
       if (desired === "PRO" && !hasAccess) cls = "SEV1_ACCESS_DENIED_BUT_PAID";
@@ -262,7 +273,12 @@ export async function reconcileStripe(opts: ReconcileOptions): Promise<Reconcile
       continue;
     }
 
-    // Status agrees — check link + period-end drift.
+    // Status agrees. Only reconcile the sub link + period end for a LIVE sub:
+    // for past_due/canceled, Stripe's current_period_end is the optimistic NEXT
+    // period (unpaid), not a paid-through date — "repairing" it would stamp a
+    // future date on someone who hasn't paid. Skip non-live subs entirely.
+    if (sub.status !== "active" && sub.status !== "trialing") continue;
+
     const periodEnd = periodEndOf(sub);
     const subIdDrift = user.stripeSubscriptionId !== sub.id;
     const periodDrift =
@@ -342,10 +358,18 @@ export async function reconcileStripe(opts: ReconcileOptions): Promise<Reconcile
     dryRun,
   };
 
-  // ── 6. Hard-fail on excessive drift — never mass-repair blindly ──
-  if (drifts.length > maxDrifts) {
+  // ── 6. Hard-fail on excessive SEVERE drift — never mass-repair blindly.
+  //     Only SEV1 + revenue-leak count toward the threshold; low-severity
+  //     classes (period drift, orphans, minor label) must never trip the abort,
+  //     or the safety cries wolf on benign noise and gets ignored. ──
+  const severeCount =
+    byClass.SEV1_ACCESS_DENIED_BUT_PAID +
+    byClass.REVENUE_LEAK_GRANTED_BUT_UNPAID;
+  if (severeCount > maxDrifts) {
     report.aborted = true;
-    log(`ABORT: ${drifts.length} drifts > threshold ${maxDrifts}; repairing nothing`);
+    log(
+      `ABORT: ${severeCount} severe drifts > threshold ${maxDrifts} (total ${drifts.length}); repairing nothing`
+    );
     if (!dryRun && onSev1) await onSev1(sev1, { aborted: true, totalDrifts: drifts.length });
     return report;
   }
