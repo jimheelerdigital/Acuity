@@ -45,6 +45,7 @@ import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twi
 import { commitExtractionBackstopFn } from "@/inngest/functions/commit-extraction-backstop";
 import { stripeWebhookHealthFn } from "@/inngest/functions/stripe-webhook-health";
 import { generateInsightsCronFn } from "@/inngest/functions/generate-insights-cron";
+import { stripeReconcileNightlyFn } from "@/inngest/functions/stripe-reconcile-nightly";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -75,6 +76,7 @@ const handler = serve({
     computeDailySnapshotFn,
     rlsAuditFn,
     scanRedFlagsFn,
+    stripeReconcileNightlyFn,
     generateStateOfMeFn,
     stateOfMeAutoTickFn,
     trialEmailOrchestratorFn,
