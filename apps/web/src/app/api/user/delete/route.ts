@@ -132,6 +132,21 @@ export async function POST(req: NextRequest) {
     stripeCustomerId: user.stripeCustomerId,
   });
 
+  // A failed cancel must not vanish: deletion still proceeds (right to erasure),
+  // but founders are alerted so a human finishes the cancellation in Stripe
+  // before the orphaned sub bills a deleted account.
+  if (stripeCancellationStatus === "failed") {
+    const { notifyFoundersOfDeletionCancelFailure } = await import(
+      "@/lib/founder-notifications"
+    );
+    await notifyFoundersOfDeletionCancelFailure({
+      email: user.email,
+      subscriptionSource: user.subscriptionSource,
+      stripeSubscriptionId: user.stripeSubscriptionId,
+      timestamp: new Date(),
+    }).catch(() => {});
+  }
+
   // ── 4. DB delete (transactional) ────────────────────────────────────────
   // VerificationToken has no FK to User — it's keyed on identifier (email)
   // and is NextAuth-managed. Hand-clean those.

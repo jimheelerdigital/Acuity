@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -228,6 +229,79 @@ export function DeleteAccountModal({
             <DeletedItem text="Your Life Matrix, weekly reports, and Life Audits" />
             <DeletedItem text="Themes, goals, tasks, and insights history" />
             <DeletedItem text="Notification preferences and reminders" />
+          </View>
+
+          {/* Always-on subscription warning — shown to EVERY user, never gated
+              on isPro/subscriptionStatus. That local field can read FREE while a
+              real store subscription is still live (dunning drift) — which is
+              exactly how a paying user deleted and kept getting billed. Store
+              subscriptions can ONLY be cancelled by the user in store settings. */}
+          <View
+            style={{
+              backgroundColor: `${WARN_AMBER}14`,
+              borderWidth: 0.5,
+              borderColor: `${WARN_AMBER}66`,
+              borderRadius: 14,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <Ionicons
+                name="card-outline"
+                size={20}
+                color={WARN_AMBER}
+                style={{ marginTop: 1 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: WARN_AMBER,
+                    marginBottom: 6,
+                  }}
+                >
+                  Have a paid subscription? Deleting won&rsquo;t always stop it.
+                </Text>
+                <Text
+                  style={{ fontSize: 13, color: tokens.textSec, lineHeight: 19 }}
+                >
+                  If you subscribed through the{" "}
+                  {Platform.OS === "ios" ? "App Store" : "Play Store"}, your
+                  subscription is billed by{" "}
+                  {Platform.OS === "ios" ? "Apple" : "Google"} and only you can
+                  cancel it — deleting your Ripple account does{" "}
+                  <Text style={{ fontWeight: "700" }}>not</Text> cancel it.
+                  Cancel it in your store settings.
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    void Linking.openURL(
+                      Platform.OS === "ios"
+                        ? "itms-apps://apps.apple.com/account/subscriptions"
+                        : "https://play.google.com/store/account/subscriptions"
+                    )
+                  }
+                  style={{
+                    marginTop: 12,
+                    paddingVertical: 12,
+                    borderRadius: 10,
+                    backgroundColor: `${WARN_AMBER}22`,
+                    borderWidth: 1,
+                    borderColor: `${WARN_AMBER}80`,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text
+                    style={{ fontSize: 14, fontWeight: "600", color: WARN_AMBER }}
+                  >
+                    Manage subscriptions in Settings
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
 
           {/* PRO subscription warning — explicit forfeiture + alt CTA.
