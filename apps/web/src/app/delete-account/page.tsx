@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { APP_NAME } from "@acuity/shared";
+
 export const metadata = {
   title: "Delete Your Account — Ripple",
   description:
@@ -79,7 +81,7 @@ export default function DeleteAccountPage() {
                     Bought in the iPhone/iPad app (Apple)
                   </span>
                   : this subscription is billed by Apple, and only you can
-                  cancel it — deleting your Ripple account does{" "}
+                  cancel it — deleting your {APP_NAME} account does{" "}
                   <strong>not</strong> cancel it. Cancel it at{" "}
                   <a
                     href="https://apps.apple.com/account/subscriptions"
@@ -94,7 +96,7 @@ export default function DeleteAccountPage() {
                     Bought in the Android app (Google Play)
                   </span>
                   : this subscription is billed by Google, and only you can
-                  cancel it — deleting your Ripple account does{" "}
+                  cancel it — deleting your {APP_NAME} account does{" "}
                   <strong>not</strong> cancel it. Cancel it at{" "}
                   <a
                     href="https://play.google.com/store/account/subscriptions"
