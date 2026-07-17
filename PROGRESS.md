@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 45f4487e
+**Commit hash:** 3beba623
 
 ### In plain English (for Keenan)
 A paying customer (Kai) was locked out of most of the app — shown "read only" and a subscription page — even though her payment had gone through. We found the cause: when a card payment fails and then succeeds a day later, our system was failing to switch the person back to paid, so they stayed stuck on the free tier forever. Kai was fixed by hand. We then found six more customers one card-fix away from the same trap and quietly repaired their records so they'll unlock automatically the moment their next payment clears. Separately, we discovered that when a customer with a failing payment deletes their account, we were NOT cancelling their subscription — so a deleted person could keep getting charged with nothing to show for it (one real case, carmenaroberts; her subscription has been cancelled and the pending charge voided). Fixes for all of this are written and in review, not yet live.
