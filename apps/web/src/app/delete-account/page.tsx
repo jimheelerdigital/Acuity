@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { APP_NAME } from "@acuity/shared";
+
 export const metadata = {
   title: "Delete Your Account — Ripple",
   description:
@@ -41,9 +43,71 @@ export default function DeleteAccountPage() {
               Ripple is an AI-powered voice journaling app published by{" "}
               <strong>Heeler Digital LLC</strong>. You can request deletion
               of your Ripple account and the personal data associated with it
-              at any time, using either of the options below. There is no
-              charge, and you do not need an active subscription.
+              at any time, using either of the options below. Deletion is free.
             </p>
+          </section>
+
+          {/* Always-on subscription warning — shown to everyone, never gated on
+              account/plan state (a billing-status field can be stale and hide
+              this from exactly the person who needs it). */}
+          <section>
+            <div
+              role="note"
+              style={{
+                borderWidth: 1,
+                borderStyle: "solid",
+                borderColor: "var(--acuity-warn)",
+                backgroundColor:
+                  "color-mix(in oklch, var(--acuity-warn), transparent 92%)",
+                borderRadius: 12,
+                padding: 20,
+              }}
+            >
+              <h2 className="text-base font-semibold text-acuity-text">
+                If you have a paid subscription, read this first
+              </h2>
+              <p className="mt-2 text-acuity-text-sec">
+                Deleting your account does not always stop subscription billing,
+                because paid plans are billed through different stores:
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-acuity-text-sec">
+                <li>
+                  <span className="text-acuity-text">Bought on the web</span>{" "}
+                  (card): your subscription is cancelled automatically when you
+                  delete your account.
+                </li>
+                <li>
+                  <span className="text-acuity-text">
+                    Bought in the iPhone/iPad app (Apple)
+                  </span>
+                  : this subscription is billed by Apple, and only you can
+                  cancel it — deleting your {APP_NAME} account does{" "}
+                  <strong>not</strong> cancel it. Cancel it at{" "}
+                  <a
+                    href="https://apps.apple.com/account/subscriptions"
+                    className="text-acuity-primary underline-offset-4 hover:underline"
+                  >
+                    Settings → your name → Subscriptions → Ripple
+                  </a>
+                  .
+                </li>
+                <li>
+                  <span className="text-acuity-text">
+                    Bought in the Android app (Google Play)
+                  </span>
+                  : this subscription is billed by Google, and only you can
+                  cancel it — deleting your {APP_NAME} account does{" "}
+                  <strong>not</strong> cancel it. Cancel it at{" "}
+                  <a
+                    href="https://play.google.com/store/account/subscriptions"
+                    className="text-acuity-primary underline-offset-4 hover:underline"
+                  >
+                    Play Store → Subscriptions → Ripple
+                  </a>
+                  .
+                </li>
+              </ul>
+            </div>
           </section>
 
           <section>

@@ -186,3 +186,62 @@ export async function notifyFoundersOfPayment(params: {
     console.error("[founder-notification] Payment email failed:", err instanceof Error ? err.message : err);
   }
 }
+
+/**
+ * Alert founders when account deletion could NOT cancel a user's Stripe
+ * subscription. Deletion still proceeds (the user's right to erasure trumps our
+ * ability to cancel cleanly), so this is the only thing standing between a
+ * failed cancel and an orphaned subscription that keeps billing a deleted
+ * account. A human must finish the cancellation manually in Stripe.
+ */
+export async function notifyFoundersOfDeletionCancelFailure(params: {
+  email: string;
+  subscriptionSource: string | null;
+  stripeSubscriptionId: string | null;
+  timestamp: Date;
+}): Promise<void> {
+  if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
+  const { email, subscriptionSource, stripeSubscriptionId, timestamp } = params;
+  const headline =
+    "\u{1F6A8} Account deleted but Stripe cancel FAILED — cancel manually";
+  const timeStr = timestamp.toISOString();
+
+  try {
+    const { getResendClient } = await import("@/lib/resend");
+    const resend = getResendClient();
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: FOUNDER_NOTIFICATION_RECIPIENTS,
+      subject: headline,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+          <h2 style="color:#C4451C;margin:0 0 16px;">${headline}</h2>
+          <p style="margin:0 0 12px;">A user deleted their account, but we could not cancel their subscription. It may keep billing until cancelled by hand in the Stripe dashboard.</p>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;font-weight:600;">${email}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Source</td><td style="padding:8px 0;font-weight:600;">${subscriptionSource ?? "unknown"}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Subscription</td><td style="padding:8px 0;font-weight:600;">${stripeSubscriptionId ?? "(none on file — search Stripe by email)"}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Deleted at</td><td style="padding:8px 0;">${timeStr}</td></tr>
+          </table>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[founder-notification] Deletion-cancel-failure email failed:", err instanceof Error ? err.message : err);
+  }
+
+  const slackUrl = process.env.SLACK_FOUNDER_WEBHOOK_URL;
+  if (slackUrl) {
+    try {
+      await fetch(slackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `${headline} | ${email} | source=${subscriptionSource ?? "unknown"} | sub=${stripeSubscriptionId ?? "none"}`,
+        }),
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+}

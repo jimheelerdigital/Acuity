@@ -178,6 +178,20 @@ export async function DELETE(
     stripeCustomerId: target.stripeCustomerId,
   });
 
+  // A failed cancel must not vanish (see self-delete route) — alert founders so
+  // a human finishes the cancellation before the orphaned sub bills.
+  if (stripeCancellationStatus === "failed") {
+    const { notifyFoundersOfDeletionCancelFailure } = await import(
+      "@/lib/founder-notifications"
+    );
+    await notifyFoundersOfDeletionCancelFailure({
+      email: target.email,
+      subscriptionSource: target.subscriptionSource,
+      stripeSubscriptionId: target.stripeSubscriptionId,
+      timestamp: new Date(),
+    }).catch(() => {});
+  }
+
   try {
     const { canonicalizeEmail } = await import("@/lib/bootstrap-user");
     const normalizedEmail = canonicalizeEmail(target.email);

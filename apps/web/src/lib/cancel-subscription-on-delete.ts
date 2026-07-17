@@ -1,98 +1,151 @@
 import type Stripe from "stripe";
 
 /**
- * Best-effort subscription cancellation at account-deletion time.
+ * Subscription cancellation at account-deletion time.
  *
- * Incident 2026-06-13 (orphan subscriptions after deletion): account deletion
- * never reliably canceled the active subscription. The old paths only called
- * `stripe.customers.del()` gated on `user.stripeCustomerId` — but users who
- * checked out during the Stripe-webhook outage never had `stripeCustomerId`
- * (or `stripeSubscriptionId`) written to their row, so the block was skipped
- * and their trial converted + billed AFTER deletion.
+ * Incident 2026-07-15 (carmenaroberts): a user whose renewal had failed was
+ * downgraded to subscriptionStatus=FREE by the dunning webhook, then deleted her
+ * account. The OLD helper gated on `BILLABLE_STATUS.has(subscriptionStatus)` and
+ * returned "not_applicable" for FREE — so it NEVER LOOKED at Stripe, her live
+ * past_due subscription survived deletion, and Stripe kept trying to bill a
+ * deleted account. `subscriptionStatus` is our local guess; it is not evidence
+ * of what Stripe is doing, and the two diverge (dunning, webhook drift).
  *
- * Resolution order (each step is a fallback for missing local data):
- *   1. `stripeSubscriptionId` present → cancel it directly.
- *   2. else `stripeCustomerId` present → cancel every live sub on that customer.
- *   3. else → look the customer up by email and cancel every live sub.
- * Step 3 is what closes the webhook-outage leak (null local IDs).
+ * This version:
+ *   1. ALWAYS resolves the customer in Stripe — by subscription id, then
+ *      customer id, then email — regardless of local subscriptionStatus, and
+ *      acts on what Stripe actually reports.
+ *   2. Cancels every live subscription AND voids any open invoice. Cancelling
+ *      alone does not stop collection on an already-open (dunning) invoice —
+ *      the void is a separate, required call (confirmed on Carmen 2026-07-17).
+ *   3. Returns a real, specific outcome. "not_applicable" is gone: it used to
+ *      mean "we didn't look", which is exactly the bug.
  *
  * Apple / Google Play subscriptions are store-owned and CANNOT be canceled
- * server-side — the delete-account UI warns the user to cancel in iOS / Play
- * settings. We return "not_applicable" for those.
+ * server-side — only the user can, in iOS Settings / the Play Store. For those
+ * we return "iap_user_warned"; the delete UI shows an unmissable, always-on
+ * warning with a link to the store settings page (it is NOT gated on local
+ * PRO state, which the same dunning bug can falsify).
  *
  * NEVER throws: the user's right to delete trumps our ability to cancel
- * cleanly. All Stripe errors are caught and surfaced as "failed" so the
- * caller can record an audit trail and proceed with the purge.
+ * cleanly. Stripe errors are caught and surfaced as "failed" so the caller can
+ * alert founders (deletion still proceeds — we don't hold data hostage) and a
+ * human can finish the cancellation manually.
  */
 
-export type CancellationStatus = "success" | "failed" | "not_applicable";
+export type CancellationOutcome =
+  | "cancelled" // we cancelled ≥1 live Stripe sub and voided any open invoice
+  | "already_cancelled" // Stripe had sub(s) for this user, none still live
+  | "none_found" // no Stripe customer/subscription resolved for this user
+  | "iap_user_warned" // store-owned (Apple/Google) sub we can't cancel; UI warns
+  | "failed"; // a Stripe call threw — caller must alert; deletion still proceeds
 
 export type DeletionUser = {
   email: string;
+  // Retained for the tombstone/context only. Intentionally NOT used to decide
+  // whether to look at Stripe — that gate was the bug.
   subscriptionStatus: string;
   subscriptionSource: string | null;
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
 };
 
-// Ripple subscriptionStatus values that imply a live/convertible plan.
-const BILLABLE_STATUS = new Set(["TRIAL", "PRO", "PAST_DUE"]);
 // Stripe subscription.status values that are still live (would bill).
 const LIVE_SUB_STATUS = new Set(["trialing", "active", "past_due", "unpaid"]);
+
+/**
+ * Resolve every Stripe customer id this user could own, without trusting local
+ * status: explicit customer id, the customer behind the subscription id, else a
+ * lookup by email (closes the webhook-outage case where local ids were never
+ * written).
+ */
+async function resolveCustomerIds(
+  stripe: Stripe,
+  user: DeletionUser
+): Promise<string[]> {
+  const ids = new Set<string>();
+  if (user.stripeCustomerId) ids.add(user.stripeCustomerId);
+
+  if (user.stripeSubscriptionId) {
+    try {
+      const s = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+      ids.add(typeof s.customer === "string" ? s.customer : s.customer.id);
+    } catch {
+      // Stale/deleted subscription id — fall through to the other resolvers.
+    }
+  }
+
+  if (ids.size === 0) {
+    const found = await stripe.customers.list({ email: user.email, limit: 100 });
+    for (const c of found.data) ids.add(c.id);
+  }
+
+  return [...ids];
+}
+
+/** Void every OPEN invoice on a customer so an in-flight dunning invoice can't
+ *  still collect from a now-deleted account. */
+async function voidOpenInvoices(stripe: Stripe, customerId: string): Promise<void> {
+  const open = await stripe.invoices.list({
+    customer: customerId,
+    status: "open",
+    limit: 100,
+  });
+  for (const inv of open.data) {
+    if (inv.id) await stripe.invoices.voidInvoice(inv.id);
+  }
+}
 
 export async function cancelSubscriptionOnDelete(
   stripe: Stripe,
   user: DeletionUser
-): Promise<CancellationStatus> {
-  // No live plan → nothing to cancel.
-  if (!BILLABLE_STATUS.has(user.subscriptionStatus)) return "not_applicable";
-
-  // Store-owned subscriptions can't be canceled from the server.
-  if (
+): Promise<CancellationOutcome> {
+  const isIap =
     user.subscriptionSource === "apple" ||
-    user.subscriptionSource === "google_play"
-  ) {
-    return "not_applicable";
-  }
+    user.subscriptionSource === "google_play";
 
-  // Stripe (explicit source, or null source — webhook-outage rows never got
-  // subscriptionSource stamped either, so we still attempt Stripe for them).
   try {
-    if (user.stripeSubscriptionId) {
-      await stripe.subscriptions.cancel(user.stripeSubscriptionId);
-      return "success";
-    }
+    const customerIds = await resolveCustomerIds(stripe, user);
 
-    // Local subscription id missing — resolve via customer id, else email.
-    const customerIds: string[] = [];
-    if (user.stripeCustomerId) {
-      customerIds.push(user.stripeCustomerId);
-    } else {
-      const found = await stripe.customers.list({
-        email: user.email,
-        limit: 100,
-      });
-      customerIds.push(...found.data.map((c) => c.id));
-    }
-
-    let canceledAny = false;
-    for (const customerId of customerIds) {
-      const subs = await stripe.subscriptions.list({
-        customer: customerId,
+    const allSubs: Stripe.Subscription[] = [];
+    const customersWithLive = new Set<string>();
+    for (const cid of customerIds) {
+      const list = await stripe.subscriptions.list({
+        customer: cid,
         status: "all",
         limit: 100,
       });
-      for (const sub of subs.data) {
-        if (LIVE_SUB_STATUS.has(sub.status)) {
-          await stripe.subscriptions.cancel(sub.id);
-          canceledAny = true;
-        }
+      for (const s of list.data) {
+        allSubs.push(s);
+        if (LIVE_SUB_STATUS.has(s.status)) customersWithLive.add(cid);
       }
     }
-    return canceledAny ? "success" : "not_applicable";
+
+    if (allSubs.length === 0) {
+      // We looked and Stripe has nothing. For an IAP user the (store-owned)
+      // sub simply isn't visible to us; the UI warning is the safeguard.
+      return isIap ? "iap_user_warned" : "none_found";
+    }
+
+    const live = allSubs.filter((s) => LIVE_SUB_STATUS.has(s.status));
+    if (live.length === 0) {
+      return isIap ? "iap_user_warned" : "already_cancelled";
+    }
+
+    // Cancel every live sub, then void open invoices — both are required to
+    // fully stop billing (cancel stops future invoices; void stops the current
+    // dunning invoice's retries).
+    for (const sub of live) {
+      await stripe.subscriptions.cancel(sub.id);
+    }
+    for (const cid of customersWithLive) {
+      await voidOpenInvoices(stripe, cid);
+    }
+
+    return "cancelled";
   } catch (err) {
     console.error(
-      `[cancelSubscriptionOnDelete] Stripe cancel failed for ${user.email} (proceeding with deletion):`,
+      `[cancelSubscriptionOnDelete] Stripe cancel failed for ${user.email} (deletion still proceeds; founders alerted):`,
       err
     );
     return "failed";
