@@ -189,6 +189,10 @@ async function applySubscriptionState(
   const periodEnd = sub.current_period_end
     ? new Date(sub.current_period_end * 1000)
     : null;
+  // Dunning = a failing renewal charge (the same billing episode that
+  // invoice.payment_failed handles), as opposed to a clean cancel. Drives
+  // whether the FREE downgrade below stamps the recovery anchor.
+  const dunning = status === "past_due" || status === "unpaid";
 
   let nextStatus: "PRO" | "FREE" | null = null;
   if (status === "active" || status === "trialing") nextStatus = "PRO";
@@ -243,11 +247,39 @@ async function applySubscriptionState(
       });
     }
   } else if (nextStatus === "FREE") {
-    // Terminal/at-risk direction. Unguarded by design (FREE is a safe
-    // terminal write) and no relink fallback (downgrading a user we can't
-    // find is a correct no-op). Leaves stripeFirstFailureAt untouched so a
-    // failed-renewal recovery banner's window survives.
+    // Downgrade direction, split by WHY Stripe left active:
+    //
+    //   dunning (past_due / unpaid): a renewal charge is failing — the SAME
+    //     episode invoice.payment_failed handles. It MUST land the user in the
+    //     identical FREE + stripeFirstFailureAt state, or the recovery path
+    //     (proRecoveryWhere's `stripeFirstFailureAt != null` disjunct) can't
+    //     lift them back to PRO once the card is fixed. Before 2026-07-17 this
+    //     branch wrote FREE with NO anchor, so a user Stripe downgraded via
+    //     subscription.updated(past_due) — rather than an invoice.payment_failed
+    //     event — became indistinguishable from a clean cancel (FREE + null
+    //     anchor) and was stranded on FREE despite paying (Kai, 2026-07-16).
+    //
+    //   clean terminal (canceled / incomplete_expired): genuinely over. FREE
+    //     with the anchor left as-is (null); the W-A "never resurrect a
+    //     canceled user" guard depends on FREE + null anchor being terminal.
+    //
+    // ORDER IS LOAD-BEARING (mirrors invoice.payment_failed, ~route.ts:752):
+    // the anchor stamp filters on `not FREE`; writing FREE first would falsify
+    // its own WHERE and the anchor would never be set. No relink fallback —
+    // downgrading a user we can't find is a correct no-op.
     try {
+      if (dunning) {
+        // First-failure anchor only (stamp where still null) so Stripe's
+        // subsequent retry-driven past_due updates don't push the window out.
+        await db.user.updateMany({
+          where: {
+            stripeCustomerId: customerId,
+            subscriptionStatus: { not: "FREE" },
+            stripeFirstFailureAt: null,
+          },
+          data: { stripeFirstFailureAt: new Date() },
+        });
+      }
       await db.user.updateMany({
         where: { stripeCustomerId: customerId },
         data: {

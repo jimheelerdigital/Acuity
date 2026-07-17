@@ -314,6 +314,81 @@ describe("Bug B: dunning recovery", () => {
   });
 });
 
+// ─── 1b. Bug C — dunning via subscription.updated must stay recoverable ────
+// customer.subscription.updated(past_due|unpaid) downgrades to FREE. Before
+// 2026-07-17 it wrote FREE with NO anchor, so the row was indistinguishable
+// from a clean cancel and proRecoveryWhere refused to restore PRO when the
+// card was fixed — Kai's stranded-but-paying state (2026-07-16). The fix
+// stamps stripeFirstFailureAt on the dunning downgrade, mirroring
+// invoice.payment_failed, WITHOUT changing the clean-cancel terminal state.
+
+describe("Bug C: dunning via subscription.updated", () => {
+  it("past_due downgrades PRO → FREE and stamps stripeFirstFailureAt", async () => {
+    users = [user({ subscriptionStatus: "PRO", stripeFirstFailureAt: null })];
+
+    await send("customer.subscription.updated", subscription({ status: "past_due" }));
+
+    expect(users[0].subscriptionStatus).toBe("FREE");
+    expect(users[0].stripeFirstFailureAt).toBeInstanceOf(Date);
+  });
+
+  it("unpaid also stamps the anchor", async () => {
+    users = [user({ subscriptionStatus: "PRO", stripeFirstFailureAt: null })];
+
+    await send("customer.subscription.updated", subscription({ status: "unpaid" }));
+
+    expect(users[0].subscriptionStatus).toBe("FREE");
+    expect(users[0].stripeFirstFailureAt).toBeInstanceOf(Date);
+  });
+
+  it("end-to-end: past_due → FREE+anchor, then active → PRO (Kai's scenario)", async () => {
+    users = [user({ subscriptionStatus: "PRO", stripeFirstFailureAt: null })];
+
+    // Renewal charge fails; Stripe moves the sub to past_due.
+    await send("customer.subscription.updated", subscription({ status: "past_due" }));
+    expect(users[0].subscriptionStatus).toBe("FREE"); // precondition
+    expect(users[0].stripeFirstFailureAt).toBeInstanceOf(Date); // recoverable
+
+    // User fixes their card; Stripe moves the sub back to active.
+    await send("customer.subscription.updated", subscription({ status: "active" }));
+
+    expect(users[0].subscriptionStatus).toBe("PRO");
+    expect(users[0].stripeFirstFailureAt).toBeNull(); // anchor cleared on recovery
+  });
+
+  it("anchors the FIRST failure only — a second past_due does not move the window", async () => {
+    const firstFailure = new Date("2026-07-15T10:00:00Z");
+    users = [
+      user({ subscriptionStatus: "FREE", stripeFirstFailureAt: firstFailure }),
+    ];
+
+    await send("customer.subscription.updated", subscription({ status: "past_due" }));
+
+    expect(users[0].stripeFirstFailureAt).toEqual(firstFailure);
+  });
+
+  it("canceled downgrades to FREE and does NOT stamp the anchor (stays terminal)", async () => {
+    users = [user({ subscriptionStatus: "PRO", stripeFirstFailureAt: null })];
+
+    await send("customer.subscription.updated", subscription({ status: "canceled" }));
+
+    expect(users[0].subscriptionStatus).toBe("FREE");
+    expect(users[0].stripeFirstFailureAt).toBeNull();
+  });
+
+  it("incomplete_expired downgrades to FREE and does NOT stamp the anchor", async () => {
+    users = [user({ subscriptionStatus: "PRO", stripeFirstFailureAt: null })];
+
+    await send(
+      "customer.subscription.updated",
+      subscription({ status: "incomplete_expired" })
+    );
+
+    expect(users[0].subscriptionStatus).toBe("FREE");
+    expect(users[0].stripeFirstFailureAt).toBeNull();
+  });
+});
+
 // ─── 2. Bug A — relink an unlinked customer ───────────────────────────────
 
 describe("Bug A: relink when stripeCustomerId matched 0 rows", () => {
