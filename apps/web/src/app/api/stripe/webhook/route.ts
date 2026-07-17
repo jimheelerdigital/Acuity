@@ -5,6 +5,10 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { safeLog } from "@/lib/safe-log";
 import {
+  isDunningStatus,
+  mapStripeSubscriptionStatus,
+} from "@/lib/stripe-subscription-status";
+import {
   sendConversionEvent,
   generateEventId,
 } from "@/lib/meta-capi";
@@ -189,22 +193,14 @@ async function applySubscriptionState(
   const periodEnd = sub.current_period_end
     ? new Date(sub.current_period_end * 1000)
     : null;
-  // Dunning = a failing renewal charge (the same billing episode that
-  // invoice.payment_failed handles), as opposed to a clean cancel. Drives
-  // whether the FREE downgrade below stamps the recovery anchor.
-  const dunning = status === "past_due" || status === "unpaid";
-
-  let nextStatus: "PRO" | "FREE" | null = null;
-  if (status === "active" || status === "trialing") nextStatus = "PRO";
-  else if (
-    status === "past_due" ||
-    status === "unpaid" ||
-    status === "canceled" ||
-    status === "incomplete_expired"
-  )
-    nextStatus = "FREE";
-  // "incomplete" (first charge pending) → null: don't grant PRO yet and don't
-  // downgrade; invoice.payment_succeeded / a later update flips it to PRO.
+  // Status→desired mapping lives in lib/stripe-subscription-status so the
+  // nightly reconciler imports the EXACT same rule instead of reimplementing
+  // it (drift there = the reconciler "correcting" rows to a value we never
+  // write). `dunning` drives the recovery-anchor stamp on the FREE branch.
+  const dunning = isDunningStatus(status);
+  const nextStatus = mapStripeSubscriptionStatus(status);
+  // null = "incomplete"/unmapped: don't grant PRO yet and don't downgrade;
+  // invoice.payment_succeeded / a later update flips it to PRO.
 
   if (nextStatus === "PRO") {
     try {

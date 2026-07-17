@@ -186,3 +186,61 @@ export async function notifyFoundersOfPayment(params: {
     console.error("[founder-notification] Payment email failed:", err instanceof Error ? err.message : err);
   }
 }
+
+/**
+ * Alert founders when the nightly Stripe reconciliation finds SEV1 drift
+ * (a paying customer locked out — Stripe active/trialing but our DB withholds
+ * access) or aborts because drift exceeded its safety threshold (upstream
+ * breakage). Same fail-soft email + Slack pattern as the other notifiers.
+ */
+export async function notifyFoundersOfReconciliationAlert(params: {
+  sev1Count: number;
+  aborted: boolean;
+  totalDrifts: number;
+  applied: boolean;
+  sampleEmails: string[];
+}): Promise<void> {
+  if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
+  const { sev1Count, aborted, totalDrifts, applied, sampleEmails } = params;
+
+  const headline = aborted
+    ? `\u{1F6A8} Stripe reconciliation ABORTED — ${totalDrifts} drifts over threshold`
+    : `\u{1F6A8} Stripe reconciliation: ${sev1Count} paying customer(s) locked out`;
+  const sample = sampleEmails.slice(0, 10).join(", ") || "(none)";
+
+  try {
+    const { getResendClient } = await import("@/lib/resend");
+    const resend = getResendClient();
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: FOUNDER_NOTIFICATION_RECIPIENTS,
+      subject: headline,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+          <h2 style="color:#C4451C;margin:0 0 16px;">${headline}</h2>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#666;">SEV1 (paid, locked out)</td><td style="padding:8px 0;font-weight:600;">${sev1Count}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Total drifts</td><td style="padding:8px 0;font-weight:600;">${totalDrifts}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Repairs applied</td><td style="padding:8px 0;font-weight:600;">${applied ? "yes" : "no (observe-only / aborted)"}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Sample</td><td style="padding:8px 0;">${sample}</td></tr>
+          </table>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[founder-notification] Reconciliation alert email failed:", err instanceof Error ? err.message : err);
+  }
+
+  const slackUrl = process.env.SLACK_FOUNDER_WEBHOOK_URL;
+  if (slackUrl) {
+    try {
+      await fetch(slackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: `${headline} | total=${totalDrifts} applied=${applied} | ${sample}` }),
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+}
