@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-07-17] — Billing sync incident: locked-out payer, dunning-recovery bug, and orphaned-subscription-after-deletion
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 3beba623
+
+### In plain English (for Keenan)
+A paying customer (Kai) was locked out of most of the app — shown "read only" and a subscription page — even though her payment had gone through. We found the cause: when a card payment fails and then succeeds a day later, our system was failing to switch the person back to paid, so they stayed stuck on the free tier forever. Kai was fixed by hand. We then found six more customers one card-fix away from the same trap and quietly repaired their records so they'll unlock automatically the moment their next payment clears. Separately, we discovered that when a customer with a failing payment deletes their account, we were NOT cancelling their subscription — so a deleted person could keep getting charged with nothing to show for it (one real case, carmenaroberts; her subscription has been cancelled and the pending charge voided). Fixes for all of this are written and in review, not yet live.
+
+### Technical changes (for Jimmy)
+Three PRs opened, all **pending review, not merged, not deployed**:
+- **PR #35** (`fix/stripe-dunning-anchor-recovery`) — Stripe webhook `applySubscriptionState`: a `customer.subscription.updated(past_due)` downgrade wrote `FREE` without stamping `stripeFirstFailureAt`, leaving the row indistinguishable from a clean cancel, so `proRecoveryWhere` refused to restore PRO on the later paid event. Fix stamps the dunning anchor on that path (anchor-before-FREE order), mirroring `invoice.payment_failed`. 22/22 webhook tests pass.
+- **PR #36** (`feat/stripe-nightly-reconciliation`, stacked on #35) — new Inngest nightly `stripe-reconcile-nightly` + `lib/stripe-reconcile.ts` + shared `lib/stripe-subscription-status.ts` (extracted the webhook status mapping so both import one copy). Pages all Stripe subs, classifies drift (SEV1 access-denied-but-paid, revenue-leak, period drift, orphans), dry-run by default, observe-only until `STRIPE_RECON_APPLY=true`, hard-fails on excess SEV1/revenue-leak drift, alerts founders. Prod dry-run: 0 SEV1, 3 period drifts, 8 orphans.
+- **PR #37** (`fix/cancel-subscription-on-delete`) — rewrote `lib/cancel-subscription-on-delete.ts`: removed the `BILLABLE_STATUS.has(subscriptionStatus)` gate that returned `not_applicable` (and never queried Stripe) for a FREE-in-DB user with a live sub. Now always resolves the customer in Stripe (sub→customer→email), cancels every live sub AND voids open invoices, and returns real outcomes (`cancelled`/`already_cancelled`/`none_found`/`iap_user_warned`/`failed`). Both delete routes alert founders on `failed`; delete-account warning ungated from PRO on web + mobile with store-settings links; PRO modal block gated to Stripe subs to avoid a self-contradiction; strings routed through `@acuity/shared` `APP_NAME`. 8/8 helper tests incl. the incident case.
+
+**Live production data changes made this session (outside the PRs, so recorded here — AdminAuditLog has NO rows for these):**
+1. **kaiberworks@gmail.com** — `subscriptionStatus` FREE→PRO, `stripeCurrentPeriodEnd`→2026-08-15, to match Stripe (active, paid). **Mechanism: manual SQL by Jimmy** (bypassed Prisma + audit log). Reason: unblock a paying customer who was stranded by the dunning bug.
+2. **Six users** (b.montoya48@icloud.com, bselesnew@gmail.com, queenie6910@gmail.com, susiewilliams531@gmail.com, alluraora@gmail.com, raelynnlipovsik@gmail.com) — `stripeFirstFailureAt` backfilled to each user's real first-failed-charge time from Stripe. **Mechanism: `scripts/backfill-dunning-anchor.ts --apply`** (Prisma `user.update`, NO AdminAuditLog write). Reason: they sat FREE+null-anchor and no webhook event can ever stamp them (all stamp paths are guarded `subscriptionStatus != "FREE"`); backfill makes them recoverable so they unlock on next successful charge. Status left FREE (unchanged); they are genuinely past_due in Stripe.
+3. **carmenaroberts1207@gmail.com** — `sub_1Tp5SZD9XJakJqj5miwVpbDD` cancelled and invoice `in_1TrcncD9XJakJqj5EBQGWBWu` voided at **2026-07-17 13:01:32 UTC**. **Mechanism: manual by Jimmy** (Stripe dashboard/API). Reason: she deleted her account 2026-07-15 while her Stripe sub was live+past_due; deletion never cancelled it, so Stripe was about to bill a deleted account.
+
+### Manual steps needed
+- [ ] Jimmy: review + merge PR #35, then #36 (stacked), then #37, in that order.
+- [ ] Jimmy: run PR #35 through a Stripe test-clock (past_due → active recovery) before shipping the billing path.
+- [ ] Jimmy: after #36 deploys, decide whether to flip `STRIPE_RECON_APPLY=true` (starts observe-only).
+- [ ] Jimmy: device/TestFlight test of PR #37's mobile delete-modal (always-on warning renders for a non-PRO account; "Manage subscriptions in Settings" deep link opens the store).
+- [ ] Both: `APP_NAME` in `@acuity/shared` is hardcoded "Ripple" and ~79 web files render it; the live app/store is still Acuity. The whole web app already reads "Ripple," so the rebrand flip is a global gate, not specific to #37.
+- [ ] Follow-up (not in these PRs): decide whether `scripts/backfill-dunning-anchor.ts` and future manual remediation should write AdminAuditLog rows (today's prod writes are invisible to it).
+
+### Notes
+- The three live data changes above are currently recorded ONLY here — no AdminAuditLog rows exist for 2026-07-17. That gap is the reason this entry lists exact IDs, timestamps, and mechanisms.
+- PR #35 fixes NEW dunning-strandings; it cannot rescue already-stuck rows (the stamp is guarded on `!= FREE`), which is why the six needed a separate backfill.
+- Reconciler treats PAST_DUE and FREE as access-equivalent (entitlements.ts:171-173) and does not flag the label; a TODO notes the webhook (`unpaid`→FREE) and admin stripe-sync route (`unpaid`→PAST_DUE) disagree, to unify later.
+
 ## [2026-07-16] — Fix: Ripple logo now actually shows on the live homepage nav + footer
 
 **Requested by:** Keenan
