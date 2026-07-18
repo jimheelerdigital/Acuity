@@ -22,7 +22,7 @@ export function AdminTopbar() {
           src="/ripple-mark-white.png"
           alt=""
           className="shrink-0"
-          style={{ width: 47, height: 28 }}
+          style={{ width: 32, height: 32 }}
         />
         <span
           className="font-semibold"

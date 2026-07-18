@@ -1398,7 +1398,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
             src="/ripple-mark-coral.png"
             alt="Ripple"
             className="mx-auto mb-6"
-            style={{ width: 67, height: 40 }}
+            style={{ width: 56, height: 56 }}
           />
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             Get Ripple on your phone so you can debrief&nbsp;anywhere.

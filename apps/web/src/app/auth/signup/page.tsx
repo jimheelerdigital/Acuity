@@ -322,8 +322,8 @@ function SignUpForm() {
                 <Image
                   src="/ripple-mark-coral.png"
                   alt="Ripple"
-                  width={60}
-                  height={36}
+                  width={44}
+                  height={44}
                   className="mx-auto mb-3"
                 />
                 <h2 className="text-xl font-bold tracking-tight text-zinc-900">

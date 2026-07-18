@@ -257,7 +257,7 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
             src="/ripple-mark-coral.png"
             alt=""
             className="shrink-0"
-            style={{ width: 47, height: 28 }}
+            style={{ width: 32, height: 32 }}
           />
           <span
             className="font-display font-semibold tracking-tight text-acuity-text"

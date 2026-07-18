@@ -117,7 +117,7 @@ function SignInForm() {
           src="/ripple-mark-coral.png"
           alt="Ripple logo"
           className="mx-auto mb-4"
-          style={{ width: 54, height: 32 }}
+          style={{ width: 44, height: 44 }}
         />
         <h1 className="font-display text-2xl font-bold text-acuity-text">
           Sign in to Ripple

@@ -176,7 +176,7 @@ function DownloadCTAScreen() {
     <div className="min-h-screen bg-white px-6">
       <div className="mx-auto max-w-md">
         <div className={`text-center pt-16 pb-10 sm:pt-24 transition-all duration-700 ${vis(1)}`}>
-          <Image src="/ripple-mark-coral.png" alt="Ripple" width={67} height={40} className="mx-auto mb-6" />
+          <Image src="/ripple-mark-coral.png" alt="Ripple" width={56} height={56} className="mx-auto mb-6" />
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             Get Ripple on your phone so you can debrief&nbsp;anywhere.
           </h2>
