@@ -114,7 +114,7 @@ function SignInForm() {
     <>
       <div className="mb-8 text-center">
         <img
-          src="/ripple-mark-coral.png"
+          src="/ripple-mark-coral.png?v=2"
           alt="Ripple logo"
           className="mx-auto mb-4"
           style={{ width: 44, height: 44 }}

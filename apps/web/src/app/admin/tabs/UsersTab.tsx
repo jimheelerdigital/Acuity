@@ -14,7 +14,7 @@ type ListUser = {
   signupMethod: string | null;
   subscriptionStatus: string;
   planStatus: string;
-  platform: "iOS" | "Web" | "Both" | "None";
+  platform: "iOS" | "Android" | "Web" | "Both" | "None";
   lifecycle: string;
   entryCount: number;
   entriesThisWeek: number;
@@ -40,6 +40,10 @@ type SummaryStats = {
     blockedWebview: number;
     tappedAppStore: number;
     bouncedFromStore: number;
+  };
+  pushOptIn?: {
+    ios: { total: number; withPush: number };
+    android: { total: number; withPush: number };
   };
 };
 
@@ -189,6 +193,25 @@ export default function UsersTab() {
             <DownloadStageChip label="Blocked in webview" value={S.downloadStages.blockedWebview} color="text-rose-300" onClick={() => setLifecycleFilter("Blocked in webview")} />
             <DownloadStageChip label="Tapped App Store" value={S.downloadStages.tappedAppStore} color="text-sky-300" onClick={() => setLifecycleFilter("Tapped App Store")} />
             <DownloadStageChip label="Bounced from store" value={S.downloadStages.bouncedFromStore} color="text-amber-300" onClick={() => setLifecycleFilter("Bounced from store")} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Push opt-in by platform ── */}
+      {S?.pushOptIn && (
+        <div className="rounded-lg border border-white/10 bg-[#13131F] p-3">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-white/40">
+            Push notification opt-in by platform
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span className="text-sky-300">
+              iOS: {S.pushOptIn.ios.withPush}/{S.pushOptIn.ios.total}
+              {S.pushOptIn.ios.total > 0 && ` (${Math.round((S.pushOptIn.ios.withPush / S.pushOptIn.ios.total) * 100)}%)`}
+            </span>
+            <span className="text-green-300">
+              Android: {S.pushOptIn.android.withPush}/{S.pushOptIn.android.total}
+              {S.pushOptIn.android.total > 0 && ` (${Math.round((S.pushOptIn.android.withPush / S.pushOptIn.android.total) * 100)}%)`}
+            </span>
           </div>
         </div>
       )}
@@ -429,6 +452,7 @@ function PlanPill({ status }: { status: string }) {
 
 function PlatformPill({ platform }: { platform: string }) {
   const bg = platform === "iOS" ? "bg-sky-500/20 text-sky-300"
+    : platform === "Android" ? "bg-green-500/20 text-green-300"
     : platform === "Web" ? "bg-emerald-500/20 text-emerald-300"
     : platform === "Both" ? "bg-violet-500/20 text-violet-300"
     : "bg-white/5 text-white/30";

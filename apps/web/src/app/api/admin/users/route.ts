@@ -119,11 +119,11 @@ function computePlatform(
   appFirstOpenedAt: Date | null,
   entryCount: number,
   devicePlatform: string | null
-): "iOS" | "Web" | "Both" | "None" {
+): "iOS" | "Android" | "Web" | "Both" | "None" {
   const hasApp = !!appFirstOpenedAt;
   const hasWebEntries = entryCount > 0 && !devicePlatform;
   if (hasApp && hasWebEntries) return "Both";
-  if (hasApp) return "iOS";
+  if (hasApp) return devicePlatform === "android" ? "Android" : "iOS";
   if (entryCount > 0 && !hasApp) return "Web";
   return "None";
 }
@@ -185,6 +185,7 @@ export async function GET(req: NextRequest) {
         stripeSubscriptionId: true,
         appFirstOpenedAt: true,
         devicePlatform: true,
+        pushToken: true,
         lastSeenAt: true,
         currentStreak: true,
         _count: { select: {
@@ -224,6 +225,8 @@ export async function GET(req: NextRequest) {
     let totalEntriesThisWeek = 0, activeUsersThisWeek = 0;
     // Download-stage breakdown (users with no entries and no app open)
     let dlViewed = 0, dlBlockedWebview = 0, dlTappedAppStore = 0, dlBouncedFromStore = 0;
+    // Push opt-in by platform
+    let iosUsers = 0, iosWithPush = 0, androidUsers = 0, androidWithPush = 0;
 
     for (const u of allUsers) {
       totalUsers++;
@@ -236,6 +239,10 @@ export async function GET(req: NextRequest) {
       if (ec === 0) neverRecorded++;
       if (u.subscriptionStatus === "PRO" && u.stripeSubscriptionId) paying++;
       if (etw > 0) { activeThisWeek++; totalEntriesThisWeek += etw; activeUsersThisWeek++; }
+
+      // Push opt-in by device platform
+      if (u.devicePlatform === "ios") { iosUsers++; if (u.pushToken) iosWithPush++; }
+      if (u.devicePlatform === "android") { androidUsers++; if (u.pushToken) androidWithPush++; }
 
       const lifecycle = computeLifecycle(ec, lastEntry, u.appFirstOpenedAt, allDownloadByUser.get(u.id) ?? EMPTY_EVENT_SET, now);
       if (lifecycle === "At risk") atRisk++;
@@ -259,6 +266,10 @@ export async function GET(req: NextRequest) {
         blockedWebview: dlBlockedWebview,
         tappedAppStore: dlTappedAppStore,
         bouncedFromStore: dlBouncedFromStore,
+      },
+      pushOptIn: {
+        ios: { total: iosUsers, withPush: iosWithPush },
+        android: { total: androidUsers, withPush: androidWithPush },
       },
     };
     } catch (err) {

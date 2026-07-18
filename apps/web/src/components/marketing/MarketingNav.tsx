@@ -32,7 +32,7 @@ export function MarketingNav() {
     >
       <div className="mx-auto flex max-w-[1180px] items-center justify-between px-7 py-[15px]">
         <a href="/" className="flex items-center gap-2.5">
-          <Image src="/ripple-mark-coral.png" alt="Ripple" width={36} height={36} priority className="shrink-0" />
+          <Image src="/ripple-mark-coral.png?v=2" alt="Ripple" width={36} height={36} priority className="shrink-0" />
           <span className="font-display text-[20px] font-extrabold tracking-[-0.4px] text-acuity-text">
             Ripple
           </span>

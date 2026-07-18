@@ -1395,7 +1395,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
         {/* Headline */}
         <div className={`text-center pt-16 pb-10 sm:pt-24 transition-all duration-700 ${vis(1)}`}>
           <img
-            src="/ripple-mark-coral.png"
+            src="/ripple-mark-coral.png?v=2"
             alt="Ripple"
             className="mx-auto mb-6"
             style={{ width: 56, height: 56 }}

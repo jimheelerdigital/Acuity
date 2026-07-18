@@ -559,7 +559,7 @@ export function LandingNav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/ripple-mark-white.png" alt="Ripple logo" width={32} height={32} className="shrink-0" />
+            <Image src="/ripple-mark-white.png?v=2" alt="Ripple logo" width={32} height={32} className="shrink-0" />
             <span className="text-lg font-bold tracking-tight text-white">Ripple</span>
           </Link>
           <div className="hidden sm:flex items-center gap-6 text-sm text-acuity-text-sec">
@@ -608,7 +608,7 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <Image src="/ripple-mark-white.png" alt="Ripple logo" width={32} height={32} className="shrink-0" />
+              <Image src="/ripple-mark-white.png?v=2" alt="Ripple logo" width={32} height={32} className="shrink-0" />
               <span className="text-lg font-bold tracking-tight text-white">Ripple</span>
             </div>
             <p className="mt-2 text-sm text-acuity-text-sec max-w-xs">

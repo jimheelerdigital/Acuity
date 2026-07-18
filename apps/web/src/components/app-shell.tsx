@@ -254,7 +254,7 @@ function Sidebar({ onOpenRecord }: { onOpenRecord: () => void }) {
       <div className="flex h-[68px] items-center border-b border-acuity-line px-5">
         <Link href="/home" className="flex items-center gap-2 group">
           <img
-            src="/ripple-mark-coral.png"
+            src="/ripple-mark-coral.png?v=2"
             alt=""
             className="shrink-0"
             style={{ width: 32, height: 32 }}

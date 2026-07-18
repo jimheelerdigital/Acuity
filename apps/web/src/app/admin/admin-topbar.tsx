@@ -19,7 +19,7 @@ export function AdminTopbar() {
         className="flex items-center gap-2.5 text-white"
       >
         <img
-          src="/ripple-mark-white.png"
+          src="/ripple-mark-white.png?v=2"
           alt=""
           className="shrink-0"
           style={{ width: 32, height: 32 }}

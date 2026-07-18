@@ -320,7 +320,7 @@ function SignUpForm() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
               <div className="mb-6 text-center">
                 <Image
-                  src="/ripple-mark-coral.png"
+                  src="/ripple-mark-coral.png?v=2"
                   alt="Ripple"
                   width={44}
                   height={44}
