@@ -321,6 +321,8 @@ export async function GET(req: NextRequest) {
         signupMethod: true,
         currentStreak: true,
         lastRecordingAt: true,
+        notificationsEnabled: true,
+        pushToken: true,
         _count: {
           select: {
             entries: { where: { status: "COMPLETE" } },
@@ -361,6 +363,8 @@ export async function GET(req: NextRequest) {
         signupMethod: true,
         currentStreak: true,
         lastRecordingAt: true,
+        notificationsEnabled: true,
+        pushToken: true,
         _count: {
           select: {
             entries: { where: { status: "COMPLETE" } },
@@ -451,6 +455,8 @@ export async function GET(req: NextRequest) {
       weeklyReportCount: u._count.weeklyReports,
       lastActive,
       trialEndsAt: u.trialEndsAt,
+      notificationsEnabled: (u as Record<string, unknown>).notificationsEnabled === true,
+      hasPushToken: Boolean((u as Record<string, unknown>).pushToken),
       downloadReminder: (() => {
         const rec = latestRecoveryByUser.get(u.id);
         if (rec) {

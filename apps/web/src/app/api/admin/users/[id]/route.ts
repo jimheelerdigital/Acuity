@@ -48,6 +48,12 @@ export async function GET(
       appVersion: true,
       appFirstOpenedAt: true,
       firstRecordingAt: true,
+      notificationsEnabled: true,
+      notificationTime: true,
+      notificationDays: true,
+      pushToken: true,
+      pushTokenPlatform: true,
+      pushTokenUpdatedAt: true,
       signupUtmSource: true,
       signupUtmMedium: true,
       signupUtmCampaign: true,
@@ -113,6 +119,14 @@ export async function GET(
       devicePlatform: user.devicePlatform,
       appVersion: user.appVersion,
       appFirstOpenedAt: user.appFirstOpenedAt,
+      // Notifications (reminder opt-in + push delivery state). Only expose
+      // whether a push token exists, never the token value itself.
+      notificationsEnabled: user.notificationsEnabled,
+      notificationTime: user.notificationTime,
+      notificationDays: user.notificationDays,
+      hasPushToken: Boolean(user.pushToken),
+      pushTokenPlatform: user.pushTokenPlatform,
+      pushTokenUpdatedAt: user.pushTokenUpdatedAt,
       // Journey milestones
       onboardingCompletedAt: user.onboarding?.completedAt ?? null,
       onboardingStep: user.onboarding?.currentStep ?? null,

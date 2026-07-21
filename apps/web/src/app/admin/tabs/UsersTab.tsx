@@ -23,6 +23,8 @@ type ListUser = {
   weeklyReportCount: number;
   lastActive: string | null;
   trialEndsAt: string | null;
+  notificationsEnabled: boolean;
+  hasPushToken: boolean;
   downloadReminder: string;
 };
 
@@ -66,6 +68,12 @@ type DetailUser = ListUser & {
   devicePlatform: string | null;
   appVersion: string | null;
   appFirstOpenedAt: string | null;
+  notificationsEnabled: boolean;
+  notificationTime: string | null;
+  notificationDays: number[];
+  hasPushToken: boolean;
+  pushTokenPlatform: string | null;
+  pushTokenUpdatedAt: string | null;
 };
 
 type Override = {
@@ -288,6 +296,7 @@ export default function UsersTab() {
                 <SortHeader label="Entries" field="entries" current={sortField} dir={sortDir} onClick={toggleSort} />
                 <SortHeader label="Last Entry" field="lastEntry" current={sortField} dir={sortDir} onClick={toggleSort} />
                 <th className="px-3 py-3">Streak</th>
+                <th className="px-3 py-3">Notifications</th>
                 <th className="px-3 py-3">Reports</th>
                 <SortHeader label="Last Active" field="lastActive" current={sortField} dir={sortDir} onClick={toggleSort} />
                 <th className="px-3 py-3">Recovery</th>
@@ -366,6 +375,11 @@ export default function UsersTab() {
                   {/* Streak */}
                   <td className="px-3 py-2.5 text-[11px] text-white/50">
                     {u.streak > 0 ? `${u.streak}d` : "—"}
+                  </td>
+
+                  {/* Notifications */}
+                  <td className="px-3 py-2.5">
+                    <NotificationsPill enabled={u.notificationsEnabled} hasPushToken={u.hasPushToken} />
                   </td>
 
                   {/* Weekly Reports */}
@@ -459,6 +473,26 @@ function PlatformPill({ platform }: { platform: string }) {
   return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${bg}`}>{platform}</span>;
 }
 
+function NotificationsPill({ enabled, hasPushToken }: { enabled: boolean; hasPushToken: boolean }) {
+  // "On" = the user opted into reminders. If they're opted in but we have no
+  // push token (OS permission not granted / revoked, or web-only), flag it —
+  // push can't actually be delivered even though the preference is on.
+  if (!enabled) {
+    return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-white/5 text-white/40">Off</span>;
+  }
+  if (!hasPushToken) {
+    return (
+      <span
+        title="Reminders are on, but there's no push token — the OS permission isn't granted so push can't be delivered."
+        className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-500/20 text-amber-300"
+      >
+        On · no device
+      </span>
+    );
+  }
+  return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-500/20 text-green-300">On</span>;
+}
+
 function LifecyclePill({ stage }: { stage: string }) {
   const STYLES: Record<string, string> = {
     "Signed up": "bg-white/10 text-white/50",
@@ -481,6 +515,13 @@ function LifecyclePill({ stage }: { stage: string }) {
 function firstName(name: string | null): string {
   if (!name || !name.trim()) return "—";
   return name.trim().split(/\s+/)[0];
+}
+
+function formatNotificationDays(days: number[] | null | undefined): string {
+  if (!days || days.length === 0) return "None";
+  if (days.length === 7) return "Every day";
+  const NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return [...days].sort((a, b) => a - b).map((d) => NAMES[d] ?? d).join(", ");
 }
 
 function daysSince(dateStr: string): number {
@@ -630,6 +671,20 @@ function UserDetailModal({
                 <div><dt className="text-white/40">Source</dt><dd>{data.user.signupUtmSource || "—"}</dd></div>
                 <div><dt className="text-white/40">Medium</dt><dd>{data.user.signupUtmMedium || "—"}</dd></div>
                 <div><dt className="text-white/40">Campaign</dt><dd className="truncate max-w-[150px]">{data.user.signupUtmCampaign || "—"}</dd></div>
+              </dl>
+            </div>
+            {/* Notifications */}
+            <div className="rounded-md bg-[#13131F] p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+                Notifications
+                <NotificationsPill enabled={data.user.notificationsEnabled} hasPushToken={data.user.hasPushToken} />
+              </div>
+              <dl className="grid grid-cols-2 gap-2 text-xs">
+                <div><dt className="text-white/40">Reminders</dt><dd>{data.user.notificationsEnabled ? "On" : "Off"}</dd></div>
+                <div><dt className="text-white/40">Reminder time</dt><dd>{data.user.notificationTime ?? "—"}</dd></div>
+                <div><dt className="text-white/40">Days</dt><dd>{formatNotificationDays(data.user.notificationDays)}</dd></div>
+                <div><dt className="text-white/40">Push device</dt><dd>{data.user.hasPushToken ? (data.user.pushTokenPlatform ? (data.user.pushTokenPlatform === "ios" ? "iOS" : "Android") : "Registered") : "None"}</dd></div>
+                <div className="col-span-2"><dt className="text-white/40">Push token updated</dt><dd>{data.user.pushTokenUpdatedAt ? new Date(data.user.pushTokenUpdatedAt).toLocaleString() : "—"}</dd></div>
               </dl>
             </div>
             <JourneyTimeline user={data.user} />
