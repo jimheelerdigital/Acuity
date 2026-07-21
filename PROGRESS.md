@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-21] — See who has notifications turned on, right in the Users tab
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4aba406a
+
+### In plain English (for Keenan)
+The admin Users list now has a "Notifications" column so you can tell at a glance whether each person has reminders turned on. It shows "On" (green) for people who opted in, "Off" (grey) for people who didn't, and "On · no device" (amber) for the tricky case where someone flipped reminders on but their phone never registered for push — meaning we can't actually deliver a push to them even though their setting says on. Click "view" on any user and the detail drawer now shows the full picture: their reminder time, which days they picked, what device their push is registered on, and when that last refreshed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/users/route.ts` — added `notificationsEnabled` + `pushToken` to both the primary and fallback list selects; the mapped row now returns `notificationsEnabled` and `hasPushToken` (the raw Expo token is never sent to the client — only a boolean).
+- `apps/web/src/app/api/admin/users/[id]/route.ts` — detail select now pulls `notificationsEnabled`, `notificationTime`, `notificationDays`, `pushToken`, `pushTokenPlatform`, `pushTokenUpdatedAt`; response returns those (again `hasPushToken` boolean, not the token).
+- `apps/web/src/app/admin/tabs/UsersTab.tsx` — new `Notifications` table column + `NotificationsPill` (3 states), a Notifications section in the user detail modal, and a `formatNotificationDays` helper (0=Sun..6=Sat → "Every day" / "Mon, Wed, Fri" / "None"). Extended `ListUser` + `DetailUser` types.
+
+### Manual steps needed
+- [ ] None. No schema change — all fields already exist on the `User` model (`notificationsEnabled`, `notificationTime`, `notificationDays`, `pushToken*`), so no `prisma db push` required.
+- [ ] Keenan: after the next deploy, open /admin → Users and confirm the new column reads sensibly against a couple of known users.
+
+### Notes
+- "On" is driven by `User.notificationsEnabled` (the in-app reminder opt-in). The amber "On · no device" state catches the gap where `notificationsEnabled = true` but there's no `pushToken` — e.g. OS permission never granted/revoked, or a web-only user — so push can't be delivered even though the preference is on. This is the honest signal for deliverability, not just the toggle.
+- Did NOT use `UserNotificationPreferences.pushEnabled` — per the schema comment that's the smart-notifications engine and stays `false` (v1 is email-only until mobile ships it). The reminder opt-in the user actually controls is `notificationsEnabled`, which is the right field for "are notifications on."
+- Held the push per standing workflow — commit `4aba406a` is local only until "push it". Type-check: no new errors introduced in the touched files (pre-existing unrelated errors in adlab/experiments and the DeletedUser DELETE handler remain).
+
 ## [2026-07-16] — Fix: Ripple logo now actually shows on the live homepage nav + footer
 
 **Requested by:** Keenan
