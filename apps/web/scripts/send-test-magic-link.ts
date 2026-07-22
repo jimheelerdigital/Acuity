@@ -32,7 +32,7 @@ function emailLayout(opts: {
   <span style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden;">${pre}</span>
   <div style="max-width:480px;margin:0 auto;background:#18181B;border-radius:16px;padding:40px;border:1px solid #27272A;">
     <div style="text-align:center;margin-bottom:32px;">
-      <img src="https://www.getacuity.io/icon-512.png" alt="Ripple" width="48" height="48" style="display:block;margin:0 auto 16px;width:48px;height:48px;border-radius:12px;" />
+      <img src="https://goripple.io/icon-512.png" alt="Ripple" width="48" height="48" style="display:block;margin:0 auto 16px;width:48px;height:48px;border-radius:12px;" />
       <h1 style="color:#FAFAFA;font-size:24px;font-weight:700;margin:0;">${title}</h1>
     </div>
     <p style="color:#A1A1AA;font-size:15px;line-height:1.6;margin:0 0 32px;">
@@ -72,7 +72,7 @@ async function main() {
     intro:
       "Click the button below to sign in. This link expires in 24 hours and can only be used once.",
     ctaLabel: "Sign in to Acuity",
-    ctaUrl: "https://www.getacuity.io/api/auth/callback/email?callbackUrl=%2F&token=test-token-for-logo-verification&email=keenan%40heelerdigital.com",
+    ctaUrl: "https://goripple.io/api/auth/callback/email?callbackUrl=%2F&token=test-token-for-logo-verification&email=keenan%40heelerdigital.com",
   });
 
   console.log(`Sending test magic-link email to ${to}...`);

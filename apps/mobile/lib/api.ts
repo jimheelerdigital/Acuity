@@ -33,7 +33,7 @@ function apiBaseUrl(): string {
   return (
     process.env.EXPO_PUBLIC_API_URL ??
     extra?.apiUrl ??
-    "https://getacuity.io"
+    "https://goripple.io"
   );
 }
 

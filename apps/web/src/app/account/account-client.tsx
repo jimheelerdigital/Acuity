@@ -980,7 +980,7 @@ function ReferralsSection() {
     typeof window !== "undefined" && data?.referralCode
       ? `${window.location.origin}/?ref=${data.referralCode}`
       : data?.referralCode
-        ? `https://www.getacuity.io/?ref=${data.referralCode}`
+        ? `https://goripple.io/?ref=${data.referralCode}`
         : null;
 
   const copy = async () => {

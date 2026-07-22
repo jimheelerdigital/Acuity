@@ -500,7 +500,7 @@ export const autoBlogGenerateFn = inngest.createFunction(
         if (!piece) throw new Error(`ContentPiece ${result.pieceId} not found`);
 
         const slug = await uniqueSlug(prisma, slugify(piece.title));
-        const distributedUrl = `https://getacuity.io/blog/${slug}`;
+        const distributedUrl = `https://goripple.io/blog/${slug}`;
 
         await prisma.contentPiece.update({
           where: { id: result.pieceId! },
@@ -1299,7 +1299,7 @@ EXTERNAL CITATIONS — link to 2-4 authoritative external sources per post to su
 Rules for external links:
 - Every external link must use the EXACT, full URL you are confident exists (e.g., https://www.apa.org/monitor/2023/06/cover-story-expressive-writing)
 - Prefer homepage-level or well-known permalink URLs that are unlikely to break (e.g., https://www.psychologytoday.com rather than a deeply nested article you are not sure exists)
-- NEVER link to getacuity.io as an external link — all Ripple links must be internal (/for/*, /blog/*)
+- NEVER link to goripple.io as an external link — all Ripple links must be internal (/for/*, /blog/*)
 - NEVER use these wrong domains for Ripple: acuity.how, acuity.app, acuityapp.com, acuity.com, useacuity.com
 - All external links must open in a new tab: target="_blank" rel="noopener noreferrer"
 - If you are not 100% certain a URL exists, do NOT include it. A post with zero external links is better than a post with broken external links.

@@ -41,7 +41,7 @@ export const recoveryRecordedOnce: TrialEmailTemplate = {
       </tr>
       <tr>
         <td style="padding-bottom:28px;">
-          ${secondaryButton("https://www.getacuity.io/home", "Use the web version")}
+          ${secondaryButton("https://goripple.io/home", "Use the web version")}
         </td>
       </tr>
       ${keenanSignature()}

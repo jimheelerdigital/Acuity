@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   // BLOG posts auto-publish on approve
   if (existing.type === "BLOG") {
     const slug = await uniqueSlug(prisma, slugify(existing.title));
-    const distributedUrl = `https://getacuity.io/blog/${slug}`;
+    const distributedUrl = `https://goripple.io/blog/${slug}`;
 
     const piece = await prisma.contentPiece.update({
       where: { id: pieceId },

@@ -2024,13 +2024,13 @@ function LandingPageSection({
 
   // Direct to Funnel — show confirmation card with full UTM URL
   if (isDirectFunnel) {
-    const funnelUrl = `https://getacuity.io/start?utm_source=meta&utm_medium=paid&utm_campaign=${encodeURIComponent(experiment.topicBrief || experiment.id)}&utm_content=${experiment.id}`;
+    const funnelUrl = `https://goripple.io/start?utm_source=meta&utm_medium=paid&utm_campaign=${encodeURIComponent(experiment.topicBrief || experiment.id)}&utm_content=${experiment.id}`;
 
     return (
       <div className="mb-4">
         <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Destination</p>
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
-          <p className="text-sm text-emerald-400 font-medium">Destination: getacuity.io/start</p>
+          <p className="text-sm text-emerald-400 font-medium">Destination: goripple.io/start</p>
           <p className="text-xs text-[#A0A0B8]">
             Ad clicks go directly to the onboarding funnel with UTM tracking.
           </p>
@@ -2054,7 +2054,7 @@ function LandingPageSection({
   const landingPage = experiment.landingPage;
   const projectUrl = experiment.project.landingPageUrl;
   const landingPageUrl = landingPage
-    ? `https://getacuity.io/for/${landingPage.slug}`
+    ? `https://goripple.io/for/${landingPage.slug}`
     : null;
 
   const destinationUrl = landingPageUrl
@@ -2144,7 +2144,7 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
   const [paywallHook, setPaywallHook] = useState(experiment.customPaywallHook || "");
 
   const hasAnyCopy = !!(painHook || bridge || promise || paywallHook);
-  const previewUrl = `https://getacuity.io/start?utm_source=preview&utm_medium=adlab&utm_campaign=${experiment.id}`;
+  const previewUrl = `https://goripple.io/start?utm_source=preview&utm_medium=adlab&utm_campaign=${experiment.id}`;
 
   async function save() {
     setSaving(true);

@@ -42,14 +42,14 @@ import type { TrialVars } from "../src/emails/trial/types";
 
 const sampleVars: TrialVars = {
   firstName: "Keenan",
-  appUrl: "https://www.getacuity.io",
+  appUrl: "https://goripple.io",
   trialEndsAt: "July 1",
   trialEndsAtRaw: new Date("2026-07-01T12:00:00Z"),
   totalRecordings: 5,
   topTheme: "work stress",
   firstDebriefTaskCount: 3,
   foundingMemberNumber: null,
-  unsubscribeUrl: "https://www.getacuity.io/api/emails/unsubscribe?token=preview",
+  unsubscribeUrl: "https://goripple.io/api/emails/unsubscribe?token=preview",
 };
 
 const emails = [

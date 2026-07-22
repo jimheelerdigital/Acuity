@@ -15,7 +15,7 @@ const LAST_UPDATED = "June 11, 2026";
  * referenced from the App Store / web support pages. Must be reachable
  * without signing in.
  *
- * Canonical URL: https://www.getacuity.io/delete-account
+ * Canonical URL: https://goripple.io/delete-account
  */
 export default function DeleteAccountPage() {
   return (

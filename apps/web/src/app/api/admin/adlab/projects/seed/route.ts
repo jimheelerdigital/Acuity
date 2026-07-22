@@ -96,7 +96,7 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
       ],
       imageStylePrompt:
         "Abstract, editorial photography style. Moody lighting, muted purple and indigo tones on dark background. Minimal composition, high contrast. No text, no logos, no faces. Evokes calm introspection and clarity.",
-      logoUrl: "https://getacuity.io/icon-512.png",
+      logoUrl: "https://goripple.io/icon-512.png",
       targetCplCents: 500, // $5.00
       dailyBudgetCentsPerVariant: 1000, // $10.00
       testDurationDays: 14,
@@ -104,7 +104,7 @@ Show artifacts (the weekly report, the memoir PDF), not mechanisms.`,
       metaPixelId: "", // To be filled
       metaPageId: "", // To be filled
       metaAppId: "", // To be filled — Meta App ID from developers.facebook.com (for app install campaigns)
-      landingPageUrl: "https://getacuity.io",
+      landingPageUrl: "https://goripple.io",
       conversionEvent: "Lead",
       conversionObjective: "OUTCOME_LEADS",
     },

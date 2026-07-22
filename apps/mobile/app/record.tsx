@@ -635,7 +635,7 @@ export default function RecordScreen() {
     void (async () => {
       try {
         const apiBase =
-          process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+          process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
         const token = await getToken();
         await fetch(`${apiBase}/api/entries/${entryId}`, {
           method: "DELETE",
@@ -756,7 +756,7 @@ export default function RecordScreen() {
     try {
       if (useDeletePath) {
         const apiBase =
-          process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+          process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
         const token = await getToken();
         const res = await fetch(
           `${apiBase}/api/entries/${entryIdAtCancel}`,
@@ -790,7 +790,7 @@ export default function RecordScreen() {
       // Later-phase fall-through: existing POST /cancel flow.
       // Manual fetch instead of api.post so we can introspect 410.
       const apiBase =
-        process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+        process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
       const token = await getToken();
       const res = await fetch(
         `${apiBase}/api/entries/${entryIdAtCancel}/cancel`,

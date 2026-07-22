@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
         adLinkUrl = APP_STORE_URL;
       } else {
         const baseUrl = effectiveLandingPage?.slug
-          ? `https://getacuity.io/for/${effectiveLandingPage.slug}`
+          ? `https://goripple.io/for/${effectiveLandingPage.slug}`
           : landingPageUrl!;
         const linkUrl = new URL(baseUrl);
         linkUrl.searchParams.set("utm_source", "meta");

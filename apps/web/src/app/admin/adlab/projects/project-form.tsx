@@ -322,11 +322,11 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
         </Field>
         <Field label="Logo URL">
           <input type="url" value={data.logoUrl} onChange={(e) => updateField("logoUrl", e.target.value)}
-            className={inputClass} placeholder="https://getacuity.io/icon-512.png" />
+            className={inputClass} placeholder="https://goripple.io/icon-512.png" />
         </Field>
         <Field label="Landing Page URL">
           <input type="url" value={data.landingPageUrl} onChange={(e) => updateField("landingPageUrl", e.target.value)}
-            className={inputClass} placeholder="https://getacuity.io" />
+            className={inputClass} placeholder="https://goripple.io" />
         </Field>
         <label className="flex items-center gap-3 cursor-pointer">
           <div className={`relative h-5 w-9 rounded-full transition-colors ${data.imageEnabled ? "bg-[#8E6FE6]" : "bg-white/20"}`}

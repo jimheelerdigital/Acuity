@@ -6,7 +6,7 @@ export default withAuth(
     const host = req.headers.get("host") ?? "";
     const { pathname } = req.nextUrl;
 
-    // app.getacuity.io root → signin page (not the marketing landing page)
+    // app.goripple.io root → signin page (not the marketing landing page)
     if (host.startsWith("app.") && pathname === "/") {
       return NextResponse.redirect(new URL("/auth/signin", req.url));
     }
@@ -23,7 +23,7 @@ export default withAuth(
   {
     callbacks: {
       // Only require auth on the protected routes below.
-      // For everything else (including the app.getacuity.io → signin redirect),
+      // For everything else (including the app.goripple.io → signin redirect),
       // let the request through regardless of auth status.
       authorized: ({ token, req }) => {
         const protectedPaths = [
@@ -65,7 +65,7 @@ export const config = {
     "/upgrade/:path*",
     // AdLab admin
     "/admin/adlab/:path*",
-    // Root path — needed for app.getacuity.io redirect
+    // Root path — needed for app.goripple.io redirect
     "/",
   ],
 };

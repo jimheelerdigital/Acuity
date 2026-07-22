@@ -2,7 +2,7 @@
 
 **Product:** Acuity — Nightly Voice Journaling
 **Stack:** Next.js 14 (web) + Expo SDK 54 (mobile) + Supabase/Prisma + Stripe
-**Production:** https://getacuity.io
+**Production:** https://goripple.io
 **Status:** v1.0 (build 42) **LIVE on App Store** as of 2026-05-15
 
 ---
@@ -29,6 +29,118 @@ The admin Users list now has a "Notifications" column so you can tell at a glanc
 - "On" is driven by `User.notificationsEnabled` (the in-app reminder opt-in). The amber "On · no device" state catches the gap where `notificationsEnabled = true` but there's no `pushToken` — e.g. OS permission never granted/revoked, or a web-only user — so push can't be delivered even though the preference is on. This is the honest signal for deliverability, not just the toggle.
 - Did NOT use `UserNotificationPreferences.pushEnabled` — per the schema comment that's the smart-notifications engine and stays `false` (v1 is email-only until mobile ships it). The reminder opt-in the user actually controls is `notificationsEnabled`, which is the right field for "are notifications on."
 - Held the push per standing workflow — commit `4aba406a` is local only until "push it". Type-check: no new errors introduced in the touched files (pre-existing unrelated errors in adlab/experiments and the DeletedUser DELETE handler remain).
+
+---
+
+## [2026-07-21] — Domain sweep: replace all getacuity.io references with goripple.io
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5d195dac
+
+### In plain English (for Keenan)
+Every URL across the entire website, mobile app, email templates, sitemap, robots.txt, and internal tools that used to point to getacuity.io now points to goripple.io. When someone shares a blog post, the link says goripple.io. When Google crawls the sitemap, it sees goripple.io. When a user gets an email with a "Use the web app" button, it goes to goripple.io. New blog posts published by the auto-blog system will have goripple.io canonical URLs. The email sending addresses (hello@getacuity.io, keenan@getacuity.io) are NOT changed yet — those need Resend domain verification first and are tracked as a separate step.
+
+### Technical changes (for Jimmy)
+- **115 files changed** across web app, mobile app, email templates, scripts, and config
+- **SEO/metadata (21 files):** `metadataBase`, canonical tags, OG URLs, Schema.org JSON-LD, breadcrumbs — `layout.tsx`, `sitemap.ts`, `robots.ts`, `page.tsx`, all `blog/[slug]`, `voice-journaling`, all `/for/*` layouts and pages, `llms.txt`, `security.txt`
+- **Email templates (16 files):** All hardcoded `https://getacuity.io` and `https://www.getacuity.io` links in email body/footer → `https://goripple.io`. Includes trial layout, founder welcome, keenan signature, digest layout, drip email footer, recovery/download reminder, payment failed, state-of-me, backfill-complete, waitlist activation
+- **Mobile app (23 files):** All API URL fallbacks (`process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io"` → `goripple.io`), terms/privacy links, `app.getacuity.io` → `app.goripple.io`. `eas.json` EXPO_PUBLIC_API_URL updated for all 3 build profiles. `app.json` apiUrl updated.
+- **API routes (21 files):** `eventSourceUrl` in CAPI + Stripe webhook, `distributedUrl` in auto-blog + content-factory approve, all AdLab URLs (launch, validate, add-to-campaign, seed, cron, compliance), Stripe portal/manage fallbacks, share routes, waitlist/unsubscribe HTML
+- **Inngest functions (5 files):** auto-blog distributedUrl + content instruction, weekly-digest baseUrl, waitlist-reactivation BASE_URL, stripe-webhook-health alert URLs
+- **Components (7 files):** landing.tsx FAQ text, user-menu docs link (`docs.getacuity.io` → `docs.goripple.io`), pro-locked-card (`app.getacuity.io` → `app.goripple.io`), blog/ad/email preview display text
+- **Lib files (7 files):** trial-emails DEFAULT_APP_URL, trial-countdown-emails DEFAULT_APP_URL, drip-emails footer, free-tier-copy tests, middleware comments, auth.ts comment, app-version-config comment
+- **Scripts (8 files):** preview-keep-emails, send-preview-emails, send-test-magic-link, android-launch-send, preview-welcome-verify, seed-iap-reviewer, deploy-main.sh, test-drip-emails
+- **Other:** PROGRESS.md header, AASA route comment, `docs/compliance/subprocessors.md` privacy link, `next.config.js` comment
+
+**NOT changed (by design):**
+- **Email sending addresses (69 files):** `hello@getacuity.io`, `keenan@getacuity.io`, `noreply@getacuity.io`, `support@getacuity.io` in FROM, replyTo, mailto links, and display text — requires Resend domain verification for goripple.io first
+- **Deep-link config:** `app.json` `associatedDomains: ["applinks:getacuity.io"]` and Android `intentFilters` host entries — needs Jimmy's review + new EAS build
+- **OAuth callback:** `calendar/oauth.ts` fallback URL and Google Cloud Console redirect URI comment — needs Jimmy's review
+- **GSC property (3 files):** `sc-domain:getacuity.io` in `search-console.ts`, `url-inspection.ts`, `sync-gsc/route.ts` — must update GSC property first, then update code
+- **Test email domain:** `@test.getacuity.io` in `seed-test-user.ts` and `cleanup-test-users.ts`
+- **Historical docs/audit files (33 files):** PROGRESS.md entries, SECURITY_AUDIT.md, audit/*, docs/*, progress-adlab.md, diagnostic SQL
+
+### Manual steps needed
+- [ ] **Vercel env vars (Keenan/Jimmy):** Update `NEXTAUTH_URL` from `https://getacuity.io` (or `https://www.getacuity.io`) to `https://goripple.io`. Also update `NEXT_PUBLIC_SITE_URL`, `APP_URL`, or any other env var containing getacuity.io. Check with: Vercel dashboard → Project → Settings → Environment Variables
+- [ ] **Vercel domain config (Keenan):** Add `goripple.io` as primary domain. Configure `www.goripple.io` to 301 redirect to `goripple.io`. Keep `getacuity.io` as a redirect alias to `goripple.io` for existing links
+- [ ] **Resend domain verification (Jimmy):** Verify `goripple.io` as a sending domain in Resend (SPF + DKIM DNS records). Once verified, update all FROM/replyTo email addresses in code from `@getacuity.io` to `@goripple.io`
+- [ ] **Deep-link config (Jimmy):** Update `app.json` `associatedDomains` from `applinks:getacuity.io` to `applinks:goripple.io`. Update Android `intentFilters` host entries. Requires new EAS build + AASA/assetlinks serving from goripple.io
+- [ ] **OAuth redirect URIs (Jimmy):** Update Google Cloud Console OAuth client redirect URI from `https://getacuity.io/api/calendar/callback` to `https://goripple.io/api/calendar/callback`. Update `calendar/oauth.ts` fallback URL
+- [ ] **Google Search Console (Keenan/Jimmy):** Add `sc-domain:goripple.io` as a new property. Add the service account as Owner. Once verified, update `search-console.ts`, `url-inspection.ts`, and `sync-gsc/route.ts` to use the new property
+- [ ] **Blog DB migration (Jimmy):** Existing published blog posts store `distributedUrl` as `https://getacuity.io/blog/<slug>`. Run a SQL update to change these to `https://goripple.io/blog/<slug>`. Query: `UPDATE "ContentPiece" SET "distributedUrl" = REPLACE("distributedUrl", 'https://getacuity.io', 'https://goripple.io') WHERE "distributedUrl" LIKE 'https://getacuity.io%';` — report row count
+- [ ] **Stripe dashboard (Jimmy):** Update webhook endpoint URL, support URL, support email, website URL in Stripe settings to use goripple.io
+- [ ] **App Store Connect (Jimmy):** Update Support URL, Marketing URL, Privacy Policy URL to goripple.io
+- [ ] **Google Play Console (Jimmy):** Update store listing URLs to goripple.io
+- [ ] **Apple Sign In (Jimmy):** Update web domain and return URL in Apple Developer portal
+- [ ] **Facebook/social cache clear (Keenan):** Scrape goripple.io in Facebook Debug Tool, Twitter Card Validator, LinkedIn Post Inspector to refresh OG metadata
+
+### Notes
+- The `app.getacuity.io` → `app.goripple.io` and `docs.getacuity.io` → `docs.goripple.io` subdomain changes in code are ready, but the Vercel aliases need to be created for those subdomains too
+- Existing blog posts in the DB have `distributedUrl` with getacuity.io — the auto-blog's GSC sync will fail to match URLs until either (a) the DB rows are migrated or (b) the GSC property is switched. Do both together.
+- The `getacuity.io` domain should remain configured as a redirect to `goripple.io` indefinitely — existing links, App Store slugs, bookmarks, and Google's index all point there
+- Email sending addresses are the biggest remaining block — once Resend verifies goripple.io, a second sweep of ~69 files will update all FROM/replyTo/mailto references
+- The `@test.getacuity.io` test email domain is only used for App Store reviewer accounts and test user seeding. Change it to `@test.goripple.io` when the test subdomain DNS is configured.
+
+---
+
+## [2026-07-18] — Fix platform tracking + push opt-in visibility in admin dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 83a999b4
+
+### In plain English (for Keenan)
+Android users were showing as "None" or "iOS" in the admin dashboard instead of "Android." Now the Platform column correctly shows Android for the 11 Android users. A new "Push notification opt-in by platform" section appears in the dashboard summary, showing how many iOS and Android users have push tokens enabled (currently 9/35 iOS, 0/11 Android). The push token registration code in the mobile app was already correct — no hardcoding bug — so the one Android user with an "ios" push token likely registered on an iPhone before switching devices.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/users/route.ts`: Fixed `computePlatform()` — was always returning "iOS" when `hasApp` is true; now checks `devicePlatform` and returns "Android" when appropriate
+- `apps/web/src/app/api/admin/users/route.ts`: Added `pushToken` to summary stats query; added `pushOptIn` counters (ios/android x total/withPush) to summary response
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: Added "Android" to `ListUser.platform` type union; added green pill color for Android; added `pushOptIn` to `SummaryStats` type; added "Push notification opt-in by platform" stats section
+- No changes to `apps/mobile/lib/push-token.ts` — code correctly uses `Platform.OS` to detect ios/android, no hardcoding
+
+### Manual steps needed
+None
+
+### Notes
+- **Push token platform anomaly:** One Android user (`devicePlatform='android'`) has `pushTokenPlatform='ios'`. This is a data-level issue — the user likely registered their push token on iOS then switched to Android. The code path is correct and would register 'android' on the next token refresh from an Android device.
+- **Android push (FCM) — assessment for Jimmy:**
+  - **Everything is already wired up.** `google-services.json` exists, EAS Android build profiles are configured, `expo-notifications` has an Android notification channel, all three server-side push senders use Expo Push API (which routes FCM automatically), and the mobile token registration code detects platform correctly.
+  - **The blocker is activation** — token registration is gated pending Jimmy's go/no-go because it touches live app launch + auth + a new API contract.
+  - **Task list:** (1) Approve/activate push token registration in the mobile app. (2) Build Android APK via EAS and test end-to-end: permission prompt after 2nd recording, push delivery via twice-daily cron, trial countdown pushes. (3) Monitor token rotation via `pushTokenUpdatedAt`. (4) No additional Firebase or server setup needed — Expo handles FCM routing.
+  - **Effort estimate:** ~2 hours for testing/activation if no issues; the code is production-ready.
+
+---
+
+## [2026-07-18] — Replace all logos with new bold Ripple brand mark + send rebrand email to 302 users
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 501ffd6d
+
+### In plain English (for Keenan)
+Every logo across the entire website — nav bars, footer, landing pages, sign-in/sign-up screens, admin dashboard, app icons, and favicons — now shows the new bold Ripple mark instead of the old soft watercolor version. Six new logo variants were added from the Desktop files. A rebrand announcement email was also sent to all 302 real users in the database, letting them know Acuity is now Ripple, explaining the meaning behind the name, and linking to both the iOS and Android apps. 18 test/internal accounts were filtered out. Zero failures.
+
+### Technical changes (for Jimmy)
+- Replaced `apps/web/public/ripple-mark-coral.png` with new bold orange-on-cream mark (1254x1254)
+- Replaced `apps/web/public/ripple-mark-white.png` with new bold white-on-navy mark (1254x1254)
+- Replaced `apps/web/public/ripple-lockup-cream.png` with new logo+name lockup on cream
+- Replaced `apps/web/public/ripple-lockup-dusk.png` with new logo+name lockup on navy
+- Added `apps/web/public/ripple-mark-indigo.png` (new white-on-indigo variant)
+- Regenerated `icon-512.png`, `icon-192.png`, `icon-512-maskable.png`, `apple-touch-icon.png`, `favicon-96x96.png`, `favicon.ico` from white-on-burnt-orange logo
+- Updated width/height in 14 component files from rectangular (5:3 ratio) to square (1:1) to match new mark dimensions
+- Created `scripts/send-rebrand-email.ts` — one-off bulk email script via Resend, with dry-run support and test account filtering
+- Sent rebrand email to 302 users (320 total minus 18 test/internal), 0 failures
+
+### Manual steps needed
+None
+
+### Notes
+- New mark PNGs are significantly larger (~900KB vs ~3KB) because they're high-res with solid backgrounds instead of small transparent marks. Consider optimizing if page load speed is impacted.
+- The `from` address is still `keenan@getacuity.io` — update when a Ripple domain is set up in Resend.
+- App Store listing URLs still reference "acuity-daily" — Apple/Google control those slugs.
+
+---
 
 ## [2026-07-16] — Fix: Ripple logo now actually shows on the live homepage nav + footer
 

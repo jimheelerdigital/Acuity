@@ -436,7 +436,7 @@ export async function GET(req: NextRequest) {
       concluded.push(exp.id);
 
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "https://getacuity.io";
+        const baseUrl = process.env.NEXTAUTH_URL || "https://goripple.io";
         await fetch(`${baseUrl}/api/admin/adlab/experiments/${exp.id}/learn`, {
           method: "POST",
           headers: { authorization: `Bearer ${cronSecret}` },

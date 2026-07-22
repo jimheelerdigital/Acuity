@@ -19,7 +19,7 @@ import { inngest } from "@/inngest/client";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
 
 const EMAIL_FROM = "hello@getacuity.io";
-const BASE_URL = "https://www.getacuity.io";
+const BASE_URL = "https://goripple.io";
 
 function signupUrl(emailNum: 1 | 2): string {
   return `${BASE_URL}/start?utm_source=email&utm_medium=reactivation&utm_campaign=waitlist&utm_content=email_${emailNum}`;

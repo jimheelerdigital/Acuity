@@ -14,7 +14,7 @@
  *   You have {{olderCount}} older entries (recorded more than 60
  *   days ago) that we didn't process this round. If you'd like
  *   those extracted too, you can kick off a second pass from your
- *   account settings: getacuity.io/account
+ *   account settings: goripple.io/account
  *   {{/if}}
  *
  *   — Ripple
@@ -44,7 +44,7 @@ export function backfillCompleteSubject(): string {
 
 export function backfillCompleteHtml(v: BackfillCompleteVars): string {
   const name = esc(v.firstName || "there");
-  const baseUrl = (v.baseUrl ?? "https://app.getacuity.io").replace(/\/+$/, "");
+  const baseUrl = (v.baseUrl ?? "https://app.goripple.io").replace(/\/+$/, "");
   const recentLine = `We extracted themes, tasks, and goal flags from ${v.recentCount} of your recordings. They're live on your dashboard now.`;
   const olderBlock =
     v.olderCount > 0

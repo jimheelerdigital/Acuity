@@ -43,7 +43,7 @@ import { isIapEnabled } from "@/lib/iap-config";
 
 const API_BASE_URL =
   (process.env.EXPO_PUBLIC_API_URL as string | undefined) ??
-  "https://app.getacuity.io";
+  "https://app.goripple.io";
 
 export function ProLockedCard({
   surfaceId,

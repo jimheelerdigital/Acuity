@@ -45,10 +45,10 @@ export default function TermsPage() {
               to extract themes, mood, tasks, goals, and life-area
               insights. The service is delivered via the web at{" "}
               <a
-                href="https://getacuity.io"
+                href="https://goripple.io"
                 className="underline hover:text-acuity-text"
               >
-                getacuity.io
+                goripple.io
               </a>{" "}
               and via our mobile applications.
             </p>

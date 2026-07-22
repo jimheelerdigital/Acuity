@@ -312,7 +312,7 @@ export async function POST(req: NextRequest) {
           adLinkUrl = APP_STORE_URL;
         } else if (experiment.destination === "direct_funnel") {
           // Send directly to /start onboarding funnel
-          const linkUrl = new URL("https://getacuity.io/start");
+          const linkUrl = new URL("https://goripple.io/start");
           linkUrl.searchParams.set("utm_source", "meta");
           linkUrl.searchParams.set("utm_medium", "paid");
           linkUrl.searchParams.set("utm_campaign", experiment.campaignName ?? experiment.id);
@@ -322,7 +322,7 @@ export async function POST(req: NextRequest) {
         } else {
           // Send to landing page (/for/*)
           const baseUrl = effectiveLandingPage?.slug
-            ? `https://getacuity.io/for/${effectiveLandingPage.slug}`
+            ? `https://goripple.io/for/${effectiveLandingPage.slug}`
             : landingPageUrl!;
           const linkUrl = new URL(baseUrl);
           linkUrl.searchParams.set("utm_source", "meta");
@@ -441,7 +441,7 @@ export async function POST(req: NextRequest) {
           adLinkUrl = APP_STORE_URL;
         } else {
           const baseUrl = effectiveLandingPage?.slug
-            ? `https://getacuity.io/for/${effectiveLandingPage.slug}`
+            ? `https://goripple.io/for/${effectiveLandingPage.slug}`
             : landingPageUrl!;
           const linkUrl = new URL(baseUrl);
           linkUrl.searchParams.set("utm_source", "meta");

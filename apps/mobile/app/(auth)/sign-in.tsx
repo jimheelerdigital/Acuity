@@ -1,6 +1,6 @@
 // AUTH-CRITICAL FILE
 // Any change to this file or its render tree REQUIRES manual verification of:
-//   - Web Google OAuth (getacuity.io/auth/signin → Continue with Google)
+//   - Web Google OAuth (goripple.io/auth/signin → Continue with Google)
 //   - Web Apple sign-in (if applicable)
 //   - Web email + password sign-in
 //   - Mobile Google OAuth (TestFlight)

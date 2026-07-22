@@ -49,7 +49,7 @@ import { escapeHtml } from "@/lib/escape-html";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
 import { safeLog } from "@/lib/safe-log";
 
-const DEFAULT_APP_URL = "https://www.getacuity.io";
+const DEFAULT_APP_URL = "https://goripple.io";
 
 export type CountdownEmailKey =
   | "trial_midtrial"

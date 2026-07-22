@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   sendConversionEvent({
     eventName: "PageView",
     eventId,
-    eventSourceUrl: pageUrl || "https://getacuity.io/start",
+    eventSourceUrl: pageUrl || "https://goripple.io/start",
     userData: {
       ip: getClientIp(reqHeaders),
       userAgent: reqHeaders.get("user-agent") || undefined,

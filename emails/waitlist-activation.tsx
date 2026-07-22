@@ -12,7 +12,7 @@
  *   // Send via Resend with subject "You're in — here's your access link"
  */
 
-const SIGNUP_URL = "https://www.getacuity.io/start";
+const SIGNUP_URL = "https://goripple.io/start";
 
 export function buildWaitlistActivationEmail(
   name: string,
@@ -36,7 +36,7 @@ export function buildWaitlistActivationEmail(
           <!-- Logo -->
           <tr>
             <td style="padding-bottom:32px;">
-              <img src="https://www.getacuity.io/AcuityLogoDark.png" alt="Acuity" width="36" height="36" style="display:block;" />
+              <img src="https://goripple.io/AcuityLogoDark.png" alt="Acuity" width="36" height="36" style="display:block;" />
             </td>
           </tr>
 
@@ -144,7 +144,7 @@ export function buildWaitlistActivationEmail(
             <td style="padding-top:40px;border-top:1px solid #E5E7EB;margin-top:40px;">
               <p style="margin:0;font-size:12px;color:#9ca3af;">
                 You're receiving this because you joined the Acuity waitlist.
-                <a href="https://www.getacuity.io" style="color:#7C5CFC;">getacuity.io</a>
+                <a href="https://goripple.io" style="color:#7C5CFC;">goripple.io</a>
               </p>
             </td>
           </tr>

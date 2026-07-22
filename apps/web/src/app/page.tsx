@@ -26,7 +26,7 @@ const jsonLd = {
       name: "Ripple",
       description:
         "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, mood tracking, pattern detection, and weekly reports — all from a daily voice recording.",
-      url: "https://getacuity.io",
+      url: "https://goripple.io",
       applicationCategory: "HealthApplication",
       operatingSystem: "Web, iOS, Android",
       offers: {

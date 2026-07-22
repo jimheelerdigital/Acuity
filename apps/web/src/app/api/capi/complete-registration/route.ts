@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   sendConversionEvent({
     eventName: "CompleteRegistration",
     eventId,
-    eventSourceUrl: "https://getacuity.io/start",
+    eventSourceUrl: "https://goripple.io/start",
     userData: {
       email: user.email ?? undefined,
       firstName: nameParts[0] || undefined,

@@ -283,7 +283,7 @@ export default function PaywallScreen() {
     void trackOnboardingEvent("funnel_trial_started");
 
     const base =
-      process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+      process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
     const url = `${base.replace(/\/$/, "")}/upgrade?src=${PAYWALL_SRC}&signup=fresh`;
 
     try {

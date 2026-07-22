@@ -5,7 +5,7 @@ import { getAllPersonaSlugs } from "@/lib/persona-pages";
 export const revalidate = 300; // 5 minutes
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://getacuity.io";
+  const baseUrl = "https://goripple.io";
   const lastModified = new Date();
 
   // ─── Core pages ──────────────────────────────────────────────────────────

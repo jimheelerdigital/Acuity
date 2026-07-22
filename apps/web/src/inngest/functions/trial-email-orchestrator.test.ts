@@ -174,14 +174,14 @@ describe("trial_ended_day14 — template registry + render", () => {
   it("subject matches spec", () => {
     const subject = TRIAL_EMAIL_TEMPLATES.trial_ended_day14.subject({
       firstName: "Jim",
-      appUrl: "https://www.getacuity.io",
+      appUrl: "https://goripple.io",
       trialEndsAt: "May 14",
       trialEndsAtRaw: NOW,
       totalRecordings: 12,
       topTheme: null,
       firstDebriefTaskCount: null,
       foundingMemberNumber: null,
-      unsubscribeUrl: "https://www.getacuity.io/api/emails/unsubscribe?token=x",
+      unsubscribeUrl: "https://goripple.io/api/emails/unsubscribe?token=x",
     });
     expect(subject).toBe("Your Ripple trial just ended");
   });
@@ -189,14 +189,14 @@ describe("trial_ended_day14 — template registry + render", () => {
   it("html renders firstName, the new-tier framing, and the Option-C-compliant CTA", () => {
     const html = TRIAL_EMAIL_TEMPLATES.trial_ended_day14.html({
       firstName: "Jim",
-      appUrl: "https://www.getacuity.io",
+      appUrl: "https://goripple.io",
       trialEndsAt: "May 14",
       trialEndsAtRaw: NOW,
       totalRecordings: 12,
       topTheme: null,
       firstDebriefTaskCount: null,
       foundingMemberNumber: null,
-      unsubscribeUrl: "https://www.getacuity.io/api/emails/unsubscribe?token=x",
+      unsubscribeUrl: "https://goripple.io/api/emails/unsubscribe?token=x",
     });
     // Personalization
     expect(html).toContain("Jim");

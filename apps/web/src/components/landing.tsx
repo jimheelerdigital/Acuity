@@ -1690,7 +1690,7 @@ export function LandingPage() {
                 { q: "How is Ripple different from voice notes or other recording apps?", a: "Voice notes store audio. Ripple processes it. Within minutes, your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
                 { q: "How much does Ripple cost?", a: "$4.99/month after a 7-day free trial. No credit card required to start. Cancel anytime with one tap." },
                 { q: "What AI does Ripple use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
-                { q: "Can I use Ripple on my phone?", a: "Yes. Ripple works on iPhone and Android. You can also use it on the web at getacuity.io. Your data syncs across devices." },
+                { q: "Can I use Ripple on my phone?", a: "Yes. Ripple works on iPhone and Android. You can also use it on the web at goripple.io. Your data syncs across devices." },
                 { q: "What is the weekly report?", a: "Every Sunday morning, Ripple writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
               ].map((faq, i) => (
                 <details key={i} className="group">

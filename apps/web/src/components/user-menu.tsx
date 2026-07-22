@@ -189,7 +189,7 @@ export function UserMenu({ name, email, image, initials }: UserMenuProps) {
             ref={setItemRef(2)}
             role="menuitem"
             tabIndex={-1}
-            href="https://docs.getacuity.io"
+            href="https://docs.goripple.io"
             target="_blank"
             rel="noopener noreferrer"
             onClick={close}

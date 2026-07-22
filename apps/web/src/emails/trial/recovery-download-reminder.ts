@@ -37,7 +37,7 @@ export const recoveryDownloadReminder: TrialEmailTemplate = {
         "Prefer not to install anything? The web app has everything:"
       )}
       <tr><td style="padding-bottom:20px;">
-        ${trialButton("https://getacuity.io/auth/signin", "Use the web app")}
+        ${trialButton("https://goripple.io/auth/signin", "Use the web app")}
       </td></tr>
       ${para(
         "Whenever you\u2019re ready, your trial is there waiting. A few spoken minutes is all it takes to start \u2014 and if anything\u2019s in your way, just reply and let me know."

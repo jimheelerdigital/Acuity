@@ -17,7 +17,7 @@
  * reviewer arrives unsubscribed, sees the locked-state cards with
  * BOTH CTAs (build-time iapEnabled=true required), and chooses either
  * path to verify. After purchase, the reviewer can also sign into
- * https://getacuity.io with the same credentials and verify Pro
+ * https://goripple.io with the same credentials and verify Pro
  * unlocks there too — that's the multiplatform-service shape Apple's
  * 3.1.3(b) defense rests on.
  *

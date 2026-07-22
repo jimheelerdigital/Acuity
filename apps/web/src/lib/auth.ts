@@ -1,7 +1,7 @@
 // AUTH-CRITICAL FILE
 // Any change to this file (NextAuth config, providers, callbacks, events,
 // adapter, session strategy, cookies) REQUIRES manual verification of:
-//   - Web Google OAuth (getacuity.io/auth/signin → Continue with Google)
+//   - Web Google OAuth (goripple.io/auth/signin → Continue with Google)
 //   - Web email + password sign-in
 //   - Mobile Google OAuth (TestFlight)
 //   - Mobile Apple sign-in (TestFlight)

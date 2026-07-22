@@ -13,10 +13,10 @@ import { useAuth } from "@/contexts/auth-context";
  * Slice B Stage 1 (2026-05-15): only the verify-email URL is
  * intercepted. AASA at apps/web/src/app/.well-known/apple-app-site-
  * association/route.ts declares the matching path. associatedDomains
- * in app.json wires the bundle to getacuity.io.
+ * in app.json wires the bundle to goripple.io.
  *
  * Flow:
- *   User taps https://getacuity.io/api/auth/verify-email?token=X
+ *   User taps https://goripple.io/api/auth/verify-email?token=X
  *   → iOS Universal Links: intercepted by Acuity app (when installed)
  *   → Linking event fires here with the URL
  *   → Extract token
@@ -34,7 +34,7 @@ import { useAuth } from "@/contexts/auth-context";
 const VERIFY_EMAIL_PATH = "/api/auth/verify-email";
 const OPEN_APP_PATH = "/open";
 const API_BASE =
-  process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+  process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
 
 async function handleUrl(
   url: string,

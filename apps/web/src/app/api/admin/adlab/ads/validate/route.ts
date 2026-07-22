@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
 
       if (destination === "direct_funnel") {
         // Direct to /start — validate that URL is reachable
-        const funnelUrl = "https://getacuity.io/start";
+        const funnelUrl = "https://goripple.io/start";
         try {
           const res = await fetch(funnelUrl, { method: "HEAD", redirect: "follow" });
           if (res.ok) {
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
       }
 
       const urlToCheck = lp
-        ? `https://getacuity.io/for/${lp.slug}`
+        ? `https://goripple.io/for/${lp.slug}`
         : landingPageUrl!;
 
       try {

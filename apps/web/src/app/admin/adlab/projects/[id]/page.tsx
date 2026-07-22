@@ -97,7 +97,7 @@ export default function ProjectDetailPage() {
           <Row label="Test Duration" value={`${project.testDurationDays} days`} />
           <Row label="Conversion Objective" value={project.conversionObjective} />
           <Row label="Conversion Event" value={project.conversionEvent || "Not set"} />
-          <Row label="Landing Page URL" value={project.landingPageUrl || "https://getacuity.io (default)"} />
+          <Row label="Landing Page URL" value={project.landingPageUrl || "https://goripple.io (default)"} />
           <Row label="Image Creatives" value={project.imageEnabled ? "Yes" : "No"} />
         </Card>
 

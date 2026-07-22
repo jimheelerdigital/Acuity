@@ -11,7 +11,7 @@ they are engaged, and to give the public a single, current reference
 for international transfer mechanisms (GDPR Articles 28, 30, 46).
 
 A non-technical summary of the same information appears in
-[/privacy](https://getacuity.io/privacy) Section 4. This file is the
+[/privacy](https://goripple.io/privacy) Section 4. This file is the
 authoritative version.
 
 ---

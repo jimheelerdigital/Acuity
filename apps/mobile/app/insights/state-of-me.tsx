@@ -68,7 +68,7 @@ export default function StateOfMeScreen() {
         <Pressable
           onPress={() =>
             WebBrowser.openBrowserAsync(
-              "https://getacuity.io/insights/state-of-me"
+              "https://goripple.io/insights/state-of-me"
             )
           }
           style={{

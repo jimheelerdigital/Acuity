@@ -9,12 +9,12 @@ export const metadata: Metadata = {
   title: "Blog — Ripple",
   description:
     "Articles on AI journaling, voice journaling, personal productivity, mood tracking, goal tracking, and building a daily journal habit.",
-  alternates: { canonical: "https://getacuity.io/blog" },
+  alternates: { canonical: "https://goripple.io/blog" },
   openGraph: {
     title: "Blog — Ripple",
     description:
       "Articles on AI journaling, voice journaling, personal productivity, mood tracking, and building a daily journal habit.",
-    url: "https://getacuity.io/blog",
+    url: "https://goripple.io/blog",
     siteName: "Ripple",
     images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },

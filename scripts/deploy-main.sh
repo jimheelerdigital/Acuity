@@ -93,5 +93,5 @@ vercel --prod
 
 echo ""
 echo "✅ Done. Verify with:"
-echo "   curl -sI https://www.getacuity.io/api/inngest"
+echo "   curl -sI https://goripple.io/api/inngest"
 echo "   (expect 503 with ENABLE_INNGEST_PIPELINE unset — NOT 404)"

@@ -2,8 +2,8 @@
 
 // AUTH-CRITICAL FILE
 // Any change to this file REQUIRES manual verification of:
-//   - Web Google OAuth (getacuity.io/auth/signup → Continue with Google)
-//   - Web Apple OAuth (getacuity.io/auth/signup → Continue with Apple)
+//   - Web Google OAuth (goripple.io/auth/signup → Continue with Google)
+//   - Web Apple OAuth (goripple.io/auth/signup → Continue with Apple)
 //   - Email/password signup + redirect to /auth/signup/success
 //   - Meta Pixel Lead + CompleteRegistration events
 //   - PostHog signup_page_viewed event

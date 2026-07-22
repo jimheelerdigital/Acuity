@@ -33,9 +33,9 @@ export default function SleepPage() {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
-              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Ripple for Sleep", item: "https://getacuity.io/for/sleep" },
+              { "@type": "ListItem", position: 1, name: "Home", item: "https://goripple.io" },
+              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://goripple.io/for/therapy" },
+              { "@type": "ListItem", position: 3, name: "Ripple for Sleep", item: "https://goripple.io/for/sleep" },
             ],
           }),
         }}

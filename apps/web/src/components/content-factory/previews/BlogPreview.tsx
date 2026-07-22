@@ -34,7 +34,7 @@ export default function BlogPreview({ piece }: { piece: PreviewPiece }) {
       <div className="rounded-lg border border-white/10 bg-[#0A0A0F] p-4">
         <p className="text-[11px] text-white/30 mb-1">Search preview</p>
         <p className="text-sm text-green-400/80">
-          getacuity.io/blog/{slug}
+          goripple.io/blog/{slug}
         </p>
         <p className="text-base text-[#8AB4F8] hover:underline cursor-default">
           {piece.title}

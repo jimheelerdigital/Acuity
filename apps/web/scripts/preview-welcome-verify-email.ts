@@ -42,9 +42,9 @@ async function main() {
     // Token is a fake placeholder — Apple's verify-email route will
     // return InvalidToken on click, which is the correct rejection.
     verifyUrl:
-      "https://getacuity.io/api/auth/verify-email?token=preview-fake-token-abc123",
+      "https://goripple.io/api/auth/verify-email?token=preview-fake-token-abc123",
     unsubscribeUrl:
-      "https://getacuity.io/api/emails/unsubscribe?token=preview-fake-unsub-xyz",
+      "https://goripple.io/api/emails/unsubscribe?token=preview-fake-unsub-xyz",
     foundingMemberNumber: 42,
   });
 

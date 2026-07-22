@@ -25,7 +25,7 @@ import { isEmailEnabled } from "@/lib/email-enabled";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
 import { safeLog } from "@/lib/safe-log";
 
-const DEFAULT_APP_URL = "https://www.getacuity.io";
+const DEFAULT_APP_URL = "https://goripple.io";
 
 /**
  * FROM address for every lifecycle/recovery/marketing email that flows

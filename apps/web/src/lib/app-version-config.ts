@@ -48,7 +48,7 @@
  *
  * App Store ID `6762633410` is the canonical id for "Ripple" on the
  * iOS App Store — same value as the `apple-itunes-app` meta tag in
- * `apps/web/src/app/layout.tsx`. Confirmed live on getacuity.io and
+ * `apps/web/src/app/layout.tsx`. Confirmed live on goripple.io and
  * referenced by Safari's Smart Banner for App Store deep-linking.
  */
 

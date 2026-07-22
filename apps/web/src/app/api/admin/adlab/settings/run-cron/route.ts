@@ -18,7 +18,7 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "CRON_SECRET not set" });
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL || "https://getacuity.io";
+  const baseUrl = process.env.NEXTAUTH_URL || "https://goripple.io";
 
   try {
     const res = await fetch(`${baseUrl}/api/admin/adlab/cron`, {

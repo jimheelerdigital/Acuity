@@ -41,7 +41,7 @@ export function StaticPersonaPage({ page, slug }: { page: PersonaPage; slug: str
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@graph": [
-              { "@type": "WebPage", name: page.title, description: page.metaDescription, url: `https://getacuity.io/for/${slug}` },
+              { "@type": "WebPage", name: page.title, description: page.metaDescription, url: `https://goripple.io/for/${slug}` },
             ],
           }),
         }}

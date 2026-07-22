@@ -14,7 +14,7 @@ import { recoverPurchasesIfNeeded } from "@/lib/iap";
  * The flow:
  *   1. User requests a magic link from /(auth)/sign-in → app posts
  *      to /api/auth/mobile-magic-link → email goes out with a link
- *      to https://getacuity.io/auth/mobile-complete?token=X.
+ *      to https://goripple.io/auth/mobile-complete?token=X.
  *   2. User taps the email link on their phone → Safari opens → the
  *      web page redirects to acuity://auth-callback?token=X.
  *   3. iOS routes that URL to this app; Expo Router maps

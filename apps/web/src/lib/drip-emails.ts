@@ -46,9 +46,9 @@ function layout(content: string): string {
           <tr>
             <td align="center" style="padding-bottom:16px;">
               <p style="margin:0;font-size:13px;color:#A0A0B8;">
-                <a href="https://getacuity.io" style="color:#8E6FE6;text-decoration:none;font-weight:600;">getacuity.io</a>
+                <a href="https://goripple.io" style="color:#8E6FE6;text-decoration:none;font-weight:600;">goripple.io</a>
                 <span style="margin:0 10px;color:#2A2A3A;">|</span>
-                <a href="https://getacuity.io/unsubscribe" style="color:#A0A0B8;text-decoration:none;">Unsubscribe</a>
+                <a href="https://goripple.io/unsubscribe" style="color:#A0A0B8;text-decoration:none;">Unsubscribe</a>
               </p>
             </td>
           </tr>

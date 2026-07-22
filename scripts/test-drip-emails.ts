@@ -31,7 +31,7 @@ function buildEmail1(name: string): string {
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
           <tr>
             <td align="center" style="padding-bottom:12px;">
-              <img src="https://getacuity.io/AcuityLogo.png" alt="Acuity" width="48" height="48" style="border-radius:12px;" />
+              <img src="https://goripple.io/AcuityLogo.png" alt="Acuity" width="48" height="48" style="border-radius:12px;" />
             </td>
           </tr>
           <tr>
@@ -106,9 +106,9 @@ function buildEmail1(name: string): string {
           <tr>
             <td align="center" style="padding-bottom:16px;">
               <p style="margin:0;font-size:13px;color:#A0A0B8;">
-                <a href="https://getacuity.io" style="color:#7C5CFC;text-decoration:none;font-weight:600;">getacuity.io</a>
+                <a href="https://goripple.io" style="color:#7C5CFC;text-decoration:none;font-weight:600;">goripple.io</a>
                 <span style="margin:0 10px;color:#2A2A3A;">|</span>
-                <a href="https://getacuity.io/unsubscribe" style="color:#A0A0B8;text-decoration:none;">Unsubscribe</a>
+                <a href="https://goripple.io/unsubscribe" style="color:#A0A0B8;text-decoration:none;">Unsubscribe</a>
               </p>
             </td>
           </tr>

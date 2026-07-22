@@ -5,12 +5,12 @@ export const metadata: Metadata = {
   title: "Voice Journaling: The Complete Guide to Journaling by Talking",
   description:
     "Learn how voice journaling works, why a voice journal app beats written journaling for most people, and how to build a daily debrief habit with AI insights. The definitive guide for 2026.",
-  alternates: { canonical: "https://getacuity.io/voice-journaling" },
+  alternates: { canonical: "https://goripple.io/voice-journaling" },
   openGraph: {
     title: "Voice Journaling: The Complete Guide to Journaling by Talking",
     description:
       "Learn how voice journaling works, why a voice journal app beats written journaling, and how to build a daily debrief habit with AI insights.",
-    url: "https://getacuity.io/voice-journaling",
+    url: "https://goripple.io/voice-journaling",
     type: "article",
     siteName: "Ripple",
     images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
@@ -37,20 +37,20 @@ const jsonLd = {
       author: {
         "@type": "Organization",
         name: "Ripple",
-        url: "https://getacuity.io",
+        url: "https://goripple.io",
       },
       publisher: {
         "@type": "Organization",
         name: "Ripple",
-        url: "https://getacuity.io",
+        url: "https://goripple.io",
         logo: {
           "@type": "ImageObject",
-          url: "https://getacuity.io/icon-512.png",
+          url: "https://goripple.io/icon-512.png",
         },
       },
       mainEntityOfPage: {
         "@type": "WebPage",
-        "@id": "https://getacuity.io/voice-journaling",
+        "@id": "https://goripple.io/voice-journaling",
       },
       keywords:
         "voice journaling, voice journal app, AI journaling, brain dump journaling, talk to text journal",
@@ -62,13 +62,13 @@ const jsonLd = {
           "@type": "ListItem",
           position: 1,
           name: "Home",
-          item: "https://getacuity.io",
+          item: "https://goripple.io",
         },
         {
           "@type": "ListItem",
           position: 2,
           name: "Voice Journaling Guide",
-          item: "https://getacuity.io/voice-journaling",
+          item: "https://goripple.io/voice-journaling",
         },
       ],
     },

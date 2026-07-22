@@ -128,7 +128,7 @@ const securityHeaders = [
   {
     // Strict-Transport-Security — 1 year + preload eligible. After
     // this deploy has been live for a week without rollback, submit
-    // getacuity.io to hstspreload.org.
+    // goripple.io to hstspreload.org.
     key: "Strict-Transport-Security",
     value: "max-age=31536000; includeSubDomains; preload",
   },

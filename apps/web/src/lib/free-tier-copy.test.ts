@@ -70,16 +70,16 @@ describe("FREE_TIER_LOCKED_COPY — surface coverage", () => {
 describe("freeTierUpgradeUrl", () => {
   it("appends ?src= per surface id for funnel attribution", () => {
     const url = freeTierUpgradeUrl(
-      "https://app.getacuity.io",
+      "https://app.goripple.io",
       "pro_pulse_home"
     );
-    expect(url).toBe("https://app.getacuity.io/upgrade?src=pro_pulse_home");
+    expect(url).toBe("https://app.goripple.io/upgrade?src=pro_pulse_home");
   });
 
   it("trims trailing slashes on baseUrl to keep a canonical shape", () => {
-    const a = freeTierUpgradeUrl("https://app.getacuity.io/", "tasks_empty_state");
-    const b = freeTierUpgradeUrl("https://app.getacuity.io//", "tasks_empty_state");
-    const c = freeTierUpgradeUrl("https://app.getacuity.io", "tasks_empty_state");
+    const a = freeTierUpgradeUrl("https://app.goripple.io/", "tasks_empty_state");
+    const b = freeTierUpgradeUrl("https://app.goripple.io//", "tasks_empty_state");
+    const c = freeTierUpgradeUrl("https://app.goripple.io", "tasks_empty_state");
     expect(a).toBe(c);
     expect(b).toBe(c);
   });

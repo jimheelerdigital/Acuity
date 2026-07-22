@@ -103,7 +103,7 @@ function confirmedPage(kind: "weekly" | "monthly" | "onboarding" | "waitlist"): 
     return pageShell(`
       <div class="logo">✦</div>
       <h1>You're unsubscribed.</h1>
-      <p>You won't receive any more emails from Ripple about your waitlist spot. If you change your mind, you can always sign up at <a href="https://getacuity.io">getacuity.io</a>.</p>
+      <p>You won't receive any more emails from Ripple about your waitlist spot. If you change your mind, you can always sign up at <a href="https://goripple.io">goripple.io</a>.</p>
     `);
   }
   if (kind === "onboarding") {

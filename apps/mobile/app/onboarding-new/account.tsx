@@ -571,7 +571,7 @@ export default function AccountScreen() {
             By continuing, you agree to our{" "}
             <Text
               onPress={() =>
-                void Linking.openURL("https://getacuity.io/terms")
+                void Linking.openURL("https://goripple.io/terms")
               }
               style={{ textDecorationLine: "underline" }}
             >
@@ -580,7 +580,7 @@ export default function AccountScreen() {
             and{" "}
             <Text
               onPress={() =>
-                void Linking.openURL("https://getacuity.io/privacy")
+                void Linking.openURL("https://goripple.io/privacy")
               }
               style={{ textDecorationLine: "underline" }}
             >

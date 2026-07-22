@@ -386,7 +386,7 @@ export default function ProfileTab() {
             sublabel="Acuity reads your day to ground reflections — opens on web"
             onPress={() => {
               const base =
-                process.env.EXPO_PUBLIC_API_URL ?? "https://getacuity.io";
+                process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
               void Linking.openURL(`${base}/account#calendar`);
             }}
           />

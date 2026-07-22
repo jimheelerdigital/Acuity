@@ -554,7 +554,7 @@ export async function POST(req: NextRequest) {
         sendConversionEvent({
           eventName: "Purchase",
           eventId: capiEventId,
-          eventSourceUrl: "https://getacuity.io/start",
+          eventSourceUrl: "https://goripple.io/start",
           userData: {
             email: user.email ?? undefined,
           },

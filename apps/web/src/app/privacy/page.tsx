@@ -533,7 +533,7 @@ export default function PrivacyPage() {
               each provider&rsquo;s public DPA and SCC documents, is
               published at{" "}
               <Link
-                href="https://getacuity.io/compliance/subprocessors"
+                href="https://goripple.io/compliance/subprocessors"
                 className="underline hover:text-acuity-text"
               >
                 /compliance/subprocessors

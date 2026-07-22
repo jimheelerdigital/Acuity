@@ -32,7 +32,7 @@ import { Platform } from "react-native";
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   ((Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ??
-    "https://getacuity.io");
+    "https://goripple.io");
 
 // Match the static-config shape so the mobile consumer is strongly
 // typed against the same contract. Kept inline (vs sharing a `types`

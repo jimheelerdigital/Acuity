@@ -1045,7 +1045,7 @@ function EmptyState({ tab, isLocked }: { tab: Tab; isLocked: boolean }) {
   if (isLocked && tab === "open") {
     const copy = FREE_TIER_LOCKED_COPY.tasks_empty_state;
     const href = freeTierUpgradeUrl(
-      "https://app.getacuity.io",
+      "https://app.goripple.io",
       "tasks_empty_state"
     );
     return (

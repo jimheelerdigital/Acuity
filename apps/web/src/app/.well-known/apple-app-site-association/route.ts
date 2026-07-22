@@ -3,7 +3,7 @@
  *
  * Apple Universal Links manifest. Apple's CDN fetches this once per
  * device (and caches aggressively) when the app is installed. The
- * `applinks` block tells iOS which URL paths on getacuity.io should
+ * `applinks` block tells iOS which URL paths on goripple.io should
  * be intercepted and routed to the installed Acuity app instead of
  * Safari.
  *

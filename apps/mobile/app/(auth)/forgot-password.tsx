@@ -9,7 +9,7 @@ import { requestPasswordReset } from "@/lib/auth";
 
 /**
  * Kicks off the password-reset flow. The actual reset happens on the
- * web (the email links to getacuity.io/auth/reset-password?token=…) —
+ * web (the email links to goripple.io/auth/reset-password?token=…) —
  * after the user sets a new password there, they come back to this
  * app and sign in. No mobile-native reset form for now; a dual-surface
  * reset page is 2x the QA surface for a flow most users hit once.

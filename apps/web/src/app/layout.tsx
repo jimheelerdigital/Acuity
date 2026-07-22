@@ -60,13 +60,13 @@ export const metadata: Metadata = {
   },
   description:
     "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report. No typing. No prompts. Just talk.",
-  metadataBase: new URL("https://getacuity.io"),
+  metadataBase: new URL("https://goripple.io"),
   alternates: {
-    canonical: "https://getacuity.io",
+    canonical: "https://goripple.io",
   },
   openGraph: {
     type: "website",
-    url: "https://getacuity.io",
+    url: "https://goripple.io",
     siteName: "Ripple",
     title: "Ripple — One Minute a Day. A Life of Clarity.",
     description:
@@ -118,8 +118,8 @@ export default function RootLayout({
       {
         "@type": "Organization",
         name: "Ripple",
-        url: "https://getacuity.io",
-        logo: "https://getacuity.io/icon-512.png",
+        url: "https://goripple.io",
+        logo: "https://goripple.io/icon-512.png",
         description:
           "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, pattern detection, and weekly reports — all from a daily voice recording.",
         email: "hello@getacuity.io",
@@ -129,10 +129,10 @@ export default function RootLayout({
       {
         "@type": "WebSite",
         name: "Ripple",
-        url: "https://getacuity.io",
+        url: "https://goripple.io",
         potentialAction: {
           "@type": "SearchAction",
-          target: "https://getacuity.io/blog?q={search_term_string}",
+          target: "https://goripple.io/blog?q={search_term_string}",
           "query-input": "required name=search_term_string",
         },
       },

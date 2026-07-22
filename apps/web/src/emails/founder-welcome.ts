@@ -60,7 +60,7 @@ export function founderWelcomeEmail(params: {
 
         <p style="margin:20px 0 12px;font-size:15px;color:#6B7280;line-height:1.7;">Prefer not to install anything? Use our web app right in your browser:</p>
 
-        ${button("https://getacuity.io/auth/signin", "\u{1F310}  Use the web app", "secondary")}
+        ${button("https://goripple.io/auth/signin", "\u{1F310}  Use the web app", "secondary")}
 
         <!-- Divider -->
         <div style="height:1px;background:#E5E7EB;margin:28px 0;"></div>
@@ -73,7 +73,7 @@ export function founderWelcomeEmail(params: {
         <table role="presentation" cellpadding="0" cellspacing="0">
           <tr>
             <td valign="middle" style="padding-right:12px;">
-              <img src="https://www.getacuity.io/email/ka-headshot-email.png" alt="Keenan, co-founder of Ripple" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
+              <img src="https://goripple.io/email/ka-headshot-email.png" alt="Keenan, co-founder of Ripple" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:50%;" />
             </td>
             <td valign="middle">
               <p style="margin:0;font-size:16px;color:#1a1a1a;font-weight:600;">Keenan</p>
@@ -89,7 +89,7 @@ export function founderWelcomeEmail(params: {
     <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
       <tr><td align="center" style="padding:20px 0;">
         <p style="margin:0;font-size:12px;color:#9CA3AF;">
-          <a href="https://getacuity.io" style="color:#8E6FE6;text-decoration:none;">getacuity.io</a>
+          <a href="https://goripple.io" style="color:#8E6FE6;text-decoration:none;">goripple.io</a>
           &nbsp;&middot;&nbsp; One minute a day.
         </p>
       </td></tr>

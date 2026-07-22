@@ -42,12 +42,12 @@ import { androidLaunch, type AnnouncementVars } from "@/emails/announcements/and
 // ── Config ───────────────────────────────────────────────────────────────
 const EMAIL_KEY = "android_launch";
 const TEST_TO = "keenan@heelerdigital.com";
-const APP_ORIGIN = "https://www.getacuity.io";
+const APP_ORIGIN = "https://goripple.io";
 const SEND_INTERVAL_MS = Number(process.env.SEND_INTERVAL_MS ?? 600); // ~2/s Resend limit
 const SUPPRESSION_FILE = resolve(__dirname, "android-launch-suppression.txt");
 
 // Sender: keenan@heelerdigital.com only if that domain is verified in Resend,
-// else fall back to the known-verified getacuity.io sender with reply-to Keenan.
+// else fall back to the known-verified goripple.io sender with reply-to Keenan.
 const HEELER_VERIFIED = process.env.HEELERDIGITAL_SENDER_VERIFIED === "true";
 const FROM = HEELER_VERIFIED
   ? '"Keenan" <keenan@heelerdigital.com>'

@@ -128,6 +128,6 @@ function appUrl(): string {
   return (
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.NEXTAUTH_URL ??
-    "https://www.getacuity.io"
+    "https://goripple.io"
   );
 }

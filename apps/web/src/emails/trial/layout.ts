@@ -39,12 +39,12 @@ export function trialLayout(opts: TrialLayoutOpts): string {
 
   const footerLinks = isMarketing
     ? `<p style="margin:0;font-size:12px;color:#6b7280;line-height:1.7;">
-                <a href="https://getacuity.io" style="color:#C4451C;text-decoration:none;">getacuity.io</a>
+                <a href="https://goripple.io" style="color:#C4451C;text-decoration:none;">goripple.io</a>
                 <span style="margin:0 8px;color:#D1D5DB;">&middot;</span>
-                <a href="${unsubscribeUrl ?? "https://getacuity.io/account"}" style="color:#9CA3AF;text-decoration:underline;">Unsubscribe from onboarding emails</a>
+                <a href="${unsubscribeUrl ?? "https://goripple.io/account"}" style="color:#9CA3AF;text-decoration:underline;">Unsubscribe from onboarding emails</a>
               </p>`
     : `<p style="margin:0;font-size:12px;color:#6b7280;line-height:1.7;">
-                <a href="https://getacuity.io" style="color:#C4451C;text-decoration:none;">getacuity.io</a>
+                <a href="https://goripple.io" style="color:#C4451C;text-decoration:none;">goripple.io</a>
               </p>`;
 
   return `<!DOCTYPE html>
@@ -89,7 +89,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
           <tr>
             <td align="center">
               <p style="margin:0;font-size:11px;color:#9CA3AF;">
-                Ripple &middot; getacuity.io
+                Ripple &middot; goripple.io
               </p>
             </td>
           </tr>
@@ -103,7 +103,7 @@ export function trialLayout(opts: TrialLayoutOpts): string {
 
 /** Public URL of Keenan's headshot. */
 export const KEENAN_HEADSHOT_URL =
-  "https://www.getacuity.io/email/ka-headshot-email.png";
+  "https://goripple.io/email/ka-headshot-email.png";
 
 /** Keenan's signature block — headshot + name/title. */
 export function keenanSignature(): string {

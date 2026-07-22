@@ -64,7 +64,7 @@ export function digestLayout(opts: {
     </div>
   </div>
   <p style="color:#6b7280;font-size:11px;text-align:center;margin:16px 0 0;">
-    Ripple &middot; getacuity.io
+    Ripple &middot; goripple.io
   </p>
 </body>
 </html>`.trim();
@@ -86,7 +86,7 @@ export function appUrl(): string {
   return (
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.NEXTAUTH_URL ??
-    "https://www.getacuity.io"
+    "https://goripple.io"
   );
 }
 

@@ -34,7 +34,7 @@ import { HeroCard } from "@/components/acuity";
  */
 export function ProLockedCard({
   surfaceId,
-  baseUrl = "https://app.getacuity.io",
+  baseUrl = "https://app.goripple.io",
   className = "",
 }: {
   surfaceId: Exclude<FreeTierLockedSurfaceId, "entry_detail_footer">;
@@ -87,7 +87,7 @@ export function ProLockedCard({
  * surface — no eyebrow, no title.
  */
 export function ProLockedFooter({
-  baseUrl = "https://app.getacuity.io",
+  baseUrl = "https://app.goripple.io",
   className = "",
 }: {
   baseUrl?: string;

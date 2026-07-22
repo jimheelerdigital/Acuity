@@ -34,7 +34,7 @@ const COMPLIANCE_SYSTEM_PROMPT = `You are a Meta advertising compliance reviewer
 
 6. Image Text Ratio: If the creative describes overlaid text covering more than ~20% of the image area, flag it (Meta deprioritizes text-heavy images in delivery).
 
-7. Landing Page: Ads for Ripple must link to getacuity.io domain.
+7. Landing Page: Ads for Ripple must link to goripple.io domain.
 
 ## BRAND VOICE CHECKS (violations = WARNING):
 

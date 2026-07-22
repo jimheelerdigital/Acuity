@@ -50,9 +50,9 @@ import {
 
 const OUT_DIR = resolve(__dirname, "../../..", ".tmp/email-previews");
 
-const APP_URL = "https://www.getacuity.io";
+const APP_URL = "https://goripple.io";
 const UNSUB =
-  "https://www.getacuity.io/api/emails/unsubscribe?token=preview-fake-unsub-xyz";
+  "https://goripple.io/api/emails/unsubscribe?token=preview-fake-unsub-xyz";
 
 function sampleTrialVars(overrides: Partial<TrialVars> = {}): TrialVars {
   return {
@@ -128,7 +128,7 @@ add(
   "05-magic_link.html",
   "#4 magic_link",
   magicLinkEmail(
-    "https://getacuity.io/api/auth/callback/email?token=preview-fake-magic"
+    "https://goripple.io/api/auth/callback/email?token=preview-fake-magic"
   )
 );
 
@@ -137,7 +137,7 @@ add(
   "06-password_reset.html",
   "#5 password_reset",
   passwordResetEmail(
-    "https://getacuity.io/auth/reset?token=preview-fake-reset"
+    "https://goripple.io/auth/reset?token=preview-fake-reset"
   )
 );
 
@@ -148,7 +148,7 @@ add(
   welcomeVerifyEmail({
     firstName: "Sarah",
     verifyUrl:
-      "https://getacuity.io/api/auth/verify-email?token=preview-fake-verify",
+      "https://goripple.io/api/auth/verify-email?token=preview-fake-verify",
     unsubscribeUrl: UNSUB,
     foundingMemberNumber: 42,
   })
@@ -183,7 +183,7 @@ add("09-data_export_ready.html", "#35 data_export_ready", {
     preheader: "Download your data — link expires in 24 hours.",
     intro: `Hi Sarah — your data export is ready. The zip contains all your entries, goals, tasks, Life Matrix history, weekly reports, and any retained audio files. The link expires at ${expiresAt} (24 hours from now).`,
     ctaLabel: "Download export",
-    ctaUrl: "https://getacuity.io/exports/preview-fake-export.zip",
+    ctaUrl: "https://goripple.io/exports/preview-fake-export.zip",
     footnote:
       "Missed the window? You can request a new export from Account → Download my data. One request per 7 days.",
   }),

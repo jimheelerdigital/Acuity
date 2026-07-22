@@ -12,7 +12,7 @@ import { keenanSignature, trialButton, appStoreAndPlayButtons, trialLayout , par
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-const WEB_APP_URL = "https://getacuity.io/auth/signin";
+const WEB_APP_URL = "https://goripple.io/auth/signin";
 
 
 export const recoveryPaidNoApp: TrialEmailTemplate = {

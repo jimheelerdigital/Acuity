@@ -5,12 +5,12 @@ export const metadata: Metadata = {
   description:
     "Most people have no idea what's driving their moods, decisions, and habits. Ripple is the AI voice journal that surfaces the patterns you can't see — mood tracking, life pattern detection, and weekly reports from your daily debrief.",
   robots: { index: true, follow: true },
-  alternates: { canonical: "https://getacuity.io/for/decoded" },
+  alternates: { canonical: "https://goripple.io/for/decoded" },
   openGraph: {
     title: "Ripple Decoded — AI Pattern Detection for Your Life",
     description:
       "The AI voice journal that surfaces the patterns you can't see — mood tracking, life pattern detection, and weekly reports from your daily debrief.",
-    url: "https://getacuity.io/for/decoded",
+    url: "https://goripple.io/for/decoded",
     siteName: "Ripple",
     images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
   },

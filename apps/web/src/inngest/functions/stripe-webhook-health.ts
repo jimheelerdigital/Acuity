@@ -54,7 +54,7 @@ export const stripeWebhookHealthFn = inngest.createFunction(
         ? `Last processed Stripe event was ${check.ageHours}h ago (${check.last}).`
         : "No Stripe events have ever been recorded.";
       const action =
-        "Check https://dashboard.stripe.com/webhooks — confirm the endpoint is ENABLED and points at https://getacuity.io/api/stripe/webhook (apex, NO www — www 308-redirects and Stripe won't follow it).";
+        "Check https://dashboard.stripe.com/webhooks — confirm the endpoint is ENABLED and points at https://goripple.io/api/stripe/webhook (apex, NO www — www 308-redirects and Stripe won't follow it).";
 
       // Slack (founder webhook), if configured — best-effort.
       const slackUrl = process.env.SLACK_FOUNDER_WEBHOOK_URL;
@@ -90,7 +90,7 @@ so our DB subscription state will drift from Stripe.</p>
 <p><strong>Check:</strong> <a href="https://dashboard.stripe.com/webhooks">Stripe
 &rarr; Developers &rarr; Webhooks</a> — confirm the endpoint is
 <strong>enabled</strong> and points at
-<code>https://getacuity.io/api/stripe/webhook</code> (apex,
+<code>https://goripple.io/api/stripe/webhook</code> (apex,
 <strong>no www</strong>).</p>
 <p style="color:#71717A;font-size:12px;margin-top:24px">Sent by the
 stripe-webhook-health-check Inngest cron. See

@@ -39,7 +39,7 @@ export default function AdCopyPreview({ piece }: { piece: PreviewPiece }) {
         {/* Bottom section */}
         <div className="flex items-center justify-between px-4 py-3 bg-[#0A0A0F]/50">
           <div className="min-w-0 flex-1 pr-3">
-            <p className="text-xs text-white/30 uppercase tracking-wide">getacuity.io</p>
+            <p className="text-xs text-white/30 uppercase tracking-wide">goripple.io</p>
             <p className="text-sm font-semibold text-white truncate">{piece.hook}</p>
             {piece.cta && (
               <p className="text-xs text-white/50 truncate mt-0.5">{piece.cta}</p>

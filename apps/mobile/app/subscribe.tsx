@@ -551,7 +551,7 @@ export default function SubscribeScreen() {
               style={{ color: tokens.primary }}
               onPress={() =>
                 void WebBrowser.openBrowserAsync(
-                  "https://getacuity.io/terms"
+                  "https://goripple.io/terms"
                 )
               }
             >
@@ -565,7 +565,7 @@ export default function SubscribeScreen() {
               style={{ color: tokens.primary }}
               onPress={() =>
                 void WebBrowser.openBrowserAsync(
-                  "https://getacuity.io/privacy"
+                  "https://goripple.io/privacy"
                 )
               }
             >

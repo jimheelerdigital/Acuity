@@ -51,6 +51,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: DISALLOWED,
       },
     ],
-    sitemap: "https://getacuity.io/sitemap.xml",
+    sitemap: "https://goripple.io/sitemap.xml",
   };
 }

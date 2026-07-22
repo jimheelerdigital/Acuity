@@ -128,7 +128,7 @@ export function Step3MicrophonePermission() {
             </button>
             <p className="mt-4 text-xs text-amber-800">
               <strong>On iOS Safari?</strong> The permission lives at{" "}
-              <em>Settings → Safari → Microphone</em>. Set getacuity.io
+              <em>Settings → Safari → Microphone</em>. Set goripple.io
               to Allow, then reload.
             </p>
           </div>

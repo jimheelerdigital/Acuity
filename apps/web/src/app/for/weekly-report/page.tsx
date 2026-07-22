@@ -33,9 +33,9 @@ export default function WeeklyReportPage() {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: "https://getacuity.io" },
-              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://getacuity.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Ripple Weekly Report", item: "https://getacuity.io/for/weekly-report" },
+              { "@type": "ListItem", position: 1, name: "Home", item: "https://goripple.io" },
+              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://goripple.io/for/therapy" },
+              { "@type": "ListItem", position: 3, name: "Ripple Weekly Report", item: "https://goripple.io/for/weekly-report" },
             ],
           }),
         }}
