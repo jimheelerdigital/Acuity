@@ -7,6 +7,60 @@
 
 ---
 
+## [2026-07-21] — OAuth redirect fallout: duplicate account diagnostic + merge tooling
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 40508c81
+
+### In plain English (for Keenan)
+After the goripple.io domain switch, Google sign-in broke because the Google Cloud Console still had getacuity.io listed as the allowed redirect. Users who normally sign in with Google — like Elise Cyr, a paying subscriber with 21 days of entries — got bounced and tried Apple Sign In instead. Because Apple's "Hide My Email" generates a random @privaterelay.appleid.com address that doesn't match their Gmail, the system treated them as brand-new users and created empty duplicate accounts. Elise is now signed into an empty account while her real account (with all her entries and paid subscription) sits untouched. Two scripts have been created: one to find all affected users, and one to merge the duplicates back into the originals (moving the Apple sign-in link so it works on the real account, then deleting the empty duplicate). Neither script auto-executes — Jimmy reviews the output first.
+
+### Technical changes (for Jimmy)
+- **New script `scripts/find-duplicate-accounts.ts`** — read-only diagnostic that:
+  - Looks up Elise's known original account (`cmqyl34ms000otx4jkizqu0tp`) and finds any post-Jul-16 accounts matching her name/email
+  - Lists ALL accounts created Jul 21 with auth providers to find which one she's signed into
+  - Broad duplicate sweep: matches new accounts to older ones by (a) exact full name, (b) Apple private relay email + first name match, (c) same devicePlatform + first name + 0 entries on new account, (d) TrySession anonDeviceId claimed by multiple userIds
+  - Outputs ranked candidate pairs with entry counts, subscription status, and providers — no writes
+  - Usage: `set -a && source apps/web/.env.local && set +a && npx tsx scripts/find-duplicate-accounts.ts`
+
+- **New script `scripts/merge-duplicate-account.ts`** — account merge with safety gates:
+  - Takes `--original <ID>` and `--duplicate <ID>` flags
+  - Dry-run by default; `--execute` flag required to actually merge
+  - Writes JSON backup of both accounts to `.tmp/` before any mutation
+  - Moves auth provider (Account) rows from duplicate to original
+  - Copies `appleSubject` from duplicate to original (so Apple sign-in works on the real account going forward)
+  - Moves any entries (unlikely but safe)
+  - Deletes duplicate sessions then duplicate User row
+  - Safety aborts: if duplicate has more entries than original (wrong merge direction), or if duplicate has an active Stripe subscription
+  - All mutations run in a single Prisma transaction
+
+- **Root cause analysis:** The auth code itself is sound — `allowDangerousEmailAccountLinking: true` is set on both Google and Apple providers, all signup routes check email uniqueness, `User.email` has a `@unique` constraint. The gap is specifically Apple "Hide My Email": the private relay address doesn't match the user's real email, so the email-based dedup doesn't catch it. The `appleSubject` lookup also misses because the original account was Google-only (no Apple subject stored). This is a known NextAuth limitation when crossing providers with email-masking services.
+
+- **OAuth redirect URI audit (complete list for console config):**
+  - **Google Cloud Console — must add:** `https://goripple.io/api/auth/callback/google` (web sign-in), `https://goripple.io/api/calendar/callback` (calendar integration)
+  - **Google Cloud Console — keep:** `https://getacuity.io/api/auth/callback/google`, `https://getacuity.io/api/calendar/callback` (transition), `http://localhost:3000/api/auth/callback/*` (dev), iOS native scheme `com.googleusercontent.apps.657670168959-…:/oauthredirect`
+  - **Apple Developer Portal:** Update web domain from `getacuity.io` → `goripple.io`, update return URL from `https://getacuity.io/api/auth/callback/apple` → `https://goripple.io/api/auth/callback/apple`
+  - **Mobile flows (no change needed):** iOS Google uses native reversed-client-ID scheme (no domain dependency), iOS Apple uses native SDK (no redirect URI)
+  - **Vercel prerequisite:** `NEXTAUTH_URL` must be `https://goripple.io` — NextAuth constructs ALL web callback URLs from this
+  - **Stale code:** `apps/web/src/lib/calendar/oauth.ts:43` still has `"https://getacuity.io"` as fallback (flagged in domain sweep, needs Jimmy since it's OAuth)
+
+### Manual steps needed
+- [ ] **URGENT — Elise merge (Jimmy):** Run the diagnostic first: `set -a && source apps/web/.env.local && set +a && npx tsx scripts/find-duplicate-accounts.ts`. Identify Elise's duplicate (likely an @privaterelay.appleid.com account created Jul 21). Review both rows, then run: `npx tsx scripts/merge-duplicate-account.ts --original cmqyl34ms000otx4jkizqu0tp --duplicate <DUPLICATE_ID> --execute`. Backup is written to `.tmp/` automatically. She will need to sign in again after merge.
+- [ ] **Google Cloud Console (Jimmy):** Add `https://goripple.io/api/auth/callback/google` and `https://goripple.io/api/calendar/callback` to the OAuth client's authorized redirect URIs. Keep the old getacuity.io URIs during transition.
+- [ ] **Apple Developer Portal (Jimmy):** Update Services ID web domain to `goripple.io` and return URL to `https://goripple.io/api/auth/callback/apple`
+- [ ] **Vercel env var (Jimmy/Keenan):** Confirm `NEXTAUTH_URL` is set to `https://goripple.io` (not getacuity.io or www)
+- [ ] **Broader duplicate sweep (Jimmy):** After running the diagnostic, review ALL candidate pairs. For each confirmed duplicate, run the merge script individually. No batch auto-merge.
+- [ ] **Future prevention (Jimmy — recommendation):** Consider adding a `signIn` callback in NextAuth that checks for existing users with matching name when a new Apple private-relay account would be created, and surfaces a "You may already have an account" flow. This is an auth design decision, not a simple fix.
+
+### Notes
+- **Why email dedup didn't catch this:** Apple's "Hide My Email" generates `abc123@privaterelay.appleid.com` — a completely different email from the user's real address. Prisma's `email @unique` constraint only prevents two rows with THE SAME email. Two rows with different emails are both valid. The `appleSubject` lookup misses because the original account was Google-authed and has no Apple subject stored.
+- **Why this only affects the OAuth-broken window:** Under normal operation, users sign in with Google and hit their existing account. The domain migration broke Google OAuth for any user whose `NEXTAUTH_URL` was updated before the Google Cloud Console redirect URIs were. The window is Jul 16 (domain migration commit) to whenever the console URIs get fixed.
+- **Elise's subscription is safe:** Stripe subscription is attached to her original User row by `stripeCustomerId`. The duplicate has `subscriptionStatus: "TRIAL"` (default). The merge script moves auth providers, not payment data. Her subscription, entries, and all historical data are untouched.
+- **The merge script is conservative:** It aborts if the duplicate has more entries, aborts if the duplicate has an active Stripe sub, writes a full JSON backup, and runs everything in a transaction. It can be reversed by re-creating the User row from the backup JSON if something goes wrong.
+
+---
+
 ## [2026-07-21] — See who has notifications turned on, right in the Users tab
 
 **Requested by:** Keenan
