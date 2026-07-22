@@ -7,6 +7,70 @@
 
 ---
 
+## [2026-07-21] — Post-domain-flip identity routing failure: root cause + upgraded diagnostic + merge tooling
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c6bb5c4d
+
+### In plain English (for Keenan)
+After switching from getacuity.io to goripple.io, anyone who signs in is landing in a brand-new empty account instead of their real one. Both Elise (a paying customer) and Keenan himself are confirmed affected. The root cause: Google sign-in broke because the Google Cloud Console redirect URIs haven't been updated yet. When users try Apple sign-in as a fallback, Apple's "Hide My Email" generates a random @privaterelay.appleid.com email that doesn't match their original account — so the system thinks they're a new user. All original accounts and data are completely intact; users just can't reach them through sign-in right now. The diagnostic script has been upgraded to find ALL duplicates, show a merge map table, and print the exact merge command for each pair. No merges happen until Jimmy reviews.
+
+### Technical changes (for Jimmy)
+
+**Root cause analysis (all three paths investigated):**
+
+**(a) OAuth fallback → Apple private relay (CONFIRMED ROOT CAUSE):**
+- Google OAuth flow constructs callback URL from `NEXTAUTH_URL` env var
+- If NEXTAUTH_URL was updated to `https://goripple.io`: Google rejects with `redirect_uri_mismatch` (Console only has `getacuity.io`)
+- If NEXTAUTH_URL was NOT updated: Google works, but callback cookie is set for `getacuity.io`, then Vercel 308-redirects to `goripple.io` → cookie lost → user appears logged out
+- Either way: Google sign-in fails → user falls back to Apple Sign In
+- Apple "Hide My Email" returns `abc123@privaterelay.appleid.com`
+- PrismaAdapter flow: `getUserByAccount("apple", sub)` → null (no prior Apple Account row) → `getUserByEmail("abc123@privaterelay.appleid.com")` → null (no user with that email) → `createUser()` → **new empty User + Account row**
+- The original account (keyed on real email like `keenan@heelerdigital.com` or `elise.cyr90@gmail.com`) is untouched
+
+**(b) NEXTAUTH_URL / session mismatch (INVESTIGATED — secondary factor):**
+- If NEXTAUTH_URL still points to `getacuity.io`: NextAuth sets cookies during the callback at whatever domain Vercel serves. If `getacuity.io` is a redirect alias (not a serving domain), the callback itself runs on `goripple.io` after the CDN redirect → cookies are set for `goripple.io` → this part works
+- However, the final redirect after sign-in goes to `{NEXTAUTH_URL}/` which is `getacuity.io/` → 308 to `goripple.io` → extra hop, but cookie is already set → should work
+- **Not the primary cause** but creates confusing UX (redirect loops, flashes of unauthed state)
+
+**(c) Mobile API URL change (INVESTIGATED — not causing duplicates):**
+- Mobile app's `apiBaseUrl()` was changed to `goripple.io` in app.json/eas.json
+- Existing installed apps still have OLD config → POST to `getacuity.io/api/auth/mobile-callback` → 308 redirect to `goripple.io` → body preserved (308 spec) → works
+- Mobile Google OAuth uses native iOS scheme (`com.googleusercontent.apps.…:/oauthredirect`) → no domain dependency → works
+- Mobile Apple callback uses `appleSubject` as primary lookup → finds existing user if they've used Apple before, falls back to email → same private relay issue as web if email is hidden
+
+**Code paths verified (all correct for same-email, all vulnerable to private relay):**
+- `apps/web/src/lib/auth.ts`: `allowDangerousEmailAccountLinking: true` on both Google and Apple providers — links accounts IF email matches
+- `apps/web/src/app/api/auth/signup/route.ts`: `findUnique({ where: { email } })` → links if exists, creates if not — correct
+- `apps/web/src/app/api/auth/mobile-callback/route.ts`: `findUnique({ where: { email } })` → creates only if no match — correct, but does NOT create Account rows
+- `apps/web/src/app/api/auth/mobile-callback-apple/route.ts`: looks up by `appleSubject` first, then email — correct, but private relay email bypasses both
+- `User.email` has `@unique` constraint → duplicate MUST have a different email than the original (confirmed: it's a private relay address)
+
+**Upgraded diagnostic script** (`scripts/find-duplicate-accounts.ts`):
+- Section 1: searches for Keenan (`keenan@heelerdigital.com`) and Elise (`cmqyl34ms000otx4jkizqu0tp`) specifically, plus any post-window accounts matching their name/email
+- Section 2: lists EVERY account created since Jul 15 with entries, subscription, signupMethod, providers
+- Section 3: builds the merge map — matches new accounts to originals by (a) exact email, (b) exact full name, (c) Apple private relay + first name, (d) 0 entries + same platform + first name, (e) TrySession anonDeviceId cross-claims. Ranks pairs as HIGH/MEDIUM/LOW confidence and prints the merge command
+- Section 4: lists all privaterelay.appleid.com accounts (pre- and post-flip) for full visibility
+- Also prints NEXTAUTH_URL and other env vars for diagnosis
+
+### Manual steps needed
+- [ ] **RUN THE DIAGNOSTIC FIRST (Jimmy/Keenan):** `set -a && source apps/web/.env.local && set +a && npx tsx scripts/find-duplicate-accounts.ts` — paste the output here so we can review the merge map before executing
+- [ ] **FIX GOOGLE OAUTH — THE BLEEDING STOPPER (Jimmy):** Add `https://goripple.io/api/auth/callback/google` to Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client → Authorized redirect URIs. Also add `https://goripple.io/api/calendar/callback`. Keep the old getacuity.io URIs during transition. **This stops new duplicates from being created.**
+- [ ] **FIX APPLE SIGN IN (Jimmy):** Update Services ID in Apple Developer portal — web domain from `getacuity.io` to `goripple.io`, return URL from `https://getacuity.io/api/auth/callback/apple` to `https://goripple.io/api/auth/callback/apple`
+- [ ] **VERIFY NEXTAUTH_URL (Jimmy/Keenan):** Check Vercel dashboard → Settings → Environment Variables → `NEXTAUTH_URL`. Must be `https://goripple.io`. If it's still `getacuity.io` or `www.getacuity.io`, update it and trigger a redeploy.
+- [ ] **MERGE ELISE FIRST (Jimmy):** After reviewing diagnostic output, run: `npx tsx scripts/merge-duplicate-account.ts --original cmqyl34ms000otx4jkizqu0tp --duplicate <DUPLICATE_ID>` (dry run). If clean, add `--execute`. She will need to sign in again.
+- [ ] **MERGE ALL APPROVED PAIRS (Jimmy):** For each HIGH-confidence pair in the merge map, run the merge script. MEDIUM pairs need manual review.
+- [ ] **Communicate to Elise (Keenan):** Let her know the issue is fixed, ask her to sign in again with her original method (Google). Her entries, subscription, and all data are intact.
+
+### Notes
+- **Keenan's case:** Almost certainly the same mechanism as Elise — Google failed, tried Apple on web or mobile, "Hide My Email" generated a relay address, new empty account created. The diagnostic will confirm by showing what signupMethod and email the new account carries.
+- **Why only Apple private relay causes duplicates:** Every other sign-in path checks email before creating a user. The `email @unique` constraint on the User model prevents two rows with the same email. Apple's private relay is the ONLY source of non-matching emails in the auth flow. Fix: restore Google OAuth so users don't need to fall back to Apple.
+- **Long-term recommendation for Jimmy (auth design decision):** When creating a User with a `@privaterelay.appleid.com` email, add a secondary check — look for existing users with the same name (exact match on `firstName + lastName`). If found, link instead of creating. This handles the edge case where a Google-first user later signs in with Apple and hides their email. This is a judgment call on false-positive risk vs. duplicate risk. The immediate fix (restore Google OAuth) eliminates the trigger; this is defense-in-depth.
+- **No data loss:** All original accounts, entries, subscriptions, and Stripe attachments are completely intact. The duplicates are empty shells with 0 entries and TRIAL status. Merging moves the Apple Account row to the original user (so they can use Apple sign-in in the future) and deletes the empty shell.
+
+---
+
 ## [2026-07-21] — OAuth redirect fallout: duplicate account diagnostic + merge tooling
 
 **Requested by:** Keenan

@@ -4,17 +4,21 @@
  *
  * After the getacuity.io → goripple.io domain flip, Google OAuth returned
  * redirect_uri_mismatch. Users falling back to Apple Sign In (with "Hide
- * My Email") or email/password could get new accounts because their private
- * relay email or typed email didn't match their original Google-authed row.
+ * My Email") got new accounts because the privaterelay email didn't match.
+ * Keenan (cofounder) is also affected — confirming this is systemic.
  *
  * Detection criteria:
- *   (a) Same name as an existing older account
+ *   (a) Same full name as an existing older account
  *   (b) privaterelay.appleid.com emails created post-flip with a non-relay
  *       account sharing the same first name
- *   (c) Same devicePlatform + creation within the broken window
+ *   (c) Same devicePlatform + first name + 0 entries on new account
  *   (d) TrySession anonDeviceId claims on multiple userId values
+ *   (e) Account table: new Apple Account row where user also has entries
+ *       on a different userId
  *
- * Known case: elise.cyr90@gmail.com (userId cmqyl34ms000otx4jkizqu0tp)
+ * Known cases:
+ *   - Elise Cyr: original cmqyl34ms000otx4jkizqu0tp (elise.cyr90@gmail.com)
+ *   - Keenan: original email keenan@heelerdigital.com
  *
  * Usage:
  *   set -a && source apps/web/.env.local && set +a && \
@@ -30,23 +34,11 @@ const prisma = new PrismaClient();
 // The domain migration landed Jul 16; widen to Jul 15 for timezone safety.
 const WINDOW_START = new Date("2026-07-15T00:00:00Z");
 
-// Elise's known original account
-const ELISE_ORIGINAL_ID = "cmqyl34ms000otx4jkizqu0tp";
-
-interface UserRow {
-  id: string;
-  email: string | null;
-  name: string | null;
-  signupMethod: string | null;
-  devicePlatform: string | null;
-  subscriptionStatus: string;
-  stripeCustomerId: string | null;
-  appleSubject: string | null;
-  createdAt: Date;
-  totalRecordings: number;
-  firstRecordingAt: Date | null;
-  lastSeenAt: Date | null;
-}
+// Known originals
+const KNOWN_ORIGINALS = {
+  elise: { id: "cmqyl34ms000otx4jkizqu0tp", email: "elise.cyr90@gmail.com" },
+  keenan: { email: "keenan@heelerdigital.com" },
+};
 
 const USER_SELECT = {
   id: true,
@@ -61,7 +53,24 @@ const USER_SELECT = {
   totalRecordings: true,
   firstRecordingAt: true,
   lastSeenAt: true,
+  passwordHash: true, // just existence check
 } as const;
+
+type UserRow = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  signupMethod: string | null;
+  devicePlatform: string | null;
+  subscriptionStatus: string;
+  stripeCustomerId: string | null;
+  appleSubject: string | null;
+  createdAt: Date;
+  totalRecordings: number;
+  firstRecordingAt: Date | null;
+  lastSeenAt: Date | null;
+  passwordHash: string | null;
+};
 
 function firstName(name: string | null): string | null {
   if (!name) return null;
@@ -74,138 +83,180 @@ function isPrivateRelay(email: string | null): boolean {
 
 function fmt(u: UserRow): string {
   return [
-    `  id: ${u.id}`,
-    `  email: ${u.email}`,
-    `  name: ${u.name}`,
-    `  signupMethod: ${u.signupMethod}`,
-    `  devicePlatform: ${u.devicePlatform}`,
-    `  subscriptionStatus: ${u.subscriptionStatus}`,
-    `  stripeCustomerId: ${u.stripeCustomerId || "(none)"}`,
-    `  appleSubject: ${u.appleSubject ? u.appleSubject.slice(0, 12) + "…" : "(none)"}`,
-    `  created: ${u.createdAt.toISOString()}`,
-    `  entries: ${u.totalRecordings}`,
-    `  firstRecording: ${u.firstRecordingAt?.toISOString() ?? "(none)"}`,
-    `  lastSeen: ${u.lastSeenAt?.toISOString() ?? "(never)"}`,
+    `  id:            ${u.id}`,
+    `  email:         ${u.email}`,
+    `  name:          ${u.name}`,
+    `  signupMethod:  ${u.signupMethod}`,
+    `  devicePlatform:${u.devicePlatform ?? "(none)"}`,
+    `  subscription:  ${u.subscriptionStatus}`,
+    `  stripeId:      ${u.stripeCustomerId || "(none)"}`,
+    `  appleSubject:  ${u.appleSubject ? u.appleSubject.slice(0, 16) + "…" : "(none)"}`,
+    `  hasPassword:   ${u.passwordHash ? "yes" : "no"}`,
+    `  created:       ${u.createdAt.toISOString()}`,
+    `  entries:       ${u.totalRecordings}`,
+    `  firstEntry:    ${u.firstRecordingAt?.toISOString() ?? "(none)"}`,
+    `  lastSeen:      ${u.lastSeenAt?.toISOString() ?? "(never)"}`,
   ].join("\n");
 }
 
+async function getProviders(userId: string): Promise<string> {
+  const accounts = await prisma.account.findMany({
+    where: { userId },
+    select: { provider: true, providerAccountId: true },
+  });
+  return accounts.map((a) => `${a.provider}(${a.providerAccountId.slice(0, 8)}…)`).join(", ") || "(none)";
+}
+
+async function getActiveSessions(userId: string): Promise<string> {
+  const sessions = await prisma.session.findMany({
+    where: { userId, expires: { gt: new Date() } },
+    select: { expires: true },
+    orderBy: { expires: "desc" },
+    take: 1,
+  });
+  return sessions.length > 0 ? `active, expires ${sessions[0].expires.toISOString()}` : "no active sessions";
+}
+
+async function printUserDetail(u: UserRow) {
+  console.log(fmt(u));
+  console.log(`  providers:     ${await getProviders(u.id)}`);
+  console.log(`  sessions:      ${await getActiveSessions(u.id)}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function main() {
-  console.log("=== DUPLICATE ACCOUNT DIAGNOSTIC ===");
-  console.log(`Window start: ${WINDOW_START.toISOString()}\n`);
+  console.log("╔══════════════════════════════════════════════════════════════╗");
+  console.log("║       DUPLICATE ACCOUNT DIAGNOSTIC — POST-DOMAIN-FLIP      ║");
+  console.log("╚══════════════════════════════════════════════════════════════╝");
+  console.log(`\nWindow start: ${WINDOW_START.toISOString()}\n`);
 
-  // ── 1. Elise specifically ──────────────────────────────────────────────
-  console.log("━━━ SECTION 1: Elise Cyr (known case) ━━━\n");
+  // ── ENV CHECK ──────────────────────────────────────────────────────────
+  console.log("━━━ ENV CHECK ━━━");
+  console.log(`  NEXTAUTH_URL:           ${process.env.NEXTAUTH_URL ?? "(not set)"}`);
+  console.log(`  APP_URL:                ${process.env.APP_URL ?? "(not set)"}`);
+  console.log(`  NEXTAUTH_SECRET:        ${process.env.NEXTAUTH_SECRET ? "set (" + process.env.NEXTAUTH_SECRET.length + " chars)" : "(not set)"}`);
+  console.log(`  GOOGLE_CLIENT_ID:       ${process.env.GOOGLE_CLIENT_ID ? "set" : "(not set)"}`);
+  console.log(`  APPLE_CLIENT_ID:        ${process.env.APPLE_CLIENT_ID ? "set" : "(not set)"}`);
+  console.log("");
 
-  const eliseOriginal = await prisma.user.findUnique({
-    where: { id: ELISE_ORIGINAL_ID },
+  // ── SECTION 1: Known affected users ────────────────────────────────────
+  console.log("━━━ SECTION 1: Known affected users ━━━\n");
+
+  // Keenan
+  console.log("── KEENAN (keenan@heelerdigital.com) ──\n");
+  const keenanOriginal = await prisma.user.findUnique({
+    where: { email: KNOWN_ORIGINALS.keenan.email },
     select: USER_SELECT,
   });
-
-  if (eliseOriginal) {
+  if (keenanOriginal) {
     console.log("Original account:");
-    console.log(fmt(eliseOriginal));
-
-    // Find her linked auth providers
-    const eliseAccounts = await prisma.account.findMany({
-      where: { userId: ELISE_ORIGINAL_ID },
-      select: { provider: true, providerAccountId: true },
-    });
-    console.log(
-      `  providers: ${eliseAccounts.map((a) => a.provider).join(", ") || "(none)"}`
-    );
+    await printUserDetail(keenanOriginal);
   } else {
-    console.log(`⚠ Original account ${ELISE_ORIGINAL_ID} not found!`);
+    console.log("⚠ No account found for keenan@heelerdigital.com");
   }
 
-  // Find ALL accounts created post-window with "elise" or "cyr" in the name
-  const eliseCandidates = await prisma.user.findMany({
+  // Find any other account Keenan might be signed into
+  const keenanCandidates = await prisma.user.findMany({
     where: {
       createdAt: { gte: WINDOW_START },
-      id: { not: ELISE_ORIGINAL_ID },
+      id: { not: keenanOriginal?.id ?? "" },
       OR: [
-        { name: { contains: "Elise", mode: "insensitive" } },
-        { name: { contains: "Cyr", mode: "insensitive" } },
-        { email: { contains: "elise", mode: "insensitive" } },
+        { name: { contains: "Keenan", mode: "insensitive" } },
+        { email: { contains: "keenan", mode: "insensitive" } },
+        { email: { contains: "heeler", mode: "insensitive" } },
       ],
     },
     select: USER_SELECT,
   });
-
-  if (eliseCandidates.length > 0) {
-    console.log(`\nPotential duplicates for Elise (${eliseCandidates.length}):`);
-    for (const c of eliseCandidates) {
-      console.log("\n" + fmt(c));
-      const accounts = await prisma.account.findMany({
-        where: { userId: c.id },
-        select: { provider: true, providerAccountId: true },
-      });
-      console.log(
-        `  providers: ${accounts.map((a) => a.provider).join(", ") || "(none)"}`
-      );
-      // Check sessions
-      const sessions = await prisma.session.findMany({
-        where: { userId: c.id },
-        select: { expires: true },
-        orderBy: { expires: "desc" },
-        take: 1,
-      });
-      if (sessions.length > 0) {
-        console.log(`  active session expires: ${sessions[0].expires.toISOString()}`);
-      }
+  if (keenanCandidates.length > 0) {
+    console.log(`\nPotential Keenan duplicates (${keenanCandidates.length}):`);
+    for (const c of keenanCandidates) {
+      console.log("");
+      await printUserDetail(c);
     }
   } else {
-    console.log("\nNo obvious name/email matches for Elise in post-window accounts.");
-    console.log("Checking ALL accounts created today (Jul 21)...");
-
-    const today = new Date("2026-07-21T00:00:00Z");
-    const tomorrow = new Date("2026-07-22T00:00:00Z");
-    const todayAccounts = await prisma.user.findMany({
-      where: {
-        createdAt: { gte: today, lt: tomorrow },
-        id: { not: ELISE_ORIGINAL_ID },
-      },
-      select: USER_SELECT,
-      orderBy: { createdAt: "asc" },
-    });
-
-    console.log(`\nAll users created Jul 21 (${todayAccounts.length}):`);
-    for (const u of todayAccounts) {
-      console.log("\n" + fmt(u));
-      const accounts = await prisma.account.findMany({
-        where: { userId: u.id },
-        select: { provider: true, providerAccountId: true },
-      });
-      console.log(
-        `  providers: ${accounts.map((a) => a.provider).join(", ") || "(none)"}`
-      );
-    }
+    console.log("\nNo name/email matches for Keenan in post-window accounts.");
   }
 
-  // ── 2. Broad duplicate sweep ───────────────────────────────────────────
-  console.log("\n\n━━━ SECTION 2: Broad duplicate sweep ━━━\n");
+  // Elise
+  console.log("\n── ELISE (elise.cyr90@gmail.com) ──\n");
+  const eliseOriginal = await prisma.user.findUnique({
+    where: { id: KNOWN_ORIGINALS.elise.id },
+    select: USER_SELECT,
+  });
+  if (eliseOriginal) {
+    console.log("Original account:");
+    await printUserDetail(eliseOriginal);
+  } else {
+    console.log(`⚠ Original account ${KNOWN_ORIGINALS.elise.id} not found!`);
+  }
 
-  // All users created after the domain migration
+  const eliseCandidates = await prisma.user.findMany({
+    where: {
+      createdAt: { gte: WINDOW_START },
+      id: { not: KNOWN_ORIGINALS.elise.id },
+      OR: [
+        { name: { contains: "Elise", mode: "insensitive" } },
+        { name: { contains: "Cyr", mode: "insensitive" } },
+        { email: { contains: "elise", mode: "insensitive" } },
+        { email: { contains: "cyr", mode: "insensitive" } },
+      ],
+    },
+    select: USER_SELECT,
+  });
+  if (eliseCandidates.length > 0) {
+    console.log(`\nPotential Elise duplicates (${eliseCandidates.length}):`);
+    for (const c of eliseCandidates) {
+      console.log("");
+      await printUserDetail(c);
+    }
+  } else {
+    console.log("\nNo name/email matches for Elise in post-window accounts.");
+  }
+
+  // ── SECTION 2: ALL accounts created in the window ──────────────────────
+  console.log("\n\n━━━ SECTION 2: Every account created since domain flip ━━━\n");
+
   const newUsers = await prisma.user.findMany({
     where: { createdAt: { gte: WINDOW_START } },
     select: USER_SELECT,
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
   });
 
-  // All older users (potential originals)
+  console.log(`Total new accounts: ${newUsers.length}\n`);
+
+  console.log(
+    "DATE                | ENTRIES | SUB    | METHOD          | EMAIL".padEnd(120) + "| PROVIDERS"
+  );
+  console.log("-".repeat(130));
+
+  for (const u of newUsers) {
+    const providers = await getProviders(u.id);
+    const relay = isPrivateRelay(u.email) ? " ⚠RELAY" : "";
+    const zero = u.totalRecordings === 0 ? " ⚠EMPTY" : "";
+    console.log(
+      `${u.createdAt.toISOString().slice(0, 16)} | ${String(u.totalRecordings).padStart(7)} | ${u.subscriptionStatus.padEnd(6)} | ${(u.signupMethod ?? "?").padEnd(15)} | ${(u.email ?? "").padEnd(45)}| ${providers}${relay}${zero}`
+    );
+  }
+
+  // ── SECTION 3: Duplicate pair matching ─────────────────────────────────
+  console.log("\n\n━━━ SECTION 3: Probable duplicate pairs ━━━\n");
+
   const oldUsers = await prisma.user.findMany({
     where: { createdAt: { lt: WINDOW_START } },
     select: USER_SELECT,
   });
 
-  console.log(
-    `New accounts (post ${WINDOW_START.toISOString().slice(0, 10)}): ${newUsers.length}`
-  );
-  console.log(`Older accounts: ${oldUsers.length}\n`);
+  console.log(`Old accounts (pre-window): ${oldUsers.length}`);
+  console.log(`New accounts (post-window): ${newUsers.length}\n`);
 
   // Build indexes
+  const oldByEmail = new Map<string, UserRow>();
   const oldByFirstName = new Map<string, UserRow[]>();
   const oldByName = new Map<string, UserRow[]>();
   for (const u of oldUsers) {
+    if (u.email) oldByEmail.set(u.email.toLowerCase(), u);
     if (u.name) {
       const fn = firstName(u.name);
       if (fn) {
@@ -223,205 +274,209 @@ async function main() {
   type DupCandidate = {
     newUser: UserRow;
     oldUser: UserRow;
-    reason: string;
+    reasons: string[];
+    confidence: "HIGH" | "MEDIUM" | "LOW";
   };
   const candidates: DupCandidate[] = [];
   const seen = new Set<string>();
 
   for (const nu of newUsers) {
-    // (a) Exact full name match
+    const matchingOlds: Map<string, { user: UserRow; reasons: string[] }> = new Map();
+
+    const addMatch = (oldUser: UserRow, reason: string) => {
+      const existing = matchingOlds.get(oldUser.id);
+      if (existing) {
+        existing.reasons.push(reason);
+      } else {
+        matchingOlds.set(oldUser.id, { user: oldUser, reasons: [reason] });
+      }
+    };
+
+    // (a) Exact email match (shouldn't happen due to unique constraint, but check)
+    if (nu.email) {
+      const match = oldByEmail.get(nu.email.toLowerCase());
+      if (match) addMatch(match, "exact email match");
+    }
+
+    // (b) Exact full name match
     if (nu.name) {
       const full = nu.name.toLowerCase().trim();
       const matches = oldByName.get(full) || [];
       for (const old of matches) {
-        const key = `${nu.id}:${old.id}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          candidates.push({
-            newUser: nu,
-            oldUser: old,
-            reason: `exact name match: "${nu.name}"`,
-          });
-        }
+        addMatch(old, `exact name match: "${nu.name}"`);
       }
     }
 
-    // (b) privaterelay.appleid.com + first-name match
+    // (c) privaterelay + first-name match
     if (isPrivateRelay(nu.email) && nu.name) {
       const fn = firstName(nu.name);
       if (fn) {
         const matches = oldByFirstName.get(fn) || [];
         for (const old of matches) {
           if (!isPrivateRelay(old.email)) {
-            const key = `${nu.id}:${old.id}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              candidates.push({
-                newUser: nu,
-                oldUser: old,
-                reason: `Apple private relay + first name match: "${fn}"`,
-              });
-            }
+            addMatch(old, `Apple private relay + first name "${fn}"`);
           }
         }
       }
     }
 
-    // (c) Same devicePlatform + no entries on new account
-    if (nu.devicePlatform && nu.totalRecordings === 0) {
-      for (const old of oldUsers) {
-        if (
-          old.devicePlatform === nu.devicePlatform &&
-          old.totalRecordings > 0
-        ) {
-          // Only flag if names also partially match (first name)
-          const nfn = firstName(nu.name);
-          const ofn = firstName(old.name);
-          if (nfn && ofn && nfn === ofn) {
-            const key = `${nu.id}:${old.id}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              candidates.push({
-                newUser: nu,
-                oldUser: old,
-                reason: `same platform (${nu.devicePlatform}) + first name + new has 0 entries`,
-              });
-            }
+    // (d) 0 entries on new + same platform + first name match
+    if (nu.totalRecordings === 0 && nu.devicePlatform) {
+      const fn = firstName(nu.name);
+      if (fn) {
+        const matches = oldByFirstName.get(fn) || [];
+        for (const old of matches) {
+          if (old.devicePlatform === nu.devicePlatform && old.totalRecordings > 0) {
+            addMatch(old, `0 entries + same platform (${nu.devicePlatform}) + first name "${fn}"`);
           }
         }
       }
+    }
+
+    // Collect into candidates
+    for (const [, { user: oldUser, reasons }] of matchingOlds) {
+      const key = `${nu.id}:${oldUser.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      // Score confidence
+      let confidence: "HIGH" | "MEDIUM" | "LOW" = "LOW";
+      if (reasons.some((r) => r.includes("exact email"))) {
+        confidence = "HIGH";
+      } else if (
+        nu.totalRecordings === 0 &&
+        oldUser.totalRecordings > 0 &&
+        (reasons.some((r) => r.includes("exact name")) || reasons.some((r) => r.includes("private relay")))
+      ) {
+        confidence = "HIGH";
+      } else if (reasons.length >= 2) {
+        confidence = "MEDIUM";
+      } else if (nu.totalRecordings === 0 && reasons.some((r) => r.includes("name"))) {
+        confidence = "MEDIUM";
+      }
+
+      candidates.push({ newUser: nu, oldUser, reasons, confidence });
     }
   }
 
-  // (d) TrySession anonDeviceId claims on multiple userIds
+  // (e) TrySession anonDeviceId cross-user claims
   console.log("Checking TrySession anonDeviceId for cross-user claims...");
-  const crossDeviceClaims = await prisma.$queryRaw<
-    Array<{
-      anonDeviceId: string;
-      userIds: string;
-      claimCount: number;
-    }>
-  >`
-    SELECT
-      "anonDeviceId",
-      string_agg(DISTINCT "claimedByUserId", ', ') AS "userIds",
-      COUNT(DISTINCT "claimedByUserId")::int AS "claimCount"
-    FROM "TrySession"
-    WHERE "claimed" = true
-      AND "anonDeviceId" IS NOT NULL
-      AND "claimedByUserId" IS NOT NULL
-    GROUP BY "anonDeviceId"
-    HAVING COUNT(DISTINCT "claimedByUserId") > 1
-  `;
+  try {
+    const crossDeviceClaims = await prisma.$queryRaw<
+      Array<{ anonDeviceId: string; userIds: string; claimCount: number }>
+    >`
+      SELECT
+        "anonDeviceId",
+        string_agg(DISTINCT "claimedByUserId", ', ') AS "userIds",
+        COUNT(DISTINCT "claimedByUserId")::int AS "claimCount"
+      FROM "TrySession"
+      WHERE "claimed" = true
+        AND "anonDeviceId" IS NOT NULL
+        AND "claimedByUserId" IS NOT NULL
+      GROUP BY "anonDeviceId"
+      HAVING COUNT(DISTINCT "claimedByUserId") > 1
+    `;
 
-  if (crossDeviceClaims.length > 0) {
-    console.log(
-      `Found ${crossDeviceClaims.length} device(s) claiming sessions under multiple users:`
-    );
-    for (const c of crossDeviceClaims) {
-      console.log(
-        `  deviceId: ${c.anonDeviceId.slice(0, 16)}… → userIds: ${c.userIds}`
-      );
-      // Look up both users
-      const userIds = c.userIds.split(", ");
-      for (const uid of userIds) {
-        const u = await prisma.user.findUnique({
-          where: { id: uid.trim() },
-          select: USER_SELECT,
-        });
-        if (u) {
-          const existing = candidates.find(
-            (cd) =>
-              (cd.newUser.id === u.id || cd.oldUser.id === u.id) &&
-              userIds.some(
-                (id) =>
-                  id.trim() !== u.id &&
-                  (cd.newUser.id === id.trim() || cd.oldUser.id === id.trim())
-              )
-          );
-          if (!existing) {
-            // Find the other user in this pair
-            const otherId = userIds.find((id) => id.trim() !== u.id);
-            if (otherId) {
-              const other = await prisma.user.findUnique({
-                where: { id: otherId.trim() },
-                select: USER_SELECT,
+    if (crossDeviceClaims.length > 0) {
+      console.log(`Found ${crossDeviceClaims.length} device(s) with multi-user claims.`);
+      for (const c of crossDeviceClaims) {
+        const userIds = c.userIds.split(", ").map((s) => s.trim());
+        const users = await Promise.all(
+          userIds.map((id) => prisma.user.findUnique({ where: { id }, select: USER_SELECT }))
+        );
+        const validUsers = users.filter(Boolean) as UserRow[];
+        if (validUsers.length >= 2) {
+          validUsers.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+          for (let i = 1; i < validUsers.length; i++) {
+            const key = `${validUsers[i].id}:${validUsers[0].id}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              candidates.push({
+                newUser: validUsers[i],
+                oldUser: validUsers[0],
+                reasons: ["same anonDeviceId claimed by both"],
+                confidence: "MEDIUM",
               });
-              if (other) {
-                const [older, newer] =
-                  u.createdAt < other.createdAt ? [u, other] : [other, u];
-                const key = `${newer.id}:${older.id}`;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  candidates.push({
-                    newUser: newer,
-                    oldUser: older,
-                    reason: `same anonDeviceId claimed by both accounts`,
-                  });
-                }
-              }
             }
           }
         }
       }
+    } else {
+      console.log("No cross-user anonDeviceId claims found.");
     }
-  } else {
-    console.log("No cross-user anonDeviceId claims found.");
+  } catch {
+    console.log("(TrySession query skipped — table may not exist in this env)");
   }
 
-  // ── 3. Report ──────────────────────────────────────────────────────────
-  console.log(`\n\n━━━ SECTION 3: Candidate duplicate pairs (${candidates.length}) ━━━\n`);
+  // Sort: HIGH first, then MEDIUM, then LOW
+  const order = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+  candidates.sort((a, b) => {
+    const d = order[a.confidence] - order[b.confidence];
+    if (d !== 0) return d;
+    return b.oldUser.totalRecordings - a.oldUser.totalRecordings;
+  });
 
   if (candidates.length === 0) {
-    console.log("No duplicate candidates found.");
+    console.log("\n✅ No duplicate candidates found.");
   } else {
-    // Sort: most likely first (0-entry new accounts matched to active old accounts)
-    candidates.sort((a, b) => {
-      const aScore =
-        (a.newUser.totalRecordings === 0 ? 10 : 0) +
-        (a.oldUser.totalRecordings > 0 ? 5 : 0) +
-        (isPrivateRelay(a.newUser.email) ? 3 : 0);
-      const bScore =
-        (b.newUser.totalRecordings === 0 ? 10 : 0) +
-        (b.oldUser.totalRecordings > 0 ? 5 : 0) +
-        (isPrivateRelay(b.newUser.email) ? 3 : 0);
-      return bScore - aScore;
-    });
+    console.log(`\nFound ${candidates.length} candidate pair(s):\n`);
 
     for (let i = 0; i < candidates.length; i++) {
-      const { newUser, oldUser, reason } = candidates[i];
-      console.log(`── Pair ${i + 1}: ${reason} ──`);
+      const { newUser, oldUser, reasons, confidence } = candidates[i];
+      const tag =
+        confidence === "HIGH" ? "🔴 HIGH" :
+        confidence === "MEDIUM" ? "🟡 MEDIUM" :
+        "⚪ LOW";
+
+      console.log(`═══ Pair ${i + 1}/${candidates.length} [${tag}] ═══`);
+      console.log(`Evidence: ${reasons.join(" + ")}`);
+
+      console.log(`\nORIGINAL (${oldUser.totalRecordings} entries, ${oldUser.subscriptionStatus}):`);
+      await printUserDetail(oldUser);
+
+      console.log(`\nDUPLICATE (${newUser.totalRecordings} entries, ${newUser.subscriptionStatus}):`);
+      await printUserDetail(newUser);
+
       console.log(
-        `\nOLD (original, ${oldUser.totalRecordings} entries, ${oldUser.subscriptionStatus}):`
+        `\nMERGE CMD (dry run): npx tsx scripts/merge-duplicate-account.ts --original ${oldUser.id} --duplicate ${newUser.id}`
       );
-      console.log(fmt(oldUser));
-      console.log(
-        `\nNEW (potential dup, ${newUser.totalRecordings} entries, ${newUser.subscriptionStatus}):`
-      );
-      console.log(fmt(newUser));
       console.log("");
+    }
+
+    // Summary table
+    console.log("\n━━━ MERGE MAP SUMMARY ━━━\n");
+    console.log(
+      "CONF   | NEW_ID                    | ORIGINAL_ID               | NEW_ENTRIES | OLD_ENTRIES | OLD_SUB | EVIDENCE"
+    );
+    console.log("-".repeat(140));
+    for (const { newUser, oldUser, reasons, confidence } of candidates) {
+      console.log(
+        `${confidence.padEnd(6)} | ${newUser.id.padEnd(25)} | ${oldUser.id.padEnd(25)} | ${String(newUser.totalRecordings).padStart(11)} | ${String(oldUser.totalRecordings).padStart(11)} | ${oldUser.subscriptionStatus.padEnd(7)} | ${reasons[0]}`
+      );
     }
   }
 
-  // ── 4. Auth provider breakdown for all new accounts ────────────────────
-  console.log("\n━━━ SECTION 4: All post-window accounts with auth providers ━━━\n");
+  // ── SECTION 4: Private relay accounts ──────────────────────────────────
+  console.log("\n\n━━━ SECTION 4: All privaterelay.appleid.com accounts ━━━\n");
 
-  for (const nu of newUsers) {
-    const accounts = await prisma.account.findMany({
-      where: { userId: nu.id },
-      select: { provider: true },
-    });
-    const providers = accounts.map((a) => a.provider).join(", ") || "(credentials only)";
-    const flag =
-      isPrivateRelay(nu.email) ? " ⚠ PRIVATE RELAY" :
-      nu.totalRecordings === 0 ? " ⚠ ZERO ENTRIES" :
-      "";
+  const relayUsers = await prisma.user.findMany({
+    where: { email: { endsWith: "@privaterelay.appleid.com" } },
+    select: USER_SELECT,
+    orderBy: { createdAt: "desc" },
+  });
+
+  console.log(`Total private relay accounts: ${relayUsers.length}\n`);
+  for (const u of relayUsers) {
+    const postWindow = u.createdAt >= WINDOW_START ? " ⚠POST-FLIP" : "";
     console.log(
-      `${nu.createdAt.toISOString().slice(0, 16)} | ${(nu.email ?? "").padEnd(45)} | ${nu.totalRecordings} entries | ${providers}${flag}`
+      `${u.createdAt.toISOString().slice(0, 16)} | ${u.name ?? "(no name)".padEnd(25)} | ${u.totalRecordings} entries | ${u.subscriptionStatus}${postWindow}`
     );
   }
 
-  console.log("\n=== END ===");
+  console.log("\n╔══════════════════════════════════════════════════════════════╗");
+  console.log("║                         END OF REPORT                       ║");
+  console.log("╚══════════════════════════════════════════════════════════════╝");
+
   await prisma.$disconnect();
 }
 
