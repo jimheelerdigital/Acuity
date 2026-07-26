@@ -28,7 +28,7 @@ const FB_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
 const FB_CLIENT_TOKEN = process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN;
 
 const FB_TRACKING_PERMISSION =
-  "Acuity uses this only to help us see which Facebook or Instagram " +
+  "Ripple uses this only to help us see which Facebook or Instagram " +
   "ads led you here, so we can keep showing the ones that actually " +
   "helped. You can decline — nothing in the app changes.";
 
@@ -54,7 +54,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       {
         appID: FB_APP_ID,
         clientToken: FB_CLIENT_TOKEN,
-        displayName: "Acuity",
+        displayName: "Ripple",
         scheme: `fb${FB_APP_ID}`,
         advertiserIDCollectionEnabled: false,
         autoLogAppEventsEnabled: true,

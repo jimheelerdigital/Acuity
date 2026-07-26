@@ -28,6 +28,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
+import { APP_NAME } from "@acuity/shared";
 
 const LOCK_ENABLED_KEY = "acuity_app_lock_enabled";
 const AUTO_LOCK_MINUTES_KEY = "acuity.app_lock.auto_lock_minutes";
@@ -264,7 +265,7 @@ export interface AuthenticateResult {
  *   - iPads with the same matrix
  */
 export async function authenticate(
-  promptMessage = "Unlock Acuity"
+  promptMessage = `Unlock ${APP_NAME}`
 ): Promise<AuthenticateResult> {
   try {
     const res = await LocalAuthentication.authenticateAsync({
