@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-07-26] — Notifications, Face ID, and Meta SDK now say "Ripple" (Vince's bug)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 432553a9
+
+### In plain English (for Keenan)
+A PRO user (Vince) reported the old "Acuity" name and icon still showing on his phone's notifications. This branch already renamed the app to Ripple and gave it the coral icon — which fixes the name at the *top* of a notification — but the reminder notifications themselves were still built with "Acuity" as their bold title, the Android notification setting was named "Acuity" with a purple light, the Face ID unlock screen said "Unlock Acuity", and the Facebook ad SDK still identified as "Acuity". All of those now say Ripple. It's bumped to version 1.4.0 and ready to build. **This only reaches Vince once we ship a new App Store build — it can't be pushed silently to phones already installed.**
+
+### Technical changes (for Jimmy)
+On `rebrand/ripple-phase1` (commit 432553a9), four files:
+- `apps/mobile/lib/notifications.ts` — the local-notification `title` (3 sites) and Android channel `name` were hardcoded `"Acuity"`; now read `APP_NAME` from `@acuity/shared` (= "Ripple"). Channel `lightColor` `#7C3AED` → `#F2895E` (this branch's brand coral, matching `expo-notifications` color + Android adaptiveIcon bg).
+- `apps/mobile/lib/app-lock.ts` — Face ID unlock `promptMessage` default now reads `APP_NAME`.
+- `apps/mobile/app.config.ts` — Facebook SDK `displayName` + ATT tracking-permission string Acuity → Ripple.
+- `apps/mobile/app.json` — `version` 1.3.4 → **1.4.0**, iOS `buildNumber` 45 → **46** (App Store already has 45).
+- Typecheck clean on the two edited `.ts` files (pre-existing tsc baseline errors unchanged).
+
+### Manual steps needed
+- [ ] Jimmy: EAS build (build 46) from `rebrand/ripple-phase1` + submit to App Store — the ONLY thing that makes Vince's fix real (name/icon/title are baked into the native binary; OTA can't change them).
+- [ ] Jimmy: device-test — notification header AND bold title both read "Ripple", coral icon, Face ID says "Unlock Ripple".
+- [ ] Both: rename the App Store Connect listing to Ripple to match; coordinate with the web rebrand (this branch also flips web) so store + web + app say Ripple together.
+- [ ] Both/deferred: `iap.ts` "Acuity Pro" left as-is on purpose — it matches the StoreKit product display name; rename only alongside renaming the IAP product in App Store Connect. `consent.ts` legal wording also left as-is.
+
+### Notes
+- This supersedes the separate `fix/mobile-ripple-rebrand` branch (PR #39), which was built off the old purple-diamond base and reinvented a worse subset (upscaled 512→1024 icon vs this branch's real 194 KB coral icon). PR #39 closed as superseded; the notification/app-lock/config fix was ported here instead.
+- Root cause recap: a notification shows the app name in TWO places — the header (`expo.name`, already Ripple) and the notification `title` (was still "Acuity"). Both are now Ripple. The title being the literal app name is redundant with the header; a future copy pass may drop it or make it warmer — left as-is to avoid behavior change.
+- Version quirk: `app.json` read 1.3.4 but the store shipped 1.3.5 (build 45, Vince's build). Set to 1.4.0 (rebrand milestone) / build 46 so App Store Connect won't reject a duplicate. `runtimeVersion.policy` is `appVersion`, so 1.4.0 becomes the new OTA runtime line.
+
 ## [2026-07-02] — Removed the "powered by Acuity" badge from the funnel
 
 **Requested by:** Keenan
