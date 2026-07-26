@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { APP_NAME } from "@acuity/shared";
 
 /**
  * Local-notification scheduling for the daily journaling reminder.
@@ -114,9 +115,9 @@ Notifications.setNotificationHandler({
 // (no-op there). Idempotent — safe to call at module load.
 if (Platform.OS === "android") {
   void Notifications.setNotificationChannelAsync("default", {
-    name: "Acuity",
+    name: APP_NAME,
     importance: Notifications.AndroidImportance.DEFAULT,
-    lightColor: "#7C3AED",
+    lightColor: "#ED9672",
   });
 }
 
@@ -236,7 +237,7 @@ export async function applyReminderSchedule({
       Notifications.scheduleNotificationAsync({
         identifier: `${ID_PREFIX}${weekday}`,
         content: {
-          title: "Acuity",
+          title: APP_NAME,
           // `hour` already parsed above from `time`. Pass through so
           // pickBody can pick the right (morning/midday/evening) pool.
           body: pickBody(weekday, weekOfYear, hour),
@@ -333,7 +334,7 @@ export async function applyMultiReminderSchedule({
         return Notifications.scheduleNotificationAsync({
           identifier: `${ID_PREFIX}${reminder.id}:${weekday}`,
           content: {
-            title: "Acuity",
+            title: APP_NAME,
             // Per-reminder `hour` parsed above. Each reminder in a
             // multi-reminder set picks copy independently — a 7am
             // reminder gets MORNING_BODIES, an 8pm gets EVENING_BODIES.
@@ -617,7 +618,7 @@ async function fillMissingRandoms(
     await Notifications.scheduleNotificationAsync({
       identifier: `${RANDOM_ID_PREFIX}${dateKey}`,
       content: {
-        title: "Acuity",
+        title: APP_NAME,
         body,
         sound: "default",
         data: { deepLink: "acuity://", random: true },
