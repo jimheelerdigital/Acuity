@@ -1,6 +1,6 @@
 # Ripple
 
-> Ripple is an AI journaling app that turns a 60-second nightly voice brain dump into extracted tasks, mood tracking, mental pattern detection, and weekly AI reports. $12.99/month with a 14-day free trial, no credit card required.
+> Ripple is an AI-powered voice self-reflection app. You talk out your day — a "debrief" — any time you like, and Ripple turns it into extracted tasks, mood tracking, pattern detection, a Life Matrix of your life domains, and a weekly narrative report. It's a mirror, not a coach: it reflects you back to yourself rather than handing out advice. 7-day free trial.
 
 ## Product
 
@@ -11,20 +11,20 @@
 ## Use Cases
 
 - [Ripple for Therapy](https://goripple.io/for/therapy): AI emotional pattern tracking between therapy sessions — mood tracking, pattern detection, and weekly mental health reports.
-- [Ripple for Sleep](https://goripple.io/for/sleep): 60-second brain dump before bed to quiet racing thoughts and improve sleep quality.
-- [Ripple for Founders](https://goripple.io/for/founders): Nightly debrief for founders and executives — task extraction, goal tracking, and automated weekly debriefs.
+- [Ripple for Sleep](https://goripple.io/for/sleep): Talk out the day to quiet racing thoughts and improve sleep quality.
+- [Ripple for Founders](https://goripple.io/for/founders): A voice debrief for founders and executives — task extraction, goal tracking, and automated weekly reports.
 - [Ripple Weekly Report](https://goripple.io/for/weekly-report): Every Sunday, AI writes a 400-word narrative of your week from your voice notes.
 - [Ripple Decoded](https://goripple.io/for/decoded): Reveal subconscious patterns driving your moods, decisions, and habits with AI-powered analysis.
-- [Ripple for Anxiety](https://goripple.io/for/anxiety): Nightly voice journaling to process anxious thoughts and track emotional patterns over time.
-- [Ripple for ADHD](https://goripple.io/for/adhd): 60-second brain dump to externalize racing thoughts, extract tasks, and track focus patterns.
+- [Ripple for Anxiety](https://goripple.io/for/anxiety): Voice journaling to process anxious thoughts and track emotional patterns over time.
+- [Ripple for ADHD](https://goripple.io/for/adhd): Talk out racing thoughts to externalize them, extract tasks, and track focus patterns.
 - [Ripple for Burnout](https://goripple.io/for/burnout): Track energy patterns and emotional load to catch burnout before it catches you.
-- [Ripple for Remote Workers](https://goripple.io/for/remote-workers): End-of-day debrief for remote workers to separate work from personal life.
+- [Ripple for Remote Workers](https://goripple.io/for/remote-workers): A voice debrief for remote workers to separate work from personal life.
 - [Ripple for Students](https://goripple.io/for/students): Voice journaling for academic and personal growth tracking.
-- [Ripple for Entrepreneurs](https://goripple.io/for/entrepreneurs): Nightly performance system for high-growth operators.
+- [Ripple for Entrepreneurs](https://goripple.io/for/entrepreneurs): A voice reflection system for high-growth operators — track decisions, goals, and patterns.
 - [Ripple for Creatives](https://goripple.io/for/creatives): Capture ideas, track creative patterns, and review your creative output weekly.
-- [Ripple for New Parents](https://goripple.io/for/new-parents): 60-second debrief for overwhelmed parents to process the day and stay grounded.
+- [Ripple for New Parents](https://goripple.io/for/new-parents): A quick voice debrief for overwhelmed parents to process the day and stay grounded.
 - [Ripple for Grief](https://goripple.io/for/grief): Safe space to process loss through voice, with AI that tracks your healing patterns.
-- [Ripple for Overthinkers](https://goripple.io/for/overthinkers): Empty your head in 60 seconds so your brain can stop looping.
+- [Ripple for Overthinkers](https://goripple.io/for/overthinkers): Empty your head by talking it out so your brain can stop looping.
 - [Ripple for Couples](https://goripple.io/for/couples): Individual voice journaling that surfaces relationship patterns and communication gaps.
 - [Ripple for Career Change](https://goripple.io/for/career-change): Track your decision-making process and emotional patterns during career transitions.
 
@@ -39,12 +39,12 @@
 
 ## Blog
 
-- [All Articles](https://goripple.io/blog): Full blog with articles on voice journaling, AI journaling, mental health, productivity, and building nightly habits.
+- [All Articles](https://goripple.io/blog): Full blog with articles on voice journaling, AI journaling, mental health, productivity, and building a reflection habit.
 
 ## Company
 
 - **Contact:** hello@getacuity.io
-- **Pricing:** $12.99/month, 14-day free trial, no credit card required
+- **Pricing:** 7-day free trial; see https://goripple.io for current subscription pricing
 - **Founded by:** Keenan Assaraf (business) and Jimmy (technical)
 - **Category:** AI journaling, voice journaling, self-reflection, mental health technology
 - **Competitors:** Rosebud, Stoic, Reflection.app, Mindsera, Day One

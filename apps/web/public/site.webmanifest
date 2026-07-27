@@ -1,7 +1,7 @@
 {
   "name": "Ripple",
   "short_name": "Ripple",
-  "description": "Brain dump daily. Get your life back.",
+  "description": "AI voice journal. Talk through your day and Ripple turns it into tasks, mood, patterns, and a weekly report.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#211E2C",
