@@ -239,7 +239,7 @@
       "router": {
         "origin": false
       },
-      "apiUrl": "https://getacuity.io",
+      "apiUrl": "https://app.goripple.io",
       "googleIosClientId": "657670168959-l1qn5imd2ad8fdbp96pius9a6cpi5hdl.apps.googleusercontent.com",
       "googleAndroidClientId": "",
       "iapEnabled": true,
