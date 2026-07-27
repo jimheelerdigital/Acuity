@@ -168,6 +168,40 @@ None
 
 ---
 
+## [2026-07-27] — Security-audit cleanup: fix off-brand crawler copy + patch critical auth CVEs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f9fd89e2 (copy), 0252362b (security)
+
+### In plain English (for Keenan)
+Two loose ends from the Google Safe Browsing security check got cleaned up. First, the copy: the little text that describes us to AI crawlers and to phones installing the app was still using old, off-brand language — "brain dump," "60-second," "nightly," and the wrong price ($12.99 / 14-day trial). That's now rewritten to how we actually talk about Ripple: an AI voice journal you can talk to any time, that turns what you say into tasks, mood, patterns, and a weekly report. We deliberately left the exact monthly price out of the crawler file so it can never go stale — it just points to the site and says "7-day free trial." Second, the security patch: two serious login-system vulnerabilities flagged in the audit are now fixed by updating the underlying libraries. Nothing about how you sign in changes; it's the same login, just on a patched, safer version. A few other flagged updates were left alone on purpose because they'd require bigger, riskier upgrades that Jimmy wants to schedule and test himself.
+
+### Technical changes (for Jimmy)
+- **Copy (commit f9fd89e2):**
+  - `apps/web/public/site.webmanifest` — rewrote `description` (was "Brain dump daily. Get your life back.")
+  - `apps/web/public/llms.txt` — rewrote intro blurb, all off-brand `/for/*` use-case descriptions (removed "60-second", "nightly", "before bed", "brain dump"), and the pricing line (dropped stale $12.99/14-day → "7-day free trial; see site for current pricing")
+  - Intentionally left the real `/blog/brain-dump-before-bed` and `/blog/how-to-brain-dump` article titles/descriptions unchanged — those are live SEO pages targeting that search term, so llms.txt must reference them accurately
+- **Security (commit 0252362b):** ran `npm audit fix` (NO `--force`). `package.json` unchanged; only `package-lock.json` moved. All semver-compatible, no major bumps:
+  - `next-auth` 4.24.14 → 4.24.15 (critical: getToken() uncaught exception on malformed Bearer header)
+  - `@auth/core` 0.41.2 → 0.41.3 (critical: homoglyph @ email-normalizer bypass)
+  - `@auth/prisma-adapter` 2.11.2 → 2.11.3
+  - `uuid` 8.3.2 → 11.1.1 (transitive under next-auth), `protobufjs` 7.6.1 → 7.6.5, `vite` 8.0.14 → 8.1.5 (dev/test only)
+  - Both criticals cleared; audit count 49→24 vulns, 0 critical remaining
+  - Auth test suite (`npm run test:auth`) passes 4/4
+
+### Manual steps needed
+- [ ] Jimmy: review the auth-touching lockfile bump (commit 0252362b) before merge — auth-review standing rule
+- [ ] Jimmy (later, not urgent): the remaining 24 audit findings need breaking major bumps — `nodemailer` 6→9, `next` 14→16 (to clear the postcss chain), and `@sentry/nextjs` outside stated range. These were deliberately NOT applied. Schedule + test separately.
+- [ ] Keenan: nothing to run. Redeploy is automatic on push.
+
+### Notes
+- Held both commits per standing workflow — local only until "push it".
+- `npm audit fix` without `--force` only applies semver-compatible fixes, which is exactly what cleared the two criticals; `--force` was avoided because it would pull `next@16` and `nodemailer@9` (breaking).
+- `uuid` jumping 8→11 looks like a major bump but it's transitive inside next-auth@4.24.15's own dependency graph (npm resolved it as compatible), not a change to any range we declare — no action needed on our side.
+- macOS has no `timeout` binary — ran the auth tests directly instead. They pass.
+- Positioning source of truth is `docs/acuity-positioning.md`: $4.99/mo, $39.99/yr, 7-day trial, no "brain dump"/duration/nightly framing. Verified the two edited files against it.
+
 ## [2026-07-21] — Post-domain-flip identity routing failure: root cause + upgraded diagnostic + merge tooling
 
 **Requested by:** Keenan
