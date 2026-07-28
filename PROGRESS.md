@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-07-27] — Fix transparent logo and broken star rating on landing page
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 89a0ac53
+
+### In plain English (for Keenan)
+The Ripple logo on the website had a cream-colored background baked into the image, so it looked like a square sticker pasted onto the page instead of blending cleanly. Created a transparent version of the logo and swapped it in everywhere — navbar, footer, sign-in, sign-up, and marketing pages. Also fixed the five-star App Store rating badge on the hero section, which was rendering broken/clipped stars because the star shape extended outside its drawing area.
+
+### Technical changes (for Jimmy)
+- Created `apps/web/public/ripple-mark-coral-t.png` — transparent version of the coral mark via flood-fill background removal from the source file on Desktop. Original `ripple-mark-coral.png` preserved.
+- Updated logo `src` in 8 files: `nav-bar.tsx`, `MarketingNav.tsx`, `Footer.tsx`, `app-shell.tsx`, `signin/page.tsx`, `signup/page.tsx`, `try-session-claimer.tsx`, `first-debrief-flow.tsx`
+- Fixed `Hero.tsx` star SVG `<path>` — old path (`M12 2.5l2.9 6 6.6.8...`) extended to y≈26 outside the 24×24 viewBox. Replaced with standard Material Design star path that fits within bounds.
+
+### Manual steps needed
+None
+
+### Notes
+- The build has a pre-existing failure from missing `driver.js` dependency (web-tour-controller.tsx) — unrelated to this change.
+- White logo (`ripple-mark-white.png`) was not changed — it's only used on dark backgrounds where the dark bg is intentional.
+
+---
+
 ## [2026-07-21] — Post-domain-flip identity routing failure: root cause + upgraded diagnostic + merge tooling
 
 **Requested by:** Keenan
