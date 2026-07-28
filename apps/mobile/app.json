@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ripple",
     "slug": "acuity",
-    "version": "1.4.0",
+    "version": "1.3.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -20,7 +20,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.heelerdigital.acuity",
       "usesAppleSignIn": true,
-      "associatedDomains": ["applinks:getacuity.io"],
+      "associatedDomains": ["applinks:app.goripple.io"],
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
         "NSFaceIDUsageDescription": "Ripple uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",
@@ -177,12 +177,12 @@
           "data": [
             {
               "scheme": "https",
-              "host": "getacuity.io",
+              "host": "app.goripple.io",
               "pathPrefix": "/api/auth/verify-email"
             },
             {
               "scheme": "https",
-              "host": "getacuity.io",
+              "host": "app.goripple.io",
               "pathPrefix": "/open"
             }
           ],
