@@ -89,7 +89,7 @@ function Stars() {
     <span className="inline-flex gap-0.5">
       {[0, 1, 2, 3, 4].map((i) => (
         <svg key={i} width={12} height={12} viewBox="0 0 24 24" className="fill-acuity-primary">
-          <path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 23l-5.9 3.3 1.3-6.5L2.5 9.3l6.6-.8z" transform="scale(0.96) translate(0.5 -0.5)" />
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
         </svg>
       ))}
     </span>
