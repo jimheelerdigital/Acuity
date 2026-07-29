@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-07-28] — Add app screenshot pack to project
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5d927206
+
+### In plain English (for Keenan)
+Added all 10 app screenshots (home screen, recording, insights, entries, tasks, settings, and multiple theme variants) to the website's public folder so they're ready to use on the landing page, marketing pages, or anywhere else we need them.
+
+### Technical changes (for Jimmy)
+- Created `apps/web/public/app-screenshots/` directory
+- Added 10 PNGs from the `ripple-screenshot-pack`: home (dusk, light sky, sunset), record orb, processing/reflecting, insights radar, theme orbit, entries list, tasks, settings palette (light)
+- Total ~3.6 MB of assets, accessible at `/app-screenshots/<filename>.png`
+
+### Manual steps needed
+None
+
+### Notes
+- Screenshots are served as static assets — no optimization/WebP conversion applied yet. If we embed them on the site we should run them through Next.js Image for automatic optimization.
+
+---
+
 ## [2026-07-27] — Fix transparent logo and broken star rating on landing page
 
 **Requested by:** Keenan
