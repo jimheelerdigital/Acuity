@@ -26,16 +26,16 @@ type BrowserSplit = {
 // (>25%), amber = soft (10–25%), green = healthy (<10%). Matches the rest of
 // the MRI palette.
 function dropColor(dropPct: number | null): string {
-  if (dropPct == null) return "bg-[#8E6FE6]";
-  if (dropPct > 25) return "bg-red-500";
-  if (dropPct >= 10) return "bg-amber-500";
-  return "bg-green-500";
+  if (dropPct == null) return "bg-acuity-primary";
+  if (dropPct > 25) return "bg-acuity-bad";
+  if (dropPct >= 10) return "bg-acuity-warn";
+  return "bg-acuity-good";
 }
 
 function dropTextColor(dropPct: number): string {
-  if (dropPct > 25) return "text-red-400";
-  if (dropPct >= 10) return "text-amber-400";
-  return "text-green-400";
+  if (dropPct > 25) return "text-acuity-bad";
+  if (dropPct >= 10) return "text-acuity-warn";
+  return "text-acuity-good";
 }
 
 // Drop% from the previous step (null for the first step or when prev is 0).
@@ -58,12 +58,12 @@ function FunnelBars({ steps }: { steps: FunnelStep[] }) {
         return (
           <div key={`${i}-${s.label}`}>
             <div className="mb-1 flex items-baseline justify-between text-sm">
-              <span className="text-white/80">
-                <span className="mr-2 tabular-nums text-white/30">{i + 1}.</span>
+              <span className="text-acuity-text-sec">
+                <span className="mr-2 tabular-nums text-acuity-text-quiet">{i + 1}.</span>
                 {s.label}
               </span>
               <span className="flex items-baseline gap-3 tabular-nums">
-                <span className="font-medium text-white">{s.count}</span>
+                <span className="font-medium text-acuity-text">{s.count}</span>
                 {drop != null && (
                   <span className={`text-xs ${dropTextColor(drop)}`}>
                     -{drop.toFixed(1)}% drop
@@ -71,9 +71,9 @@ function FunnelBars({ steps }: { steps: FunnelStep[] }) {
                 )}
               </span>
             </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-white/5">
+            <div className="h-3 w-full overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
               <div
-                className={`h-full rounded-full transition-all ${dropColor(drop)}`}
+                className={`h-full rounded-acuity-pill transition-all ${dropColor(drop)}`}
                 style={{ width: `${Math.min(widthPct, 100)}%` }}
               />
             </div>
@@ -154,9 +154,9 @@ export default function WebFunnelSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : steps.length === 0 ? (
-          <p className="text-sm text-white/40">No web funnel data in this range.</p>
+          <p className="text-sm text-acuity-text-ter">No web funnel data in this range.</p>
         ) : (
           <FunnelBars steps={steps} />
         )}
@@ -166,14 +166,14 @@ export default function WebFunnelSection({ start, end }: Props) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ChartCard title="In-App Browser">
             {inAppSteps.length === 0 ? (
-              <p className="text-sm text-white/40">No in-app-browser sessions.</p>
+              <p className="text-sm text-acuity-text-ter">No in-app-browser sessions.</p>
             ) : (
               <FunnelBars steps={inAppSteps} />
             )}
           </ChartCard>
           <ChartCard title="Regular Browser">
             {regularSteps.length === 0 ? (
-              <p className="text-sm text-white/40">No regular-browser sessions.</p>
+              <p className="text-sm text-acuity-text-ter">No regular-browser sessions.</p>
             ) : (
               <FunnelBars steps={regularSteps} />
             )}

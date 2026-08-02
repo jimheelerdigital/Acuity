@@ -20,16 +20,16 @@ const COHORT_BANDS: {
   label: string;
   color: string;
 }[] = [
-  { key: "oneAndDone", label: "One & done (1 entry)", color: "#EF4444" },
-  { key: "dabbled", label: "Dabbled (2-4)", color: "#F59E0B" },
-  { key: "engaged", label: "Engaged (5-14)", color: "#3B82F6" },
-  { key: "habit", label: "Habit (15+)", color: "#8E6FE6" },
+  { key: "oneAndDone", label: "One & done (1 entry)", color: "var(--acuity-bad)" },
+  { key: "dabbled", label: "Dabbled (2-4)", color: "var(--acuity-warn)" },
+  { key: "engaged", label: "Engaged (5-14)", color: "var(--acuity-secondary)" },
+  { key: "habit", label: "Habit (15+)", color: "var(--acuity-primary)" },
 ];
 
 function retentionColor(pct: number): string {
-  if (pct >= 40) return "bg-green-500";
-  if (pct >= 20) return "bg-amber-500";
-  return "bg-red-500";
+  if (pct >= 40) return "bg-acuity-good";
+  if (pct >= 20) return "bg-acuity-warn";
+  return "bg-acuity-bad";
 }
 
 export default function EngagementSection({ start, end }: Props) {
@@ -104,9 +104,9 @@ export default function EngagementSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : !dist || totalActivated === 0 ? (
-          <p className="text-sm text-white/40">
+          <p className="text-sm text-acuity-text-ter">
             No activated users in this range.
           </p>
         ) : (
@@ -114,11 +114,11 @@ export default function EngagementSection({ start, end }: Props) {
             {/* Stacked cohort bar */}
             <div>
               <div className="mb-2 flex items-baseline justify-between text-sm">
-                <span className="text-white/80">
+                <span className="text-acuity-text-sec">
                   Cohort split of {totalActivated} activated users
                 </span>
               </div>
-              <div className="flex h-6 w-full overflow-hidden rounded-full bg-white/5">
+              <div className="flex h-6 w-full overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
                 {bands.map((b) => {
                   const widthPct =
                     bandsTotal > 0 ? (b.count / bandsTotal) * 100 : 0;
@@ -146,10 +146,10 @@ export default function EngagementSection({ start, end }: Props) {
                         className="inline-block h-2.5 w-2.5 rounded-sm"
                         style={{ backgroundColor: b.color }}
                       />
-                      <span className="text-white/60">{b.label}</span>
-                      <span className="ml-auto tabular-nums text-white/80">
+                      <span className="text-acuity-text-ter">{b.label}</span>
+                      <span className="ml-auto tabular-nums text-acuity-text-sec">
                         {b.count}
-                        <span className="ml-1 text-white/40">({pct}%)</span>
+                        <span className="ml-1 text-acuity-text-ter">({pct}%)</span>
                       </span>
                     </div>
                   );
@@ -184,9 +184,9 @@ export default function EngagementSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : retentionCurve.length === 0 ? (
-          <p className="text-sm text-white/40">No retention data yet.</p>
+          <p className="text-sm text-acuity-text-ter">No retention data yet.</p>
         ) : (
           <div className="space-y-2">
             {retentionCurve.map((w) => {
@@ -194,19 +194,19 @@ export default function EngagementSection({ start, end }: Props) {
               return (
                 <div key={w.weekNum}>
                   <div className="mb-1 flex items-baseline justify-between text-xs">
-                    <span className="text-white/70">Week {w.weekNum}</span>
+                    <span className="text-acuity-text-sec">Week {w.weekNum}</span>
                     <span className="flex items-baseline gap-3 tabular-nums">
-                      <span className="text-white/50">
+                      <span className="text-acuity-text-ter">
                         {w.activeInWeek}/{w.cohortSize}
                       </span>
-                      <span className="font-medium text-white">
+                      <span className="font-medium text-acuity-text">
                         {w.pctRetained.toFixed(1)}%
                       </span>
                     </span>
                   </div>
-                  <div className="h-3 w-full overflow-hidden rounded-full bg-white/5">
+                  <div className="h-3 w-full overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
                     <div
-                      className={`h-full rounded-full transition-all ${retentionColor(
+                      className={`h-full rounded-acuity-pill transition-all ${retentionColor(
                         w.pctRetained,
                       )}`}
                       style={{ width: `${Math.min(widthPct, 100)}%` }}

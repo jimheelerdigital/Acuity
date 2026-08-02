@@ -4,9 +4,8 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 
 const FeatureFlagsTab = dynamic(() => import("./FeatureFlagsTab"));
-const GuideTab = dynamic(() => import("./GuideTab"));
 
-type Section = "feature-flags" | "guide" | "links";
+type Section = "feature-flags" | "links";
 
 const QUICK_LINKS = [
   { label: "Supabase", href: "https://supabase.com/dashboard" },
@@ -26,11 +25,10 @@ export default function SettingsTab() {
   return (
     <div className="space-y-6">
       {/* Sub-section toggle */}
-      <div className="flex gap-1 rounded-lg bg-[#13131F] p-1 w-fit">
+      <div className="flex gap-1 rounded-lg bg-acuity-card-bg p-1 w-fit">
         {(
           [
             { key: "feature-flags", label: "Feature Flags" },
-            { key: "guide", label: "Guide" },
             { key: "links", label: "External Links" },
           ] as const
         ).map((s) => (
@@ -39,8 +37,8 @@ export default function SettingsTab() {
             onClick={() => setSection(s.key)}
             className={`rounded-md px-4 py-2 text-sm font-medium transition ${
               section === s.key
-                ? "bg-[#8E6FE6] text-white"
-                : "text-white/50 hover:text-white/80"
+                ? "bg-acuity-primary text-acuity-text"
+                : "text-acuity-text-ter hover:text-acuity-text-sec"
             }`}
           >
             {s.label}
@@ -49,10 +47,9 @@ export default function SettingsTab() {
       </div>
 
       {section === "feature-flags" && <FeatureFlagsTab />}
-      {section === "guide" && <GuideTab />}
       {section === "links" && (
-        <div className="rounded-lg bg-[#13131F] p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">
+        <div className="rounded-lg bg-acuity-card-bg p-6">
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-acuity-text-ter">
             External Services
           </h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -62,10 +59,10 @@ export default function SettingsTab() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-md bg-white/5 px-4 py-3 text-sm text-white/70 transition hover:bg-white/10 hover:text-white"
+                className="flex items-center gap-2 rounded-md bg-acuity-bg-inset px-4 py-3 text-sm text-acuity-text-sec transition hover:bg-acuity-bg-inset hover:text-acuity-text"
               >
                 <svg
-                  className="h-4 w-4 shrink-0 text-white/30"
+                  className="h-4 w-4 shrink-0 text-acuity-text-quiet"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

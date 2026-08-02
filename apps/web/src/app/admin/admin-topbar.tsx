@@ -13,10 +13,16 @@ import { SessionUserMenu } from "@/components/user-menu";
  */
 export function AdminTopbar() {
   return (
-    <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-white/10 bg-[#0A0A0F]/85 px-4 backdrop-blur-md sm:px-8">
+    <header
+      className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-acuity-line px-4 backdrop-blur-md sm:px-8"
+      style={{
+        background:
+          "color-mix(in oklch, var(--acuity-bg), transparent 15%)",
+      }}
+    >
       <Link
         href="/admin"
-        className="flex items-center gap-2.5 text-white"
+        className="flex items-center gap-2.5 text-acuity-text"
       >
         <img
           src="/ripple-mark-white.png?v=2"

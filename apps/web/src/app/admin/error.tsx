@@ -31,7 +31,7 @@ export default function AdminError({
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0D0D17", padding: 24 }}>
       <div style={{ maxWidth: 480, textAlign: "center" }}>
-        <h1 style={{ color: "#EF4444", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+        <h1 style={{ color: "var(--acuity-bad)", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
           Dashboard crashed
         </h1>
         <p style={{ color: "#A0A0B8", fontSize: 14, marginBottom: 8 }}>
@@ -49,8 +49,8 @@ export default function AdminError({
           onClick={handleRetry}
           disabled={retrying}
           style={{
-            background: retrying ? "#333" : "#8E6FE6",
-            color: "#fff",
+            background: retrying ? "#333" : "var(--acuity-primary)",
+            color: "var(--acuity-text)",
             border: "none",
             borderRadius: 8,
             padding: "10px 24px",
@@ -63,7 +63,7 @@ export default function AdminError({
           {retrying ? "Retrying..." : "Retry"}
         </button>
         <div style={{ marginTop: 16 }}>
-          <a href="/home" style={{ color: "#8E6FE6", fontSize: 13, textDecoration: "none" }}>
+          <a href="/home" style={{ color: "var(--acuity-primary)", fontSize: 13, textDecoration: "none" }}>
             Back to app
           </a>
         </div>

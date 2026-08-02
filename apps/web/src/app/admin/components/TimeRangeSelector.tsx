@@ -12,12 +12,12 @@ export type TimeRange =
 
 const OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "today", label: "Today" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "60d", label: "Last 60 days" },
-  { value: "90d", label: "Last 90 days" },
-  { value: "all", label: "All time" },
-  { value: "mtd", label: "Month-to-date" },
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "60d", label: "60d" },
+  { value: "90d", label: "90d" },
+  { value: "mtd", label: "MTD" },
+  { value: "all", label: "All" },
   { value: "custom", label: "Custom" },
 ];
 
@@ -38,17 +38,16 @@ export default function TimeRangeSelector({
 }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-1 rounded-lg bg-[#13131F] p-1">
+      <div className="flex items-center gap-0.5 rounded-acuity-pill border border-acuity-line bg-acuity-bg-sub p-1">
         {OPTIONS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => onChange(opt.value)}
-            className={`rounded-md transition ${
+            className={`rounded-acuity-pill px-3.5 py-1.5 text-[13px] font-medium tabular-nums transition duration-acuity-base ease-acuity-standard ${
               value === opt.value
-                ? "bg-[#8E6FE6] text-white"
-                : "text-white/55 hover:text-white/85"
+                ? "bg-acuity-grad-mix text-acuity-text"
+                : "text-acuity-text-sec hover:text-acuity-text"
             }`}
-            style={{ fontSize: 13, fontWeight: 500, padding: "9px 16px" }}
           >
             {opt.label}
           </button>
@@ -60,18 +59,14 @@ export default function TimeRangeSelector({
             type="date"
             value={customStart ?? ""}
             onChange={(e) => onCustomChange(e.target.value, customEnd ?? "")}
-            className="rounded-md bg-[#13131F] text-white/80"
-            style={{ fontSize: 13, padding: "9px 12px" }}
+            className="rounded-acuity-sm bg-acuity-bg-inset px-3 py-2 text-[13px] text-acuity-text tabular-nums focus:outline-none focus:ring-1 focus:ring-acuity-primary"
           />
-          <span className="text-white/40" style={{ fontSize: 13 }}>
-            to
-          </span>
+          <span className="text-[13px] text-acuity-text-quiet">to</span>
           <input
             type="date"
             value={customEnd ?? ""}
             onChange={(e) => onCustomChange(customStart ?? "", e.target.value)}
-            className="rounded-md bg-[#13131F] text-white/80"
-            style={{ fontSize: 13, padding: "9px 12px" }}
+            className="rounded-acuity-sm bg-acuity-bg-inset px-3 py-2 text-[13px] text-acuity-text tabular-nums focus:outline-none focus:ring-1 focus:ring-acuity-primary"
           />
         </div>
       )}

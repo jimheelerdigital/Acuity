@@ -66,6 +66,7 @@
   --acuity-bad: oklch(0.66 0.17 25);
   --acuity-bad-soft: oklch(0.66 0.17 25 / 0.18);
   --acuity-warn: #fbbf24;
+  --acuity-warn-soft: rgb(251 191 36 / 0.18);
 
   /* Light surfaces */
   --acuity-bg: oklch(0.975 0.005 285);
@@ -177,8 +178,13 @@
 }
 
 /* ─── Dark mode — surfaces / text / hairlines / shadows only ─────── */
+/* The bare `[data-theme="dark"]` selector lets a subtree force dark
+   regardless of the user's app theme — the admin dashboard uses this
+   (always dark) without touching <html>. CSS vars cascade to all
+   descendants of the wrapper. */
 
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+[data-theme="dark"] {
   /* Brand triplets stay as declared by the palette selector below.
      Dark mode ONLY overrides surface + text + hairline + shadow
      tokens. Gradients + glows still resolve through var() and

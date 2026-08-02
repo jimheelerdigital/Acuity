@@ -2,7 +2,7 @@
 
 export default function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/40 text-sm">
+    <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg p-12 text-center text-sm text-acuity-text-ter">
       {message}
     </div>
   );

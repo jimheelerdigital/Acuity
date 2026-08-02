@@ -15,11 +15,11 @@ interface Props {
 // Drop% between funnel steps drives the bar color: red = heavy leak,
 // amber = soft, green = healthy. Matches the rest of the MRI palette.
 function dropColor(pctOfPrev: number | null): string {
-  if (pctOfPrev == null) return "bg-[#8E6FE6]";
+  if (pctOfPrev == null) return "bg-acuity-primary";
   const drop = 100 - pctOfPrev;
-  if (drop > 25) return "bg-red-500";
-  if (drop >= 10) return "bg-amber-500";
-  return "bg-green-500";
+  if (drop > 25) return "bg-acuity-bad";
+  if (drop >= 10) return "bg-acuity-warn";
+  return "bg-acuity-good";
 }
 
 function fmtHours(h: number | null): string {
@@ -100,9 +100,9 @@ export default function ActivationFunnelSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : steps.length === 0 ? (
-          <p className="text-sm text-white/40">No activation data in this range.</p>
+          <p className="text-sm text-acuity-text-ter">No activation data in this range.</p>
         ) : (
           <div className="space-y-3">
             {steps.map((s, i) => {
@@ -110,17 +110,17 @@ export default function ActivationFunnelSection({ start, end }: Props) {
               return (
                 <div key={`${i}-${s.label}`}>
                   <div className="mb-1 flex items-baseline justify-between text-sm">
-                    <span className="text-white/80">{s.label}</span>
+                    <span className="text-acuity-text-sec">{s.label}</span>
                     <span className="flex items-baseline gap-3 tabular-nums">
-                      <span className="font-medium text-white">{s.count}</span>
+                      <span className="font-medium text-acuity-text">{s.count}</span>
                       {s.pctOfPrev != null && (
                         <span
                           className={`text-xs ${
                             100 - s.pctOfPrev > 25
-                              ? "text-red-400"
+                              ? "text-acuity-bad"
                               : 100 - s.pctOfPrev >= 10
-                                ? "text-amber-400"
-                                : "text-green-400"
+                                ? "text-acuity-warn"
+                                : "text-acuity-good"
                           }`}
                         >
                           {s.pctOfPrev.toFixed(1)}% of prev
@@ -128,9 +128,9 @@ export default function ActivationFunnelSection({ start, end }: Props) {
                       )}
                     </span>
                   </div>
-                  <div className="h-3 w-full overflow-hidden rounded-full bg-white/5">
+                  <div className="h-3 w-full overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
                     <div
-                      className={`h-full rounded-full transition-all ${dropColor(
+                      className={`h-full rounded-acuity-pill transition-all ${dropColor(
                         s.pctOfPrev,
                       )}`}
                       style={{ width: `${Math.min(widthPct, 100)}%` }}
@@ -155,9 +155,9 @@ export default function ActivationFunnelSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : histogram.length === 0 ? (
-          <p className="text-sm text-white/40">
+          <p className="text-sm text-acuity-text-ter">
             No first-entry timing data in this range.
           </p>
         ) : (
@@ -169,14 +169,14 @@ export default function ActivationFunnelSection({ start, end }: Props) {
                   key={`${i}-${h.bucket}`}
                   className="flex flex-1 flex-col items-center justify-end"
                 >
-                  <span className="mb-1 text-xs tabular-nums text-white/60">
+                  <span className="mb-1 text-xs tabular-nums text-acuity-text-ter">
                     {h.count}
                   </span>
                   <div
-                    className="w-full rounded-t bg-[#8E6FE6]/70 transition-all"
+                    className="w-full rounded-t bg-acuity-primary opacity-70 transition-all"
                     style={{ height: `${heightPct}%` }}
                   />
-                  <span className="mt-2 text-center text-[10px] leading-tight text-white/40">
+                  <span className="mt-2 text-center text-[10px] leading-tight text-acuity-text-ter">
                     {h.bucket}
                   </span>
                 </div>

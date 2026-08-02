@@ -21,13 +21,13 @@ function rowKey(r: FailureRow): string {
 function sourceColor(source: FailureRow["source"]): string {
   switch (source) {
     case "Entry failure":
-      return "text-red-400";
+      return "text-acuity-bad";
     case "AI call failure":
-      return "text-amber-400";
+      return "text-acuity-warn";
     case "Signup failure":
       return "text-purple-300";
     default:
-      return "text-white/60";
+      return "text-acuity-text-ter";
   }
 }
 
@@ -108,20 +108,20 @@ export default function FailureSurfacesSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : (
           <div className="space-y-8">
             {/* ── Grouped failures table ───────────────────────────────── */}
             <div>
               {surfaces.length === 0 ? (
-                <p className="text-sm text-white/40">
+                <p className="text-sm text-acuity-text-ter">
                   No failures recorded in this range.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="text-left text-white/40">
+                      <tr className="text-left text-acuity-text-ter">
                         <th className="pb-3 pr-4 font-medium">Source</th>
                         <th className="pb-3 pr-4 font-medium">Message</th>
                         <th className="pb-3 pr-4 text-right font-medium">
@@ -143,7 +143,7 @@ export default function FailureSurfacesSection({ start, end }: Props) {
                               onClick={() =>
                                 setExpanded(isOpen ? null : key)
                               }
-                              className="cursor-pointer border-t border-white/5 text-white/80 transition-colors hover:bg-white/[0.03]"
+                              className="cursor-pointer border-t border-acuity-line text-acuity-text-sec transition-colors hover:bg-acuity-bg-inset"
                             >
                               <td
                                 className={`py-3 pr-4 font-medium ${sourceColor(
@@ -154,14 +154,14 @@ export default function FailureSurfacesSection({ start, end }: Props) {
                               </td>
                               <td className="max-w-[420px] py-3 pr-4">
                                 <span className="flex items-center gap-2">
-                                  <span className="text-white/40">
+                                  <span className="text-acuity-text-ter">
                                     {isOpen ? "▾" : "▸"}
                                   </span>
                                   <span
                                     className={
                                       isOpen
-                                        ? "text-white/90"
-                                        : "truncate text-white/70"
+                                        ? "text-acuity-text"
+                                        : "truncate text-acuity-text-sec"
                                     }
                                     title={msg}
                                   >
@@ -169,51 +169,51 @@ export default function FailureSurfacesSection({ start, end }: Props) {
                                   </span>
                                 </span>
                               </td>
-                              <td className="py-3 pr-4 text-right font-semibold tabular-nums text-white">
+                              <td className="py-3 pr-4 text-right font-semibold tabular-nums text-acuity-text">
                                 {r.occurrences}
                               </td>
-                              <td className="py-3 pr-4 text-right tabular-nums text-white/60">
+                              <td className="py-3 pr-4 text-right tabular-nums text-acuity-text-ter">
                                 {r.usersAffected}
                               </td>
-                              <td className="py-3 text-right tabular-nums text-white/50">
+                              <td className="py-3 text-right tabular-nums text-acuity-text-ter">
                                 {formatWhen(r.lastSeen)}
                               </td>
                             </tr>
                             {isOpen && (
                               <tr
                                 key={`${key}::detail`}
-                                className="border-t border-white/5"
+                                className="border-t border-acuity-line"
                               >
                                 <td colSpan={5} className="px-4 py-4">
-                                  <div className="rounded-lg bg-[#0A0A0F] p-4">
-                                    <div className="mb-2 text-xs uppercase tracking-wide text-white/40">
+                                  <div className="rounded-lg bg-acuity-bg p-4">
+                                    <div className="mb-2 text-xs uppercase tracking-wide text-acuity-text-ter">
                                       Full message
                                     </div>
-                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-white/80">
+                                    <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-acuity-text-sec">
                                       {msg}
                                     </pre>
-                                    <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-white/40">
+                                    <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-acuity-text-ter">
                                       <span>
                                         Source:{" "}
-                                        <span className="text-white/70">
+                                        <span className="text-acuity-text-sec">
                                           {r.source}
                                         </span>
                                       </span>
                                       <span>
                                         Occurrences:{" "}
-                                        <span className="text-white/70">
+                                        <span className="text-acuity-text-sec">
                                           {r.occurrences}
                                         </span>
                                       </span>
                                       <span>
                                         Users affected:{" "}
-                                        <span className="text-white/70">
+                                        <span className="text-acuity-text-sec">
                                           {r.usersAffected}
                                         </span>
                                       </span>
                                       <span>
                                         Last seen:{" "}
-                                        <span className="text-white/70">
+                                        <span className="text-acuity-text-sec">
                                           {formatWhen(r.lastSeen)}
                                         </span>
                                       </span>
@@ -233,20 +233,20 @@ export default function FailureSurfacesSection({ start, end }: Props) {
 
             {/* ── Stuck users sub-list ─────────────────────────────────── */}
             <div>
-              <h4 className="mb-3 text-sm font-medium text-white/60">
+              <h4 className="mb-3 text-sm font-medium text-acuity-text-ter">
                 Stuck users
-                <span className="ml-2 text-xs font-normal text-white/30">
+                <span className="ml-2 text-xs font-normal text-acuity-text-quiet">
                   signed up &gt;7d ago · hit an error · never converted, never
                   recorded again
                 </span>
               </h4>
               {stuckUsers.length === 0 ? (
-                <p className="text-sm text-white/40">No stuck users right now.</p>
+                <p className="text-sm text-acuity-text-ter">No stuck users right now.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="text-left text-white/40">
+                      <tr className="text-left text-acuity-text-ter">
                         <th className="pb-3 pr-4 font-medium">Email</th>
                         <th className="pb-3 pr-4 font-medium">Name</th>
                         <th className="pb-3 pr-4 font-medium">Signed&nbsp;Up</th>
@@ -257,18 +257,18 @@ export default function FailureSurfacesSection({ start, end }: Props) {
                       {stuckUsers.map((u) => (
                         <tr
                           key={u.id}
-                          className="border-t border-white/5 text-white/80"
+                          className="border-t border-acuity-line text-acuity-text-sec"
                         >
-                          <td className="py-3 pr-4 font-medium text-white">
+                          <td className="py-3 pr-4 font-medium text-acuity-text">
                             {u.email}
                           </td>
-                          <td className="py-3 pr-4 text-white/60">
+                          <td className="py-3 pr-4 text-acuity-text-ter">
                             {u.name?.trim() || "—"}
                           </td>
-                          <td className="py-3 pr-4 tabular-nums text-white/50">
+                          <td className="py-3 pr-4 tabular-nums text-acuity-text-ter">
                             {formatWhen(u.createdAt)}
                           </td>
-                          <td className="py-3 text-right font-semibold tabular-nums text-red-400">
+                          <td className="py-3 text-right font-semibold tabular-nums text-acuity-bad">
                             {u.errorCount}
                           </td>
                         </tr>

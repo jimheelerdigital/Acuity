@@ -89,17 +89,17 @@ export default function FeatureFlagsTab() {
       <section>
         <h2 className="mb-4 text-lg font-semibold">Flags</h2>
         {error && (
-          <div className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <div className="mb-4 rounded-md bg-acuity-bad-soft px-3 py-2 text-sm text-acuity-bad">
             {error}
           </div>
         )}
         {flags === null ? (
-          <p className="text-sm text-white/40">Loading…</p>
+          <p className="text-sm text-acuity-text-ter">Loading…</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg bg-[#13131F]">
+          <div className="overflow-x-auto rounded-lg bg-acuity-card-bg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-white/40">
+                <tr className="text-left text-xs uppercase tracking-wider text-acuity-text-ter">
                   <th className="px-4 py-3">Flag</th>
                   <th className="px-4 py-3">Enabled</th>
                   <th className="px-4 py-3">Rollout %</th>
@@ -111,21 +111,21 @@ export default function FeatureFlagsTab() {
                 {flags.map((f) => (
                   <tr
                     key={f.id}
-                    className="border-t border-white/5"
+                    className="border-t border-acuity-line"
                     title={f.description ?? ""}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-white">{f.name}</div>
-                      <div className="font-mono text-xs text-white/40">{f.key}</div>
+                      <div className="font-medium text-acuity-text">{f.name}</div>
+                      <div className="font-mono text-xs text-acuity-text-ter">{f.key}</div>
                     </td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => patch(f.id, { enabled: !f.enabled })}
                         disabled={busy[f.id]}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        className={`rounded-acuity-pill px-3 py-1 text-xs font-semibold ${
                           f.enabled
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-white/5 text-white/40"
+                            ? "bg-acuity-good-soft text-green-300"
+                            : "bg-acuity-bg-inset text-acuity-text-ter"
                         }`}
                       >
                         {f.enabled ? "ON" : "OFF"}
@@ -152,14 +152,14 @@ export default function FeatureFlagsTab() {
                           })
                         }
                         disabled={busy[f.id]}
-                        className="rounded-md bg-[#0A0A0F] px-2 py-1 text-xs text-white"
+                        className="rounded-md bg-acuity-bg px-2 py-1 text-xs text-acuity-text"
                       >
                         <option value="">Any</option>
                         <option value="FREE">FREE</option>
                         <option value="PRO">PRO</option>
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-xs text-white/40">
+                    <td className="px-4 py-3 text-xs text-acuity-text-ter">
                       {new Date(f.updatedAt).toLocaleString()}
                     </td>
                   </tr>
@@ -254,7 +254,7 @@ function RolloutEditor({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuetext={`${sliderValue} percent`}
-        className="accent-[#8E6FE6] flex-1 max-w-[160px]"
+        className="accent-acuity-primary flex-1 max-w-[160px]"
       />
       <input
         type="number"
@@ -284,7 +284,7 @@ function RolloutEditor({
         disabled={disabled}
         aria-label="Rollout percentage"
         aria-invalid={invalid || undefined}
-        className={`w-14 rounded-md bg-[#0A0A0F] px-2 py-1 text-right font-mono text-xs text-white outline-none ${
+        className={`w-14 rounded-md bg-acuity-bg px-2 py-1 text-right font-mono text-xs text-acuity-text outline-none ${
           invalid
             ? "ring-1 ring-red-500"
             : dirty
@@ -292,18 +292,18 @@ function RolloutEditor({
               : ""
         }`}
       />
-      <span className="font-mono text-xs text-white/40">%</span>
+      <span className="font-mono text-xs text-acuity-text-ter">%</span>
       {dirty && !invalid && (
         <button
           onClick={() => commit()}
           disabled={disabled}
-          className="rounded-md bg-[#8E6FE6] px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+          className="rounded-md bg-acuity-primary px-2 py-1 text-xs font-medium text-acuity-text disabled:opacity-50"
         >
           Save
         </button>
       )}
       {dirty && !invalid && (
-        <span className="text-xs text-white/40 font-mono">
+        <span className="text-xs text-acuity-text-ter font-mono">
           {savedValue}%→{parsed}%
         </span>
       )}
@@ -382,33 +382,33 @@ function UserOverridesSection({ onMutation }: { onMutation: () => void }) {
   return (
     <section>
       <h2 className="mb-4 text-lg font-semibold">User overrides</h2>
-      <div className="rounded-lg bg-[#13131F] p-4">
+      <div className="rounded-lg bg-acuity-card-bg p-4">
         <div className="flex flex-wrap gap-2">
           <input
             type="email"
             placeholder="user@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="flex-1 rounded-md bg-[#0A0A0F] px-3 py-2 text-sm text-white"
+            className="flex-1 rounded-md bg-acuity-bg px-3 py-2 text-sm text-acuity-text"
           />
           <button
             onClick={lookup}
-            className="rounded-md bg-[#8E6FE6] px-4 py-2 text-sm font-medium"
+            className="rounded-md bg-acuity-primary px-4 py-2 text-sm font-medium"
           >
             Look up
           </button>
         </div>
         {error && (
-          <div className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <div className="mt-3 rounded-md bg-acuity-bad-soft px-3 py-2 text-sm text-acuity-bad">
             {error}
           </div>
         )}
         {user && (
           <div className="mt-4 space-y-4">
             <div className="text-sm">
-              <div className="font-mono text-xs text-white/40">{user.id}</div>
-              <div className="text-white">{user.email}</div>
-              <div className="text-xs text-white/40">
+              <div className="font-mono text-xs text-acuity-text-ter">{user.id}</div>
+              <div className="text-acuity-text">{user.email}</div>
+              <div className="text-xs text-acuity-text-ter">
                 {user.subscriptionStatus} · signed up{" "}
                 {new Date(user.createdAt).toLocaleDateString()}
                 {user.trialEndsAt
@@ -417,12 +417,12 @@ function UserOverridesSection({ onMutation }: { onMutation: () => void }) {
               </div>
             </div>
 
-            <div className="rounded-md bg-[#0A0A0F] p-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+            <div className="rounded-md bg-acuity-bg p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-acuity-text-ter">
                 Current overrides ({overrides.length})
               </div>
               {overrides.length === 0 ? (
-                <p className="text-sm text-white/40">None.</p>
+                <p className="text-sm text-acuity-text-ter">None.</p>
               ) : (
                 <ul className="space-y-2">
                   {overrides.map((o) => (
@@ -431,25 +431,25 @@ function UserOverridesSection({ onMutation }: { onMutation: () => void }) {
                       className="flex items-center justify-between gap-3 text-sm"
                     >
                       <div>
-                        <span className="font-mono text-xs text-white/60">
+                        <span className="font-mono text-xs text-acuity-text-ter">
                           {o.flagKey}
                         </span>
                         <span
-                          className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                          className={`ml-2 rounded-acuity-pill px-2 py-0.5 text-xs ${
                             o.enabled
-                              ? "bg-green-500/20 text-green-300"
-                              : "bg-red-500/20 text-red-300"
+                              ? "bg-acuity-good-soft text-green-300"
+                              : "bg-acuity-bad-soft text-acuity-bad"
                           }`}
                         >
                           {o.enabled ? "ON" : "OFF"}
                         </span>
-                        <span className="ml-2 text-xs text-white/40">
+                        <span className="ml-2 text-xs text-acuity-text-ter">
                           {o.reason}
                         </span>
                       </div>
                       <button
                         onClick={() => deleteOverride(o.id)}
-                        className="text-xs text-white/40 hover:text-red-300"
+                        className="text-xs text-acuity-text-ter hover:text-acuity-bad"
                       >
                         remove
                       </button>
@@ -491,15 +491,15 @@ function NewOverrideForm({
   const canSubmit = flagKey !== "" && reasonTrimmed.length >= 3;
 
   return (
-    <div className="rounded-md bg-[#0A0A0F] p-3">
-      <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+    <div className="rounded-md bg-acuity-bg p-3">
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-acuity-text-ter">
         Add / update override
       </div>
       <div className="grid gap-2 sm:grid-cols-[1fr_auto_2fr_auto]">
         <select
           value={flagKey}
           onChange={(e) => setFlagKey(e.target.value)}
-          className="rounded-md bg-[#13131F] px-2 py-2 text-sm text-white"
+          className="rounded-md bg-acuity-card-bg px-2 py-2 text-sm text-acuity-text"
         >
           {flagKeys.map((k) => (
             <option key={k} value={k}>
@@ -510,7 +510,7 @@ function NewOverrideForm({
         <select
           value={enabled ? "on" : "off"}
           onChange={(e) => setEnabled(e.target.value === "on")}
-          className="rounded-md bg-[#13131F] px-2 py-2 text-sm text-white"
+          className="rounded-md bg-acuity-card-bg px-2 py-2 text-sm text-acuity-text"
         >
           <option value="on">ON</option>
           <option value="off">OFF</option>
@@ -521,7 +521,7 @@ function NewOverrideForm({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           aria-invalid={reasonTooShort || undefined}
-          className={`rounded-md bg-[#13131F] px-2 py-2 text-sm text-white outline-none ${
+          className={`rounded-md bg-acuity-card-bg px-2 py-2 text-sm text-acuity-text outline-none ${
             reasonTooShort ? "ring-1 ring-red-500" : ""
           }`}
         />
@@ -532,13 +532,13 @@ function NewOverrideForm({
             setReason("");
           }}
           disabled={!canSubmit}
-          className="rounded-md bg-[#8E6FE6] px-4 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-md bg-acuity-primary px-4 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Save
         </button>
       </div>
       {reasonTooShort && (
-        <p className="mt-2 text-xs text-red-300">
+        <p className="mt-2 text-xs text-acuity-bad">
           Reason must be at least 3 characters.
         </p>
       )}

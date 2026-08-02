@@ -53,13 +53,13 @@ export default function ProjectDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 text-[#A0A0B8] animate-spin" />
+        <Loader2 className="h-6 w-6 text-acuity-text-ter animate-spin" />
       </div>
     );
   }
 
   if (!project) {
-    return <p className="text-sm text-red-400">Project not found.</p>;
+    return <p className="text-sm text-acuity-bad">Project not found.</p>;
   }
 
   const audience = project.targetAudience ?? {
@@ -79,11 +79,11 @@ export default function ProjectDetailPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">{project.name}</h1>
-          <p className="text-sm text-[#A0A0B8] font-mono">{project.slug}</p>
+          <p className="text-sm text-acuity-text-ter font-mono">{project.slug}</p>
         </div>
         <Link
           href={`/admin/adlab/projects/${id}/edit`}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-acuity-line px-4 py-2 text-sm text-acuity-text-ter hover:text-white hover:border-acuity-line-strong transition-colors"
         >
           <Pencil className="h-3.5 w-3.5" /> Edit
         </Link>
@@ -126,25 +126,25 @@ export default function ProjectDetailPage() {
           {usps.length > 0 ? (
             <ul className="space-y-1.5">
               {usps.map((usp, i) => (
-                <li key={i} className="text-sm text-[#A0A0B8] flex gap-2">
-                  <span className="text-[#8E6FE6] shrink-0">-</span>
+                <li key={i} className="text-sm text-acuity-text-ter flex gap-2">
+                  <span className="text-acuity-primary shrink-0">-</span>
                   {usp}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-[#A0A0B8]/50">None configured</p>
+            <p className="text-sm text-acuity-text-quiet">None configured</p>
           )}
         </Card>
 
         {/* Brand Voice */}
         <Card title="Brand Voice Guide" span2>
           {project.brandVoiceGuide ? (
-            <p className="text-sm text-[#A0A0B8] whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm text-acuity-text-ter whitespace-pre-wrap leading-relaxed">
               {project.brandVoiceGuide}
             </p>
           ) : (
-            <p className="text-sm text-[#A0A0B8]/50">Not configured</p>
+            <p className="text-sm text-acuity-text-quiet">Not configured</p>
           )}
         </Card>
 
@@ -153,8 +153,8 @@ export default function ProjectDetailPage() {
           <Row label="Logo" value={project.logoUrl || "Not set"} />
           {project.imageStylePrompt ? (
             <>
-              <p className="text-xs text-[#A0A0B8] mt-2 mb-1">Image Style Prompt</p>
-              <p className="text-sm text-[#A0A0B8] whitespace-pre-wrap">{project.imageStylePrompt}</p>
+              <p className="text-xs text-acuity-text-ter mt-2 mb-1">Image Style Prompt</p>
+              <p className="text-sm text-acuity-text-ter whitespace-pre-wrap">{project.imageStylePrompt}</p>
             </>
           ) : null}
         </Card>
@@ -166,7 +166,7 @@ export default function ProjectDetailPage() {
               {bannedPhrases.map((phrase, i) => (
                 <span
                   key={i}
-                  className="rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-xs text-red-400"
+                  className="rounded-md bg-acuity-bad-soft border border-acuity-bad px-2 py-0.5 text-xs text-acuity-bad"
                 >
                   {phrase}
                 </span>
@@ -181,7 +181,7 @@ export default function ProjectDetailPage() {
 
 function Card({ title, children, span2 }: { title: string; children: React.ReactNode; span2?: boolean }) {
   return (
-    <div className={`rounded-xl border border-white/10 bg-[#13131F] p-5 ${span2 ? "sm:col-span-2" : ""}`}>
+    <div className={`rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5 ${span2 ? "sm:col-span-2" : ""}`}>
       <h3 className="text-sm font-semibold text-white mb-3">{title}</h3>
       {children}
     </div>
@@ -190,8 +190,8 @@ function Card({ title, children, span2 }: { title: string; children: React.React
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between py-1.5 border-b border-white/5 last:border-0">
-      <span className="text-xs text-[#A0A0B8]">{label}</span>
+    <div className="flex items-baseline justify-between py-1.5 border-b border-acuity-line last:border-0">
+      <span className="text-xs text-acuity-text-ter">{label}</span>
       <span className={`text-sm text-white ${mono ? "font-mono text-xs" : ""}`}>{value}</span>
     </div>
   );
@@ -199,18 +199,18 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
 
 function TagRow({ label, tags }: { label: string; tags: string[] }) {
   return (
-    <div className="py-1.5 border-b border-white/5 last:border-0">
-      <span className="text-xs text-[#A0A0B8] block mb-1">{label}</span>
+    <div className="py-1.5 border-b border-acuity-line last:border-0">
+      <span className="text-xs text-acuity-text-ter block mb-1">{label}</span>
       {tags.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {tags.map((tag, i) => (
-            <span key={i} className="rounded-md bg-[#8E6FE6]/10 px-2 py-0.5 text-xs text-[#8E6FE6]">
+            <span key={i} className="rounded-md bg-acuity-primary-soft px-2 py-0.5 text-xs text-acuity-primary">
               {tag}
             </span>
           ))}
         </div>
       ) : (
-        <span className="text-xs text-[#A0A0B8]/50">None</span>
+        <span className="text-xs text-acuity-text-quiet">None</span>
       )}
     </div>
   );

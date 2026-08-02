@@ -209,7 +209,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {errors.form && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-lg border border-acuity-bad bg-acuity-bad-soft px-4 py-3 text-sm text-acuity-bad">
           {errors.form}
         </div>
       )}
@@ -295,14 +295,14 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
               className={`${inputClass} flex-1`} placeholder="voice entry pulls out tasks and tracks goals automatically" />
             {data.usps.length > 1 && (
               <button type="button" onClick={() => updateField("usps", data.usps.filter((_, j) => j !== i))}
-                className="shrink-0 rounded-lg border border-white/10 p-2 text-[#A0A0B8] hover:text-red-400 hover:border-red-400/30 transition-colors">
+                className="shrink-0 rounded-lg border border-acuity-line p-2 text-acuity-text-ter hover:text-acuity-bad hover:border-acuity-bad-soft transition-colors">
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
         ))}
         <button type="button" onClick={() => updateField("usps", [...data.usps, ""])}
-          className="flex items-center gap-1.5 text-xs text-[#8E6FE6] hover:text-[#AD92E9] transition-colors">
+          className="flex items-center gap-1.5 text-xs text-acuity-primary hover:text-[#AD92E9] transition-colors">
           <Plus className="h-3 w-3" /> Add USP
         </button>
       </Section>
@@ -329,11 +329,11 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
             className={inputClass} placeholder="https://goripple.io" />
         </Field>
         <label className="flex items-center gap-3 cursor-pointer">
-          <div className={`relative h-5 w-9 rounded-full transition-colors ${data.imageEnabled ? "bg-[#8E6FE6]" : "bg-white/20"}`}
+          <div className={`relative h-5 w-9 rounded-acuity-pill transition-colors ${data.imageEnabled ? "bg-acuity-primary" : "bg-acuity-line-strong"}`}
             onClick={() => updateField("imageEnabled", !data.imageEnabled)}>
-            <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${data.imageEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
+            <div className={`absolute top-0.5 h-4 w-4 rounded-acuity-pill bg-white transition-transform ${data.imageEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
           </div>
-          <span className="text-sm text-[#A0A0B8]">Image creatives enabled (OpenAI gpt-image)</span>
+          <span className="text-sm text-acuity-text-ter">Image creatives enabled (OpenAI gpt-image)</span>
         </label>
       </Section>
 
@@ -376,7 +376,7 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
         <Field label="Facebook Page ID" error={errors.metaPageId}>
           <input type="text" value={data.metaPageId} onChange={(e) => updateField("metaPageId", e.target.value)}
             className={inputClass} placeholder="XXXXXXXXX" />
-          <p className="mt-1 text-[10px] text-[#A0A0B8]/60">Required to launch ads. Find this in your Facebook Page &rarr; About &rarr; Page ID</p>
+          <p className="mt-1 text-[10px] text-acuity-text-quiet">Required to launch ads. Find this in your Facebook Page &rarr; About &rarr; Page ID</p>
         </Field>
         <Field label="Conversion Event">
           <input type="text" value={data.conversionEvent} onChange={(e) => updateField("conversionEvent", e.target.value)}
@@ -394,11 +394,11 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
       {/* Submit */}
       <div className="flex items-center gap-4 pt-4">
         <button type="submit" disabled={saving}
-          className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50">
+          className="inline-flex items-center gap-2 rounded-lg bg-acuity-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           {mode === "create" ? "Create Project" : "Save Changes"}
         </button>
-        <button type="button" onClick={() => router.back()} className="text-sm text-[#A0A0B8] hover:text-white transition-colors">Cancel</button>
+        <button type="button" onClick={() => router.back()} className="text-sm text-acuity-text-ter hover:text-white transition-colors">Cancel</button>
       </div>
     </form>
   );
@@ -407,11 +407,11 @@ export function ProjectForm({ initialData, projectId, mode }: ProjectFormProps) 
 // ─── Sub-components ────────────────────────────────────────────────────────
 
 const inputClass =
-  "w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-[#8E6FE6] transition-colors";
+  "w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-acuity-primary transition-colors";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
+    <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6">
       <h3 className="text-base font-semibold text-white mb-4">{title}</h3>
       <div className="space-y-4">{children}</div>
     </div>
@@ -421,9 +421,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      {label && <label className="block text-xs text-[#A0A0B8] mb-1.5">{label}</label>}
+      {label && <label className="block text-xs text-acuity-text-ter mb-1.5">{label}</label>}
       {children}
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-acuity-bad">{error}</p>}
     </div>
   );
 }
@@ -434,10 +434,10 @@ function TagField({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
 }) {
   return (
     <div>
-      {label && <label className="block text-xs text-[#A0A0B8] mb-1.5">{label}</label>}
+      {label && <label className="block text-xs text-acuity-text-ter mb-1.5">{label}</label>}
       <div className="flex flex-wrap gap-1.5 mb-2">
         {tags.map((tag, i) => (
-          <span key={i} className="inline-flex items-center gap-1 rounded-md bg-[#8E6FE6]/15 px-2 py-0.5 text-xs text-[#8E6FE6]">
+          <span key={i} className="inline-flex items-center gap-1 rounded-md bg-acuity-primary-soft px-2 py-0.5 text-xs text-acuity-primary">
             {tag}
             <button type="button" onClick={() => onRemove(i)}><X className="h-3 w-3" /></button>
           </span>
@@ -448,7 +448,7 @@ function TagField({ label, tags, inputValue, onInputChange, onAdd, onRemove, pla
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onAdd(); } }}
           className={`${inputClass} flex-1`} placeholder={placeholder} />
         <button type="button" onClick={onAdd}
-          className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-[#A0A0B8] hover:text-white hover:border-white/20 transition-colors">Add</button>
+          className="shrink-0 rounded-lg border border-acuity-line px-3 py-2 text-xs text-acuity-text-ter hover:text-white hover:border-acuity-line-strong transition-colors">Add</button>
       </div>
     </div>
   );
@@ -481,13 +481,13 @@ function InterestSearch({ selected, onAdd, onRemove }: {
 
   return (
     <div>
-      <p className="text-xs text-[#A0A0B8] mb-3">
+      <p className="text-xs text-acuity-text-ter mb-3">
         Search Meta&apos;s ad interest database to target specific audiences. Leave empty for broad/Advantage+ targeting.
       </p>
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {selected.map((i) => (
-            <span key={i.id} className="inline-flex items-center gap-1 rounded-md bg-[#8E6FE6]/15 px-2 py-0.5 text-xs text-[#8E6FE6]">
+            <span key={i.id} className="inline-flex items-center gap-1 rounded-md bg-acuity-primary-soft px-2 py-0.5 text-xs text-acuity-primary">
               {i.name}
               <button type="button" onClick={() => onRemove(i.id)}><X className="h-3 w-3" /></button>
             </span>
@@ -497,23 +497,23 @@ function InterestSearch({ selected, onAdd, onRemove }: {
       <div className="relative">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A0A0B8]/50" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-acuity-text-quiet" />
             <input type="text" value={query} onChange={(e) => handleChange(e.target.value)}
               className={`${inputClass} pl-8`} placeholder="Search interests (e.g. productivity, meditation...)" />
           </div>
-          {searching && <Loader2 className="h-4 w-4 text-[#A0A0B8] animate-spin self-center" />}
+          {searching && <Loader2 className="h-4 w-4 text-acuity-text-ter animate-spin self-center" />}
         </div>
         {results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border border-white/10 bg-[#1E1E2E] shadow-lg z-20 max-h-48 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border border-acuity-line bg-acuity-card-bg-raised shadow-lg z-20 max-h-48 overflow-y-auto">
             {results.map((r) => {
               const alreadySelected = selected.some((s) => s.id === r.id);
               return (
                 <button key={r.id} type="button" disabled={alreadySelected}
                   onClick={() => { onAdd({ id: r.id, name: r.name }); setQuery(""); setResults([]); }}
-                  className={`w-full text-left px-3 py-2 text-sm border-b border-white/5 last:border-0 transition-colors ${
-                    alreadySelected ? "text-[#A0A0B8]/40 cursor-not-allowed" : "text-white hover:bg-white/5 cursor-pointer"}`}>
+                  className={`w-full text-left px-3 py-2 text-sm border-b border-acuity-line last:border-0 transition-colors ${
+                    alreadySelected ? "text-acuity-text-quiet cursor-not-allowed" : "text-white hover:bg-acuity-bg-inset cursor-pointer"}`}>
                   <span>{r.name}</span>
-                  {r.audienceSize && <span className="ml-2 text-[10px] text-[#A0A0B8]">~{(r.audienceSize / 1_000_000).toFixed(1)}M</span>}
+                  {r.audienceSize && <span className="ml-2 text-[10px] text-acuity-text-ter">~{(r.audienceSize / 1_000_000).toFixed(1)}M</span>}
                 </button>
               );
             })}

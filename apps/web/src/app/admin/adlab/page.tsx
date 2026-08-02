@@ -32,7 +32,7 @@ export default function AdLabDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 text-[#A0A0B8] animate-spin" />
+        <Loader2 className="h-6 w-6 text-acuity-text-ter animate-spin" />
       </div>
     );
   }
@@ -49,23 +49,23 @@ export default function AdLabDashboard() {
   return (
     <>
       <h1 className="text-2xl font-bold text-white mb-1">AdLab Dashboard</h1>
-      <p className="text-sm text-[#A0A0B8] mb-8">
+      <p className="text-sm text-acuity-text-ter mb-8">
         Automated ad research, creative generation, launch & optimization.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          icon={<Zap className="h-5 w-5 text-[#8E6FE6]" />}
+          icon={<Zap className="h-5 w-5 text-acuity-primary" />}
           label="Total Spend (Month)"
           value={`$${(s.totalSpendCents / 100).toFixed(2)}`}
         />
         <StatCard
-          icon={<BarChart3 className="h-5 w-5 text-emerald-400" />}
+          icon={<BarChart3 className="h-5 w-5 text-acuity-good" />}
           label="Conversions (Month)"
           value={String(s.totalConversions)}
         />
         <StatCard
-          icon={<FlaskConical className="h-5 w-5 text-amber-400" />}
+          icon={<FlaskConical className="h-5 w-5 text-acuity-warn" />}
           label="Live Experiments"
           value={String(s.liveExperiments)}
         />
@@ -77,8 +77,8 @@ export default function AdLabDashboard() {
       </div>
 
       {s.blendedCplCents !== null && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-[#13131F] p-5">
-          <span className="text-xs text-[#A0A0B8]">Blended CPL</span>
+        <div className="mt-4 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5">
+          <span className="text-xs text-acuity-text-ter">Blended CPL</span>
           <p className="text-2xl font-bold text-white mt-1">
             ${(s.blendedCplCents / 100).toFixed(2)}
           </p>
@@ -93,20 +93,20 @@ export default function AdLabDashboard() {
             {s.recentDecisions.map((d) => (
               <div
                 key={d.id}
-                className="rounded-lg border border-white/10 bg-[#13131F] px-4 py-3 flex items-start gap-3"
+                className="rounded-lg border border-acuity-line bg-acuity-card-bg px-4 py-3 flex items-start gap-3"
               >
                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium mt-0.5 ${
                   d.decisionType === "kill"
-                    ? "bg-red-500/15 text-red-400"
+                    ? "bg-acuity-bad-soft text-acuity-bad"
                     : d.decisionType === "scale"
-                      ? "bg-emerald-500/15 text-emerald-400"
+                      ? "bg-acuity-good-soft text-acuity-good"
                       : "bg-zinc-500/15 text-zinc-400"
                 }`}>
                   {d.decisionType}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-[#A0A0B8]">{d.rationale}</p>
-                  <p className="text-[10px] text-[#A0A0B8]/60 mt-0.5">
+                  <p className="text-xs text-acuity-text-ter">{d.rationale}</p>
+                  <p className="text-[10px] text-acuity-text-quiet mt-0.5">
                     {new Date(d.executedAt).toLocaleString()}
                   </p>
                 </div>
@@ -117,13 +117,13 @@ export default function AdLabDashboard() {
       )}
 
       {s.liveExperiments === 0 && s.recentDecisions.length === 0 && (
-        <div className="mt-8 rounded-xl border border-white/10 bg-[#13131F] p-6">
+        <div className="mt-8 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6">
           <h2 className="text-lg font-semibold text-white mb-2">Getting Started</h2>
-          <p className="text-sm text-[#A0A0B8] leading-relaxed">
+          <p className="text-sm text-acuity-text-ter leading-relaxed">
             Configure a project in{" "}
-            <Link href="/admin/adlab/projects" className="text-[#8E6FE6] hover:underline">Projects</Link>,
+            <Link href="/admin/adlab/projects" className="text-acuity-primary hover:underline">Projects</Link>,
             then create an experiment in{" "}
-            <Link href="/admin/adlab/experiments" className="text-[#8E6FE6] hover:underline">Experiments</Link>.
+            <Link href="/admin/adlab/experiments" className="text-acuity-primary hover:underline">Experiments</Link>.
           </p>
         </div>
       )}
@@ -133,10 +133,10 @@ export default function AdLabDashboard() {
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
+    <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5">
       <div className="flex items-center gap-3 mb-3">
         {icon}
-        <span className="text-xs text-[#A0A0B8]">{label}</span>
+        <span className="text-xs text-acuity-text-ter">{label}</span>
       </div>
       <p className="text-2xl font-bold text-white">{value}</p>
     </div>

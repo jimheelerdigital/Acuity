@@ -184,7 +184,7 @@ export default function UsersTab() {
           <SummaryCard label="Recorded 1+" value={S.recordedAtLeast1} sub={`${S.downloadedOrWeb > 0 ? Math.round((S.recordedAtLeast1 / S.downloadedOrWeb) * 100) : 0}% of downloaded`} />
           <SummaryCard label="Active This Week" value={S.activeThisWeek} sub={`${S.totalUsers > 0 ? Math.round((S.activeThisWeek / S.totalUsers) * 100) : 0}% of total`} />
           <SummaryCard label="At Risk" value={S.atRisk} color="text-orange-300" />
-          <SummaryCard label="Never Recorded" value={S.neverRecorded} sub={`${S.totalUsers > 0 ? Math.round((S.neverRecorded / S.totalUsers) * 100) : 0}% of total`} color="text-red-300" />
+          <SummaryCard label="Never Recorded" value={S.neverRecorded} sub={`${S.totalUsers > 0 ? Math.round((S.neverRecorded / S.totalUsers) * 100) : 0}% of total`} color="text-acuity-bad" />
           <SummaryCard label="Paying" value={S.paying} color="text-green-300" />
           <SummaryCard label="Avg Entries / Active / Week" value={S.avgEntriesPerActiveUser} />
         </div>
@@ -192,23 +192,23 @@ export default function UsersTab() {
 
       {/* ── Download-stage breakdown (where stuck users sit before they open the app) ── */}
       {S?.downloadStages && (
-        <div className="rounded-lg border border-white/10 bg-[#13131F] p-3">
-          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-white/40">
+        <div className="rounded-lg border border-acuity-line bg-acuity-card-bg p-3">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-acuity-text-ter">
             Stuck at download — most-advanced step reached
           </div>
           <div className="flex flex-wrap gap-2">
             <DownloadStageChip label="Viewed download" value={S.downloadStages.viewed} color="text-sky-200" onClick={() => setLifecycleFilter("Viewed download")} />
             <DownloadStageChip label="Blocked in webview" value={S.downloadStages.blockedWebview} color="text-rose-300" onClick={() => setLifecycleFilter("Blocked in webview")} />
             <DownloadStageChip label="Tapped App Store" value={S.downloadStages.tappedAppStore} color="text-sky-300" onClick={() => setLifecycleFilter("Tapped App Store")} />
-            <DownloadStageChip label="Bounced from store" value={S.downloadStages.bouncedFromStore} color="text-amber-300" onClick={() => setLifecycleFilter("Bounced from store")} />
+            <DownloadStageChip label="Bounced from store" value={S.downloadStages.bouncedFromStore} color="text-acuity-warn" onClick={() => setLifecycleFilter("Bounced from store")} />
           </div>
         </div>
       )}
 
       {/* ── Push opt-in by platform ── */}
       {S?.pushOptIn && (
-        <div className="rounded-lg border border-white/10 bg-[#13131F] p-3">
-          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-white/40">
+        <div className="rounded-lg border border-acuity-line bg-acuity-card-bg p-3">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-acuity-text-ter">
             Push notification opt-in by platform
           </div>
           <div className="flex flex-wrap gap-4 text-sm">
@@ -231,12 +231,12 @@ export default function UsersTab() {
           placeholder="Search email…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="flex-1 min-w-[200px] rounded-md bg-[#13131F] px-3 py-2 text-sm text-white placeholder-white/30"
+          className="flex-1 min-w-[200px] rounded-md bg-acuity-card-bg px-3 py-2 text-sm text-acuity-text placeholder:text-acuity-text-quiet"
         />
         <select
           value={lifecycleFilter}
           onChange={(e) => setLifecycleFilter(e.target.value)}
-          className="rounded-md bg-[#13131F] px-3 py-2 text-xs text-white/70 border border-white/10"
+          className="rounded-md bg-acuity-card-bg px-3 py-2 text-xs text-acuity-text-sec border border-acuity-line"
         >
           <option value="">All stages</option>
           {LIFECYCLE_OPTIONS.map(s => (
@@ -252,40 +252,40 @@ export default function UsersTab() {
         <button
           onClick={handleStripeSync}
           disabled={syncing}
-          className="rounded-md bg-[#13131F] border border-white/10 px-3 py-2 text-xs text-white/60 hover:bg-white/5 disabled:opacity-50"
+          className="rounded-md bg-acuity-card-bg border border-acuity-line px-3 py-2 text-xs text-acuity-text-ter hover:bg-acuity-bg-inset disabled:opacity-50"
         >
           {syncing ? "Syncing…" : "Sync with Stripe"}
         </button>
         <button
           onClick={() => setShowBulkEmail(true)}
-          className="rounded-md bg-[#8E6FE6] px-3 py-2 text-xs font-medium text-white hover:bg-[#7D62CA]"
+          className="rounded-md bg-acuity-primary px-3 py-2 text-xs font-medium text-acuity-text hover:opacity-90"
         >
           Send Email
         </button>
       </div>
 
       {syncResult && (
-        <div className="rounded-md bg-[#13131F] px-3 py-2 text-xs text-white/60">
+        <div className="rounded-md bg-acuity-card-bg px-3 py-2 text-xs text-acuity-text-ter">
           {syncResult}
         </div>
       )}
 
       {nextCursor && (
-        <button onClick={() => load()} className="text-sm text-[#B99EE4] hover:underline">
+        <button onClick={() => load()} className="text-sm text-acuity-primary-hi hover:underline">
           Load more…
         </button>
       )}
 
       {/* ── Table ── */}
       {users === null ? (
-        <p className="text-sm text-white/40">Loading…</p>
+        <p className="text-sm text-acuity-text-ter">Loading…</p>
       ) : users.length === 0 ? (
-        <p className="text-sm text-white/40">No users match.</p>
+        <p className="text-sm text-acuity-text-ter">No users match.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg bg-[#13131F]">
+        <div className="overflow-x-auto rounded-lg bg-acuity-card-bg">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wider text-white/40">
+              <tr className="text-left text-[11px] uppercase tracking-wider text-acuity-text-ter">
                 <th className="px-3 py-3">Email</th>
                 <th className="px-3 py-3">Source</th>
                 <th className="px-3 py-3">Method</th>
@@ -307,37 +307,37 @@ export default function UsersTab() {
               {users.map((u) => (
                 <tr
                   key={u.id}
-                  className={`border-t border-white/5 hover:bg-white/5 ${
+                  className={`border-t border-acuity-line hover:bg-acuity-bg-inset ${
                     u.lifecycle === "At risk" ? "bg-orange-500/[0.03]" :
-                    u.lifecycle === "Churned" ? "bg-red-500/[0.03]" : ""
+                    u.lifecycle === "Churned" ? "bg-acuity-bad/[0.03]" : ""
                   }`}
                 >
                   {/* Name + Email */}
                   <td className="px-3 py-2.5 max-w-[200px]">
-                    <div className="text-xs font-medium text-white/90 truncate">{firstName(u.name)}</div>
-                    <div className="text-[11px] text-white/50 truncate">{u.email}</div>
+                    <div className="text-xs font-medium text-acuity-text truncate">{firstName(u.name)}</div>
+                    <div className="text-[11px] text-acuity-text-ter truncate">{u.email}</div>
                   </td>
 
                   {/* Source */}
-                  <td className="px-3 py-2.5 text-[11px] text-white/50">
+                  <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter">
                     {u.signupUtmSource ? `${u.signupUtmSource}${u.signupUtmMedium ? ` / ${u.signupUtmMedium}` : ""}` : "direct"}
                   </td>
 
                   {/* Signup Method */}
                   <td className="px-3 py-2.5 text-[11px]">
                     {u.signupMethod === "email" ? (
-                      <span className="text-white/60">Email</span>
+                      <span className="text-acuity-text-ter">Email</span>
                     ) : u.signupMethod === "google" ? (
-                      <span className="text-blue-300">Google</span>
+                      <span className="text-acuity-secondary">Google</span>
                     ) : u.signupMethod === "apple" ? (
-                      <span className="text-white/80">Apple</span>
+                      <span className="text-acuity-text-sec">Apple</span>
                     ) : (
-                      <span className="text-white/25">Unknown</span>
+                      <span className="text-acuity-text-quiet">Unknown</span>
                     )}
                   </td>
 
                   {/* Signup */}
-                  <td className="px-3 py-2.5 text-[11px] text-white/50 tabular-nums">
+                  <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter tabular-nums">
                     {new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </td>
 
@@ -361,19 +361,19 @@ export default function UsersTab() {
                     <span className={
                       u.entriesThisWeek > 0 ? "text-green-300" :
                       u.entryCount > 0 && u.lastEntryAt && daysSince(u.lastEntryAt) <= 7 ? "text-yellow-300" :
-                      u.entryCount > 0 ? "text-red-300" : "text-white/30"
+                      u.entryCount > 0 ? "text-acuity-bad" : "text-acuity-text-quiet"
                     }>
                       {u.entryCount} total{u.entriesThisWeek > 0 ? ` (${u.entriesThisWeek} this week)` : ""}
                     </span>
                   </td>
 
                   {/* Last Entry */}
-                  <td className="px-3 py-2.5 text-[11px] text-white/50">
+                  <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter">
                     {u.lastEntryAt ? formatTimeAgo(u.lastEntryAt) : "Never"}
                   </td>
 
                   {/* Streak */}
-                  <td className="px-3 py-2.5 text-[11px] text-white/50">
+                  <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter">
                     {u.streak > 0 ? `${u.streak}d` : "—"}
                   </td>
 
@@ -383,23 +383,23 @@ export default function UsersTab() {
                   </td>
 
                   {/* Weekly Reports */}
-                  <td className="px-3 py-2.5 text-[11px] text-white/50 tabular-nums">
+                  <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter tabular-nums">
                     {u.weeklyReportCount > 0 ? `${u.weeklyReportCount} sent` : "—"}
                   </td>
 
                   {/* Last Active */}
-                  <td className="px-3 py-2.5 text-[11px] text-white/50">
+                  <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter">
                     {u.lastActive ? formatTimeAgo(u.lastActive) : "—"}
                   </td>
 
                   {/* Recovery */}
-                  <td className="px-3 py-2.5 text-[11px] text-white/40">
+                  <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter">
                     {u.downloadReminder}
                   </td>
 
                   {/* View */}
                   <td className="px-3 py-2.5 text-right">
-                    <button onClick={() => setSelected(u.id)} className="text-[11px] text-[#B99EE4] hover:underline">
+                    <button onClick={() => setSelected(u.id)} className="text-[11px] text-acuity-primary-hi hover:underline">
                       view
                     </button>
                   </td>
@@ -424,10 +424,10 @@ export default function UsersTab() {
 
 function SummaryCard({ label, value, sub, color }: { label: string; value: number; sub?: string; color?: string }) {
   return (
-    <div className="rounded-lg bg-[#13131F] p-4">
-      <div className="text-[10px] uppercase tracking-wider text-white/40">{label}</div>
-      <div className={`text-xl font-semibold ${color ?? "text-white"}`}>{value}</div>
-      {sub && <div className="text-[11px] text-white/25 mt-0.5">{sub}</div>}
+    <div className="rounded-lg bg-acuity-card-bg p-4">
+      <div className="text-[10px] uppercase tracking-wider text-acuity-text-ter">{label}</div>
+      <div className={`text-xl font-semibold ${color ?? "text-acuity-text"}`}>{value}</div>
+      {sub && <div className="text-[11px] text-acuity-text-quiet mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -436,10 +436,10 @@ function DownloadStageChip({ label, value, color, onClick }: { label: string; va
   return (
     <button
       onClick={onClick}
-      className="flex items-baseline gap-1.5 rounded-md bg-white/[0.03] px-3 py-1.5 text-left transition hover:bg-white/[0.07]"
+      className="flex items-baseline gap-1.5 rounded-md bg-acuity-bg-inset px-3 py-1.5 text-left transition hover:bg-white/[0.07]"
     >
       <span className={`text-base font-semibold ${color}`}>{value}</span>
-      <span className="text-[11px] text-white/50">{label}</span>
+      <span className="text-[11px] text-acuity-text-ter">{label}</span>
     </button>
   );
 }
@@ -447,7 +447,7 @@ function DownloadStageChip({ label, value, color, onClick }: { label: string; va
 function SortHeader({ label, field, current, dir, onClick }: { label: string; field: string; current: string; dir: string; onClick: (f: string) => void }) {
   const active = current === field;
   return (
-    <th className="px-3 py-3 cursor-pointer hover:text-white/60 select-none" onClick={() => onClick(field)}>
+    <th className="px-3 py-3 cursor-pointer hover:text-acuity-text-ter select-none" onClick={() => onClick(field)}>
       {label} {active ? (dir === "desc" ? "↓" : "↑") : ""}
     </th>
   );
@@ -455,22 +455,22 @@ function SortHeader({ label, field, current, dir, onClick }: { label: string; fi
 
 function PlanPill({ status }: { status: string }) {
   const s = status.toLowerCase();
-  const bg = s.startsWith("paid") ? "bg-green-500/20 text-green-300"
-    : s.startsWith("trial") ? "bg-yellow-500/20 text-yellow-300"
+  const bg = s.startsWith("paid") ? "bg-acuity-good-soft text-green-300"
+    : s.startsWith("trial") ? "bg-acuity-warn-soft text-yellow-300"
     : s.startsWith("expired") ? "bg-orange-500/20 text-orange-300"
-    : s === "churned" ? "bg-red-500/20 text-red-300"
-    : s === "past due" ? "bg-amber-500/20 text-amber-300"
-    : "bg-white/5 text-white/40";
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${bg}`}>{status}</span>;
+    : s === "churned" ? "bg-acuity-bad-soft text-acuity-bad"
+    : s === "past due" ? "bg-acuity-warn-soft text-acuity-warn"
+    : "bg-acuity-bg-inset text-acuity-text-ter";
+  return <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${bg}`}>{status}</span>;
 }
 
 function PlatformPill({ platform }: { platform: string }) {
   const bg = platform === "iOS" ? "bg-sky-500/20 text-sky-300"
-    : platform === "Android" ? "bg-green-500/20 text-green-300"
-    : platform === "Web" ? "bg-emerald-500/20 text-emerald-300"
-    : platform === "Both" ? "bg-violet-500/20 text-violet-300"
-    : "bg-white/5 text-white/30";
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${bg}`}>{platform}</span>;
+    : platform === "Android" ? "bg-acuity-good-soft text-green-300"
+    : platform === "Web" ? "bg-acuity-good-soft text-acuity-good"
+    : platform === "Both" ? "bg-acuity-primary-soft text-acuity-primary-hi"
+    : "bg-acuity-bg-inset text-acuity-text-quiet";
+  return <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium ${bg}`}>{platform}</span>;
 }
 
 function NotificationsPill({ enabled, hasPushToken }: { enabled: boolean; hasPushToken: boolean }) {
@@ -478,38 +478,38 @@ function NotificationsPill({ enabled, hasPushToken }: { enabled: boolean; hasPus
   // push token (OS permission not granted / revoked, or web-only), flag it —
   // push can't actually be delivered even though the preference is on.
   if (!enabled) {
-    return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-white/5 text-white/40">Off</span>;
+    return <span className="rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium bg-acuity-bg-inset text-acuity-text-ter">Off</span>;
   }
   if (!hasPushToken) {
     return (
       <span
         title="Reminders are on, but there's no push token — the OS permission isn't granted so push can't be delivered."
-        className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-500/20 text-amber-300"
+        className="rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium bg-acuity-warn-soft text-acuity-warn"
       >
         On · no device
       </span>
     );
   }
-  return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-500/20 text-green-300">On</span>;
+  return <span className="rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium bg-acuity-good-soft text-green-300">On</span>;
 }
 
 function LifecyclePill({ stage }: { stage: string }) {
   const STYLES: Record<string, string> = {
-    "Signed up": "bg-white/10 text-white/50",
+    "Signed up": "bg-acuity-bg-inset text-acuity-text-ter",
     "Viewed download": "bg-sky-500/10 text-sky-200",
     "Blocked in webview": "bg-rose-500/20 text-rose-300",
     "Tapped App Store": "bg-sky-500/20 text-sky-300",
-    "Bounced from store": "bg-amber-500/20 text-amber-300",
+    "Bounced from store": "bg-acuity-warn-soft text-acuity-warn",
     "Attempted download": "bg-sky-500/20 text-sky-300",
-    "App downloaded": "bg-blue-500/20 text-blue-300",
+    "App downloaded": "bg-acuity-secondary-soft text-acuity-secondary",
     "First debrief": "bg-teal-500/20 text-teal-300",
     "Exploring": "bg-lime-500/20 text-lime-300",
-    "Building habit": "bg-green-500/20 text-green-300",
-    "Active user": "bg-emerald-500/20 text-emerald-300",
+    "Building habit": "bg-acuity-good-soft text-green-300",
+    "Active user": "bg-acuity-good-soft text-acuity-good",
     "At risk": "bg-orange-500/20 text-orange-300",
-    "Churned": "bg-red-500/20 text-red-300",
+    "Churned": "bg-acuity-bad-soft text-acuity-bad",
   };
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${STYLES[stage] ?? "bg-white/5 text-white/40"}`}>{stage}</span>;
+  return <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${STYLES[stage] ?? "bg-acuity-bg-inset text-acuity-text-ter"}`}>{stage}</span>;
 }
 
 function firstName(name: string | null): string {
@@ -626,103 +626,103 @@ function UserDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-[#0A0A0F] p-6 text-white">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-acuity-bg p-6 text-acuity-text">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">User detail</h3>
-          <button onClick={onClose} className="text-sm text-white/40 hover:text-white">close</button>
+          <button onClick={onClose} className="text-sm text-acuity-text-ter hover:text-acuity-text">close</button>
         </div>
-        {error && <div className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
+        {error && <div className="mb-4 rounded-md bg-acuity-bad-soft px-3 py-2 text-sm text-acuity-bad">{error}</div>}
         {!data ? (
-          <p className="text-sm text-white/40">Loading…</p>
+          <p className="text-sm text-acuity-text-ter">Loading…</p>
         ) : (
           <div className="space-y-4 text-sm">
             <div>
-              <div className="text-xs font-mono text-white/40">{data.user.id}</div>
+              <div className="text-xs font-mono text-acuity-text-ter">{data.user.id}</div>
               <div className="text-base font-medium">{data.user.email}</div>
-              <div className="mt-1 flex flex-wrap gap-2 text-xs text-white/60">
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs">{data.user.subscriptionStatus}</span>
-                {data.user.isAdmin && <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-purple-300">admin</span>}
+              <div className="mt-1 flex flex-wrap gap-2 text-xs text-acuity-text-ter">
+                <span className="rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-xs">{data.user.subscriptionStatus}</span>
+                {data.user.isAdmin && <span className="rounded-acuity-pill bg-purple-500/20 px-2 py-0.5 text-purple-300">admin</span>}
                 <span>signed up {new Date(data.user.createdAt).toLocaleDateString()}</span>
                 <span>last active {data.user.lastSeenAt ? formatTimeAgo(data.user.lastSeenAt) : "—"}</span>
               </div>
-              <div className="mt-1 text-xs text-white/50">
+              <div className="mt-1 text-xs text-acuity-text-ter">
                 {data.user.devicePlatform
                   ? `${data.user.devicePlatform === "ios" ? "iOS" : "Android"}${data.user.appVersion ? `, v${data.user.appVersion}` : ""}`
                   : "No mobile app"}
               </div>
             </div>
-            <dl className="grid grid-cols-2 gap-3 rounded-md bg-[#13131F] p-3 text-xs">
-              <div><dt className="text-white/40">Trial ends</dt><dd>{data.user.trialEndsAt ? new Date(data.user.trialEndsAt).toLocaleString() : "—"}</dd></div>
-              <div><dt className="text-white/40">Period end</dt><dd>{data.user.stripeCurrentPeriodEnd ? new Date(data.user.stripeCurrentPeriodEnd).toLocaleString() : "—"}</dd></div>
-              <div><dt className="text-white/40">Entries</dt><dd className="tabular-nums">{data.user.entryCount}</dd></div>
-              <div><dt className="text-white/40">Latest entry</dt><dd>{data.user.latestEntryAt ? new Date(data.user.latestEntryAt).toLocaleDateString() : "—"}</dd></div>
+            <dl className="grid grid-cols-2 gap-3 rounded-md bg-acuity-card-bg p-3 text-xs">
+              <div><dt className="text-acuity-text-ter">Trial ends</dt><dd>{data.user.trialEndsAt ? new Date(data.user.trialEndsAt).toLocaleString() : "—"}</dd></div>
+              <div><dt className="text-acuity-text-ter">Period end</dt><dd>{data.user.stripeCurrentPeriodEnd ? new Date(data.user.stripeCurrentPeriodEnd).toLocaleString() : "—"}</dd></div>
+              <div><dt className="text-acuity-text-ter">Entries</dt><dd className="tabular-nums">{data.user.entryCount}</dd></div>
+              <div><dt className="text-acuity-text-ter">Latest entry</dt><dd>{data.user.latestEntryAt ? new Date(data.user.latestEntryAt).toLocaleDateString() : "—"}</dd></div>
               <div className="col-span-2">
-                <dt className="text-white/40">Stripe</dt>
+                <dt className="text-acuity-text-ter">Stripe</dt>
                 <dd>{data.user.stripeCustomerId ? (
-                  <a href={`https://dashboard.stripe.com/customers/${data.user.stripeCustomerId}`} target="_blank" rel="noopener noreferrer" className="text-[#B99EE4] hover:underline">{data.user.stripeCustomerId}</a>
+                  <a href={`https://dashboard.stripe.com/customers/${data.user.stripeCustomerId}`} target="_blank" rel="noopener noreferrer" className="text-acuity-primary-hi hover:underline">{data.user.stripeCustomerId}</a>
                 ) : "—"}</dd>
               </div>
             </dl>
             {/* Attribution */}
-            <div className="rounded-md bg-[#13131F] p-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">Attribution</div>
+            <div className="rounded-md bg-acuity-card-bg p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-acuity-text-ter">Attribution</div>
               <dl className="grid grid-cols-2 gap-2 text-xs">
-                <div><dt className="text-white/40">Landing</dt><dd>{data.user.signupLandingPath && data.user.signupLandingPath !== "/" ? data.user.signupLandingPath : "direct"}</dd></div>
-                <div><dt className="text-white/40">Source</dt><dd>{data.user.signupUtmSource || "—"}</dd></div>
-                <div><dt className="text-white/40">Medium</dt><dd>{data.user.signupUtmMedium || "—"}</dd></div>
-                <div><dt className="text-white/40">Campaign</dt><dd className="truncate max-w-[150px]">{data.user.signupUtmCampaign || "—"}</dd></div>
+                <div><dt className="text-acuity-text-ter">Landing</dt><dd>{data.user.signupLandingPath && data.user.signupLandingPath !== "/" ? data.user.signupLandingPath : "direct"}</dd></div>
+                <div><dt className="text-acuity-text-ter">Source</dt><dd>{data.user.signupUtmSource || "—"}</dd></div>
+                <div><dt className="text-acuity-text-ter">Medium</dt><dd>{data.user.signupUtmMedium || "—"}</dd></div>
+                <div><dt className="text-acuity-text-ter">Campaign</dt><dd className="truncate max-w-[150px]">{data.user.signupUtmCampaign || "—"}</dd></div>
               </dl>
             </div>
             {/* Notifications */}
-            <div className="rounded-md bg-[#13131F] p-3">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+            <div className="rounded-md bg-acuity-card-bg p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-acuity-text-ter">
                 Notifications
                 <NotificationsPill enabled={data.user.notificationsEnabled} hasPushToken={data.user.hasPushToken} />
               </div>
               <dl className="grid grid-cols-2 gap-2 text-xs">
-                <div><dt className="text-white/40">Reminders</dt><dd>{data.user.notificationsEnabled ? "On" : "Off"}</dd></div>
-                <div><dt className="text-white/40">Reminder time</dt><dd>{data.user.notificationTime ?? "—"}</dd></div>
-                <div><dt className="text-white/40">Days</dt><dd>{formatNotificationDays(data.user.notificationDays)}</dd></div>
-                <div><dt className="text-white/40">Push device</dt><dd>{data.user.hasPushToken ? (data.user.pushTokenPlatform ? (data.user.pushTokenPlatform === "ios" ? "iOS" : "Android") : "Registered") : "None"}</dd></div>
-                <div className="col-span-2"><dt className="text-white/40">Push token updated</dt><dd>{data.user.pushTokenUpdatedAt ? new Date(data.user.pushTokenUpdatedAt).toLocaleString() : "—"}</dd></div>
+                <div><dt className="text-acuity-text-ter">Reminders</dt><dd>{data.user.notificationsEnabled ? "On" : "Off"}</dd></div>
+                <div><dt className="text-acuity-text-ter">Reminder time</dt><dd>{data.user.notificationTime ?? "—"}</dd></div>
+                <div><dt className="text-acuity-text-ter">Days</dt><dd>{formatNotificationDays(data.user.notificationDays)}</dd></div>
+                <div><dt className="text-acuity-text-ter">Push device</dt><dd>{data.user.hasPushToken ? (data.user.pushTokenPlatform ? (data.user.pushTokenPlatform === "ios" ? "iOS" : "Android") : "Registered") : "None"}</dd></div>
+                <div className="col-span-2"><dt className="text-acuity-text-ter">Push token updated</dt><dd>{data.user.pushTokenUpdatedAt ? new Date(data.user.pushTokenUpdatedAt).toLocaleString() : "—"}</dd></div>
               </dl>
             </div>
             <JourneyTimeline user={data.user} />
             {/* Overrides */}
-            <div className="rounded-md bg-[#13131F] p-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">Feature overrides ({data.overrides.length})</div>
+            <div className="rounded-md bg-acuity-card-bg p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-acuity-text-ter">Feature overrides ({data.overrides.length})</div>
               {data.overrides.length === 0 ? (
-                <p className="text-xs text-white/40">None.</p>
+                <p className="text-xs text-acuity-text-ter">None.</p>
               ) : (
                 <ul className="space-y-1 text-xs">
                   {data.overrides.map((o) => (
-                    <li key={o.id}><span className="font-mono text-white/60">{o.flagKey}</span> → <span className={o.enabled ? "text-green-300" : "text-red-300"}>{o.enabled ? "ON" : "OFF"}</span> <span className="text-white/40">— {o.reason}</span></li>
+                    <li key={o.id}><span className="font-mono text-acuity-text-ter">{o.flagKey}</span> → <span className={o.enabled ? "text-green-300" : "text-acuity-bad"}>{o.enabled ? "ON" : "OFF"}</span> <span className="text-acuity-text-ter">— {o.reason}</span></li>
                   ))}
                 </ul>
               )}
             </div>
             {/* Emails */}
-            <div className="rounded-md bg-[#13131F] p-3">
+            <div className="rounded-md bg-acuity-card-bg p-3">
               <div className="mb-2 flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wider text-white/40">Emails ({sentEmails?.length ?? 0})</div>
-                <button onClick={() => setShowCompose(!showCompose)} className="text-xs text-[#B99EE4] hover:underline">{showCompose ? "Cancel" : "Send Email"}</button>
+                <div className="text-xs font-semibold uppercase tracking-wider text-acuity-text-ter">Emails ({sentEmails?.length ?? 0})</div>
+                <button onClick={() => setShowCompose(!showCompose)} className="text-xs text-acuity-primary-hi hover:underline">{showCompose ? "Cancel" : "Send Email"}</button>
               </div>
               {showCompose && <ComposeEmail toEmail={data.user.email} targetUserId={data.user.id} onSent={() => { setShowCompose(false); loadEmails(); }} onError={setError} />}
               {sentEmails && sentEmails.length > 0 && (
                 <ul className="mt-2 space-y-2">{sentEmails.map((e) => (
-                  <li key={e.id} className="rounded bg-white/5 p-2 text-xs">
-                    <div className="flex justify-between text-white/40"><span className="font-medium text-white/70">{e.subject}</span><span>{new Date(e.sentAt).toLocaleDateString()}</span></div>
-                    <div className="mt-1 whitespace-pre-wrap text-white/50 line-clamp-2">{e.body}</div>
+                  <li key={e.id} className="rounded bg-acuity-bg-inset p-2 text-xs">
+                    <div className="flex justify-between text-acuity-text-ter"><span className="font-medium text-acuity-text-sec">{e.subject}</span><span>{new Date(e.sentAt).toLocaleDateString()}</span></div>
+                    <div className="mt-1 whitespace-pre-wrap text-acuity-text-ter line-clamp-2">{e.body}</div>
                   </li>
                 ))}</ul>
               )}
             </div>
             {/* Actions */}
-            <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
-              <button onClick={resendWelcome} disabled={busy} className="rounded-md bg-emerald-500/20 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-500/30">Resend welcome</button>
-              <button onClick={sendMagicLink} disabled={busy} className="rounded-md bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/20">Password reset</button>
-              <button onClick={extendTrial} disabled={busy} className="rounded-md bg-[#8E6FE6] px-3 py-2 text-xs font-medium">Extend trial…</button>
-              <button onClick={softDelete} disabled={busy} className="rounded-md bg-red-500/20 px-3 py-2 text-xs font-medium text-red-300 hover:bg-red-500/30">Delete…</button>
+            <div className="flex flex-wrap gap-2 border-t border-acuity-line pt-4">
+              <button onClick={resendWelcome} disabled={busy} className="rounded-md bg-acuity-good-soft px-3 py-2 text-xs font-medium text-acuity-good hover:opacity-80">Resend welcome</button>
+              <button onClick={sendMagicLink} disabled={busy} className="rounded-md bg-acuity-bg-inset px-3 py-2 text-xs font-medium hover:opacity-80">Password reset</button>
+              <button onClick={extendTrial} disabled={busy} className="rounded-md bg-acuity-primary px-3 py-2 text-xs font-medium">Extend trial…</button>
+              <button onClick={softDelete} disabled={busy} className="rounded-md bg-acuity-bad-soft px-3 py-2 text-xs font-medium text-acuity-bad hover:opacity-80">Delete…</button>
             </div>
           </div>
         )}
@@ -750,8 +750,8 @@ function JourneyTimeline({ user }: { user: DetailUser }) {
   const lastCompleted = milestones.reduce((acc, m, i) => (m.date ? i : acc), -1);
 
   return (
-    <div className="rounded-md bg-[#13131F] p-3">
-      <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">Journey</div>
+    <div className="rounded-md bg-acuity-card-bg p-3">
+      <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-acuity-text-ter">Journey</div>
       <div className="space-y-0">
         {milestones.map((m, i) => {
           const done = Boolean(m.date);
@@ -759,15 +759,15 @@ function JourneyTimeline({ user }: { user: DetailUser }) {
           return (
             <div key={m.label} className="flex items-start gap-3">
               <div className="flex flex-col items-center">
-                <div className={`h-3 w-3 rounded-full border-2 ${done ? "border-green-400 bg-green-400" : isDropOff ? "border-amber-400 bg-transparent" : "border-white/20 bg-transparent"}`} />
-                {i < milestones.length - 1 && <div className={`w-px flex-1 min-h-[20px] ${done && milestones[i + 1]?.date ? "bg-green-400/40" : "bg-white/10"}`} />}
+                <div className={`h-3 w-3 rounded-acuity-pill border-2 ${done ? "border-green-400 bg-green-400" : isDropOff ? "border-amber-400 bg-transparent" : "border-acuity-line-strong bg-transparent"}`} />
+                {i < milestones.length - 1 && <div className={`w-px flex-1 min-h-[20px] ${done && milestones[i + 1]?.date ? "bg-green-400/40" : "bg-acuity-bg-inset"}`} />}
               </div>
               <div className="pb-3 -mt-0.5">
-                <div className={`text-xs font-medium ${done ? "text-white/80" : isDropOff ? "text-amber-300" : "text-white/30"}`}>
+                <div className={`text-xs font-medium ${done ? "text-acuity-text-sec" : isDropOff ? "text-acuity-warn" : "text-acuity-text-quiet"}`}>
                   {m.label}
-                  {isDropOff && <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300">dropped off</span>}
+                  {isDropOff && <span className="ml-2 rounded bg-acuity-warn-soft px-1.5 py-0.5 text-[10px] text-acuity-warn">dropped off</span>}
                 </div>
-                {done && m.date && <div className="text-[11px] text-white/40">{new Date(m.date).toLocaleString()}{m.detail ? ` · ${m.detail}` : ""}</div>}
+                {done && m.date && <div className="text-[11px] text-acuity-text-ter">{new Date(m.date).toLocaleString()}{m.detail ? ` · ${m.detail}` : ""}</div>}
               </div>
             </div>
           );
@@ -797,14 +797,14 @@ function ComposeEmail({ toEmail, targetUserId, onSent, onError }: { toEmail: str
     } catch (e) { onError((e as Error).message); } finally { setSending(false); }
   }
 
-  if (sent) return <div className="my-2 rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-300">Sent!</div>;
+  if (sent) return <div className="my-2 rounded-md bg-acuity-good-soft px-3 py-2 text-sm text-green-300">Sent!</div>;
 
   return (
     <div className="my-2 space-y-2">
-      <div className="text-xs text-white/40">From: Keenan &lt;keenan@getacuity.io&gt; → {toEmail}</div>
-      <input type="text" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full rounded-md bg-[#0A0A0F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30" />
-      <textarea placeholder="Email body" value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="w-full rounded-md bg-[#0A0A0F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 resize-y" />
-      <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className="rounded-md bg-[#8E6FE6] px-4 py-2 text-xs font-medium text-white disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
+      <div className="text-xs text-acuity-text-ter">From: Keenan &lt;keenan@getacuity.io&gt; → {toEmail}</div>
+      <input type="text" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full rounded-md bg-acuity-bg border border-acuity-line px-3 py-2 text-sm text-acuity-text placeholder:text-acuity-text-quiet" />
+      <textarea placeholder="Email body" value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="w-full rounded-md bg-acuity-bg border border-acuity-line px-3 py-2 text-sm text-acuity-text placeholder:text-acuity-text-quiet resize-y" />
+      <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className="rounded-md bg-acuity-primary px-4 py-2 text-xs font-medium text-acuity-text disabled:opacity-50">{sending ? "Sending…" : "Send"}</button>
     </div>
   );
 }
@@ -832,27 +832,27 @@ function BulkEmailModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-lg rounded-lg bg-[#0A0A0F] p-6 text-white">
+      <div className="w-full max-w-lg rounded-lg bg-acuity-bg p-6 text-acuity-text">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Send Email to All Users</h3>
-          <button onClick={onClose} className="text-sm text-white/40 hover:text-white">close</button>
+          <button onClick={onClose} className="text-sm text-acuity-text-ter hover:text-acuity-text">close</button>
         </div>
         {result ? (
           <div className="space-y-3">
-            <div className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-300">
-              Sent to {result.sent} user{result.sent !== 1 ? "s" : ""}.{result.failed > 0 && <span className="text-red-300"> {result.failed} failed.</span>}
+            <div className="rounded-md bg-acuity-good-soft px-3 py-2 text-sm text-green-300">
+              Sent to {result.sent} user{result.sent !== 1 ? "s" : ""}.{result.failed > 0 && <span className="text-acuity-bad"> {result.failed} failed.</span>}
             </div>
-            <button onClick={onClose} className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20">Done</button>
+            <button onClick={onClose} className="rounded-md bg-acuity-bg-inset px-4 py-2 text-xs font-medium hover:opacity-80">Done</button>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-white/50">Sends to all users except founders.</p>
-            <input type="text" placeholder="Subject" value={subject} onChange={(e) => { setSubject(e.target.value); setConfirming(false); }} className="w-full rounded-md bg-[#13131F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30" />
-            <textarea placeholder="Email body" value={body} onChange={(e) => { setBody(e.target.value); setConfirming(false); }} rows={6} className="w-full rounded-md bg-[#13131F] border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 resize-y" />
-            {confirming && <div className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Are you sure? This sends to every user (excluding founders).</div>}
+            <p className="text-xs text-acuity-text-ter">Sends to all users except founders.</p>
+            <input type="text" placeholder="Subject" value={subject} onChange={(e) => { setSubject(e.target.value); setConfirming(false); }} className="w-full rounded-md bg-acuity-card-bg border border-acuity-line px-3 py-2 text-sm text-acuity-text placeholder:text-acuity-text-quiet" />
+            <textarea placeholder="Email body" value={body} onChange={(e) => { setBody(e.target.value); setConfirming(false); }} rows={6} className="w-full rounded-md bg-acuity-card-bg border border-acuity-line px-3 py-2 text-sm text-acuity-text placeholder:text-acuity-text-quiet resize-y" />
+            {confirming && <div className="rounded-md bg-acuity-warn-soft px-3 py-2 text-sm text-acuity-warn">Are you sure? This sends to every user (excluding founders).</div>}
             <div className="flex gap-2">
-              <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className={`rounded-md px-4 py-2 text-xs font-medium text-white disabled:opacity-50 ${confirming ? "bg-amber-600" : "bg-[#8E6FE6]"}`}>{sending ? "Sending…" : confirming ? "Yes, send" : "Send to all"}</button>
-              <button onClick={onClose} className="rounded-md bg-white/10 px-4 py-2 text-xs font-medium hover:bg-white/20">Cancel</button>
+              <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim()} className={`rounded-md px-4 py-2 text-xs font-medium text-acuity-text disabled:opacity-50 ${confirming ? "bg-amber-600" : "bg-acuity-primary"}`}>{sending ? "Sending…" : confirming ? "Yes, send" : "Send to all"}</button>
+              <button onClick={onClose} className="rounded-md bg-acuity-bg-inset px-4 py-2 text-xs font-medium hover:opacity-80">Cancel</button>
             </div>
           </div>
         )}

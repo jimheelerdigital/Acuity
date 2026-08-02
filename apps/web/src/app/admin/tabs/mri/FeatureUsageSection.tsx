@@ -109,9 +109,9 @@ export default function FeatureUsageSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : features.length === 0 ? (
-          <p className="text-sm text-white/40">
+          <p className="text-sm text-acuity-text-ter">
             No activated users in this range.
           </p>
         ) : (
@@ -119,10 +119,10 @@ export default function FeatureUsageSection({ start, end }: Props) {
             {/* ── Adoption % + depth per feature ──────────────────────── */}
             <div>
               <div className="mb-3 flex items-baseline justify-between">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-white/40">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-acuity-text-ter">
                   Adoption &amp; depth
                 </h4>
-                <span className="text-xs text-white/40">
+                <span className="text-xs text-acuity-text-ter">
                   {totalActivated} activated user
                   {totalActivated === 1 ? "" : "s"}
                 </span>
@@ -130,7 +130,7 @@ export default function FeatureUsageSection({ start, end }: Props) {
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr className="text-left text-white/40">
+                    <tr className="text-left text-acuity-text-ter">
                       <th className="pb-3 pr-4 font-medium">Feature</th>
                       <th className="pb-3 pr-4 font-medium">Adoption</th>
                       <th className="pb-3 pr-4 text-right font-medium">
@@ -151,37 +151,37 @@ export default function FeatureUsageSection({ start, end }: Props) {
                       return (
                         <tr
                           key={f.key}
-                          className={`border-t border-white/5 ${
-                            isAuto ? "text-white/40" : "text-white/80"
+                          className={`border-t border-acuity-line ${
+                            isAuto ? "text-acuity-text-ter" : "text-acuity-text-sec"
                           }`}
                         >
                           <td className="py-3 pr-4">
                             <span
                               className={
-                                isAuto ? "text-white/40" : "font-medium text-white"
+                                isAuto ? "text-acuity-text-ter" : "font-medium text-acuity-text"
                               }
                             >
                               {f.label}
                             </span>
                             {isAuto && (
-                              <span className="ml-2 rounded bg-white/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/30">
+                              <span className="ml-2 rounded bg-acuity-bg-inset px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-acuity-text-quiet">
                                 auto-seeded
                               </span>
                             )}
                           </td>
                           <td className="py-3 pr-4">
                             <div className="flex items-center gap-2">
-                              <div className="h-2 w-28 overflow-hidden rounded-full bg-white/5">
+                              <div className="h-2 w-28 overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
                                 <div
-                                  className={`h-full rounded-full ${
-                                    isAuto ? "bg-white/20" : adoptionColor(f.pct)
+                                  className={`h-full rounded-acuity-pill ${
+                                    isAuto ? "bg-acuity-line-strong" : adoptionColor(f.pct)
                                   }`}
                                   style={{
                                     width: `${Math.min(100, Math.max(0, f.pct))}%`,
                                   }}
                                 />
                               </div>
-                              <span className="tabular-nums text-xs text-white/60">
+                              <span className="tabular-nums text-xs text-acuity-text-ter">
                                 {f.pct.toFixed(1)}%
                               </span>
                             </div>
@@ -189,10 +189,10 @@ export default function FeatureUsageSection({ start, end }: Props) {
                           <td className="py-3 pr-4 text-right tabular-nums">
                             {f.users}
                           </td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-white/60">
+                          <td className="py-3 pr-4 text-right tabular-nums text-acuity-text-ter">
                             {d ? d.median : "—"}
                           </td>
-                          <td className="py-3 text-right tabular-nums text-white/60">
+                          <td className="py-3 text-right tabular-nums text-acuity-text-ter">
                             {d ? d.avgPerActiveUser.toFixed(1) : "—"}
                           </td>
                         </tr>
@@ -205,16 +205,16 @@ export default function FeatureUsageSection({ start, end }: Props) {
 
             {/* ── Free vs paid adoption split ─────────────────────────── */}
             <div>
-              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-white/40">
+              <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-acuity-text-ter">
                 Free vs paid adoption
               </h4>
               {freeVsPaid.length === 0 ? (
-                <p className="text-sm text-white/40">No split available.</p>
+                <p className="text-sm text-acuity-text-ter">No split available.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="text-left text-white/40">
+                      <tr className="text-left text-acuity-text-ter">
                         <th className="pb-3 pr-4 font-medium">Tier</th>
                         <th className="pb-3 pr-4 text-right font-medium">
                           Users
@@ -233,9 +233,9 @@ export default function FeatureUsageSection({ start, end }: Props) {
                       {freeVsPaid.map((row) => (
                         <tr
                           key={row.isPaid ? "paid" : "free"}
-                          className="border-t border-white/5 text-white/80"
+                          className="border-t border-acuity-line text-acuity-text-sec"
                         >
-                          <td className="py-3 pr-4 font-medium text-white">
+                          <td className="py-3 pr-4 font-medium text-acuity-text">
                             {row.isPaid ? "Paid" : "Free"}
                           </td>
                           <td className="py-3 pr-4 text-right tabular-nums">
@@ -247,11 +247,11 @@ export default function FeatureUsageSection({ start, end }: Props) {
                             return (
                               <td
                                 key={c.key}
-                                className="py-3 pr-4 text-right tabular-nums text-white/60"
+                                className="py-3 pr-4 text-right tabular-nums text-acuity-text-ter"
                               >
                                 {used}
                                 {pct != null && (
-                                  <span className="ml-1 text-xs text-white/30">
+                                  <span className="ml-1 text-xs text-acuity-text-quiet">
                                     ({pct.toFixed(0)}%)
                                   </span>
                                 )}

@@ -20,10 +20,10 @@ interface EngData {
 }
 
 const COHORTS = [
-  { key: "oneAndDone", label: "One-and-done (1 entry)", color: "#FB7185" },
-  { key: "dabbled", label: "Dabbled (2–4)", color: "#FBBF24" },
-  { key: "engaged", label: "Engaged (5–14)", color: "#22D3EE" },
-  { key: "habit", label: "Habit (15+)", color: "#34D399" },
+  { key: "oneAndDone", label: "One-and-done (1 entry)", color: "var(--acuity-bad)" },
+  { key: "dabbled", label: "Dabbled (2–4)", color: "var(--acuity-warn)" },
+  { key: "engaged", label: "Engaged (5–14)", color: "var(--acuity-secondary)" },
+  { key: "habit", label: "Habit (15+)", color: "var(--acuity-good)" },
 ] as const;
 
 export default function EngagementDistributionTab({
@@ -39,10 +39,10 @@ export default function EngagementDistributionTab({
     end,
   );
 
-  if (loading) return <div className="text-white/40">Loading…</div>;
+  if (loading) return <div className="text-acuity-text-ter">Loading…</div>;
   if (error || !data)
-    return <div className="text-red-400">{error ?? "No data"}</div>;
-  if (data._error) return <div className="text-red-400">{data._error}</div>;
+    return <div className="text-acuity-bad">{error ?? "No data"}</div>;
+  if (data._error) return <div className="text-acuity-bad">{data._error}</div>;
 
   const total = data.totalActivated || 1;
   const pct = (n: number) => Math.round((1000 * n) / total) / 10;
@@ -79,8 +79,8 @@ export default function EngagementDistributionTab({
                   className="inline-block h-3 w-3 rounded-sm"
                   style={{ background: c.color }}
                 />
-                <span className="text-white/70">{c.label}</span>
-                <span className="ml-auto tabular-nums text-white/80">
+                <span className="text-acuity-text-sec">{c.label}</span>
+                <span className="ml-auto tabular-nums text-acuity-text-sec">
                   {n} · {pct(n)}%
                 </span>
               </div>

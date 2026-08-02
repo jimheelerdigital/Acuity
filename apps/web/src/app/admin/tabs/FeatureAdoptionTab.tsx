@@ -21,29 +21,29 @@ function Row({ f, muted }: { f: Feature; muted?: boolean }) {
   return (
     <div className="flex items-center gap-3 py-2">
       <div
-        className={`w-56 shrink-0 text-sm ${muted ? "text-white/35" : "text-white/80"}`}
+        className={`w-56 shrink-0 text-sm ${muted ? "text-acuity-text-quiet" : "text-acuity-text-sec"}`}
       >
         {f.label}
         {muted && (
           <span
-            className="ml-1 cursor-help text-white/25"
+            className="ml-1 cursor-help text-acuity-text-quiet"
             title="Auto-seeded during onboarding — existence does not mean engagement"
           >
             ⓘ
           </span>
         )}
       </div>
-      <div className="h-2 flex-1 rounded bg-white/5">
+      <div className="h-2 flex-1 rounded bg-acuity-bg-inset">
         <div
           className="h-2 rounded"
           style={{
             width: `${Math.min(100, f.pct)}%`,
-            background: muted ? "#3a3a4a" : "#8E6FE6",
+            background: muted ? "var(--acuity-line-strong)" : "var(--acuity-primary)",
           }}
         />
       </div>
       <div
-        className={`w-24 shrink-0 text-right text-sm tabular-nums ${muted ? "text-white/35" : "text-white/80"}`}
+        className={`w-24 shrink-0 text-right text-sm tabular-nums ${muted ? "text-acuity-text-quiet" : "text-acuity-text-sec"}`}
       >
         {f.users} · {f.pct}%
       </div>
@@ -64,10 +64,10 @@ export default function FeatureAdoptionTab({
     end,
   );
 
-  if (loading) return <div className="text-white/40">Loading…</div>;
+  if (loading) return <div className="text-acuity-text-ter">Loading…</div>;
   if (error || !data)
-    return <div className="text-red-400">{error ?? "No data"}</div>;
-  if (data._error) return <div className="text-red-400">{data._error}</div>;
+    return <div className="text-acuity-bad">{error ?? "No data"}</div>;
+  if (data._error) return <div className="text-acuity-bad">{data._error}</div>;
 
   const userDriven = data.features.filter((f) => f.type === "user-driven");
   const autoSeeded = data.features.filter((f) => f.type === "auto-seeded");
@@ -95,7 +95,7 @@ export default function FeatureAdoptionTab({
             <Row key={f.key} f={f} muted />
           ))}
         </div>
-        <p className="mt-3 text-xs text-white/30">
+        <p className="mt-3 text-xs text-acuity-text-quiet">
           These rows are auto-created during onboarding, so the % reflects
           seeding, not real engagement. The real Life Map signal is &ldquo;Life
           Map engagement (score moved)&rdquo; in the user-driven list above.

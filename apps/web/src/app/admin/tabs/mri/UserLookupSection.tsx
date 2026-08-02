@@ -45,14 +45,14 @@ const TYPE_LABEL: Record<TimelineEventType, string> = {
 function statusColor(status: TimelineEvent["status"]): string {
   switch (status) {
     case "ok":
-      return "#4ADE80"; // green
+      return "var(--acuity-good)"; // green
     case "warn":
-      return "#FBBF24"; // amber
+      return "var(--acuity-warn)"; // amber
     case "error":
-      return "#F87171"; // red
+      return "var(--acuity-bad)"; // red
     case "info":
     default:
-      return "#8E6FE6"; // accent
+      return "var(--acuity-primary)"; // accent
   }
 }
 
@@ -114,7 +114,7 @@ function TimelineRow({ event, index }: { event: TimelineEvent; index: number }) 
           width: 16,
           height: 16,
           borderRadius: "50%",
-          background: "#13131F",
+          background: "var(--acuity-card-bg)",
           border: `2px solid ${color}`,
         }}
       />
@@ -133,13 +133,13 @@ function TimelineRow({ event, index }: { event: TimelineEvent; index: number }) 
         <div className="flex items-baseline gap-2">
           <span style={{ fontSize: 13 }}>{icon}</span>
           <span
-            className="uppercase text-white/40"
+            className="uppercase text-acuity-text-ter"
             style={{ fontSize: 10, letterSpacing: "1.2px" }}
           >
             {typeLabel}
           </span>
           <span
-            className="text-white/35"
+            className="text-acuity-text-quiet"
             style={{ fontSize: 11 }}
             title={fmtAbsolute(event.at)}
           >
@@ -152,19 +152,19 @@ function TimelineRow({ event, index }: { event: TimelineEvent; index: number }) 
         >
           {event.label}
         </p>
-        <p className="mt-0.5 text-white/30" style={{ fontSize: 11 }}>
+        <p className="mt-0.5 text-acuity-text-quiet" style={{ fontSize: 11 }}>
           {fmtAbsolute(event.at)} · {open ? "hide raw" : "click for raw"}
         </p>
       </button>
       {open && (
         <pre
-          className="mt-2 overflow-x-auto rounded-lg text-white/70"
+          className="mt-2 overflow-x-auto rounded-lg text-acuity-text-sec"
           style={{
-            background: "#0A0A0F",
+            background: "var(--acuity-bg)",
             padding: 12,
             fontSize: 11,
             lineHeight: 1.5,
-            border: "1px solid rgba(255,255,255,0.06)",
+            border: "1px solid var(--acuity-bg-inset)",
           }}
         >
           {JSON.stringify(event.raw, null, 2)}
@@ -192,36 +192,36 @@ function UserHeader({ user }: { user: UserTimelineResponse["user"] }) {
   ];
   return (
     <div
-      className="mb-5 rounded-xl"
+      className="mb-5 rounded-acuity-lg"
       style={{
-        background: "#0A0A0F",
+        background: "var(--acuity-bg)",
         padding: 18,
-        border: "1px solid rgba(255,255,255,0.06)",
+        border: "1px solid var(--acuity-bg-inset)",
       }}
     >
       <div className="flex items-baseline gap-3">
-        <p className="text-white" style={{ fontSize: 16, fontWeight: 600 }}>
+        <p className="text-acuity-text" style={{ fontSize: 16, fontWeight: 600 }}>
           {user.name || user.email}
         </p>
         {user.name && (
-          <p className="text-white/45" style={{ fontSize: 13 }}>
+          <p className="text-acuity-text-ter" style={{ fontSize: 13 }}>
             {user.email}
           </p>
         )}
       </div>
-      <p className="mt-1 text-white/30" style={{ fontSize: 11 }}>
+      <p className="mt-1 text-acuity-text-quiet" style={{ fontSize: 11 }}>
         {user.id}
       </p>
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         {fields.map((f) => (
           <div key={f.label}>
             <p
-              className="uppercase text-white/35"
+              className="uppercase text-acuity-text-quiet"
               style={{ fontSize: 10, letterSpacing: "1.2px" }}
             >
               {f.label}
             </p>
-            <p className="mt-0.5 text-white/75" style={{ fontSize: 13 }}>
+            <p className="mt-0.5 text-acuity-text-sec" style={{ fontSize: 13 }}>
               {f.value}
             </p>
           </div>
@@ -331,7 +331,7 @@ export default function UserLookupSection(_props: Props) {
 
   return (
     <ChartCard title="User Lookup">
-      <p className="mb-4 text-white/40" style={{ fontSize: 12 }}>
+      <p className="mb-4 text-acuity-text-ter" style={{ fontSize: 12 }}>
         Search by email or name to see a single user&apos;s full timeline —
         onboarding events, entries, trial emails, AI calls, and red flags. Every
         lookup is audited.
@@ -343,9 +343,9 @@ export default function UserLookupSection(_props: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="email or name…"
-          className="flex-1 rounded-lg text-white placeholder:text-white/30"
+          className="flex-1 rounded-lg text-acuity-text placeholder:text-acuity-text-quiet"
           style={{
-            background: "#0A0A0F",
+            background: "var(--acuity-bg)",
             border: "1px solid rgba(255,255,255,0.10)",
             padding: "10px 14px",
             fontSize: 14,
@@ -355,9 +355,9 @@ export default function UserLookupSection(_props: Props) {
         <button
           type="submit"
           disabled={searching || !query.trim()}
-          className="rounded-lg font-medium text-white disabled:opacity-40"
+          className="rounded-lg font-medium text-acuity-text disabled:opacity-40"
           style={{
-            background: "#8E6FE6",
+            background: "var(--acuity-primary)",
             padding: "10px 20px",
             fontSize: 14,
             border: "none",
@@ -369,7 +369,7 @@ export default function UserLookupSection(_props: Props) {
       </form>
 
       {searchError && (
-        <p className="mb-4 text-sm" style={{ color: "#F87171" }}>
+        <p className="mb-4 text-sm" style={{ color: "var(--acuity-bad)" }}>
           {searchError}
         </p>
       )}
@@ -377,15 +377,15 @@ export default function UserLookupSection(_props: Props) {
       {/* Disambiguation list when search returns multiple users */}
       {results && results.length > 1 && (
         <div
-          className="mb-5 rounded-xl"
+          className="mb-5 rounded-acuity-lg"
           style={{
-            background: "#0A0A0F",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "var(--acuity-bg)",
+            border: "1px solid var(--acuity-bg-inset)",
             overflow: "hidden",
           }}
         >
           <p
-            className="uppercase text-white/40"
+            className="uppercase text-acuity-text-ter"
             style={{
               fontSize: 10,
               letterSpacing: "1.2px",
@@ -402,7 +402,7 @@ export default function UserLookupSection(_props: Props) {
                 setResults(null);
                 void loadTimeline(u.id);
               }}
-              className="flex w-full items-baseline justify-between text-left hover:bg-white/5"
+              className="flex w-full items-baseline justify-between text-left hover:bg-acuity-bg-inset"
               style={{
                 padding: "10px 16px",
                 background: "transparent",
@@ -411,10 +411,10 @@ export default function UserLookupSection(_props: Props) {
                 cursor: "pointer",
               }}
             >
-              <span className="text-white/80" style={{ fontSize: 13 }}>
+              <span className="text-acuity-text-sec" style={{ fontSize: 13 }}>
                 {u.name || u.email}
               </span>
-              <span className="text-white/40" style={{ fontSize: 12 }}>
+              <span className="text-acuity-text-ter" style={{ fontSize: 12 }}>
                 {u.name ? u.email : u.planStatus || u.subscriptionStatus || ""}
               </span>
             </button>
@@ -423,11 +423,11 @@ export default function UserLookupSection(_props: Props) {
       )}
 
       {loadingTimeline && (
-        <p className="text-sm text-white/40">Loading timeline…</p>
+        <p className="text-sm text-acuity-text-ter">Loading timeline…</p>
       )}
 
       {timelineError && (
-        <p className="text-sm" style={{ color: "#F87171" }}>
+        <p className="text-sm" style={{ color: "var(--acuity-bad)" }}>
           {timelineError}
         </p>
       )}
@@ -436,13 +436,13 @@ export default function UserLookupSection(_props: Props) {
         <div>
           <UserHeader user={timeline.user} />
           {events.length === 0 ? (
-            <p className="text-sm text-white/40">
+            <p className="text-sm text-acuity-text-ter">
               No timeline events for this user.
             </p>
           ) : (
             <div>
               <p
-                className="mb-4 uppercase text-white/35"
+                className="mb-4 uppercase text-acuity-text-quiet"
                 style={{ fontSize: 10, letterSpacing: "1.2px" }}
               >
                 Timeline · {events.length} events

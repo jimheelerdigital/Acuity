@@ -20,12 +20,12 @@ interface PrunerRun {
 }
 
 const ACTION_COLORS: Record<string, string> = {
-  trim: "bg-red-500/20 text-red-400",
-  improve: "bg-amber-500/20 text-amber-400",
-  consolidate: "bg-blue-500/20 text-blue-400",
-  keep: "bg-emerald-500/20 text-emerald-400",
-  unknown: "bg-gray-500/20 text-gray-400",
-  none: "bg-gray-500/20 text-gray-400",
+  trim: "bg-acuity-bad-soft text-acuity-bad",
+  improve: "bg-acuity-warn-soft text-acuity-warn",
+  consolidate: "bg-acuity-secondary-soft text-acuity-secondary",
+  keep: "bg-acuity-good-soft text-acuity-good",
+  unknown: "bg-gray-500/20 text-acuity-text-ter",
+  none: "bg-gray-500/20 text-acuity-text-ter",
 };
 
 export default function BlogPrunerLogPage() {
@@ -54,7 +54,7 @@ export default function BlogPrunerLogPage() {
   }, [fetchRuns]);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white p-6">
+    <div className="min-h-screen bg-acuity-bg text-white p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Blog Pruner Log</h1>
@@ -63,8 +63,8 @@ export default function BlogPrunerLogPage() {
               onClick={() => setFilter("all")}
               className={`px-3 py-1.5 rounded text-sm font-medium transition ${
                 filter === "all"
-                  ? "bg-white/10 text-white"
-                  : "text-white/50 hover:text-white/80"
+                  ? "bg-acuity-bg-inset text-white"
+                  : "text-acuity-text-ter hover:text-acuity-text-sec"
               }`}
             >
               All Evaluations
@@ -73,8 +73,8 @@ export default function BlogPrunerLogPage() {
               onClick={() => setFilter("would_trim")}
               className={`px-3 py-1.5 rounded text-sm font-medium transition ${
                 filter === "would_trim"
-                  ? "bg-red-500/20 text-red-400"
-                  : "text-white/50 hover:text-white/80"
+                  ? "bg-acuity-bad-soft text-acuity-bad"
+                  : "text-acuity-text-ter hover:text-acuity-text-sec"
               }`}
             >
               Would Trim (Dry Run)
@@ -83,9 +83,9 @@ export default function BlogPrunerLogPage() {
         </div>
 
         {loading ? (
-          <div className="text-white/50 text-center py-12">Loading...</div>
+          <div className="text-acuity-text-ter text-center py-12">Loading...</div>
         ) : runs.length === 0 ? (
-          <div className="text-white/50 text-center py-12">
+          <div className="text-acuity-text-ter text-center py-12">
             <p className="text-lg">No pruner runs in the last 30 days</p>
             <p className="text-sm mt-2">
               The pruner runs daily at 03:00 UTC. Check that BLOG_PRUNER_DRY_RUN
@@ -96,7 +96,7 @@ export default function BlogPrunerLogPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-white/60">
+                <tr className="border-b border-acuity-line text-acuity-text-ter">
                   <th className="text-left py-3 px-2">Run Date</th>
                   <th className="text-left py-3 px-2">Post</th>
                   <th className="text-right py-3 px-2">Days</th>
@@ -112,9 +112,9 @@ export default function BlogPrunerLogPage() {
                 {runs.map((run) => (
                   <tr
                     key={run.id}
-                    className="border-b border-white/5 hover:bg-white/5"
+                    className="border-b border-acuity-line hover:bg-acuity-bg-inset"
                   >
-                    <td className="py-2 px-2 text-white/70">
+                    <td className="py-2 px-2 text-acuity-text-sec">
                       {new Date(run.runDate).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -123,18 +123,18 @@ export default function BlogPrunerLogPage() {
                     <td className="py-2 px-2 max-w-[200px] truncate">
                       {run.postSlug ?? run.postId}
                     </td>
-                    <td className="py-2 px-2 text-right text-white/70">
+                    <td className="py-2 px-2 text-right text-acuity-text-sec">
                       {run.daysSincePublish}
                     </td>
                     <td className="py-2 px-2">
-                      <span className="text-xs font-mono text-white/60">
+                      <span className="text-xs font-mono text-acuity-text-ter">
                         {run.coverageState ?? "—"}
                       </span>
                     </td>
-                    <td className="py-2 px-2 text-right text-white/70">
+                    <td className="py-2 px-2 text-right text-acuity-text-sec">
                       {run.impressions}
                     </td>
-                    <td className="py-2 px-2 text-right text-white/70">
+                    <td className="py-2 px-2 text-right text-acuity-text-sec">
                       {run.clicks}
                     </td>
                     <td className="py-2 px-2">
@@ -146,13 +146,13 @@ export default function BlogPrunerLogPage() {
                         {run.recommendedAction}
                       </span>
                     </td>
-                    <td className="py-2 px-2 text-white/60 text-xs">
+                    <td className="py-2 px-2 text-acuity-text-ter text-xs">
                       {run.actualActionTaken ?? (run.isDryRun ? "—" : "pending")}
                     </td>
                     <td className="py-2 px-2">
                       <span
                         className={`text-xs ${
-                          run.isDryRun ? "text-amber-400" : "text-emerald-400"
+                          run.isDryRun ? "text-acuity-warn" : "text-acuity-good"
                         }`}
                       >
                         {run.isDryRun ? "dry run" : "live"}
@@ -165,10 +165,10 @@ export default function BlogPrunerLogPage() {
           </div>
         )}
 
-        <div className="mt-6 p-4 rounded-lg bg-white/5 text-white/50 text-xs">
+        <div className="mt-6 p-4 rounded-lg bg-acuity-bg-inset text-acuity-text-ter text-xs">
           <p>
             <strong>BLOG_PRUNER_DRY_RUN</strong> is currently{" "}
-            <span className="text-amber-400">defaulting to true</span> (safe
+            <span className="text-acuity-warn">defaulting to true</span> (safe
             mode). Set to &quot;false&quot; in Vercel env vars after reviewing
             dry-run results to enable live trimming.
           </p>

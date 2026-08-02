@@ -46,10 +46,10 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING_REVIEW: "bg-amber-500/20 text-amber-400",
-  APPROVED: "bg-green-500/20 text-green-400",
-  EDITED: "bg-blue-500/20 text-blue-400",
-  DISTRIBUTED: "bg-emerald-500/20 text-emerald-400",
+  PENDING_REVIEW: "bg-acuity-warn-soft text-acuity-warn",
+  APPROVED: "bg-acuity-good-soft text-acuity-good",
+  EDITED: "bg-acuity-secondary-soft text-acuity-secondary",
+  DISTRIBUTED: "bg-acuity-good-soft text-acuity-good",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -215,12 +215,12 @@ export default function ContentFactoryClient({
   const filteredPieces = pieces.filter((p) => p.type === currentTabType);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-4 py-10 text-white sm:px-8">
+    <div className="min-h-screen bg-acuity-bg px-4 py-10 text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold">Content Factory</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-acuity-text-ter">
             On-demand content generation for X, Instagram, and TikTok
           </p>
         </div>
@@ -247,25 +247,25 @@ export default function ContentFactoryClient({
           <button
             onClick={() => handleGenerate(["X_POST"], "X Post")}
             disabled={isGenerating}
-            className="rounded-xl bg-[#13131F] px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
+            className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
           >
             <div className="flex items-center gap-2">
               <span className="text-lg">𝕏</span>
               <span className="text-sm font-medium">Generate X Post</span>
             </div>
-            <p className="mt-1 text-xs text-white/40">1 tweet, max 280 chars</p>
+            <p className="mt-1 text-xs text-acuity-text-ter">1 tweet, max 280 chars</p>
           </button>
 
           <button
             onClick={() => handleGenerate(["INSTAGRAM"], "Instagram Post")}
             disabled={isGenerating}
-            className="rounded-xl bg-[#13131F] px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
+            className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
           >
             <div className="flex items-center gap-2">
               <span className="text-lg">📷</span>
               <span className="text-sm font-medium">Generate Instagram</span>
             </div>
-            <p className="mt-1 text-xs text-white/40">
+            <p className="mt-1 text-xs text-acuity-text-ter">
               Caption + AI image
             </p>
           </button>
@@ -273,13 +273,13 @@ export default function ContentFactoryClient({
           <button
             onClick={() => handleGenerate(["TIKTOK_SCRIPT"], "TikTok Script")}
             disabled={isGenerating}
-            className="rounded-xl bg-[#13131F] px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
+            className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft px-4 py-4 text-left transition hover:bg-[#1a1a2e] disabled:opacity-50"
           >
             <div className="flex items-center gap-2">
               <span className="text-lg">🎬</span>
               <span className="text-sm font-medium">Generate TikTok</span>
             </div>
-            <p className="mt-1 text-xs text-white/40">15-30s video script</p>
+            <p className="mt-1 text-xs text-acuity-text-ter">15-30s video script</p>
           </button>
 
           <button
@@ -290,15 +290,15 @@ export default function ContentFactoryClient({
               )
             }
             disabled={isGenerating}
-            className="rounded-xl bg-gradient-to-br from-[#8E6FE6]/20 to-[#8E6FE6]/5 border border-[#8E6FE6]/20 px-4 py-4 text-left transition hover:from-[#8E6FE6]/30 hover:to-[#8E6FE6]/10 disabled:opacity-50"
+            className="rounded-acuity-lg bg-acuity-primary-soft border border-acuity-primary-soft px-4 py-4 text-left transition hover:opacity-80 disabled:opacity-50"
           >
             <div className="flex items-center gap-2">
               <span className="text-lg">✨</span>
-              <span className="text-sm font-medium text-[#AD90E9]">
+              <span className="text-sm font-medium text-acuity-primary-hi">
                 Generate All
               </span>
             </div>
-            <p className="mt-1 text-xs text-white/40">1 of each type</p>
+            <p className="mt-1 text-xs text-acuity-text-ter">1 of each type</p>
           </button>
         </div>
 
@@ -307,7 +307,7 @@ export default function ContentFactoryClient({
           <h2 className="mb-4 text-lg font-semibold">Content Library</h2>
 
           {/* Tab bar */}
-          <div className="mb-4 flex gap-1 rounded-lg bg-[#13131F] p-1">
+          <div className="mb-4 flex gap-1 rounded-lg bg-acuity-card-bg p-1">
             {CONTENT_TABS.map((tab, i) => {
               const count = pieces.filter((p) => p.type === tab.key).length;
               return (
@@ -316,13 +316,13 @@ export default function ContentFactoryClient({
                   onClick={() => setContentTab(i)}
                   className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
                     contentTab === i
-                      ? "bg-[#8E6FE6] text-white"
-                      : "text-white/60 hover:text-white/90"
+                      ? "bg-acuity-primary text-white"
+                      : "text-acuity-text-ter hover:text-acuity-text"
                   }`}
                 >
                   {tab.label}
                   {count > 0 && (
-                    <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs">
+                    <span className="ml-2 rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-xs">
                       {count}
                     </span>
                   )}
@@ -333,7 +333,7 @@ export default function ContentFactoryClient({
 
           {/* Content list */}
           {filteredPieces.length === 0 ? (
-            <div className="rounded-xl bg-[#13131F] p-12 text-center text-white/50">
+            <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-12 text-center text-acuity-text-ter">
               No {CONTENT_TABS[contentTab].label.toLowerCase()} yet. Hit a
               generate button above to create some.
             </div>
@@ -384,18 +384,18 @@ function GenerationProgress({
 
   if (status.status === "FAILED") {
     return (
-      <div className="flex items-center justify-between rounded-xl bg-red-500/10 border border-red-500/20 px-5 py-4">
+      <div className="flex items-center justify-between rounded-acuity-lg bg-acuity-bad-soft border border-acuity-bad px-5 py-4">
         <div>
-          <p className="text-sm font-medium text-red-400">
+          <p className="text-sm font-medium text-acuity-bad">
             Generation failed
           </p>
-          <p className="text-xs text-red-400/70">
+          <p className="text-xs text-acuity-bad">
             {status.errorMessage ?? "Unknown error"}
           </p>
         </div>
         <button
           onClick={onRetry}
-          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500"
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-acuity-bad"
         >
           Dismiss
         </button>
@@ -405,11 +405,11 @@ function GenerationProgress({
 
   if (status.status === "SUCCESS") {
     return (
-      <div className="flex items-center gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-5 py-4">
-        <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-full rounded-full bg-green-500" />
+      <div className="flex items-center gap-3 rounded-acuity-lg bg-acuity-good-soft border border-green-500/20 px-5 py-4">
+        <div className="h-3 flex-1 overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
+          <div className="h-full w-full rounded-acuity-pill bg-acuity-good" />
         </div>
-        <span className="text-sm font-medium text-green-400">
+        <span className="text-sm font-medium text-acuity-good">
           {status.stepLabel}
         </span>
       </div>
@@ -417,24 +417,24 @@ function GenerationProgress({
   }
 
   return (
-    <div className="rounded-xl bg-[#13131F] border border-[#8E6FE6]/20 px-5 py-4">
+    <div className="rounded-acuity-lg border border-acuity-primary-soft bg-acuity-card-bg shadow-acuity-soft px-5 py-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-white/80">
+        <span className="text-sm font-medium text-acuity-text-sec">
           Generating {label}…
         </span>
-        <span className="text-xs text-white/40">
+        <span className="text-xs text-acuity-text-ter">
           Step {status.currentStep}/{status.totalSteps}
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+      <div className="h-2 w-full overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#8E6FE6] to-[#AD90E9] transition-all duration-500 ease-out"
+          className="h-full rounded-acuity-pill bg-acuity-grad-primary transition-all duration-500 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-white/50">
+      <p className="mt-2 text-xs text-acuity-text-ter">
         {stale ? (
-          <span className="text-amber-400">
+          <span className="text-acuity-warn">
             Taking longer than expected…
           </span>
         ) : (
@@ -473,7 +473,7 @@ function ContentCard({
   const isTikTok = piece.type === "TIKTOK";
 
   return (
-    <div className="rounded-xl bg-[#13131F] p-5">
+    <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-5">
       {/* Header row */}
       <div
         className="cursor-pointer"
@@ -481,11 +481,11 @@ function ContentCard({
       >
         <div className="flex items-center gap-2 mb-2">
           <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[piece.status] ?? "bg-white/10 text-white/60"}`}
+            className={`rounded-acuity-pill px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[piece.status] ?? "bg-acuity-bg-inset text-acuity-text-ter"}`}
           >
             {STATUS_LABELS[piece.status] ?? piece.status}
           </span>
-          <span className="text-xs text-white/40">
+          <span className="text-xs text-acuity-text-ter">
             {formatDate(piece.createdAt)}
           </span>
         </div>
@@ -499,19 +499,19 @@ function ContentCard({
               className="h-20 w-20 rounded-lg object-cover shrink-0"
             />
             <div className="min-w-0">
-              <p className="text-sm text-white/80 line-clamp-3">
+              <p className="text-sm text-acuity-text-sec line-clamp-3">
                 {piece.body}
               </p>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-white/80 line-clamp-3">{piece.body}</p>
+          <p className="text-sm text-acuity-text-sec line-clamp-3">{piece.body}</p>
         )}
       </div>
 
       {/* Expanded view */}
       {expanded && (
-        <div className="mt-4 border-t border-white/10 pt-4">
+        <div className="mt-4 border-t border-acuity-line pt-4">
           {/* Full content */}
           {isInstagram && piece.heroImageUrl && (
             <div className="mb-4">
@@ -527,35 +527,35 @@ function ContentCard({
             {isTikTok ? (
               <div className="space-y-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                  <p className="text-[10px] uppercase tracking-widest text-acuity-text-quiet mb-1">
                     Hook
                   </p>
-                  <p className="text-sm font-medium text-white/90">
+                  <p className="text-sm font-medium text-acuity-text">
                     {piece.hook}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                  <p className="text-[10px] uppercase tracking-widest text-acuity-text-quiet mb-1">
                     Body
                   </p>
-                  <pre className="whitespace-pre-wrap text-sm text-white/80">
+                  <pre className="whitespace-pre-wrap text-sm text-acuity-text-sec">
                     {piece.body}
                   </pre>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">
+                  <p className="text-[10px] uppercase tracking-widest text-acuity-text-quiet mb-1">
                     CTA
                   </p>
-                  <p className="text-sm text-white/80">{piece.cta}</p>
+                  <p className="text-sm text-acuity-text-sec">{piece.cta}</p>
                 </div>
               </div>
             ) : (
               <>
-                <pre className="whitespace-pre-wrap text-sm text-white/80">
+                <pre className="whitespace-pre-wrap text-sm text-acuity-text-sec">
                   {piece.body}
                 </pre>
                 {isInstagram && piece.cta && (
-                  <p className="mt-3 text-sm text-blue-400/80">
+                  <p className="mt-3 text-sm text-acuity-secondary">
                     {piece.cta}
                   </p>
                 )}
@@ -573,7 +573,7 @@ function ContentCard({
                     download
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md bg-[#8E6FE6] px-3 py-1.5 text-sm font-medium transition hover:bg-[#7D60D0]"
+                    className="rounded-md bg-acuity-primary px-3 py-1.5 text-sm font-medium transition hover:opacity-90"
                   >
                     Download Image
                   </a>
@@ -585,13 +585,13 @@ function ContentCard({
                       "caption"
                     )
                   }
-                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
+                  className="rounded-md bg-acuity-bg-inset px-3 py-1.5 text-sm text-acuity-text-sec hover:opacity-80"
                 >
                   {copied === "caption" ? "Copied!" : "Copy Caption"}
                 </button>
                 <button
                   onClick={onRegenerate}
-                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
+                  className="rounded-md bg-acuity-bg-inset px-3 py-1.5 text-sm text-acuity-text-sec hover:opacity-80"
                 >
                   Regenerate
                 </button>
@@ -605,13 +605,13 @@ function ContentCard({
                       : piece.body;
                     handleCopy(text, "text");
                   }}
-                  className="rounded-md bg-[#8E6FE6] px-3 py-1.5 text-sm font-medium transition hover:bg-[#7D60D0]"
+                  className="rounded-md bg-acuity-primary px-3 py-1.5 text-sm font-medium transition hover:opacity-90"
                 >
                   {copied === "text" ? "Copied!" : "Copy"}
                 </button>
                 <button
                   onClick={onRegenerate}
-                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/70 hover:bg-white/20"
+                  className="rounded-md bg-acuity-bg-inset px-3 py-1.5 text-sm text-acuity-text-sec hover:opacity-80"
                 >
                   Regenerate
                 </button>
@@ -621,7 +621,7 @@ function ContentCard({
             {piece.status !== "DISTRIBUTED" && (
               <button
                 onClick={() => onMarkPosted(piece.id)}
-                className="rounded-md bg-green-600/20 px-3 py-1.5 text-sm text-green-400 hover:bg-green-600/30"
+                className="rounded-md bg-green-600/20 px-3 py-1.5 text-sm text-acuity-good hover:bg-green-600/30"
               >
                 Mark as Posted
               </button>
@@ -629,7 +629,7 @@ function ContentCard({
 
             <button
               onClick={() => onDelete(piece.id)}
-              className="rounded-md bg-red-600/20 px-3 py-1.5 text-sm text-red-400 hover:bg-red-600/30"
+              className="rounded-md bg-acuity-bad-soft px-3 py-1.5 text-sm text-acuity-bad hover:bg-acuity-bad-soft"
             >
               Delete
             </button>

@@ -37,19 +37,19 @@ export default function EditProjectPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 text-[#A0A0B8] animate-spin" />
+        <Loader2 className="h-6 w-6 text-acuity-text-ter animate-spin" />
       </div>
     );
   }
 
   if (!project) {
-    return <p className="text-sm text-red-400">Project not found.</p>;
+    return <p className="text-sm text-acuity-bad">Project not found.</p>;
   }
 
   return (
     <>
       <h1 className="text-2xl font-bold text-white mb-1">Edit Project</h1>
-      <p className="text-sm text-[#A0A0B8] mb-8">{project.name as string}</p>
+      <p className="text-sm text-acuity-text-ter mb-8">{project.name as string}</p>
       <ProjectForm
         mode="edit"
         projectId={id}

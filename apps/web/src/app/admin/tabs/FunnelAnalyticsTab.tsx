@@ -21,14 +21,14 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       .catch((e) => { setError(e.message); setLoading(false); });
   }, [start, end, flowVersion]);
 
-  if (loading) return <div style={{ color: "#888", padding: 40, textAlign: "center" }}>Loading funnel data...</div>;
+  if (loading) return <div style={{ color: "var(--acuity-text-ter)", padding: 40, textAlign: "center" }}>Loading funnel data...</div>;
   if (error) return (
-    <div style={{ color: "#ef4444", padding: 40, textAlign: "center" }}>
+    <div style={{ color: "var(--acuity-bad)", padding: 40, textAlign: "center" }}>
       Error: {error}
-      <button onClick={() => window.location.reload()} style={{ marginLeft: 12, background: "#8E6FE6", color: "#fff", border: "none", borderRadius: 6, padding: "6px 16px", cursor: "pointer" }}>Retry</button>
+      <button onClick={() => window.location.reload()} style={{ marginLeft: 12, background: "var(--acuity-primary)", color: "var(--acuity-text)", border: "none", borderRadius: 6, padding: "6px 16px", cursor: "pointer" }}>Retry</button>
     </div>
   );
-  if (!data) return <div style={{ color: "#888", padding: 40, textAlign: "center" }}>No data</div>;
+  if (!data) return <div style={{ color: "var(--acuity-text-ter)", padding: 40, textAlign: "center" }}>No data</div>;
 
   const km = data.keyMetrics || {};
   const steps = data.funnelSteps || [];
@@ -67,10 +67,10 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
     else { setSortCol(col); setSortDir(col === "started" ? -1 : 1); }
   };
 
-  const S: React.CSSProperties = { background: "#13131F", borderRadius: 12, padding: 20, marginBottom: 20 };
+  const S: React.CSSProperties = { background: "var(--acuity-card-bg)", borderRadius: 12, padding: 20, marginBottom: 20 };
   const H: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)", marginBottom: 12 };
   const TH: React.CSSProperties = { padding: "6px 8px", fontSize: 11, color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", userSelect: "none" as const };
-  const TD: React.CSSProperties = { padding: "6px 8px", fontSize: 12, color: "rgba(255,255,255,0.5)", borderBottom: "1px solid rgba(255,255,255,0.04)" };
+  const TD: React.CSSProperties = { padding: "6px 8px", fontSize: 12, color: "var(--acuity-text-ter)", borderBottom: "1px solid rgba(255,255,255,0.04)" };
 
   // CSV export
   const downloadCsv = () => {
@@ -97,8 +97,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
             <button key={v} onClick={() => setFlowVersion(v)}
               title={v === "v7" ? "V7 — two-equal-buttons paywall (current live funnel)" : v === "v6" ? "V6 — post-rebuild" : undefined}
               style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
-                background: flowVersion === v ? "#8E6FE6" : "rgba(255,255,255,0.06)",
-                color: flowVersion === v ? "#fff" : "rgba(255,255,255,0.35)" }}>
+                background: flowVersion === v ? "var(--acuity-primary)" : "var(--acuity-bg-inset)",
+                color: flowVersion === v ? "var(--acuity-text)" : "var(--acuity-text-quiet)" }}>
               {v === "all" ? "All" : v === "v7" ? "V7 — paywall split" : v === "v6" ? "V6 — post-rebuild" : v.toUpperCase()}
             </button>
           ))}
@@ -112,10 +112,10 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       {(km.totalAccounts ?? 0) > 0 && (
         <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Total Accounts:</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{km.totalAccounts}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--acuity-text)" }}>{km.totalAccounts}</span>
           <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Paid (Stripe, all versions):</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{km.totalPaid}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--acuity-good)" }}>{km.totalPaid}</span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
             ({km.paidConversion ?? 0}% of new accounts have paid)
           </span>
@@ -138,10 +138,10 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       {(diag.entryViewedEvents ?? 0) > 0 && (
         <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Page Loads:</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{diag.entryViewedEvents}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--acuity-text)" }}>{diag.entryViewedEvents}</span>
           <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>First Tap:</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{diag.entrySelectedEvents}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--acuity-good)" }}>{diag.entrySelectedEvents}</span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
             ({diag.tapRate ?? 0}%)
           </span>
@@ -158,7 +158,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <span>Raw events: <strong style={{ color: "rgba(255,255,255,0.6)" }}>{diag.totalEventsInRange}</strong></span>
           <span>entry_viewed: <strong style={{ color: "rgba(255,255,255,0.6)" }}>{diag.entryViewedEvents}</strong></span>
           <span>entry_selected: <strong style={{ color: "rgba(255,255,255,0.6)" }}>{diag.entrySelectedEvents}</strong></span>
-          <span>Tap rate: <strong style={{ color: diag.tapRate >= 50 ? "#22c55e" : diag.tapRate >= 20 ? "#f59e0b" : "#ef4444" }}>{diag.tapRate}%</strong></span>
+          <span>Tap rate: <strong style={{ color: diag.tapRate >= 50 ? "var(--acuity-good)" : diag.tapRate >= 20 ? "var(--acuity-warn)" : "var(--acuity-bad)" }}>{diag.tapRate}%</strong></span>
         </div>
       )}
 
@@ -172,7 +172,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         ].map((m, i) => (
           <div key={i} style={S}>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{m.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", marginTop: 4 }}>{m.value}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--acuity-text)", marginTop: 4 }}>{m.value}</div>
             {m.sub && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>{m.sub}</div>}
           </div>
         ))}
@@ -188,7 +188,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         ].map((m, i) => (
           <div key={i} style={S}>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{m.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#fff", marginTop: 4 }}>{m.value}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--acuity-text)", marginTop: 4 }}>{m.value}</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>{m.sub}</div>
           </div>
         ))}
@@ -198,10 +198,10 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       {(diag.commitViewedSessions ?? 0) > 0 && (
         <div style={{ ...S, display: "flex", alignItems: "center", gap: 16, padding: "14px 20px" }}>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Commit Screen:</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{diag.commitViewedSessions}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--acuity-text)" }}>{diag.commitViewedSessions}</span>
           <span style={{ fontSize: 16, color: "rgba(255,255,255,0.2)" }}>→</span>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>Held to Commit:</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#22c55e" }}>{diag.commitCompletedSessions}</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "var(--acuity-good)" }}>{diag.commitCompletedSessions}</span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
             ({diag.commitCompletionRate ?? 0}% completion)
           </span>
@@ -212,10 +212,10 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       {(data.adMatchStats?.total ?? 0) > 0 && (
         <div style={{ ...S, padding: "14px 20px" }}>
           <div style={{ ...H, marginBottom: 8 }}>Banner-to-Buyer Attribution</div>
-          <div style={{ display: "flex", gap: 20, fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-            <span>Sessions with ad-match: <strong style={{ color: "#fff" }}>{data.adMatchStats.total}</strong></span>
-            <span>Selected highlighted: <strong style={{ color: "#22c55e" }}>{data.adMatchStats.matched}</strong> ({data.adMatchStats.total > 0 ? Math.round((data.adMatchStats.matched / data.adMatchStats.total) * 100) : 0}%)</span>
-            <span>Selected different: <strong style={{ color: "#f59e0b" }}>{data.adMatchStats.different}</strong></span>
+          <div style={{ display: "flex", gap: 20, fontSize: 12, color: "var(--acuity-text-ter)" }}>
+            <span>Sessions with ad-match: <strong style={{ color: "var(--acuity-text)" }}>{data.adMatchStats.total}</strong></span>
+            <span>Selected highlighted: <strong style={{ color: "var(--acuity-good)" }}>{data.adMatchStats.matched}</strong> ({data.adMatchStats.total > 0 ? Math.round((data.adMatchStats.matched / data.adMatchStats.total) * 100) : 0}%)</span>
+            <span>Selected different: <strong style={{ color: "var(--acuity-warn)" }}>{data.adMatchStats.different}</strong></span>
             <span>Without param: <strong style={{ color: "rgba(255,255,255,0.4)" }}>{data.adMatchStats.withoutParam}</strong></span>
           </div>
         </div>
@@ -227,13 +227,13 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         {steps.map((s: any, i: number) => {
           const maxCount = steps[0]?.count || 1;
           const pct = Math.max(2, (s.count / maxCount) * 100);
-          const color = s.color === "green" ? "#22c55e" : s.color === "yellow" ? "#f59e0b" : "#ef4444";
+          const color = s.color === "green" ? "var(--acuity-good)" : s.color === "yellow" ? "var(--acuity-warn)" : "var(--acuity-bad)";
           return (
             <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{s.label}</span>
               <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 4, height: 26, position: "relative", overflow: "hidden" }}>
                 <div style={{ width: `${pct}%`, background: color, borderRadius: 4, height: "100%", display: "flex", alignItems: "center", paddingLeft: 8 }}>
-                  <span style={{ color: "#fff", fontSize: 11, fontWeight: 600 }}>{s.count}</span>
+                  <span style={{ color: "var(--acuity-text)", fontSize: 11, fontWeight: 600 }}>{s.count}</span>
                 </div>
               </div>
               <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
@@ -245,11 +245,11 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
         {/* Paid (Stripe-verified) — below funnel bars */}
         {(data.stripePaid ?? []).length > 0 && (
-          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "#22c55e", fontWeight: 700 }}>Paid (Stripe)</span>
+          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid var(--acuity-bg-inset)" }}>
+            <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "var(--acuity-good)", fontWeight: 700 }}>Paid (Stripe)</span>
             <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 4, height: 26, position: "relative", overflow: "hidden" }}>
-              <div style={{ width: `${Math.max(2, ((data.stripePaid?.length ?? 0) / (steps[0]?.count || 1)) * 100)}%`, background: "#22c55e", borderRadius: 4, height: "100%", display: "flex", alignItems: "center", paddingLeft: 8 }}>
-                <span style={{ color: "#fff", fontSize: 11, fontWeight: 600 }}>{data.stripePaid?.length ?? 0}</span>
+              <div style={{ width: `${Math.max(2, ((data.stripePaid?.length ?? 0) / (steps[0]?.count || 1)) * 100)}%`, background: "var(--acuity-good)", borderRadius: 4, height: "100%", display: "flex", alignItems: "center", paddingLeft: 8 }}>
+                <span style={{ color: "var(--acuity-text)", fontSize: 11, fontWeight: 600 }}>{data.stripePaid?.length ?? 0}</span>
               </div>
             </div>
             <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
@@ -258,7 +258,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           </div>
         )}
         {(data.stripePaid ?? []).length === 0 && (
-          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid var(--acuity-bg-inset)" }}>
             <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}>Paid (Stripe)</span>
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>0 — no Stripe subscriptions in this period</span>
           </div>
@@ -270,10 +270,10 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         <div style={S}>
           <div style={H}>Signup Failures</div>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-              <span style={{ color: "#ef4444", fontWeight: 700, fontSize: 14 }}>{data.signupFailures.total}</span> failed attempt{data.signupFailures.total !== 1 ? "s" : ""}
+            <div style={{ fontSize: 11, color: "var(--acuity-text-ter)" }}>
+              <span style={{ color: "var(--acuity-bad)", fontWeight: 700, fontSize: 14 }}>{data.signupFailures.total}</span> failed attempt{data.signupFailures.total !== 1 ? "s" : ""}
               {data.signupFailures.topReason && (
-                <span> — top reason: <span style={{ color: "#f59e0b", fontWeight: 600 }}>{data.signupFailures.topReason}</span></span>
+                <span> — top reason: <span style={{ color: "var(--acuity-warn)", fontWeight: 600 }}>{data.signupFailures.topReason}</span></span>
               )}
             </div>
           </div>
@@ -282,13 +282,13 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
               .sort(([, a], [, b]) => (b as number) - (a as number))
               .map(([reason, count]) => (
                 <div key={reason} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                  <span style={{ color: "rgba(255,255,255,0.35)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
-                  <span style={{ color: "rgba(255,255,255,0.5)" }}>{reason}</span>
+                  <span style={{ color: "var(--acuity-text-quiet)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
+                  <span style={{ color: "var(--acuity-text-ter)" }}>{reason}</span>
                 </div>
               ))}
           </div>
           {data.signupFailures.started && Object.keys(data.signupFailures.started).length > 0 && (
-            <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 8 }}>
+            <div style={{ marginTop: 8, borderTop: "1px solid var(--acuity-bg-inset)", paddingTop: 8 }}>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 4 }}>Attempts by method</div>
               {Object.entries(data.signupFailures.started as Record<string, number>).map(([method, count]) => (
                 <span key={method} style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginRight: 12 }}>
@@ -305,7 +305,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         <div style={S}>
           <div style={H}>Ready for Change (Gap 3)</div>
           <div style={{ display: "flex", gap: 16, alignItems: "baseline" }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: "#22c55e" }}>{data.readyForChange.yesPct}% yes</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: "var(--acuity-good)" }}>{data.readyForChange.yesPct}% yes</span>
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
               {data.readyForChange.yes} yes / {data.readyForChange.no} no ({data.readyForChange.total} total)
             </span>
@@ -322,8 +322,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
               .sort(([, a], [, b]) => (b as number) - (a as number))
               .map(([feeling, count]) => (
                 <div key={feeling} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                  <span style={{ color: "rgba(255,255,255,0.35)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
-                  <span style={{ color: "rgba(255,255,255,0.5)" }}>{feeling}</span>
+                  <span style={{ color: "var(--acuity-text-quiet)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
+                  <span style={{ color: "var(--acuity-text-ter)" }}>{feeling}</span>
                 </div>
               ))}
           </div>
@@ -343,8 +343,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
               })
               .map(([value, count]) => (
                 <div key={value} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                  <span style={{ color: "rgba(255,255,255,0.35)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
-                  <span style={{ color: value === "lost_count" ? "#f59e0b" : "rgba(255,255,255,0.5)", fontWeight: value === "lost_count" ? 600 : 400 }}>
+                  <span style={{ color: "var(--acuity-text-quiet)", width: 28, textAlign: "right", fontWeight: 600 }}>{count as number}</span>
+                  <span style={{ color: value === "lost_count" ? "var(--acuity-warn)" : "var(--acuity-text-ter)", fontWeight: value === "lost_count" ? 600 : 400 }}>
                     {value === "lost_count" ? "lost count" : `${value}x per week`}
                   </span>
                 </div>
@@ -365,7 +365,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
               {dropOffs.map((d: any) => (
                 <tr key={d.step}>
                   <td style={TD}>{d.step}</td>
-                  <td style={{ ...TD, textAlign: "right", color: "#ef4444", fontWeight: 600 }}>{d.count}</td>
+                  <td style={{ ...TD, textAlign: "right", color: "var(--acuity-bad)", fontWeight: 600 }}>{d.count}</td>
                   <td style={{ ...TD, textTransform: "capitalize" }}>{d.topBranch}</td>
                   <td style={{ ...TD, textAlign: "right" }}>{fmt(d.avgTimeSec)}</td>
                 </tr>
@@ -398,7 +398,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.mechanismToCommit, b.mirrorToMechanism)}</td>
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.commitToAccount, b.mechanismToCommit)}</td>
                     <td style={{ ...TD, textAlign: "right" }}>{p(b.accountToPaid, b.commitToAccount)}</td>
-                    <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: b.overallRate >= 5 ? "#22c55e" : b.overallRate > 0 ? "#f59e0b" : "#ef4444" }}>{b.overallRate}%</td>
+                    <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: b.overallRate >= 5 ? "var(--acuity-good)" : b.overallRate > 0 ? "var(--acuity-warn)" : "var(--acuity-bad)" }}>{b.overallRate}%</td>
                   </tr>
                 );
               })}
@@ -426,7 +426,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.commit ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.account ?? 0}</td>
                 <td style={{ ...TD, textAlign: "right" }}>{cf.steps?.paid ?? 0}</td>
-                <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: cf.conversionRate >= 5 ? "#22c55e" : cf.conversionRate > 0 ? "#f59e0b" : "#ef4444" }}>{cf.conversionRate}%</td>
+                <td style={{ ...TD, textAlign: "right", fontWeight: 600, color: cf.conversionRate >= 5 ? "var(--acuity-good)" : cf.conversionRate > 0 ? "var(--acuity-warn)" : "var(--acuity-bad)" }}>{cf.conversionRate}%</td>
               </tr>
             ))}
           </tbody>
@@ -443,11 +443,11 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                 type="checkbox"
                 checked={showPageLoadOnly}
                 onChange={(e) => setShowPageLoadOnly(e.target.checked)}
-                style={{ accentColor: "#8E6FE6" }}
+                style={{ accentColor: "var(--acuity-primary)" }}
               />
               Show page-load-only sessions
             </label>
-            <button onClick={downloadCsv} style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>
+            <button onClick={downloadCsv} style={{ background: "var(--acuity-bg-inset)", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>
               Download CSV
             </button>
           </div>
@@ -461,8 +461,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
             </tr></thead>
             <tbody>
               {sorted.slice(0, 100).map((s: any) => {
-                const sc: Record<string, string> = { completed: "#22c55e", paid: "#22c55e", signed_up: "#3b82f6", active: "#3b82f6", stalled: "#f59e0b", dropped: "#ef4444", lost: "#f97316" };
-                const cc: Record<string, string> = { "App Store": "#a78bfa", "Web App": "#38bdf8" };
+                const sc: Record<string, string> = { completed: "var(--acuity-good)", paid: "var(--acuity-good)", signed_up: "var(--acuity-secondary)", active: "var(--acuity-secondary)", stalled: "var(--acuity-warn)", dropped: "var(--acuity-bad)", lost: "var(--acuity-warn)" };
+                const cc: Record<string, string> = { "App Store": "var(--acuity-primary-hi)", "Web App": "var(--acuity-secondary)" };
                 return (
                   <tr key={s.sessionId} onClick={() => setExpanded(expanded === s.sessionId ? null : s.sessionId)} style={{ cursor: "pointer" }}>
                     <td style={{ ...TD, fontFamily: "monospace", fontSize: 11 }}>{s.sessionId}</td>
@@ -471,7 +471,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
                     <td style={{ ...TD, maxWidth: 100 }} title={s.campaign}>{cn(s.campaign)}</td>
                     <td style={TD}>{s.currentStep}</td>
                     <td style={{ ...TD, color: cc[s.click] || "rgba(255,255,255,0.2)", fontSize: 11 }}>{s.click ?? "—"}</td>
-                    <td style={{ ...TD, color: sc[s.status] || "#888", fontWeight: 500, textTransform: "capitalize" }}>{s.status}</td>
+                    <td style={{ ...TD, color: sc[s.status] || "var(--acuity-text-ter)", fontWeight: 500, textTransform: "capitalize" }}>{s.status}</td>
                     <td style={{ ...TD, fontVariantNumeric: "tabular-nums" }}>{fmt(s.timeInFunnelSec)}</td>
                   </tr>
                 );

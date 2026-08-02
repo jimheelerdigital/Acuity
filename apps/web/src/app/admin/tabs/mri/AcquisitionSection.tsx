@@ -16,9 +16,9 @@ type AcquisitionRow = AcquisitionResponse["platformAcquisition"][number];
 
 /** Activation% color thresholds: <15% red, 15–35% amber, ≥35% green. */
 function activationColor(pct: number): string {
-  if (pct < 15) return "#F87171"; // red
-  if (pct < 35) return "#FBBF24"; // amber
-  return "#4ADE80"; // green
+  if (pct < 15) return "var(--acuity-bad)"; // red
+  if (pct < 35) return "var(--acuity-warn)"; // amber
+  return "var(--acuity-good)"; // green
 }
 
 export default function AcquisitionSection({ start, end }: Props) {
@@ -86,16 +86,16 @@ export default function AcquisitionSection({ start, end }: Props) {
         {loading || (!data && !error) ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm" style={{ color: "#F87171" }}>
+          <p className="text-sm" style={{ color: "var(--acuity-bad)" }}>
             {error}
           </p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-white/40">No acquisition data for this range.</p>
+          <p className="text-sm text-acuity-text-ter">No acquisition data for this range.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="text-white/50" style={{ textAlign: "left" }}>
+                <tr className="text-acuity-text-ter" style={{ textAlign: "left" }}>
                   <th style={{ padding: "8px 12px", fontWeight: 500 }}>Source</th>
                   <th style={{ padding: "8px 12px", fontWeight: 500 }}>Platform</th>
                   <th style={{ padding: "8px 12px", fontWeight: 500, textAlign: "right" }}>
@@ -118,22 +118,22 @@ export default function AcquisitionSection({ start, end }: Props) {
                   return (
                     <tr
                       key={`${r.source}-${platform}-${i}`}
-                      style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                      style={{ borderTop: "1px solid var(--acuity-bg-inset)" }}
                     >
-                      <td className="text-white/80" style={{ padding: "10px 12px" }}>
+                      <td className="text-acuity-text-sec" style={{ padding: "10px 12px" }}>
                         {r.source}
                       </td>
-                      <td className="text-white/60" style={{ padding: "10px 12px" }}>
+                      <td className="text-acuity-text-ter" style={{ padding: "10px 12px" }}>
                         {platform}
                       </td>
                       <td
-                        className="text-white/80"
+                        className="text-acuity-text-sec"
                         style={{ padding: "10px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       >
                         {r.signups.toLocaleString()}
                       </td>
                       <td
-                        className="text-white/80"
+                        className="text-acuity-text-sec"
                         style={{ padding: "10px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}
                       >
                         {r.activated.toLocaleString()}

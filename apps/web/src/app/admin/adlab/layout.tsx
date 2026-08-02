@@ -29,11 +29,11 @@ export default function AdLabLayout({
   return (
     <div className="flex min-h-[calc(100vh-68px)]">
       {/* Sidebar */}
-      <aside className="sticky top-[68px] h-[calc(100vh-68px)] w-56 shrink-0 border-r border-white/10 bg-[#0A0A0F] overflow-y-auto">
+      <aside className="sticky top-[68px] h-[calc(100vh-68px)] w-56 shrink-0 border-r border-acuity-line bg-acuity-bg overflow-y-auto">
         <div className="px-4 pt-6 pb-4">
           <Link
             href="/admin"
-            className="flex items-center gap-1.5 text-xs text-[#A0A0B8] hover:text-white transition-colors mb-6"
+            className="flex items-center gap-1.5 text-xs text-acuity-text-ter hover:text-white transition-colors mb-6"
           >
             <ArrowLeft className="h-3 w-3" />
             Back to Admin
@@ -41,7 +41,7 @@ export default function AdLabLayout({
           <h2 className="text-sm font-semibold text-white tracking-wide">
             AdLab
           </h2>
-          <p className="text-[10px] text-[#A0A0B8] mt-0.5">
+          <p className="text-[10px] text-acuity-text-ter mt-0.5">
             Ad Research & Optimization
           </p>
         </div>
@@ -57,8 +57,8 @@ export default function AdLabLayout({
                 href={href}
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors mb-0.5 ${
                   isActive
-                    ? "bg-[#8E6FE6]/15 text-[#8E6FE6] font-medium"
-                    : "text-[#A0A0B8] hover:text-white hover:bg-white/5"
+                    ? "bg-acuity-primary-soft text-acuity-primary font-medium"
+                    : "text-acuity-text-ter hover:text-white hover:bg-acuity-bg-inset"
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />

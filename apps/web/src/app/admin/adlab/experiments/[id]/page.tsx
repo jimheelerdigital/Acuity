@@ -106,10 +106,10 @@ function makeFilename(topicBrief: string, surface: string, hypothesis: string, i
 }
 
 const SURFACE_COLORS: Record<string, string> = {
-  problem: "bg-red-500/15 text-red-400",
-  outcome: "bg-emerald-500/15 text-emerald-400",
+  problem: "bg-acuity-bad-soft text-acuity-bad",
+  outcome: "bg-acuity-good-soft text-acuity-good",
   social_proof: "bg-sky-500/15 text-sky-400",
-  mechanism: "bg-amber-500/15 text-amber-400",
+  mechanism: "bg-acuity-warn-soft text-acuity-warn",
   story: "bg-purple-500/15 text-purple-400",
   comparison: "bg-orange-500/15 text-orange-400",
   identity: "bg-pink-500/15 text-pink-400",
@@ -118,18 +118,18 @@ const SURFACE_COLORS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-zinc-500/20 text-zinc-400",
-  awaiting_approval: "bg-amber-500/20 text-amber-400",
-  live: "bg-emerald-500/20 text-emerald-400",
-  concluded: "bg-[#8E6FE6]/20 text-[#8E6FE6]",
+  awaiting_approval: "bg-acuity-warn-soft text-acuity-warn",
+  live: "bg-acuity-good-soft text-acuity-good",
+  concluded: "bg-acuity-primary-soft text-acuity-primary",
 };
 
 const COMPLIANCE_COLORS: Record<string, string> = {
   pending: "border-zinc-500/30",
-  pass: "border-emerald-500/30",
-  passed: "border-emerald-500/30", // legacy compat
-  warning: "border-amber-500/50",
-  flagged: "border-amber-500/50", // legacy compat
-  fail: "border-red-500/50",
+  pass: "border-acuity-good",
+  passed: "border-acuity-good", // legacy compat
+  warning: "border-acuity-warn",
+  flagged: "border-acuity-warn", // legacy compat
+  fail: "border-acuity-line0",
 };
 
 export default function ExperimentDetailPage() {
@@ -754,13 +754,13 @@ export default function ExperimentDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 text-[#A0A0B8] animate-spin" />
+        <Loader2 className="h-6 w-6 text-acuity-text-ter animate-spin" />
       </div>
     );
   }
 
   if (!experiment) {
-    return <p className="text-sm text-red-400">Experiment not found.</p>;
+    return <p className="text-sm text-acuity-bad">Experiment not found.</p>;
   }
 
   const sortedAngles = [...experiment.angles].sort((a, b) => b.score - a.score);
@@ -776,35 +776,35 @@ export default function ExperimentDetailPage() {
     <>
       {/* Compliance flagged message */}
       {complianceMessage && (
-        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+        <div className="mb-4 rounded-lg border border-acuity-warn bg-acuity-warn-soft px-4 py-3 text-sm text-acuity-warn">
           {complianceMessage}
         </div>
       )}
 
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-xs text-[#A0A0B8]">{experiment.project.name}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[experiment.status] || ""}`}>
+          <span className="text-xs text-acuity-text-ter">{experiment.project.name}</span>
+          <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[experiment.status] || ""}`}>
             {experiment.status.replace("_", " ")}
           </span>
           {experiment.campaignObjective && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-              experiment.campaignObjective === "OUTCOME_TRAFFIC_LPV" ? "bg-blue-500/10 text-blue-400" : "bg-white/5 text-white/40"
+            <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium ${
+              experiment.campaignObjective === "OUTCOME_TRAFFIC_LPV" ? "bg-acuity-secondary-soft text-acuity-secondary" : "bg-acuity-bg-inset text-acuity-text-ter"
             }`}>
               {experiment.campaignObjective === "OUTCOME_TRAFFIC_LPV" ? "LPV" : experiment.campaignObjective === "OUTCOME_TRAFFIC" ? "Link Clicks" : experiment.campaignObjective === "OUTCOME_SALES" ? "Conversions" : experiment.campaignObjective}
             </span>
           )}
         </div>
         <h1 className="text-2xl font-bold text-white mb-2">Experiment</h1>
-        <div className="rounded-lg border border-white/10 bg-[#1E1E2E] p-4">
+        <div className="rounded-lg border border-acuity-line bg-acuity-card-bg-raised p-4">
           <div className="flex items-center gap-3 mb-2">
             <div>
-              <p className="text-xs text-[#A0A0B8] mb-1">Topic Brief</p>
+              <p className="text-xs text-acuity-text-ter mb-1">Topic Brief</p>
               <p className="text-sm text-white">{experiment.topicBrief}</p>
             </div>
           </div>
           {(experiment as Record<string, unknown>).campaignType === "app_install" && (
-            <span className="inline-block mt-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+            <span className="inline-block mt-2 rounded-acuity-pill bg-acuity-good-soft border border-acuity-good px-2.5 py-0.5 text-xs font-medium text-acuity-good">
               App Install Campaign
             </span>
           )}
@@ -817,28 +817,28 @@ export default function ExperimentDetailPage() {
       )}
 
       {/* Reference Images — collapsible */}
-      <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] overflow-hidden">
+      <div className="mb-6 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg overflow-hidden">
         <button
           onClick={() => setRefImagesOpen(!refImagesOpen)}
           className="flex items-center justify-between w-full px-5 py-3 text-left"
         >
           <div className="flex items-center gap-2">
-            <ImageIcon className="h-4 w-4 text-[#A0A0B8]" />
+            <ImageIcon className="h-4 w-4 text-acuity-text-ter" />
             <span className="text-sm font-medium text-white">
               Reference Images
               {(experiment.referenceImages ?? []).length > 0 && (
-                <span className="ml-1.5 text-[#A0A0B8]">({(experiment.referenceImages ?? []).length})</span>
+                <span className="ml-1.5 text-acuity-text-ter">({(experiment.referenceImages ?? []).length})</span>
               )}
             </span>
           </div>
-          <ChevronDown className={`h-4 w-4 text-[#A0A0B8] transition-transform ${refImagesOpen ? "rotate-180" : ""}`} />
+          <ChevronDown className={`h-4 w-4 text-acuity-text-ter transition-transform ${refImagesOpen ? "rotate-180" : ""}`} />
         </button>
 
         {refImagesOpen && (
-          <div className="px-5 pb-5 border-t border-white/5 pt-4">
+          <div className="px-5 pb-5 border-t border-acuity-line pt-4">
             {/* Upload area with drag-and-drop */}
             <label
-              className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed ${dragOver ? "border-[#8E6FE6] bg-[#8E6FE6]/5" : "border-white/10 hover:border-[#8E6FE6]/30 bg-white/[0.02]"} px-6 py-5 cursor-pointer transition mb-4`}
+              className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed ${dragOver ? "border-acuity-primary bg-acuity-primary-soft" : "border-acuity-line hover:border-acuity-primary bg-white/[0.02]"} px-6 py-5 cursor-pointer transition mb-4`}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {
@@ -856,11 +856,11 @@ export default function ExperimentDetailPage() {
                 disabled={uploadingRefs}
               />
               {uploadingRefs ? (
-                <Loader2 className="h-5 w-5 text-[#A0A0B8] animate-spin" />
+                <Loader2 className="h-5 w-5 text-acuity-text-ter animate-spin" />
               ) : (
-                <Upload className="h-5 w-5 text-[#A0A0B8]" />
+                <Upload className="h-5 w-5 text-acuity-text-ter" />
               )}
-              <span className="text-xs text-[#A0A0B8]">
+              <span className="text-xs text-acuity-text-ter">
                 {uploadProgress || (uploadingRefs ? "Uploading..." : "Click or drag to upload competitor ads, inspiration images")}
               </span>
             </label>
@@ -877,7 +877,7 @@ export default function ExperimentDetailPage() {
                       <img src={img.imageUrl} alt={img.caption || "Reference"} className="w-full h-full object-cover" />
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteRefImage(img.id); }}
-                        className="absolute top-1 right-1 rounded-full bg-black/60 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 rounded-acuity-pill bg-black/60 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <XIcon className="h-3 w-3 text-white" />
                       </button>
@@ -887,7 +887,7 @@ export default function ExperimentDetailPage() {
                       defaultValue={img.caption || ""}
                       placeholder="Caption..."
                       onBlur={(e) => updateRefCaption(img.id, e.target.value)}
-                      className="mt-1.5 w-full rounded border border-white/10 bg-transparent px-2 py-1 text-[10px] text-[#A0A0B8] outline-none focus:border-[#8E6FE6] placeholder-[#A0A0B8]/40"
+                      className="mt-1.5 w-full rounded border border-acuity-line bg-transparent px-2 py-1 text-[10px] text-acuity-text-ter outline-none focus:border-acuity-primary placeholder-[#A0A0B8]/40"
                     />
                   </div>
                 ))}
@@ -897,15 +897,15 @@ export default function ExperimentDetailPage() {
             {/* Toggle: use reference images as creative direction */}
             <label className="mt-3 flex items-center gap-2 cursor-pointer">
               <div
-                className={`relative h-4 w-7 rounded-full transition-colors ${useRefImages ? "bg-[#8E6FE6]" : "bg-white/10"}`}
+                className={`relative h-4 w-7 rounded-acuity-pill transition-colors ${useRefImages ? "bg-acuity-primary" : "bg-acuity-bg-inset"}`}
                 onClick={() => setUseRefImages(!useRefImages)}
               >
-                <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${useRefImages ? "translate-x-3" : "translate-x-0.5"}`} />
+                <div className={`absolute top-0.5 h-3 w-3 rounded-acuity-pill bg-white transition-transform ${useRefImages ? "translate-x-3" : "translate-x-0.5"}`} />
               </div>
-              <span className={`text-[10px] ${useRefImages ? "text-[#8E6FE6]" : "text-[#A0A0B8]/60"}`}>Use as creative direction</span>
+              <span className={`text-[10px] ${useRefImages ? "text-acuity-primary" : "text-acuity-text-quiet"}`}>Use as creative direction</span>
               <div className="group relative">
-                <Info className="h-3 w-3 text-[#A0A0B8]/40" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block rounded bg-[#1E1E2E] border border-white/10 px-2 py-1 text-[9px] text-[#A0A0B8] whitespace-nowrap z-10">
+                <Info className="h-3 w-3 text-acuity-text-quiet" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block rounded bg-acuity-card-bg-raised border border-acuity-line px-2 py-1 text-[9px] text-acuity-text-ter whitespace-nowrap z-10">
                   When enabled, the first reference image is passed to gpt-image-2 as stylistic direction
                 </div>
               </div>
@@ -921,14 +921,14 @@ export default function ExperimentDetailPage() {
           <button
             onClick={advanceSelected}
             disabled={selected.size === 0 || advancing}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {advancing && <Loader2 className="h-4 w-4 animate-spin" />}
             Advance Selected ({selected.size})
           </button>
         )}
         {allAnglesAdvanced && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-acuity-good-soft border border-acuity-good-soft px-3 py-2 text-xs text-acuity-good">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {experiment.angles.length} angle{experiment.angles.length === 1 ? "" : "s"} advanced
           </span>
@@ -940,7 +940,7 @@ export default function ExperimentDetailPage() {
             <button
               onClick={generateAllCreatives}
               disabled={generateAllRunning}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {generateAllRunning ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -952,7 +952,7 @@ export default function ExperimentDetailPage() {
                 : `Generate All Creatives (${anglesWithoutCreatives})`}
             </button>
             {!generateAllRunning && (
-              <div className="absolute top-full left-0 mt-1 hidden group-hover:block rounded bg-[#1E1E2E] border border-white/10 px-3 py-2 text-[10px] text-[#A0A0B8] whitespace-nowrap z-10">
+              <div className="absolute top-full left-0 mt-1 hidden group-hover:block rounded bg-acuity-card-bg-raised border border-acuity-line px-3 py-2 text-[10px] text-acuity-text-ter whitespace-nowrap z-10">
                 Sequentially generates 3 image creatives per angle. Takes ~30-60 seconds per angle.
               </div>
             )}
@@ -961,7 +961,7 @@ export default function ExperimentDetailPage() {
 
         {/* Generate All progress summary (shown after completion) */}
         {!generateAllRunning && generateAllProgress && anglesWithoutCreatives === 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-acuity-good-soft border border-acuity-good-soft px-3 py-2 text-xs text-acuity-good">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {generateAllProgress}
           </span>
@@ -973,7 +973,7 @@ export default function ExperimentDetailPage() {
             <button
               onClick={() => runCompliance(false)}
               disabled={complianceRunning}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-acuity-line px-4 py-2 text-sm text-acuity-text-ter hover:text-white hover:border-acuity-line-strong transition disabled:opacity-50"
             >
               {complianceRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
               Run Compliance Check
@@ -981,7 +981,7 @@ export default function ExperimentDetailPage() {
             <button
               onClick={() => runCompliance(true)}
               disabled={complianceRunning}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-acuity-line px-4 py-2 text-sm text-acuity-text-ter hover:text-white hover:border-acuity-line-strong transition disabled:opacity-50"
               title="Skip compliance and mark all creatives as pass"
             >
               Skip Compliance
@@ -994,7 +994,7 @@ export default function ExperimentDetailPage() {
           <button
             onClick={finalizeCreatives}
             disabled={finalizing}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-acuity-bad bg-acuity-bad-soft px-4 py-2 text-sm text-acuity-bad hover:bg-acuity-bad-soft transition disabled:opacity-50"
           >
             {finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             Finalize Creatives
@@ -1003,7 +1003,7 @@ export default function ExperimentDetailPage() {
 
         {/* Show approved count when all are finalized */}
         {hasCreatives && !hasUnapprovedCreatives && approvedCount > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-acuity-good-soft border border-acuity-good-soft px-3 py-2 text-xs text-acuity-good">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {approvedCount} creative{approvedCount === 1 ? "" : "s"} approved
           </span>
@@ -1014,7 +1014,7 @@ export default function ExperimentDetailPage() {
           <button
             onClick={runPreLaunchValidation}
             disabled={validating || launching}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-acuity-good disabled:opacity-50"
           >
             {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
             {validating ? "Running checks..." : `Launch Campaign (${launchReadyCount} creative${launchReadyCount === 1 ? "" : "s"})`}
@@ -1025,7 +1025,7 @@ export default function ExperimentDetailPage() {
         {experiment.status === "concluded" && (
           <button
             onClick={cloneWinningAds}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6] hover:bg-[#8E6FE6]/20 transition"
+            className="inline-flex items-center gap-2 rounded-lg border border-acuity-primary bg-acuity-primary-soft px-4 py-2 text-sm text-acuity-primary hover:bg-acuity-primary-soft transition"
           >
             <Copy className="h-4 w-4" />
             Clone winning ads with new variants
@@ -1035,20 +1035,20 @@ export default function ExperimentDetailPage() {
 
       {/* Pre-flight validation panel */}
       {validationChecks && !launchResult && (
-        <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] p-6">
+        <div className="mb-6 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-[#8E6FE6]" />
+              <ClipboardCheck className="h-5 w-5 text-acuity-primary" />
               <h3 className="text-base font-semibold text-white">Pre-Launch Checklist</h3>
               {validationSkipped && (
-                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                <span className="rounded-acuity-pill bg-acuity-warn-soft px-2 py-0.5 text-[10px] font-medium text-acuity-warn">
                   validation skipped
                 </span>
               )}
             </div>
             <button
               onClick={dismissValidation}
-              className="text-xs text-[#A0A0B8] hover:text-white transition"
+              className="text-xs text-acuity-text-ter hover:text-white transition"
             >
               Dismiss
             </button>
@@ -1066,24 +1066,24 @@ export default function ExperimentDetailPage() {
                   key={check.id}
                   className={`flex items-start gap-3 rounded-lg px-4 py-2.5 ${
                     check.status === "fail"
-                      ? "bg-red-500/5 border border-red-500/20"
+                      ? "bg-acuity-bad-soft border border-acuity-bad"
                       : check.status === "warn"
-                        ? "bg-amber-500/5 border border-amber-500/20"
-                        : "bg-emerald-500/5 border border-emerald-500/10"
+                        ? "bg-acuity-warn-soft border border-acuity-warn-soft"
+                        : "bg-acuity-good-soft border border-acuity-good-soft"
                   }`}
                 >
                   <span className="mt-0.5 shrink-0">
-                    {check.status === "fail" && <XCircle className="h-4 w-4 text-red-400" />}
-                    {check.status === "warn" && <AlertTriangle className="h-4 w-4 text-amber-400" />}
-                    {check.status === "pass" && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+                    {check.status === "fail" && <XCircle className="h-4 w-4 text-acuity-bad" />}
+                    {check.status === "warn" && <AlertTriangle className="h-4 w-4 text-acuity-warn" />}
+                    {check.status === "pass" && <CheckCircle2 className="h-4 w-4 text-acuity-good" />}
                   </span>
                   <div className="min-w-0">
                     <p className={`text-xs font-medium ${
-                      check.status === "fail" ? "text-red-400" : check.status === "warn" ? "text-amber-400" : "text-emerald-400"
+                      check.status === "fail" ? "text-acuity-bad" : check.status === "warn" ? "text-acuity-warn" : "text-acuity-good"
                     }`}>
                       {check.label}
                     </p>
-                    <p className="text-[11px] text-[#A0A0B8] mt-0.5">{check.message}</p>
+                    <p className="text-[11px] text-acuity-text-ter mt-0.5">{check.message}</p>
                   </div>
                 </div>
               ))}
@@ -1095,7 +1095,7 @@ export default function ExperimentDetailPage() {
               <button
                 onClick={launchCampaign}
                 disabled={launching}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-acuity-good disabled:opacity-50"
               >
                 {launching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
                 {validationSkipped ? "Launch Anyway" : "Confirm Launch"}
@@ -1103,7 +1103,7 @@ export default function ExperimentDetailPage() {
             ) : (
               <button
                 disabled
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600/30 px-5 py-2.5 text-sm font-semibold text-white/40 cursor-not-allowed"
+                className="inline-flex items-center gap-2 rounded-lg bg-acuity-good-soft px-5 py-2.5 text-sm font-semibold text-acuity-text-ter cursor-not-allowed"
               >
                 <Rocket className="h-4 w-4" />
                 Confirm Launch
@@ -1111,7 +1111,7 @@ export default function ExperimentDetailPage() {
             )}
 
             {!validationPassed && !validationSkipped && (
-              <span className="text-xs text-red-400">
+              <span className="text-xs text-acuity-bad">
                 Fix the issues above before launching
               </span>
             )}
@@ -1121,7 +1121,7 @@ export default function ExperimentDetailPage() {
           {!validationPassed && !validationSkipped && (
             <button
               onClick={skipValidation}
-              className="mt-3 text-[10px] text-[#A0A0B8]/60 hover:text-[#A0A0B8] transition underline"
+              className="mt-3 text-[10px] text-acuity-text-quiet hover:text-acuity-text-ter transition underline"
             >
               Skip validation (emergency only)
             </button>
@@ -1134,9 +1134,9 @@ export default function ExperimentDetailPage() {
             const passes = validationChecks.filter((c) => c.status === "pass").length;
             if (fails === 0 && warns === 0) {
               return (
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <p className="text-xs text-emerald-400 font-medium">All {passes} checks passed — ready to launch</p>
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-acuity-good-soft border border-acuity-good-soft px-4 py-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-acuity-good" />
+                  <p className="text-xs text-acuity-good font-medium">All {passes} checks passed — ready to launch</p>
                 </div>
               );
             }
@@ -1147,23 +1147,23 @@ export default function ExperimentDetailPage() {
 
       {/* Post-launch reminder */}
       {showPostLaunchReminder && experiment.status === "live" && (
-        <div className="mb-6 rounded-xl border border-[#8E6FE6]/30 bg-[#8E6FE6]/5 p-5">
+        <div className="mb-6 rounded-acuity-lg border border-acuity-primary bg-acuity-primary-soft p-5">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
-              <Info className="h-5 w-5 text-[#8E6FE6] shrink-0 mt-0.5" />
+              <Info className="h-5 w-5 text-acuity-primary shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-white mb-2">Campaign launched in PAUSED state. After activating:</p>
-                <ul className="space-y-1.5 text-xs text-[#A0A0B8]">
+                <ul className="space-y-1.5 text-xs text-acuity-text-ter">
                   <li className="flex items-start gap-2">
-                    <span className="text-[#8E6FE6] mt-0.5">&#8226;</span>
+                    <span className="text-acuity-primary mt-0.5">&#8226;</span>
                     <span>Don&#39;t edit the ad set for 7 days (resets learning phase)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[#8E6FE6] mt-0.5">&#8226;</span>
+                    <span className="text-acuity-primary mt-0.5">&#8226;</span>
                     <span>First performance check at 48 hours</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[#8E6FE6] mt-0.5">&#8226;</span>
+                    <span className="text-acuity-primary mt-0.5">&#8226;</span>
                     <span>Kill criteria: $15/creative with zero clicks, $30/creative with zero signups</span>
                   </li>
                 </ul>
@@ -1171,7 +1171,7 @@ export default function ExperimentDetailPage() {
             </div>
             <button
               onClick={() => setShowPostLaunchReminder(false)}
-              className="shrink-0 rounded-full p-1 text-[#A0A0B8] hover:text-white hover:bg-white/10 transition"
+              className="shrink-0 rounded-acuity-pill p-1 text-acuity-text-ter hover:text-white hover:bg-acuity-bg-inset transition"
             >
               <XIcon className="h-4 w-4" />
             </button>
@@ -1181,14 +1181,14 @@ export default function ExperimentDetailPage() {
 
       {/* Launch error */}
       {launchError && (
-        <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div className="mb-6 rounded-lg border border-acuity-bad bg-acuity-bad-soft px-4 py-3 text-sm text-acuity-bad">
           {launchError}
         </div>
       )}
 
       {/* Launch confirmation panel — shown after campaign created */}
       {launchResult && (
-        <div className={`mb-6 rounded-xl border ${launchResult.status === "partial" ? "border-amber-500/30" : "border-emerald-500/30"} bg-[#13131F] p-6`}>
+        <div className={`mb-6 rounded-acuity-lg border ${launchResult.status === "partial" ? "border-acuity-warn" : "border-acuity-good"} bg-acuity-card-bg p-6`}>
           <h3 className="text-base font-semibold text-white mb-1">
             {launchResult.status === "partial"
               ? "Campaign Partially Launched (PAUSED)"
@@ -1198,8 +1198,8 @@ export default function ExperimentDetailPage() {
           {/* Success summary */}
           {launchResult.created.length > 0 && (
             <div className="flex items-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-400" />
-              <p className="text-xs text-emerald-400">
+              <div className="h-2 w-2 rounded-acuity-pill bg-emerald-400" />
+              <p className="text-xs text-acuity-good">
                 {launchResult.created.length} of {launchResult.created.length + launchResult.errors.length} ads launched successfully
               </p>
             </div>
@@ -1208,23 +1208,23 @@ export default function ExperimentDetailPage() {
           {/* Failure summary */}
           {launchResult.errors.length > 0 && (
             <div className="flex items-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-red-400" />
-              <p className="text-xs text-red-400">
+              <div className="h-2 w-2 rounded-acuity-pill bg-red-400" />
+              <p className="text-xs text-acuity-bad">
                 {launchResult.errors.length} ad{launchResult.errors.length === 1 ? "" : "s"} failed to launch
               </p>
             </div>
           )}
 
-          <p className="text-xs text-[#A0A0B8] mb-4">
+          <p className="text-xs text-acuity-text-ter mb-4">
             Campaign <span className="font-mono text-white">{launchResult.campaignName}</span>
             {launchResult.created.length > 0 && <> — 1 ad set, {launchResult.created.length} ad{launchResult.created.length === 1 ? "" : "s"}</>}
           </p>
 
           {launchResult.errors.length > 0 && (
-            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/5 p-3 space-y-1">
-              <p className="text-xs font-medium text-red-400 mb-1">Failed creatives:</p>
+            <div className="mb-4 rounded-lg border border-acuity-bad bg-acuity-bad-soft p-3 space-y-1">
+              <p className="text-xs font-medium text-acuity-bad mb-1">Failed creatives:</p>
               {launchResult.errors.map((e, i) => (
-                <p key={i} className="text-xs text-red-400/80">
+                <p key={i} className="text-xs text-acuity-bad">
                   {e.creativeId.slice(0, 8)}: {e.error}
                 </p>
               ))}
@@ -1244,7 +1244,7 @@ export default function ExperimentDetailPage() {
             <button
               onClick={activateCampaign}
               disabled={activating || cancelling || retrying}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-acuity-good disabled:opacity-50"
             >
               {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
               Launch Live{launchResult.created.length > 0 ? ` (${launchResult.created.length} ads)` : ""}
@@ -1268,7 +1268,7 @@ export default function ExperimentDetailPage() {
                   setRetrying(false);
                 }}
                 disabled={retrying || activating || cancelling}
-                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-5 py-2.5 text-sm text-amber-400 hover:bg-amber-500/10 transition disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-acuity-warn-soft bg-acuity-warn-soft px-5 py-2.5 text-sm text-acuity-warn hover:bg-acuity-warn-soft transition disabled:opacity-50"
               >
                 {retrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Retry Failed ({launchResult.errors.length})
@@ -1277,7 +1277,7 @@ export default function ExperimentDetailPage() {
             <button
               onClick={cancelCampaign}
               disabled={activating || cancelling || retrying}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-5 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-acuity-bad bg-acuity-bad-soft px-5 py-2.5 text-sm text-acuity-bad hover:bg-acuity-bad-soft transition disabled:opacity-50"
             >
               {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
               Cancel & Delete
@@ -1288,32 +1288,32 @@ export default function ExperimentDetailPage() {
 
       {/* Live experiment indicator + verify */}
       {experiment.status === "live" && (
-        <div className={`mb-6 rounded-xl border ${verifyResult && !verifyResult.verified ? "border-red-500/30 bg-red-500/5" : "border-emerald-500/30 bg-emerald-500/5"} px-5 py-4`}>
+        <div className={`mb-6 rounded-acuity-lg border ${verifyResult && !verifyResult.verified ? "border-acuity-bad bg-acuity-bad-soft" : "border-acuity-good bg-acuity-good-soft"} px-5 py-4`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${verifyResult && !verifyResult.verified ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`} />
-              <span className={`text-sm font-medium ${verifyResult && !verifyResult.verified ? "text-red-400" : "text-emerald-400"}`}>
+              <div className={`h-2 w-2 rounded-acuity-pill ${verifyResult && !verifyResult.verified ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`} />
+              <span className={`text-sm font-medium ${verifyResult && !verifyResult.verified ? "text-acuity-bad" : "text-acuity-good"}`}>
                 {verifyResult && !verifyResult.verified ? "Campaign has issues on Meta" : "Campaign is live"}
               </span>
             </div>
             <button
               onClick={verifyCampaignOnMeta}
               disabled={verifying}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[#A0A0B8] hover:text-white hover:bg-white/10 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-acuity-line bg-acuity-bg-inset px-3 py-1.5 text-xs text-acuity-text-ter hover:text-white hover:bg-acuity-bg-inset transition disabled:opacity-50"
             >
               {verifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
               {verifying ? "Verifying..." : "Verify on Meta"}
             </button>
           </div>
           {verifyResult && (
-            <div className={`mt-3 rounded-lg border ${verifyResult.verified ? "border-emerald-500/20 bg-emerald-500/5" : "border-red-500/20 bg-red-500/5"} p-3`}>
-              <p className={`text-xs font-medium ${verifyResult.verified ? "text-emerald-400" : "text-red-400"} mb-1`}>
+            <div className={`mt-3 rounded-lg border ${verifyResult.verified ? "border-acuity-good-soft bg-acuity-good-soft" : "border-acuity-bad bg-acuity-bad-soft"} p-3`}>
+              <p className={`text-xs font-medium ${verifyResult.verified ? "text-acuity-good" : "text-acuity-bad"} mb-1`}>
                 {verifyResult.summary}
               </p>
               {verifyResult.results.filter((r) => !r.exists).length > 0 && (
                 <div className="space-y-1 mt-2">
                   {verifyResult.results.filter((r) => !r.exists).map((r, i) => (
-                    <p key={i} className="text-[10px] text-red-400/80">
+                    <p key={i} className="text-[10px] text-acuity-bad">
                       {r.type} {r.objectId.slice(0, 12)}… — {r.error || "not found"}
                     </p>
                   ))}
@@ -1322,14 +1322,14 @@ export default function ExperimentDetailPage() {
               {verifyResult.results.filter((r) => r.exists).length > 0 && (
                 <div className="space-y-1 mt-2">
                   {verifyResult.results.filter((r) => r.exists).map((r, i) => (
-                    <p key={i} className="text-[10px] text-emerald-400/80">
+                    <p key={i} className="text-[10px] text-acuity-good">
                       {r.type} {r.objectId.slice(0, 12)}… — {r.metaStatus}
                     </p>
                   ))}
                 </div>
               )}
               {verifyResult.statusUpdates > 0 && (
-                <p className="text-[10px] text-amber-400 mt-2">
+                <p className="text-[10px] text-acuity-warn mt-2">
                   {verifyResult.statusUpdates} local status{verifyResult.statusUpdates > 1 ? "es" : ""} updated to reflect Meta state
                 </p>
               )}
@@ -1360,31 +1360,31 @@ export default function ExperimentDetailPage() {
         return (
           <div className="mb-6 space-y-4">
             {/* Creative count tracking */}
-            <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
+            <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5">
               <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="h-4 w-4 text-[#8E6FE6]" />
-                <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider">Creative Tracking</p>
+                <TrendingUp className="h-4 w-4 text-acuity-primary" />
+                <p className="text-xs font-medium text-acuity-text-ter uppercase tracking-wider">Creative Tracking</p>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-2xl font-bold text-white">{originalCreatives.length}</p>
-                  <p className="text-[10px] text-[#A0A0B8]">Original creatives</p>
+                  <p className="text-[10px] text-acuity-text-ter">Original creatives</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">{addedCreatives.length}</p>
-                  <p className="text-[10px] text-[#A0A0B8]">Added creatives</p>
+                  <p className="text-[10px] text-acuity-text-ter">Added creatives</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">{totalLiveAds}</p>
-                  <p className="text-[10px] text-[#A0A0B8]">Total live ads</p>
+                  <p className="text-[10px] text-acuity-text-ter">Total live ads</p>
                 </div>
               </div>
               {Object.keys(batches).length > 0 && (
-                <div className="mt-3 border-t border-white/5 pt-3 space-y-1">
+                <div className="mt-3 border-t border-acuity-line pt-3 space-y-1">
                   {Object.entries(batches)
                     .sort(([a], [b]) => Number(a) - Number(b))
                     .map(([bn, info]) => (
-                      <p key={bn} className="text-[10px] text-[#A0A0B8]">
+                      <p key={bn} className="text-[10px] text-acuity-text-ter">
                         Batch {bn}: {info.count} creative{info.count === 1 ? "" : "s"} added {new Date(info.earliest).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                       </p>
                     ))}
@@ -1393,9 +1393,9 @@ export default function ExperimentDetailPage() {
             </div>
 
             {/* Generate More Creatives */}
-            <div className="rounded-xl border border-[#8E6FE6]/20 bg-[#13131F] p-5">
+            <div className="rounded-acuity-lg border border-acuity-primary-soft bg-acuity-card-bg p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-[#8E6FE6]" />
+                <Sparkles className="h-4 w-4 text-acuity-primary" />
                 <p className="text-sm font-medium text-white">Generate More Creatives</p>
               </div>
 
@@ -1404,7 +1404,7 @@ export default function ExperimentDetailPage() {
                 <select
                   value={scalingMode}
                   onChange={(e) => setScalingMode(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
+                  className="rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white outline-none focus:border-acuity-primary"
                 >
                   <option value="more_of_type">More of what&apos;s working</option>
                   <option value="new_angles">Test new angles</option>
@@ -1415,7 +1415,7 @@ export default function ExperimentDetailPage() {
                   <select
                     value={preferredType}
                     onChange={(e) => setPreferredType(e.target.value)}
-                    className="rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
+                    className="rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white outline-none focus:border-acuity-primary"
                   >
                     <option value="mechanism">Mechanism</option>
                     <option value="pain_point">Pain-Point</option>
@@ -1426,7 +1426,7 @@ export default function ExperimentDetailPage() {
                 <button
                   onClick={generateMoreCreatives}
                   disabled={generatingMore}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
                 >
                   {generatingMore ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
@@ -1437,14 +1437,14 @@ export default function ExperimentDetailPage() {
               </div>
 
               {/* Scaling mode descriptions */}
-              <p className="text-[10px] text-[#A0A0B8]">
+              <p className="text-[10px] text-acuity-text-ter">
                 {scalingMode === "more_of_type" && "Generates creatives similar in style/format to the selected type. Pick the creative type that's performing best."}
                 {scalingMode === "new_angles" && "Generates creatives using different angles from the same topic brief that weren't used in the original batch."}
                 {scalingMode === "new_copy_lengths" && "Generates the same visual formats but with different copy lengths (short, long, one-liner)."}
               </p>
 
               {generateMoreProgress && (
-                <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${generateMoreProgress.startsWith("Error") ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
+                <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${generateMoreProgress.startsWith("Error") ? "bg-acuity-bad-soft text-acuity-bad border border-acuity-bad" : "bg-acuity-good-soft text-acuity-good border border-acuity-good-soft"}`}>
                   {generateMoreProgress}
                 </div>
               )}
@@ -1452,9 +1452,9 @@ export default function ExperimentDetailPage() {
 
             {/* Add to Campaign + Budget Suggestion — show when there are new approved creatives without ads */}
             {newApproved.length > 0 && (
-              <div className="rounded-xl border border-emerald-500/20 bg-[#13131F] p-5">
+              <div className="rounded-acuity-lg border border-acuity-good-soft bg-acuity-card-bg p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Rocket className="h-4 w-4 text-emerald-400" />
+                  <Rocket className="h-4 w-4 text-acuity-good" />
                   <p className="text-sm font-medium text-white">
                     {newApproved.length} new creative{newApproved.length === 1 ? "" : "s"} ready to add
                   </p>
@@ -1463,7 +1463,7 @@ export default function ExperimentDetailPage() {
                 <button
                   onClick={addToCampaign}
                   disabled={addingToCampaign}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-acuity-good disabled:opacity-50"
                 >
                   {addingToCampaign ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> Adding to campaign...</>
@@ -1474,21 +1474,21 @@ export default function ExperimentDetailPage() {
 
                 {/* Budget suggestion */}
                 {totalLiveAds > 0 && suggestedBudget > 10 && (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2">
-                    <DollarSign className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-amber-400">
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-acuity-warn-soft border border-acuity-warn-soft px-3 py-2">
+                    <DollarSign className="h-4 w-4 text-acuity-warn shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-acuity-warn">
                       You{"\u2019"}ll have {totalLiveAds + newApproved.length} ads in this ad set. Consider increasing budget from $10/day to ${suggestedBudget}/day so Meta has enough budget to test new creatives.
                     </p>
                   </div>
                 )}
 
                 {addToCampaignResult && (
-                  <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
-                    <p className="text-xs text-emerald-400">
+                  <div className="mt-3 rounded-lg bg-acuity-good-soft border border-acuity-good-soft px-3 py-2">
+                    <p className="text-xs text-acuity-good">
                       Added {addToCampaignResult.added} new ad{addToCampaignResult.added === 1 ? "" : "s"} to existing campaign. Total ads: {addToCampaignResult.totalAds}
                     </p>
                     {addToCampaignResult.errors.length > 0 && (
-                      <p className="text-xs text-red-400 mt-1">
+                      <p className="text-xs text-acuity-bad mt-1">
                         {addToCampaignResult.errors.length} failed: {addToCampaignResult.errors.map((e) => e.error).join("; ")}
                       </p>
                     )}
@@ -1499,7 +1499,7 @@ export default function ExperimentDetailPage() {
 
             {/* Show count of unapproved new creatives if there are some */}
             {newUnapproved.length > 0 && newApproved.length < newUnapproved.length && (
-              <p className="text-xs text-[#A0A0B8]">
+              <p className="text-xs text-acuity-text-ter">
                 {newUnapproved.length - newApproved.length} new creative{newUnapproved.length - newApproved.length === 1 ? "" : "s"} still need approval before they can be added to the campaign.
               </p>
             )}
@@ -1509,7 +1509,7 @@ export default function ExperimentDetailPage() {
 
       {/* Landing page section — shown for live/concluded experiments outside the launch panel */}
       {!launchResult && (experiment.status === "live" || experiment.status === "concluded" || experiment.status === "awaiting_approval") && (
-        <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] p-5">
+        <div className="mb-6 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5">
           <LandingPageSection
             experiment={experiment}
             generatingLandingPage={generatingLandingPage}
@@ -1543,7 +1543,7 @@ export default function ExperimentDetailPage() {
                   {imageCreatives.length > 0 && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider">Image Creatives</p>
+                        <p className="text-[10px] font-medium text-acuity-text-ter uppercase tracking-wider">Image Creatives</p>
                         <button
                           onClick={async () => {
                             const withImages = imageCreatives.filter((c) => c.imageUrl);
@@ -1553,7 +1553,7 @@ export default function ExperimentDetailPage() {
                               await new Promise((r) => setTimeout(r, 300));
                             }
                           }}
-                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition"
                         >
                           <Download className="h-3 w-3" />
                           Download All ({imageCreatives.filter((c) => c.imageUrl).length})
@@ -1568,7 +1568,7 @@ export default function ExperimentDetailPage() {
                   )}
                   {videoCreatives.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Video Creatives</p>
+                      <p className="text-[10px] font-medium text-acuity-text-ter uppercase tracking-wider mb-2">Video Creatives</p>
                       <div className="grid gap-3 sm:grid-cols-3">
                         {videoCreatives.map((creative, idx) => (
                           <CreativeCard key={creative.id} creative={creative} onToggleApprove={() => toggleApprove(creative.id, creative.approved)} topicBrief={experiment.topicBrief} angleSurface={angle.valueSurface} angleHypothesis={angle.hypothesis} creativeIndex={idx} />
@@ -1584,14 +1584,14 @@ export default function ExperimentDetailPage() {
       </div>
 
       {/* Danger zone — delete & reset */}
-      <div className="mt-12 border-t border-white/5 pt-8">
-        <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider mb-4">Danger Zone</p>
+      <div className="mt-12 border-t border-acuity-line pt-8">
+        <p className="text-xs font-medium text-acuity-text-ter uppercase tracking-wider mb-4">Danger Zone</p>
         <div className="flex items-center gap-3 flex-wrap">
           {experiment.status !== "draft" && (
             <button
               onClick={resetToDraft}
               disabled={resetting || deleting}
-              className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-acuity-warn-soft bg-acuity-warn-soft px-4 py-2 text-sm text-acuity-warn hover:bg-acuity-warn-soft transition disabled:opacity-50"
             >
               {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Reset to Draft
@@ -1600,7 +1600,7 @@ export default function ExperimentDetailPage() {
           <button
             onClick={deleteExperiment}
             disabled={deleting || resetting}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-acuity-bad bg-acuity-bad-soft px-4 py-2 text-sm text-acuity-bad hover:bg-acuity-bad-soft transition disabled:opacity-50"
           >
             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             Delete Experiment
@@ -1616,7 +1616,7 @@ export default function ExperimentDetailPage() {
         >
           <button
             onClick={() => setLightboxUrl(null)}
-            className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition"
+            className="absolute top-4 right-4 rounded-acuity-pill bg-acuity-bg-inset p-2 text-white hover:opacity-80 transition"
           >
             <XIcon className="h-5 w-5" />
           </button>
@@ -1653,12 +1653,12 @@ function AngleCard({
 
   return (
     <div
-      className={`rounded-xl border bg-[#13131F] p-5 transition ${
+      className={`rounded-acuity-lg border bg-acuity-card-bg p-5 transition ${
         angle.advanced
-          ? "border-emerald-500/30"
+          ? "border-acuity-good"
           : isSelected
-            ? "border-[#8E6FE6]/50"
-            : "border-white/10"
+            ? "border-acuity-primary"
+            : "border-acuity-line"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -1667,8 +1667,8 @@ function AngleCard({
             onClick={onToggle}
             className={`mt-0.5 shrink-0 h-5 w-5 rounded border transition ${
               isSelected
-                ? "bg-[#8E6FE6] border-[#8E6FE6]"
-                : "border-white/20 hover:border-white/40"
+                ? "bg-acuity-primary border-acuity-primary"
+                : "border-acuity-line-strong hover:border-white/40"
             } flex items-center justify-center`}
           >
             {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
@@ -1677,12 +1677,12 @@ function AngleCard({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${SURFACE_COLORS[angle.valueSurface] || ""}`}>
+            <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium ${SURFACE_COLORS[angle.valueSurface] || ""}`}>
               {angle.valueSurface.replace("_", " ")}
             </span>
-            <span className="text-[10px] text-[#A0A0B8]">{angle.targetPersona}</span>
+            <span className="text-[10px] text-acuity-text-ter">{angle.targetPersona}</span>
             {angle.advanced && (
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+              <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[10px] font-medium text-acuity-good">
                 advanced
               </span>
             )}
@@ -1693,7 +1693,7 @@ function AngleCard({
           <div className="flex items-center gap-3 mt-2">
             <button
               onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 text-xs text-[#A0A0B8] hover:text-white transition-colors"
+              className="flex items-center gap-1 text-xs text-acuity-text-ter hover:text-white transition-colors"
             >
               Notes {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
@@ -1702,7 +1702,7 @@ function AngleCard({
               <button
                 onClick={onGenerate}
                 disabled={generating}
-                className="flex items-center gap-1 text-xs text-[#8E6FE6] hover:text-[#AD92E9] transition-colors"
+                className="flex items-center gap-1 text-xs text-acuity-primary hover:text-[#AD92E9] transition-colors"
               >
                 {generating ? (
                   <><Loader2 className="h-3 w-3 animate-spin" /> Generating...</>
@@ -1715,7 +1715,7 @@ function AngleCard({
               <button
                 onClick={onGenerate}
                 disabled={generating}
-                className="flex items-center gap-1 text-xs text-[#A0A0B8] hover:text-white transition-colors"
+                className="flex items-center gap-1 text-xs text-acuity-text-ter hover:text-white transition-colors"
               >
                 {generating ? (
                   <><Loader2 className="h-3 w-3 animate-spin" /> Regenerating...</>
@@ -1727,7 +1727,7 @@ function AngleCard({
           </div>
 
           {expanded && (
-            <p className="mt-2 text-xs text-[#A0A0B8] whitespace-pre-line leading-relaxed">
+            <p className="mt-2 text-xs text-acuity-text-ter whitespace-pre-line leading-relaxed">
               {angle.researchNotes}
             </p>
           )}
@@ -1763,7 +1763,7 @@ function AngleCard({
                             const totalClicks = m.reduce((s: number, x: { clicks: number }) => s + x.clicks, 0);
                             const totalConv = m.reduce((s: number, x: { conversions: number }) => s + x.conversions, 0);
                             return (
-                              <div className="text-[9px] text-[#A0A0B8] text-center space-x-2">
+                              <div className="text-[9px] text-acuity-text-ter text-center space-x-2">
                                 <span>${(totalSpend / 100).toFixed(0)} spent</span>
                                 <span>{totalClicks} clicks</span>
                                 <span>{totalConv} conv</span>
@@ -1772,11 +1772,11 @@ function AngleCard({
                           })()}
                           <div className="flex items-center gap-1">
                             <a href={vc.videoUrl!} download={`${vc.videoPresenterTag || "video"}.mp4`}
-                              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition flex-1 justify-center">
+                              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition flex-1 justify-center">
                               <Download className="h-3 w-3" /> Download
                             </a>
                             <button onClick={() => refetchVideo(vc.id)} disabled={refetching === vc.id}
-                              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+                              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition"
                               title="Re-download from HeyGen">
                               {refetching === vc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                             </button>
@@ -1788,21 +1788,21 @@ function AngleCard({
                             <video src={angle.videoUrl} controls className="w-full rounded-lg" style={{ aspectRatio: "9/16", maxHeight: "360px" }} />
                           </div>
                           <a href={angle.videoUrl} download={`${angle.valueSurface}_video.mp4`}
-                            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition">
+                            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition">
                             <Download className="h-3 w-3" /> Download
                           </a>
                         </div>
                       )}
                     </div>
                     {angle.videoScriptText && (
-                      <p className="text-[10px] text-[#A0A0B8] italic leading-relaxed">
+                      <p className="text-[10px] text-acuity-text-ter italic leading-relaxed">
                         &ldquo;{angle.videoScriptText}&rdquo;
                       </p>
                     )}
                     <button
                       onClick={generateVideoScript}
                       disabled={videoGenerating || videoConfirming}
-                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+                      className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition"
                     >
                       <RefreshCw className="h-3 w-3" /> Regenerate
                     </button>
@@ -1814,29 +1814,29 @@ function AngleCard({
               {scriptDraft && !videoConfirming && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Video className="h-3.5 w-3.5 text-[#8E6FE6]" />
-                    <span className="text-[10px] font-medium text-[#8E6FE6] uppercase tracking-wider">Video Script — Review & Edit</span>
-                    <span className="text-[10px] text-[#A0A0B8]">
+                    <Video className="h-3.5 w-3.5 text-acuity-primary" />
+                    <span className="text-[10px] font-medium text-acuity-primary uppercase tracking-wider">Video Script — Review & Edit</span>
+                    <span className="text-[10px] text-acuity-text-ter">
                       Avatars: {scriptDraft.primaryAvatar.name}
                       {scriptDraft.secondaryAvatar?.id ? ` + ${scriptDraft.secondaryAvatar.name}` : ""}
                     </span>
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#A0A0B8] mb-1 block">Hook line (becomes Meta ad headline)</label>
+                    <label className="text-[10px] text-acuity-text-ter mb-1 block">Hook line (becomes Meta ad headline)</label>
                     <input
                       type="text"
                       value={editedHook}
                       onChange={(e) => setEditedHook(e.target.value)}
-                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#8E6FE6]"
+                      className="w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-xs text-white outline-none focus:border-acuity-primary"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-[#A0A0B8] mb-1 block">Full script ({editedScript.split(/\s+/).length} words)</label>
+                    <label className="text-[10px] text-acuity-text-ter mb-1 block">Full script ({editedScript.split(/\s+/).length} words)</label>
                     <textarea
                       value={editedScript}
                       onChange={(e) => setEditedScript(e.target.value)}
                       rows={4}
-                      className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#8E6FE6] resize-y"
+                      className="w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-xs text-white outline-none focus:border-acuity-primary resize-y"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -1848,7 +1848,7 @@ function AngleCard({
                     </button>
                     <button
                       onClick={() => setScriptDraft(null)}
-                      className="text-xs text-[#A0A0B8] hover:text-white transition"
+                      className="text-xs text-acuity-text-ter hover:text-white transition"
                     >
                       Cancel
                     </button>
@@ -1866,7 +1866,7 @@ function AngleCard({
 
               {/* Error */}
               {videoError && (
-                <div className="mt-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-400">
+                <div className="mt-2 rounded-lg bg-acuity-bad-soft border border-acuity-bad px-3 py-2 text-xs text-acuity-bad">
                   {videoError}
                 </div>
               )}
@@ -1886,7 +1886,7 @@ function AngleCard({
           )}
         </div>
 
-        <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-lg bg-white/5 text-sm font-bold text-white">
+        <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-lg bg-acuity-bg-inset text-sm font-bold text-white">
           {angle.score}
         </div>
       </div>
@@ -1911,7 +1911,7 @@ function CreativeCard({
 }) {
   return (
     <div
-      className={`rounded-lg border bg-[#1E1E2E] overflow-hidden transition ${COMPLIANCE_COLORS[creative.complianceStatus] || "border-white/10"}`}
+      className={`rounded-lg border bg-acuity-card-bg-raised overflow-hidden transition ${COMPLIANCE_COLORS[creative.complianceStatus] || "border-acuity-line"}`}
     >
       {creative.creativeType === "image" && creative.imageUrl && (
         <div className="relative aspect-square bg-black/20 group">
@@ -1922,7 +1922,7 @@ function CreativeCard({
           />
           <button
             onClick={() => downloadImage(creative.imageUrl!, makeFilename(topicBrief, angleSurface, angleHypothesis, creativeIndex))}
-            className="absolute bottom-2 right-2 rounded-lg bg-black/70 p-1.5 text-white/70 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-black/90 transition"
+            className="absolute bottom-2 right-2 rounded-lg bg-black/70 p-1.5 text-acuity-text-sec opacity-0 group-hover:opacity-100 hover:text-white hover:bg-black/90 transition"
             title="Download image"
           >
             <Download className="h-4 w-4" />
@@ -1930,42 +1930,42 @@ function CreativeCard({
         </div>
       )}
       {creative.creativeType === "image" && !creative.imageUrl && creative.complianceNotes?.startsWith("IMAGE_ERROR:") && (
-        <div className="aspect-square bg-red-900/10 border-b border-red-500/20 flex items-center justify-center p-4">
+        <div className="aspect-square bg-acuity-bad-soft border-b border-acuity-bad flex items-center justify-center p-4">
           <div className="text-center">
-            <p className="text-xs font-semibold text-red-400 mb-1">Image Generation Failed</p>
-            <p className="text-[10px] text-red-300/70 leading-relaxed">{creative.complianceNotes.replace("IMAGE_ERROR: ", "")}</p>
+            <p className="text-xs font-semibold text-acuity-bad mb-1">Image Generation Failed</p>
+            <p className="text-[10px] text-acuity-bad leading-relaxed">{creative.complianceNotes.replace("IMAGE_ERROR: ", "")}</p>
           </div>
         </div>
       )}
       <div className="p-3 space-y-2">
         <p className="text-xs font-semibold text-white leading-snug">{creative.headline}</p>
-        <p className="text-[11px] text-[#A0A0B8] leading-relaxed">{creative.primaryText}</p>
-        <p className="text-[10px] text-[#A0A0B8]">{creative.description}</p>
+        <p className="text-[11px] text-acuity-text-ter leading-relaxed">{creative.primaryText}</p>
+        <p className="text-[10px] text-acuity-text-ter">{creative.description}</p>
 
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             {creative.batchNumber > 0 && (
-              <span className="rounded px-1.5 py-0.5 text-[9px] font-medium bg-[#8E6FE6]/10 text-[#8E6FE6] border border-[#8E6FE6]/20">
+              <span className="rounded px-1.5 py-0.5 text-[9px] font-medium bg-acuity-primary-soft text-acuity-primary border border-acuity-primary-soft">
                 batch {creative.batchNumber}
               </span>
             )}
             <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
               creative.creativeType === "video"
                 ? "bg-sky-500/15 text-sky-400"
-                : "bg-[#8E6FE6]/15 text-[#8E6FE6]"
+                : "bg-acuity-primary-soft text-acuity-primary"
             }`}>
               {creative.creativeType}
             </span>
-            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] text-[#A0A0B8] font-mono">
+            <span className="rounded bg-acuity-bg-inset px-1.5 py-0.5 text-[9px] text-acuity-text-ter font-mono">
               {creative.cta}
             </span>
             <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
               creative.complianceStatus === "pass" || creative.complianceStatus === "passed"
-                ? "bg-emerald-500/15 text-emerald-400"
+                ? "bg-acuity-good-soft text-acuity-good"
                 : creative.complianceStatus === "warning" || creative.complianceStatus === "flagged"
-                  ? "bg-amber-500/15 text-amber-400"
+                  ? "bg-acuity-warn-soft text-acuity-warn"
                   : creative.complianceStatus === "fail"
-                    ? "bg-red-500/15 text-red-400"
+                    ? "bg-acuity-bad-soft text-acuity-bad"
                     : "bg-zinc-500/15 text-zinc-400"
             }`}>
               {creative.complianceStatus === "passed" ? "pass" : creative.complianceStatus === "flagged" ? "warning" : creative.complianceStatus}
@@ -1976,8 +1976,8 @@ function CreativeCard({
             onClick={onToggleApprove}
             className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
               creative.approved
-                ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-white/5 text-[#A0A0B8] hover:text-white"
+                ? "bg-acuity-good-soft text-acuity-good"
+                : "bg-acuity-bg-inset text-acuity-text-ter hover:text-white"
             }`}
           >
             {creative.approved ? "Approved" : "Approve"}
@@ -1985,17 +1985,17 @@ function CreativeCard({
         </div>
 
         {creative.complianceStatus === "warning" && creative.complianceNotes && (
-          <p className="text-[10px] text-amber-400 leading-relaxed mt-1">
+          <p className="text-[10px] text-acuity-warn leading-relaxed mt-1">
             {creative.complianceNotes}
           </p>
         )}
         {creative.complianceStatus === "flagged" && creative.complianceNotes && (
-          <p className="text-[10px] text-amber-400 leading-relaxed mt-1">
+          <p className="text-[10px] text-acuity-warn leading-relaxed mt-1">
             {creative.complianceNotes}
           </p>
         )}
         {creative.complianceStatus === "fail" && creative.complianceNotes && (
-          <p className="text-[10px] text-red-400 leading-relaxed mt-1">
+          <p className="text-[10px] text-acuity-bad leading-relaxed mt-1">
             Blocked: {creative.complianceNotes}
           </p>
         )}
@@ -2028,18 +2028,18 @@ function LandingPageSection({
 
     return (
       <div className="mb-4">
-        <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Destination</p>
-        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
-          <p className="text-sm text-emerald-400 font-medium">Destination: goripple.io/start</p>
-          <p className="text-xs text-[#A0A0B8]">
+        <p className="text-xs font-medium text-acuity-text-ter uppercase tracking-wider mb-2">Destination</p>
+        <div className="rounded-lg border border-acuity-good-soft bg-acuity-good-soft p-3 space-y-2">
+          <p className="text-sm text-acuity-good font-medium">Destination: goripple.io/start</p>
+          <p className="text-xs text-acuity-text-ter">
             Ad clicks go directly to the onboarding funnel with UTM tracking.
           </p>
           <div className="flex items-center gap-2 flex-wrap">
-            <LinkIcon className="h-3.5 w-3.5 text-[#8E6FE6] shrink-0" />
-            <span className="text-xs text-[#A0A0B8] font-mono break-all">{funnelUrl}</span>
+            <LinkIcon className="h-3.5 w-3.5 text-acuity-primary shrink-0" />
+            <span className="text-xs text-acuity-text-ter font-mono break-all">{funnelUrl}</span>
             <button
               onClick={() => onCopy(funnelUrl)}
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition shrink-0"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition shrink-0"
             >
               <Copy className="h-3 w-3" />
               {copiedUrl ? "Copied!" : "Copy URL"}
@@ -2065,23 +2065,23 @@ function LandingPageSection({
 
   return (
     <div className="mb-4">
-      <p className="text-xs font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Landing Page</p>
+      <p className="text-xs font-medium text-acuity-text-ter uppercase tracking-wider mb-2">Landing Page</p>
 
       {landingPage ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <LinkIcon className="h-3.5 w-3.5 text-[#8E6FE6] shrink-0" />
+            <LinkIcon className="h-3.5 w-3.5 text-acuity-primary shrink-0" />
             <a
               href={landingPageUrl!}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-[#8E6FE6] hover:text-[#AD92E9] font-mono transition truncate"
+              className="text-sm text-acuity-primary hover:text-[#AD92E9] font-mono transition truncate"
             >
               {landingPageUrl}
             </a>
             <button
               onClick={() => onCopy(landingPageUrl!)}
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition"
             >
               <Copy className="h-3 w-3" />
               {copiedUrl ? "Copied!" : "Copy URL"}
@@ -2090,7 +2090,7 @@ function LandingPageSection({
               href={landingPageUrl!}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#A0A0B8] hover:text-white bg-white/5 hover:bg-white/10 transition"
+              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-acuity-text-ter hover:text-white bg-acuity-bg-inset hover:bg-acuity-bg-inset transition"
             >
               <ExternalLink className="h-3 w-3" />
               Open Preview
@@ -2099,8 +2099,8 @@ function LandingPageSection({
 
           {destinationUrl && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#A0A0B8]">Ad destination:</span>
-              <span className="text-[10px] text-[#A0A0B8] font-mono truncate max-w-md" title={destinationUrl}>
+              <span className="text-[10px] text-acuity-text-ter">Ad destination:</span>
+              <span className="text-[10px] text-acuity-text-ter font-mono truncate max-w-md" title={destinationUrl}>
                 {destinationUrl}
               </span>
             </div>
@@ -2111,7 +2111,7 @@ function LandingPageSection({
           <button
             onClick={onGenerate}
             disabled={generatingLandingPage}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6] hover:bg-[#8E6FE6]/20 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-acuity-primary bg-acuity-primary-soft px-4 py-2 text-sm text-acuity-primary hover:bg-acuity-primary-soft transition disabled:opacity-50"
           >
             {generatingLandingPage ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
@@ -2121,8 +2121,8 @@ function LandingPageSection({
           </button>
           {projectUrl && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#A0A0B8]">Fallback destination:</span>
-              <span className="text-[10px] text-[#A0A0B8] font-mono truncate max-w-md">{projectUrl}</span>
+              <span className="text-[10px] text-acuity-text-ter">Fallback destination:</span>
+              <span className="text-[10px] text-acuity-text-ter font-mono truncate max-w-md">{projectUrl}</span>
             </div>
           )}
         </div>
@@ -2187,73 +2187,73 @@ function FunnelCopyEditor({ experiment, onSave }: { experiment: Experiment; onSa
     setGenerating(false);
   }
 
-  const inputClass = "w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-xs text-white outline-none focus:border-[#8E6FE6] resize-y min-h-[60px]";
+  const inputClass = "w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-xs text-white outline-none focus:border-acuity-primary resize-y min-h-[60px]";
 
   return (
-    <div className="mb-6 rounded-xl border border-white/10 bg-[#13131F] overflow-hidden">
+    <div className="mb-6 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg overflow-hidden">
       <button onClick={() => setOpen(!open)} className="flex items-center justify-between w-full px-5 py-3 text-left">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-white">
             Custom Funnel Copy
             {(painHook || bridge || promise || paywallHook) && (
-              <span className="ml-1.5 rounded-full bg-[#8E6FE6]/20 px-2 py-0.5 text-[9px] text-[#8E6FE6]">configured</span>
+              <span className="ml-1.5 rounded-acuity-pill bg-acuity-primary-soft px-2 py-0.5 text-[9px] text-acuity-primary">configured</span>
             )}
           </span>
         </div>
-        <ChevronDown className={`h-4 w-4 text-[#A0A0B8] transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-acuity-text-ter transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="px-5 pb-5 space-y-4">
-          <p className="text-[10px] text-[#A0A0B8]">
+          <p className="text-[10px] text-acuity-text-ter">
             Customize funnel screens for users arriving from this experiment&apos;s ads. Leave empty to use defaults.
           </p>
           <div className="flex gap-2 mb-3">
             <button onClick={generateCopy} disabled={generating}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-3 py-1.5 text-xs text-[#8E6FE6] hover:bg-[#8E6FE6]/20 transition disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-acuity-primary bg-acuity-primary-soft px-3 py-1.5 text-xs text-acuity-primary hover:bg-acuity-primary-soft transition disabled:opacity-50">
               {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
               Generate from Topic Brief
             </button>
           </div>
           <div>
-            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 1 — Pain Hook (JSON: {`{"headline":"...","subheadline":"..."}`})</label>
+            <label className="text-[10px] text-acuity-text-ter block mb-1">Screen 1 — Pain Hook (JSON: {`{"headline":"...","subheadline":"..."}`})</label>
             <textarea value={painHook} onChange={(e) => setPainHook(e.target.value)} className={inputClass} placeholder='{"headline":"The same fight every week.","subheadline":"Different words. Same pattern. Same ending."}' />
           </div>
           <div>
-            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 8 — Bridge (two sentences separated by period)</label>
+            <label className="text-[10px] text-acuity-text-ter block mb-1">Screen 8 — Bridge (two sentences separated by period)</label>
             <textarea value={bridge} onChange={(e) => setBridge(e.target.value)} className={inputClass} placeholder="You've tried to break the loop before. Ripple just asks for one minute." />
           </div>
           <div>
-            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 9 — Promise</label>
+            <label className="text-[10px] text-acuity-text-ter block mb-1">Screen 9 — Promise</label>
             <textarea value={promise} onChange={(e) => setPromise(e.target.value)} className={inputClass} placeholder="Ripple will show you the pattern inside the loop so you can finally step out of it." />
           </div>
           <div>
-            <label className="text-[10px] text-[#A0A0B8] block mb-1">Screen 14 — Paywall Hook</label>
+            <label className="text-[10px] text-acuity-text-ter block mb-1">Screen 14 — Paywall Hook</label>
             <textarea value={paywallHook} onChange={(e) => setPaywallHook(e.target.value)} className={inputClass} placeholder="You've already seen the pattern. Now let Ripple track it for you." />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={save} disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-xs font-semibold text-white hover:bg-[#7D62CA] transition disabled:opacity-50">
+              className="inline-flex items-center gap-2 rounded-lg bg-acuity-primary px-4 py-2 text-xs font-semibold text-white hover:opacity-90 transition disabled:opacity-50">
               {saving && <Loader2 className="h-3 w-3 animate-spin" />}
               Save Funnel Copy
             </button>
             {saveStatus && (
-              <span className={`text-xs font-medium ${saveStatus.ok ? "text-emerald-400" : "text-red-400"}`}>
+              <span className={`text-xs font-medium ${saveStatus.ok ? "text-acuity-good" : "text-acuity-bad"}`}>
                 {saveStatus.msg}
               </span>
             )}
           </div>
           {hasAnyCopy && (
-            <div className="mt-3 rounded-lg border border-white/10 bg-[#1E1E2E] p-3 space-y-2">
+            <div className="mt-3 rounded-lg border border-acuity-line bg-acuity-card-bg-raised p-3 space-y-2">
               <a href={previewUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8E6FE6] hover:text-[#B99EE4] transition">
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-acuity-primary hover:text-acuity-primary-hi transition">
                 Preview Funnel &rarr;
               </a>
               <div className="flex items-center gap-2">
                 <input readOnly value={previewUrl}
-                  className="flex-1 rounded border border-white/10 bg-[#0D0D17] px-2 py-1 text-[10px] text-[#A0A0B8] font-mono outline-none select-all"
+                  className="flex-1 rounded border border-acuity-line bg-[#0D0D17] px-2 py-1 text-[10px] text-acuity-text-ter font-mono outline-none select-all"
                   onFocus={(e) => e.target.select()} />
                 <button onClick={() => { navigator.clipboard.writeText(previewUrl); }}
-                  className="shrink-0 rounded border border-white/10 px-2 py-1 text-[10px] text-[#A0A0B8] hover:text-white hover:border-white/20 transition">
+                  className="shrink-0 rounded border border-acuity-line px-2 py-1 text-[10px] text-acuity-text-ter hover:text-white hover:border-acuity-line-strong transition">
                   Copy
                 </button>
               </div>

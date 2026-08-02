@@ -87,7 +87,7 @@ export default function RevenueSection({ start, end }: Props) {
         {loading || (!data && !error) ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm" style={{ color: "#F87171" }}>
+          <p className="text-sm" style={{ color: "var(--acuity-bad)" }}>
             {error}
           </p>
         ) : (
@@ -120,7 +120,7 @@ export default function RevenueSection({ start, end }: Props) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-white/40">
+                  <tr className="text-left text-acuity-text-ter">
                     <th className="py-2 pr-4 font-medium">Email</th>
                     <th className="py-2 pr-4 font-medium">Status</th>
                     <th className="py-2 pr-4 font-medium">Sub ID</th>
@@ -131,7 +131,7 @@ export default function RevenueSection({ start, end }: Props) {
                 <tbody>
                   {stale.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-white/30">
+                      <td colSpan={5} className="py-6 text-center text-acuity-text-quiet">
                         No Stripe PRO users
                       </td>
                     </tr>
@@ -139,20 +139,20 @@ export default function RevenueSection({ start, end }: Props) {
                     stale.map((r, i) => {
                       const flagged = r.daysInactive != null && r.daysInactive > 14;
                       return (
-                        <tr key={i} className="border-t border-white/5 text-white/75">
+                        <tr key={i} className="border-t border-acuity-line text-acuity-text-sec">
                           <td className="py-2 pr-4">{r.email}</td>
                           <td className="py-2 pr-4">{r.subscriptionStatus}</td>
-                          <td className="py-2 pr-4 font-mono text-xs text-white/40">
+                          <td className="py-2 pr-4 font-mono text-xs text-acuity-text-ter">
                             {r.stripeSubscriptionId ?? "—"}
                           </td>
                           <td
                             className="py-2 pr-4 text-right tabular-nums"
-                            style={flagged ? { color: "#F87171", fontWeight: 600 } : undefined}
+                            style={flagged ? { color: "var(--acuity-bad)", fontWeight: 600 } : undefined}
                           >
                             {r.daysInactive ?? "—"}
                             {flagged ? " ⚠" : ""}
                           </td>
-                          <td className="py-2 text-right tabular-nums text-white/50">
+                          <td className="py-2 text-right tabular-nums text-acuity-text-ter">
                             {r.lastSeenAt ? fmtDate(r.lastSeenAt) : "never"}
                           </td>
                         </tr>
@@ -168,7 +168,7 @@ export default function RevenueSection({ start, end }: Props) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-white/40">
+                  <tr className="text-left text-acuity-text-ter">
                     <th className="py-2 pr-4 font-medium">Email</th>
                     <th className="py-2 pr-4 font-medium">Source</th>
                     <th className="py-2 text-right font-medium">First failure</th>
@@ -177,16 +177,16 @@ export default function RevenueSection({ start, end }: Props) {
                 <tbody>
                   {pastDue.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-6 text-center text-white/30">
+                      <td colSpan={3} className="py-6 text-center text-acuity-text-quiet">
                         No PAST_DUE users 🎉
                       </td>
                     </tr>
                   ) : (
                     pastDue.map((r, i) => (
-                      <tr key={i} className="border-t border-white/5 text-white/75">
+                      <tr key={i} className="border-t border-acuity-line text-acuity-text-sec">
                         <td className="py-2 pr-4">{r.email}</td>
                         <td className="py-2 pr-4">{r.subscriptionSource ?? "—"}</td>
-                        <td className="py-2 text-right tabular-nums text-white/50">
+                        <td className="py-2 text-right tabular-nums text-acuity-text-ter">
                           {fmtDate(r.stripeFirstFailureAt)}
                         </td>
                       </tr>

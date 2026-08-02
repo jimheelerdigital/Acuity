@@ -31,8 +31,7 @@ export default function RefreshButton({ computedAt, onRefresh, loading }: Props)
     <button
       onClick={onRefresh}
       disabled={loading}
-      className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-white/55 transition hover:bg-white/10 hover:text-white/80 disabled:opacity-50"
-      style={{ fontSize: 12 }}
+      className="flex items-center gap-2 rounded-acuity-pill border border-acuity-line bg-acuity-bg-sub px-3.5 py-2 text-[12px] text-acuity-text-ter transition duration-acuity-base ease-acuity-standard hover:border-acuity-line-strong hover:text-acuity-text-sec disabled:opacity-50"
       title="Refresh data (invalidates cache)"
     >
       <svg
@@ -49,7 +48,7 @@ export default function RefreshButton({ computedAt, onRefresh, loading }: Props)
         />
       </svg>
       {computedAt ? (
-        <span>Updated {timeAgo(computedAt)}</span>
+        <span className="tabular-nums">Updated {timeAgo(computedAt)}</span>
       ) : (
         <span>Refresh</span>
       )}

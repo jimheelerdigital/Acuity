@@ -24,84 +24,72 @@ export default function MetricCard({
   title,
   onClick,
 }: Props) {
-  const deltaStyle = { fontSize: 13 } as const;
   let badge: React.ReactNode = null;
   if (previousValue != null && currentValue != null && previousValue > 0) {
     const pctChange = ((currentValue - previousValue) / previousValue) * 100;
     if (Math.abs(pctChange) < 0.5) {
       badge = (
-        <span className="text-white/30" style={deltaStyle}>
-          —
-        </span>
+        <span className="text-[13px] text-acuity-text-quiet tabular-nums">—</span>
       );
     } else if (pctChange > 0) {
       badge = (
-        <span className="font-medium text-green-400" style={deltaStyle}>
+        <span className="text-[13px] font-medium text-acuity-good tabular-nums">
           +{pctChange.toFixed(1)}%
         </span>
       );
     } else {
       badge = (
-        <span className="font-medium text-red-400" style={deltaStyle}>
+        <span className="text-[13px] font-medium text-acuity-bad tabular-nums">
           {pctChange.toFixed(1)}%
         </span>
       );
     }
   } else if (previousValue != null || currentValue != null) {
     badge = (
-      <span className="text-white/30" style={deltaStyle}>
-        &mdash;
-      </span>
+      <span className="text-[13px] text-acuity-text-quiet">&mdash;</span>
     );
   }
 
+  const baseClass =
+    "rounded-acuity-lg bg-acuity-card-bg border border-acuity-card-border shadow-acuity-soft flex flex-col justify-between min-h-[160px]";
   const Wrapper = onClick ? "button" : "div";
   const wrapperProps = onClick
     ? {
         type: "button" as const,
         onClick,
-        className:
-          "rounded-xl bg-[#13131F] flex flex-col justify-between min-h-[160px] text-left transition hover:bg-[#181826] hover:ring-1 hover:ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 cursor-pointer w-full",
-        style: { padding: 22 },
+        className: `${baseClass} w-full cursor-pointer text-left transition duration-acuity-base ease-acuity-standard hover:shadow-acuity-lift hover:border-acuity-line-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary`,
+        style: { padding: 20 },
       }
     : {
-        className:
-          "rounded-xl bg-[#13131F] flex flex-col justify-between min-h-[160px]",
-        style: { padding: 22 },
+        className: baseClass,
+        style: { padding: 20 },
       };
 
   return (
     <Wrapper {...wrapperProps} title={title}>
       <div className="flex items-start justify-between gap-3">
-        <p
-          className="font-medium uppercase text-white/45"
-          style={{ fontSize: 11, letterSpacing: "1.6px" }}
-        >
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
           {label}
         </p>
         {badge}
       </div>
       <div>
         <p
-          className="mt-3 font-medium text-white"
-          style={{
-            fontSize: 36,
-            letterSpacing: "-1px",
-            lineHeight: 1.1,
-          }}
+          className="mt-3 font-display font-bold text-acuity-text tabular-nums"
+          style={{ fontSize: 34, letterSpacing: "-0.8px", lineHeight: 1.05 }}
         >
           {value}
         </p>
         {budgetBar && (
           <div className="mt-2">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div className="h-2 w-full overflow-hidden rounded-acuity-pill bg-acuity-bg-inset">
               <div
-                className={`h-full rounded-full transition-all ${
+                className={`h-full rounded-acuity-pill transition-all ${
                   budgetBar.current / budgetBar.max > 0.9
-                    ? "bg-red-500"
+                    ? "bg-acuity-bad"
                     : budgetBar.current / budgetBar.max > 0.75
-                      ? "bg-amber-500"
-                      : "bg-[#8E6FE6]"
+                      ? "bg-acuity-warn"
+                      : "bg-acuity-grad-primary"
                 }`}
                 style={{
                   width: `${Math.min((budgetBar.current / budgetBar.max) * 100, 100)}%`,
@@ -113,10 +101,19 @@ export default function MetricCard({
       </div>
       {sparklineData && sparklineData.length > 1 && (() => {
         const max = Math.max(...sparklineData.map((d) => d.v), 1);
+        const n = sparklineData.length;
         return (
-          <div className="mt-2 flex items-end gap-px h-8">
+          <div className="mt-2 flex h-8 items-end gap-px">
             {sparklineData.map((d, i) => (
-              <div key={i} className="flex-1 rounded-t bg-[#8E6FE6]/40" style={{ height: `${Math.max(2, (d.v / max) * 100)}%` }} />
+              <div
+                key={i}
+                className="flex-1 rounded-t bg-acuity-primary"
+                style={{
+                  height: `${Math.max(2, (d.v / max) * 100)}%`,
+                  // Today brightest, prior days descend (DESIGN_SYSTEM §5.10)
+                  opacity: 0.25 + 0.75 * ((i + 1) / n),
+                }}
+              />
             ))}
           </div>
         );

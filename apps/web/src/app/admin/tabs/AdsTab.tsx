@@ -95,12 +95,12 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
 
       {/* Signup Source Breakdown (from acquisition) */}
       {acq && acq.signupsBySource.length > 0 && (
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/40">Signup Source Breakdown</h3>
+        <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-acuity-text-ter">Signup Source Breakdown</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs text-white/40">
+                <tr className="border-b border-acuity-line text-left text-xs text-acuity-text-ter">
                   <th className="pb-2 pr-4">Source</th>
                   <th className="pb-2 pr-4 text-right">Signups</th>
                   <th className="pb-2 pr-4 text-right">First Recording</th>
@@ -110,7 +110,7 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
               </thead>
               <tbody>
                 {acq.signupsBySource.map((row) => (
-                  <tr key={row.source} className="border-b border-white/5 text-white/70">
+                  <tr key={row.source} className="border-b border-acuity-line text-acuity-text-sec">
                     <td className="py-2 pr-4">{row.source}</td>
                     <td className="py-2 pr-4 text-right">{row.total}</td>
                     <td className="py-2 pr-4 text-right">{row.firstRecording}</td>
@@ -126,12 +126,12 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
 
       {/* Per-Campaign CAC (from acquisition) */}
       {acq && acq.campaignCAC.length > 0 && (
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/40">Per-Campaign CAC</h3>
+        <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-acuity-text-ter">Per-Campaign CAC</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs text-white/40">
+                <tr className="border-b border-acuity-line text-left text-xs text-acuity-text-ter">
                   <th className="pb-2 pr-4">Campaign</th>
                   <th className="pb-2 pr-4 text-right">Spend</th>
                   <th className="pb-2 pr-4 text-right">Signups</th>
@@ -142,7 +142,7 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
               </thead>
               <tbody>
                 {acq.campaignCAC.map((row) => (
-                  <tr key={row.campaign} className="border-b border-white/5 text-white/70">
+                  <tr key={row.campaign} className="border-b border-acuity-line text-acuity-text-sec">
                     <td className="py-2 pr-4">{row.campaign}</td>
                     <td className="py-2 pr-4 text-right">${(row.spendCents / 100).toFixed(0)}</td>
                     <td className="py-2 pr-4 text-right">{row.signups}</td>
@@ -159,12 +159,12 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
 
       {/* Landing Page Performance (from acquisition) */}
       {acq && acq.landingPages.length > 0 && (
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/40">Landing Page Performance</h3>
+        <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-acuity-text-ter">Landing Page Performance</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs text-white/40">
+                <tr className="border-b border-acuity-line text-left text-xs text-acuity-text-ter">
                   <th className="pb-2 pr-4">Page</th>
                   <th className="pb-2 pr-4 text-right">Signups</th>
                   <th className="pb-2 pr-4 text-right">First Recording</th>
@@ -174,7 +174,7 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
               </thead>
               <tbody>
                 {acq.landingPages.map((row) => (
-                  <tr key={row.path} className="border-b border-white/5 text-white/70">
+                  <tr key={row.path} className="border-b border-acuity-line text-acuity-text-sec">
                     <td className="py-2 pr-4 font-mono text-xs">{row.path}</td>
                     <td className="py-2 pr-4 text-right">{row.signups}</td>
                     <td className="py-2 pr-4 text-right">{row.firstRecording}</td>
@@ -190,18 +190,18 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
 
       {/* Spend by campaign (bar chart) */}
       {data.byCampaign.length > 0 && (
-        <div className="rounded-xl bg-[#13131F] p-5">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white/40">Spend by Campaign</h3>
+        <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-acuity-text-ter">Spend by Campaign</h3>
           <div className="space-y-2">
             {data.byCampaign.map((c) => {
               const maxCents = Math.max(...data.byCampaign.map((x) => x.cents), 1);
               return (
                 <div key={c.campaign} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 truncate text-sm text-white/70 capitalize">{c.campaign}</span>
-                  <div className="relative h-6 flex-1 overflow-hidden rounded bg-white/5">
-                    <div className="h-full rounded bg-[#8E6FE6]" style={{ width: `${(c.cents / maxCents) * 100}%` }} />
+                  <span className="w-28 shrink-0 truncate text-sm text-acuity-text-sec capitalize">{c.campaign}</span>
+                  <div className="relative h-6 flex-1 overflow-hidden rounded bg-acuity-bg-inset">
+                    <div className="h-full rounded bg-acuity-primary" style={{ width: `${(c.cents / maxCents) * 100}%` }} />
                   </div>
-                  <span className="w-16 text-right text-sm font-medium text-white/80">${(c.cents / 100).toFixed(0)}</span>
+                  <span className="w-16 text-right text-sm font-medium text-acuity-text-sec">${(c.cents / 100).toFixed(0)}</span>
                 </div>
               );
             })}
@@ -210,24 +210,24 @@ export default function AdsTab({ start, end }: { start: string; end: string }) {
       )}
 
       {/* Weekly spend input */}
-      <div className="rounded-xl bg-[#13131F] p-5">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white/40">Log Weekly Ad Spend</h3>
+      <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-5">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-acuity-text-ter">Log Weekly Ad Spend</h3>
         <div className="mb-4 flex items-center gap-3">
-          <label className="text-xs text-white/40">Week of:</label>
-          <input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="rounded-md bg-[#0A0A0F] px-3 py-1.5 text-sm text-white/80" />
+          <label className="text-xs text-acuity-text-ter">Week of:</label>
+          <input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="rounded-md bg-acuity-bg px-3 py-1.5 text-sm text-acuity-text-sec" />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {CAMPAIGNS.map((c) => (
             <div key={c}>
-              <label className="text-xs text-white/40 capitalize">{c}</label>
+              <label className="text-xs text-acuity-text-ter capitalize">{c}</label>
               <div className="mt-1 flex items-center gap-1">
-                <span className="text-sm text-white/30">$</span>
-                <input type="number" min="0" step="0.01" value={spendInputs[c] ?? ""} onChange={(e) => setSpendInputs((p) => ({ ...p, [c]: e.target.value }))} placeholder="0.00" className="w-full rounded-md bg-[#0A0A0F] px-3 py-1.5 text-sm text-white/80" />
+                <span className="text-sm text-acuity-text-quiet">$</span>
+                <input type="number" min="0" step="0.01" value={spendInputs[c] ?? ""} onChange={(e) => setSpendInputs((p) => ({ ...p, [c]: e.target.value }))} placeholder="0.00" className="w-full rounded-md bg-acuity-bg px-3 py-1.5 text-sm text-acuity-text-sec" />
               </div>
             </div>
           ))}
         </div>
-        <button onClick={handleSaveSpend} disabled={saving} className="mt-4 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-medium transition hover:bg-[#7D60D0] disabled:opacity-50">
+        <button onClick={handleSaveSpend} disabled={saving} className="mt-4 rounded-lg bg-acuity-primary px-4 py-2 text-sm font-medium transition hover:opacity-90 disabled:opacity-50">
           {saving ? "Saving…" : "Save Spend"}
         </button>
       </div>

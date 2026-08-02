@@ -109,25 +109,25 @@ const $ = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 const pct = (v: number) => `${v.toFixed(2)}%`;
 
 const EXP_COLORS = [
-  "#8E6FE6", "#10B981", "#F59E0B", "#EF4444", "#06B6D4",
+  "var(--acuity-primary)", "#10B981", "var(--acuity-warn)", "var(--acuity-bad)", "#06B6D4",
   "#EC4899", "#8B5CF6", "#14B8A6", "#F97316", "#6366F1",
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  live: "bg-emerald-500/20 text-emerald-400",
-  paused: "bg-yellow-500/20 text-yellow-400",
-  scaled: "bg-blue-500/20 text-blue-400",
-  killed: "bg-red-500/20 text-red-400",
+  live: "bg-acuity-good-soft text-acuity-good",
+  paused: "bg-acuity-warn-soft text-acuity-warn",
+  scaled: "bg-acuity-secondary-soft text-acuity-secondary",
+  killed: "bg-acuity-bad-soft text-acuity-bad",
   draft: "bg-zinc-500/20 text-zinc-400",
-  awaiting_approval: "bg-amber-500/20 text-amber-400",
-  concluded: "bg-[#8E6FE6]/20 text-[#8E6FE6]",
+  awaiting_approval: "bg-acuity-warn-soft text-acuity-warn",
+  concluded: "bg-acuity-primary-soft text-acuity-primary",
 };
 
 const DECISION_COLORS: Record<string, string> = {
-  kill: "bg-red-500/15 text-red-400",
-  scale: "bg-emerald-500/15 text-emerald-400",
+  kill: "bg-acuity-bad-soft text-acuity-bad",
+  scale: "bg-acuity-good-soft text-acuity-good",
   maintain: "bg-zinc-500/15 text-zinc-400",
-  manual: "bg-[#8E6FE6]/15 text-[#8E6FE6]",
+  manual: "bg-acuity-primary-soft text-acuity-primary",
 };
 
 type DatePreset = "7d" | "14d" | "30d" | "90d" | "all" | "custom";
@@ -239,16 +239,16 @@ export default function PerformancePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 text-[#A0A0B8] animate-spin" />
+        <Loader2 className="h-6 w-6 text-acuity-text-ter animate-spin" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="rounded-xl border border-dashed border-white/20 bg-[#13131F] p-12 text-center">
-        <BarChart3 className="h-10 w-10 text-[#A0A0B8] mx-auto mb-4" />
-        <p className="text-sm text-[#A0A0B8]">Failed to load performance data.</p>
+      <div className="rounded-acuity-lg border border-dashed border-acuity-line-strong bg-acuity-card-bg p-12 text-center">
+        <BarChart3 className="h-10 w-10 text-acuity-text-ter mx-auto mb-4" />
+        <p className="text-sm text-acuity-text-ter">Failed to load performance data.</p>
       </div>
     );
   }
@@ -263,7 +263,7 @@ export default function PerformancePage() {
       <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Performance</h1>
-          <p className="text-sm text-[#A0A0B8]">Ad performance metrics, trends, and analytics.</p>
+          <p className="text-sm text-acuity-text-ter">Ad performance metrics, trends, and analytics.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Date presets */}
@@ -273,8 +273,8 @@ export default function PerformancePage() {
               onClick={() => setPreset(p)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 preset === p
-                  ? "bg-[#8E6FE6] text-white"
-                  : "border border-white/10 text-[#A0A0B8] hover:text-white hover:border-white/20"
+                  ? "bg-acuity-primary text-white"
+                  : "border border-acuity-line text-acuity-text-ter hover:text-white hover:border-acuity-line-strong"
               }`}
             >
               {p === "all" ? "All Time" : p.replace("d", " days")}
@@ -284,8 +284,8 @@ export default function PerformancePage() {
             onClick={() => setPreset("custom")}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               preset === "custom"
-                ? "bg-[#8E6FE6] text-white"
-                : "border border-white/10 text-[#A0A0B8] hover:text-white hover:border-white/20"
+                ? "bg-acuity-primary text-white"
+                : "border border-acuity-line text-acuity-text-ter hover:text-white hover:border-acuity-line-strong"
             }`}
           >
             Custom
@@ -296,21 +296,21 @@ export default function PerformancePage() {
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="rounded-lg border border-white/10 bg-[#1E1E2E] px-2 py-1 text-xs text-white outline-none focus:border-[#8E6FE6]"
+                className="rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-2 py-1 text-xs text-white outline-none focus:border-acuity-primary"
               />
-              <span className="text-xs text-[#A0A0B8]">to</span>
+              <span className="text-xs text-acuity-text-ter">to</span>
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="rounded-lg border border-white/10 bg-[#1E1E2E] px-2 py-1 text-xs text-white outline-none focus:border-[#8E6FE6]"
+                className="rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-2 py-1 text-xs text-white outline-none focus:border-acuity-primary"
               />
             </>
           )}
           {hasAds && (
             <button
               onClick={downloadCsv}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-[#A0A0B8] hover:text-white hover:border-white/20 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-acuity-line px-3 py-1.5 text-xs text-acuity-text-ter hover:text-white hover:border-acuity-line-strong transition"
             >
               <Download className="h-3.5 w-3.5" /> CSV
             </button>
@@ -333,21 +333,21 @@ export default function PerformancePage() {
       </div>
 
       {!hasAds ? (
-        <div className="rounded-xl border border-dashed border-white/20 bg-[#13131F] p-12 text-center">
-          <BarChart3 className="h-10 w-10 text-[#A0A0B8] mx-auto mb-4" />
-          <p className="text-sm text-[#A0A0B8] mb-2">No performance data yet.</p>
-          <p className="text-xs text-[#A0A0B8]/60">Launch your first experiment to see metrics here. The daily cron syncs data from Meta every morning.</p>
+        <div className="rounded-acuity-lg border border-dashed border-acuity-line-strong bg-acuity-card-bg p-12 text-center">
+          <BarChart3 className="h-10 w-10 text-acuity-text-ter mx-auto mb-4" />
+          <p className="text-sm text-acuity-text-ter mb-2">No performance data yet.</p>
+          <p className="text-xs text-acuity-text-quiet">Launch your first experiment to see metrics here. The daily cron syncs data from Meta every morning.</p>
         </div>
       ) : (
         <>
           {/* ── Section 1: Experiment Overview Table ── */}
-          <div className="rounded-xl border border-white/10 bg-[#13131F] overflow-x-auto mb-8">
-            <div className="px-5 py-3 border-b border-white/10">
+          <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg overflow-x-auto mb-8">
+            <div className="px-5 py-3 border-b border-acuity-line">
               <h2 className="text-sm font-semibold text-white">Experiments</h2>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-[#A0A0B8] text-xs">
+                <tr className="border-b border-acuity-line text-acuity-text-ter text-xs">
                   <SortTh label="Experiment" k="topicBrief" sort={expSort} onSort={toggleExpSort} />
                   <SortTh label="Status" k="status" sort={expSort} onSort={toggleExpSort} />
                   <SortTh label="Ads" k="totalAds" sort={expSort} onSort={toggleExpSort} />
@@ -365,22 +365,22 @@ export default function PerformancePage() {
                 {sortedExperiments.map((exp) => (
                   <tr
                     key={exp.id}
-                    className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer"
+                    className="border-b border-acuity-line hover:bg-white/[0.02] cursor-pointer"
                     onClick={() => window.location.href = `/admin/adlab/experiments/${exp.id}`}
                   >
                     <td className="px-3 py-2.5 text-white max-w-[200px] truncate">{exp.topicBrief.slice(0, 60)}</td>
                     <td className="px-3 py-2.5">
                       <StatusBadge status={exp.status} />
                     </td>
-                    <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{exp.totalAds}</td>
+                    <td className="px-3 py-2.5 text-acuity-text-ter text-right">{exp.totalAds}</td>
                     <td className="px-3 py-2.5 text-white text-right">{$(exp.spendCents)}</td>
                     <td className="px-3 py-2.5 text-white text-right">{exp.clicks?.toLocaleString() ?? 0}</td>
-                    <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{exp.avgCpcCents ? $(exp.avgCpcCents) : "—"}</td>
+                    <td className="px-3 py-2.5 text-acuity-text-ter text-right">{exp.avgCpcCents ? $(exp.avgCpcCents) : "—"}</td>
                     <td className="px-3 py-2.5 text-white text-right">{exp.conversions}</td>
-                    <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{exp.avgCplCents ? $(exp.avgCplCents) : "—"}</td>
-                    <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{pct(exp.avgCtr)}</td>
-                    <td className="px-3 py-2.5 text-[#A0A0B8] max-w-[150px] truncate text-xs">{exp.bestAngle ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-[#A0A0B8]">{exp.launchedAt ? new Date(exp.launchedAt).toLocaleDateString() : "—"}</td>
+                    <td className="px-3 py-2.5 text-acuity-text-ter text-right">{exp.avgCplCents ? $(exp.avgCplCents) : "—"}</td>
+                    <td className="px-3 py-2.5 text-acuity-text-ter text-right">{pct(exp.avgCtr)}</td>
+                    <td className="px-3 py-2.5 text-acuity-text-ter max-w-[150px] truncate text-xs">{exp.bestAngle ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-acuity-text-ter">{exp.launchedAt ? new Date(exp.launchedAt).toLocaleDateString() : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -391,7 +391,7 @@ export default function PerformancePage() {
           {hasDailySeries && (
             <div className="grid gap-6 lg:grid-cols-2 mb-8">
               {/* Chart 1: Daily Spend & Conversions */}
-              <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
+              <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily Spend & Conversions</h3>
                 {(() => {
                   const series = data.dailySeries as { date: string; spendCents?: number; conversions?: number }[];
@@ -400,8 +400,8 @@ export default function PerformancePage() {
                     <div className="flex items-end gap-1 h-48 pt-4">
                       {series.map((d, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: $${((d.spendCents ?? 0) / 100).toFixed(2)} spend, ${d.conversions ?? 0} conv`}>
-                          <div className="w-full rounded-t bg-[#8E6FE6]" style={{ height: `${Math.max(2, ((d.spendCents ?? 0) / maxSpend) * 100)}%` }} />
-                          {series.length <= 14 && <span className="text-[8px] text-white/30 mt-1">{d.date?.slice(5)}</span>}
+                          <div className="w-full rounded-t bg-acuity-primary" style={{ height: `${Math.max(2, ((d.spendCents ?? 0) / maxSpend) * 100)}%` }} />
+                          {series.length <= 14 && <span className="text-[8px] text-acuity-text-quiet mt-1">{d.date?.slice(5)}</span>}
                         </div>
                       ))}
                     </div>
@@ -410,7 +410,7 @@ export default function PerformancePage() {
               </div>
 
               {/* Chart 2: Daily CPL */}
-              <div className="rounded-xl border border-white/10 bg-[#13131F] p-5">
+              <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5">
                 <h3 className="text-sm font-semibold text-white mb-4">Daily CPL</h3>
                 {(() => {
                   const series = data.dailySeries as { date: string; cplCents?: number }[];
@@ -421,8 +421,8 @@ export default function PerformancePage() {
                         const cpl = d.cplCents ?? 0;
                         return (
                           <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${d.date}: $${(cpl / 100).toFixed(2)} CPL`}>
-                            <div className="w-full rounded-t" style={{ background: cpl > 0 ? (cpl > 500 ? "#ef4444" : cpl > 300 ? "#f59e0b" : "#22c55e") : "rgba(255,255,255,0.05)", height: `${Math.max(2, (cpl / maxCpl) * 100)}%` }} />
-                            {series.length <= 14 && <span className="text-[8px] text-white/30 mt-1">{d.date?.slice(5)}</span>}
+                            <div className="w-full rounded-t" style={{ background: cpl > 0 ? (cpl > 500 ? "var(--acuity-bad)" : cpl > 300 ? "var(--acuity-warn)" : "var(--acuity-good)") : "rgba(255,255,255,0.05)", height: `${Math.max(2, (cpl / maxCpl) * 100)}%` }} />
+                            {series.length <= 14 && <span className="text-[8px] text-acuity-text-quiet mt-1">{d.date?.slice(5)}</span>}
                           </div>
                         );
                       })}
@@ -434,13 +434,13 @@ export default function PerformancePage() {
           )}
 
           {/* ── Section 3: Ad Detail Table ── */}
-          <div className="rounded-xl border border-white/10 bg-[#13131F] overflow-x-auto mb-8">
-            <div className="px-5 py-3 border-b border-white/10">
+          <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg overflow-x-auto mb-8">
+            <div className="px-5 py-3 border-b border-acuity-line">
               <h2 className="text-sm font-semibold text-white">All Ads</h2>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-[#A0A0B8] text-xs">
+                <tr className="border-b border-acuity-line text-acuity-text-ter text-xs">
                   <SortTh label="Headline" k="headline" sort={adSort} onSort={toggleAdSort} />
                   <SortTh label="Angle" k="angleHypothesis" sort={adSort} onSort={toggleAdSort} />
                   <SortTh label="Status" k="status" sort={adSort} onSort={toggleAdSort} />
@@ -470,13 +470,13 @@ export default function PerformancePage() {
 
           {/* ── Section 5: AI Cost Tracking ── */}
           {data.aiCosts.length > 0 && (
-            <div className="rounded-xl border border-white/10 bg-[#13131F] overflow-x-auto mb-8">
-              <div className="px-5 py-3 border-b border-white/10">
+            <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg overflow-x-auto mb-8">
+              <div className="px-5 py-3 border-b border-acuity-line">
                 <h2 className="text-sm font-semibold text-white">AI Generation Costs</h2>
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 text-[#A0A0B8] text-xs">
+                  <tr className="border-b border-acuity-line text-acuity-text-ter text-xs">
                     <th className="px-3 py-2.5 text-left font-medium">Source</th>
                     <th className="px-3 py-2.5 text-right font-medium">Claude Calls</th>
                     <th className="px-3 py-2.5 text-right font-medium">Tokens In</th>
@@ -494,13 +494,13 @@ export default function PerformancePage() {
                       : (data.experimentLabels[ai.experimentId] ?? ai.experimentId.slice(0, 8));
                     const totalCostCents = ai.claudeCostCents + ai.imageCostCents;
                     return (
-                      <tr key={ai.experimentId} className="border-b border-white/5">
+                      <tr key={ai.experimentId} className="border-b border-acuity-line">
                         <td className="px-3 py-2.5 text-white">{label}</td>
-                        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ai.claudeCalls}</td>
-                        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ai.tokensIn.toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ai.tokensOut.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ai.claudeCalls}</td>
+                        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ai.tokensIn.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ai.tokensOut.toLocaleString()}</td>
                         <td className="px-3 py-2.5 text-white text-right">{$(ai.claudeCostCents)}</td>
-                        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ai.imageGens}</td>
+                        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ai.imageGens}</td>
                         <td className="px-3 py-2.5 text-white text-right">{$(ai.imageCostCents)}</td>
                         <td className="px-3 py-2.5 text-white text-right font-medium">{$(totalCostCents)}</td>
                       </tr>
@@ -522,7 +522,7 @@ export default function PerformancePage() {
                     const totalAdSpend = data.summary.allTime.spendCents;
                     return (
                       <>
-                        <tr className="border-t border-white/10 bg-white/[0.02]">
+                        <tr className="border-t border-acuity-line bg-white/[0.02]">
                           <td className="px-3 py-2.5 text-white font-semibold">Total AI</td>
                           <td className="px-3 py-2.5 text-white text-right font-medium">{totals.claudeCalls}</td>
                           <td className="px-3 py-2.5 text-white text-right font-medium">{totals.tokensIn.toLocaleString()}</td>
@@ -533,8 +533,8 @@ export default function PerformancePage() {
                           <td className="px-3 py-2.5 text-white text-right font-medium">{$(totals.claudeCost + totals.imageCost)}</td>
                         </tr>
                         <tr className="bg-white/[0.02]">
-                          <td className="px-3 py-2.5 text-[#8E6FE6] font-semibold" colSpan={7}>All-In (AI + Ad Spend)</td>
-                          <td className="px-3 py-2.5 text-[#8E6FE6] text-right font-bold">
+                          <td className="px-3 py-2.5 text-acuity-primary font-semibold" colSpan={7}>All-In (AI + Ad Spend)</td>
+                          <td className="px-3 py-2.5 text-acuity-primary text-right font-bold">
                             {$(totals.claudeCost + totals.imageCost + totalAdSpend)}
                           </td>
                         </tr>
@@ -543,7 +543,7 @@ export default function PerformancePage() {
                   })()}
                 </tbody>
               </table>
-              <p className="px-5 py-2 text-[10px] text-[#A0A0B8]/50 border-t border-white/5">
+              <p className="px-5 py-2 text-[10px] text-acuity-text-quiet border-t border-acuity-line">
                 Claude costs from ClaudeCallLog. Image costs estimated at ~$0.02/image (gpt-image-2).
               </p>
             </div>
@@ -558,17 +558,17 @@ export default function PerformancePage() {
 
 function SummaryCard({ label, allTime, range }: { label: string; allTime: string; range?: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[#13131F] p-4">
-      <p className="text-[10px] text-[#A0A0B8] mb-1">{label}</p>
+    <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-4">
+      <p className="text-[10px] text-acuity-text-ter mb-1">{label}</p>
       <p className="text-lg font-semibold text-white">{allTime}</p>
-      {range && <p className="text-[10px] text-[#A0A0B8]/60 mt-0.5">Range: {range}</p>}
+      {range && <p className="text-[10px] text-acuity-text-quiet mt-0.5">Range: {range}</p>}
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[status] || "bg-white/10 text-white"}`}>
+    <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[status] || "bg-acuity-bg-inset text-white"}`}>
       {status.replace("_", " ")}
     </span>
   );
@@ -587,7 +587,7 @@ function SortTh({ label, k, sort, onSort }: {
     >
       <span className="inline-flex items-center gap-1">
         {label}
-        <ArrowUpDown className={`h-3 w-3 ${sort.key === k ? "text-[#8E6FE6]" : "opacity-30"}`} />
+        <ArrowUpDown className={`h-3 w-3 ${sort.key === k ? "text-acuity-primary" : "opacity-30"}`} />
       </span>
     </th>
   );
@@ -597,52 +597,52 @@ function AdDetailRow({ ad, expanded, onToggle }: { ad: AdRow; expanded: boolean;
   return (
     <>
       <tr
-        className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer"
+        className="border-b border-acuity-line hover:bg-white/[0.02] cursor-pointer"
         onClick={onToggle}
       >
         <td className="px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             {ad.decisionsCount > 0 && (
-              expanded ? <ChevronUp className="h-3 w-3 text-[#A0A0B8] shrink-0" /> : <ChevronDown className="h-3 w-3 text-[#A0A0B8] shrink-0" />
+              expanded ? <ChevronUp className="h-3 w-3 text-acuity-text-ter shrink-0" /> : <ChevronDown className="h-3 w-3 text-acuity-text-ter shrink-0" />
             )}
             <Link
               href={`/admin/adlab/experiments/${ad.experimentId}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-white hover:text-[#8E6FE6] transition-colors line-clamp-1"
+              className="text-white hover:text-acuity-primary transition-colors line-clamp-1"
             >
               {ad.headline}
             </Link>
           </div>
         </td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-xs max-w-[150px] truncate">{ad.angleHypothesis.slice(0, 50)}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-xs max-w-[150px] truncate">{ad.angleHypothesis.slice(0, 50)}</td>
         <td className="px-3 py-2.5"><StatusBadge status={ad.status} /></td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ad.impressions.toLocaleString()}</td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ad.clicks.toLocaleString()}</td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{pct(ad.ctr)}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ad.impressions.toLocaleString()}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ad.clicks.toLocaleString()}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{pct(ad.ctr)}</td>
         <td className="px-3 py-2.5 text-white text-right">{$(ad.spendCents)}</td>
         <td className="px-3 py-2.5 text-white text-right">{ad.conversions}</td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ad.cplCents ? $(ad.cplCents) : "—"}</td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ad.cpcCents ? $(ad.cpcCents) : "—"}</td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ad.frequency.toFixed(1)}</td>
-        <td className="px-3 py-2.5 text-[#A0A0B8] text-right">{ad.decisionsCount}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ad.cplCents ? $(ad.cplCents) : "—"}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ad.cpcCents ? $(ad.cpcCents) : "—"}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ad.frequency.toFixed(1)}</td>
+        <td className="px-3 py-2.5 text-acuity-text-ter text-right">{ad.decisionsCount}</td>
       </tr>
       {expanded && ad.decisions.length > 0 && (
         <tr>
-          <td colSpan={12} className="bg-[#0A0A0F] px-6 py-3">
-            <p className="text-[10px] font-medium text-[#A0A0B8] uppercase tracking-wider mb-2">Decision Log</p>
+          <td colSpan={12} className="bg-acuity-bg px-6 py-3">
+            <p className="text-[10px] font-medium text-acuity-text-ter uppercase tracking-wider mb-2">Decision Log</p>
             <div className="space-y-1.5">
               {ad.decisions.map((d) => (
                 <div key={d.id} className="flex items-start gap-2 text-xs">
                   <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium mt-0.5 shrink-0 ${DECISION_COLORS[d.decisionType] || "bg-zinc-500/15 text-zinc-400"}`}>
                     {d.decisionType}
                   </span>
-                  <span className="text-[#A0A0B8] flex-1">{d.rationale}</span>
+                  <span className="text-acuity-text-ter flex-1">{d.rationale}</span>
                   {d.priorBudgetCents != null && d.newBudgetCents != null && (
-                    <span className="text-[10px] text-[#A0A0B8]/60 shrink-0">
+                    <span className="text-[10px] text-acuity-text-quiet shrink-0">
                       {$(d.priorBudgetCents)} → {$(d.newBudgetCents)}
                     </span>
                   )}
-                  <span className="text-[10px] text-[#A0A0B8]/40 shrink-0">
+                  <span className="text-[10px] text-acuity-text-quiet shrink-0">
                     {new Date(d.executedAt).toLocaleDateString()}
                   </span>
                 </div>

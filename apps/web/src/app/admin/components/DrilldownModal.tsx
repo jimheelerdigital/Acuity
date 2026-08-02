@@ -188,24 +188,21 @@ export function DrilldownModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl rounded-xl bg-[#0A0A0F] text-white shadow-2xl ring-1 ring-white/10"
+        className="w-full max-w-4xl rounded-acuity-xl border border-acuity-card-border bg-acuity-card-bg text-acuity-text shadow-acuity-lift"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+        <header className="flex items-start justify-between gap-4 border-b border-acuity-line px-6 py-5">
           <div>
             <h2
-              className="font-semibold"
-              style={{ fontSize: 22, letterSpacing: "-0.2px" }}
+              className="font-display font-bold"
+              style={{ fontSize: 22, letterSpacing: "-0.6px" }}
             >
               {title}
             </h2>
-            <p
-              className="mt-1 text-white/55"
-              style={{ fontSize: 12, letterSpacing: "2px" }}
-            >
+            <p className="mt-1 font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
               {periodLabel ? `${periodLabel.toUpperCase()} · ` : ""}
               {data
                 ? `${data.meta.count} ROW${data.meta.count === 1 ? "" : "S"}`
@@ -214,7 +211,7 @@ export function DrilldownModal({
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-white/55 hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-acuity-pill text-acuity-text-ter hover:bg-acuity-bg-sub hover:text-acuity-text"
             style={{ fontSize: 14 }}
             aria-label="Close"
             title="Close (ESC)"
@@ -224,11 +221,11 @@ export function DrilldownModal({
         </header>
 
         {error ? (
-          <p className="px-6 py-12 text-center text-sm text-red-400">{error}</p>
+          <p className="px-6 py-12 text-center text-sm text-acuity-bad">{error}</p>
         ) : !data ? (
-          <p className="px-6 py-12 text-center text-sm text-white/40">Loading…</p>
+          <p className="px-6 py-12 text-center text-sm text-acuity-text-ter">Loading…</p>
         ) : data.rows.length === 0 ? (
-          <p className="px-6 py-12 text-center text-sm text-white/40">
+          <p className="px-6 py-12 text-center text-sm text-acuity-text-ter">
             No matching rows in this period.
           </p>
         ) : data.kind === "users" ? (
@@ -279,7 +276,7 @@ function SortHeader({
     >
       <button
         onClick={() => onSort(column)}
-        className={`hover:text-white ${active ? "text-white" : ""}`}
+        className={`hover:text-acuity-text ${active ? "text-acuity-primary" : ""}`}
       >
         {label}
         {active ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
@@ -289,16 +286,33 @@ function SortHeader({
 }
 
 function StatusPill({ status }: { status: string }) {
-  const bg =
-    status === "PRO"
-      ? "bg-green-500/20 text-green-300"
-      : status === "TRIAL"
-      ? "bg-blue-500/20 text-blue-300"
+  // Mirrors SubscriptionPill conventions (DESIGN_SYSTEM §5.3): PRO is
+  // focal (gradMix), TRIAL reads positive (good), everything else quiet.
+  if (status === "PRO") {
+    return (
+      <span className="rounded-acuity-pill bg-acuity-grad-mix px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[1px] text-acuity-text">
+        {status}
+      </span>
+    );
+  }
+  const cls =
+    status === "TRIAL"
+      ? "bg-acuity-good-soft text-acuity-good"
       : status === "PAST_DUE"
-      ? "bg-amber-500/20 text-amber-300"
-      : "bg-white/5 text-white/40";
+      ? "text-acuity-warn"
+      : "bg-acuity-bg-sub text-acuity-text-ter border border-acuity-line";
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bg}`}>
+    <span
+      className={`rounded-acuity-pill px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[1px] ${cls}`}
+      style={
+        status === "PAST_DUE"
+          ? {
+              background:
+                "color-mix(in srgb, var(--acuity-warn) 15%, transparent)",
+            }
+          : undefined
+      }
+    >
       {status}
     </span>
   );
@@ -333,10 +347,10 @@ function UserTable({
         style={{ fontSize: 14 }}
       >
         <thead
-          className="sticky top-0 bg-[#0A0A0F] uppercase tracking-wider text-white/55"
+          className="sticky top-0 bg-acuity-card-bg uppercase tracking-wider text-acuity-text-ter"
           style={{ fontSize: 13, fontWeight: 500 }}
         >
-          <tr className="border-b border-white/10">
+          <tr className="border-b border-acuity-line-strong">
             <SortHeader
               label="Email"
               column="email"
@@ -410,16 +424,16 @@ function UserTable({
           {rows.map((u) => (
             <tr
               key={u.id}
-              className="cursor-pointer border-b border-white/5 hover:bg-white/5"
+              className="cursor-pointer border-b border-acuity-line hover:bg-acuity-bg-sub"
               onClick={() => onRowClick(u.id)}
             >
               <td className="px-3 py-2.5">{u.email}</td>
-              <td className="px-3 py-2.5 text-white/70">{u.name ?? "—"}</td>
-              <td className="px-3 py-2.5 whitespace-nowrap text-xs text-white/60">
+              <td className="px-3 py-2.5 text-acuity-text-sec">{u.name ?? "—"}</td>
+              <td className="px-3 py-2.5 whitespace-nowrap text-xs text-acuity-text-ter">
                 {new Date(u.createdAt).toLocaleString()}
               </td>
               {showSignInMethod && (
-                <td className="px-3 py-2.5 text-xs text-white/60 capitalize">
+                <td className="px-3 py-2.5 text-xs text-acuity-text-ter capitalize">
                   {u.signInMethod ?? "—"}
                 </td>
               )}
@@ -428,7 +442,7 @@ function UserTable({
               </td>
               {showInferredInterval && (
                 <>
-                  <td className="px-3 py-2.5 text-right text-xs text-white/70 capitalize">
+                  <td className="px-3 py-2.5 text-right text-xs text-acuity-text-sec capitalize">
                     {u.inferredInterval ?? "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right text-xs tabular-nums">
@@ -439,14 +453,14 @@ function UserTable({
                 </>
               )}
               {showPeriodEnd && (
-                <td className="px-3 py-2.5 whitespace-nowrap text-xs text-white/60">
+                <td className="px-3 py-2.5 whitespace-nowrap text-xs text-acuity-text-ter">
                   {u.stripeCurrentPeriodEnd
                     ? new Date(u.stripeCurrentPeriodEnd).toLocaleDateString()
                     : "—"}
                 </td>
               )}
               <td className="px-3 py-2.5 text-right">
-                <span className="text-xs text-[#B99EE4]">view →</span>
+                <span className="text-xs text-acuity-primary">view →</span>
               </td>
             </tr>
           ))}
@@ -475,13 +489,13 @@ function AggregateTable({
     <div className="max-h-[70vh] overflow-y-auto">
       {summary && (
         <div
-          className="border-b border-white/10 px-6 py-4 text-white/70"
+          className="border-b border-acuity-line px-6 py-4 text-acuity-text-sec"
           style={{ fontSize: 13 }}
         >
           {Object.entries(summary).map(([k, v]) => (
             <span key={k} className="mr-5">
-              <span className="text-white/45">{k}:</span>{" "}
-              <span className="text-white/90">
+              <span className="text-acuity-text-ter">{k}:</span>{" "}
+              <span className="text-acuity-text">
                 {k.toLowerCase().includes("cents") && typeof v === "number"
                   ? formatDollars(v)
                   : v}
@@ -492,10 +506,10 @@ function AggregateTable({
       )}
       <table className="w-full text-left" style={{ fontSize: 14 }}>
         <thead
-          className="sticky top-0 bg-[#0A0A0F] uppercase tracking-wider text-white/55"
+          className="sticky top-0 bg-acuity-card-bg uppercase tracking-wider text-acuity-text-ter"
           style={{ fontSize: 13, fontWeight: 500 }}
         >
-          <tr className="border-b border-white/10">
+          <tr className="border-b border-acuity-line-strong">
             {columns.map((c) => (
               <SortHeader
                 key={c.key}
@@ -511,7 +525,7 @@ function AggregateTable({
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+            <tr key={i} className="border-b border-acuity-line hover:bg-acuity-bg-sub">
               {columns.map((c) => {
                 const val = r[c.key];
                 const display =

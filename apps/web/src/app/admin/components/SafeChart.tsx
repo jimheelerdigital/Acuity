@@ -28,7 +28,7 @@ class ChartErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="flex items-center justify-center rounded-lg bg-white/5 text-xs text-white/30 p-4" style={{ minHeight: 120 }}>
+          <div className="flex items-center justify-center rounded-lg bg-acuity-bg-inset text-xs text-acuity-text-quiet p-4" style={{ minHeight: 120 }}>
             Chart failed to load
           </div>
         )
@@ -78,7 +78,7 @@ export function SafeChart({
     <div ref={ref} style={{ minWidth: 100, minHeight: height, width: "100%" }}>
       <ChartErrorBoundary fallback={fallback}>
         {ready ? children : (
-          <div className="flex items-center justify-center text-xs text-white/20" style={{ height }}>
+          <div className="flex items-center justify-center text-xs text-acuity-text-quiet" style={{ height }}>
             Loading chart...
           </div>
         )}

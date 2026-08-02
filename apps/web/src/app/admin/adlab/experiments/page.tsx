@@ -16,9 +16,9 @@ interface Experiment {
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-zinc-500/20 text-zinc-400",
-  awaiting_approval: "bg-amber-500/20 text-amber-400",
-  live: "bg-emerald-500/20 text-emerald-400",
-  concluded: "bg-[#8E6FE6]/20 text-[#8E6FE6]",
+  awaiting_approval: "bg-acuity-warn-soft text-acuity-warn",
+  live: "bg-acuity-good-soft text-acuity-good",
+  concluded: "bg-acuity-primary-soft text-acuity-primary",
 };
 
 export default function ExperimentsPage() {
@@ -61,13 +61,13 @@ export default function ExperimentsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Experiments</h1>
-          <p className="text-sm text-[#A0A0B8]">
+          <p className="text-sm text-acuity-text-ter">
             Create topic briefs, review angle hypotheses, and manage ad experiments.
           </p>
         </div>
         <Link
           href="/admin/adlab/experiments/new"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#7D62CA]"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
         >
           <Plus className="h-4 w-4" /> New Experiment
         </Link>
@@ -75,11 +75,11 @@ export default function ExperimentsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 text-[#A0A0B8] animate-spin" />
+          <Loader2 className="h-6 w-6 text-acuity-text-ter animate-spin" />
         </div>
       ) : experiments.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/20 bg-[#13131F] p-12 text-center">
-          <p className="text-sm text-[#A0A0B8]">No experiments yet.</p>
+        <div className="rounded-acuity-lg border border-dashed border-acuity-line-strong bg-acuity-card-bg p-12 text-center">
+          <p className="text-sm text-acuity-text-ter">No experiments yet.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -87,21 +87,21 @@ export default function ExperimentsPage() {
             <div key={exp.id} className="relative group">
               <Link
                 href={`/admin/adlab/experiments/${exp.id}`}
-                className="block rounded-xl border border-white/10 bg-[#13131F] p-5 transition hover:border-[#8E6FE6]/30"
+                className="block rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-5 transition hover:border-acuity-primary"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-xs text-[#A0A0B8]">{exp.project.name}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[exp.status] || ""}`}>
+                      <span className="text-xs text-acuity-text-ter">{exp.project.name}</span>
+                      <span className={`rounded-acuity-pill px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[exp.status] || ""}`}>
                         {exp.status.replace("_", " ")}
                       </span>
                     </div>
                     <p className="text-sm text-white line-clamp-2">{exp.topicBrief}</p>
                   </div>
                   <div className="text-right shrink-0 pr-8">
-                    <p className="text-xs text-[#A0A0B8]">{exp._count.angles} angles</p>
-                    <p className="text-xs text-[#A0A0B8] mt-0.5">
+                    <p className="text-xs text-acuity-text-ter">{exp._count.angles} angles</p>
+                    <p className="text-xs text-acuity-text-ter mt-0.5">
                       {new Date(exp.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -110,7 +110,7 @@ export default function ExperimentsPage() {
               <button
                 onClick={() => deleteExperiment(exp)}
                 disabled={deletingId === exp.id}
-                className="absolute top-5 right-5 rounded-lg p-1.5 text-[#A0A0B8] opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+                className="absolute top-5 right-5 rounded-lg p-1.5 text-acuity-text-ter opacity-0 group-hover:opacity-100 hover:text-acuity-bad hover:bg-acuity-bad-soft transition disabled:opacity-50"
                 title="Delete experiment"
               >
                 {deletingId === exp.id ? (

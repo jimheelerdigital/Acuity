@@ -123,29 +123,29 @@ export default function SettingsPage() {
     <>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-1">Settings</h1>
-        <p className="text-sm text-[#A0A0B8]">
+        <p className="text-sm text-acuity-text-ter">
           Environment status, Meta connection test, and manual cron trigger.
         </p>
       </div>
 
       <div className="space-y-6">
         {/* Environment Variables */}
-        <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
+        <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6">
           <h3 className="text-base font-semibold text-white mb-4">Environment Variables</h3>
           {loadingEnv ? (
-            <Loader2 className="h-5 w-5 text-[#A0A0B8] animate-spin" />
+            <Loader2 className="h-5 w-5 text-acuity-text-ter animate-spin" />
           ) : (
             <div className="space-y-2">
               {envVars.map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                <div key={key} className="flex items-center justify-between py-2 border-b border-acuity-line last:border-0">
                   <div>
                     <span className="text-sm text-white">{label}</span>
-                    <span className="ml-2 text-xs text-[#A0A0B8] font-mono">{key}</span>
+                    <span className="ml-2 text-xs text-acuity-text-ter font-mono">{key}</span>
                   </div>
                   {envStatus?.[key] ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                    <CheckCircle2 className="h-5 w-5 text-acuity-good" />
                   ) : (
-                    <XCircle className="h-5 w-5 text-red-400" />
+                    <XCircle className="h-5 w-5 text-acuity-bad" />
                   )}
                 </div>
               ))}
@@ -154,12 +154,12 @@ export default function SettingsPage() {
         </div>
 
         {/* Test Meta Connection */}
-        <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
+        <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6">
           <h3 className="text-base font-semibold text-white mb-4">Meta API Connection</h3>
           <button
             onClick={testMeta}
             disabled={testingMeta}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#7D62CA] transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-acuity-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition disabled:opacity-50"
           >
             {testingMeta ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
             Test Meta Connection
@@ -167,8 +167,8 @@ export default function SettingsPage() {
           {metaResult && (
             <div className={`mt-4 rounded-lg border p-4 text-sm ${
               metaResult.ok
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                : "border-red-500/30 bg-red-500/10 text-red-400"
+                ? "border-acuity-good bg-acuity-good-soft text-acuity-good"
+                : "border-acuity-bad bg-acuity-bad-soft text-acuity-bad"
             }`}>
               {metaResult.ok && metaResult.account ? (
                 <div className="space-y-1">
@@ -186,34 +186,34 @@ export default function SettingsPage() {
         </div>
 
         {/* Warm Up API */}
-        <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
+        <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6">
           <h3 className="text-base font-semibold text-white mb-2">API Warm-Up</h3>
-          <p className="text-xs text-[#A0A0B8] mb-4">
+          <p className="text-xs text-acuity-text-ter mb-4">
             Makes 100 successful read calls per run. Takes ~3-4 minutes. Run multiple times with 15 minute gaps to build history.
           </p>
           <button
             onClick={runWarmup}
             disabled={runningWarmup}
-            className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-acuity-warn transition disabled:opacity-50"
           >
             {runningWarmup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
             {runningWarmup ? "Warming Up…" : "Warm Up API"}
           </button>
           {runningWarmup && !warmupResult?.callNum && (
-            <p className="mt-3 text-xs text-[#A0A0B8]">Running... this takes ~3-4 minutes</p>
+            <p className="mt-3 text-xs text-acuity-text-ter">Running... this takes ~3-4 minutes</p>
           )}
           {warmupResult && (
             <div className="mt-4 space-y-2">
               {/* Progress bar */}
               {runningWarmup && warmupResult.callNum && (
                 <div>
-                  <div className="flex justify-between text-xs text-[#A0A0B8] mb-1">
+                  <div className="flex justify-between text-xs text-acuity-text-ter mb-1">
                     <span>Call {warmupResult.callNum} / {warmupResult.total}</span>
                     <span>{Math.round((warmupResult.callNum / warmupResult.total) * 100)}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-2 rounded-acuity-pill bg-acuity-bg-inset overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-amber-500 transition-all duration-300"
+                      className="h-full rounded-acuity-pill bg-acuity-warn transition-all duration-300"
                       style={{ width: `${(warmupResult.callNum / warmupResult.total) * 100}%` }}
                     />
                   </div>
@@ -223,10 +223,10 @@ export default function SettingsPage() {
               {warmupResult.done && (
                 <div className={`rounded-lg border p-4 text-sm ${
                   warmupResult.failures === 0
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    ? "border-acuity-good bg-acuity-good-soft text-acuity-good"
                     : warmupResult.successes > 0
-                      ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                      : "border-red-500/30 bg-red-500/10 text-red-400"
+                      ? "border-acuity-warn bg-acuity-warn-soft text-acuity-warn"
+                      : "border-acuity-bad bg-acuity-bad-soft text-acuity-bad"
                 }`}>
                   <p className="font-semibold">{warmupResult.rateLimited ? "Rate limited" : "Warm-up complete"}</p>
                   {warmupResult.message && <p>{warmupResult.message}</p>}
@@ -240,15 +240,15 @@ export default function SettingsPage() {
         </div>
 
         {/* Run Cron Manually */}
-        <div className="rounded-xl border border-white/10 bg-[#13131F] p-6">
+        <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6">
           <h3 className="text-base font-semibold text-white mb-2">Daily Cron</h3>
-          <p className="text-xs text-[#A0A0B8] mb-4">
+          <p className="text-xs text-acuity-text-ter mb-4">
             Manually trigger the daily metrics sync + decision engine. Normally runs at 09:00 UTC.
           </p>
           <button
             onClick={runCron}
             disabled={runningCron}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm text-[#A0A0B8] hover:text-white hover:border-white/20 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-acuity-line px-4 py-2 text-sm text-acuity-text-ter hover:text-white hover:border-acuity-line-strong transition disabled:opacity-50"
           >
             {runningCron ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Run Cron Now
@@ -256,8 +256,8 @@ export default function SettingsPage() {
           {cronResult && (
             <div className={`mt-4 rounded-lg border p-4 text-sm ${
               cronResult.ok
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                : "border-red-500/30 bg-red-500/10 text-red-400"
+                ? "border-acuity-good bg-acuity-good-soft text-acuity-good"
+                : "border-acuity-bad bg-acuity-bad-soft text-acuity-bad"
             }`}>
               {cronResult.ok ? (
                 <p>Cron completed successfully (status {cronResult.status})</p>

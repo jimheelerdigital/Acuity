@@ -44,25 +44,25 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-xl bg-[#13131F] flex flex-col justify-between min-h-[120px] ${
+      className={`rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft flex flex-col justify-between min-h-[120px] ${
         danger ? "ring-1 ring-red-500/60" : ""
       }`}
       style={{ padding: 22 }}
     >
       <p
-        className="font-medium uppercase text-white/45"
+        className="font-medium uppercase text-acuity-text-ter"
         style={{ fontSize: 11, letterSpacing: "1.6px" }}
       >
         {label}
       </p>
       <div>
         <p
-          className={`mt-3 font-medium ${danger ? "text-red-400" : "text-white"}`}
+          className={`mt-3 font-medium ${danger ? "text-acuity-bad" : "text-acuity-text"}`}
           style={{ fontSize: 32, letterSpacing: "-1px", lineHeight: 1.1 }}
         >
           {value}
         </p>
-        {sub && <p className="mt-1 text-xs text-white/40">{sub}</p>}
+        {sub && <p className="mt-1 text-xs text-acuity-text-ter">{sub}</p>}
       </div>
     </div>
   );
@@ -144,7 +144,7 @@ export default function SystemHealthSection(_props: Props) {
             ))}
           </div>
         ) : error && !data ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -183,7 +183,7 @@ export default function SystemHealthSection(_props: Props) {
               />
             </div>
             {error && (
-              <p className="mt-3 text-xs text-red-400">
+              <p className="mt-3 text-xs text-acuity-bad">
                 Refresh failed: {error}
               </p>
             )}

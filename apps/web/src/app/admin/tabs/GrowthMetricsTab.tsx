@@ -104,13 +104,13 @@ function fmtMonth(iso: string): string {
 /* ------------------------------------------------------------------ */
 
 const SOURCE_COLORS: Record<string, string> = {
-  direct: "#8E6FE6",
-  meta: "#22D3EE",
-  organic: "#34D399",
-  referral: "#FBBF24",
+  direct: "var(--acuity-primary)",
+  meta: "var(--acuity-secondary)",
+  organic: "var(--acuity-good)",
+  referral: "var(--acuity-warn)",
 };
 
-function BarChart({ data, labelKey, valueKey, color = "#8E6FE6", formatLabel, formatValue }: {
+function BarChart({ data, labelKey, valueKey, color = "var(--acuity-primary)", formatLabel, formatValue }: {
   data?: Record<string, unknown>[] | null;
   labelKey: string;
   valueKey: string;
@@ -120,7 +120,7 @@ function BarChart({ data, labelKey, valueKey, color = "#8E6FE6", formatLabel, fo
 }) {
   // Guard against a missing/undefined data field (e.g. a metric the API
   // doesn't return) — render "Not enough data" instead of crashing the tab.
-  if (!data || data.length === 0) return <p className="text-sm text-white/30 py-12 text-center">Not enough data</p>;
+  if (!data || data.length === 0) return <p className="text-sm text-acuity-text-quiet py-12 text-center">Not enough data</p>;
   const max = Math.max(...data.map((d) => Number(d[valueKey]) || 0), 1);
   return (
     <div className="flex items-end gap-1 h-48 pt-4">
@@ -133,7 +133,7 @@ function BarChart({ data, labelKey, valueKey, color = "#8E6FE6", formatLabel, fo
           <div key={i} className="flex-1 flex flex-col items-center justify-end" title={`${fmtLbl}: ${fmtVal}`}>
             <div className="w-full rounded-t" style={{ background: color, height: `${Math.max(2, (val / max) * 100)}%` }} />
             {data.length <= 14 && (
-              <span className="text-[8px] text-white/30 mt-1 tabular-nums">{fmtLbl}</span>
+              <span className="text-[8px] text-acuity-text-quiet mt-1 tabular-nums">{fmtLbl}</span>
             )}
           </div>
         );
@@ -143,7 +143,7 @@ function BarChart({ data, labelKey, valueKey, color = "#8E6FE6", formatLabel, fo
 }
 
 function StackedBarChart({ data }: { data?: GrowthMetricsData["signupsBySource"] | null }) {
-  if (!data || data.length === 0) return <p className="text-sm text-white/30 py-12 text-center">Not enough data</p>;
+  if (!data || data.length === 0) return <p className="text-sm text-acuity-text-quiet py-12 text-center">Not enough data</p>;
   const max = Math.max(...data.map((d) => d.direct + d.meta + d.organic + d.referral), 1);
   return (
     <div>
@@ -167,7 +167,7 @@ function StackedBarChart({ data }: { data?: GrowthMetricsData["signupsBySource"]
         {Object.entries(SOURCE_COLORS).map(([key, color]) => (
           <div key={key} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
-            <span className="text-[10px] text-white/40 capitalize">{key}</span>
+            <span className="text-[10px] text-acuity-text-ter capitalize">{key}</span>
           </div>
         ))}
       </div>
@@ -181,9 +181,9 @@ function StackedBarChart({ data }: { data?: GrowthMetricsData["signupsBySource"]
 
 function retentionColor(pct: number | null | undefined): string {
   if (pct == null) return "";
-  if (pct >= 50) return "bg-green-500/20 text-green-400";
-  if (pct >= 25) return "bg-yellow-500/20 text-yellow-400";
-  return "bg-red-500/20 text-red-400";
+  if (pct >= 50) return "bg-acuity-good-soft text-acuity-good";
+  if (pct >= 25) return "bg-acuity-warn-soft text-acuity-warn";
+  return "bg-acuity-bad-soft text-acuity-bad";
 }
 
 /* ------------------------------------------------------------------ */
@@ -192,7 +192,7 @@ function retentionColor(pct: number | null | undefined): string {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-sm uppercase tracking-wider text-white/40 mt-10 mb-4 first:mt-0">
+    <h2 className="text-sm uppercase tracking-wider text-acuity-text-ter mt-10 mb-4 first:mt-0">
       {children}
     </h2>
   );
@@ -269,7 +269,7 @@ export default function GrowthMetricsTab({
       </ChartCard>
 
       <ChartCard title="Cumulative Users">
-        <BarChart data={data.cumulativeUsers} labelKey="week" valueKey="total" color="#AD90E9" formatLabel={fmtWeek} />
+        <BarChart data={data.cumulativeUsers} labelKey="week" valueKey="total" color="var(--acuity-primary-hi)" formatLabel={fmtWeek} />
       </ChartCard>
 
       <ChartCard title="Signups by Source">
@@ -280,7 +280,7 @@ export default function GrowthMetricsTab({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-white/40">
+              <tr className="text-left text-acuity-text-ter">
                 <th className="py-2 pr-4 font-medium">Source</th>
                 <th className="py-2 pr-4 font-medium">Platform</th>
                 <th className="py-2 pr-4 text-right font-medium">Signups</th>
@@ -293,7 +293,7 @@ export default function GrowthMetricsTab({
             <tbody>
               {(data.platformAcquisition ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-white/30">
+                  <td colSpan={7} className="py-8 text-center text-acuity-text-quiet">
                     No data in range
                   </td>
                 </tr>
@@ -301,14 +301,14 @@ export default function GrowthMetricsTab({
                 (data.platformAcquisition ?? []).map((r, i) => {
                   const pctColor =
                     r.activationPct < 15
-                      ? "#FB7185"
+                      ? "var(--acuity-bad)"
                       : r.activationPct < 35
-                        ? "#FBBF24"
-                        : "#34D399";
+                        ? "var(--acuity-warn)"
+                        : "var(--acuity-good)";
                   return (
                     <tr
                       key={i}
-                      className="border-t border-white/5 text-white/80"
+                      className="border-t border-acuity-line text-acuity-text-sec"
                     >
                       <td className="py-2 pr-4">{r.source}</td>
                       <td className="py-2 pr-4">{r.platform}</td>
@@ -324,10 +324,10 @@ export default function GrowthMetricsTab({
                       >
                         {r.activationPct.toFixed(1)}%
                       </td>
-                      <td className="py-2 pr-4 text-right tabular-nums text-white/50">
+                      <td className="py-2 pr-4 text-right tabular-nums text-acuity-text-ter">
                         {r.openedNoRecord}
                       </td>
-                      <td className="py-2 text-right tabular-nums text-white/50">
+                      <td className="py-2 text-right tabular-nums text-acuity-text-ter">
                         {r.neverOpened}
                       </td>
                     </tr>
@@ -341,15 +341,15 @@ export default function GrowthMetricsTab({
 
       {/* Projections callout */}
       {data.projections && (
-        <div className="rounded-xl bg-[#13131F] border border-white/5 p-5">
-          <h3 className="text-sm font-medium text-white/60 mb-2">Growth Projections</h3>
-          <p className="text-sm text-white/80 leading-relaxed">
+        <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft border border-acuity-line p-5">
+          <h3 className="text-sm font-medium text-acuity-text-ter mb-2">Growth Projections</h3>
+          <p className="text-sm text-acuity-text-sec leading-relaxed">
             Currently at{" "}
-            <span className="font-semibold text-white">{data.projections.current} users</span>.
+            <span className="font-semibold text-acuity-text">{data.projections.current} users</span>.
             At current growth:{" "}
-            <span className="text-[#B99EE4] font-medium">100 users</span> by {fmtWeek(data.projections.growth100)},{" "}
-            <span className="text-[#B99EE4] font-medium">500</span> by {fmtWeek(data.projections.growth500)},{" "}
-            <span className="text-[#B99EE4] font-medium">1,000</span> by {fmtWeek(data.projections.growth1000)}.
+            <span className="text-acuity-primary-hi font-medium">100 users</span> by {fmtWeek(data.projections.growth100)},{" "}
+            <span className="text-acuity-primary-hi font-medium">500</span> by {fmtWeek(data.projections.growth500)},{" "}
+            <span className="text-acuity-primary-hi font-medium">1,000</span> by {fmtWeek(data.projections.growth1000)}.
           </p>
         </div>
       )}
@@ -359,10 +359,10 @@ export default function GrowthMetricsTab({
       {/* ============================================================ */}
       <SectionHeader>Retention Cohorts</SectionHeader>
 
-      <div className="rounded-xl bg-[#13131F] p-5 overflow-x-auto">
+      <div className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-5 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40">
+            <tr className="border-b border-acuity-line text-acuity-text-ter">
               <th className="pb-2 pr-4 font-medium">Cohort</th>
               <th className="pb-2 pr-4 font-medium text-right">Signups</th>
               <th className="pb-2 pr-4 font-medium text-right">Wk 1</th>
@@ -380,13 +380,13 @@ export default function GrowthMetricsTab({
                 c.retention.week4, c.retention.week8, c.retention.week12,
               ];
               return (
-                <tr key={c.cohortWeek} className="border-b border-white/5 text-white/70">
+                <tr key={c.cohortWeek} className="border-b border-acuity-line text-acuity-text-sec">
                   <td className="py-2 pr-4 whitespace-nowrap">{fmtWeek(c.cohortWeek)}</td>
                   <td className="py-2 pr-4 text-right">{c.signups}</td>
                   {weeks.map((pct, i) => (
                     <td key={i} className="py-2 pr-4 text-right last:pr-0">
                       {pct == null ? (
-                        <span className="text-white/20">—</span>
+                        <span className="text-acuity-text-quiet">—</span>
                       ) : (
                         <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${retentionColor(pct)}`}>
                           {fmtPct(pct)}
@@ -407,16 +407,16 @@ export default function GrowthMetricsTab({
       <SectionHeader>Engagement Trends</SectionHeader>
 
       <ChartCard title="Weekly Recordings">
-        <BarChart data={data.weeklyRecordings} labelKey="week" valueKey="count" color="#34D399" formatLabel={fmtWeek} />
+        <BarChart data={data.weeklyRecordings} labelKey="week" valueKey="count" color="var(--acuity-good)" formatLabel={fmtWeek} />
       </ChartCard>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Avg Recordings / User">
-          <BarChart data={data.avgRecordingsPerUser} labelKey="week" valueKey="avg" color="#22D3EE" formatLabel={fmtWeek} formatValue={(v) => v.toFixed(1)} />
+          <BarChart data={data.avgRecordingsPerUser} labelKey="week" valueKey="avg" color="var(--acuity-secondary)" formatLabel={fmtWeek} formatValue={(v) => v.toFixed(1)} />
         </ChartCard>
 
         <ChartCard title="Avg Recording Duration">
-          <BarChart data={data.avgDuration} labelKey="week" valueKey="seconds" color="#FBBF24" formatLabel={fmtWeek} formatValue={fmtDuration} />
+          <BarChart data={data.avgDuration} labelKey="week" valueKey="seconds" color="var(--acuity-warn)" formatLabel={fmtWeek} formatValue={fmtDuration} />
         </ChartCard>
       </div>
 
@@ -427,11 +427,11 @@ export default function GrowthMetricsTab({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Trial → Paid Rate">
-          <BarChart data={data.trialToPaidRate} labelKey="week" valueKey="rate" color="#8E6FE6" formatLabel={fmtWeek} formatValue={(v) => `${v.toFixed(1)}%`} />
+          <BarChart data={data.trialToPaidRate} labelKey="week" valueKey="rate" color="var(--acuity-primary)" formatLabel={fmtWeek} formatValue={(v) => `${v.toFixed(1)}%`} />
         </ChartCard>
 
         <ChartCard title="Median Time to First Recording">
-          <BarChart data={data.medianTimeToFirstRecording} labelKey="week" valueKey="hours" color="#E06C75" formatLabel={fmtWeek} formatValue={(v) => `${v.toFixed(1)}h`} />
+          <BarChart data={data.medianTimeToFirstRecording} labelKey="week" valueKey="hours" color="var(--acuity-bad)" formatLabel={fmtWeek} formatValue={(v) => `${v.toFixed(1)}h`} />
         </ChartCard>
       </div>
 
@@ -441,11 +441,11 @@ export default function GrowthMetricsTab({
       <SectionHeader>Revenue Growth</SectionHeader>
 
       <ChartCard title="MRR Over Time">
-        <BarChart data={data.mrrOverTime} labelKey="month" valueKey="mrr" color="#8E6FE6" formatLabel={fmtMonth} formatValue={(v) => fmtDollars(v)} />
+        <BarChart data={data.mrrOverTime} labelKey="month" valueKey="mrr" color="var(--acuity-primary)" formatLabel={fmtMonth} formatValue={(v) => fmtDollars(v)} />
       </ChartCard>
 
       <ChartCard title="Paying Users Over Time">
-        <BarChart data={data.payingUsersOverTime} labelKey="month" valueKey="count" color="#34D399" formatLabel={fmtMonth} />
+        <BarChart data={data.payingUsersOverTime} labelKey="month" valueKey="count" color="var(--acuity-good)" formatLabel={fmtMonth} />
       </ChartCard>
     </div>
   );

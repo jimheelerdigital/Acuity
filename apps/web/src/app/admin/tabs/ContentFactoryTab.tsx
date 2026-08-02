@@ -45,7 +45,7 @@ export default function ContentFactoryTab() {
   if (loading || !data) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-white/40">Loading content factory…</p>
+        <p className="text-sm text-acuity-text-ter">Loading content factory…</p>
       </div>
     );
   }

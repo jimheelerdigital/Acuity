@@ -19,10 +19,10 @@ function conversionPct(b: TrialBucket): number | null {
 // Conversion% is the headline column. Color it like the rest of the MRI:
 // green = healthy, amber = soft, red = leaking.
 function conversionColor(pct: number | null): string {
-  if (pct == null) return "text-white/30";
-  if (pct >= 30) return "text-green-400";
-  if (pct >= 15) return "text-amber-400";
-  return "text-red-400";
+  if (pct == null) return "text-acuity-text-quiet";
+  if (pct >= 30) return "text-acuity-good";
+  if (pct >= 15) return "text-acuity-warn";
+  return "text-acuity-bad";
 }
 
 export default function TrialFunnelSection({ start, end }: Props) {
@@ -86,14 +86,14 @@ export default function TrialFunnelSection({ start, end }: Props) {
         {loading && !data ? (
           <SkeletonTable />
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-acuity-bad">{error}</p>
         ) : buckets.length === 0 ? (
-          <p className="text-sm text-white/40">No trial cohorts in this range.</p>
+          <p className="text-sm text-acuity-text-ter">No trial cohorts in this range.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="text-left text-white/40">
+                <tr className="text-left text-acuity-text-ter">
                   <th className="pb-3 pr-4 font-medium">Cohort</th>
                   <th className="pb-3 pr-4 text-right font-medium">Users</th>
                   <th className="pb-3 pr-4 text-right font-medium">Activated</th>
@@ -109,9 +109,9 @@ export default function TrialFunnelSection({ start, end }: Props) {
                   return (
                     <tr
                       key={b.bucket}
-                      className="border-t border-white/5 text-white/80"
+                      className="border-t border-acuity-line text-acuity-text-sec"
                     >
-                      <td className="py-3 pr-4 font-medium text-white">
+                      <td className="py-3 pr-4 font-medium text-acuity-text">
                         {b.bucket}
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums">
@@ -120,13 +120,13 @@ export default function TrialFunnelSection({ start, end }: Props) {
                       <td className="py-3 pr-4 text-right tabular-nums">
                         {b.activated}
                       </td>
-                      <td className="py-3 pr-4 text-right tabular-nums text-green-400">
+                      <td className="py-3 pr-4 text-right tabular-nums text-acuity-good">
                         {b.convertedPaid}
                       </td>
-                      <td className="py-3 pr-4 text-right tabular-nums text-white/50">
+                      <td className="py-3 pr-4 text-right tabular-nums text-acuity-text-ter">
                         {b.droppedToFree}
                       </td>
-                      <td className="py-3 pr-4 text-right tabular-nums text-red-400">
+                      <td className="py-3 pr-4 text-right tabular-nums text-acuity-bad">
                         {b.paymentFailed}
                       </td>
                       <td

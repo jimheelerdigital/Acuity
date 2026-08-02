@@ -7,7 +7,7 @@ export default function AdminLoading() {
       <Skeleton className="mb-6 h-4 w-72" />
       <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
         {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-9 w-24 shrink-0 rounded-full" />
+          <Skeleton key={i} className="h-9 w-24 shrink-0 rounded-acuity-pill" />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

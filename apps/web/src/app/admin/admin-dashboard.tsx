@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import TimeRangeSelector, {
   type TimeRange,
@@ -24,22 +25,76 @@ const EngagementDistributionTab = dynamic(
   () => import("./tabs/EngagementDistributionTab")
 );
 
-const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "mri", label: "🧠 MRI" },
-  { key: "funnel-analytics", label: "Funnel" },
-  { key: "users", label: "Users" },
-  { key: "ads", label: "Ads" },
-  { key: "content", label: "Content" },
-  { key: "ai-costs", label: "AI Costs" },
-  { key: "growth-metrics", label: "Growth" },
-  { key: "business-metrics", label: "Business" },
-  { key: "feature-adoption", label: "Features" },
-  { key: "engagement-distribution", label: "Engagement" },
-  { key: "settings", label: "Settings" },
+type NavItem = { key: TabKey; label: string };
+type NavGroup = { eyebrow: string; items: NavItem[] };
+
+const TAB_KEYS = [
+  "overview",
+  "mri",
+  "funnel-analytics",
+  "users",
+  "ads",
+  "content",
+  "ai-costs",
+  "growth-metrics",
+  "business-metrics",
+  "feature-adoption",
+  "engagement-distribution",
+  "settings",
 ] as const;
 
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = (typeof TAB_KEYS)[number];
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    eyebrow: "Pulse",
+    items: [
+      { key: "overview", label: "Overview" },
+      { key: "mri", label: "MRI" },
+    ],
+  },
+  {
+    eyebrow: "Growth",
+    items: [
+      { key: "funnel-analytics", label: "Funnel" },
+      { key: "ads", label: "Ads" },
+      { key: "growth-metrics", label: "Growth metrics" },
+    ],
+  },
+  {
+    eyebrow: "Users",
+    items: [
+      { key: "users", label: "Users" },
+      { key: "engagement-distribution", label: "Engagement" },
+      { key: "feature-adoption", label: "Feature adoption" },
+    ],
+  },
+  {
+    eyebrow: "Money",
+    items: [
+      { key: "business-metrics", label: "Business" },
+      { key: "ai-costs", label: "AI costs" },
+    ],
+  },
+  {
+    eyebrow: "Content",
+    items: [{ key: "content", label: "Content" }],
+  },
+  {
+    eyebrow: "System",
+    items: [{ key: "settings", label: "Settings" }],
+  },
+];
+
+// Routed admin tools that live outside the tabbed dashboard.
+const TOOL_LINKS: { href: string; label: string }[] = [
+  { href: "/admin/adlab", label: "AdLab" },
+  { href: "/admin/blog-pruner-log", label: "Blog pruner log" },
+];
+
+const TAB_LABELS: Record<TabKey, string> = Object.fromEntries(
+  NAV_GROUPS.flatMap((g) => g.items.map((i) => [i.key, i.label]))
+) as Record<TabKey, string>;
 
 // Legacy tab keys redirect to their new merged parents so bookmarks
 // and saved URLs from the old 16-tab layout still work.
@@ -59,11 +114,31 @@ const LEGACY_REDIRECT: Record<string, TabKey> = {
 };
 
 // Tabs that don't use the global time range selector
-const NO_TIME_RANGE: Set<string> = new Set([
-  "users",
-  "content",
-  "settings",
-]);
+const NO_TIME_RANGE: Set<string> = new Set(["users", "content", "settings"]);
+
+function NavButton({
+  item,
+  active,
+  onSelect,
+}: {
+  item: NavItem;
+  active: boolean;
+  onSelect: (key: TabKey) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSelect(item.key)}
+      aria-current={active ? "page" : undefined}
+      className={`w-full rounded-acuity-sm px-3 py-2 text-left text-[14px] font-medium transition duration-acuity-base ease-acuity-standard ${
+        active
+          ? "bg-acuity-grad-mix text-white"
+          : "text-acuity-text-sec hover:bg-acuity-bg-sub hover:text-acuity-text"
+      }`}
+    >
+      {item.label}
+    </button>
+  );
+}
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -72,19 +147,13 @@ export default function AdminDashboard() {
   const rawTab = searchParams.get("tab") ?? "overview";
   const redirected = LEGACY_REDIRECT[rawTab];
   const tabParam = (redirected ?? rawTab) as TabKey;
-  const activeTab = TABS.find((t) => t.key === tabParam)
-    ? tabParam
-    : "overview";
+  const activeTab = TAB_KEYS.includes(tabParam) ? tabParam : "overview";
 
   const [timeRange, setTimeRange] = useState<TimeRange>(
     (searchParams.get("range") as TimeRange) ?? "7d"
   );
-  const [customStart, setCustomStart] = useState(
-    searchParams.get("cs") ?? ""
-  );
-  const [customEnd, setCustomEnd] = useState(
-    searchParams.get("ce") ?? ""
-  );
+  const [customStart, setCustomStart] = useState(searchParams.get("cs") ?? "");
+  const [customEnd, setCustomEnd] = useState(searchParams.get("ce") ?? "");
 
   const setTab = useCallback(
     (tab: TabKey) => {
@@ -128,101 +197,138 @@ export default function AdminDashboard() {
   const showTimeRange = !NO_TIME_RANGE.has(activeTab);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-4 py-8 text-white sm:px-8">
-      <div className="mx-auto w-full max-w-[1600px]">
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+    <div className="min-h-screen bg-acuity-bg text-acuity-text">
+      <div className="mx-auto flex w-full max-w-[1720px]">
+        {/* ── Sidebar (desktop) ─────────────────────────────────── */}
+        <aside className="sticky top-[68px] hidden h-[calc(100vh-68px)] w-[230px] shrink-0 overflow-y-auto border-r border-acuity-line px-4 py-8 lg:block">
+          <nav className="space-y-6">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.eyebrow}>
+                <p className="mb-2 px-3 font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-quiet">
+                  {group.eyebrow}
+                </p>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => (
+                    <NavButton
+                      key={item.key}
+                      item={item}
+                      active={activeTab === item.key}
+                      onSelect={setTab}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            <div>
+              <p className="mb-2 px-3 font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-quiet">
+                Tools
+              </p>
+              <div className="space-y-0.5">
+                {TOOL_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="flex w-full items-center justify-between rounded-acuity-sm px-3 py-2 text-[14px] font-medium text-acuity-text-sec transition duration-acuity-base ease-acuity-standard hover:bg-acuity-bg-sub hover:text-acuity-text"
+                  >
+                    {link.label}
+                    <svg
+                      className="h-3.5 w-3.5 text-acuity-text-quiet"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                      />
+                    </svg>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </nav>
+        </aside>
+
+        {/* ── Main content ──────────────────────────────────────── */}
+        <main className="min-w-0 flex-1 px-4 py-8 sm:px-8">
+          {/* Mobile nav — horizontal chip scroll */}
+          <div className="no-scrollbar mb-6 flex gap-1.5 overflow-x-auto lg:hidden">
+            {NAV_GROUPS.flatMap((g) => g.items).map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setTab(item.key)}
+                className={`shrink-0 rounded-acuity-pill px-4 py-2 text-[13px] font-medium transition ${
+                  activeTab === item.key
+                    ? "bg-acuity-grad-mix text-white"
+                    : "bg-acuity-bg-sub text-acuity-text-sec hover:text-acuity-text"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+            {TOOL_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="shrink-0 rounded-acuity-pill bg-acuity-bg-sub px-4 py-2 text-[13px] font-medium text-acuity-text-sec hover:text-acuity-text"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Page header */}
+          <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <h1
-              className="font-semibold text-white"
-              style={{ fontSize: 32, letterSpacing: "-0.4px" }}
+              className="font-display font-bold text-acuity-text"
+              style={{ fontSize: 30, letterSpacing: "-0.8px", lineHeight: 1 }}
             >
-              Ripple Admin
+              {TAB_LABELS[activeTab]}
             </h1>
+            {showTimeRange && (
+              <TimeRangeSelector
+                value={timeRange}
+                onChange={handleRangeChange}
+                customStart={customStart}
+                customEnd={customEnd}
+                onCustomChange={handleCustomChange}
+              />
+            )}
           </div>
-          {showTimeRange && (
-            <TimeRangeSelector
-              value={timeRange}
-              onChange={handleRangeChange}
-              customStart={customStart}
-              customEnd={customEnd}
-              onCustomChange={handleCustomChange}
-            />
-          )}
-        </div>
 
-        {/* AdLab link */}
-        <a
-          href="/admin/adlab"
-          className="mb-6 flex items-center gap-4 rounded-xl border border-[#8E6FE6]/20 bg-[#8E6FE6]/5 px-5 py-4 transition hover:border-[#8E6FE6]/40 hover:bg-[#8E6FE6]/10 group"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#8E6FE6]/15">
-            <svg className="h-5 w-5 text-[#8E6FE6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-            </svg>
+          {/* Tab content */}
+          <div className="acuity-fade-in" key={activeTab}>
+            {activeTab === "overview" && (
+              <OverviewTab start={startStr} end={endStr} />
+            )}
+            {activeTab === "mri" && <MRITab start={startStr} end={endStr} />}
+            {activeTab === "users" && <UsersTab />}
+            {activeTab === "ads" && <AdsTab start={startStr} end={endStr} />}
+            {activeTab === "content" && <ContentTab />}
+            {activeTab === "ai-costs" && (
+              <AICostsTab start={startStr} end={endStr} />
+            )}
+            {activeTab === "growth-metrics" && (
+              <GrowthMetricsTab start={startStr} end={endStr} />
+            )}
+            {activeTab === "business-metrics" && (
+              <BusinessMetricsTab start={startStr} end={endStr} />
+            )}
+            {activeTab === "feature-adoption" && (
+              <FeatureAdoptionTab start={startStr} end={endStr} />
+            )}
+            {activeTab === "engagement-distribution" && (
+              <EngagementDistributionTab start={startStr} end={endStr} />
+            )}
+            {activeTab === "funnel-analytics" && (
+              <FunnelAnalyticsTab start={startStr} end={endStr} />
+            )}
+            {activeTab === "settings" && <SettingsTab />}
           </div>
-          <div>
-            <span className="text-sm font-semibold text-white group-hover:text-[#8E6FE6] transition-colors">
-              AdLab
-            </span>
-            <p className="text-xs text-[#A0A0B8]">
-              Ad Research & Optimization — angles, creatives, Meta launch, auto-monitoring
-            </p>
-          </div>
-          <svg className="ml-auto h-4 w-4 text-[#A0A0B8] group-hover:text-[#8E6FE6] transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-          </svg>
-        </a>
-
-        {/* Tab bar — horizontal scroll on mobile */}
-        <div className="mb-8 flex gap-1 overflow-x-auto rounded-lg bg-[#13131F] p-1 no-scrollbar">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setTab(tab.key)}
-              className={`shrink-0 rounded-md px-4 py-2.5 transition ${
-                activeTab === tab.key
-                  ? "bg-[#8E6FE6] text-white"
-                  : "text-white/50 hover:text-white/80"
-              }`}
-              style={{ fontSize: 15, fontWeight: 500 }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
-        <div>
-          {activeTab === "overview" && (
-            <OverviewTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "mri" && <MRITab start={startStr} end={endStr} />}
-          {activeTab === "users" && <UsersTab />}
-          {activeTab === "ads" && (
-            <AdsTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "content" && <ContentTab />}
-          {activeTab === "ai-costs" && (
-            <AICostsTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "growth-metrics" && (
-            <GrowthMetricsTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "business-metrics" && (
-            <BusinessMetricsTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "feature-adoption" && (
-            <FeatureAdoptionTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "engagement-distribution" && (
-            <EngagementDistributionTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "funnel-analytics" && (
-            <FunnelAnalyticsTab start={startStr} end={endStr} />
-          )}
-          {activeTab === "settings" && <SettingsTab />}
-        </div>
+        </main>
       </div>
     </div>
   );

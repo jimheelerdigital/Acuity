@@ -70,7 +70,7 @@ export default function AdminDashboardClient() {
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0A0A0F] px-4">
-        <p className="text-sm text-white/60">Loading…</p>
+        <p className="text-sm text-acuity-text-ter">Loading…</p>
       </div>
     );
   }
@@ -88,7 +88,7 @@ export default function AdminDashboardClient() {
 
         {/* ── AI SPEND ── */}
         {overBudget && (
-          <div className="mb-4 rounded-xl bg-red-900/30 border border-red-500/40 px-5 py-3 text-sm text-red-300">
+          <div className="mb-4 rounded-xl bg-acuity-bad-soft border border-acuity-bad px-5 py-3 text-sm text-red-300">
             AI budget exceeded for the month. Content generation still running
             &mdash; check logs at{" "}
             <a
@@ -101,7 +101,7 @@ export default function AdminDashboardClient() {
           </div>
         )}
         <div className="mb-6 rounded-xl bg-[#13131F] px-5 py-4 flex items-center justify-between">
-          <span className="text-sm text-white/60">AI spend this month</span>
+          <span className="text-sm text-acuity-text-ter">AI spend this month</span>
           <span className={`text-lg font-bold ${overBudget ? "text-red-400" : "text-white"}`}>
             ${aiSpendDollars} / $100 budget
           </span>
@@ -111,7 +111,7 @@ export default function AdminDashboardClient() {
         <Section title="Waitlist Stats">
           {/* Total */}
           <Card>
-            <p className="text-sm text-white/50">Total Waitlist Signups</p>
+            <p className="text-sm text-acuity-text-ter">Total Waitlist Signups</p>
             <p className="mt-1 text-4xl font-bold text-[#8E6FE6]">
               {data.totalSignups.toLocaleString()}
             </p>
@@ -122,10 +122,10 @@ export default function AdminDashboardClient() {
             <div className="mt-3 space-y-2">
               {data.signupsBySource.map((s) => (
                 <div key={s.source} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 truncate text-sm text-white/70">
+                  <span className="w-28 shrink-0 truncate text-sm text-acuity-text-sec">
                     {s.source}
                   </span>
-                  <div className="relative h-6 flex-1 overflow-hidden rounded bg-white/5">
+                  <div className="relative h-6 flex-1 overflow-hidden rounded bg-acuity-bg-inset">
                     <div
                       className="h-full rounded bg-[#8E6FE6]"
                       style={{
@@ -157,14 +157,14 @@ export default function AdminDashboardClient() {
                       minHeight: d.count > 0 ? 2 : 0,
                     }}
                   />
-                  <div className="absolute -top-7 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-white/10 px-2 py-0.5 text-xs group-hover:block">
+                  <div className="absolute -top-7 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-acuity-bg-inset px-2 py-0.5 text-xs group-hover:block">
                     {d.date}: {d.count}
                   </div>
                 </div>
               ))}
             </div>
             {data.signupsOverTime.length > 0 && (
-              <div className="mt-2 flex justify-between text-xs text-white/40">
+              <div className="mt-2 flex justify-between text-xs text-acuity-text-ter">
                 <span>{data.signupsOverTime[0].date}</span>
                 <span>
                   {data.signupsOverTime[data.signupsOverTime.length - 1].date}
@@ -178,7 +178,7 @@ export default function AdminDashboardClient() {
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 text-white/50">
+                  <tr className="border-b border-white/10 text-acuity-text-ter">
                     <th className="pb-2 pr-4 font-medium">Name</th>
                     <th className="pb-2 pr-4 font-medium">Email</th>
                     <th className="pb-2 pr-4 font-medium">Source</th>
@@ -189,7 +189,7 @@ export default function AdminDashboardClient() {
                   {data.recentSignups.map((s) => (
                     <tr
                       key={s.email}
-                      className="border-b border-white/5 text-white/80"
+                      className="border-b border-white/5 text-acuity-text-sec"
                     >
                       <td className="py-2 pr-4">{s.name || "—"}</td>
                       <td className="py-2 pr-4">{s.email}</td>
@@ -210,7 +210,7 @@ export default function AdminDashboardClient() {
           <Card>
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-white/50">
+                <tr className="border-b border-white/10 text-acuity-text-ter">
                   <th className="pb-2 pr-4 font-medium">Step</th>
                   <th className="pb-2 font-medium text-right">Users</th>
                 </tr>
@@ -219,7 +219,7 @@ export default function AdminDashboardClient() {
                 {data.emailStepCounts.map((row) => (
                   <tr
                     key={row.step}
-                    className="border-b border-white/5 text-white/80"
+                    className="border-b border-white/5 text-acuity-text-sec"
                   >
                     <td className="py-2 pr-4">
                       {STEP_LABELS[row.step] ?? `Step ${row.step}`}
@@ -241,7 +241,7 @@ export default function AdminDashboardClient() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-xl bg-[#13131F] px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-[#1a1a2e] hover:text-[#8E6FE6]"
+                className="rounded-xl bg-[#13131F] px-4 py-3 text-sm font-medium text-acuity-text-sec transition hover:bg-[#1a1a2e] hover:text-[#8E6FE6]"
               >
                 {link.label} &rarr;
               </a>
@@ -262,7 +262,7 @@ function Section({
 }) {
   return (
     <section className="mb-10">
-      <h2 className="mb-4 text-lg font-semibold text-white/90">{title}</h2>
+      <h2 className="mb-4 text-lg font-semibold text-acuity-text">{title}</h2>
       <div className="space-y-4">{children}</div>
     </section>
   );
@@ -278,7 +278,7 @@ function Card({
   return (
     <div className="rounded-xl bg-[#13131F] p-5">
       {title && (
-        <h3 className="text-sm font-medium text-white/60">{title}</h3>
+        <h3 className="text-sm font-medium text-acuity-text-ter">{title}</h3>
       )}
       {children}
     </div>

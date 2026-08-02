@@ -50,6 +50,7 @@ const config: Config = {
           bad: "var(--acuity-bad)",
           "bad-soft": "var(--acuity-bad-soft)",
           warn: "var(--acuity-warn)",
+          "warn-soft": "var(--acuity-warn-soft)",
 
           // Brand soft variants (18% alpha at primary/secondary chroma)
           "primary-soft": "var(--acuity-primary-soft)",

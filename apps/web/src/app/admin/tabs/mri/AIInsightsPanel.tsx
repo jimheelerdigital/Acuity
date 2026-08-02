@@ -20,9 +20,9 @@ const SEVERITY: Record<
   Insight["severity"],
   { icon: string; border: string; label: string }
 > = {
-  critical: { icon: "🚨", border: "#F87171", label: "Critical" },
-  warning: { icon: "⚠️", border: "#FBBF24", label: "Warning" },
-  info: { icon: "ℹ️", border: "#60A5FA", label: "Info" },
+  critical: { icon: "🚨", border: "var(--acuity-bad)", label: "Critical" },
+  warning: { icon: "⚠️", border: "var(--acuity-warn)", label: "Warning" },
+  info: { icon: "ℹ️", border: "var(--acuity-secondary)", label: "Info" },
 };
 
 function relativeTime(iso: string): string {
@@ -126,14 +126,14 @@ export default function AIInsightsPanel() {
 
   return (
     <div
-      className="rounded-xl border p-5"
-      style={{ borderColor: "rgba(142,111,230,0.3)", background: "#13131F" }}
+      className="rounded-acuity-lg border p-5"
+      style={{ borderColor: "var(--acuity-primary-soft)", background: "var(--acuity-card-bg)" }}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="text-base font-semibold text-white">🧠 AI Insights</span>
+          <span className="text-base font-semibold text-acuity-text">🧠 AI Insights</span>
           {row && (
-            <span className="text-xs text-white/40">
+            <span className="text-xs text-acuity-text-ter">
               Generated {relativeTime(row.generatedAt)} · ${(row.costCents / 100).toFixed(2)} ·{" "}
               {row.modelUsed}
             </span>
@@ -141,7 +141,7 @@ export default function AIInsightsPanel() {
           {stale && (
             <span
               className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
-              style={{ background: "rgba(251,191,36,0.15)", color: "#FBBF24" }}
+              style={{ background: "var(--acuity-warn-soft)", color: "var(--acuity-warn)" }}
             >
               Stale
             </span>
@@ -152,7 +152,7 @@ export default function AIInsightsPanel() {
           onClick={regenerate}
           disabled={regenerating || retryAfter != null}
           className="rounded-md px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
-          style={{ background: "#8E6FE6", color: "#fff" }}
+          style={{ background: "var(--acuity-primary)", color: "var(--acuity-text)" }}
         >
           {regenerating
             ? "Generating…"
@@ -163,20 +163,20 @@ export default function AIInsightsPanel() {
       </div>
 
       {error && (
-        <p className="text-sm" style={{ color: "#F87171" }}>
+        <p className="text-sm" style={{ color: "var(--acuity-bad)" }}>
           {error}
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-white/40">Loading insights…</p>
+        <p className="text-sm text-acuity-text-ter">Loading insights…</p>
       ) : !row ? (
-        <p className="text-sm text-white/40">
+        <p className="text-sm text-acuity-text-ter">
           Generating first insight… this can take ~30–60s. The panel updates automatically.
         </p>
       ) : (
         <>
-          <p className="mb-4 text-sm leading-relaxed text-white/80">{row.summary}</p>
+          <p className="mb-4 text-sm leading-relaxed text-acuity-text-sec">{row.summary}</p>
           <div className="flex flex-col gap-3">
             {row.insights.map((ins, i) => {
               const sev = SEVERITY[ins.severity] ?? SEVERITY.info;
@@ -191,17 +191,17 @@ export default function AIInsightsPanel() {
                 >
                   <div className="mb-1 flex items-center gap-2">
                     <span>{sev.icon}</span>
-                    <span className="text-sm font-semibold text-white">{ins.title}</span>
-                    <span className="ml-auto text-[10px] uppercase tracking-wider text-white/30">
+                    <span className="text-sm font-semibold text-acuity-text">{ins.title}</span>
+                    <span className="ml-auto text-[10px] uppercase tracking-wider text-acuity-text-quiet">
                       {ins.category}
                       {ins.affectedUserCount != null
                         ? ` · ${ins.affectedUserCount} users`
                         : ""}
                     </span>
                   </div>
-                  <p className="text-xs text-white/55">{ins.evidence}</p>
-                  <p className="mt-2 text-xs text-white/80">
-                    <span className="font-medium text-white/50">Action: </span>
+                  <p className="text-xs text-acuity-text-ter">{ins.evidence}</p>
+                  <p className="mt-2 text-xs text-acuity-text-sec">
+                    <span className="font-medium text-acuity-text-ter">Action: </span>
                     {ins.recommendedAction}
                   </p>
                 </div>

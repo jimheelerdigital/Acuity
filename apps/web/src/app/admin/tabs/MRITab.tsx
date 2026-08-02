@@ -30,7 +30,7 @@ function Divider() {
   return (
     <div
       aria-hidden
-      style={{ height: 1, background: "rgba(255,255,255,0.06)" }}
+      style={{ height: 1, background: "var(--acuity-bg-inset)" }}
     />
   );
 }

@@ -206,6 +206,7 @@ export async function getOverview(
     signupsOverTime,
     aiByPurpose,
     recentRedFlags,
+    wauRows,
   ] = await Promise.all([
     // Signups this period
     prisma.user.count({
@@ -279,6 +280,14 @@ export async function getOverview(
       orderBy: { createdAt: "desc" },
       take: 10,
     }).catch(() => []),
+    // WAU — distinct users with an entry in the trailing 7 days. The
+    // Overview "Active Users (Week)" card previously rendered `signups`
+    // (a copy-paste bug); this gives it a real value.
+    prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(DISTINCT "userId")::bigint as count
+      FROM "Entry"
+      WHERE "createdAt" >= ${new Date(Date.now() - 7 * 86400000)}
+    `.catch(() => [{ count: BigInt(0) }]),
   ]);
 
   const conversionRate =
@@ -333,6 +342,7 @@ export async function getOverview(
   return {
     signups,
     prevSignups,
+    wau: Number(wauRows[0]?.count ?? 0),
     payingSubs,
     prevPayingSubs,
     conversionRate: Math.round(conversionRate * 10) / 10,
@@ -876,7 +886,7 @@ async function getAICosts(
   end: Date,
   monthStart: Date
 ) {
-  const [mtdSpend, byPurpose, byDay, recentCalls] = await Promise.all([
+  const [mtdSpend, byPurpose, byDay, recentCalls, perUserRows] = await Promise.all([
     prisma.$queryRaw<{ total: bigint | null }[]>`
       SELECT COALESCE(SUM("costCents"), 0)::bigint as total
       FROM "ClaudeCallLog"
@@ -904,6 +914,20 @@ async function getAICosts(
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
+    // Per-user MTD cost attribution. AICostsTab has a "Per-User Costs"
+    // section that only renders when this field is present — the API
+    // never returned it, so the section was invisible since launch.
+    prisma.$queryRaw<{ userId: string; email: string; total: bigint; calls: bigint }[]>`
+      SELECT c."userId", u.email,
+             COALESCE(SUM(c."costCents"), 0)::bigint as total,
+             COUNT(*)::bigint as calls
+      FROM "ClaudeCallLog" c
+      JOIN "User" u ON u.id = c."userId"
+      WHERE c."createdAt" >= ${monthStart} AND c."userId" IS NOT NULL
+      GROUP BY c."userId", u.email
+      ORDER BY total DESC
+      LIMIT 100
+    `.catch(() => []),
   ]);
 
   return {
@@ -922,6 +946,12 @@ async function getAICosts(
     recentCalls: recentCalls.map((c: { createdAt: Date; [key: string]: unknown }) => ({
       ...c,
       createdAt: c.createdAt.toISOString(),
+    })),
+    perUserCosts: perUserRows.map((r: { userId: string; email: string; total: bigint; calls: bigint }) => ({
+      userId: r.userId,
+      email: r.email,
+      totalCostCents: Number(r.total),
+      callCount: Number(r.calls),
     })),
   };
 }
@@ -965,6 +995,7 @@ export async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
     mrrOverTime,
     payingUsersOverTime,
     cohorts,
+    medianTimeToFirstRecording,
   ] = await Promise.all([
     // Weekly signups
     prisma.$queryRaw<{ week: string; count: bigint }[]>`
@@ -1107,6 +1138,21 @@ export async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
       GROUP BY c.cohort_week
       ORDER BY c.cohort_week ASC
     `.catch(() => []),
+
+    // Median hours from signup → first recording, by signup week.
+    // GrowthMetricsTab has rendered this chart since launch but the API
+    // never returned the field, so it always showed "Not enough data".
+    prisma.$queryRaw<{ week: string; hours: number }[]>`
+      SELECT DATE_TRUNC('week', "createdAt")::date::text as week,
+        ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (
+          ORDER BY EXTRACT(EPOCH FROM ("firstRecordingAt" - "createdAt")) / 3600
+        ))::numeric, 1)::float as hours
+      FROM "User"
+      WHERE "firstRecordingAt" IS NOT NULL
+        AND "createdAt" >= ${start} AND "createdAt" <= ${end}
+      GROUP BY DATE_TRUNC('week', "createdAt")
+      ORDER BY week ASC
+    `.catch(() => []),
   ]);
 
   // Projections based on recent growth rate
@@ -1199,6 +1245,10 @@ export async function getGrowthMetrics(prisma: P, start: Date, end: Date) {
       neverOpened: r.never_opened,
     })),
     projections,
+    medianTimeToFirstRecording: medianTimeToFirstRecording.map((r: { week: string; hours: number }) => ({
+      week: r.week,
+      hours: Number(r.hours),
+    })),
   };
 }
 

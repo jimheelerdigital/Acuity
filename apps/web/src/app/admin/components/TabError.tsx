@@ -16,14 +16,19 @@ export function TabError({
   onRetry?: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-red-500/20 bg-red-900/10 p-6">
-      <h3 className="text-base font-semibold text-red-300">
+    <div
+      className="rounded-acuity-lg border bg-acuity-bad-soft p-6"
+      style={{
+        borderColor: "color-mix(in oklch, var(--acuity-bad), transparent 75%)",
+      }}
+    >
+      <h3 className="text-base font-semibold text-acuity-bad">
         Couldn&rsquo;t load this tab
       </h3>
-      <p className="mt-1 text-sm text-red-300/70">{message}</p>
-      <p className="mt-2 text-xs text-white/40">
+      <p className="mt-1 text-sm text-acuity-text-sec">{message}</p>
+      <p className="mt-2 text-xs text-acuity-text-ter">
         If this keeps happening, check the function logs for{" "}
-        <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono">
+        <code className="rounded bg-acuity-bg-inset px-1.5 py-0.5 font-mono">
           /api/admin/metrics
         </code>
         .
@@ -31,7 +36,7 @@ export function TabError({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-4 rounded-md bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/20"
+          className="mt-4 rounded-acuity-pill border border-acuity-line-strong bg-acuity-bg-sub px-4 py-1.5 text-sm font-medium text-acuity-text transition hover:border-acuity-line-strong hover:bg-acuity-bg-inset"
         >
           Retry
         </button>

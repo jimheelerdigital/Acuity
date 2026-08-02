@@ -80,7 +80,7 @@ export default function NewExperimentPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 text-[#A0A0B8] animate-spin" />
+        <Loader2 className="h-6 w-6 text-acuity-text-ter animate-spin" />
       </div>
     );
   }
@@ -88,31 +88,31 @@ export default function NewExperimentPage() {
   return (
     <>
       <h1 className="text-2xl font-bold text-white mb-1">New Experiment</h1>
-      <p className="text-sm text-[#A0A0B8] mb-8">
+      <p className="text-sm text-acuity-text-ter mb-8">
         Write a topic brief and the research agent will generate angle hypotheses.
       </p>
 
       {projects.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/20 bg-[#13131F] p-8 text-center">
-          <p className="text-sm text-[#A0A0B8]">
+        <div className="rounded-acuity-lg border border-dashed border-acuity-line-strong bg-acuity-card-bg p-8 text-center">
+          <p className="text-sm text-acuity-text-ter">
             Create a project first before running experiments.
           </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
           {error && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            <div className="rounded-lg border border-acuity-bad bg-acuity-bad-soft px-4 py-3 text-sm text-acuity-bad">
               {error}
             </div>
           )}
 
-          <div className="rounded-xl border border-white/10 bg-[#13131F] p-6 space-y-4">
+          <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-6 space-y-4">
             <div>
-              <label className="block text-xs text-[#A0A0B8] mb-1.5">Project</label>
+              <label className="block text-xs text-acuity-text-ter mb-1.5">Project</label>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
+                className="w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white outline-none focus:border-acuity-primary"
               >
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -123,26 +123,26 @@ export default function NewExperimentPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-[#A0A0B8] mb-1.5">Topic Brief</label>
+              <label className="block text-xs text-acuity-text-ter mb-1.5">Topic Brief</label>
               <textarea
                 value={topicBrief}
                 onChange={(e) => setTopicBrief(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-[#8E6FE6] min-h-[120px]"
+                className="w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white placeholder-[#A0A0B8]/50 outline-none focus:border-acuity-primary min-h-[120px]"
                 placeholder="e.g. Test pain-point hooks against outcome hooks for Founder/Executive persona, focused on Weekly Report value surface"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-[#A0A0B8] mb-1.5">Campaign Type</label>
+              <label className="block text-xs text-acuity-text-ter mb-1.5">Campaign Type</label>
               <select
                 value={campaignType}
                 onChange={(e) => setCampaignType(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
+                className="w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white outline-none focus:border-acuity-primary"
               >
                 <option value="website">Website conversion (default)</option>
                 <option value="app_install">App install</option>
               </select>
-              <p className="mt-1 text-xs text-[#A0A0B8]/60">
+              <p className="mt-1 text-xs text-acuity-text-quiet">
                 {campaignType === "app_install"
                   ? "Links to App Store. Uses OUTCOME_APP_PROMOTION objective."
                   : "Links to landing page or funnel with UTM tracking."}
@@ -151,16 +151,16 @@ export default function NewExperimentPage() {
 
             {campaignType === "website" && (
               <div>
-                <label className="block text-xs text-[#A0A0B8] mb-1.5">Destination</label>
+                <label className="block text-xs text-acuity-text-ter mb-1.5">Destination</label>
                 <select
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
+                  className="w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white outline-none focus:border-acuity-primary"
                 >
                   <option value="direct_funnel">Direct to Funnel (/start) — recommended</option>
                   <option value="landing_page">Landing Page (/for/*)</option>
                 </select>
-                <p className="mt-1 text-xs text-[#A0A0B8]/60">
+                <p className="mt-1 text-xs text-acuity-text-quiet">
                   {destination === "direct_funnel"
                     ? "Ad clicks go directly to the 15-screen onboarding funnel. Best for conversion."
                     : "Ad clicks go to a generated landing page. CTA on the page sends to /start with UTMs."}
@@ -170,17 +170,17 @@ export default function NewExperimentPage() {
 
             {campaignType === "website" && (
               <div>
-                <label className="block text-xs text-[#A0A0B8] mb-1.5">Campaign Objective</label>
+                <label className="block text-xs text-acuity-text-ter mb-1.5">Campaign Objective</label>
                 <select
                   value={campaignObjective}
                   onChange={(e) => setCampaignObjective(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#1E1E2E] px-3 py-2 text-sm text-white outline-none focus:border-[#8E6FE6]"
+                  className="w-full rounded-lg border border-acuity-line bg-acuity-card-bg-raised px-3 py-2 text-sm text-white outline-none focus:border-acuity-primary"
                 >
                   <option value="OUTCOME_TRAFFIC">Traffic (Link Clicks) — recommended</option>
                   <option value="OUTCOME_TRAFFIC_LPV">Traffic (Landing Page Views)</option>
                   <option value="OUTCOME_SALES">Conversions (Complete Registration)</option>
                 </select>
-                <p className="mt-1 text-xs text-[#A0A0B8]/60">
+                <p className="mt-1 text-xs text-acuity-text-quiet">
                   {campaignObjective === "OUTCOME_TRAFFIC"
                     ? "Optimizes for link clicks. Best for new accounts and creative testing. Delivers immediately."
                     : campaignObjective === "OUTCOME_TRAFFIC_LPV"
@@ -194,7 +194,7 @@ export default function NewExperimentPage() {
           <button
             type="submit"
             disabled={submitting || !topicBrief.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#8E6FE6] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-acuity-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {researching

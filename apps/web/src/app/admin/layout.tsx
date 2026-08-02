@@ -27,11 +27,12 @@ export default async function AdminLayout({
   }
 
   return (
-    // Wrapper carries the dark bg so the topbar's translucent backdrop-
-    // blur lands on dark even before child page paint. We do NOT set
-    // min-h-screen here because the child admin-dashboard page already
-    // does — stacking both would make the page exceed viewport by 68px.
-    <div className="bg-[#0A0A0F]">
+    // data-theme="dark" forces the Ripple dark token set for the whole
+    // admin subtree (tokens.css scopes dark vars to any [data-theme=
+    // "dark"] element), independent of the user's app theme. We do NOT
+    // set min-h-screen here because the child admin-dashboard page
+    // already does — stacking both would exceed viewport by 68px.
+    <div data-theme="dark" className="bg-acuity-bg text-acuity-text">
       <AdminTopbar />
       {children}
     </div>

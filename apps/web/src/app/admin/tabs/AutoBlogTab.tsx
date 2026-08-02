@@ -49,11 +49,11 @@ interface AutoBlogData {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  AUTO_PUBLISHED: "bg-emerald-500/20 text-emerald-400",
-  PRUNED_DAY7: "bg-red-500/20 text-red-400",
+  AUTO_PUBLISHED: "bg-acuity-good-soft text-acuity-good",
+  PRUNED_DAY7: "bg-acuity-bad-soft text-acuity-bad",
   PRUNED_DAY30: "bg-orange-500/20 text-orange-400",
-  PRUNED_DAY90: "bg-amber-500/20 text-amber-400",
-  GENERATION_FAILED: "bg-red-500/20 text-red-300",
+  PRUNED_DAY90: "bg-acuity-warn-soft text-acuity-warn",
+  GENERATION_FAILED: "bg-acuity-bad-soft text-acuity-bad",
 };
 
 export default function AutoBlogTab() {
@@ -210,7 +210,7 @@ export default function AutoBlogTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-[#8E6FE6]" />
+        <div className="h-6 w-6 animate-spin rounded-acuity-pill border-2 border-acuity-line-strong border-t-acuity-primary" />
       </div>
     );
   }
@@ -230,7 +230,7 @@ export default function AutoBlogTab() {
       {/* Header + Actions */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white">Auto Blog</h2>
+          <h2 className="text-lg font-semibold text-acuity-text">Auto Blog</h2>
           <p className="text-sm text-zinc-400">
             {stats.totalPublished} published, {stats.totalPruned} pruned
           </p>
@@ -239,28 +239,28 @@ export default function AutoBlogTab() {
           <button
             onClick={handleSyncGsc}
             disabled={syncingGsc}
-            className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-50"
+            className="rounded-lg border border-acuity-good bg-acuity-good-soft px-4 py-2 text-sm text-acuity-good transition hover:bg-acuity-good-soft disabled:opacity-50"
           >
             {syncingGsc ? "Syncing..." : "Sync GSC Data"}
           </button>
           <button
             onClick={handleFixYears}
             disabled={fixingYears}
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:text-white hover:border-white/20 disabled:opacity-50"
+            className="rounded-lg border border-acuity-line px-4 py-2 text-sm text-zinc-400 transition hover:text-acuity-text hover:border-acuity-line-strong disabled:opacity-50"
           >
             {fixingYears ? "Fixing..." : "Fix Year References"}
           </button>
           <button
             onClick={handleBackfill}
             disabled={backfilling}
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:text-white hover:border-white/20 disabled:opacity-50"
+            className="rounded-lg border border-acuity-line px-4 py-2 text-sm text-zinc-400 transition hover:text-acuity-text hover:border-acuity-line-strong disabled:opacity-50"
           >
             {backfilling ? "Backfilling..." : "Backfill Missing Images"}
           </button>
           <button
             onClick={handleGenerateNow}
             disabled={generating}
-            className="rounded-lg bg-[#8E6FE6] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#7D62CA] disabled:opacity-50"
+            className="rounded-lg bg-acuity-primary px-4 py-2 text-sm font-medium text-acuity-text transition hover:opacity-90 disabled:opacity-50"
           >
             {generating ? "Generating..." : "Generate Now"}
           </button>
@@ -269,39 +269,39 @@ export default function AutoBlogTab() {
 
       {/* Action results */}
       {fixYearsResult && (
-        <div className="rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6]">
+        <div className="rounded-lg border border-acuity-primary bg-acuity-primary-soft px-4 py-2 text-sm text-acuity-primary">
           {fixYearsResult}
         </div>
       )}
       {backfillResult && (
-        <div className="rounded-lg border border-[#8E6FE6]/30 bg-[#8E6FE6]/10 px-4 py-2 text-sm text-[#8E6FE6]">
+        <div className="rounded-lg border border-acuity-primary bg-acuity-primary-soft px-4 py-2 text-sm text-acuity-primary">
           {backfillResult}
         </div>
       )}
       {gscSyncResult && (
-        <div className={`rounded-lg border px-4 py-2 text-sm ${gscSyncResult.startsWith("Error") ? "border-red-500/30 bg-red-500/10 text-red-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}`}>
+        <div className={`rounded-lg border px-4 py-2 text-sm ${gscSyncResult.startsWith("Error") ? "border-acuity-bad bg-acuity-bad-soft text-acuity-bad" : "border-acuity-good bg-acuity-good-soft text-acuity-good"}`}>
           {gscSyncResult}
         </div>
       )}
 
       {/* Topic Queue */}
-      <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-5">
-        <h3 className="mb-3 text-sm font-semibold text-white">Topic Queue</h3>
+      <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg-raised p-5">
+        <h3 className="mb-3 text-sm font-semibold text-acuity-text">Topic Queue</h3>
         <div className="grid grid-cols-4 gap-4 text-center">
           <div>
-            <p className="text-2xl font-bold text-emerald-400">
+            <p className="text-2xl font-bold text-acuity-good">
               {topicQueue.queued}
             </p>
             <p className="text-xs text-zinc-500">Queued</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-amber-400">
+            <p className="text-2xl font-bold text-acuity-warn">
               {topicQueue.inProgress}
             </p>
             <p className="text-xs text-zinc-500">In Progress</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-blue-400">
+            <p className="text-2xl font-bold text-acuity-secondary">
               {topicQueue.published}
             </p>
             <p className="text-xs text-zinc-500">Published</p>
@@ -316,8 +316,8 @@ export default function AutoBlogTab() {
       </div>
 
       {/* GSC + Indexing Health */}
-      <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-5">
-        <h3 className="mb-3 text-sm font-semibold text-white">
+      <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg-raised p-5">
+        <h3 className="mb-3 text-sm font-semibold text-acuity-text">
           Google API Health
         </h3>
         <div className="space-y-2 text-sm">
@@ -338,8 +338,8 @@ export default function AutoBlogTab() {
             <span
               className={
                 indexingHealth.recentFailures > 0
-                  ? "text-red-400"
-                  : "text-emerald-400"
+                  ? "text-acuity-bad"
+                  : "text-acuity-good"
               }
             >
               {indexingHealth.recentFailures}
@@ -349,8 +349,8 @@ export default function AutoBlogTab() {
       </div>
 
       {/* Recent Posts */}
-      <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-5">
-        <h3 className="mb-3 text-sm font-semibold text-white">
+      <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg-raised p-5">
+        <h3 className="mb-3 text-sm font-semibold text-acuity-text">
           Recent Auto-Blog Posts
         </h3>
         {recentPosts.length === 0 ? (
@@ -359,7 +359,7 @@ export default function AutoBlogTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs text-zinc-500">
+                <tr className="border-b border-acuity-line text-left text-xs text-zinc-500">
                   <th className="pb-2 pr-4">Title</th>
                   <th className="pb-2 pr-4">Published</th>
                   <th className="pb-2 pr-4 text-right">Imp</th>
@@ -375,7 +375,7 @@ export default function AutoBlogTab() {
                 {recentPosts.map((post) => (
                   <tr
                     key={post.id}
-                    className="border-b border-white/5"
+                    className="border-b border-acuity-line"
                   >
                     <td className="py-2 pr-4">
                       <div className="max-w-xs truncate text-zinc-200">
@@ -384,7 +384,7 @@ export default function AutoBlogTab() {
                             href={`/blog/${post.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-[#8E6FE6] hover:underline"
+                            className="hover:text-acuity-primary hover:underline"
                           >
                             {post.title}
                           </a>
@@ -417,7 +417,7 @@ export default function AutoBlogTab() {
                     </td>
                     <td className="py-2 pr-4">
                       <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[post.status] ?? "bg-zinc-500/20 text-zinc-400"}`}
+                        className={`inline-block rounded-acuity-pill px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[post.status] ?? "bg-zinc-500/20 text-zinc-400"}`}
                       >
                         {post.status.replace(/_/g, " ")}
                       </span>
@@ -434,14 +434,14 @@ export default function AutoBlogTab() {
                             <button
                               onClick={() => handleRegenImage(post.id)}
                               disabled={regenImageId === post.id}
-                              className="rounded px-2 py-1 text-xs text-[#8E6FE6] transition hover:bg-[#8E6FE6]/10 disabled:opacity-50"
+                              className="rounded px-2 py-1 text-xs text-acuity-primary transition hover:bg-acuity-primary-soft disabled:opacity-50"
                             >
                               {regenImageId === post.id ? "..." : "Regen Image"}
                             </button>
                             <button
                               onClick={() => handleKill(post.id)}
                               disabled={killingId === post.id}
-                              className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                              className="rounded px-2 py-1 text-xs text-acuity-bad transition hover:bg-acuity-bad-soft disabled:opacity-50"
                             >
                               {killingId === post.id ? "..." : "Kill"}
                             </button>
@@ -451,7 +451,7 @@ export default function AutoBlogTab() {
                           <button
                             onClick={() => handleRetry(post.id)}
                             disabled={retryingId === post.id}
-                            className="rounded px-2 py-1 text-xs text-amber-400 transition hover:bg-amber-500/10 disabled:opacity-50"
+                            className="rounded px-2 py-1 text-xs text-acuity-warn transition hover:bg-acuity-warn-soft disabled:opacity-50"
                           >
                             {retryingId === post.id ? "..." : "Retry"}
                           </button>
@@ -468,13 +468,13 @@ export default function AutoBlogTab() {
 
       {/* Prune Log */}
       {pruneLogs.length > 0 && (
-        <div className="rounded-xl border border-white/10 bg-[#1E1E2E] p-5">
-          <h3 className="mb-3 text-sm font-semibold text-white">Prune Log</h3>
+        <div className="rounded-acuity-lg border border-acuity-line bg-acuity-card-bg-raised p-5">
+          <h3 className="mb-3 text-sm font-semibold text-acuity-text">Prune Log</h3>
           <div className="space-y-2">
             {pruneLogs.map((log) => (
               <div
                 key={log.id}
-                className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-lg bg-acuity-bg-inset px-3 py-2 text-sm"
               >
                 <div>
                   <span className="text-zinc-300">
