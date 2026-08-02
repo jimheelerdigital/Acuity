@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-02] — Content Factory Phase 2: mobile-first review + edit text + mark posted
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6d4aba34
+
+### In plain English (for Keenan)
+The carousel review page is now designed for your phone. Every morning you open one page, see a daily summary (how many carousels were generated, how many you've approved, cost), then swipe through each carousel's slides horizontally. At the bottom of the screen: Approve, Reject, Download ZIP, or Copy Caption — all thumb-reachable. If a slide has a bad phrase, tap "Edit text" right on the slide, fix the wording, and it re-generates the image with your new text. Once you approve a carousel and manually post it to TikTok, tap "Posted" so you never double-post. The old desktop grid is still there as a secondary "All Carousels" view with status filters.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: full rewrite. Review mode (mobile default): one carousel per screen, `SlideStrip` component with CSS `snap-x snap-mandatory` horizontal scroll, dot indicators tracking scroll position, inline edit-text form. Fixed bottom action bar with `env(safe-area-inset-bottom)`, all touch targets 44px+. "Ready to post" horizontal strip for approved carousels with mark-posted + ZIP buttons. Daily summary bar. Secondary "All" grid view with status filter dropdown
+- `apps/web/src/app/api/admin/carousels/route.ts`: added `edit-text` action (calls `recomposeSlide`), `mark-posted` action (sets status=POSTED). GET response now includes `summary` object with today's draft/approved/rejected/posted counts + `estimatedCostCents`
+- `apps/web/src/app/api/admin/carousels/download/route.ts`: ZIP files now named `01-cover.jpg`, `02-reason.jpg` etc. (zero-padded for sort order in Photos); removed subfolder nesting
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: added `recomposeSlide(slideId, newText)` — generates new image with updated prompt text, re-composes text overlay, uploads to Supabase, updates slide's `overlayText` + `imageUrl` in DB
+
+### Manual steps needed
+None — no schema changes, no new env vars. Uses same tables from Phase 1.
+
+### Notes
+- Copy caption uses `navigator.clipboard.writeText` called synchronously inside the click handler (not after an await) to ensure iOS Safari clipboard access works. iOS blocks clipboard writes that happen after async operations
+- "Edit text" re-generates the underlying image because text is composited into the JPEG — you can't strip text from an already-composed image. This costs ~$0.08 per edit. Worth it for fixing typos without regenerating the entire carousel
+- The review mode hides rejected carousels (kept in DB, visible in "All" view). Only DRAFT + APPROVED show in the morning review flow
+- No horizontal page scroll on mobile — the scroll-snap strip is contained within the viewport. `scrollbarWidth: none` hides scrollbar on all platforms
+- Phase 2 does NOT include TikTok API posting — that's Phase 3
+
 ## [2026-08-02] — Content Factory Phase 1: automated daily carousel generation + review queue
 
 **Requested by:** Keenan
