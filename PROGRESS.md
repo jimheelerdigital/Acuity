@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-08-02] — Admin dashboard revamp: Ripple design system, sidebar nav, metric fixes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d5179189
+
+### In plain English (for Keenan)
+The admin dashboard now looks like the rest of Ripple — the coral color system, cleaner cards, and a grouped sidebar (Pulse, Growth, Users, Money, Content, System) instead of the long row of 12 tab pills. Tables can now be sorted by clicking column headers and searched. Three metric bugs got fixed along the way: the "Active Users (Week)" card on Overview was actually showing new signups (so it looked identical to the signups card), the "Median Time to First Recording" chart on Growth always said "Not enough data" because the server never sent that data, and the AI Costs page had a hidden per-user cost breakdown that never appeared for the same reason. All three now show real numbers.
+
+### Technical changes (for Jimmy)
+- Rewrote `apps/web/src/app/admin/admin-dashboard.tsx`: grouped sidebar nav (sticky desktop / horizontal chips mobile), `font-display` page headers, kept all dynamic tab imports + legacy redirect map
+- New shared component `apps/web/src/app/admin/components/DataTable.tsx`: generic sortable/searchable/paginated table; adopted in AICostsTab (recent calls + per-user costs)
+- Re-skinned all shared components (MetricCard, ChartCard, TimeRangeSelector, RefreshButton, SkeletonCard, EmptyState, TabError, DrilldownModal, RecentAdminActions, SafeChart) to `acuity-*` token classes
+- Batch-migrated every admin surface (tabs/, tabs/mri/, adlab/, content-factory/, blog-pruner-log/, loading/error) off hardcoded hex (`#8E6FE6`, `#13131F`, white-alpha classes) to token classes and `var(--acuity-*)` inline styles
+- `apps/web/src/app/api/admin/metrics/route.ts`: `getOverview` now returns `wau` (distinct Entry users, trailing 7d); `getGrowthMetrics` returns `medianTimeToFirstRecording` (PERCENTILE_CONT on firstRecordingAt - createdAt per signup week); `getAICosts` returns `perUserCosts` (ClaudeCallLog grouped by userId, MTD, top 100)
+- `tokens.css`: dark selector extended to bare `[data-theme="dark"]` (admin layout forces dark via wrapper div); added `--acuity-warn-soft`; mapped `warn-soft` in `tailwind.config.ts`
+- Deleted `tabs/FunnelAnalyticsTab.broken.tsx` (665-line dead file) and empty `tabs/GuideTab.tsx` (removed its Settings sub-tab wiring)
+
+### Manual steps needed
+None — no schema changes, no new env vars. Vercel redeploys automatically on push.
+
+### Notes
+- CRITICAL Tailwind gotcha (verified empirically with Tailwind 3.4.4): opacity modifiers on var-based colors (`bg-acuity-primary/10`) silently generate NO CSS. Never use `acuity-*/NN` classes — use the dedicated `-soft` tokens (18% alpha) or inline `color-mix()`. Marketing pages still contain dozens of pre-existing broken instances of this pattern; they render as no-ops and should be cleaned up in a future pass.
+- Audit findings NOT fixed in this pass (flagging for future work): (1) MRR is computed as payingSubs x $4.99 in BOTH getRevenue and getBusinessMetrics — annual subscribers inflate MRR and the two tabs use slightly different payingUsers queries, so Overview and Business Metrics can disagree; consider a single shared MRR helper that prices annual subs at $39.99/12. (2) Overview's `prevPayingSubs` intentionally equals current (no point-in-time history) so the delta always reads "no change" — needs the MetricSnapshot table. (3) OverviewTab declares `tryMet` but the API returns `tryMetrics` — dead code either way, tab never renders it. (4) No tab reports annual-vs-monthly plan split, refunds, or ARR.
+- Local `node_modules` was stale (`driver.js` missing) which made `next build` fail locally — a fresh root `npm install` fixed it; not a repo issue, Vercel unaffected. Kept `package-lock.json` untouched.
+- The adlab pages had pre-existing TypeScript errors (missing video-related state/props) unrelated to this change; `next build` passes because build-time type errors are ignored in config. Baseline error count went 132 → 130 (GuideTab deletion removed two).
+
+
 ## [2026-07-28] — Add app screenshot pack to project
 
 **Requested by:** Keenan
