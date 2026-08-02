@@ -8,7 +8,7 @@
 import { getResendClient } from "@/lib/resend";
 
 const FROM_ADDRESS =
-  process.env.CONTENT_FACTORY_EMAIL_FROM ?? "content@goripple.io";
+  process.env.CONTENT_FACTORY_EMAIL_FROM ?? '"Ripple Content" <content@getacuity.io>';
 const TO_ADDRESS =
   process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital.com";
 const REVIEW_BASE_URL =
