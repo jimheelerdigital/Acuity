@@ -4,7 +4,7 @@
  * Overlays slide text onto raw generated images using an SVG text layer.
  * Bundles Poppins Bold + Medium from /public/fonts/ (no system font dependency).
  *
- * Output: 1080x1350 JPEG, quality 90, < 20MB (TikTok limit).
+ * Output: 1080x1920 JPEG (9:16, TikTok native), quality 90, < 20MB.
  */
 
 import sharp from "sharp";
@@ -12,26 +12,21 @@ import * as fs from "fs";
 import * as path from "path";
 
 const OUTPUT_W = 1080;
-const OUTPUT_H = 1350;
+const OUTPUT_H = 1920; // 9:16 TikTok native
 const CREAM = "#FBFAF6";
 const BURNT_ORANGE = "#F97E4E";
+const PADDING_X = 72; // horizontal padding for text
+const TEXT_AREA_W = OUTPUT_W - PADDING_X * 2; // usable text width
 
-// Read the font files once and base64-encode for SVG embedding.
-// In serverless (Vercel), process.cwd() points to the app root where
-// /public is accessible. We cache the result so it's only read once per
-// cold start.
 let _fontBoldB64: string | null = null;
 let _fontMediumB64: string | null = null;
 
 function loadFonts() {
   if (_fontBoldB64) return;
-
-  // Try multiple paths — local dev vs Vercel build
   const candidates = [
     path.join(process.cwd(), "public", "fonts"),
     path.join(process.cwd(), ".next", "server", "public", "fonts"),
   ];
-
   let fontsDir = "";
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, "Poppins-Bold.ttf"))) {
@@ -39,14 +34,12 @@ function loadFonts() {
       break;
     }
   }
-
   if (!fontsDir) {
     console.warn("[compose] Poppins fonts not found — text overlay will use fallback sans-serif");
     _fontBoldB64 = "";
     _fontMediumB64 = "";
     return;
   }
-
   _fontBoldB64 = fs.readFileSync(path.join(fontsDir, "Poppins-Bold.ttf")).toString("base64");
   _fontMediumB64 = fs.readFileSync(path.join(fontsDir, "Poppins-Medium.ttf")).toString("base64");
 }
@@ -77,15 +70,10 @@ function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-/**
- * Word-wrap text to fit within maxWidth at a given font size.
- * Returns an array of lines. Simple greedy algorithm.
- */
 function wordWrap(text: string, maxCharsPerLine: number): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
   let current = "";
-
   for (const word of words) {
     if (current.length + word.length + 1 > maxCharsPerLine && current.length > 0) {
       lines.push(current);
@@ -100,8 +88,12 @@ function wordWrap(text: string, maxCharsPerLine: number): string[] {
 
 /**
  * Compose text overlay onto a raw generated image.
- * Layout: text in lower third, max 3 lines, cream-white text,
- * bottom-up dark gradient scrim for legibility.
+ *
+ * COVER: headline centred in lower 40% with full-height scrim.
+ * REASON: text in the bottom quarter with bottom-up scrim.
+ *
+ * Text has generous padding (72px sides), wide line-height (1.45),
+ * and a strong gradient scrim for legibility.
  */
 export async function composeSlide(
   rawImage: Buffer,
@@ -109,32 +101,43 @@ export async function composeSlide(
   kind: "COVER" | "REASON"
 ): Promise<Buffer> {
   const isCover = kind === "COVER";
-  const fontSize = isCover ? 56 : 44;
+  const fontSize = isCover ? 64 : 48;
   const fontWeight = isCover ? 700 : 500;
-  const maxChars = isCover ? 22 : 28;
-  const lineHeight = fontSize * 1.25;
-  const lines = wordWrap(text, maxChars);
+  // Approximate chars per line at this font size within the padded area
+  const maxChars = isCover ? 20 : 26;
+  const lineSpacing = fontSize * 1.45;
+
+  let lines = wordWrap(text, maxChars);
 
   // Auto-shrink if more than 3 lines
   let actualFontSize = fontSize;
-  let actualLines = lines;
   if (lines.length > 3) {
-    actualFontSize = Math.floor(fontSize * 0.8);
-    actualLines = wordWrap(text, Math.floor(maxChars * 1.3));
+    actualFontSize = Math.floor(fontSize * 0.78);
+    lines = wordWrap(text, Math.floor(maxChars * 1.3));
   }
-  const actualLineHeight = actualFontSize * 1.25;
+  const actualLineSpacing = actualFontSize * 1.45;
 
-  // Text block vertical positioning: lower third for REASON, centred for COVER
-  const textBlockHeight = actualLines.length * actualLineHeight;
-  const textY = isCover
-    ? (OUTPUT_H - textBlockHeight) / 2 // centre vertically
-    : OUTPUT_H - 120 - textBlockHeight; // lower third, 120px from bottom
-  const textAlign = isCover ? "middle" : "start";
-  const textX = isCover ? OUTPUT_W / 2 : 60;
+  const textBlockH = lines.length * actualLineSpacing;
 
-  // Gradient scrim: bottom-up dark overlay for text legibility
-  const scrimHeight = isCover ? OUTPUT_H : Math.max(400, textBlockHeight + 240);
-  const scrimY = OUTPUT_H - scrimHeight;
+  // Vertical position
+  let textY: number;
+  if (isCover) {
+    // Centre in the lower 40% of the frame
+    const lowerZoneTop = OUTPUT_H * 0.55;
+    const lowerZoneH = OUTPUT_H * 0.35;
+    textY = lowerZoneTop + (lowerZoneH - textBlockH) / 2;
+  } else {
+    // Bottom quarter, 160px from bottom edge
+    textY = OUTPUT_H - 160 - textBlockH;
+  }
+
+  const textX = isCover ? OUTPUT_W / 2 : PADDING_X;
+  const anchor = isCover ? "middle" : "start";
+
+  // Scrim: covers bottom 60% for cover, bottom 45% for reason
+  const scrimPct = isCover ? 0.65 : 0.50;
+  const scrimH = Math.round(OUTPUT_H * scrimPct);
+  const scrimY = OUTPUT_H - scrimH;
 
   const svgOverlay = `
     <svg width="${OUTPUT_W}" height="${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
@@ -142,19 +145,20 @@ export async function composeSlide(
         <style>${fontFaceDeclarations()}</style>
         <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="rgba(0,0,0,0)" />
-          <stop offset="40%" stop-color="rgba(0,0,0,0.3)" />
-          <stop offset="100%" stop-color="rgba(0,0,0,0.7)" />
+          <stop offset="30%" stop-color="rgba(0,0,0,0.25)" />
+          <stop offset="70%" stop-color="rgba(0,0,0,0.6)" />
+          <stop offset="100%" stop-color="rgba(0,0,0,0.8)" />
         </linearGradient>
       </defs>
-      <rect x="0" y="${scrimY}" width="${OUTPUT_W}" height="${scrimHeight}" fill="url(#scrim)" />
-      ${actualLines
+      <rect x="0" y="${scrimY}" width="${OUTPUT_W}" height="${scrimH}" fill="url(#scrim)" />
+      ${lines
         .map(
           (line, i) =>
-            `<text x="${textX}" y="${textY + i * actualLineHeight + actualFontSize}"
+            `<text x="${textX}" y="${textY + i * actualLineSpacing + actualFontSize}"
                    font-family="Poppins, sans-serif" font-weight="${fontWeight}"
                    font-size="${actualFontSize}" fill="${CREAM}"
-                   text-anchor="${textAlign}"
-                   filter="drop-shadow(0 2px 4px rgba(0,0,0,0.5))">${escapeXml(line)}</text>`
+                   text-anchor="${anchor}"
+                   filter="drop-shadow(0 3px 6px rgba(0,0,0,0.6))">${escapeXml(line)}</text>`
         )
         .join("\n")}
     </svg>
@@ -175,16 +179,19 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
   const logoPath = path.join(process.cwd(), "public", "ripple-mark-coral-t.png");
   let logoBuffer: Buffer | null = null;
   if (fs.existsSync(logoPath)) {
-    // Resize logo to fit nicely — 200px wide, preserve aspect
     logoBuffer = await sharp(logoPath)
-      .resize(200, undefined, { fit: "inside" })
+      .resize(240, undefined, { fit: "inside" })
       .png()
       .toBuffer();
   }
 
-  const logoHeight = 200;
-  const logoY = OUTPUT_H / 2 - logoHeight - 40;
-  const subtitleY = OUTPUT_H / 2 + 60;
+  const logoDisplayH = 240;
+  const centerY = OUTPUT_H / 2;
+  const logoY = centerY - logoDisplayH - 30;
+  const ctaY = centerY + 80;
+
+  const ctaLines = wordWrap(ctaText, 24);
+  const ctaLineH = 48;
 
   const svgBg = `
     <svg width="${OUTPUT_W}" height="${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
@@ -192,37 +199,41 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
         <style>${fontFaceDeclarations()}</style>
       </defs>
       <rect width="${OUTPUT_W}" height="${OUTPUT_H}" fill="${BURNT_ORANGE}" />
-      <text x="${OUTPUT_W / 2}" y="${subtitleY}"
-            font-family="Poppins, sans-serif" font-weight="700" font-size="38"
-            fill="${CREAM}" text-anchor="middle">${escapeXml(ctaText)}</text>
-      <text x="${OUTPUT_W / 2}" y="${subtitleY + 52}"
-            font-family="Poppins, sans-serif" font-weight="500" font-size="22"
+      ${ctaLines
+        .map(
+          (line, i) =>
+            `<text x="${OUTPUT_W / 2}" y="${ctaY + i * ctaLineH}"
+                   font-family="Poppins, sans-serif" font-weight="700" font-size="42"
+                   fill="${CREAM}" text-anchor="middle">${escapeXml(line)}</text>`
+        )
+        .join("\n")}
+      <text x="${OUTPUT_W / 2}" y="${ctaY + ctaLines.length * ctaLineH + 50}"
+            font-family="Poppins, sans-serif" font-weight="500" font-size="24"
             fill="rgba(251,250,246,0.8)" text-anchor="middle">Free on iPhone &amp; Android</text>
     </svg>
   `;
 
-  let composite: sharp.OverlayOptions[] = [
+  const composite: sharp.OverlayOptions[] = [
     { input: Buffer.from(svgBg), top: 0, left: 0 },
   ];
 
   if (logoBuffer) {
     const logoMeta = await sharp(logoBuffer).metadata();
-    const logoW = logoMeta.width ?? 200;
-    const logoH = logoMeta.height ?? 200;
+    const logoW = logoMeta.width ?? 240;
+    const logoH = logoMeta.height ?? 240;
     composite.push({
       input: logoBuffer,
-      top: Math.round(logoY + (logoHeight - logoH) / 2),
+      top: Math.round(logoY + (logoDisplayH - logoH) / 2),
       left: Math.round((OUTPUT_W - logoW) / 2),
     });
   }
 
-  // Create a blank canvas and composite everything
   return sharp({
     create: {
       width: OUTPUT_W,
       height: OUTPUT_H,
       channels: 3,
-      background: { r: 249, g: 126, b: 78 }, // BURNT_ORANGE
+      background: { r: 249, g: 126, b: 78 },
     },
   })
     .composite(composite)

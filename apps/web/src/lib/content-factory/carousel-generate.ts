@@ -197,7 +197,7 @@ async function generateImage(prompt: string): Promise<Buffer> {
     model: "gpt-image-2",
     prompt,
     n: 1,
-    size: "1024x1536", // 3:4 portrait for TikTok/Instagram carousels
+    size: "1024x1792", // 9:16 portrait — native TikTok carousel dimensions
   });
 
   const b64 = response.data?.[0]?.b64_json;
