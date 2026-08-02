@@ -13,8 +13,15 @@ export const maxDuration = 60;
  */
 export async function GET(req: NextRequest) {
   const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.isAdmin) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const me = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isAdmin: true },
+  });
+  if (!me?.isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const postId = new URL(req.url).searchParams.get("postId");
