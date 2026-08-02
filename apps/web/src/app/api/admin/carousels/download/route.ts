@@ -32,9 +32,9 @@ export async function GET(req: NextRequest) {
   }
 
   const zip = new JSZip();
-  const folder = zip.folder(post.topicSlug)!;
 
-  // Download each slide image and add to ZIP
+  // Download each slide image and add to ZIP.
+  // Named 01-cover.jpg, 02-reason.jpg ... 09-cta.jpg so Photos preserves order.
   for (const slide of post.slides) {
     try {
       const res = await fetch(slide.imageUrl);
@@ -43,15 +43,15 @@ export async function GET(req: NextRequest) {
         continue;
       }
       const buf = Buffer.from(await res.arrayBuffer());
-      const ext = slide.imageUrl.endsWith(".png") ? "png" : "jpg";
-      folder.file(`slide-${slide.order}-${slide.kind.toLowerCase()}.${ext}`, buf);
+      const num = String(slide.order + 1).padStart(2, "0");
+      zip.file(`${num}-${slide.kind.toLowerCase()}.jpg`, buf);
     } catch (err) {
       console.warn(`[carousel-download] Error fetching slide ${slide.id}:`, err);
     }
   }
 
   // Add caption as a text file
-  folder.file("caption.txt", post.caption);
+  zip.file("caption.txt", post.caption);
 
   const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
 

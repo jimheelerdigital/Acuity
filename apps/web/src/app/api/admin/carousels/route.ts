@@ -35,7 +35,30 @@ export async function GET(req: NextRequest) {
     take: 50,
   });
 
-  return NextResponse.json({ posts });
+  // Daily summary: stats for today's generation run
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 86_400_000);
+  const todayPosts = await prisma.carouselPost.findMany({
+    where: { generatedFor: { gte: today, lt: tomorrow } },
+    select: { status: true, slides: { select: { id: true } } },
+  });
+
+  const summary = {
+    date: today.toISOString().slice(0, 10),
+    drafts: todayPosts.filter((p) => p.status === "DRAFT").length,
+    approved: todayPosts.filter((p) => p.status === "APPROVED").length,
+    rejected: todayPosts.filter((p) => p.status === "REJECTED").length,
+    posted: todayPosts.filter((p) => p.status === "POSTED").length,
+    total: todayPosts.length,
+    // Each image slide (non-CTA) costs ~$0.08
+    estimatedCostCents: todayPosts.reduce(
+      (acc, p) => acc + (p.slides.length > 0 ? (p.slides.length - 1) * 8 : 0),
+      0
+    ),
+  };
+
+  return NextResponse.json({ posts, summary });
 }
 
 /**
@@ -48,11 +71,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { action, postId, slideId, topicSlug } = body as {
+  const { action, postId, slideId, topicSlug, newText } = body as {
     action: string;
     postId?: string;
     slideId?: string;
     topicSlug?: string;
+    newText?: string;
   };
 
   switch (action) {
@@ -79,6 +103,22 @@ export async function POST(req: NextRequest) {
       const { regenerateSlide } = await import("@/lib/content-factory/carousel-generate");
       const newUrl = await regenerateSlide(slideId);
       return NextResponse.json({ ok: true, imageUrl: newUrl });
+    }
+
+    case "mark-posted": {
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      await prisma.carouselPost.update({
+        where: { id: postId },
+        data: { status: "POSTED" },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "edit-text": {
+      if (!slideId || !newText) return NextResponse.json({ error: "slideId and newText required" }, { status: 400 });
+      const { recomposeSlide } = await import("@/lib/content-factory/carousel-generate");
+      const newUrl = await recomposeSlide(slideId, newText);
+      return NextResponse.json({ ok: true, imageUrl: newUrl, overlayText: newText });
     }
 
     case "generate-topic": {

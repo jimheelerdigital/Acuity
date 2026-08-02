@@ -254,3 +254,49 @@ export async function regenerateSlide(slideId: string): Promise<string> {
   console.log(`[carousel] Regenerated slide ${slideId}, ~$0.08 cost`);
   return url;
 }
+
+/**
+ * Edit a slide's overlay text and re-compose (no image regeneration).
+ * Downloads the original raw image from the existing imageUrl, strips
+ * old text by re-composing from scratch. Returns new image URL.
+ */
+export async function recomposeSlide(slideId: string, newText: string): Promise<string> {
+  const { prisma } = await import("@/lib/prisma");
+
+  const slide = await prisma.carouselSlide.findUniqueOrThrow({
+    where: { id: slideId },
+    include: { carouselPost: true },
+  });
+
+  let composed: Buffer;
+
+  if (slide.kind === "CTA") {
+    composed = await composeCTASlide(newText);
+  } else {
+    // Re-generate the raw image from the same prompt and re-compose with new text.
+    // We can't strip text from an already-composed image, so we regenerate the
+    // underlying image. This costs ~$0.08 but gives a clean result.
+    const topic = CAROUSEL_TOPICS.find((t) => t.slug === slide.carouselPost.topicSlug);
+    const lanePrefix = topic ? STYLE_LANES[topic.lane] : STYLE_LANES.cinematicReal;
+    const prompt = slide.imagePrompt || buildImagePrompt(
+      lanePrefix,
+      newText,
+      topic ?? { headline: slide.carouselPost.headline, slug: slide.carouselPost.topicSlug, lane: "cinematicReal", reasons: [] },
+    );
+    const rawBuffer = await generateImage(prompt);
+    composed = await composeSlide(rawBuffer, newText, slide.kind as "COVER" | "REASON");
+  }
+
+  const url = await uploadImage(
+    composed,
+    `carousels/edit/${slide.carouselPostId}/${slideId}.jpg`
+  );
+
+  await prisma.carouselSlide.update({
+    where: { id: slideId },
+    data: { overlayText: newText, imageUrl: url },
+  });
+
+  console.log(`[carousel] Recomposed slide ${slideId} with new text`);
+  return url;
+}
