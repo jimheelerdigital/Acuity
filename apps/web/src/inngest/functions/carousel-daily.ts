@@ -63,6 +63,34 @@ export const carouselDailyCronFn = inngest.createFunction(
         logger.info(
           `[carousel-cron] Generated ${topic.slug}: ${result.slideCount} slides`
         );
+
+        // Email delivery — separate try/catch so email failure never
+        // rolls back a successful generation. Retry once, then log.
+        if (result.slideCount > 0) {
+          try {
+            const { sendCarouselEmail } = await import(
+              "@/lib/content-factory/email"
+            );
+            await sendCarouselEmail(result.postId);
+            logger.info(`[carousel-cron] Emailed ${topic.slug}`);
+          } catch (emailErr) {
+            logger.error(
+              `[carousel-cron] Email failed for ${topic.slug}, retrying once: ${emailErr instanceof Error ? emailErr.message : emailErr}`
+            );
+            // One retry
+            try {
+              const { sendCarouselEmail } = await import(
+                "@/lib/content-factory/email"
+              );
+              await sendCarouselEmail(result.postId);
+              logger.info(`[carousel-cron] Email retry succeeded for ${topic.slug}`);
+            } catch (retryErr) {
+              logger.error(
+                `[carousel-cron] Email retry also failed for ${topic.slug}: ${retryErr instanceof Error ? retryErr.message : retryErr}`
+              );
+            }
+          }
+        }
       } catch (err) {
         logger.error(
           `[carousel-cron] Failed to generate ${topic.slug}: ${err instanceof Error ? err.message : err}`

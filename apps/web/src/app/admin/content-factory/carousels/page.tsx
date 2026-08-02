@@ -22,6 +22,8 @@ interface CarouselPost {
   hashtags: string[];
   musicNote: string | null;
   generatedFor: string;
+  emailedAt: string | null;
+  emailId: string | null;
   slides: Slide[];
   createdAt: string;
 }
@@ -246,12 +248,23 @@ export default function CarouselReviewPage() {
         {/* ── Carousel viewer ──────────────────────────────────────── */}
         {current && (
           <div className="flex flex-1 flex-col">
-            {/* Carousel counter */}
+            {/* Carousel counter + email status */}
             <div className="flex items-center justify-between px-4 pb-2">
               <p className="text-xs text-acuity-text-ter">
                 {currentIdx + 1} of {reviewPosts.length}
               </p>
-              <StatusBadge status={current.status} />
+              <div className="flex items-center gap-2">
+                {current.emailedAt ? (
+                  <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
+                    Emailed
+                  </span>
+                ) : (
+                  <span className="rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-[9px] font-mono text-acuity-text-quiet">
+                    Not emailed
+                  </span>
+                )}
+                <StatusBadge status={current.status} />
+              </div>
             </div>
 
             {/* Headline */}
@@ -326,6 +339,13 @@ export default function CarouselReviewPage() {
                 )}
 
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => doAction("resend-email", { postId: current.id })}
+                    disabled={busy === `resend-email-${current.id}`}
+                    className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
+                  >
+                    {busy === `resend-email-${current.id}` ? "…" : "✉"}
+                  </button>
                   <a
                     href={`/api/admin/carousels/download?postId=${current.id}`}
                     className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
@@ -414,10 +434,24 @@ export default function CarouselReviewPage() {
                 <h3 className="text-sm font-semibold text-acuity-text line-clamp-2">
                   {post.headline}
                 </h3>
-                <p className="mt-1 text-xs text-acuity-text-quiet">
-                  {new Date(post.generatedFor).toLocaleDateString()} · {post.topicSlug}
-                </p>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-xs text-acuity-text-quiet">
+                    {new Date(post.generatedFor).toLocaleDateString()} · {post.topicSlug}
+                  </p>
+                  {post.emailedAt && (
+                    <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
+                      Emailed
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => doAction("resend-email", { postId: post.id })}
+                    disabled={busy === `resend-email-${post.id}`}
+                    className="min-h-[36px] flex items-center rounded-acuity-pill border border-acuity-line px-3 text-[11px] text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
+                  >
+                    {busy === `resend-email-${post.id}` ? "Sending…" : "✉ Email"}
+                  </button>
                   <a
                     href={`/api/admin/carousels/download?postId=${post.id}`}
                     className="min-h-[36px] flex items-center rounded-acuity-pill border border-acuity-line px-3 text-[11px] text-acuity-text-sec active:bg-acuity-bg-sub"

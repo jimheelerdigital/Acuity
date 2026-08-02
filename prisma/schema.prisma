@@ -1372,6 +1372,8 @@ model CarouselPost {
   hashtags     String[]
   musicNote    String?
   generatedFor DateTime            // The date this carousel was generated for (idempotency key with topicSlug)
+  emailedAt    DateTime?           // When the carousel email was sent (null = not yet emailed)
+  emailId      String?             // Resend message ID for tracking
   slides       CarouselSlide[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt

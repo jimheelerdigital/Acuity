@@ -121,6 +121,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, imageUrl: newUrl, overlayText: newText });
     }
 
+    case "resend-email": {
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+      const { emailId } = await sendCarouselEmail(postId, true); // force=true bypasses emailedAt guard
+      return NextResponse.json({ ok: true, emailId });
+    }
+
     case "generate-topic": {
       if (!topicSlug) return NextResponse.json({ error: "topicSlug required" }, { status: 400 });
       const { generateCarousel } = await import("@/lib/content-factory/carousel-generate");
