@@ -529,13 +529,13 @@ function SlideStrip({
         {slides.map((slide) => (
           <div
             key={slide.id}
-            className="w-full shrink-0 snap-center px-4"
+            className="w-full shrink-0 snap-center px-4 flex justify-center"
           >
-            <div className="relative overflow-hidden rounded-acuity-lg">
+            <div className="relative overflow-hidden rounded-acuity-lg max-w-[400px] w-full">
               <img
                 src={slide.imageUrl}
                 alt={slide.overlayText}
-                className="w-full"
+                className="w-full h-auto"
                 draggable={false}
               />
               {/* Slide label */}
