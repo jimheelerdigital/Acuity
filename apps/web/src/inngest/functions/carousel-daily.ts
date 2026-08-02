@@ -45,16 +45,23 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 0 };
     }
 
-    // Pick one topic per style lane so each day's batch has visual variety.
-    // 7 lanes = up to 7 carousels per day.
-    const lanes = [
-      "cinematicReal", "toon3d", "claymation", "stillLife",
-      "flatGraphic", "paperDiorama", "risograph",
-    ] as const;
+    // Shuffle available topics and pick 5, ensuring no two share a lane
+    // when possible (7 lanes, 5 picks = good variety most days).
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
     const picks: typeof available = [];
-    for (const lane of lanes) {
-      const match = available.find((t) => t.lane === lane && !picks.includes(t));
-      if (match) picks.push(match);
+    const usedLanes = new Set<string>();
+    // First pass: one per lane
+    for (const t of shuffled) {
+      if (picks.length >= 5) break;
+      if (!usedLanes.has(t.lane)) {
+        picks.push(t);
+        usedLanes.add(t.lane);
+      }
+    }
+    // If fewer than 5 (unlikely), fill with any remaining
+    for (const t of shuffled) {
+      if (picks.length >= 5) break;
+      if (!picks.includes(t)) picks.push(t);
     }
 
     let totalCostCents = 0;
