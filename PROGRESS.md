@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-08-02] — Content Factory Phase 1: automated daily carousel generation + review queue
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f7f0f359
+
+### In plain English (for Keenan)
+Ripple now auto-generates 5 TikTok/Instagram carousels every day at 11:00 UTC and drops them into a review queue at /admin/content-factory/carousels. Each carousel has a cover image, 5-7 "reason" slides with text overlaid on AI-generated art (in 7 rotating visual styles — cinematic, 3D, claymation, etc.), and a branded CTA slide. You review each one: approve, reject, regenerate a single slide if the image is off, or download everything as a ZIP to upload manually. There are 30 topics in the seed bank covering mental load, repeating patterns, self-reflection, and failed journaling — all mapped to Ripple positioning. No TikTok API yet — that's Phase 2.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma`: new `CarouselPost` + `CarouselSlide` models, `CarouselPostStatus` enum (DRAFT/APPROVED/REJECTED/POSTED), `SlideKind` enum (COVER/REASON/CTA), unique constraint on `(topicSlug, generatedFor)` for idempotency
+- `apps/web/src/lib/content-factory/brand.ts`: `VISUAL_DNA` (coral palette + aesthetic guardrails for prompts), `STYLE_LANES` (7 named visual treatments)
+- `apps/web/src/lib/content-factory/topics.ts`: 30-topic seed bank with slugs, headlines, style lane assignments, and 5-7 reasons each
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `generateCarousel(topicSlug)` — builds prompts (lane prefix + scene + VISUAL_DNA), calls gpt-image-2 at 1024x1536 (3:4), uploads raw to Supabase `content-factory` bucket, composes text overlay, persists to DB. Also `regenerateSlide(slideId)` for single-slide regen
+- `apps/web/src/lib/content-factory/compose.ts`: sharp-based SVG text overlay with embedded Poppins Bold/Medium (base64 in SVG @font-face), bottom-up gradient scrim, auto-shrink for long text, CTA slide = solid #F97E4E + logo + tagline. Output 1080x1350 JPEG q90
+- `apps/web/src/lib/content-factory/caption.ts`: headline + numbered reasons + Ripple closing line + 6 deterministic hashtags
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cron at 11:00 UTC, picks 5 topics not used in 30 days, logs cost estimates
+- `apps/web/src/app/api/admin/carousels/route.ts`: GET (list + filter) + POST (approve/reject/regenerate-slide/generate-topic)
+- `apps/web/src/app/api/admin/carousels/download/route.ts`: ZIP download via JSZip
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: review queue UI (grid, modal detail, status badges, all actions)
+- Added `sharp` dependency, bundled Poppins Bold + Medium in `public/fonts/`
+
+### Manual steps needed
+- [ ] Run `npx prisma db push` from home Mac (Keenan — work Mac blocks Supabase ports) to create CarouselPost + CarouselSlide tables + enums
+- [ ] Create `content-factory` Supabase Storage bucket (or let the first generation auto-create it — it self-heals)
+- [ ] After push + Vercel deploy, visit /api/inngest once to trigger Inngest function resync (registers the new cron)
+
+### Notes
+- Image generation uses ACUITY_ADLAB_OPENAI_KEY (falls back to OPENAI_API_KEY). Estimated cost: ~$0.08/image × ~7 slides × 5 carousels = ~$2.80/day
+- Image prompts explicitly request NO text/letters/words in the image. All text is composited server-side via sharp SVG overlay
+- The compose pipeline embeds Poppins fonts as base64 inside the SVG so it works on Vercel serverless (no system fonts available)
+- Inngest cron uses the same `createFunction` pattern as auto-blog (triggers array inside config object, not a separate argument)
+- No TikTok API integration in Phase 1 — carousels are downloaded as ZIP and uploaded manually. Phase 2 adds API posting
+- The 30 topics are a seed bank; adding more is just appending to the `CAROUSEL_TOPICS` array in topics.ts
+
 ## [2026-08-02] — Admin dashboard revamp: Ripple design system, sidebar nav, metric fixes
 
 **Requested by:** Keenan
