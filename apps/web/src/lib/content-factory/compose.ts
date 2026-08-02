@@ -119,18 +119,24 @@ export async function composeSlide(
 
   const textBlockH = lines.length * actualLineSpacing;
 
-  // Vertical position — TikTok UI covers the bottom ~300px (username,
-  // caption, action buttons), so all text must sit above that zone.
-  const TIKTOK_SAFE_BOTTOM = 380; // px from bottom to stay above TikTok UI
+  // ── Cross-platform safe zone ──────────────────────────────────
+  // Output is 1080x1920 (9:16). Instagram crops to 4:5 (1080x1350)
+  // by cutting 285px from top and bottom. TikTok UI covers the
+  // bottom ~300px. So the universal safe zone for text is:
+  //   Top:    285px  (Instagram crop)
+  //   Bottom: 1540px (1920 - 380 = TikTok UI safe)
+  // Text must land within y=285..1540 to be visible on both.
+  const SAFE_TOP = 285;     // Instagram 4:5 crop line
+  const SAFE_BOTTOM = 1540; // TikTok UI safe line (1920 - 380)
+  const SAFE_H = SAFE_BOTTOM - SAFE_TOP; // 1255px of usable space
+
   let textY: number;
   if (isCover) {
-    // Centre vertically in the middle third of the frame
-    const zoneTop = OUTPUT_H * 0.35;
-    const zoneH = OUTPUT_H * 0.30;
-    textY = zoneTop + (zoneH - textBlockH) / 2;
+    // Centre in the safe zone
+    textY = SAFE_TOP + (SAFE_H - textBlockH) / 2;
   } else {
-    // Above the TikTok safe zone
-    textY = OUTPUT_H - TIKTOK_SAFE_BOTTOM - textBlockH;
+    // Lower portion of safe zone, with 60px breathing room from bottom
+    textY = SAFE_BOTTOM - textBlockH - 60;
   }
 
   const textX = isCover ? OUTPUT_W / 2 : PADDING_X;
