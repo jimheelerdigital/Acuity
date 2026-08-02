@@ -119,16 +119,18 @@ export async function composeSlide(
 
   const textBlockH = lines.length * actualLineSpacing;
 
-  // Vertical position
+  // Vertical position — TikTok UI covers the bottom ~300px (username,
+  // caption, action buttons), so all text must sit above that zone.
+  const TIKTOK_SAFE_BOTTOM = 380; // px from bottom to stay above TikTok UI
   let textY: number;
   if (isCover) {
-    // Centre in the lower 40% of the frame
-    const lowerZoneTop = OUTPUT_H * 0.55;
-    const lowerZoneH = OUTPUT_H * 0.35;
-    textY = lowerZoneTop + (lowerZoneH - textBlockH) / 2;
+    // Centre vertically in the middle third of the frame
+    const zoneTop = OUTPUT_H * 0.35;
+    const zoneH = OUTPUT_H * 0.30;
+    textY = zoneTop + (zoneH - textBlockH) / 2;
   } else {
-    // Bottom quarter, 160px from bottom edge
-    textY = OUTPUT_H - 160 - textBlockH;
+    // Above the TikTok safe zone
+    textY = OUTPUT_H - TIKTOK_SAFE_BOTTOM - textBlockH;
   }
 
   const textX = isCover ? OUTPUT_W / 2 : PADDING_X;
