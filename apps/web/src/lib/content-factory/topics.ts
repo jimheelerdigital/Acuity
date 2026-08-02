@@ -22,7 +22,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "invisible-mental-load",
     headline: "6 invisible things draining your energy every day",
-    lane: "cinematicReal",
+    lane: "toon3d",
     reasons: [
       "Remembering everyone's appointments and needs",
       "Planning meals nobody thanks you for",
@@ -179,7 +179,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "goals-that-dont-stick",
     headline: "5 reasons your goals never stick past February",
-    lane: "cinematicReal",
+    lane: "toon3d",
     reasons: [
       "They came from who you think you should be",
       "No check-in system to catch you drifting",
@@ -245,7 +245,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "3am-thoughts",
     headline: "6 reasons your 3am thoughts won't leave you alone",
-    lane: "cinematicReal",
+    lane: "toon3d",
     reasons: [
       "Night quiet makes suppressed feelings louder",
       "Your guard drops when you're tired enough",
@@ -339,7 +339,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-you-shut-down",
     headline: "5 reasons you shut down instead of speaking up",
-    lane: "cinematicReal",
+    lane: "toon3d",
     reasons: [
       "Speaking up felt unsafe growing up so you stopped",
       "You learned that silence keeps the peace",
@@ -400,6 +400,85 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
       "Let your body move without calling it exercise",
       "Put the phone down and stare at nothing for five minutes",
       "Stop solving — just describe what happened today",
+    ],
+  },
+
+  // ─── "Signs That" Format ─────────────────────────────────────────
+  {
+    slug: "signs-youre-burnt-out",
+    headline: "7 signs you're burnt out (not just tired)",
+    lane: "claymation",
+    reasons: [
+      "You dread things you used to enjoy",
+      "Small tasks feel impossibly heavy",
+      "You can't remember the last time you laughed hard",
+      "Sleep doesn't make you feel rested",
+      "You're irritable with people you love",
+      "Everything feels like it's your responsibility",
+      "You fantasise about disappearing for a week",
+    ],
+  },
+  {
+    slug: "signs-you-need-boundaries",
+    headline: "6 signs you desperately need better boundaries",
+    lane: "flatGraphic",
+    reasons: [
+      "You feel resentful but can't explain why",
+      "People always come to you but never ask how you are",
+      "You say yes and immediately regret it",
+      "Your calendar is full but none of it is for you",
+      "You feel guilty every time you rest",
+      "You've lost track of what you actually want",
+    ],
+  },
+  {
+    slug: "signs-youre-people-pleasing",
+    headline: "5 signs you're a people pleaser (and it's costing you)",
+    lane: "paperDiorama",
+    reasons: [
+      "You apologise for things that aren't your fault",
+      "You change your opinion based on who's in the room",
+      "Saying no feels physically uncomfortable",
+      "You rehearse texts for twenty minutes before sending",
+      "Everyone thinks you're fine because you never say otherwise",
+    ],
+  },
+  {
+    slug: "signs-youre-emotionally-exhausted",
+    headline: "6 signs you're emotionally exhausted (not lazy)",
+    lane: "toon3d",
+    reasons: [
+      "You have the time but zero motivation",
+      "Your to-do list makes you want to cry",
+      "You zone out mid-conversation without realising",
+      "Weekends feel like recovery not recreation",
+      "You're running on autopilot through your own life",
+      "The thought of making one more decision is unbearable",
+    ],
+  },
+  {
+    slug: "signs-you-need-to-talk",
+    headline: "5 signs you need to talk it out (not think it out)",
+    lane: "risograph",
+    reasons: [
+      "The same thought has been looping for days",
+      "You've journaled about it but nothing shifted",
+      "Your chest feels tight but you can't name why",
+      "You keep almost telling someone then stopping yourself",
+      "You know the answer but need to hear yourself say it",
+    ],
+  },
+  {
+    slug: "signs-youre-healing",
+    headline: "6 quiet signs you're actually healing",
+    lane: "claymation",
+    reasons: [
+      "You catch the pattern before you repeat it",
+      "Old triggers don't hit as hard anymore",
+      "You choose rest without the guilt spiral",
+      "You say what you mean the first time",
+      "You're less interested in proving yourself to people",
+      "Silence feels comfortable instead of terrifying",
     ],
   },
 ];
