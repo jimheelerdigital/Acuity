@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-08-02] — Content Factory: email delivery of completed carousels via Resend
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5bf137f5
+
+### In plain English (for Keenan)
+When the daily carousel generation finishes, you now get one email per carousel straight to your inbox. Each email has all the composited slides attached (so you can save them to Photos and post), plus the full caption in a big copy-able block, a numbered list of the slide texts for quick scanning, and a button to open the review queue. If the attachments would be too big (over 15MB), the email links to the images instead. There's also a "Resend email" button on each carousel card in the admin UI if you need to re-send one.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma`: added `emailedAt DateTime?` and `emailId String?` to CarouselPost
+- `apps/web/src/lib/content-factory/email.ts`: `sendCarouselEmail(postId, force?)` — fetches slide JPEGs from Supabase Storage, attaches as base64 with 01-cover.jpg naming; if total > 15MB, falls back to links with a warning in the body. HTML body: inline cover image, headline + lane + count, caption in `<pre>` block, numbered slide texts, CTA button to review queue. Plain-text alternative included. Stores Resend message ID in `emailId`, sets `emailedAt`. Guards on `emailedAt` unless `force=true`
+- `apps/web/src/inngest/functions/carousel-daily.ts`: after each generation, sends email in a separate try/catch with one retry — email failure never rolls back generation
+- `apps/web/src/app/api/admin/carousels/route.ts`: added `resend-email` action (calls `sendCarouselEmail` with `force=true`)
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: "Emailed"/"Not emailed" badges in review mode and grid view; ✉ resend email button in action bar and card actions
+- Sender: `content@goripple.io` (env `CONTENT_FACTORY_EMAIL_FROM`), recipient: `keenan@heelerdigital.com` (env `CONTENT_FACTORY_EMAIL_TO`)
+
+### Manual steps needed
+- [ ] Run `npx prisma db push` from home Mac (Keenan) to add emailedAt + emailId columns to CarouselPost
+- [ ] (Recommended) Set up a dedicated Resend subdomain sender like `content@mail.goripple.io` to keep content factory email volume separate from user-facing emails (rescue emails, weekly reports). This requires adding DNS records in Resend dashboard — do it when convenient, not blocking. Until then, emails send from `content@goripple.io` using the existing Resend API key
+- [ ] Optionally set `CONTENT_FACTORY_EMAIL_TO` and `CONTENT_FACTORY_EMAIL_FROM` env vars in Vercel if you want different addresses than the defaults
+
+### Notes
+- Email is sent per-carousel, not batched into one daily digest. This way each email has a clear subject line and you can forward individual carousels
+- Attachments use base64 encoding per Resend's API format. 7 slides × ~300KB each ≈ 2.1MB — well under the 15MB guard. The fallback-to-links path is a safety net, not the normal flow
+- The email sender defaults to `content@goripple.io`. If this domain isn't verified in Resend, emails will fail. The existing Resend key is already verified for `getacuity.io` — if `goripple.io` isn't verified yet, change `CONTENT_FACTORY_EMAIL_FROM` to `content@getacuity.io` or verify the domain. Alternatively, set up `content@mail.goripple.io` as recommended above
+- Email retry logic is simple (one retry in the same cron run, not Inngest step-level retry) to keep the cron function straightforward. If both attempts fail, the error is logged and the carousel remains without emailedAt — visible as "Not emailed" in the admin UI with a manual resend button
+
 ## [2026-08-02] — Content Factory Phase 2: mobile-first review + edit text + mark posted
 
 **Requested by:** Keenan
