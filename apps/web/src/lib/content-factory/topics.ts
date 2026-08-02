@@ -3,8 +3,9 @@
  *
  * 30 topics reflecting Ripple positioning: mental load, invisible labour,
  * repeating patterns, knowing-but-not-doing, planning vs progress, failed
- * journaling. Each topic has 5-7 reasons (4-7 words each) that become
- * individual carousel slides.
+ * journaling. Headlines use numbered listicle hooks ("Top 5…", "7 signs…")
+ * for TikTok/Instagram engagement. Each topic has 5-7 reasons (4-7 words
+ * each) that become individual carousel slides.
  */
 
 import type { StyleLane } from "./brand";
@@ -20,7 +21,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Mental Load ─────────────────────────────────────────────────
   {
     slug: "invisible-mental-load",
-    headline: "The invisible weight you carry daily",
+    headline: "6 invisible things draining your energy every day",
     lane: "cinematicReal",
     reasons: [
       "Remembering everyone's appointments and needs",
@@ -33,7 +34,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "why-youre-always-tired",
-    headline: "Why you're always tired (it's not sleep)",
+    headline: "6 reasons you're exhausted (and it's not sleep)",
     lane: "toon3d",
     reasons: [
       "Decision fatigue hits before noon",
@@ -46,7 +47,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "things-no-one-sees",
-    headline: "Things you do that no one sees",
+    headline: "Top 5 things you do that nobody ever notices",
     lane: "paperDiorama",
     reasons: [
       "Restocking before anyone notices it's empty",
@@ -60,7 +61,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Repeating Patterns ──────────────────────────────────────────
   {
     slug: "patterns-you-repeat",
-    headline: "Patterns you keep repeating (but don't see)",
+    headline: "6 patterns you keep repeating without realising",
     lane: "risograph",
     reasons: [
       "Saying yes when you mean no",
@@ -73,7 +74,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "why-sundays-feel-heavy",
-    headline: "Why Sundays feel heavier than Mondays",
+    headline: "5 reasons Sundays feel heavier than Mondays",
     lane: "claymation",
     reasons: [
       "You're already pre-living next week",
@@ -85,20 +86,20 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "same-fight-different-day",
-    headline: "Same fight, different day — here's why",
+    headline: "6 reasons you keep having the same fight",
     lane: "flatGraphic",
     reasons: [
       "The real issue stays buried beneath logistics",
-      "You react to the trigger, not the wound",
+      "You react to the trigger not the wound",
       "Neither person feels truly heard",
       "Exhaustion makes everything feel personal",
-      "Old patterns get rehearsed, not resolved",
+      "Old patterns get rehearsed not resolved",
       "You know the script but can't rewrite it",
     ],
   },
   {
     slug: "cycles-you-know-but-cant-break",
-    headline: "Cycles you know about but can't break",
+    headline: "5 cycles you know about but can't seem to break",
     lane: "toon3d",
     reasons: [
       "Overcommitting then resenting every commitment",
@@ -112,7 +113,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Knowing But Not Doing ───────────────────────────────────────
   {
     slug: "you-know-what-to-do",
-    headline: "You know exactly what to do (so why don't you?)",
+    headline: "6 reasons knowing what to do isn't the same as doing it",
     lane: "stillLife",
     reasons: [
       "Knowing and doing live in different rooms",
@@ -125,7 +126,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "advice-you-give-but-wont-take",
-    headline: "Advice you'd give a friend but won't take",
+    headline: "Top 5 things you'd tell a friend but won't do yourself",
     lane: "paperDiorama",
     reasons: [
       "Rest isn't something you have to earn",
@@ -137,7 +138,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "things-you-keep-postponing",
-    headline: "Things you keep postponing (and why)",
+    headline: "6 things you keep putting off (and why you should stop)",
     lane: "risograph",
     reasons: [
       "That honest conversation you need to have",
@@ -152,11 +153,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Planning vs Progress ────────────────────────────────────────
   {
     slug: "planning-vs-doing",
-    headline: "Planning feels productive — but is it?",
+    headline: "5 signs your planning habit is actually holding you back",
     lane: "flatGraphic",
     reasons: [
       "Colour-coded lists don't move the needle",
-      "Planning is safe; doing is vulnerable",
+      "Planning is safe — doing is vulnerable",
       "You're preparing for a perfect start forever",
       "The plan changes the moment real life starts",
       "Reflection beats planning every single time",
@@ -164,7 +165,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "productivity-trap",
-    headline: "The productivity trap nobody warns you about",
+    headline: "6 productivity traps nobody warns you about",
     lane: "claymation",
     reasons: [
       "Optimising your schedule won't fix your life",
@@ -177,7 +178,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "goals-that-dont-stick",
-    headline: "Why your goals never stick past February",
+    headline: "5 reasons your goals never stick past February",
     lane: "cinematicReal",
     reasons: [
       "They came from who you think you should be",
@@ -191,24 +192,24 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Failed Journaling ──────────────────────────────────────────
   {
     slug: "why-journaling-never-worked",
-    headline: "Why journaling never worked for you (until now)",
+    headline: "6 reasons journaling never worked for you (until now)",
     lane: "toon3d",
     reasons: [
       "Blank pages feel like another to-do item",
-      "Writing at night is exhausting, not healing",
+      "Writing at night is exhausting not healing",
       "You didn't know what to say so you stopped",
       "Prompts felt generic and disconnected from you",
-      "You needed to talk, not write",
+      "You needed to talk not write",
       "Nobody showed you what to do with the insights",
     ],
   },
   {
     slug: "voice-vs-writing",
-    headline: "Voice beats writing — here's the science",
+    headline: "5 reasons voice journaling beats writing every time",
     lane: "stillLife",
     reasons: [
       "Speaking activates different emotional processing",
-      "You say what you really mean, unedited",
+      "You say what you really mean unedited",
       "Talking is 3x faster than typing thoughts",
       "Your tone reveals what your words hide",
       "Less friction means you actually do it",
@@ -216,14 +217,14 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "what-journaling-misses",
-    headline: "What traditional journaling always misses",
+    headline: "6 things traditional journaling always gets wrong",
     lane: "paperDiorama",
     reasons: [
       "It doesn't connect your patterns over time",
-      "You re-read old entries and cringe, not learn",
+      "You re-read old entries and cringe not learn",
       "No one summarises the themes for you",
       "It captures moments but not trajectories",
-      "Writing filters; your voice is unfiltered truth",
+      "Writing filters — your voice is unfiltered truth",
       "You forget what you wrote within a week",
     ],
   },
@@ -231,7 +232,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Self-Reflection ─────────────────────────────────────────────
   {
     slug: "questions-you-avoid",
-    headline: "Questions you avoid asking yourself",
+    headline: "5 questions you've been avoiding asking yourself",
     lane: "risograph",
     reasons: [
       "Am I happy or just comfortable?",
@@ -243,7 +244,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "3am-thoughts",
-    headline: "Your 3am thoughts are trying to tell you something",
+    headline: "6 reasons your 3am thoughts won't leave you alone",
     lane: "cinematicReal",
     reasons: [
       "Night quiet makes suppressed feelings louder",
@@ -256,21 +257,21 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "mirror-not-coach",
-    headline: "You don't need a coach — you need a mirror",
+    headline: "Top 5 reasons you need a mirror not a coach",
     lane: "claymation",
     reasons: [
       "The answers are already inside you",
       "Advice without context is just noise",
       "Hearing your own voice creates real clarity",
-      "A mirror reflects; a coach directs",
-      "You need to see yourself, not fix yourself",
+      "A mirror reflects — a coach directs",
+      "You need to see yourself not fix yourself",
     ],
   },
 
   // ─── Emotional Labour ────────────────────────────────────────────
   {
     slug: "emotional-labour-tax",
-    headline: "The emotional labour tax you pay every day",
+    headline: "6 emotional labour taxes you pay every single day",
     lane: "flatGraphic",
     reasons: [
       "Smiling when you're running on empty",
@@ -283,10 +284,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "why-you-feel-touched-out",
-    headline: "Why you feel touched out by everything",
+    headline: "5 reasons you feel completely touched out",
     lane: "toon3d",
     reasons: [
-      "Sensory overload is real, not weakness",
+      "Sensory overload is real not weakness",
       "Everyone needs something from your body or attention",
       "You haven't had uninterrupted silence in weeks",
       "Your nervous system needs a break from being needed",
@@ -297,10 +298,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Identity & Growth ───────────────────────────────────────────
   {
     slug: "who-are-you-outside-roles",
-    headline: "Who are you outside your roles?",
+    headline: "6 signs you've lost yourself inside your roles",
     lane: "stillLife",
     reasons: [
-      "Mother, partner, employee — but who else?",
+      "Mother partner employee — but who else?",
       "You lost hobbies when life got serious",
       "Your identity merged with your responsibilities",
       "You forgot what excited you at twenty-five",
@@ -310,25 +311,25 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "growth-looks-different-at-40",
-    headline: "Growth looks different at 40 — and that's okay",
+    headline: "5 ways growth looks different after 40",
     lane: "paperDiorama",
     reasons: [
       "It's subtler and harder to measure externally",
       "You're unlearning more than you're learning",
-      "Progress now means better boundaries, not more hustle",
+      "Progress now means better boundaries not more hustle",
       "The wins are quieter and more meaningful",
-      "You're finally doing it for you, not for proof",
+      "You're finally doing it for you not for proof",
     ],
   },
   {
     slug: "permission-to-change",
-    headline: "Permission to change your mind about everything",
+    headline: "6 things you have full permission to change right now",
     lane: "risograph",
     reasons: [
       "What you wanted at 30 doesn't have to fit at 42",
       "Outgrowing something isn't the same as failing at it",
       "Your values can shift without betraying anyone",
-      "Changing course is data, not weakness",
+      "Changing course is data not weakness",
       "The bravest thing is admitting it's not working",
       "You get to rewrite the story mid-chapter",
     ],
@@ -337,19 +338,19 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Relationship Patterns ───────────────────────────────────────
   {
     slug: "why-you-shut-down",
-    headline: "Why you shut down instead of speaking up",
+    headline: "5 reasons you shut down instead of speaking up",
     lane: "cinematicReal",
     reasons: [
-      "Speaking up felt unsafe growing up, so you stopped",
+      "Speaking up felt unsafe growing up so you stopped",
       "You learned that silence keeps the peace",
-      "Vulnerability was punished, not rewarded",
+      "Vulnerability was punished not rewarded",
       "You'd rather swallow it than risk the reaction",
-      "Shutting down is self-protection, not apathy",
+      "Shutting down is self-protection not apathy",
     ],
   },
   {
     slug: "things-your-partner-doesnt-see",
-    headline: "Things your partner doesn't see (but should)",
+    headline: "6 things your partner doesn't see (but should)",
     lane: "claymation",
     reasons: [
       "The mental checklist before you leave the house",
@@ -364,19 +365,19 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Wellness Culture Pushback ───────────────────────────────────
   {
     slug: "self-care-isnt-candles",
-    headline: "Self-care isn't candles and bath bombs",
+    headline: "Top 5 things that are actually self-care (not bath bombs)",
     lane: "flatGraphic",
     reasons: [
-      "It's having the hard conversation you've been avoiding",
-      "It's saying no without writing a paragraph excuse",
-      "It's letting the house be messy without guilt",
-      "It's blocking time that nobody else can touch",
-      "It's admitting you need more than a bubble bath",
+      "Having the hard conversation you've been avoiding",
+      "Saying no without writing a paragraph excuse",
+      "Letting the house be messy without guilt",
+      "Blocking time that nobody else can touch",
+      "Admitting you need more than a bubble bath",
     ],
   },
   {
     slug: "toxic-positivity",
-    headline: "Toxic positivity is gaslighting yourself",
+    headline: "6 ways toxic positivity is secretly gaslighting you",
     lane: "risograph",
     reasons: [
       "Good vibes only erases legitimate pain",
@@ -384,21 +385,21 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
       "Your negative emotions carry important information",
       "Positivity without processing is just suppression",
       "You're allowed to be not okay and still be strong",
-      "Real growth starts with honest, messy feelings",
+      "Real growth starts with honest messy feelings",
     ],
   },
 
-  // ─── Daily Life ──────────────────────────────────────────────────
+  // ─── Daily Life / Decompression ──────────────────────────────────
   {
-    slug: "end-of-day-brain-dump",
-    headline: "What happens when you debrief your day out loud",
+    slug: "ways-to-decompress",
+    headline: "Top 5 ways to decompress when you're overwhelmed",
     lane: "toon3d",
     reasons: [
-      "Your thoughts stop looping and start landing",
-      "You notice patterns you couldn't see inside your head",
-      "Small wins surface that you'd otherwise forget",
-      "Tomorrow feels less overwhelming when today is processed",
-      "Three minutes of talking replaces hours of overthinking",
+      "Talk it out — three minutes of voice beats hours of spiralling",
+      "Name the feeling before you try to fix it",
+      "Let your body move without calling it exercise",
+      "Put the phone down and stare at nothing for five minutes",
+      "Stop solving — just describe what happened today",
     ],
   },
 ];
