@@ -22,7 +22,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "invisible-mental-load",
     headline: "6 invisible things draining your energy every day",
-    lane: "toon3d",
+    lane: "cinematicReal",
     reasons: [
       "Remembering everyone's appointments and needs",
       "Planning meals nobody thanks you for",
@@ -35,7 +35,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-youre-always-tired",
     headline: "6 reasons you're exhausted (and it's not sleep)",
-    lane: "toon3d",
+    lane: "stillLife",
     reasons: [
       "Decision fatigue hits before noon",
       "Your brain never fully switches off",
@@ -179,7 +179,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "goals-that-dont-stick",
     headline: "5 reasons your goals never stick past February",
-    lane: "toon3d",
+    lane: "cinematicReal",
     reasons: [
       "They came from who you think you should be",
       "No check-in system to catch you drifting",
@@ -245,7 +245,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "3am-thoughts",
     headline: "6 reasons your 3am thoughts won't leave you alone",
-    lane: "toon3d",
+    lane: "cinematicReal",
     reasons: [
       "Night quiet makes suppressed feelings louder",
       "Your guard drops when you're tired enough",
@@ -339,7 +339,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-you-shut-down",
     headline: "5 reasons you shut down instead of speaking up",
-    lane: "toon3d",
+    lane: "cinematicReal",
     reasons: [
       "Speaking up felt unsafe growing up so you stopped",
       "You learned that silence keeps the peace",

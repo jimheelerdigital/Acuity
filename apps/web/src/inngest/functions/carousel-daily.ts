@@ -40,13 +40,22 @@ export const carouselDailyCronFn = inngest.createFunction(
 
     if (available.length === 0) {
       logger.warn(
-        "[carousel-cron] All 30 topics used in last 30 days — skipping"
+        "[carousel-cron] All topics used in last 30 days — skipping"
       );
       return { generated: 0 };
     }
 
-    // Pick up to 5 topics (deterministic order from the seed bank)
-    const picks = available.slice(0, 5);
+    // Pick one topic per style lane so each day's batch has visual variety.
+    // 7 lanes = up to 7 carousels per day.
+    const lanes = [
+      "cinematicReal", "toon3d", "claymation", "stillLife",
+      "flatGraphic", "paperDiorama", "risograph",
+    ] as const;
+    const picks: typeof available = [];
+    for (const lane of lanes) {
+      const match = available.find((t) => t.lane === lane && !picks.includes(t));
+      if (match) picks.push(match);
+    }
 
     let totalCostCents = 0;
     const results: { slug: string; postId: string; slides: number }[] = [];
