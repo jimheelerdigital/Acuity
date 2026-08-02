@@ -1359,6 +1359,54 @@ enum JobStatus {
   FAILED
 }
 
+// ─── Carousel Content Factory (Phase 1, 2026-08-02) ────────────────────────
+// Automated daily carousel generation for TikTok/Instagram. The cron generates
+// 5 carousels/day as DRAFT; admin reviews via /admin/content-factory queue.
+
+model CarouselPost {
+  id           String              @id @default(cuid())
+  topicSlug    String
+  headline     String
+  status       CarouselPostStatus  @default(DRAFT)
+  caption      String              @db.Text
+  hashtags     String[]
+  musicNote    String?
+  generatedFor DateTime            // The date this carousel was generated for (idempotency key with topicSlug)
+  slides       CarouselSlide[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([topicSlug, generatedFor])
+  @@index([status, generatedFor(sort: Desc)])
+}
+
+model CarouselSlide {
+  id             String        @id @default(cuid())
+  carouselPostId String
+  carouselPost   CarouselPost  @relation(fields: [carouselPostId], references: [id], onDelete: Cascade)
+  order          Int
+  kind           SlideKind
+  overlayText    String
+  imagePrompt    String        @db.Text
+  imageUrl       String        // Supabase Storage public URL (composed JPEG with text overlay)
+  createdAt      DateTime      @default(now())
+
+  @@index([carouselPostId, order])
+}
+
+enum CarouselPostStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+  POSTED
+}
+
+enum SlideKind {
+  COVER
+  REASON
+  CTA
+}
+
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
 
 model BlogTopicQueue {
