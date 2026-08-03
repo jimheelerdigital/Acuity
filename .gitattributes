@@ -1,0 +1,6 @@
+# Both cofounders prepend entries to the top of PROGRESS.md, so concurrent
+# edits collide on nearly every sync. The `union` merge driver keeps the new
+# lines from BOTH sides instead of raising a conflict. Trade-off: when two
+# entries are added in the same sync, their order may not be perfectly
+# chronological — reorder by hand if it ever matters.
+PROGRESS.md merge=union

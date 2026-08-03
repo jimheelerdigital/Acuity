@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-03] — Stop PROGRESS.md merge conflicts + make the launch alias conflict-proof
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0abb4d0b
+
+### In plain English (for Keenan)
+Two workflow fixes so syncing the project stops getting stuck. First: because you and Jimmy both add notes to the top of this log, Git kept colliding whenever you'd both logged something before syncing — that's exactly what blocked the `ripple` command earlier today. We told Git to automatically combine both of your new notes instead of halting with an error. Second: your `ripple` (and `acuity`) shortcuts now pull the latest code more robustly and will always open Claude even if the pull hits a snag, so you're never locked out of your tools.
+
+### Technical changes (for Jimmy)
+- `.gitattributes` (new): `PROGRESS.md merge=union` — Git's union merge driver keeps both sides' added lines on merge/rebase instead of conflicting. Kills the recurring top-of-file collision.
+- Shell aliases in `~/.bash_profile` and `~/.zshrc` (local dev machines, NOT in the repo): `ripple` and `acuity` changed from `git pull origin main && claude` to `git pull --rebase --autostash origin main ; claude`. `--rebase` replays local unpushed commits on top of origin (linear history); `--autostash` handles a dirty tree automatically; `;` instead of `&&` guarantees Claude still launches if the pull fails. Also deduped a doubled `acuity` line in `.zshrc`.
+
+### Manual steps needed
+- [ ] Both: run `source ~/.zshrc` (or open a new terminal) to pick up the updated aliases.
+- [ ] Jimmy: to get the same alias behavior on your machine, mirror the `~/.bash_profile` / `~/.zshrc` change — these dotfiles aren't version-controlled.
+
+### Notes
+- `union` merge is not perfectly chronological: when two entries are added in the same sync, both survive but their order may be arbitrary — reorder by hand if it ever matters. Rationale documented inline in `.gitattributes`.
+- Pushed to origin/main alongside the 3 previously-held security-cleanup commits (positioning copy fix, auth CVE patch, and its log entry) once Keenan gave the go-ahead.
+- Considered the more robust fix of splitting PROGRESS.md into per-date files (conflicts vanish entirely) but deferred it — too much churn against CLAUDE.md's single-file convention. The alias `;` is the symptom fix; `.gitattributes` is the root-cause fix.
+
 ## [2026-08-02] — Content Factory: email delivery of completed carousels via Resend
 
 **Requested by:** Keenan
