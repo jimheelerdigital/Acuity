@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0abb4d0b
+**Commit hash:** d69e2f9e
 
 ### In plain English (for Keenan)
 Two workflow fixes so syncing the project stops getting stuck. First: because you and Jimmy both add notes to the top of this log, Git kept colliding whenever you'd both logged something before syncing — that's exactly what blocked the `ripple` command earlier today. We told Git to automatically combine both of your new notes instead of halting with an error. Second: your `ripple` (and `acuity`) shortcuts now pull the latest code more robustly and will always open Claude even if the pull hits a snag, so you're never locked out of your tools.
