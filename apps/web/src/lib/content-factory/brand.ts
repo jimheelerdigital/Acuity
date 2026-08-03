@@ -10,8 +10,14 @@
 // Appended to every image-generation prompt so the output is recognizably Ripple.
 
 export const VISUAL_DNA = [
-  "Primary palette: warm coral (#F97E4E), soft cream (#FBFAF6), muted indigo (#3D3A50).",
-  "Secondary accents: dusty rose, sage green, warm amber — never neon.",
+  "Color palette — vary across these brand colors, do NOT default to orange every time:",
+  "  • Warm coral (#F97E4E) — energetic, signature Ripple accent",
+  "  • Soft cream / warm tan (#FBFAF6, #F0E6D6) — grounding, calm, neutral warmth",
+  "  • Muted indigo / deep purple (#3D3A50, #5B4A7A) — depth, introspection, evening mood",
+  "  • Dusty rose (#D4918A) — softness, femininity, warmth",
+  "  • Warm amber (#D4A76A) — golden, nostalgic, comforting",
+  "  • Sage green (#8FA88B) — growth, renewal, balance",
+  "Mix 2-3 of these colors per image. Alternate the dominant color across slides — some coral-led, some indigo/purple-led, some cream/tan-led, some rose-led.",
   "Mood: gentle, reflective, warm — like golden-hour light through a window.",
   "Lighting: soft diffused or golden-hour. No harsh flash, no clinical white.",
   "Human subjects: diverse women ~35-50, natural expressions, candid not posed.",
