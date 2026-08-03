@@ -187,7 +187,7 @@ export async function composeSlide(
   const fontPath = await ensureFontFile("Bold");
   const maxWidth = OUTPUT_W - PADDING_X * 2;
   // Generous line spacing for readability
-  const extraSpacing = Math.round(actualFontSize * 0.5);
+  const extraSpacing = Math.round(actualFontSize * 0.2);
   const strokeBlur = isCover ? 6 : 5;
 
   // Render text to measure height for positioning
