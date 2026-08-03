@@ -186,9 +186,17 @@ export default function CarouselReviewPage() {
           className="flex items-center justify-between px-4 py-3"
           style={{ paddingTop: "max(12px, env(safe-area-inset-top, 12px))" }}
         >
-          <h1 className="font-display text-lg font-bold text-acuity-text">
-            Carousels
-          </h1>
+          <div className="flex items-center gap-2">
+            <a
+              href="/admin"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-acuity-pill border border-acuity-line text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
+            >
+              ←
+            </a>
+            <h1 className="font-display text-lg font-bold text-acuity-text">
+              Carousels
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={fetchPosts}
@@ -424,16 +432,22 @@ export default function CarouselReviewPage() {
         className="flex items-center justify-between px-4 py-3"
         style={{ paddingTop: "max(12px, env(safe-area-inset-top, 12px))" }}
       >
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setViewMode("review")}
-            className="min-h-[44px] rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
+        <div className="flex items-center gap-2">
+          <a
+            href="/admin"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-acuity-pill border border-acuity-line text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
           >
-            ← Review
-          </button>
+            ←
+          </a>
           <h1 className="font-display text-lg font-bold text-acuity-text">
             Library
           </h1>
+          <button
+            onClick={() => setViewMode("review")}
+            className="min-h-[44px] rounded-acuity-pill border border-acuity-line px-3 text-xs text-acuity-text-ter active:bg-acuity-bg-sub"
+          >
+            Review
+          </button>
         </div>
         <button
           onClick={() => fetchPosts()}

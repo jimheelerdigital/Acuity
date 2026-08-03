@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
@@ -27,6 +28,7 @@ const DISMISS_KEY = "crisis-footer-dismissed:v1";
 
 export function CrisisFooter() {
   const { status } = useSession();
+  const pathname = usePathname();
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function CrisisFooter() {
     }
   }, []);
 
-  if (status !== "authenticated" || dismissed) return null;
+  if (status !== "authenticated" || dismissed || pathname?.startsWith("/admin")) return null;
 
   const dismiss = () => {
     try {
