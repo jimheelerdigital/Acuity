@@ -233,45 +233,103 @@ export async function composeSlide(
 }
 
 /**
- * Compose the CTA slide — solid burnt-orange background with the white
- * Ripple logo large and centred, big CTA text, tagline below.
+ * Compose the CTA slide — solid burnt-orange background with:
+ *   1. White Ripple mark (tinted from coral-t.png)
+ *   2. "ripple" wordmark in white Poppins Bold
+ *   3. CTA text
+ *   4. "Free 7-day trial" subtext
+ *
+ * All elements vertically centred in the safe zone.
  */
 export async function composeCTASlide(ctaText: string): Promise<Buffer> {
-  // Use the white logo on orange background
-  const logoPath = path.join(
-    process.cwd(),
-    "public",
-    "ripple-mark-white.png"
-  );
-  let logoBuffer: Buffer | null = null;
-  const LOGO_SIZE = 360;
-  if (fs.existsSync(logoPath)) {
-    logoBuffer = await sharp(logoPath)
-      .resize(LOGO_SIZE, undefined, { fit: "inside" })
-      .png()
-      .toBuffer();
-  }
-
-  // Layout in the cross-platform safe zone (y=285..1540)
   const SAFE_TOP = 285;
   const SAFE_BOTTOM = 1540;
   const SAFE_H = SAFE_BOTTOM - SAFE_TOP;
   const centerY = SAFE_TOP + SAFE_H / 2;
-  const logoY = centerY - LOGO_SIZE - 20;
 
   const fontBoldPath = await ensureFontFile("Bold");
   const fontMediumPath = await ensureFontFile("Medium");
 
-  // Render CTA text
-  const ctaLines = wordWrap(ctaText, 20);
-  const ctaEscaped = ctaLines.map((l) => escapePango(l)).join("\n");
-  const ctaMarkup = `<span font_desc="Poppins Bold 54" foreground="white">${ctaEscaped}</span>`;
-  const ctaOpts: Record<string, unknown> = {
-    text: ctaMarkup,
-    width: OUTPUT_W - PADDING_X * 2,
+  const composites: sharp.OverlayOptions[] = [];
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+
+  // ── 1. White Ripple mark ─────────────────────────────────────────
+  const MARK_SIZE = 280;
+  let markH = 0;
+  const markCandidates = [
+    path.join(process.cwd(), "public", "ripple-mark-coral-t.png"),
+    path.join(process.cwd(), ".next", "server", "public", "ripple-mark-coral-t.png"),
+  ];
+  for (const p of markCandidates) {
+    if (fs.existsSync(p)) {
+      // Tint coral mark to white: set all visible pixels to white
+      const resized = await sharp(p)
+        .resize(MARK_SIZE, undefined, { fit: "inside" })
+        .ensureAlpha()
+        .png()
+        .toBuffer();
+      const { data, info } = await sharp(resized)
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] > 0) {
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+        }
+      }
+      const whiteMark = await sharp(data, {
+        raw: { width: info.width, height: info.height, channels: 4 },
+      })
+        .png()
+        .toBuffer();
+      const markMeta = await sharp(whiteMark).metadata();
+      markH = markMeta.height ?? MARK_SIZE;
+      const markW = markMeta.width ?? MARK_SIZE;
+      // Position mark in upper portion of safe zone
+      const markY = Math.round(centerY - markH - 120);
+      composites.push({
+        input: whiteMark,
+        top: markY,
+        left: Math.round((OUTPUT_W - markW) / 2),
+      });
+      break;
+    }
+  }
+
+  // ── 2. "ripple" wordmark ─────────────────────────────────────────
+  const wordmarkMarkup = `<span font_desc="Poppins Bold 80" foreground="white">ripple</span>`;
+  const wordmarkOpts: Record<string, unknown> = {
+    text: wordmarkMarkup,
     rgba: true,
     align: "centre",
-    spacing: 10,
+  };
+  if (fontBoldPath) wordmarkOpts.fontfile = fontBoldPath;
+  else wordmarkOpts.font = "sans-serif";
+
+  const wordmarkBuffer = await sharp({ text: wordmarkOpts } as any)
+    .png()
+    .toBuffer();
+  const wordmarkMeta = await sharp(wordmarkBuffer).metadata();
+  const wordmarkW = wordmarkMeta.width ?? 400;
+  const wordmarkH = wordmarkMeta.height ?? 90;
+  const wordmarkY = Math.round(centerY - 60);
+  composites.push({
+    input: wordmarkBuffer,
+    top: wordmarkY,
+    left: Math.round((OUTPUT_W - wordmarkW) / 2),
+  });
+
+  // ── 3. CTA text ─────────────────────────────────────────────────
+  const ctaLines = wordWrap(ctaText, 24);
+  const ctaEscaped = ctaLines.map((l) => escapePango(l)).join("\n");
+  const ctaMarkup = `<span font_desc="Poppins Bold 42" foreground="white">${ctaEscaped}</span>`;
+  const ctaOpts: Record<string, unknown> = {
+    text: ctaMarkup,
+    width: maxTextW,
+    rgba: true,
+    align: "centre",
+    spacing: 8,
   };
   if (fontBoldPath) ctaOpts.fontfile = fontBoldPath;
   else ctaOpts.font = "sans-serif";
@@ -281,15 +339,19 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
     .toBuffer();
   const ctaMeta = await sharp(ctaBuffer).metadata();
   const ctaW = ctaMeta.width ?? 800;
-  const ctaH = ctaMeta.height ?? 100;
-  const ctaY = Math.round(centerY + 60);
-  const ctaLeft = Math.round((OUTPUT_W - ctaW) / 2);
+  const ctaH = ctaMeta.height ?? 60;
+  const ctaY = wordmarkY + wordmarkH + 60;
+  composites.push({
+    input: ctaBuffer,
+    top: ctaY,
+    left: Math.round((OUTPUT_W - ctaW) / 2),
+  });
 
-  // Render subtext
-  const subMarkup = `<span font_desc="Poppins Medium 28" foreground="rgba(255,255,255,0.85)">Free on iPhone &amp; Android</span>`;
+  // ── 4. Subtext ──────────────────────────────────────────────────
+  const subMarkup = `<span font_desc="Poppins Medium 28" foreground="rgba(255,255,255,0.7)">Free 7-day trial on iPhone &amp; Android</span>`;
   const subOpts: Record<string, unknown> = {
     text: subMarkup,
-    width: OUTPUT_W - PADDING_X * 2,
+    width: maxTextW,
     rgba: true,
     align: "centre",
   };
@@ -301,31 +363,19 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
     .toBuffer();
   const subMeta = await sharp(subBuffer).metadata();
   const subW = subMeta.width ?? 400;
-  const subY = ctaY + ctaH + 50;
-  const subLeft = Math.round((OUTPUT_W - subW) / 2);
-
-  const composites: sharp.OverlayOptions[] = [];
-
-  if (logoBuffer) {
-    const logoMeta = await sharp(logoBuffer).metadata();
-    const logoW = logoMeta.width ?? LOGO_SIZE;
-    const logoH = logoMeta.height ?? LOGO_SIZE;
-    composites.push({
-      input: logoBuffer,
-      top: Math.round(logoY + (LOGO_SIZE - logoH) / 2),
-      left: Math.round((OUTPUT_W - logoW) / 2),
-    });
-  }
-
-  composites.push({ input: ctaBuffer, top: ctaY, left: ctaLeft });
-  composites.push({ input: subBuffer, top: subY, left: subLeft });
+  const subY = ctaY + ctaH + 40;
+  composites.push({
+    input: subBuffer,
+    top: subY,
+    left: Math.round((OUTPUT_W - subW) / 2),
+  });
 
   return sharp({
     create: {
       width: OUTPUT_W,
       height: OUTPUT_H,
-      channels: 3,
-      background: { r: 249, g: 126, b: 78 },
+      channels: 4,
+      background: { r: 249, g: 126, b: 78, alpha: 1 },
     },
   })
     .composite(composites)

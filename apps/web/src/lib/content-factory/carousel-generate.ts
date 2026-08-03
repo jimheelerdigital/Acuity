@@ -131,7 +131,7 @@ export async function generateCarousel(
   }
 
   // CTA slide (last)
-  const ctaText = "Debrief daily. See your life clearly.";
+  const ctaText = "Talk it out. See it clearly.";
   const ctaComposed = await composeCTASlide(ctaText);
   const ctaUrl = await uploadImage(
     ctaComposed,
