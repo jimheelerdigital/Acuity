@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const status = url.searchParams.get("status");
   const date = url.searchParams.get("date");
+  const cursor = url.searchParams.get("cursor"); // cursor-based pagination
+  const limit = Math.min(Number(url.searchParams.get("limit")) || 30, 100);
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
@@ -38,9 +40,14 @@ export async function GET(req: NextRequest) {
   const posts = await prisma.carouselPost.findMany({
     where,
     include: { slides: { orderBy: { order: "asc" } } },
-    orderBy: { createdAt: "desc" },
-    take: 50,
+    orderBy: { generatedFor: "desc" },
+    take: limit + 1, // fetch one extra to detect if there's a next page
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
+
+  const hasMore = posts.length > limit;
+  if (hasMore) posts.pop();
+  const nextCursor = hasMore ? posts[posts.length - 1]?.id : null;
 
   // Daily summary: stats for today's generation run
   const today = new Date();
@@ -65,7 +72,28 @@ export async function GET(req: NextRequest) {
     ),
   };
 
-  return NextResponse.json({ posts, summary });
+  // Aggregate stats across all posts (for library header)
+  const [totalCount, draftCount, approvedCount, rejectedCount, postedCount] =
+    await Promise.all([
+      prisma.carouselPost.count(),
+      prisma.carouselPost.count({ where: { status: "DRAFT" } }),
+      prisma.carouselPost.count({ where: { status: "APPROVED" } }),
+      prisma.carouselPost.count({ where: { status: "REJECTED" } }),
+      prisma.carouselPost.count({ where: { status: "POSTED" } }),
+    ]);
+
+  return NextResponse.json({
+    posts,
+    summary,
+    nextCursor,
+    totals: {
+      all: totalCount,
+      draft: draftCount,
+      approved: approvedCount,
+      rejected: rejectedCount,
+      posted: postedCount,
+    },
+  });
 }
 
 /**
