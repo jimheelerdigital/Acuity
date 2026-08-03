@@ -1,16 +1,18 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Daily carousel generation cron — runs at 11:00 UTC.
+ * Daily carousel generation cron — runs 5× daily at 10, 11, 12, 13, 14 UTC.
  *
- * Picks 5 topics not used in the last 30 days, generates each as DRAFT.
+ * Each run generates 1 carousel from a topic not used in the last 30 days.
+ * Style alternates by hour and day to maintain a ~3 hooks + 2 listicles mix
+ * (even days) or ~2 hooks + 3 listicles (odd days).
  * Idempotent per (topicSlug, generatedFor date) so retries never duplicate.
  */
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
-    triggers: [{ cron: "0 11 * * *" }], // 11:00 UTC daily
+    triggers: [{ cron: "0 10,11,12,13,14 * * *" }], // 5× daily
     retries: 1,
   },
   async ({ logger }) => {
@@ -22,11 +24,13 @@ export const carouselDailyCronFn = inngest.createFunction(
       "@/lib/content-factory/topics"
     );
 
+    const now = new Date();
+    const hour = now.getUTCHours();
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 86_400_000);
 
-    // Find topics used in the last 30 days
+    // Find topics used in the last 30 days (includes earlier runs today)
     const recentPosts = await prisma.carouselPost.findMany({
       where: { generatedFor: { gte: thirtyDaysAgo } },
       select: { topicSlug: true },
@@ -45,99 +49,106 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 0 };
     }
 
-    // Pick 5 topics: alternate daily between 3 hooks + 2 listicles
-    // and 2 hooks + 3 listicles. Within each style, shuffle and
-    // prefer lane diversity.
+    // Determine preferred style for this run.
+    // Even-hour runs (10, 12, 14) = 3 slots, odd-hour runs (11, 13) = 2 slots.
+    // Even days: even-hours → hook, odd-hours → listicle  (3 hooks + 2 listicles)
+    // Odd days:  even-hours → listicle, odd-hours → hook   (2 hooks + 3 listicles)
     const dayOfYear = Math.floor(
       (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86_400_000
     );
-    const hookCount = dayOfYear % 2 === 0 ? 3 : 2;
-    const listicleCount = 5 - hookCount;
+    const isEvenDay = dayOfYear % 2 === 0;
+    const isEvenHour = hour % 2 === 0;
+    const preferredStyle = (isEvenDay === isEvenHour) ? "hook" : "listicle";
 
-    const hooks = [...available].filter((t) => t.style === "hook").sort(() => Math.random() - 0.5);
-    const listicles = [...available].filter((t) => t.style === "listicle").sort(() => Math.random() - 0.5);
+    // Pick 1 topic: prefer the target style, prefer lane diversity
+    // against topics already generated today
+    const todayPosts = await prisma.carouselPost.findMany({
+      where: { generatedFor: today },
+      select: { topicSlug: true },
+    });
+    const todaySlugs = new Set(todayPosts.map((p) => p.topicSlug));
+    const todayTopics = CAROUSEL_TOPICS.filter((t) => todaySlugs.has(t.slug));
+    const usedLanesToday = new Set(todayTopics.map((t) => t.lane));
 
-    const pickFromPool = (pool: typeof available, count: number) => {
-      const picked: typeof available = [];
-      const usedLanes = new Set<string>();
-      // First pass: one per lane for variety
-      for (const t of pool) {
-        if (picked.length >= count) break;
-        if (!usedLanes.has(t.lane)) { picked.push(t); usedLanes.add(t.lane); }
-      }
-      // Fill if needed
-      for (const t of pool) {
-        if (picked.length >= count) break;
-        if (!picked.includes(t)) picked.push(t);
-      }
-      return picked;
+    const preferred = available
+      .filter((t) => t.style === preferredStyle)
+      .sort(() => Math.random() - 0.5);
+    const fallback = available
+      .filter((t) => t.style !== preferredStyle)
+      .sort(() => Math.random() - 0.5);
+
+    // Within each pool, prioritize unused lanes for variety
+    const pickOne = (pool: typeof available) => {
+      const freshLane = pool.find((t) => !usedLanesToday.has(t.lane));
+      return freshLane ?? pool[0] ?? null;
     };
 
-    const picks = [
-      ...pickFromPool(hooks, hookCount),
-      ...pickFromPool(listicles, listicleCount),
-    ].sort(() => Math.random() - 0.5); // shuffle final order
+    const topic = pickOne(preferred) ?? pickOne(fallback);
 
-    let totalCostCents = 0;
-    const results: { slug: string; postId: string; slides: number }[] = [];
+    if (!topic) {
+      logger.warn("[carousel-cron] No available topics — skipping");
+      return { generated: 0 };
+    }
 
-    for (const topic of picks) {
-      try {
-        const result = await generateCarousel(topic.slug, today);
-        totalCostCents += result.estimatedCostCents;
-        results.push({
-          slug: topic.slug,
-          postId: result.postId,
-          slides: result.slideCount,
-        });
-        logger.info(
-          `[carousel-cron] Generated ${topic.slug}: ${result.slideCount} slides`
-        );
+    logger.info(
+      `[carousel-cron] Run ${hour} UTC — generating ${topic.slug} (${topic.style})`
+    );
 
-        // Email delivery — separate try/catch so email failure never
-        // rolls back a successful generation. Retry once, then log.
-        if (result.slideCount > 0) {
+    try {
+      const result = await generateCarousel(topic.slug, today);
+
+      logger.info(
+        `[carousel-cron] Generated ${topic.slug}: ${result.slideCount} slides`
+      );
+
+      // Email delivery — separate try/catch so email failure never
+      // rolls back a successful generation. Retry once, then log.
+      if (result.slideCount > 0) {
+        try {
+          const { sendCarouselEmail } = await import(
+            "@/lib/content-factory/email"
+          );
+          await sendCarouselEmail(result.postId);
+          logger.info(`[carousel-cron] Emailed ${topic.slug}`);
+        } catch (emailErr) {
+          logger.error(
+            `[carousel-cron] Email failed for ${topic.slug}, retrying once: ${emailErr instanceof Error ? emailErr.message : emailErr}`
+          );
           try {
             const { sendCarouselEmail } = await import(
               "@/lib/content-factory/email"
             );
             await sendCarouselEmail(result.postId);
-            logger.info(`[carousel-cron] Emailed ${topic.slug}`);
-          } catch (emailErr) {
+            logger.info(`[carousel-cron] Email retry succeeded for ${topic.slug}`);
+          } catch (retryErr) {
             logger.error(
-              `[carousel-cron] Email failed for ${topic.slug}, retrying once: ${emailErr instanceof Error ? emailErr.message : emailErr}`
+              `[carousel-cron] Email retry also failed for ${topic.slug}: ${retryErr instanceof Error ? retryErr.message : retryErr}`
             );
-            // One retry
-            try {
-              const { sendCarouselEmail } = await import(
-                "@/lib/content-factory/email"
-              );
-              await sendCarouselEmail(result.postId);
-              logger.info(`[carousel-cron] Email retry succeeded for ${topic.slug}`);
-            } catch (retryErr) {
-              logger.error(
-                `[carousel-cron] Email retry also failed for ${topic.slug}: ${retryErr instanceof Error ? retryErr.message : retryErr}`
-              );
-            }
           }
         }
-      } catch (err) {
-        logger.error(
-          `[carousel-cron] Failed to generate ${topic.slug}: ${err instanceof Error ? err.message : err}`
-        );
-        // Continue with remaining topics
       }
+
+      console.log(
+        `[carousel-cron] ${hour} UTC run complete: ${topic.slug}, ` +
+          `~$${(result.estimatedCostCents / 100).toFixed(2)} estimated cost`
+      );
+
+      return {
+        generated: 1,
+        estimatedCostCents: result.estimatedCostCents,
+        results: [
+          {
+            slug: topic.slug,
+            postId: result.postId,
+            slides: result.slideCount,
+          },
+        ],
+      };
+    } catch (err) {
+      logger.error(
+        `[carousel-cron] Failed to generate ${topic.slug}: ${err instanceof Error ? err.message : err}`
+      );
+      return { generated: 0, error: topic.slug };
     }
-
-    console.log(
-      `[carousel-cron] Daily run complete: ${results.length}/${picks.length} carousels generated, ` +
-        `~$${(totalCostCents / 100).toFixed(2)} estimated cost`
-    );
-
-    return {
-      generated: results.length,
-      estimatedCostCents: totalCostCents,
-      results,
-    };
   }
 );

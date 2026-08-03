@@ -163,6 +163,12 @@ const nextConfig = {
     // facebook-nodejs-business-sdk is a CJS package that webpack can't resolve
     // at build time. Mark it as external so it's loaded via require() at runtime.
     serverComponentsExternalPackages: ["facebook-nodejs-business-sdk"],
+    // Bundle Poppins font files with serverless functions so carousel text
+    // compositing works in Vercel's Lambda environment (no system fonts).
+    outputFileTracingIncludes: {
+      "/api/inngest": ["./public/fonts/**"],
+      "/api/admin/carousels": ["./public/fonts/**"],
+    },
   },
   typescript: {
     ignoreBuildErrors: true,

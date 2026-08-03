@@ -89,21 +89,30 @@ function wordWrap(text: string, maxCharsPerLine: number): string[] {
 /**
  * Compose text overlay onto a raw generated image.
  *
- * COVER: headline centred in lower 40% with full-height scrim.
- * REASON: text in the bottom quarter with bottom-up scrim.
+ * COVER: headline vertically centred in the safe zone.
+ * REASON: text anchored to the bottom of the safe zone.
  *
- * Text has generous padding (72px sides), wide line-height (1.45),
- * and a strong gradient scrim for legibility.
+ * Bold white Poppins text with a thick black outline — no background
+ * box or scrim. SVG is pre-rendered to PNG before compositing for
+ * reliable text rendering in serverless environments.
  */
 export async function composeSlide(
   rawImage: Buffer,
   text: string,
   kind: "COVER" | "REASON"
 ): Promise<Buffer> {
+  // If no text, return the base image without overlay
+  if (!text || text.trim().length === 0) {
+    console.warn(`[compose] Empty text for ${kind} slide — skipping overlay`);
+    return sharp(rawImage)
+      .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  }
+
   const isCover = kind === "COVER";
   const fontSize = isCover ? 72 : 54;
   const maxChars = isCover ? 18 : 24;
-  const lineSpacing = fontSize * 1.5;
 
   let lines = wordWrap(text, maxChars);
   let actualFontSize = fontSize;
@@ -127,36 +136,40 @@ export async function composeSlide(
   }
 
   const textX = OUTPUT_W / 2;
-  const anchor = "middle";
 
-  // White text with bold black outline — pops on any background
+  // Bold white text with thick black outline — pops on any background
   // without covering the image with a scrim or pill.
-  // SVG paint-order: stroke renders behind fill so the outline
-  // doesn't eat into the letter shapes.
-  const strokeW = isCover ? 8 : 6;
+  // paint-order: stroke renders behind fill so the outline doesn't eat
+  // into the letter shapes.
+  const strokeW = isCover ? 10 : 8;
 
-  const svgOverlay = `
-    <svg width="${OUTPUT_W}" height="${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <style>${fontFaceDeclarations()}</style>
-      </defs>
-      ${lines
-        .map(
-          (line, i) =>
-            `<text x="${textX}" y="${textY + i * actualLineSpacing + actualFontSize}"
+  const textElements = lines
+    .map((line, i) => {
+      const y = textY + i * actualLineSpacing + actualFontSize;
+      const escaped = escapeXml(line);
+      return `<text x="${textX}" y="${y}"
                    font-family="Poppins, sans-serif" font-weight="700"
                    font-size="${actualFontSize}" fill="white"
                    stroke="black" stroke-width="${strokeW}"
                    stroke-linejoin="round" paint-order="stroke fill"
-                   text-anchor="${anchor}">${escapeXml(line)}</text>`
-        )
-        .join("\n")}
-    </svg>
-  `;
+                   text-anchor="middle">${escaped}</text>`;
+    })
+    .join("\n");
+
+  const svgOverlay = `<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
+<defs><style>${fontFaceDeclarations()}</style></defs>
+${textElements}
+</svg>`;
+
+  // Pre-render SVG text layer to PNG — more reliable than passing raw
+  // SVG to composite(), especially when librsvg has limited fonts.
+  const textLayer = await sharp(Buffer.from(svgOverlay), { density: 72 })
+    .png()
+    .toBuffer();
 
   return sharp(rawImage)
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
-    .composite([{ input: Buffer.from(svgOverlay), top: 0, left: 0 }])
+    .composite([{ input: textLayer, top: 0, left: 0 }])
     .jpeg({ quality: 90 })
     .toBuffer();
 }
@@ -189,28 +202,29 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
   const ctaLineH = 64;
   const subY = ctaY + ctaLines.length * ctaLineH + 50;
 
-  const svgBg = `
-    <svg width="${OUTPUT_W}" height="${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <style>${fontFaceDeclarations()}</style>
-      </defs>
-      <rect width="${OUTPUT_W}" height="${OUTPUT_H}" fill="${BURNT_ORANGE}" />
-      ${ctaLines
-        .map(
-          (line, i) =>
-            `<text x="${OUTPUT_W / 2}" y="${ctaY + i * ctaLineH}"
-                   font-family="Poppins, sans-serif" font-weight="700" font-size="54"
-                   fill="white" text-anchor="middle">${escapeXml(line)}</text>`
-        )
-        .join("\n")}
-      <text x="${OUTPUT_W / 2}" y="${subY}"
-            font-family="Poppins, sans-serif" font-weight="500" font-size="28"
-            fill="rgba(255,255,255,0.85)" text-anchor="middle">Free on iPhone &amp; Android</text>
-    </svg>
-  `;
+  const svgBg = `<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
+<defs><style>${fontFaceDeclarations()}</style></defs>
+<rect width="${OUTPUT_W}" height="${OUTPUT_H}" fill="${BURNT_ORANGE}" />
+${ctaLines
+  .map(
+    (line, i) =>
+      `<text x="${OUTPUT_W / 2}" y="${ctaY + i * ctaLineH}"
+             font-family="Poppins, sans-serif" font-weight="700" font-size="54"
+             fill="white" text-anchor="middle">${escapeXml(line)}</text>`
+  )
+  .join("\n")}
+<text x="${OUTPUT_W / 2}" y="${subY}"
+      font-family="Poppins, sans-serif" font-weight="500" font-size="28"
+      fill="rgba(255,255,255,0.85)" text-anchor="middle">Free on iPhone &amp; Android</text>
+</svg>`;
+
+  // Pre-render SVG to PNG for reliable text rendering in serverless
+  const svgLayer = await sharp(Buffer.from(svgBg), { density: 72 })
+    .png()
+    .toBuffer();
 
   const composite: sharp.OverlayOptions[] = [
-    { input: Buffer.from(svgBg), top: 0, left: 0 },
+    { input: svgLayer, top: 0, left: 0 },
   ];
 
   if (logoBuffer) {
