@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-08-03] — Fix carousel: 5x daily schedule, text rendering, and one-off generate button
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dd320e8d
+
+### In plain English (for Keenan)
+Three carousel fixes. First: the daily carousel was only running once a day instead of five times — now it runs at 10, 11, 12, 1, and 2 UTC, generating one carousel each hour so they trickle in instead of arriving all at once. Second: some slides were showing up with no text at all (just the image) — this was because the font files weren't being bundled with the server, so the text renderer had nothing to draw with. Fixed by bundling fonts and using a more reliable rendering pipeline. Third: added a "Generate" button to the carousel admin page so you can trigger a one-off carousel anytime without waiting for the scheduled runs. Hit the button, wait a couple minutes, and the carousel arrives in your email.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cron changed from `0 11 * * *` to `0 10,11,12,13,14 * * *` — each run generates 1 carousel instead of batching 5. Style alternation (hook/listicle) maintained via hour+day parity.
+- `apps/web/src/lib/content-factory/compose.ts`: SVG text overlay now pre-rendered to PNG via `sharp(svgBuffer, { density: 72 }).png()` before compositing — fixes librsvg failing silently in Lambda. Added `viewBox` attribute. Stroke width increased from 8/6 to 10/8 for more visible text. Added empty-text guard.
+- `apps/web/next.config.js`: Added `outputFileTracingIncludes` to bundle Poppins font files with `/api/inngest` and `/api/admin/carousels` serverless functions.
+- `apps/web/src/inngest/functions/carousel-one-off.ts` (new): event-driven Inngest function triggered by `carousel/generate.one-off`. Picks random unused topic, generates carousel, emails result.
+- `apps/web/src/app/api/inngest/route.ts`: registered `carouselGenerateOneOffFn`.
+- `apps/web/src/app/api/admin/carousels/route.ts`: new `generate-one-off` action sends Inngest event.
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: Generate button in top bar + empty state.
+
+### Manual steps needed
+- [ ] Keenan: after Vercel deploys, hit Generate on the carousel admin page to verify text renders correctly on the new slides
+
+### Notes
+- Root cause of missing text was almost certainly that Vercel's Lambda environment has no system fonts, and the Poppins TTF files in `public/fonts/` weren't being traced into the serverless bundle. `outputFileTracingIncludes` fixes this explicitly.
+- The pre-render approach (SVG → PNG → composite) is more reliable than passing raw SVG to sharp's `.composite()` because it isolates the librsvg rendering step.
+- The old "highlighted text box" style visible on previously-generated carousels was from an earlier version of compose.ts. Those carousels won't retroactively update — regenerate individual slides via the Regen button if needed.
+- One-off generation costs ~$0.50 per carousel (6-8 images at ~$0.08 each via gpt-image-2).
+
 ## [2026-08-03] — Stop PROGRESS.md merge conflicts + make the launch alias conflict-proof
 
 **Requested by:** Keenan
