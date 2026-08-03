@@ -7,7 +7,37 @@
 
 ---
 
-## [2026-08-03] — Fix carousel: 5x daily schedule, text rendering, and one-off generate button
+## [2026-08-03] — Complete carousel pipeline overhaul: scheduling, text rendering, admin UI, CTA redesign
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7fc30847
+
+### In plain English (for Keenan)
+Major overhaul of the carousel system. The daily carousel was only running once — now it runs 5 times (10am–2pm UTC), generating one carousel each hour so they trickle in instead of all at once. Slides were showing up with garbled text (tiny rectangles instead of words) because the server couldn't render fonts — completely rebuilt the text engine to fix this. Each reason slide now shows its number ("1. Meditation", "2. No alcohol", etc.) so viewers can follow along. The CTA slide uses your actual Ripple lockup logo (mark + wordmark) on burnt orange with "Talk it out. See it clearly." and "Free 7-day trial on iPhone & Android." The admin page defaults to library view, clicking a post opens a full detail view with an X to close, and there's a Generate button to create a one-off carousel anytime (it emails you when done). Each post now shows its estimated cost (~$0.56/carousel).
+
+### Technical changes (for Jimmy)
+- `carousel-daily.ts`: cron `0 11 * * *` → `0 10,11,12,13,14 * * *`, generates 1 carousel per run instead of 5. Full rewrite to use **Inngest steps** — each gpt-image-2 call is its own step with a 300s Lambda window, preventing Vercel timeout on the 7-image pipeline.
+- `carousel-one-off.ts` (new): event-driven Inngest function (`carousel/generate.one-off`) with same step-based architecture.
+- `compose.ts`: **complete rewrite** — replaced SVG/librsvg text rendering (broken in Lambda, produced tofu) with sharp's Pango text renderer using `fontfile` parameter. Font files loaded from local paths or downloaded from CDN and cached in `/tmp/`. Black outline via blurred shadow composited 4x. Added `slideNumber` param for numbered reason slides.
+- `carousel-generate.ts`: exported helpers (`buildImagePrompt`, `generateImage`, `uploadImage`, `ensureBucket`, `extractHashtags`) for step-based functions. CTA text → "Talk it out. See it clearly." Reason slides pass `i + 1` as slide number.
+- `composeCTASlide`: loads `ripple-lockup-cream.png`, brightness-thresholds cream background to transparent, tints content to white. Falls back to CDN download.
+- `page.tsx` (admin carousels): removed dual review/library toggle — library is default, clicking a post opens full detail view with X to close. Generate button in top bar with "Queued — check email in ~3 min" feedback. Cost per post and per day displayed.
+- `route.ts` (admin API): new `generate-one-off` action sends Inngest event.
+- `route.ts` (Inngest): registered `carouselGenerateOneOffFn`.
+- `next.config.js`: `outputFileTracingIncludes` for font bundling (supplementary to CDN fallback).
+
+### Manual steps needed
+None
+
+### Notes
+- librsvg in Vercel's Lambda environment has zero font support — `@font-face` with base64 data URLs is silently ignored. This is a platform limitation, not a config issue. The Pango text renderer (via sharp's `text` input + `fontfile`) works because it uses libvips/Pango directly, bypassing librsvg.
+- Inngest steps are essential for carousel generation — without them, 7 sequential gpt-image-2 calls (each 15-60s) exceed Vercel's 300s max duration. Each step gets its own Lambda invocation.
+- Pango markup does NOT support CSS `rgba()` in color attributes — use `foreground="white" alpha="70%"` instead.
+- The `trialEmailLog.upsert()` unique constraint errors in the logs are a separate pre-existing issue with the trial email function, not related to carousels.
+- Generation cost: ~$0.56/carousel (7 images × $0.08 via gpt-image-2).
+
+## [2026-08-03] — Fix carousel: 5x daily schedule, text rendering, and one-off generate button (superseded)
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
