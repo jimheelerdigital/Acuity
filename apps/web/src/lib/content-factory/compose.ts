@@ -234,12 +234,12 @@ export async function composeSlide(
 
 /**
  * Compose the CTA slide — solid burnt-orange background with:
- *   1. White Ripple mark (tinted from coral-t.png)
- *   2. "ripple" wordmark in white Poppins Bold
- *   3. CTA text
- *   4. "Free 7-day trial" subtext
+ *   1. White Ripple lockup (mark + wordmark from ripple-lockup-cream.png)
+ *   2. CTA text
+ *   3. "Free 7-day trial" subtext
  *
- * All elements vertically centred in the safe zone.
+ * The lockup has a cream background with coral mark + dark text.
+ * We convert it to white-on-transparent by thresholding brightness.
  */
 export async function composeCTASlide(ctaText: string): Promise<Buffer> {
   const SAFE_TOP = 285;
@@ -252,78 +252,112 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
 
   const composites: sharp.OverlayOptions[] = [];
   const maxTextW = OUTPUT_W - PADDING_X * 2;
+  const LOCKUP_W = 680; // target width for the lockup
 
-  // ── 1. White Ripple mark ─────────────────────────────────────────
-  const MARK_SIZE = 280;
-  let markH = 0;
-  const markCandidates = [
-    path.join(process.cwd(), "public", "ripple-mark-coral-t.png"),
-    path.join(process.cwd(), ".next", "server", "public", "ripple-mark-coral-t.png"),
+  // ── 1. White lockup (mark + wordmark) ────────────────────────────
+  let lockupH = 0;
+  const lockupCandidates = [
+    path.join(process.cwd(), "public", "ripple-lockup-cream.png"),
+    path.join(process.cwd(), ".next", "server", "public", "ripple-lockup-cream.png"),
   ];
-  for (const p of markCandidates) {
-    if (fs.existsSync(p)) {
-      // Tint coral mark to white: set all visible pixels to white
-      const resized = await sharp(p)
-        .resize(MARK_SIZE, undefined, { fit: "inside" })
-        .ensureAlpha()
-        .png()
-        .toBuffer();
-      const { data, info } = await sharp(resized)
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] > 0) {
-          data[i] = 255;
-          data[i + 1] = 255;
-          data[i + 2] = 255;
+
+  let lockupFound = false;
+  for (const p of lockupCandidates) {
+    if (!fs.existsSync(p)) continue;
+
+    // Load, resize, add alpha, then convert to white-on-transparent
+    const resized = await sharp(p)
+      .resize(LOCKUP_W, undefined, { fit: "inside" })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const { data, info } = resized;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const brightness = (r + g + b) / 3;
+      if (brightness > 210) {
+        // Light pixel (cream background) → transparent
+        data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0;
+      } else {
+        // Content pixel (mark + text) → white
+        data[i] = 255; data[i + 1] = 255; data[i + 2] = 255; data[i + 3] = 255;
+      }
+    }
+
+    const whiteLockup = await sharp(data, {
+      raw: { width: info.width, height: info.height, channels: 4 },
+    })
+      .png()
+      .toBuffer();
+
+    const lockupMeta = await sharp(whiteLockup).metadata();
+    lockupH = lockupMeta.height ?? 260;
+    const lockupActualW = lockupMeta.width ?? LOCKUP_W;
+
+    // Center lockup in the upper portion of safe zone
+    const lockupY = Math.round(centerY - lockupH / 2 - 120);
+    composites.push({
+      input: whiteLockup,
+      top: lockupY,
+      left: Math.round((OUTPUT_W - lockupActualW) / 2),
+    });
+    lockupFound = true;
+    break;
+  }
+
+  // If lockup not found locally, try downloading from CDN
+  if (!lockupFound) {
+    try {
+      const tmpLockup = "/tmp/ripple-lockup-cream.png";
+      if (!fs.existsSync(tmpLockup)) {
+        const res = await fetch("https://getacuity.io/ripple-lockup-cream.png");
+        if (res.ok) {
+          fs.writeFileSync(tmpLockup, Buffer.from(await res.arrayBuffer()));
         }
       }
-      const whiteMark = await sharp(data, {
-        raw: { width: info.width, height: info.height, channels: 4 },
-      })
-        .png()
-        .toBuffer();
-      const markMeta = await sharp(whiteMark).metadata();
-      markH = markMeta.height ?? MARK_SIZE;
-      const markW = markMeta.width ?? MARK_SIZE;
-      // Position mark in upper portion of safe zone
-      const markY = Math.round(centerY - markH - 120);
-      composites.push({
-        input: whiteMark,
-        top: markY,
-        left: Math.round((OUTPUT_W - markW) / 2),
-      });
-      break;
+      if (fs.existsSync(tmpLockup)) {
+        const resized = await sharp(tmpLockup)
+          .resize(LOCKUP_W, undefined, { fit: "inside" })
+          .ensureAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+
+        const { data, info } = resized;
+        for (let i = 0; i < data.length; i += 4) {
+          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          if (brightness > 210) {
+            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0;
+          } else {
+            data[i] = 255; data[i + 1] = 255; data[i + 2] = 255; data[i + 3] = 255;
+          }
+        }
+
+        const whiteLockup = await sharp(data, {
+          raw: { width: info.width, height: info.height, channels: 4 },
+        })
+          .png()
+          .toBuffer();
+
+        const lockupMeta = await sharp(whiteLockup).metadata();
+        lockupH = lockupMeta.height ?? 260;
+        const lockupActualW = lockupMeta.width ?? LOCKUP_W;
+        const lockupY = Math.round(centerY - lockupH / 2 - 120);
+        composites.push({
+          input: whiteLockup,
+          top: lockupY,
+          left: Math.round((OUTPUT_W - lockupActualW) / 2),
+        });
+      }
+    } catch (err) {
+      console.warn(`[compose] Lockup download failed: ${err}`);
     }
   }
 
-  // ── 2. "ripple" wordmark ─────────────────────────────────────────
-  const wordmarkMarkup = `<span font_desc="Poppins Bold 80" foreground="white">ripple</span>`;
-  const wordmarkOpts: Record<string, unknown> = {
-    text: wordmarkMarkup,
-    rgba: true,
-    align: "centre",
-  };
-  if (fontBoldPath) wordmarkOpts.fontfile = fontBoldPath;
-  else wordmarkOpts.font = "sans-serif";
-
-  const wordmarkBuffer = await sharp({ text: wordmarkOpts } as any)
-    .png()
-    .toBuffer();
-  const wordmarkMeta = await sharp(wordmarkBuffer).metadata();
-  const wordmarkW = wordmarkMeta.width ?? 400;
-  const wordmarkH = wordmarkMeta.height ?? 90;
-  const wordmarkY = Math.round(centerY - 60);
-  composites.push({
-    input: wordmarkBuffer,
-    top: wordmarkY,
-    left: Math.round((OUTPUT_W - wordmarkW) / 2),
-  });
-
-  // ── 3. CTA text ─────────────────────────────────────────────────
-  const ctaLines = wordWrap(ctaText, 24);
+  // ── 2. CTA text ─────────────────────────────────────────────────
+  const ctaLines = wordWrap(ctaText, 28);
   const ctaEscaped = ctaLines.map((l) => escapePango(l)).join("\n");
-  const ctaMarkup = `<span font_desc="Poppins Bold 42" foreground="white">${ctaEscaped}</span>`;
+  const ctaMarkup = `<span font_desc="Poppins Bold 44" foreground="white">${ctaEscaped}</span>`;
   const ctaOpts: Record<string, unknown> = {
     text: ctaMarkup,
     width: maxTextW,
@@ -340,14 +374,14 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
   const ctaMeta = await sharp(ctaBuffer).metadata();
   const ctaW = ctaMeta.width ?? 800;
   const ctaH = ctaMeta.height ?? 60;
-  const ctaY = wordmarkY + wordmarkH + 60;
+  const ctaY = Math.round(centerY + 60);
   composites.push({
     input: ctaBuffer,
     top: ctaY,
     left: Math.round((OUTPUT_W - ctaW) / 2),
   });
 
-  // ── 4. Subtext ──────────────────────────────────────────────────
+  // ── 3. Subtext ──────────────────────────────────────────────────
   const subMarkup = `<span font_desc="Poppins Medium 28" foreground="white" alpha="70%">Free 7-day trial on iPhone &amp; Android</span>`;
   const subOpts: Record<string, unknown> = {
     text: subMarkup,
