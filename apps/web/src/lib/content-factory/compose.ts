@@ -205,7 +205,10 @@ export async function composeSlide(
   if (isCover) {
     textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2);
   } else {
-    textY = Math.round(SAFE_BOTTOM - textBlockH - 80);
+    // Center reason text vertically in the lower 60% of safe zone
+    const reasonZoneTop = SAFE_TOP + Math.round(SAFE_H * 0.4);
+    const reasonZoneH = SAFE_BOTTOM - reasonZoneTop;
+    textY = Math.round(reasonZoneTop + (reasonZoneH - textBlockH) / 2);
   }
   const textLeft = Math.round((OUTPUT_W - black.width) / 2);
 

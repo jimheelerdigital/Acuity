@@ -4,6 +4,9 @@
  * 36 topics reflecting Ripple positioning. Headlines are scroll-stopping
  * hooks — short, punchy, provocative. Reason slides use ellipses, commas,
  * and emotional phrasing that makes people feel seen. NO emojis anywhere.
+ *
+ * All copy uses US English spelling.
+ * Target audience: women ~40-50 carrying heavy mental load.
  */
 
 import type { StyleLane } from "./brand";
@@ -26,12 +29,12 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "cinematicReal",
     reasons: [
-      "Remembering everything... for everyone",
+      "Remembering everything for everyone",
       "Planning meals no one will thank you for",
       "Tracking deadlines that aren't even yours",
       "Managing everyone's mood, constantly",
-      "Anticipating problems no one else sees coming",
-      "The calendar lives in your head, nowhere else",
+      "Anticipating problems no one else sees",
+      "The calendar lives in your head and nowhere else",
     ],
   },
   {
@@ -41,11 +44,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     lane: "stillLife",
     reasons: [
       "Decision fatigue hits before noon",
-      "Your brain never, ever switches off",
-      "You carry everyone's emotions... on top of yours",
-      "A thousand roles, zero breaks between them",
-      "Rest feels like something you haven't earned",
-      "Always on-call, even when you're off-duty",
+      "Your brain never actually switches off",
+      "You carry everyone's emotions on top of yours",
+      "A thousand roles with zero breaks between them",
+      "Rest feels like something you haven't earned yet",
+      "Always on call, even when you're off duty",
     ],
   },
   {
@@ -55,9 +58,9 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     lane: "paperDiorama",
     reasons: [
       "Restocking things before anyone runs out",
-      "Fixing conflicts no one even noticed happened",
-      "Researching the best option, every single time",
-      "Remembering what everyone likes, needs, hates",
+      "Fixing conflicts no one even knew happened",
+      "Researching the best option every single time",
+      "Remembering what everyone likes, needs, and hates",
       "Quietly adjusting so everyone else is comfortable",
     ],
   },
@@ -65,16 +68,16 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Repeating Patterns ──────────────────────────────────────────
   {
     slug: "patterns-you-repeat",
-    headline: "6 patterns you keep repeating without realising",
+    headline: "6 patterns you keep repeating without realizing",
     style: "hook",
     lane: "risograph",
     reasons: [
-      "Saying yes, when you meant no",
-      "Over-explaining yourself... just to feel safe",
-      "Putting yourself last, until you finally snap",
+      "Saying yes when you meant no",
+      "Over-explaining yourself just to feel safe",
+      "Putting yourself last until you finally snap",
       "Starting strong, then quietly disappearing",
       "Asking for permission you don't actually need",
-      "Absorbing everyone's stress like it's yours to carry",
+      "Absorbing everyone's stress like it's yours",
     ],
   },
   {
@@ -85,9 +88,9 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     reasons: [
       "You're already pre-living next week",
       "The weekend never actually felt restful",
-      "Unfinished emotional business... surfacing quietly",
-      "Measuring the gap between your plans and your reality",
-      "That familiar guilt, for not being productive enough",
+      "Unfinished emotional business surfacing quietly",
+      "Measuring the gap between your plans and reality",
+      "That familiar guilt for not being productive enough",
     ],
   },
   {
@@ -96,12 +99,12 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "flatGraphic",
     reasons: [
-      "The real issue stays buried, under logistics",
-      "You react to the trigger... not the wound",
+      "The real issue stays buried under logistics",
+      "You react to the trigger, not the wound",
       "Neither of you actually feels heard",
       "Exhaustion makes everything feel personal",
       "Same script, different night, no resolution",
-      "You know the pattern, but you can't rewrite it",
+      "You know the pattern but can't rewrite it alone",
     ],
   },
   {
@@ -111,10 +114,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     lane: "toon3d",
     reasons: [
       "Overcommitting, then resenting every single one",
-      "Stress eating... again",
+      "Stress eating again",
       "Scrolling when what you need is connection",
       "Avoiding the conversation until it explodes",
-      "Telling yourself, this week will be different",
+      "Telling yourself this week will be different",
     ],
   },
 
@@ -125,12 +128,12 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "stillLife",
     reasons: [
-      "Knowing and doing... live in different rooms",
+      "Knowing and doing live in different rooms",
       "Awareness without reflection is just noise",
       "You haven't said it out loud yet",
       "Your body stores what your mind keeps avoiding",
       "Nobody has asked you the right question",
-      "Reading about change, isn't changing",
+      "Reading about change isn't changing",
     ],
   },
   {
@@ -141,8 +144,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     reasons: [
       "Rest isn't something you need to earn",
       "You're allowed to change your mind, fully",
-      "Not everything needs to be optimised",
-      "Stop keeping score... with yourself",
+      "Not everything needs to be optimized",
+      "Stop keeping score with yourself",
       "Ask for help before you're drowning",
     ],
   },
@@ -154,8 +157,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     reasons: [
       "That honest conversation you keep rehearsing",
       "The boundary you know needs to exist",
-      "That appointment, the one you keep rescheduling",
-      "Admitting something isn't working... anymore",
+      "That appointment you keep rescheduling",
+      "Admitting something isn't working anymore",
       "Forgiving yourself for the messy chapter",
       "Starting the thing you're actually excited about",
     ],
@@ -168,11 +171,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "listicle",
     lane: "flatGraphic",
     reasons: [
-      "Colour-coded lists don't move the needle",
-      "Planning feels safe. Doing feels vulnerable.",
-      "You're preparing for a perfect start... forever",
+      "Color-coded lists don't move the needle",
+      "Planning feels safe, doing feels vulnerable",
+      "You're preparing for a perfect start forever",
       "The plan changes the second real life starts",
-      "Reflection beats planning, every single time",
+      "Reflection beats planning every single time",
     ],
   },
   {
@@ -181,10 +184,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "listicle",
     lane: "claymation",
     reasons: [
-      "Optimising your schedule won't fix your life",
+      "Optimizing your schedule won't fix your life",
       "Busyness is how you avoid sitting with yourself",
-      "Every new app is just... a fresh start fantasy",
-      "You don't need a system. You need clarity.",
+      "Every new app is just a fresh start fantasy",
+      "You don't need a system, you need clarity",
       "Doing more won't fill what doing less reveals",
       "Spinning faster isn't the same as moving forward",
     ],
@@ -197,7 +200,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     reasons: [
       "They came from who you think you should be",
       "No check-in system to catch you drifting",
-      "Willpower... is a terrible long-term strategy",
+      "Willpower is a terrible long-term strategy",
       "You skipped the 'why does this matter' step",
       "Life didn't pause for your plan to work",
     ],
@@ -212,15 +215,15 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     reasons: [
       "Blank pages feel like another to-do item",
       "Writing at night is exhausting, not healing",
-      "You didn't know what to say... so you stopped",
-      "Prompts felt generic, disconnected from your life",
+      "You didn't know what to say so you stopped",
+      "Prompts felt generic and disconnected from your life",
       "You needed to talk, not write",
       "Nobody showed you what to do with the insights",
     ],
   },
   {
     slug: "voice-vs-writing",
-    headline: "5 reasons talking beats writing, every time",
+    headline: "5 reasons talking beats writing every time",
     style: "listicle",
     lane: "stillLife",
     reasons: [
@@ -238,10 +241,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     lane: "paperDiorama",
     reasons: [
       "It doesn't connect your patterns over time",
-      "You re-read old entries and cringe, not learn",
-      "No one summarises the themes... for you",
-      "Captures moments, but never trajectories",
-      "Writing filters. Your voice is unfiltered truth.",
+      "You reread old entries and cringe, not learn",
+      "No one summarizes the themes for you",
+      "Captures moments but never trajectories",
+      "Writing filters, your voice is unfiltered truth",
       "You forget what you wrote within a week",
     ],
   },
@@ -253,10 +256,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "risograph",
     reasons: [
-      "Am I happy, or just... comfortable?",
+      "Am I happy or just comfortable?",
       "When did I last do something just for me?",
       "What am I tolerating that I shouldn't be?",
-      "Is this my goal, or someone else's expectation?",
+      "Is this my goal or someone else's expectation?",
       "What would I change if nobody would judge me?",
     ],
   },
@@ -268,9 +271,9 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     reasons: [
       "Night quiet makes suppressed feelings louder",
       "Your guard drops when you're tired enough",
-      "Unprocessed days stack up... like unread mail",
+      "Unprocessed days stack up like unread mail",
       "Anxiety fills the space reflection should occupy",
-      "Those thoughts don't go away. They wait.",
+      "Those thoughts don't go away, they wait",
       "Morning buries what midnight tried to surface",
     ],
   },
@@ -283,23 +286,23 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
       "The answers are already inside you",
       "Advice without context is just noise",
       "Hearing your own voice creates real clarity",
-      "A mirror reflects. A coach directs.",
+      "A mirror reflects, a coach directs",
       "You need to see yourself, not fix yourself",
     ],
   },
 
-  // ─── Emotional Labour ────────────────────────────────────────────
+  // ─── Emotional Labor ────────────────────────────────────────────
   {
     slug: "emotional-labour-tax",
-    headline: "6 emotional labour taxes you pay every single day",
+    headline: "6 emotional labor taxes you pay every single day",
     style: "listicle",
     lane: "flatGraphic",
     reasons: [
-      "Smiling, when you're running on empty",
-      "Being the calm one... so others can fall apart",
+      "Smiling when you're running on empty",
+      "Being the calm one so others can fall apart",
       "Translating everyone's feelings into action items",
-      "Holding space for others, but never for yourself",
-      "Performing fine, when you're anything but",
+      "Holding space for others but never for yourself",
+      "Performing fine when you're anything but",
       "Managing moods is your unpaid second job",
     ],
   },
@@ -313,7 +316,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
       "Everyone needs something from you, constantly",
       "You haven't had uninterrupted silence in weeks",
       "Your nervous system needs a break from being needed",
-      "Being present for everyone... depletes your own presence",
+      "Being present for everyone depletes your own presence",
     ],
   },
 
@@ -324,7 +327,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "listicle",
     lane: "stillLife",
     reasons: [
-      "Mother, partner, employee... but who else?",
+      "Mother, partner, employee, but who else?",
       "You lost your hobbies when life got serious",
       "Your identity merged with your responsibilities",
       "You forgot what excited you at twenty-five",
@@ -338,10 +341,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "listicle",
     lane: "paperDiorama",
     reasons: [
-      "It's subtler, harder to measure externally",
+      "It's subtler and harder to measure externally",
       "You're unlearning more than you're learning",
       "Progress now means better boundaries, not more hustle",
-      "The wins are quieter... and more meaningful",
+      "The wins are quieter and more meaningful",
       "You're finally doing it for you, not for proof",
     ],
   },
@@ -355,8 +358,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
       "Outgrowing something isn't failing at it",
       "Your values can shift without betraying anyone",
       "Changing course is data, not weakness",
-      "The bravest thing is admitting... it's not working",
-      "You get to rewrite the story, mid-chapter",
+      "The bravest thing is admitting it's not working",
+      "You get to rewrite the story mid-chapter",
     ],
   },
 
@@ -367,11 +370,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "cinematicReal",
     reasons: [
-      "Speaking up felt unsafe growing up, so you stopped",
+      "Speaking up felt unsafe growing up so you stopped",
       "You learned that silence keeps the peace",
       "Vulnerability was punished, not rewarded",
       "You'd rather swallow it than risk the reaction",
-      "Shutting down is self-protection... not apathy",
+      "Shutting down is self-protection, not apathy",
     ],
   },
   {
@@ -380,9 +383,9 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "claymation",
     reasons: [
-      "The mental checklist, before you leave the house",
+      "The mental checklist before you leave the house",
       "How you rehearse hard conversations in the shower",
-      "The guilt you feel... for wanting time alone",
+      "The guilt you feel for wanting time alone",
       "How much you dim yourself to avoid conflict",
       "The running tally of emotional IOUs you never cash in",
       "How you hold the family together with invisible thread",
@@ -397,8 +400,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     lane: "flatGraphic",
     reasons: [
       "Having the conversation you've been avoiding",
-      "Saying no, without writing a paragraph excuse",
-      "Letting the house be messy... without guilt",
+      "Saying no without writing a paragraph excuse",
+      "Letting the house be messy without guilt",
       "Blocking time that nobody else can touch",
       "Admitting you need more than a bubble bath",
     ],
@@ -409,11 +412,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "risograph",
     reasons: [
-      "Good vibes only... erases legitimate pain",
+      "Good vibes only erases legitimate pain",
       "Forcing gratitude when you're struggling isn't healing",
       "Your negative emotions carry important information",
       "Positivity without processing is just suppression",
-      "You're allowed to be not okay, and still be strong",
+      "You're allowed to not be okay and still be strong",
       "Real growth starts with honest, messy feelings",
     ],
   },
@@ -425,11 +428,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "toon3d",
     reasons: [
-      "Talk it out. Three minutes beats hours of spiralling.",
-      "Name the feeling, before you try to fix it",
-      "Let your body move, without calling it exercise",
-      "Put the phone down. Stare at nothing. Five minutes.",
-      "Stop solving. Just describe what happened today.",
+      "Talk it out, three minutes beats hours of spiraling",
+      "Name the feeling before you try to fix it",
+      "Let your body move without calling it exercise",
+      "Put the phone down and stare at nothing for five minutes",
+      "Stop solving, just describe what happened today",
     ],
   },
 
@@ -441,12 +444,12 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     lane: "claymation",
     reasons: [
       "You dread things you used to enjoy",
-      "Small tasks feel... impossibly heavy",
+      "Small tasks feel impossibly heavy",
       "You can't remember the last time you laughed hard",
       "Sleep doesn't make you feel rested anymore",
       "You're irritable with the people you love most",
       "Everything feels like it's your responsibility",
-      "You fantasise about disappearing, just for a week",
+      "You fantasize about disappearing, just for a week",
     ],
   },
   {
@@ -455,10 +458,10 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "listicle",
     lane: "flatGraphic",
     reasons: [
-      "You feel resentful... but you can't explain why",
-      "People come to you, but never ask how you are",
-      "You say yes, and immediately regret it",
-      "Your calendar is full, but none of it is for you",
+      "You feel resentful but you can't explain why",
+      "People come to you but never ask how you are",
+      "You say yes and immediately regret it",
+      "Your calendar is full but none of it is for you",
       "You feel guilty every single time you rest",
       "You've lost track of what you actually want",
     ],
@@ -469,11 +472,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "paperDiorama",
     reasons: [
-      "You apologise for things that aren't your fault",
+      "You apologize for things that aren't your fault",
       "You change your opinion based on who's in the room",
       "Saying no feels physically uncomfortable",
       "You rehearse texts for twenty minutes before sending",
-      "Everyone thinks you're fine... because you never say otherwise",
+      "Everyone thinks you're fine because you never say otherwise",
     ],
   },
   {
@@ -482,12 +485,12 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "toon3d",
     reasons: [
-      "You have the time, but zero motivation",
+      "You have the time but zero motivation",
       "Your to-do list makes you want to cry",
-      "You zone out mid-conversation... without realising",
+      "You zone out mid-conversation without realizing",
       "Weekends feel like recovery, not recreation",
       "You're running on autopilot through your own life",
-      "One more decision, and you might break",
+      "One more decision and you might break",
     ],
   },
   {
@@ -496,11 +499,11 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "hook",
     lane: "risograph",
     reasons: [
-      "The same thought, looping... for days",
+      "The same thought looping for days",
       "You've journaled about it but nothing shifted",
-      "Your chest feels tight, but you can't name why",
+      "Your chest feels tight but you can't name why",
       "You keep almost telling someone, then stopping",
-      "You know the answer. You just need to hear yourself say it.",
+      "You know the answer, you just need to hear yourself say it",
     ],
   },
   {
@@ -509,12 +512,12 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     style: "listicle",
     lane: "claymation",
     reasons: [
-      "You catch the pattern, before you repeat it",
+      "You catch the pattern before you repeat it",
       "Old triggers don't hit as hard anymore",
-      "You choose rest... without the guilt spiral",
-      "You say what you mean, the first time",
+      "You choose rest without the guilt spiral",
+      "You say what you mean the first time",
       "You're less interested in proving yourself to people",
-      "Silence feels comfortable, instead of terrifying",
+      "Silence feels comfortable instead of terrifying",
     ],
   },
 ];
