@@ -106,7 +106,8 @@ async function renderText(
   color: string,
   fontPath: string | null,
   maxWidth: number,
-  lineSpacing: number
+  lineSpacing: number,
+  padding = 0
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const escaped = lines.map((l) => escapePango(l)).join("\n");
   const markup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${color}">${escaped}</span>`;
@@ -124,9 +125,24 @@ async function renderText(
     textOpts.font = "sans-serif";
   }
 
-  const buffer = await sharp({ text: textOpts } as any)
+  let buffer = await sharp({ text: textOpts } as any)
     .png()
     .toBuffer();
+
+  // Add transparent padding so outline offsets don't clip descenders
+  if (padding > 0) {
+    buffer = await sharp(buffer)
+      .extend({
+        top: padding,
+        bottom: padding,
+        left: padding,
+        right: padding,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+  }
+
   const meta = await sharp(buffer).metadata();
   return {
     buffer,
@@ -189,25 +205,27 @@ export async function composeSlide(
   const extraSpacing = Math.round(actualFontSize * 0.2);
   const outlinePx = isCover ? 4 : 3; // crisp outline thickness
 
-  // Render black text for outline
+  // Render black text for outline (with padding so descenders aren't clipped)
+  const pad = outlinePx + 2;
   const black = await renderText(
-    lines, actualFontSize, "black", fontPath, maxWidth, extraSpacing
+    lines, actualFontSize, "black", fontPath, maxWidth, extraSpacing, pad
   );
 
-  const textBlockH = black.height;
+  // Subtract padding from dimensions for layout (padding is just buffer space)
+  const textBlockH = black.height - pad * 2;
   let textY: number;
   if (isCover) {
-    textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2);
+    textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2) - pad;
   } else {
     const reasonZoneTop = SAFE_TOP + Math.round(SAFE_H * 0.4);
     const reasonZoneH = SAFE_BOTTOM - reasonZoneTop;
-    textY = Math.round(reasonZoneTop + (reasonZoneH - textBlockH) / 2);
+    textY = Math.round(reasonZoneTop + (reasonZoneH - textBlockH) / 2) - pad;
   }
   const textLeft = Math.round((OUTPUT_W - black.width) / 2);
 
-  // Render white text
+  // Render white text (same padding so it aligns with outline)
   const white = await renderText(
-    lines, actualFontSize, "white", fontPath, maxWidth, extraSpacing
+    lines, actualFontSize, "white", fontPath, maxWidth, extraSpacing, pad
   );
 
   // Build crisp outline by placing black text at offsets in all directions.
