@@ -465,6 +465,9 @@ export default function CarouselReviewPage() {
                   <span className="text-[10px] font-mono text-acuity-text-quiet">
                     {dayPosts.length} post{dayPosts.length !== 1 ? "s" : ""}
                   </span>
+                  <span className="text-[10px] font-mono text-acuity-text-quiet">
+                    ~${(dayPosts.reduce((a, p) => a + Math.max(0, p.slides.length - 1) * 8, 0) / 100).toFixed(2)}
+                  </span>
                 </div>
 
                 {/* Posts for this date */}
@@ -497,6 +500,9 @@ export default function CarouselReviewPage() {
                           </span>
                           <span className="text-[10px] font-mono text-acuity-text-quiet">
                             {post.slides.length} slides
+                          </span>
+                          <span className="text-[10px] font-mono text-acuity-text-quiet">
+                            ~${((Math.max(0, post.slides.length - 1) * 8) / 100).toFixed(2)}
                           </span>
                         </div>
                       </div>
