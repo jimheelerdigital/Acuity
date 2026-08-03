@@ -23,7 +23,7 @@ function openai(): OpenAI {
   return _openai;
 }
 
-async function ensureBucket(): Promise<void> {
+export async function ensureBucket(): Promise<void> {
   const { supabase } = await import("@/lib/supabase.server");
   const { data: buckets } = await supabase.storage.listBuckets();
   if (!buckets?.some((b) => b.name === "content-factory")) {
@@ -35,7 +35,7 @@ async function ensureBucket(): Promise<void> {
   }
 }
 
-async function uploadImage(
+export async function uploadImage(
   buffer: Buffer,
   path: string,
   contentType = "image/jpeg"
@@ -181,9 +181,9 @@ export async function generateCarousel(
   };
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers (exported for step-based Inngest functions) ─────────────────────
 
-function buildImagePrompt(lanePrefix: string, sceneText: string, topic: CarouselTopic): string {
+export function buildImagePrompt(lanePrefix: string, sceneText: string, topic: CarouselTopic): string {
   return [
     lanePrefix,
     `Scene: ${sceneText}.`,
@@ -192,7 +192,7 @@ function buildImagePrompt(lanePrefix: string, sceneText: string, topic: Carousel
   ].join("\n");
 }
 
-async function generateImage(prompt: string): Promise<Buffer> {
+export async function generateImage(prompt: string): Promise<Buffer> {
   const response = await openai().images.generate({
     model: "gpt-image-2",
     prompt,
@@ -210,7 +210,7 @@ function estimateImageCost(): number {
   return 8; // 8 cents per image
 }
 
-function extractHashtags(caption: string): string[] {
+export function extractHashtags(caption: string): string[] {
   return (caption.match(/#\w+/g) ?? []).map((h) => h.toLowerCase());
 }
 
