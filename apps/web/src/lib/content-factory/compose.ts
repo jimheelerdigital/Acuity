@@ -1,8 +1,10 @@
 /**
  * Content Factory — server-side text compositing with sharp.
  *
- * Overlays slide text onto raw generated images using an SVG text layer.
- * Bundles Poppins Bold + Medium from /public/fonts/ (no system font dependency).
+ * Overlays slide text onto raw generated images using sharp's built-in
+ * Pango text renderer (NOT SVG/librsvg, which has no font support in
+ * Vercel's Lambda environment). Fonts are loaded via fontfile parameter
+ * from the local filesystem or downloaded from the CDN on first use.
  *
  * Output: 1080x1920 JPEG (9:16, TikTok native), quality 90, < 20MB.
  */
@@ -13,61 +15,66 @@ import * as path from "path";
 
 const OUTPUT_W = 1080;
 const OUTPUT_H = 1920; // 9:16 TikTok native
-const CREAM = "#FBFAF6";
 const BURNT_ORANGE = "#F97E4E";
 const PADDING_X = 72; // horizontal padding for text
-const TEXT_AREA_W = OUTPUT_W - PADDING_X * 2; // usable text width
 
-let _fontBoldB64: string | null = null;
-let _fontMediumB64: string | null = null;
+// ─── Font management ────────────────────────────────────────────────────────
 
-function loadFonts() {
-  if (_fontBoldB64) return;
-  const candidates = [
-    path.join(process.cwd(), "public", "fonts"),
-    path.join(process.cwd(), ".next", "server", "public", "fonts"),
+/**
+ * Ensure a Poppins font file is available on disk and return its path.
+ * Checks local paths first (local dev), then downloads from the CDN
+ * and caches in /tmp/ (Lambda). Returns null if all attempts fail.
+ */
+async function ensureFontFile(
+  variant: "Bold" | "Medium" = "Bold"
+): Promise<string | null> {
+  const filename = `Poppins-${variant}.ttf`;
+  const tmpPath = `/tmp/${filename}`;
+
+  if (fs.existsSync(tmpPath)) return tmpPath;
+
+  // Try local paths (works in local dev and some deployment modes)
+  const localCandidates = [
+    path.join(process.cwd(), "public", "fonts", filename),
+    path.join(process.cwd(), ".next", "server", "public", "fonts", filename),
+    path.join(process.cwd(), ".next", "standalone", "public", "fonts", filename),
   ];
-  let fontsDir = "";
-  for (const dir of candidates) {
-    if (fs.existsSync(path.join(dir, "Poppins-Bold.ttf"))) {
-      fontsDir = dir;
-      break;
+  for (const p of localCandidates) {
+    if (fs.existsSync(p)) {
+      fs.copyFileSync(p, tmpPath);
+      console.log(`[compose] Font ${filename} found at ${p}, cached to ${tmpPath}`);
+      return tmpPath;
     }
   }
-  if (!fontsDir) {
-    console.warn("[compose] Poppins fonts not found — text overlay will use fallback sans-serif");
-    _fontBoldB64 = "";
-    _fontMediumB64 = "";
-    return;
+
+  // Download from CDN (Vercel serves public/ files via CDN)
+  try {
+    const url = `https://getacuity.io/fonts/${filename}`;
+    console.log(`[compose] Downloading font ${filename} from CDN…`);
+    const res = await fetch(url);
+    if (res.ok) {
+      const buffer = Buffer.from(await res.arrayBuffer());
+      fs.writeFileSync(tmpPath, buffer);
+      console.log(`[compose] Font ${filename} cached to ${tmpPath}`);
+      return tmpPath;
+    }
+    console.warn(`[compose] CDN font download failed: HTTP ${res.status}`);
+  } catch (err) {
+    console.warn(
+      `[compose] CDN font download error: ${err instanceof Error ? err.message : err}`
+    );
   }
-  _fontBoldB64 = fs.readFileSync(path.join(fontsDir, "Poppins-Bold.ttf")).toString("base64");
-  _fontMediumB64 = fs.readFileSync(path.join(fontsDir, "Poppins-Medium.ttf")).toString("base64");
+
+  return null;
 }
 
-function fontFaceDeclarations(): string {
-  loadFonts();
-  if (!_fontBoldB64) return "";
-  return `
-    @font-face {
-      font-family: 'Poppins';
-      font-weight: 700;
-      src: url(data:font/truetype;base64,${_fontBoldB64}) format('truetype');
-    }
-    @font-face {
-      font-family: 'Poppins';
-      font-weight: 500;
-      src: url(data:font/truetype;base64,${_fontMediumB64}) format('truetype');
-    }
-  `;
-}
+// ─── Text helpers ───────────────────────────────────────────────────────────
 
-function escapeXml(s: string): string {
+function escapePango(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replace(/>/g, "&gt;");
 }
 
 function wordWrap(text: string, maxCharsPerLine: number): string[] {
@@ -75,7 +82,10 @@ function wordWrap(text: string, maxCharsPerLine: number): string[] {
   const lines: string[] = [];
   let current = "";
   for (const word of words) {
-    if (current.length + word.length + 1 > maxCharsPerLine && current.length > 0) {
+    if (
+      current.length + word.length + 1 > maxCharsPerLine &&
+      current.length > 0
+    ) {
       lines.push(current);
       current = word;
     } else {
@@ -87,14 +97,55 @@ function wordWrap(text: string, maxCharsPerLine: number): string[] {
 }
 
 /**
+ * Render a text block using sharp's Pango text renderer.
+ * Returns the rendered PNG buffer and its dimensions.
+ */
+async function renderText(
+  lines: string[],
+  fontSize: number,
+  color: string,
+  fontPath: string | null,
+  maxWidth: number,
+  lineSpacing: number
+): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const escaped = lines.map((l) => escapePango(l)).join("\n");
+  const markup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${color}">${escaped}</span>`;
+
+  const textOpts: Record<string, unknown> = {
+    text: markup,
+    width: maxWidth,
+    rgba: true,
+    align: "centre",
+    spacing: Math.round(lineSpacing),
+  };
+  if (fontPath) {
+    textOpts.fontfile = fontPath;
+  } else {
+    textOpts.font = "sans-serif";
+  }
+
+  const buffer = await sharp({ text: textOpts } as any)
+    .png()
+    .toBuffer();
+  const meta = await sharp(buffer).metadata();
+  return {
+    buffer,
+    width: meta.width ?? maxWidth,
+    height: meta.height ?? fontSize,
+  };
+}
+
+// ─── Slide compositing ──────────────────────────────────────────────────────
+
+/**
  * Compose text overlay onto a raw generated image.
  *
  * COVER: headline vertically centred in the safe zone.
  * REASON: text anchored to the bottom of the safe zone.
  *
- * Bold white Poppins text with a thick black outline — no background
- * box or scrim. SVG is pre-rendered to PNG before compositing for
- * reliable text rendering in serverless environments.
+ * Uses sharp's Pango text renderer with fontfile for reliable rendering
+ * in serverless environments. Black outline is created by compositing
+ * blurred black text behind crisp white text.
  */
 export async function composeSlide(
   rawImage: Buffer,
@@ -130,46 +181,53 @@ export async function composeSlide(
 
   let textY: number;
   if (isCover) {
-    textY = SAFE_TOP + (SAFE_H - textBlockH) / 2;
+    textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2);
   } else {
-    textY = SAFE_BOTTOM - textBlockH - 60;
+    textY = Math.round(SAFE_BOTTOM - textBlockH - 60);
   }
 
-  const textX = OUTPUT_W / 2;
+  const fontPath = await ensureFontFile("Bold");
+  const maxWidth = OUTPUT_W - PADDING_X * 2;
+  // Extra spacing beyond Pango's default ~1.2x line height
+  const extraSpacing = actualFontSize * 0.3;
+  const strokeBlur = isCover ? 5 : 4;
 
-  // Bold white text with thick black outline — pops on any background
-  // without covering the image with a scrim or pill.
-  // paint-order: stroke renders behind fill so the outline doesn't eat
-  // into the letter shapes.
-  const strokeW = isCover ? 10 : 8;
+  // 1. Render black text for outline/shadow
+  const black = await renderText(
+    lines,
+    actualFontSize,
+    "black",
+    fontPath,
+    maxWidth,
+    extraSpacing
+  );
+  const textLeft = Math.round((OUTPUT_W - black.width) / 2);
 
-  const textElements = lines
-    .map((line, i) => {
-      const y = textY + i * actualLineSpacing + actualFontSize;
-      const escaped = escapeXml(line);
-      return `<text x="${textX}" y="${y}"
-                   font-family="Poppins, sans-serif" font-weight="700"
-                   font-size="${actualFontSize}" fill="white"
-                   stroke="black" stroke-width="${strokeW}"
-                   stroke-linejoin="round" paint-order="stroke fill"
-                   text-anchor="middle">${escaped}</text>`;
-    })
-    .join("\n");
-
-  const svgOverlay = `<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
-<defs><style>${fontFaceDeclarations()}</style></defs>
-${textElements}
-</svg>`;
-
-  // Pre-render SVG text layer to PNG — more reliable than passing raw
-  // SVG to composite(), especially when librsvg has limited fonts.
-  const textLayer = await sharp(Buffer.from(svgOverlay), { density: 72 })
+  // Create outline by blurring black text and stacking for opacity
+  const shadow = await sharp(black.buffer)
+    .blur(Math.max(strokeBlur, 0.5))
     .png()
     .toBuffer();
 
+  // 2. Render white text
+  const white = await renderText(
+    lines,
+    actualFontSize,
+    "white",
+    fontPath,
+    maxWidth,
+    extraSpacing
+  );
+
+  // Composite: base → shadow (x3 for density) → white text
   return sharp(rawImage)
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
-    .composite([{ input: textLayer, top: 0, left: 0 }])
+    .composite([
+      { input: shadow, top: textY, left: textLeft },
+      { input: shadow, top: textY, left: textLeft },
+      { input: shadow, top: textY, left: textLeft },
+      { input: white.buffer, top: textY, left: textLeft },
+    ])
     .jpeg({ quality: 90 })
     .toBuffer();
 }
@@ -180,9 +238,13 @@ ${textElements}
  */
 export async function composeCTASlide(ctaText: string): Promise<Buffer> {
   // Use the white logo on orange background
-  const logoPath = path.join(process.cwd(), "public", "ripple-mark-white.png");
+  const logoPath = path.join(
+    process.cwd(),
+    "public",
+    "ripple-mark-white.png"
+  );
   let logoBuffer: Buffer | null = null;
-  const LOGO_SIZE = 360; // big and prominent
+  const LOGO_SIZE = 360;
   if (fs.existsSync(logoPath)) {
     logoBuffer = await sharp(logoPath)
       .resize(LOGO_SIZE, undefined, { fit: "inside" })
@@ -195,48 +257,68 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
   const SAFE_BOTTOM = 1540;
   const SAFE_H = SAFE_BOTTOM - SAFE_TOP;
   const centerY = SAFE_TOP + SAFE_H / 2;
-
   const logoY = centerY - LOGO_SIZE - 20;
-  const ctaY = centerY + 60;
+
+  const fontBoldPath = await ensureFontFile("Bold");
+  const fontMediumPath = await ensureFontFile("Medium");
+
+  // Render CTA text
   const ctaLines = wordWrap(ctaText, 20);
-  const ctaLineH = 64;
-  const subY = ctaY + ctaLines.length * ctaLineH + 50;
+  const ctaEscaped = ctaLines.map((l) => escapePango(l)).join("\n");
+  const ctaMarkup = `<span font_desc="Poppins Bold 54" foreground="white">${ctaEscaped}</span>`;
+  const ctaOpts: Record<string, unknown> = {
+    text: ctaMarkup,
+    width: OUTPUT_W - PADDING_X * 2,
+    rgba: true,
+    align: "centre",
+    spacing: 10,
+  };
+  if (fontBoldPath) ctaOpts.fontfile = fontBoldPath;
+  else ctaOpts.font = "sans-serif";
 
-  const svgBg = `<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
-<defs><style>${fontFaceDeclarations()}</style></defs>
-<rect width="${OUTPUT_W}" height="${OUTPUT_H}" fill="${BURNT_ORANGE}" />
-${ctaLines
-  .map(
-    (line, i) =>
-      `<text x="${OUTPUT_W / 2}" y="${ctaY + i * ctaLineH}"
-             font-family="Poppins, sans-serif" font-weight="700" font-size="54"
-             fill="white" text-anchor="middle">${escapeXml(line)}</text>`
-  )
-  .join("\n")}
-<text x="${OUTPUT_W / 2}" y="${subY}"
-      font-family="Poppins, sans-serif" font-weight="500" font-size="28"
-      fill="rgba(255,255,255,0.85)" text-anchor="middle">Free on iPhone &amp; Android</text>
-</svg>`;
-
-  // Pre-render SVG to PNG for reliable text rendering in serverless
-  const svgLayer = await sharp(Buffer.from(svgBg), { density: 72 })
+  const ctaBuffer = await sharp({ text: ctaOpts } as any)
     .png()
     .toBuffer();
+  const ctaMeta = await sharp(ctaBuffer).metadata();
+  const ctaW = ctaMeta.width ?? 800;
+  const ctaH = ctaMeta.height ?? 100;
+  const ctaY = Math.round(centerY + 60);
+  const ctaLeft = Math.round((OUTPUT_W - ctaW) / 2);
 
-  const composite: sharp.OverlayOptions[] = [
-    { input: svgLayer, top: 0, left: 0 },
-  ];
+  // Render subtext
+  const subMarkup = `<span font_desc="Poppins Medium 28" foreground="rgba(255,255,255,0.85)">Free on iPhone &amp; Android</span>`;
+  const subOpts: Record<string, unknown> = {
+    text: subMarkup,
+    width: OUTPUT_W - PADDING_X * 2,
+    rgba: true,
+    align: "centre",
+  };
+  if (fontMediumPath) subOpts.fontfile = fontMediumPath;
+  else subOpts.font = "sans-serif";
+
+  const subBuffer = await sharp({ text: subOpts } as any)
+    .png()
+    .toBuffer();
+  const subMeta = await sharp(subBuffer).metadata();
+  const subW = subMeta.width ?? 400;
+  const subY = ctaY + ctaH + 50;
+  const subLeft = Math.round((OUTPUT_W - subW) / 2);
+
+  const composites: sharp.OverlayOptions[] = [];
 
   if (logoBuffer) {
     const logoMeta = await sharp(logoBuffer).metadata();
     const logoW = logoMeta.width ?? LOGO_SIZE;
     const logoH = logoMeta.height ?? LOGO_SIZE;
-    composite.push({
+    composites.push({
       input: logoBuffer,
       top: Math.round(logoY + (LOGO_SIZE - logoH) / 2),
       left: Math.round((OUTPUT_W - logoW) / 2),
     });
   }
+
+  composites.push({ input: ctaBuffer, top: ctaY, left: ctaLeft });
+  composites.push({ input: subBuffer, top: subY, left: subLeft });
 
   return sharp({
     create: {
@@ -246,7 +328,7 @@ ${ctaLines
       background: { r: 249, g: 126, b: 78 },
     },
   })
-    .composite(composite)
+    .composite(composites)
     .jpeg({ quality: 90 })
     .toBuffer();
 }
