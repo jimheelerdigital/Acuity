@@ -82,6 +82,7 @@ export default function CarouselReviewPage() {
   const [allFilter, setAllFilter] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const fetchPosts = useCallback(async (cursor?: string) => {
     if (cursor) {
@@ -164,6 +165,23 @@ export default function CarouselReviewPage() {
     }
   };
 
+  const generateOneOff = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/admin/carousels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate-one-off" }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Generation is async via Inngest — it'll email when done
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to queue generation");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const copyCaption = (caption: string) => {
     // iOS Safari requires clipboard write inside the click handler synchronously.
     // navigator.clipboard.writeText returns a promise but must be called in the
@@ -198,6 +216,13 @@ export default function CarouselReviewPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={generateOneOff}
+              disabled={generating}
+              className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+            >
+              {generating ? "Queued…" : "Generate"}
+            </button>
             <button
               onClick={fetchPosts}
               disabled={loading}
@@ -273,7 +298,14 @@ export default function CarouselReviewPage() {
           <div className="flex flex-1 items-center justify-center px-4">
             <div className="text-center text-acuity-text-ter">
               <p className="text-lg font-display font-bold text-acuity-text-sec">All clear</p>
-              <p className="mt-1 text-sm">No carousels to review. Cron runs at 11:00 UTC.</p>
+              <p className="mt-1 text-sm">No carousels to review.</p>
+              <button
+                onClick={generateOneOff}
+                disabled={generating}
+                className="mt-3 min-h-[44px] rounded-acuity-pill bg-acuity-primary px-6 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+              >
+                {generating ? "Queued…" : "Generate one now"}
+              </button>
             </div>
           </div>
         )}

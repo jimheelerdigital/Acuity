@@ -177,6 +177,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, ...result });
     }
 
+    case "generate-one-off": {
+      // Fire-and-forget via Inngest — picks a random unused topic,
+      // generates the carousel, and emails the result.
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "carousel/generate.one-off",
+        data: topicSlug ? { topicSlug } : {},
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
     default:
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }

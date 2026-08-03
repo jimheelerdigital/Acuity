@@ -46,6 +46,7 @@ import { commitExtractionBackstopFn } from "@/inngest/functions/commit-extractio
 import { stripeWebhookHealthFn } from "@/inngest/functions/stripe-webhook-health";
 import { generateInsightsCronFn } from "@/inngest/functions/generate-insights-cron";
 import { carouselDailyCronFn } from "@/inngest/functions/carousel-daily";
+import { carouselGenerateOneOffFn } from "@/inngest/functions/carousel-one-off";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -97,6 +98,7 @@ const handler = serve({
     notificationsTwiceDailyFn,
     generateInsightsCronFn,
     carouselDailyCronFn,
+    carouselGenerateOneOffFn,
   ],
 });
 
