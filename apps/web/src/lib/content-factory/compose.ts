@@ -162,26 +162,32 @@ export async function composeSlide(
 }
 
 /**
- * Compose the CTA slide — solid burnt-orange background with the Ripple
- * logo centred and CTA text below. No image generation needed.
+ * Compose the CTA slide — solid burnt-orange background with the white
+ * Ripple logo large and centred, big CTA text, tagline below.
  */
 export async function composeCTASlide(ctaText: string): Promise<Buffer> {
-  const logoPath = path.join(process.cwd(), "public", "ripple-mark-coral-t.png");
+  // Use the white logo on orange background
+  const logoPath = path.join(process.cwd(), "public", "ripple-mark-white.png");
   let logoBuffer: Buffer | null = null;
+  const LOGO_SIZE = 360; // big and prominent
   if (fs.existsSync(logoPath)) {
     logoBuffer = await sharp(logoPath)
-      .resize(240, undefined, { fit: "inside" })
+      .resize(LOGO_SIZE, undefined, { fit: "inside" })
       .png()
       .toBuffer();
   }
 
-  const logoDisplayH = 240;
-  const centerY = OUTPUT_H / 2;
-  const logoY = centerY - logoDisplayH - 30;
-  const ctaY = centerY + 80;
+  // Layout in the cross-platform safe zone (y=285..1540)
+  const SAFE_TOP = 285;
+  const SAFE_BOTTOM = 1540;
+  const SAFE_H = SAFE_BOTTOM - SAFE_TOP;
+  const centerY = SAFE_TOP + SAFE_H / 2;
 
-  const ctaLines = wordWrap(ctaText, 24);
-  const ctaLineH = 48;
+  const logoY = centerY - LOGO_SIZE - 20;
+  const ctaY = centerY + 60;
+  const ctaLines = wordWrap(ctaText, 20);
+  const ctaLineH = 64;
+  const subY = ctaY + ctaLines.length * ctaLineH + 50;
 
   const svgBg = `
     <svg width="${OUTPUT_W}" height="${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
@@ -193,13 +199,13 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
         .map(
           (line, i) =>
             `<text x="${OUTPUT_W / 2}" y="${ctaY + i * ctaLineH}"
-                   font-family="Poppins, sans-serif" font-weight="700" font-size="42"
-                   fill="${CREAM}" text-anchor="middle">${escapeXml(line)}</text>`
+                   font-family="Poppins, sans-serif" font-weight="700" font-size="54"
+                   fill="white" text-anchor="middle">${escapeXml(line)}</text>`
         )
         .join("\n")}
-      <text x="${OUTPUT_W / 2}" y="${ctaY + ctaLines.length * ctaLineH + 50}"
-            font-family="Poppins, sans-serif" font-weight="500" font-size="24"
-            fill="rgba(251,250,246,0.8)" text-anchor="middle">Free on iPhone &amp; Android</text>
+      <text x="${OUTPUT_W / 2}" y="${subY}"
+            font-family="Poppins, sans-serif" font-weight="500" font-size="28"
+            fill="rgba(255,255,255,0.85)" text-anchor="middle">Free on iPhone &amp; Android</text>
     </svg>
   `;
 
@@ -209,11 +215,11 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
 
   if (logoBuffer) {
     const logoMeta = await sharp(logoBuffer).metadata();
-    const logoW = logoMeta.width ?? 240;
-    const logoH = logoMeta.height ?? 240;
+    const logoW = logoMeta.width ?? LOGO_SIZE;
+    const logoH = logoMeta.height ?? LOGO_SIZE;
     composite.push({
       input: logoBuffer,
-      top: Math.round(logoY + (logoDisplayH - logoH) / 2),
+      top: Math.round(logoY + (LOGO_SIZE - logoH) / 2),
       left: Math.round((OUTPUT_W - logoW) / 2),
     });
   }

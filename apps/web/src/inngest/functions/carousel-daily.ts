@@ -45,24 +45,38 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 0 };
     }
 
-    // Shuffle available topics and pick 5, ensuring no two share a lane
-    // when possible (7 lanes, 5 picks = good variety most days).
-    const shuffled = [...available].sort(() => Math.random() - 0.5);
-    const picks: typeof available = [];
-    const usedLanes = new Set<string>();
-    // First pass: one per lane
-    for (const t of shuffled) {
-      if (picks.length >= 5) break;
-      if (!usedLanes.has(t.lane)) {
-        picks.push(t);
-        usedLanes.add(t.lane);
+    // Pick 5 topics: alternate daily between 3 hooks + 2 listicles
+    // and 2 hooks + 3 listicles. Within each style, shuffle and
+    // prefer lane diversity.
+    const dayOfYear = Math.floor(
+      (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86_400_000
+    );
+    const hookCount = dayOfYear % 2 === 0 ? 3 : 2;
+    const listicleCount = 5 - hookCount;
+
+    const hooks = [...available].filter((t) => t.style === "hook").sort(() => Math.random() - 0.5);
+    const listicles = [...available].filter((t) => t.style === "listicle").sort(() => Math.random() - 0.5);
+
+    const pickFromPool = (pool: typeof available, count: number) => {
+      const picked: typeof available = [];
+      const usedLanes = new Set<string>();
+      // First pass: one per lane for variety
+      for (const t of pool) {
+        if (picked.length >= count) break;
+        if (!usedLanes.has(t.lane)) { picked.push(t); usedLanes.add(t.lane); }
       }
-    }
-    // If fewer than 5 (unlikely), fill with any remaining
-    for (const t of shuffled) {
-      if (picks.length >= 5) break;
-      if (!picks.includes(t)) picks.push(t);
-    }
+      // Fill if needed
+      for (const t of pool) {
+        if (picked.length >= count) break;
+        if (!picked.includes(t)) picked.push(t);
+      }
+      return picked;
+    };
+
+    const picks = [
+      ...pickFromPool(hooks, hookCount),
+      ...pickFromPool(listicles, listicleCount),
+    ].sort(() => Math.random() - 0.5); // shuffle final order
 
     let totalCostCents = 0;
     const results: { slug: string; postId: string; slides: number }[] = [];

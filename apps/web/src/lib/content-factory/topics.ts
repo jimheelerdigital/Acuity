@@ -8,9 +8,12 @@
 
 import type { StyleLane } from "./brand";
 
+export type HeadlineStyle = "hook" | "listicle";
+
 export interface CarouselTopic {
   slug: string;
   headline: string;
+  style: HeadlineStyle;
   lane: StyleLane;
   reasons: string[];
 }
@@ -20,6 +23,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "invisible-mental-load",
     headline: "Nobody sees this, but it's destroying you",
+    style: "hook",
     lane: "cinematicReal",
     reasons: [
       "Remembering everything... for everyone",
@@ -32,7 +36,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "why-youre-always-tired",
-    headline: "You're not lazy. You're THIS.",
+    headline: "6 reasons you're exhausted (and none of them are sleep)",
+    style: "listicle",
     lane: "stillLife",
     reasons: [
       "Decision fatigue hits before noon",
@@ -45,7 +50,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "things-no-one-sees",
-    headline: "You do all of this... and nobody notices",
+    headline: "5 things you do every day that nobody will ever notice",
+    style: "listicle",
     lane: "paperDiorama",
     reasons: [
       "Restocking things before anyone runs out",
@@ -60,6 +66,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "patterns-you-repeat",
     headline: "Stop me if this sounds familiar...",
+    style: "hook",
     lane: "risograph",
     reasons: [
       "Saying yes, when you meant no",
@@ -72,7 +79,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "why-sundays-feel-heavy",
-    headline: "Why Sunday nights hit different",
+    headline: "5 reasons Sunday nights feel heavier than Monday mornings",
+    style: "listicle",
     lane: "claymation",
     reasons: [
       "You're already pre-living next week",
@@ -85,6 +93,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "same-fight-different-day",
     headline: "You're not fighting about the dishes",
+    style: "hook",
     lane: "flatGraphic",
     reasons: [
       "The real issue stays buried, under logistics",
@@ -97,7 +106,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "cycles-you-know-but-cant-break",
-    headline: "You already know this about yourself. So why can't you stop?",
+    headline: "5 cycles you already know about but still can't break",
+    style: "listicle",
     lane: "toon3d",
     reasons: [
       "Overcommitting, then resenting every single one",
@@ -112,6 +122,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "you-know-what-to-do",
     headline: "You know EXACTLY what to do. So why aren't you doing it?",
+    style: "hook",
     lane: "stillLife",
     reasons: [
       "Knowing and doing... live in different rooms",
@@ -124,7 +135,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "advice-you-give-but-wont-take",
-    headline: "You'd say this to a friend in a heartbeat. But not to yourself.",
+    headline: "Top 5 things you'd tell a friend but refuse to do yourself",
+    style: "listicle",
     lane: "paperDiorama",
     reasons: [
       "Rest isn't something you need to earn",
@@ -136,7 +148,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "things-you-keep-postponing",
-    headline: "You've been putting this off for months",
+    headline: "6 things you've been putting off (start with number 1)",
+    style: "listicle",
     lane: "risograph",
     reasons: [
       "That honest conversation you keep rehearsing",
@@ -151,7 +164,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Planning vs Progress ────────────────────────────────────────
   {
     slug: "planning-vs-doing",
-    headline: "Your planning habit is the problem",
+    headline: "5 signs your planning habit is actually holding you back",
+    style: "listicle",
     lane: "flatGraphic",
     reasons: [
       "Colour-coded lists don't move the needle",
@@ -163,7 +177,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "productivity-trap",
-    headline: "Productivity is lying to you",
+    headline: "6 productivity traps that are keeping you stuck",
+    style: "listicle",
     lane: "claymation",
     reasons: [
       "Optimising your schedule won't fix your life",
@@ -176,7 +191,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "goals-that-dont-stick",
-    headline: "It's August. Where are your January goals?",
+    headline: "5 reasons your goals never survive past February",
+    style: "listicle",
     lane: "cinematicReal",
     reasons: [
       "They came from who you think you should be",
@@ -190,7 +206,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Failed Journaling ──────────────────────────────────────────
   {
     slug: "why-journaling-never-worked",
-    headline: "Journaling didn't fail you. It was never built for you.",
+    headline: "6 reasons journaling never worked for you",
+    style: "listicle",
     lane: "toon3d",
     reasons: [
       "Blank pages feel like another to-do item",
@@ -203,7 +220,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "voice-vs-writing",
-    headline: "What if you just... said it out loud?",
+    headline: "5 reasons talking beats writing, every time",
+    style: "listicle",
     lane: "stillLife",
     reasons: [
       "Speaking activates completely different processing",
@@ -215,7 +233,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "what-journaling-misses",
-    headline: "Your journal can't do this for you",
+    headline: "6 things your journal will never do for you",
+    style: "listicle",
     lane: "paperDiorama",
     reasons: [
       "It doesn't connect your patterns over time",
@@ -231,6 +250,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "questions-you-avoid",
     headline: "You already know the answer. You're just scared to say it.",
+    style: "hook",
     lane: "risograph",
     reasons: [
       "Am I happy, or just... comfortable?",
@@ -243,6 +263,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "3am-thoughts",
     headline: "Your 3am brain is trying to tell you something",
+    style: "hook",
     lane: "cinematicReal",
     reasons: [
       "Night quiet makes suppressed feelings louder",
@@ -256,6 +277,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "mirror-not-coach",
     headline: "You don't need more advice",
+    style: "hook",
     lane: "claymation",
     reasons: [
       "The answers are already inside you",
@@ -269,7 +291,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Emotional Labour ────────────────────────────────────────────
   {
     slug: "emotional-labour-tax",
-    headline: "This is the job you never applied for",
+    headline: "6 emotional labour taxes you pay every single day",
+    style: "listicle",
     lane: "flatGraphic",
     reasons: [
       "Smiling, when you're running on empty",
@@ -283,6 +306,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-you-feel-touched-out",
     headline: "Your body is screaming. You keep ignoring it.",
+    style: "hook",
     lane: "toon3d",
     reasons: [
       "Sensory overload is real, not weakness",
@@ -296,7 +320,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Identity & Growth ───────────────────────────────────────────
   {
     slug: "who-are-you-outside-roles",
-    headline: "Take away the title. Who are you?",
+    headline: "6 signs you've completely lost yourself inside your roles",
+    style: "listicle",
     lane: "stillLife",
     reasons: [
       "Mother, partner, employee... but who else?",
@@ -309,7 +334,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "growth-looks-different-at-40",
-    headline: "Growth after 40 doesn't look like it used to",
+    headline: "5 ways growth looks totally different after 40",
+    style: "listicle",
     lane: "paperDiorama",
     reasons: [
       "It's subtler, harder to measure externally",
@@ -322,6 +348,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "permission-to-change",
     headline: "Plot twist: you're allowed to change your mind",
+    style: "hook",
     lane: "risograph",
     reasons: [
       "What you wanted at 30 doesn't have to fit at 42",
@@ -337,6 +364,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-you-shut-down",
     headline: "This is why you go silent",
+    style: "hook",
     lane: "cinematicReal",
     reasons: [
       "Speaking up felt unsafe growing up, so you stopped",
@@ -349,6 +377,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "things-your-partner-doesnt-see",
     headline: "Show this to your partner",
+    style: "hook",
     lane: "claymation",
     reasons: [
       "The mental checklist, before you leave the house",
@@ -364,6 +393,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "self-care-isnt-candles",
     headline: "Bath bombs are not self-care",
+    style: "hook",
     lane: "flatGraphic",
     reasons: [
       "Having the conversation you've been avoiding",
@@ -376,6 +406,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "toxic-positivity",
     headline: "'Good vibes only' is gaslighting yourself",
+    style: "hook",
     lane: "risograph",
     reasons: [
       "Good vibes only... erases legitimate pain",
@@ -391,6 +422,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "ways-to-decompress",
     headline: "Do this tonight instead of doom scrolling",
+    style: "hook",
     lane: "toon3d",
     reasons: [
       "Talk it out. Three minutes beats hours of spiralling.",
@@ -404,7 +436,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── "Signs That" Format ─────────────────────────────────────────
   {
     slug: "signs-youre-burnt-out",
-    headline: "You're not tired. You're burnt out.",
+    headline: "7 signs you're actually burnt out, not just tired",
+    style: "listicle",
     lane: "claymation",
     reasons: [
       "You dread things you used to enjoy",
@@ -418,7 +451,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "signs-you-need-boundaries",
-    headline: "If you feel resentful, read this",
+    headline: "6 signs you desperately need better boundaries",
+    style: "listicle",
     lane: "flatGraphic",
     reasons: [
       "You feel resentful... but you can't explain why",
@@ -432,6 +466,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-youre-people-pleasing",
     headline: "This habit is quietly ruining your life",
+    style: "hook",
     lane: "paperDiorama",
     reasons: [
       "You apologise for things that aren't your fault",
@@ -444,6 +479,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-youre-emotionally-exhausted",
     headline: "You're not lazy. Read this.",
+    style: "hook",
     lane: "toon3d",
     reasons: [
       "You have the time, but zero motivation",
@@ -457,6 +493,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-you-need-to-talk",
     headline: "That thing you keep replaying? Say it out loud.",
+    style: "hook",
     lane: "risograph",
     reasons: [
       "The same thought, looping... for days",
@@ -468,7 +505,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "signs-youre-healing",
-    headline: "You might not see it yet... but you're healing",
+    headline: "6 quiet signs you're actually healing",
+    style: "listicle",
     lane: "claymation",
     reasons: [
       "You catch the pattern, before you repeat it",
