@@ -183,13 +183,19 @@ export async function generateCarousel(
 
 // ─── Helpers (exported for step-based Inngest functions) ─────────────────────
 
-export function buildImagePrompt(lanePrefix: string, sceneText: string, topic: CarouselTopic): string {
+export function buildImagePrompt(
+  lanePrefix: string,
+  sceneText: string,
+  topic: CarouselTopic,
+  colorPrompt?: string
+): string {
   return [
     lanePrefix,
+    colorPrompt ?? "",
     `Scene: ${sceneText}.`,
     `Context: visual metaphor for "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
     VISUAL_DNA,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 export async function generateImage(prompt: string): Promise<Buffer> {

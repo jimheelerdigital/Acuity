@@ -9,15 +9,11 @@
 // ─── Visual DNA ────────────────────────────────────────────────────────────────
 // Appended to every image-generation prompt so the output is recognizably Ripple.
 
+/**
+ * Base visual instructions appended to every image prompt.
+ * The color scheme is injected separately per carousel via COLOR_SCHEMES.
+ */
 export const VISUAL_DNA = [
-  "Color palette — vary across these brand colors, do NOT default to orange every time:",
-  "  • Warm coral (#F97E4E) — energetic, signature Ripple accent",
-  "  • Soft cream / warm tan (#FBFAF6, #F0E6D6) — grounding, calm, neutral warmth",
-  "  • Muted indigo / deep purple (#3D3A50, #5B4A7A) — depth, introspection, evening mood",
-  "  • Dusty rose (#D4918A) — softness, femininity, warmth",
-  "  • Warm amber (#D4A76A) — golden, nostalgic, comforting",
-  "  • Sage green (#8FA88B) — growth, renewal, balance",
-  "Mix 2-3 of these colors per image. Alternate the dominant color across slides — some coral-led, some indigo/purple-led, some cream/tan-led, some rose-led.",
   "Mood: gentle, reflective, warm — like golden-hour light through a window.",
   "Lighting: soft diffused or golden-hour. No harsh flash, no clinical white.",
   "Human subjects: diverse women ~35-50, natural expressions, candid not posed.",
@@ -25,6 +21,37 @@ export const VISUAL_DNA = [
   "Absolutely NO text, letters, words, numbers, watermarks, or logos in the image.",
   "No corporate stock-photo energy. No laptop-and-latte clichés.",
 ].join("\n");
+
+/**
+ * Color schemes — one is picked per carousel so all slides in a carousel
+ * share a cohesive palette, but each carousel looks distinct.
+ */
+export const COLOR_SCHEMES = [
+  {
+    name: "coral-cream",
+    prompt: "Dominant color palette: warm coral (#F97E4E) and soft cream (#FBFAF6). Accents of warm amber. Warm, energetic, inviting.",
+  },
+  {
+    name: "indigo-cream",
+    prompt: "Dominant color palette: muted indigo (#3D3A50) and soft cream (#FBFAF6). Accents of dusty rose. Deep, introspective, evening calm.",
+  },
+  {
+    name: "dusty-rose",
+    prompt: "Dominant color palette: dusty rose (#D4918A) and warm tan (#F0E6D6). Accents of coral. Soft, feminine, tender warmth.",
+  },
+  {
+    name: "amber-tan",
+    prompt: "Dominant color palette: warm amber (#D4A76A) and cream (#FBFAF6). Accents of sage green. Golden-hour nostalgia, comforting.",
+  },
+  {
+    name: "sage-cream",
+    prompt: "Dominant color palette: sage green (#8FA88B) and soft cream (#FBFAF6). Accents of warm amber. Fresh, balanced, renewal.",
+  },
+  {
+    name: "deep-purple",
+    prompt: "Dominant color palette: deep purple (#5B4A7A) and dusty rose (#D4918A). Accents of cream. Moody, reflective, rich depth.",
+  },
+];
 
 // ─── Style Lanes ───────────────────────────────────────────────────────────────
 // Each lane is a prompt prefix that steers the visual treatment. Topics reference

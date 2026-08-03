@@ -49,6 +49,13 @@ export const carouselDailyCronFn = inngest.createFunction(
       `[carousel-cron] Generated topic: "${topicData.headline}" (${topicData.reasons.length} reasons)`
     );
 
+    // Pick a color scheme for this carousel (all slides share it)
+    const colorScheme = await step.run("pick-color-scheme", async () => {
+      const { COLOR_SCHEMES } = await import("@/lib/content-factory/brand");
+      const pick = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
+      return pick;
+    });
+
     await step.run("ensure-bucket", async () => {
       const { ensureBucket } = await import(
         "@/lib/content-factory/carousel-generate"
@@ -76,7 +83,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         lane: topicData.lane as any,
         reasons: topicData.reasons,
       };
-      const prompt = buildImagePrompt(lanePrefix, topicData.headline, topic);
+      const prompt = buildImagePrompt(lanePrefix, topicData.headline, topic, colorScheme.prompt);
       const rawBuffer = await generateImage(prompt);
       const composed = await composeSlide(
         rawBuffer,
@@ -121,7 +128,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           lane: topicData.lane as any,
           reasons: topicData.reasons,
         };
-        const prompt = buildImagePrompt(lanePrefix, reason, topic);
+        const prompt = buildImagePrompt(lanePrefix, reason, topic, colorScheme.prompt);
         const rawBuffer = await generateImage(prompt);
         const composed = await composeSlide(rawBuffer, reason, "REASON", i + 1);
         const imageUrl = await uploadImage(
