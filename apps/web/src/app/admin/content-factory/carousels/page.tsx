@@ -28,16 +28,6 @@ interface CarouselPost {
   createdAt: string;
 }
 
-interface DaySummary {
-  date: string;
-  drafts: number;
-  approved: number;
-  rejected: number;
-  posted: number;
-  total: number;
-  estimatedCostCents: number;
-}
-
 interface Totals {
   all: number;
   draft: number;
@@ -45,8 +35,6 @@ interface Totals {
   rejected: number;
   posted: number;
 }
-
-type ViewMode = "review" | "library";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -69,20 +57,18 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function CarouselReviewPage() {
   const [allPosts, setAllPosts] = useState<CarouselPost[]>([]);
-  const [summary, setSummary] = useState<DaySummary | null>(null);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("review");
-  const [currentIdx, setCurrentIdx] = useState(0);
   const [editSlide, setEditSlide] = useState<{ id: string; text: string } | null>(null);
   const [allFilter, setAllFilter] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [generateMsg, setGenerateMsg] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async (cursor?: string) => {
     if (cursor) {
@@ -93,7 +79,7 @@ export default function CarouselReviewPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (viewMode === "library" && allFilter) params.set("status", allFilter);
+      if (allFilter) params.set("status", allFilter);
       if (cursor) params.set("cursor", cursor);
       params.set("limit", "30");
       const res = await fetch(`/api/admin/carousels?${params}`);
@@ -104,7 +90,6 @@ export default function CarouselReviewPage() {
       } else {
         setAllPosts(data.posts ?? []);
       }
-      if (data.summary) setSummary(data.summary);
       if (data.totals) setTotals(data.totals);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
@@ -113,18 +98,11 @@ export default function CarouselReviewPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [viewMode, allFilter]);
+  }, [allFilter]);
 
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
-
-  // ── Review queue: DRAFT + APPROVED (not rejected, not posted) ─────
-  const reviewPosts = allPosts.filter(
-    (p) => p.status === "DRAFT" || p.status === "APPROVED"
-  );
-  const readyToPost = allPosts.filter((p) => p.status === "APPROVED");
-  const current = reviewPosts[currentIdx] ?? null;
 
   // ── Actions ───────────────────────────────────────────────────────
   const doAction = async (action: string, params: Record<string, string>) => {
@@ -152,10 +130,6 @@ export default function CarouselReviewPage() {
         );
       } else {
         await fetchPosts();
-        // If we just rejected/approved, keep index clamped
-        if (action === "reject" || action === "approve") {
-          setCurrentIdx((prev) => Math.min(prev, Math.max(0, reviewPosts.length - 2)));
-        }
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Action failed");
@@ -167,6 +141,7 @@ export default function CarouselReviewPage() {
 
   const generateOneOff = async () => {
     setGenerating(true);
+    setGenerateMsg(null);
     try {
       const res = await fetch("/api/admin/carousels", {
         method: "POST",
@@ -174,7 +149,8 @@ export default function CarouselReviewPage() {
         body: JSON.stringify({ action: "generate-one-off" }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // Generation is async via Inngest — it'll email when done
+      setGenerateMsg("Queued — check email in ~3 min");
+      setTimeout(() => setGenerateMsg(null), 10000);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to queue generation");
     } finally {
@@ -183,16 +159,17 @@ export default function CarouselReviewPage() {
   };
 
   const copyCaption = (caption: string) => {
-    // iOS Safari requires clipboard write inside the click handler synchronously.
-    // navigator.clipboard.writeText returns a promise but must be called in the
-    // same event tick as the user gesture.
     navigator.clipboard.writeText(caption);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // ── Review mode ───────────────────────────────────────────────────
-  if (viewMode === "review") {
+  // ── Post detail view ──────────────────────────────────────────────
+  const selectedPost = selectedPostId
+    ? allPosts.find((p) => p.id === selectedPostId) ?? null
+    : null;
+
+  if (selectedPost) {
     return (
       <div
         className="flex min-h-[100dvh] flex-col bg-acuity-bg"
@@ -204,235 +181,120 @@ export default function CarouselReviewPage() {
           className="flex items-center justify-between px-4 py-3"
           style={{ paddingTop: "max(12px, env(safe-area-inset-top, 12px))" }}
         >
-          <div className="flex items-center gap-2">
-            <a
-              href="/admin"
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => { setSelectedPostId(null); setEditSlide(null); }}
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-acuity-pill border border-acuity-line text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
             >
-              ←
-            </a>
-            <h1 className="font-display text-lg font-bold text-acuity-text">
-              Carousels
+              ✕
+            </button>
+            <h1 className="font-display text-base font-bold text-acuity-text truncate">
+              {selectedPost.headline}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={generateOneOff}
-              disabled={generating}
-              className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-            >
-              {generating ? "Queued…" : "Generate"}
-            </button>
-            <button
-              onClick={fetchPosts}
-              disabled={loading}
-              className="min-h-[44px] min-w-[44px] rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
-            >
-              {loading ? "…" : "↻"}
-            </button>
-            <button
-              onClick={() => setViewMode("library")}
-              className="min-h-[44px] rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
-            >
-              Library
-            </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {selectedPost.emailedAt ? (
+              <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
+                Emailed
+              </span>
+            ) : (
+              <span className="rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-[9px] font-mono text-acuity-text-quiet">
+                Not emailed
+              </span>
+            )}
+            <StatusBadge status={selectedPost.status} />
           </div>
         </div>
 
-        {/* ── Daily summary ────────────────────────────────────────── */}
-        {summary && summary.total > 0 && (
-          <div className="mx-4 mb-3 flex items-center gap-3 rounded-acuity-lg bg-acuity-card-bg border border-acuity-card-border px-4 py-3">
-            <div className="text-xs text-acuity-text-ter">
-              <span className="font-display font-bold text-acuity-text">{summary.date}</span>
-            </div>
-            <div className="flex gap-3 text-xs tabular-nums">
-              <span className="text-acuity-warn">{summary.drafts} drafts</span>
-              <span className="text-acuity-good">{summary.approved} approved</span>
-              {summary.posted > 0 && <span className="text-acuity-secondary">{summary.posted} posted</span>}
-            </div>
-            <div className="ml-auto text-[10px] font-mono text-acuity-text-quiet">
-              ~${(summary.estimatedCostCents / 100).toFixed(2)}
-            </div>
-          </div>
-        )}
+        {/* ── Horizontal scroll-snap slide strip ────────────────────── */}
+        <SlideStrip
+          slides={selectedPost.slides}
+          busy={busy}
+          editSlide={editSlide}
+          onRegenerate={(slideId) => doAction("regenerate-slide", { slideId })}
+          onStartEdit={(slide) => setEditSlide({ id: slide.id, text: slide.overlayText })}
+          onCancelEdit={() => setEditSlide(null)}
+          onSaveEdit={(slideId, newText) => doAction("edit-text", { slideId, newText })}
+          onEditChange={(text) => setEditSlide((prev) => prev ? { ...prev, text } : null)}
+        />
 
-        {/* ── Ready to post section ────────────────────────────────── */}
-        {readyToPost.length > 0 && (
-          <div className="mx-4 mb-3">
-            <h2 className="mb-2 text-[10px] font-bold uppercase tracking-[1.4px] font-mono text-acuity-text-ter">
-              Ready to post
-            </h2>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {readyToPost.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex shrink-0 items-center gap-2 rounded-acuity-lg border border-acuity-good-soft bg-acuity-card-bg px-3 py-2"
+        {/* ── Caption preview ────────────────────────────────────────── */}
+        <div className="mx-4 mt-2 max-h-28 overflow-y-auto rounded-acuity-lg bg-acuity-bg-inset p-3">
+          <pre className="whitespace-pre-wrap text-xs text-acuity-text-sec font-sans leading-relaxed">
+            {selectedPost.caption}
+          </pre>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* ── Fixed bottom action bar ─────────────────────────────────── */}
+        <div
+          className="sticky bottom-0 border-t border-acuity-line bg-acuity-bg px-4 py-3"
+          style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: status actions */}
+            {selectedPost.status === "DRAFT" && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => doAction("reject", { postId: selectedPost.id })}
+                  disabled={!!busy}
+                  className="min-h-[44px] rounded-acuity-pill bg-acuity-bad px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
                 >
-                  <span className="max-w-[140px] truncate text-xs text-acuity-text-sec">{p.headline}</span>
-                  <button
-                    onClick={() => doAction("mark-posted", { postId: p.id })}
-                    disabled={busy === `mark-posted-${p.id}`}
-                    className="min-h-[36px] rounded-acuity-pill bg-acuity-secondary-soft px-3 text-[10px] font-bold uppercase text-acuity-secondary active:opacity-70 disabled:opacity-50"
-                  >
-                    {busy === `mark-posted-${p.id}` ? "…" : "Posted ✓"}
-                  </button>
-                  <a
-                    href={`/api/admin/carousels/download?postId=${p.id}`}
-                    className="min-h-[36px] flex items-center rounded-acuity-pill border border-acuity-line px-3 text-[10px] text-acuity-text-ter active:bg-acuity-bg-sub"
-                  >
-                    ZIP
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Error / empty ────────────────────────────────────────── */}
-        {error && (
-          <div className="mx-4 mb-3 rounded-acuity-lg border border-acuity-bad bg-acuity-bad-soft p-4 text-sm text-acuity-bad">
-            {error}
-          </div>
-        )}
-        {!loading && reviewPosts.length === 0 && (
-          <div className="flex flex-1 items-center justify-center px-4">
-            <div className="text-center text-acuity-text-ter">
-              <p className="text-lg font-display font-bold text-acuity-text-sec">All clear</p>
-              <p className="mt-1 text-sm">No carousels to review.</p>
+                  Reject
+                </button>
+                <button
+                  onClick={() => doAction("approve", { postId: selectedPost.id })}
+                  disabled={!!busy}
+                  className="min-h-[44px] rounded-acuity-pill bg-acuity-good px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+                >
+                  Approve
+                </button>
+              </div>
+            )}
+            {selectedPost.status === "APPROVED" && (
               <button
-                onClick={generateOneOff}
-                disabled={generating}
-                className="mt-3 min-h-[44px] rounded-acuity-pill bg-acuity-primary px-6 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+                onClick={() => doAction("mark-posted", { postId: selectedPost.id })}
+                disabled={busy === `mark-posted-${selectedPost.id}`}
+                className="min-h-[44px] rounded-acuity-pill bg-acuity-secondary-soft px-4 text-sm font-bold text-acuity-secondary active:opacity-70 disabled:opacity-50"
               >
-                {generating ? "Queued…" : "Generate one now"}
+                {busy === `mark-posted-${selectedPost.id}` ? "…" : "Mark posted"}
+              </button>
+            )}
+            {(selectedPost.status === "REJECTED" || selectedPost.status === "POSTED") && (
+              <div />
+            )}
+
+            {/* Right: utilities */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => doAction("resend-email", { postId: selectedPost.id })}
+                disabled={busy === `resend-email-${selectedPost.id}`}
+                className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
+              >
+                {busy === `resend-email-${selectedPost.id}` ? "…" : "✉"}
+              </button>
+              <a
+                href={`/api/admin/carousels/download?postId=${selectedPost.id}`}
+                className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
+              >
+                ZIP
+              </a>
+              <button
+                onClick={() => copyCaption(selectedPost.caption)}
+                className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
+              >
+                {copied ? "Copied ✓" : "Copy"}
               </button>
             </div>
           </div>
-        )}
-
-        {/* ── Carousel viewer ──────────────────────────────────────── */}
-        {current && (
-          <div className="flex flex-1 flex-col">
-            {/* Carousel counter + email status */}
-            <div className="flex items-center justify-between px-4 pb-2">
-              <p className="text-xs text-acuity-text-ter">
-                {currentIdx + 1} of {reviewPosts.length}
-              </p>
-              <div className="flex items-center gap-2">
-                {current.emailedAt ? (
-                  <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
-                    Emailed
-                  </span>
-                ) : (
-                  <span className="rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-[9px] font-mono text-acuity-text-quiet">
-                    Not emailed
-                  </span>
-                )}
-                <StatusBadge status={current.status} />
-              </div>
-            </div>
-
-            {/* Headline */}
-            <h2 className="px-4 pb-2 font-display text-base font-bold text-acuity-text leading-tight">
-              {current.headline}
-            </h2>
-
-            {/* ── Horizontal scroll-snap slide strip ────────────────── */}
-            <SlideStrip
-              slides={current.slides}
-              busy={busy}
-              editSlide={editSlide}
-              onRegenerate={(slideId) => doAction("regenerate-slide", { slideId })}
-              onStartEdit={(slide) => setEditSlide({ id: slide.id, text: slide.overlayText })}
-              onCancelEdit={() => setEditSlide(null)}
-              onSaveEdit={(slideId, newText) => doAction("edit-text", { slideId, newText })}
-              onEditChange={(text) => setEditSlide((prev) => prev ? { ...prev, text } : null)}
-            />
-
-            {/* ── Caption preview ────────────────────────────────────── */}
-            <div className="mx-4 mt-2 max-h-28 overflow-y-auto rounded-acuity-lg bg-acuity-bg-inset p-3">
-              <pre className="whitespace-pre-wrap text-xs text-acuity-text-sec font-sans leading-relaxed">
-                {current.caption}
-              </pre>
-            </div>
-
-            {/* Spacer to push action bar to bottom */}
-            <div className="flex-1" />
-
-            {/* ── Fixed bottom action bar ─────────────────────────────── */}
-            <div
-              className="sticky bottom-0 border-t border-acuity-line bg-acuity-bg px-4 py-3"
-              style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}
-            >
-              <div className="flex items-center justify-between gap-2">
-                {/* Left: navigation */}
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
-                    disabled={currentIdx === 0}
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-acuity-pill border border-acuity-line text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-30"
-                  >
-                    ←
-                  </button>
-                  <button
-                    onClick={() => setCurrentIdx((i) => Math.min(reviewPosts.length - 1, i + 1))}
-                    disabled={currentIdx >= reviewPosts.length - 1}
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-acuity-pill border border-acuity-line text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-30"
-                  >
-                    →
-                  </button>
-                </div>
-
-                {/* Right: actions */}
-                {current.status === "DRAFT" && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => doAction("reject", { postId: current.id })}
-                      disabled={!!busy}
-                      className="min-h-[44px] rounded-acuity-pill bg-acuity-bad px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => doAction("approve", { postId: current.id })}
-                      disabled={!!busy}
-                      className="min-h-[44px] rounded-acuity-pill bg-acuity-good px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => doAction("resend-email", { postId: current.id })}
-                    disabled={busy === `resend-email-${current.id}`}
-                    className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
-                  >
-                    {busy === `resend-email-${current.id}` ? "…" : "✉"}
-                  </button>
-                  <a
-                    href={`/api/admin/carousels/download?postId=${current.id}`}
-                    className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
-                  >
-                    ZIP
-                  </a>
-                  <button
-                    onClick={() => copyCaption(current.caption)}
-                    className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
-                  >
-                    {copied ? "Copied ✓" : "Copy"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     );
   }
 
-  // ── Library view — all carousels grouped by date ────────────────────
+  // ── Library view (default) ────────────────────────────────────────
 
   // Group posts by generatedFor date
   const grouped = allPosts.reduce<Record<string, CarouselPost[]>>((acc, post) => {
@@ -472,23 +334,33 @@ export default function CarouselReviewPage() {
             ←
           </a>
           <h1 className="font-display text-lg font-bold text-acuity-text">
-            Library
+            Carousels
           </h1>
+        </div>
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setViewMode("review")}
-            className="min-h-[44px] rounded-acuity-pill border border-acuity-line px-3 text-xs text-acuity-text-ter active:bg-acuity-bg-sub"
+            onClick={generateOneOff}
+            disabled={generating}
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            Review
+            {generating ? "Queuing…" : "Generate"}
+          </button>
+          <button
+            onClick={() => fetchPosts()}
+            disabled={loading}
+            className="min-h-[44px] min-w-[44px] rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
+          >
+            {loading ? "…" : "↻"}
           </button>
         </div>
-        <button
-          onClick={() => fetchPosts()}
-          disabled={loading}
-          className="min-h-[44px] min-w-[44px] rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
-        >
-          {loading ? "…" : "↻"}
-        </button>
       </div>
+
+      {/* ── Generate feedback ───────────────────────────────────── */}
+      {generateMsg && (
+        <div className="mx-4 mb-3 rounded-acuity-lg bg-acuity-good-soft border border-acuity-good px-4 py-2.5 text-sm text-acuity-good">
+          {generateMsg}
+        </div>
+      )}
 
       {/* ── Aggregate stats ──────────────────────────────────────── */}
       {totals && (
@@ -526,6 +398,13 @@ export default function CarouselReviewPage() {
         ))}
       </div>
 
+      {/* ── Error ────────────────────────────────────────────────── */}
+      {error && (
+        <div className="mx-4 mb-3 rounded-acuity-lg border border-acuity-bad bg-acuity-bad-soft p-4 text-sm text-acuity-bad">
+          {error}
+        </div>
+      )}
+
       {/* ── Loading ──────────────────────────────────────────────── */}
       {loading && (
         <div className="flex flex-1 items-center justify-center">
@@ -544,6 +423,15 @@ export default function CarouselReviewPage() {
             <p className="mt-1 text-sm">
               {allFilter ? `No ${allFilter.toLowerCase()} carousels.` : "Nothing generated yet."}
             </p>
+            {!allFilter && (
+              <button
+                onClick={generateOneOff}
+                disabled={generating}
+                className="mt-3 min-h-[44px] rounded-acuity-pill bg-acuity-primary px-6 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+              >
+                {generating ? "Queuing…" : "Generate one now"}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -581,139 +469,49 @@ export default function CarouselReviewPage() {
 
                 {/* Posts for this date */}
                 <div className="space-y-2">
-                  {dayPosts.map((post) => {
-                    const isExpanded = expandedPost === post.id;
+                  {dayPosts.map((post) => (
+                    <button
+                      key={post.id}
+                      onClick={() => setSelectedPostId(post.id)}
+                      className="flex w-full items-center gap-3 rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft p-3 text-left active:bg-acuity-bg-sub"
+                    >
+                      {/* Cover thumbnail */}
+                      {post.slides[0] && (
+                        <div className="h-14 w-10 shrink-0 overflow-hidden rounded-acuity-sm">
+                          <img
+                            src={post.slides[0].imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      )}
 
-                    return (
-                      <div
-                        key={post.id}
-                        className="rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft overflow-hidden"
-                      >
-                        {/* Collapsed row — always visible */}
-                        <button
-                          onClick={() => setExpandedPost(isExpanded ? null : post.id)}
-                          className="flex w-full items-center gap-3 p-3 text-left active:bg-acuity-bg-sub"
-                        >
-                          {/* Cover thumbnail */}
-                          {post.slides[0] && (
-                            <div className="h-14 w-10 shrink-0 overflow-hidden rounded-acuity-sm">
-                              <img
-                                src={post.slides[0].imageUrl}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                          )}
-
-                          {/* Info */}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-acuity-text truncate">
-                              {post.headline}
-                            </p>
-                            <div className="mt-0.5 flex items-center gap-2">
-                              <span className="text-[11px] text-acuity-text-quiet truncate">
-                                {post.topicSlug}
-                              </span>
-                              <span className="text-[10px] font-mono text-acuity-text-quiet">
-                                {post.slides.length} slides
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Badges */}
-                          <div className="flex shrink-0 items-center gap-1.5">
-                            {post.emailedAt && (
-                              <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
-                                Emailed
-                              </span>
-                            )}
-                            <StatusBadge status={post.status} />
-                            <span className="text-acuity-text-quiet text-xs">
-                              {isExpanded ? "▲" : "▼"}
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* Expanded detail */}
-                        {isExpanded && (
-                          <div className="border-t border-acuity-line px-3 pb-3 pt-2">
-                            {/* Slide strip */}
-                            <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-                              {post.slides.map((slide) => (
-                                <div key={slide.id} className="relative h-32 w-[72px] shrink-0 overflow-hidden rounded-acuity-sm">
-                                  <img
-                                    src={slide.imageUrl}
-                                    alt={slide.overlayText}
-                                    className="h-full w-full object-cover"
-                                  />
-                                  <span className="absolute bottom-1 left-1 rounded-acuity-pill bg-black/50 px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase text-white/80">
-                                    {slide.kind}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Caption preview */}
-                            <div className="mb-3 max-h-24 overflow-y-auto rounded-acuity-sm bg-acuity-bg-inset p-2.5">
-                              <pre className="whitespace-pre-wrap text-[11px] text-acuity-text-sec font-sans leading-relaxed">
-                                {post.caption}
-                              </pre>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                onClick={() => doAction("resend-email", { postId: post.id })}
-                                disabled={busy === `resend-email-${post.id}`}
-                                className="min-h-[36px] flex items-center rounded-acuity-pill border border-acuity-line px-3 text-[11px] text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
-                              >
-                                {busy === `resend-email-${post.id}` ? "Sending…" : "✉ Email"}
-                              </button>
-                              <a
-                                href={`/api/admin/carousels/download?postId=${post.id}`}
-                                className="min-h-[36px] flex items-center rounded-acuity-pill border border-acuity-line px-3 text-[11px] text-acuity-text-sec active:bg-acuity-bg-sub"
-                              >
-                                ZIP
-                              </a>
-                              <button
-                                onClick={() => copyCaption(post.caption)}
-                                className="min-h-[36px] rounded-acuity-pill border border-acuity-line px-3 text-[11px] text-acuity-text-sec active:bg-acuity-bg-sub"
-                              >
-                                {copied ? "Copied ✓" : "Copy caption"}
-                              </button>
-                              {post.status === "DRAFT" && (
-                                <>
-                                  <button
-                                    onClick={() => doAction("approve", { postId: post.id })}
-                                    disabled={!!busy}
-                                    className="min-h-[36px] rounded-acuity-pill bg-acuity-good px-3 text-[11px] font-medium text-white active:opacity-80 disabled:opacity-50"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => doAction("reject", { postId: post.id })}
-                                    disabled={!!busy}
-                                    className="min-h-[36px] rounded-acuity-pill bg-acuity-bad px-3 text-[11px] font-medium text-white active:opacity-80 disabled:opacity-50"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              {post.status === "APPROVED" && (
-                                <button
-                                  onClick={() => doAction("mark-posted", { postId: post.id })}
-                                  disabled={busy === `mark-posted-${post.id}`}
-                                  className="min-h-[36px] rounded-acuity-pill bg-acuity-secondary-soft px-3 text-[11px] font-bold text-acuity-secondary active:opacity-70 disabled:opacity-50"
-                                >
-                                  Mark posted
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                      {/* Info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-acuity-text truncate">
+                          {post.headline}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <span className="text-[11px] text-acuity-text-quiet truncate">
+                            {post.topicSlug}
+                          </span>
+                          <span className="text-[10px] font-mono text-acuity-text-quiet">
+                            {post.slides.length} slides
+                          </span>
+                        </div>
                       </div>
-                    );
-                  })}
+
+                      {/* Badges */}
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {post.emailedAt && (
+                          <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
+                            Emailed
+                          </span>
+                        )}
+                        <StatusBadge status={post.status} />
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             );
