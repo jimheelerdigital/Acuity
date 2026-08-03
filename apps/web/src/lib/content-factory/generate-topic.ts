@@ -75,10 +75,10 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "headline": "the carousel headline",
   "style": "hook" or "listicle",
   "reasons": ["reason 1", "reason 2", ...],
-  "reasonCount": 5 or 6 or 7
+  "reasonCount": 5 or 6 or 7 or 8 or 9 or 10
 }
 
-Generate 5-7 reasons per topic. Vary the count.`;
+Generate 5-10 reasons per topic. Vary the count each time.`;
 
 /**
  * Generate a fresh carousel topic using Claude, avoiding recent headlines.
