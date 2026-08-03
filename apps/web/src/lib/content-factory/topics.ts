@@ -22,7 +22,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Mental Load ─────────────────────────────────────────────────
   {
     slug: "invisible-mental-load",
-    headline: "Nobody sees this, but it's destroying you",
+    headline: "6 invisible things draining your energy every day",
     style: "hook",
     lane: "cinematicReal",
     reasons: [
@@ -65,7 +65,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Repeating Patterns ──────────────────────────────────────────
   {
     slug: "patterns-you-repeat",
-    headline: "Stop me if this sounds familiar...",
+    headline: "6 patterns you keep repeating without realising",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -92,7 +92,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "same-fight-different-day",
-    headline: "You're not fighting about the dishes",
+    headline: "6 reasons you keep having the same fight",
     style: "hook",
     lane: "flatGraphic",
     reasons: [
@@ -121,7 +121,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Knowing But Not Doing ───────────────────────────────────────
   {
     slug: "you-know-what-to-do",
-    headline: "You know EXACTLY what to do. So why aren't you doing it?",
+    headline: "6 reasons knowing what to do isn't the same as doing it",
     style: "hook",
     lane: "stillLife",
     reasons: [
@@ -249,7 +249,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Self-Reflection ─────────────────────────────────────────────
   {
     slug: "questions-you-avoid",
-    headline: "You already know the answer. You're just scared to say it.",
+    headline: "5 questions you've been avoiding asking yourself",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -262,7 +262,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "3am-thoughts",
-    headline: "Your 3am brain is trying to tell you something",
+    headline: "6 reasons your 3am thoughts won't leave you alone",
     style: "hook",
     lane: "cinematicReal",
     reasons: [
@@ -276,7 +276,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "mirror-not-coach",
-    headline: "You don't need more advice",
+    headline: "Top 5 reasons you need a mirror, not a coach",
     style: "hook",
     lane: "claymation",
     reasons: [
@@ -305,7 +305,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "why-you-feel-touched-out",
-    headline: "Your body is screaming. You keep ignoring it.",
+    headline: "5 reasons you feel completely touched out",
     style: "hook",
     lane: "toon3d",
     reasons: [
@@ -347,7 +347,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "permission-to-change",
-    headline: "Plot twist: you're allowed to change your mind",
+    headline: "6 things you have full permission to change right now",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -363,7 +363,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Relationship Patterns ───────────────────────────────────────
   {
     slug: "why-you-shut-down",
-    headline: "This is why you go silent",
+    headline: "5 reasons you shut down instead of speaking up",
     style: "hook",
     lane: "cinematicReal",
     reasons: [
@@ -376,7 +376,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "things-your-partner-doesnt-see",
-    headline: "Show this to your partner",
+    headline: "6 things your partner doesn't see (but should)",
     style: "hook",
     lane: "claymation",
     reasons: [
@@ -392,7 +392,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Wellness Culture Pushback ───────────────────────────────────
   {
     slug: "self-care-isnt-candles",
-    headline: "Bath bombs are not self-care",
+    headline: "Top 5 things that are actually self-care (not bath bombs)",
     style: "hook",
     lane: "flatGraphic",
     reasons: [
@@ -405,7 +405,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "toxic-positivity",
-    headline: "'Good vibes only' is gaslighting yourself",
+    headline: "6 ways toxic positivity is secretly gaslighting you",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -421,7 +421,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   // ─── Daily Life / Decompression ──────────────────────────────────
   {
     slug: "ways-to-decompress",
-    headline: "Do this tonight instead of doom scrolling",
+    headline: "Top 5 ways to decompress when you're overwhelmed",
     style: "hook",
     lane: "toon3d",
     reasons: [
@@ -465,7 +465,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "signs-youre-people-pleasing",
-    headline: "This habit is quietly ruining your life",
+    headline: "5 signs you're a people pleaser (and it's costing you)",
     style: "hook",
     lane: "paperDiorama",
     reasons: [
@@ -478,7 +478,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "signs-youre-emotionally-exhausted",
-    headline: "You're not lazy. Read this.",
+    headline: "6 signs you're emotionally exhausted (not lazy)",
     style: "hook",
     lane: "toon3d",
     reasons: [
@@ -492,7 +492,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "signs-you-need-to-talk",
-    headline: "That thing you keep replaying? Say it out loud.",
+    headline: "5 signs you need to talk it out, not think it out",
     style: "hook",
     lane: "risograph",
     reasons: [
