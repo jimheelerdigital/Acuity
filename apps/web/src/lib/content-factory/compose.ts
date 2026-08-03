@@ -101,72 +101,54 @@ export async function composeSlide(
   kind: "COVER" | "REASON"
 ): Promise<Buffer> {
   const isCover = kind === "COVER";
-  const fontSize = isCover ? 64 : 48;
-  const fontWeight = isCover ? 700 : 500;
-  // Approximate chars per line at this font size within the padded area
-  const maxChars = isCover ? 20 : 26;
-  const lineSpacing = fontSize * 1.45;
+  const fontSize = isCover ? 72 : 54;
+  const maxChars = isCover ? 18 : 24;
+  const lineSpacing = fontSize * 1.5;
 
   let lines = wordWrap(text, maxChars);
-
-  // Auto-shrink if more than 3 lines
   let actualFontSize = fontSize;
   if (lines.length > 3) {
     actualFontSize = Math.floor(fontSize * 0.78);
     lines = wordWrap(text, Math.floor(maxChars * 1.3));
   }
-  const actualLineSpacing = actualFontSize * 1.45;
-
+  const actualLineSpacing = actualFontSize * 1.5;
   const textBlockH = lines.length * actualLineSpacing;
 
   // ── Cross-platform safe zone ──────────────────────────────────
-  // Output is 1080x1920 (9:16). Instagram crops to 4:5 (1080x1350)
-  // by cutting 285px from top and bottom. TikTok UI covers the
-  // bottom ~300px. So the universal safe zone for text is:
-  //   Top:    285px  (Instagram crop)
-  //   Bottom: 1540px (1920 - 380 = TikTok UI safe)
-  // Text must land within y=285..1540 to be visible on both.
-  const SAFE_TOP = 285;     // Instagram 4:5 crop line
-  const SAFE_BOTTOM = 1540; // TikTok UI safe line (1920 - 380)
-  const SAFE_H = SAFE_BOTTOM - SAFE_TOP; // 1255px of usable space
+  const SAFE_TOP = 285;
+  const SAFE_BOTTOM = 1540;
+  const SAFE_H = SAFE_BOTTOM - SAFE_TOP;
 
   let textY: number;
   if (isCover) {
-    // Centre in the safe zone
     textY = SAFE_TOP + (SAFE_H - textBlockH) / 2;
   } else {
-    // Lower portion of safe zone, with 60px breathing room from bottom
     textY = SAFE_BOTTOM - textBlockH - 60;
   }
 
-  const textX = isCover ? OUTPUT_W / 2 : PADDING_X;
-  const anchor = isCover ? "middle" : "start";
+  const textX = OUTPUT_W / 2;
+  const anchor = "middle";
 
-  // Scrim: covers bottom 60% for cover, bottom 45% for reason
-  const scrimPct = isCover ? 0.65 : 0.50;
-  const scrimH = Math.round(OUTPUT_H * scrimPct);
-  const scrimY = OUTPUT_H - scrimH;
+  // White text with bold black outline — pops on any background
+  // without covering the image with a scrim or pill.
+  // SVG paint-order: stroke renders behind fill so the outline
+  // doesn't eat into the letter shapes.
+  const strokeW = isCover ? 8 : 6;
 
   const svgOverlay = `
     <svg width="${OUTPUT_W}" height="${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>${fontFaceDeclarations()}</style>
-        <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgba(0,0,0,0)" />
-          <stop offset="30%" stop-color="rgba(0,0,0,0.25)" />
-          <stop offset="70%" stop-color="rgba(0,0,0,0.6)" />
-          <stop offset="100%" stop-color="rgba(0,0,0,0.8)" />
-        </linearGradient>
       </defs>
-      <rect x="0" y="${scrimY}" width="${OUTPUT_W}" height="${scrimH}" fill="url(#scrim)" />
       ${lines
         .map(
           (line, i) =>
             `<text x="${textX}" y="${textY + i * actualLineSpacing + actualFontSize}"
-                   font-family="Poppins, sans-serif" font-weight="${fontWeight}"
-                   font-size="${actualFontSize}" fill="${CREAM}"
-                   text-anchor="${anchor}"
-                   filter="drop-shadow(0 3px 6px rgba(0,0,0,0.6))">${escapeXml(line)}</text>`
+                   font-family="Poppins, sans-serif" font-weight="700"
+                   font-size="${actualFontSize}" fill="white"
+                   stroke="black" stroke-width="${strokeW}"
+                   stroke-linejoin="round" paint-order="stroke fill"
+                   text-anchor="${anchor}">${escapeXml(line)}</text>`
         )
         .join("\n")}
     </svg>
