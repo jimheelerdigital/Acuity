@@ -150,7 +150,8 @@ async function renderText(
 export async function composeSlide(
   rawImage: Buffer,
   text: string,
-  kind: "COVER" | "REASON"
+  kind: "COVER" | "REASON",
+  slideNumber?: number
 ): Promise<Buffer> {
   // If no text, return the base image without overlay
   if (!text || text.trim().length === 0) {
@@ -161,38 +162,35 @@ export async function composeSlide(
       .toBuffer();
   }
 
-  const isCover = kind === "COVER";
-  const fontSize = isCover ? 72 : 54;
-  const maxChars = isCover ? 18 : 24;
+  // Prepend slide number for reason slides (e.g. "1. Meditation")
+  const displayText =
+    kind === "REASON" && slideNumber != null
+      ? `${slideNumber}. ${text}`
+      : text;
 
-  let lines = wordWrap(text, maxChars);
+  const isCover = kind === "COVER";
+  const fontSize = isCover ? 72 : 52;
+  const maxChars = isCover ? 18 : 26;
+
+  let lines = wordWrap(displayText, maxChars);
   let actualFontSize = fontSize;
   if (lines.length > 3) {
     actualFontSize = Math.floor(fontSize * 0.78);
-    lines = wordWrap(text, Math.floor(maxChars * 1.3));
+    lines = wordWrap(displayText, Math.floor(maxChars * 1.3));
   }
-  const actualLineSpacing = actualFontSize * 1.5;
-  const textBlockH = lines.length * actualLineSpacing;
 
   // ── Cross-platform safe zone ──────────────────────────────────
   const SAFE_TOP = 285;
   const SAFE_BOTTOM = 1540;
   const SAFE_H = SAFE_BOTTOM - SAFE_TOP;
 
-  let textY: number;
-  if (isCover) {
-    textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2);
-  } else {
-    textY = Math.round(SAFE_BOTTOM - textBlockH - 60);
-  }
-
   const fontPath = await ensureFontFile("Bold");
   const maxWidth = OUTPUT_W - PADDING_X * 2;
-  // Extra spacing beyond Pango's default ~1.2x line height
-  const extraSpacing = actualFontSize * 0.3;
-  const strokeBlur = isCover ? 5 : 4;
+  // Generous line spacing for readability
+  const extraSpacing = Math.round(actualFontSize * 0.5);
+  const strokeBlur = isCover ? 6 : 5;
 
-  // 1. Render black text for outline/shadow
+  // Render text to measure height for positioning
   const black = await renderText(
     lines,
     actualFontSize,
@@ -201,6 +199,14 @@ export async function composeSlide(
     maxWidth,
     extraSpacing
   );
+
+  const textBlockH = black.height;
+  let textY: number;
+  if (isCover) {
+    textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2);
+  } else {
+    textY = Math.round(SAFE_BOTTOM - textBlockH - 80);
+  }
   const textLeft = Math.round((OUTPUT_W - black.width) / 2);
 
   // Create outline by blurring black text and stacking for opacity
@@ -209,7 +215,7 @@ export async function composeSlide(
     .png()
     .toBuffer();
 
-  // 2. Render white text
+  // Render white text
   const white = await renderText(
     lines,
     actualFontSize,
@@ -219,10 +225,11 @@ export async function composeSlide(
     extraSpacing
   );
 
-  // Composite: base → shadow (x3 for density) → white text
+  // Composite: base → shadow (x4 for dense outline) → white text
   return sharp(rawImage)
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
     .composite([
+      { input: shadow, top: textY, left: textLeft },
       { input: shadow, top: textY, left: textLeft },
       { input: shadow, top: textY, left: textLeft },
       { input: shadow, top: textY, left: textLeft },

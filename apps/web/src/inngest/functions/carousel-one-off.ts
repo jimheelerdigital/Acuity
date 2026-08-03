@@ -142,7 +142,7 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
         const topic = { headline: topicData.headline, slug, lane: topicData.lane as any, reasons: topicData.reasons };
         const prompt = buildImagePrompt(lanePrefix, reason, topic);
         const rawBuffer = await generateImage(prompt);
-        const composed = await composeSlide(rawBuffer, reason, "REASON");
+        const composed = await composeSlide(rawBuffer, reason, "REASON", i + 1);
         const imageUrl = await uploadImage(
           composed,
           `carousels/${dateStr}/${slug}/slide-${i + 1}-reason.jpg`

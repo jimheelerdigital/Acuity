@@ -116,7 +116,7 @@ export async function generateCarousel(
     const prompt = buildImagePrompt(lanePrefix, reason, topic);
     const rawBuffer = await generateImage(prompt);
     totalCostCents += estimateImageCost();
-    const composed = await composeSlide(rawBuffer, reason, "REASON");
+    const composed = await composeSlide(rawBuffer, reason, "REASON", i + 1);
     const url = await uploadImage(
       composed,
       `carousels/${dateStr}/${topicSlug}/slide-${i + 1}-reason.jpg`
@@ -244,7 +244,8 @@ export async function regenerateSlide(slideId: string): Promise<string> {
     slide.overlayText,
     topic ?? { headline: slide.carouselPost.headline, slug: slide.carouselPost.topicSlug, lane: "cinematicReal", reasons: [] },
   ));
-  const composed = await composeSlide(rawBuffer, slide.overlayText, slide.kind as "COVER" | "REASON");
+  const slideNum = slide.kind === "REASON" ? slide.order : undefined;
+  const composed = await composeSlide(rawBuffer, slide.overlayText, slide.kind as "COVER" | "REASON", slideNum);
   const url = await uploadImage(
     composed,
     `carousels/regen/${slide.carouselPostId}/${slideId}.jpg`
@@ -284,7 +285,8 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
       topic ?? { headline: slide.carouselPost.headline, slug: slide.carouselPost.topicSlug, lane: "cinematicReal", reasons: [] },
     );
     const rawBuffer = await generateImage(prompt);
-    composed = await composeSlide(rawBuffer, newText, slide.kind as "COVER" | "REASON");
+    const slideNum = slide.kind === "REASON" ? slide.order : undefined;
+    composed = await composeSlide(rawBuffer, newText, slide.kind as "COVER" | "REASON", slideNum);
   }
 
   const url = await uploadImage(
