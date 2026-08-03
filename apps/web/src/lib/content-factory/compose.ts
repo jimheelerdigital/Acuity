@@ -186,18 +186,12 @@ export async function composeSlide(
 
   const fontPath = await ensureFontFile("Bold");
   const maxWidth = OUTPUT_W - PADDING_X * 2;
-  // Generous line spacing for readability
   const extraSpacing = Math.round(actualFontSize * 0.2);
-  const strokeBlur = isCover ? 6 : 5;
+  const outlinePx = isCover ? 4 : 3; // crisp outline thickness
 
-  // Render text to measure height for positioning
+  // Render black text for outline
   const black = await renderText(
-    lines,
-    actualFontSize,
-    "black",
-    fontPath,
-    maxWidth,
-    extraSpacing
+    lines, actualFontSize, "black", fontPath, maxWidth, extraSpacing
   );
 
   const textBlockH = black.height;
@@ -205,39 +199,39 @@ export async function composeSlide(
   if (isCover) {
     textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2);
   } else {
-    // Center reason text vertically in the lower 60% of safe zone
     const reasonZoneTop = SAFE_TOP + Math.round(SAFE_H * 0.4);
     const reasonZoneH = SAFE_BOTTOM - reasonZoneTop;
     textY = Math.round(reasonZoneTop + (reasonZoneH - textBlockH) / 2);
   }
   const textLeft = Math.round((OUTPUT_W - black.width) / 2);
 
-  // Create outline by blurring black text and stacking for opacity
-  const shadow = await sharp(black.buffer)
-    .blur(Math.max(strokeBlur, 0.5))
-    .png()
-    .toBuffer();
-
   // Render white text
   const white = await renderText(
-    lines,
-    actualFontSize,
-    "white",
-    fontPath,
-    maxWidth,
-    extraSpacing
+    lines, actualFontSize, "white", fontPath, maxWidth, extraSpacing
   );
 
-  // Composite: base → shadow (x4 for dense outline) → white text
+  // Build crisp outline by placing black text at offsets in all directions.
+  // 16 points around a circle at `outlinePx` radius → clean uniform border.
+  const offsets: [number, number][] = [];
+  for (let angle = 0; angle < 360; angle += 22.5) {
+    const rad = (angle * Math.PI) / 180;
+    offsets.push([
+      Math.round(Math.cos(rad) * outlinePx),
+      Math.round(Math.sin(rad) * outlinePx),
+    ]);
+  }
+
+  const composites: sharp.OverlayOptions[] = offsets.map(([dx, dy]) => ({
+    input: black.buffer,
+    top: textY + dy,
+    left: textLeft + dx,
+  }));
+  // White text on top at center
+  composites.push({ input: white.buffer, top: textY, left: textLeft });
+
   return sharp(rawImage)
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
-    .composite([
-      { input: shadow, top: textY, left: textLeft },
-      { input: shadow, top: textY, left: textLeft },
-      { input: shadow, top: textY, left: textLeft },
-      { input: shadow, top: textY, left: textLeft },
-      { input: white.buffer, top: textY, left: textLeft },
-    ])
+    .composite(composites)
     .jpeg({ quality: 90 })
     .toBuffer();
 }
