@@ -348,7 +348,7 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
   });
 
   // ── 4. Subtext ──────────────────────────────────────────────────
-  const subMarkup = `<span font_desc="Poppins Medium 28" foreground="rgba(255,255,255,0.7)">Free 7-day trial on iPhone &amp; Android</span>`;
+  const subMarkup = `<span font_desc="Poppins Medium 28" foreground="white" alpha="70%">Free 7-day trial on iPhone &amp; Android</span>`;
   const subOpts: Record<string, unknown> = {
     text: subMarkup,
     width: maxTextW,
