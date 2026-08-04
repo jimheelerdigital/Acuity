@@ -180,7 +180,10 @@ export async function composeSlide(
  * The lockup has a cream background with coral mark + dark text.
  * We convert it to white-on-transparent by thresholding brightness.
  */
-export async function composeCTASlide(ctaText: string): Promise<Buffer> {
+export async function composeCTASlide(
+  ctaText: string,
+  bgColor: { r: number; g: number; b: number } = { r: 249, g: 126, b: 78 }
+): Promise<Buffer> {
   const SAFE_TOP = 285;
   const SAFE_BOTTOM = 1540;
   const SAFE_H = SAFE_BOTTOM - SAFE_TOP;
@@ -348,7 +351,7 @@ export async function composeCTASlide(ctaText: string): Promise<Buffer> {
       width: OUTPUT_W,
       height: OUTPUT_H,
       channels: 4,
-      background: { r: 249, g: 126, b: 78, alpha: 1 },
+      background: { r: bgColor.r, g: bgColor.g, b: bgColor.b, alpha: 1 },
     },
   })
     .composite(composites)

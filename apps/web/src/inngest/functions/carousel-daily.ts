@@ -151,7 +151,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         "@/lib/content-factory/carousel-generate"
       );
 
-      const composed = await composeCTASlide(ctaText);
+      const composed = await composeCTASlide(ctaText, colorScheme.ctaBg);
       const imageUrl = await uploadImage(
         composed,
         `carousels/${dateStr}/${slug}/slide-${topicData.reasons.length + 1}-cta.jpg`

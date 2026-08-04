@@ -35,26 +35,32 @@ export const COLOR_SCHEMES = [
   {
     name: "coral-cream",
     prompt: "Dominant color palette: warm coral (#F97E4E) and soft cream (#FBFAF6). Accents of warm amber. Warm, energetic, inviting.",
+    ctaBg: { r: 249, g: 126, b: 78 },
   },
   {
     name: "indigo-cream",
     prompt: "Dominant color palette: muted indigo (#3D3A50) and soft cream (#FBFAF6). Accents of dusty rose. Deep, introspective, evening calm.",
+    ctaBg: { r: 61, g: 58, b: 80 },
   },
   {
     name: "dusty-rose",
     prompt: "Dominant color palette: dusty rose (#D4918A) and warm tan (#F0E6D6). Accents of coral. Soft, feminine, tender warmth.",
+    ctaBg: { r: 212, g: 145, b: 138 },
   },
   {
     name: "amber-tan",
     prompt: "Dominant color palette: warm amber (#D4A76A) and cream (#FBFAF6). Accents of sage green. Golden-hour nostalgia, comforting.",
+    ctaBg: { r: 212, g: 167, b: 106 },
   },
   {
     name: "sage-cream",
     prompt: "Dominant color palette: sage green (#8FA88B) and soft cream (#FBFAF6). Accents of warm amber. Fresh, balanced, renewal.",
+    ctaBg: { r: 143, g: 168, b: 139 },
   },
   {
     name: "deep-purple",
     prompt: "Dominant color palette: deep purple (#5B4A7A) and dusty rose (#D4918A). Accents of cream. Moody, reflective, rich depth.",
+    ctaBg: { r: 91, g: 74, b: 122 },
   },
 ];
 
