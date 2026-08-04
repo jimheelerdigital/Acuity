@@ -193,8 +193,8 @@ export function buildImagePrompt(
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
   const sizeRule = isCover
-    ? "Text must not exceed 50% of the slide area. Less is fine — prioritize illustration."
-    : "Text must not exceed 40% of the slide area. Less is fine — prioritize illustration.";
+    ? "The text is a BOLD, prominent design element — large and confident, taking up about 40-50% of the slide. It should feel like a headline on a magazine cover, not small or tucked away."
+    : "The text is a BOLD, prominent design element — large and confident, taking up about 30-40% of the slide. It should feel designed into the layout, not small or floating.";
 
   return [
     lanePrefix,

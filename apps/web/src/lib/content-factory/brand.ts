@@ -17,7 +17,7 @@ export const VISUAL_DNA = [
   "This is a social media carousel slide. Text and illustration are one cohesive designed composition.",
   "Style: illustrated graphic design — NOT a photo with text overlaid.",
   "Text rendering rules (CRITICAL):",
-  "  • Text should NOT be oversized — leave the majority of space for illustration.",
+  "  • Text must be LARGE and BOLD — a prominent design element, like a magazine headline. Never tiny or tucked into a corner.",
   "  • Clean, bold sans-serif font. Every single letter must be perfectly crisp and readable.",
   "  • Spell every word EXACTLY as provided — no omissions, no extra words, no substitutions, no abbreviations.",
   "  • High contrast between text and background — dark text on light areas or light text on dark areas.",
