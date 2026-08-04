@@ -193,8 +193,8 @@ export function buildImagePrompt(
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
   const sizeRule = isCover
-    ? "Text fills the upper 50-60% of the slide in bold stacked lines. Illustration fills the lower portion and wraps around the text."
-    : "Text fills the upper 40-50% of the slide in bold stacked lines. Illustration fills the lower portion and wraps around the text.";
+    ? "Text should be prominent but not exceed 50% of the slide. Blend it creatively with the illustration — vary placement each time."
+    : "Text should be prominent but not exceed 40% of the slide. Blend it creatively with the illustration — vary placement each time.";
 
   return [
     lanePrefix,

@@ -14,22 +14,17 @@
  * The color scheme is injected separately per carousel via COLOR_SCHEMES.
  */
 export const VISUAL_DNA = [
-  "This is a social media carousel slide designed like an editorial magazine page.",
-  "LAYOUT: 9:16 portrait. Bold text stacked in the UPPER portion of the slide. Warm editorial illustration fills the LOWER portion and wraps around the text. Text and illustration blend into one cohesive composition.",
-  "TEXT STYLE:",
-  "  • Large, bold, stacked sans-serif text — like an editorial magazine headline",
-  "  • Use visual hierarchy: the key number or word can be extra large, supporting text slightly smaller",
-  "  • Dark text on light/warm backgrounds for maximum readability",
-  "  • Spell every word EXACTLY as provided — no omissions, no substitutions",
-  "  • Clean, crisp, horizontal text only — no warping, curving, or distortion",
-  "ILLUSTRATION STYLE:",
-  "  • Warm editorial illustration — hand-drawn feel, NOT photorealistic, NOT 3D render",
-  "  • Illustrated woman (~35-50, diverse, natural expressions) as the central figure",
-  "  • Surround her with relevant visual metaphors (thought bubbles, objects, nature elements)",
-  "  • Muted warm tones, textured paper-like background, cozy domestic details",
-  "  • Small decorative elements (leaves, candles, mugs, sticky notes, hearts) for warmth",
-  "  • Style reference: editorial wellness magazine illustration, hand-drawn warmth",
-  "NO watermarks, NO logos, NO extra text beyond what is specified.",
+  "This is a premium social media carousel slide. It should look like it was made by a top-tier creative agency — polished, high-class, editorial quality.",
+  "The text and illustration must BLEND together as one seamless composition. Vary the layout creatively every time:",
+  "  • Text can flow on the left with illustration on the right, or vice versa",
+  "  • Text can wrap around a central illustration",
+  "  • Text can be stacked at the top with illustration below",
+  "  • Text can be integrated throughout the scene with elements weaving between lines",
+  "  • Be creative with placement — never feel formulaic or templated",
+  "TEXT: Bold, clean sans-serif. Perfectly crisp and readable. Use visual hierarchy — key words or numbers can be larger. Spell every word EXACTLY as provided. No warping or distortion.",
+  "ILLUSTRATION: Warm editorial illustration, hand-drawn feel. Diverse women ~35-50, natural expressions. Rich details — plants, candles, mugs, books, sticky notes, cozy domestic elements. Muted warm tones.",
+  "QUALITY: Every slide should feel like a page from a premium wellness magazine. Clean, intentional, sophisticated. Not cluttered, not cheap, not templated.",
+  "9:16 portrait format. NO watermarks, NO logos, NO extra text beyond what is specified.",
 ].join("\n");
 
 /**
