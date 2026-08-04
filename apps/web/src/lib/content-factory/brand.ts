@@ -14,18 +14,21 @@
  * The color scheme is injected separately per carousel via COLOR_SCHEMES.
  */
 export const VISUAL_DNA = [
-  "This is a social media carousel slide. Text and illustration are one cohesive designed composition.",
-  "Style: illustrated graphic design — NOT a photo with text overlaid.",
-  "Text rendering rules (CRITICAL):",
-  "  • Text must be LARGE and BOLD — a prominent design element, like a magazine headline. Never tiny or tucked into a corner.",
-  "  • Clean, bold sans-serif font. Every single letter must be perfectly crisp and readable.",
-  "  • Spell every word EXACTLY as provided — no omissions, no extra words, no substitutions, no abbreviations.",
-  "  • High contrast between text and background — dark text on light areas or light text on dark areas.",
-  "  • No warping, no curving, no stylized distortion of text. Straight, clean, horizontal lines only.",
-  "Illustration elements: warm, editorial, hand-drawn or soft 3D feel. Relevant visual metaphors that fill the majority of the slide.",
-  "Human subjects when included: diverse women ~35-50, illustrated style (not photorealistic), natural expressions.",
-  "Mood: gentle, reflective, warm. No corporate stock-photo energy.",
-  "Layout: 9:16 portrait. Illustrations should be the visual hero. Text is integrated but not dominant.",
+  "This is a social media carousel slide designed like an editorial magazine page.",
+  "LAYOUT: 9:16 portrait. Bold text stacked in the UPPER portion of the slide. Warm editorial illustration fills the LOWER portion and wraps around the text. Text and illustration blend into one cohesive composition.",
+  "TEXT STYLE:",
+  "  • Large, bold, stacked sans-serif text — like an editorial magazine headline",
+  "  • Use visual hierarchy: the key number or word can be extra large, supporting text slightly smaller",
+  "  • Dark text on light/warm backgrounds for maximum readability",
+  "  • Spell every word EXACTLY as provided — no omissions, no substitutions",
+  "  • Clean, crisp, horizontal text only — no warping, curving, or distortion",
+  "ILLUSTRATION STYLE:",
+  "  • Warm editorial illustration — hand-drawn feel, NOT photorealistic, NOT 3D render",
+  "  • Illustrated woman (~35-50, diverse, natural expressions) as the central figure",
+  "  • Surround her with relevant visual metaphors (thought bubbles, objects, nature elements)",
+  "  • Muted warm tones, textured paper-like background, cozy domestic details",
+  "  • Small decorative elements (leaves, candles, mugs, sticky notes, hearts) for warmth",
+  "  • Style reference: editorial wellness magazine illustration, hand-drawn warmth",
   "NO watermarks, NO logos, NO extra text beyond what is specified.",
 ].join("\n");
 
