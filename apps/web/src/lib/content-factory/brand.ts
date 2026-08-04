@@ -14,12 +14,14 @@
  * The color scheme is injected separately per carousel via COLOR_SCHEMES.
  */
 export const VISUAL_DNA = [
-  "Mood: gentle, reflective, warm — like golden-hour light through a window.",
-  "Lighting: soft diffused or golden-hour. No harsh flash, no clinical white.",
-  "Human subjects: diverse women ~35-50, natural expressions, candid not posed.",
-  "Composition: clean negative space, editorial simplicity, slightly aspirational.",
-  "Absolutely NO text, letters, words, numbers, watermarks, or logos in the image.",
-  "No corporate stock-photo energy. No laptop-and-latte clichés.",
+  "This is a social media carousel slide. The text is the PRIMARY element — it must be large, bold, perfectly legible, and integrated into the design.",
+  "Style: illustrated graphic design — NOT a photo with text overlaid. Text and illustration are one cohesive composition.",
+  "Text rendering: bold sans-serif font, high contrast against the background, clean and crisp. ALL text must be spelled EXACTLY as provided — no omissions, no substitutions.",
+  "Illustration elements: warm, editorial, hand-drawn or soft 3D feel. Relevant visual metaphors around/below the text.",
+  "Human subjects when included: diverse women ~35-50, illustrated style (not photorealistic), natural expressions.",
+  "Mood: gentle, reflective, warm. No corporate stock-photo energy.",
+  "Layout: 9:16 portrait. Text in the upper or center area. Illustrations fill remaining space.",
+  "NO watermarks, NO logos, NO extra text beyond what is specified.",
 ].join("\n");
 
 /**
@@ -58,13 +60,13 @@ export const COLOR_SCHEMES = [
 // lanes by key so the feed stays varied across cinematicReal, toon3d, etc.
 
 export const STYLE_LANES = {
-  cinematicReal: "Cinematic photorealistic scene, shallow depth of field, film grain, warm color grading.",
-  toon3d: "Soft 3D render in the style of Pixar/DreamWorks, rounded shapes, warm subsurface lighting.",
-  claymation: "Claymation stop-motion aesthetic, handmade textures, warm studio lighting, soft shadows.",
-  stillLife: "Editorial still-life photograph, carefully arranged objects, soft natural light, overhead or 45° angle.",
-  flatGraphic: "Flat vector illustration, limited warm color palette, bold simple shapes, editorial magazine style.",
-  paperDiorama: "Paper-craft diorama scene, layered cut-paper with soft shadows, handmade craft aesthetic.",
-  risograph: "Risograph print aesthetic, halftone dots, limited 3-color palette (coral, indigo, cream), slight misregistration.",
+  cinematicReal: "Illustrated graphic with soft realistic elements, warm editorial feel, gentle gradients.",
+  toon3d: "Soft 3D illustrated graphic, rounded shapes, warm lighting, Pixar-inspired characters and props.",
+  claymation: "Illustrated graphic with handmade clay-like textures, soft shadows, tactile warmth.",
+  stillLife: "Illustrated graphic with editorial still-life objects arranged around the text, clean layout.",
+  flatGraphic: "Bold flat vector illustration, clean geometric shapes, strong graphic design composition.",
+  paperDiorama: "Illustrated graphic with layered paper-craft elements, cut-paper textures, depth through layers.",
+  risograph: "Illustrated graphic with halftone dot textures, limited color palette, slight retro print feel.",
 } as const;
 
 export type StyleLane = keyof typeof STYLE_LANES;

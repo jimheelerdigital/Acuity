@@ -128,7 +128,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           lane: topicData.lane as any,
           reasons: topicData.reasons,
         };
-        const prompt = buildImagePrompt(lanePrefix, reason, topic, colorScheme.prompt);
+        const slideLabel = `${i + 1}. ${reason}`;
+        const prompt = buildImagePrompt(lanePrefix, reason, topic, colorScheme.prompt, slideLabel);
         const rawBuffer = await generateImage(prompt);
         const composed = await composeSlide(rawBuffer, reason, "REASON", i + 1);
         const imageUrl = await uploadImage(

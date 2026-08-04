@@ -187,13 +187,20 @@ export function buildImagePrompt(
   lanePrefix: string,
   sceneText: string,
   topic: CarouselTopic,
-  colorPrompt?: string
+  colorPrompt?: string,
+  slideLabel?: string
 ): string {
+  // slideLabel tells the AI what text to render on the slide
+  const textInstruction = slideLabel
+    ? `The slide must display this EXACT text prominently: "${slideLabel}"`
+    : `The slide must display this EXACT text prominently: "${sceneText}"`;
+
   return [
     lanePrefix,
     colorPrompt ?? "",
-    `Scene: ${sceneText}.`,
-    `Context: visual metaphor for "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
+    textInstruction,
+    `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
+    `Include relevant illustrated elements that visually represent: ${sceneText}`,
     VISUAL_DNA,
   ].filter(Boolean).join("\n");
 }

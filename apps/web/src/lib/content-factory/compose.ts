@@ -154,102 +154,19 @@ async function renderText(
 // ─── Slide compositing ──────────────────────────────────────────────────────
 
 /**
- * Compose text overlay onto a raw generated image.
+ * Compose a slide — resize the AI-generated image to 9:16 output.
  *
- * COVER: headline vertically centred in the safe zone.
- * REASON: text anchored to the bottom of the safe zone.
- *
- * Uses sharp's Pango text renderer with fontfile for reliable rendering
- * in serverless environments. Black outline is created by compositing
- * blurred black text behind crisp white text.
+ * Text is now baked into the AI-generated image by gpt-image-2 (not
+ * overlaid separately). This function only handles resize + output.
  */
 export async function composeSlide(
   rawImage: Buffer,
-  text: string,
-  kind: "COVER" | "REASON",
-  slideNumber?: number
+  _text: string,
+  _kind: "COVER" | "REASON",
+  _slideNumber?: number
 ): Promise<Buffer> {
-  // If no text, return the base image without overlay
-  if (!text || text.trim().length === 0) {
-    console.warn(`[compose] Empty text for ${kind} slide — skipping overlay`);
-    return sharp(rawImage)
-      .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
-      .jpeg({ quality: 90 })
-      .toBuffer();
-  }
-
-  // Prepend slide number for reason slides (e.g. "1. Meditation")
-  const displayText =
-    kind === "REASON" && slideNumber != null
-      ? `${slideNumber}. ${text}`
-      : text;
-
-  const isCover = kind === "COVER";
-  const fontSize = isCover ? 72 : 52;
-  const maxChars = isCover ? 18 : 26;
-
-  let lines = wordWrap(displayText, maxChars);
-  let actualFontSize = fontSize;
-  if (lines.length > 3) {
-    actualFontSize = Math.floor(fontSize * 0.78);
-    lines = wordWrap(displayText, Math.floor(maxChars * 1.3));
-  }
-
-  // ── Cross-platform safe zone ──────────────────────────────────
-  const SAFE_TOP = 285;
-  const SAFE_BOTTOM = 1540;
-  const SAFE_H = SAFE_BOTTOM - SAFE_TOP;
-
-  const fontPath = await ensureFontFile("Bold");
-  const maxWidth = OUTPUT_W - PADDING_X * 2;
-  const extraSpacing = Math.round(actualFontSize * 0.2);
-  const outlinePx = isCover ? 4 : 3; // crisp outline thickness
-
-  // Render black text for outline (with padding so descenders aren't clipped)
-  const pad = outlinePx + 2;
-  const black = await renderText(
-    lines, actualFontSize, "black", fontPath, maxWidth, extraSpacing, pad
-  );
-
-  // Subtract padding from dimensions for layout (padding is just buffer space)
-  const textBlockH = black.height - pad * 2;
-  let textY: number;
-  if (isCover) {
-    textY = Math.round(SAFE_TOP + (SAFE_H - textBlockH) / 2) - pad;
-  } else {
-    const reasonZoneTop = SAFE_TOP + Math.round(SAFE_H * 0.4);
-    const reasonZoneH = SAFE_BOTTOM - reasonZoneTop;
-    textY = Math.round(reasonZoneTop + (reasonZoneH - textBlockH) / 2) - pad;
-  }
-  const textLeft = Math.round((OUTPUT_W - black.width) / 2);
-
-  // Render white text (same padding so it aligns with outline)
-  const white = await renderText(
-    lines, actualFontSize, "white", fontPath, maxWidth, extraSpacing, pad
-  );
-
-  // Build crisp outline by placing black text at offsets in all directions.
-  // 16 points around a circle at `outlinePx` radius → clean uniform border.
-  const offsets: [number, number][] = [];
-  for (let angle = 0; angle < 360; angle += 22.5) {
-    const rad = (angle * Math.PI) / 180;
-    offsets.push([
-      Math.round(Math.cos(rad) * outlinePx),
-      Math.round(Math.sin(rad) * outlinePx),
-    ]);
-  }
-
-  const composites: sharp.OverlayOptions[] = offsets.map(([dx, dy]) => ({
-    input: black.buffer,
-    top: textY + dy,
-    left: textLeft + dx,
-  }));
-  // White text on top at center
-  composites.push({ input: white.buffer, top: textY, left: textLeft });
-
   return sharp(rawImage)
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
-    .composite(composites)
     .jpeg({ quality: 90 })
     .toBuffer();
 }
