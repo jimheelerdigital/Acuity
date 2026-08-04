@@ -14,13 +14,18 @@
  * The color scheme is injected separately per carousel via COLOR_SCHEMES.
  */
 export const VISUAL_DNA = [
-  "This is a social media carousel slide. The text is the PRIMARY element — it must be large, bold, perfectly legible, and integrated into the design.",
-  "Style: illustrated graphic design — NOT a photo with text overlaid. Text and illustration are one cohesive composition.",
-  "Text rendering: bold sans-serif font, high contrast against the background, clean and crisp. ALL text must be spelled EXACTLY as provided — no omissions, no substitutions.",
-  "Illustration elements: warm, editorial, hand-drawn or soft 3D feel. Relevant visual metaphors around/below the text.",
+  "This is a social media carousel slide. Text and illustration are one cohesive designed composition.",
+  "Style: illustrated graphic design — NOT a photo with text overlaid.",
+  "Text rendering rules (CRITICAL):",
+  "  • Medium-sized text — NOT oversized. Text should take up roughly 30-40% of the slide, leaving 60-70% for illustration.",
+  "  • Clean, bold sans-serif font. Every single letter must be perfectly crisp and readable.",
+  "  • Spell every word EXACTLY as provided — no omissions, no extra words, no substitutions, no abbreviations.",
+  "  • High contrast between text and background — dark text on light areas or light text on dark areas.",
+  "  • No warping, no curving, no stylized distortion of text. Straight, clean, horizontal lines only.",
+  "Illustration elements: warm, editorial, hand-drawn or soft 3D feel. Relevant visual metaphors that fill the majority of the slide.",
   "Human subjects when included: diverse women ~35-50, illustrated style (not photorealistic), natural expressions.",
   "Mood: gentle, reflective, warm. No corporate stock-photo energy.",
-  "Layout: 9:16 portrait. Text in the upper or center area. Illustrations fill remaining space.",
+  "Layout: 9:16 portrait. Illustrations should be the visual hero. Text is integrated but not dominant.",
   "NO watermarks, NO logos, NO extra text beyond what is specified.",
 ].join("\n");
 
