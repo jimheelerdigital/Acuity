@@ -193,8 +193,8 @@ export function buildImagePrompt(
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
   const sizeRule = isCover
-    ? "Text should take up at most 40% of the slide, leaving 60% for illustration."
-    : "Text should take up at most 35% of the slide, leaving 65% for illustration.";
+    ? "Text should take up at most 50% of the slide, leaving 50% for illustration."
+    : "Text should take up at most 40% of the slide, leaving 60% for illustration.";
 
   return [
     lanePrefix,
