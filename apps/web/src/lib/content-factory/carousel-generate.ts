@@ -190,15 +190,17 @@ export function buildImagePrompt(
   colorPrompt?: string,
   slideLabel?: string
 ): string {
-  // slideLabel tells the AI what text to render on the slide
-  const textInstruction = slideLabel
-    ? `The slide must display this EXACT text prominently: "${slideLabel}"`
-    : `The slide must display this EXACT text prominently: "${sceneText}"`;
+  const isCover = !slideLabel;
+  const displayText = slideLabel ?? sceneText;
+  const sizeRule = isCover
+    ? "Text should take up at most 40% of the slide, leaving 60% for illustration."
+    : "Text should take up at most 35% of the slide, leaving 65% for illustration.";
 
   return [
     lanePrefix,
     colorPrompt ?? "",
-    textInstruction,
+    `The slide must display this EXACT text prominently: "${displayText}"`,
+    sizeRule,
     `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
     `Include relevant illustrated elements that visually represent: ${sceneText}`,
     VISUAL_DNA,
