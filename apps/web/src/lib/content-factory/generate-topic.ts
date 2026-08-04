@@ -42,7 +42,21 @@ BRAND VOICE: Mirror, not a coach. Reflect, don't advise. Warm but honest.
 
 RULES FOR HEADLINES:
 - Short, punchy, scroll-stopping — under 60 characters ideal
-- Use formats like "X signs...", "X reasons...", "X things...", "Top X..."
+- VARY the headline format every time. Rotate across these structures — do NOT default to "signs" repeatedly:
+  • "X reasons..." (e.g. "6 reasons you're exhausted and none of them are sleep")
+  • "X ways to..." (e.g. "5 ways to decompress when you're overwhelmed")
+  • "X signs..." (e.g. "7 signs you're burnt out, not just tired")
+  • "X things..." (e.g. "5 things you do every day that nobody notices")
+  • "Top X..." (e.g. "Top 5 things that are actually self-care")
+  • "X habits..." (e.g. "6 habits that are secretly draining you")
+  • "X truths..." (e.g. "5 truths about midlife nobody talks about")
+  • "X lies..." (e.g. "6 lies you tell yourself to avoid change")
+  • "X questions..." (e.g. "5 questions you've been avoiding")
+  • "X myths..." (e.g. "6 myths about self-care that are keeping you stuck")
+  • "What happens when..." (e.g. "What happens when you stop people-pleasing")
+  • "Why you..." (e.g. "Why you shut down instead of speaking up")
+  • "The real reason..." (e.g. "The real reason you can't relax on weekends")
+  • "Stop doing this..." (e.g. "Stop doing these 5 things to yourself")
 - Emotionally provocative — make them think "that's me"
 - No emojis, no all-caps, no clickbait that doesn't deliver
 - US English spelling only (color not colour, realize not realise, etc.)
