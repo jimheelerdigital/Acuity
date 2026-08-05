@@ -171,6 +171,25 @@ async function relinkAndGrantPro(
  * proRecoveryWhere + the relink fallback so an unlinked or in-dunning user is
  * reliably upgraded.
  */
+// Never DEMOTE a row whose active entitlement comes from a mobile IAP
+// (Apple / Google Play). A Stripe event on a user's defunct Stripe record must
+// not clobber the PRO they now hold via IAP (incident 2026-08-05:
+// emily101infante — active Apple sub repeatedly flipped to FREE by Stripe
+// events on a dead Stripe customer). Reverse of the ASSN handler's
+// skip-stripe-source guard.
+//
+// NULL handling is load-bearing: SQL `NOT IN (...)` evaluates to NULL (i.e.
+// excludes the row) for a NULL column, so a bare `notIn` would wrongly PROTECT
+// null-source Stripe churns from a legitimate downgrade. The explicit `null`
+// branch keeps null-source AND stripe-source rows demotable; only "apple" and
+// "google_play" are skipped.
+const NOT_IAP_SOURCE = {
+  OR: [
+    { subscriptionSource: null },
+    { subscriptionSource: { notIn: ["apple", "google_play"] } },
+  ],
+};
+
 async function applySubscriptionState(
   db: WebhookDb,
   sub: Stripe.Subscription,
@@ -249,7 +268,7 @@ async function applySubscriptionState(
     // failed-renewal recovery banner's window survives.
     try {
       await db.user.updateMany({
-        where: { stripeCustomerId: customerId },
+        where: { stripeCustomerId: customerId, ...NOT_IAP_SOURCE },
         data: {
           subscriptionStatus: "FREE",
           subscriptionSource: "stripe",
@@ -763,6 +782,7 @@ export async function POST(req: NextRequest) {
           where: {
             stripeCustomerId: customerId,
             subscriptionStatus: { not: "FREE" },
+            ...NOT_IAP_SOURCE,
           },
           data: { subscriptionStatus: "FREE" },
         });
@@ -840,7 +860,7 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object as Stripe.Subscription;
       try {
         await prisma.user.updateMany({
-          where: { stripeCustomerId: sub.customer as string },
+          where: { stripeCustomerId: sub.customer as string, ...NOT_IAP_SOURCE },
           data: {
             subscriptionStatus: "FREE",
             stripeSubscriptionId: null,

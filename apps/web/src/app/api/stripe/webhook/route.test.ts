@@ -68,6 +68,13 @@ function matchLeaf(rowVal: unknown, cond: unknown): boolean {
     const not = (cond as { not: unknown }).not;
     return not === null ? rowVal !== null : rowVal !== not;
   }
+  if (cond !== null && typeof cond === "object" && "notIn" in (cond as object)) {
+    // SQL-faithful: `NOT IN (...)` excludes NULL rows (the predicate is NULL,
+    // not TRUE). So a null column does NOT match a bare notIn — matching the
+    // production behavior the NOT_IAP_SOURCE null-branch exists to compensate.
+    const arr = (cond as { notIn: unknown[] }).notIn;
+    return rowVal !== null && rowVal !== undefined && !arr.includes(rowVal);
+  }
   return rowVal === cond;
 }
 
@@ -418,6 +425,46 @@ describe("canceled-user guard", () => {
     await send("customer.subscription.updated", subscription({ status: "active" }));
 
     expect(users[0].subscriptionStatus).toBe("FREE");
+  });
+});
+
+// ─── 3b. IAP-source clobber guard (Fix A, incident 2026-08-05) ────────────
+// A Stripe event on a user's defunct Stripe record must never demote the PRO
+// they now hold via Apple / Google Play IAP. NULL- and stripe-source rows must
+// still demote normally — the guard skips ONLY explicit apple/google_play.
+
+describe("IAP-source clobber guard", () => {
+  const seedThreeSources = () => {
+    users = [
+      user({ id: "u_apple", subscriptionSource: "apple", subscriptionStatus: "PRO" }),
+      user({ id: "u_stripe", subscriptionSource: "stripe", subscriptionStatus: "PRO" }),
+      user({ id: "u_null", subscriptionSource: null, subscriptionStatus: "PRO" }),
+    ];
+  };
+  const statusOf = (id: string) => users.find((u) => u.id === id)!.subscriptionStatus;
+
+  it("invoice.payment_failed: skips apple, demotes stripe + null", async () => {
+    seedThreeSources();
+    await send("invoice.payment_failed", invoice());
+    expect(statusOf("u_apple")).toBe("PRO"); // protected
+    expect(statusOf("u_stripe")).toBe("FREE");
+    expect(statusOf("u_null")).toBe("FREE");
+  });
+
+  it("customer.subscription.deleted: skips apple, demotes stripe + null", async () => {
+    seedThreeSources();
+    await send("customer.subscription.deleted", subscription());
+    expect(statusOf("u_apple")).toBe("PRO"); // protected
+    expect(statusOf("u_stripe")).toBe("FREE");
+    expect(statusOf("u_null")).toBe("FREE");
+  });
+
+  it("customer.subscription.updated → canceled: skips apple, demotes stripe + null", async () => {
+    seedThreeSources();
+    await send("customer.subscription.updated", subscription({ status: "canceled" }));
+    expect(statusOf("u_apple")).toBe("PRO"); // protected
+    expect(statusOf("u_stripe")).toBe("FREE");
+    expect(statusOf("u_null")).toBe("FREE");
   });
 });
 
