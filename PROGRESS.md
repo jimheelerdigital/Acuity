@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-05] — Stripe events were silently un-subscribing an Apple paying customer
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** cf37782d
+
+### In plain English (for Keenan)
+A customer (emily) paid for PRO through Apple and her subscription is genuinely active (Apple confirms it renews through Sep 5). But she kept getting knocked back to the free tier every time our system processed a leftover event from an old, dead Stripe record she also had. We'd manually fix her, and a Stripe event would undo it hours later. This fix makes our billing system ignore Stripe cancellation/failure events for anyone whose real subscription comes from the Apple or Google app stores — so an old Stripe record can never again strip someone of the PRO they paid for in the app. emily is the only customer this affected. She's been set back to PRO and it will now stick.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/stripe/webhook/route.ts` — added `NOT_IAP_SOURCE` guard (`OR: [{ subscriptionSource: null }, { subscriptionSource: { notIn: ["apple","google_play"] } }]`) to all three demote/FREE writes: `applySubscriptionState` FREE branch, `invoice.payment_failed` downgrade, `customer.subscription.deleted`. Apple/Google-source rows are skipped; `stripe`- and `NULL`-source rows still demote.
+- `apps/web/src/app/api/stripe/webhook/route.test.ts` — 3 new tests (apple skipped, stripe + null demoted) across all three paths; extended the mock's `where` evaluator with SQL-faithful `notIn` (excludes NULL). 19/19 pass.
+- **Live prod data change:** `emily101infante@gmail.com` set `subscriptionStatus` FREE→PRO (source already `apple`, origTxn 390002449639336, Apple ACTIVE→2026-09-05). Single UPDATE via Supabase, 2026-08-05 21:44 UTC. **No AdminAuditLog row** (manual SQL) — recorded here.
+- `docs/specs/iap-linkage-fix-b-spec.md` — spec for the separate, deferred **Fix B** (appAccountToken linkage + promote-on-SUBSCRIBED/DID_RENEW + verify-receipt retry). NOT implemented.
+
+### Manual steps needed
+- [ ] Jimmy: decide whether to clean up emily's stale Stripe record (`stripeSubscriptionId sub_1Tmnad…`, `stripeCustomerId cus_UmMJUtkLpvDTUG`) — harmless now (guard skips it) but stale.
+- [ ] Jimmy: schedule **Fix B** (needs a mobile build) — the initial-link failure it prevents is the OTHER half of reliable IAP entitlement.
+- [ ] Consider guarding the `invoice.payment_failed` **anchor stamp** (`stripeFirstFailureAt`, route.ts ~752) too — left unguarded (Fix A scope was the 3 FREE-writes); it could still stamp an Apple row and briefly show a "payment failed" recovery banner. Low impact.
+
+### Notes
+- Root cause was NOT the earlier-suspected "verify-receipt fails to set PRO." verify-receipt sets PRO atomically and always has. The apple* fields on FREE rows are the *designed* post-demotion state (the ASSN handler leaves them for forensics). The real bug was a **cross-source clobber**: Stripe FREE-writes matched by `stripeCustomerId` with no `subscriptionSource` guard.
+- Diagnosis used JWS-decoded App Store Server Notifications (Apple-signed, authoritative) because the live App Store Server API creds are Vercel "Sensitive"/write-only and can't be pulled locally. emily: SUBSCRIBED 07-29 → DID_RENEW 08-04 (expires 09-05), no revocation → ACTIVE.
+- The other two Apple FREE users are correct: thelmabowlen turned OFF auto-renew 06-17 → EXPIRED 07-12 (voluntary); the `66yk2…` privaterelay user is a sandbox tester. No action.
+- Null handling is load-bearing and covered by a test: a bare `notIn` drops NULL rows in SQL, which would wrongly protect null-source Stripe churns from legitimate downgrade.
+
 ## [2026-08-03] — Complete carousel pipeline overhaul: scheduling, text rendering, admin UI, CTA redesign
 
 **Requested by:** Keenan
