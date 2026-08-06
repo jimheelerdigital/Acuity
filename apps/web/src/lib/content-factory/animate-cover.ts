@@ -1,22 +1,23 @@
 /**
  * Content Factory — animated cover generation via Higgsfield platform API.
  *
- * Recipe (validated manually 2026-08-05 with Kling 3.0 in the consumer app):
- * image-to-video with the text-free raw cover as the START frame and the
- * composed cover (text baked in) as the END frame. The scene opens alive,
- * the character performs the topic's emotionBeat, headline text flows on,
- * and the video locks onto the exact composed cover as its final frame.
+ * Uses the raw (text-free) cover as the START frame and lets the model
+ * generate freely — no end-frame constraint. This produces dramatic,
+ * full-scene animation (character gestures, camera movement, environment
+ * coming alive) instead of the near-static output the first-last-frame
+ * model produced when both frames were nearly identical.
  *
- * The platform API (cloud.higgsfield.ai) doesn't expose Kling, so production
- * uses Higgsfield's own DoP first-last-frame model, which takes the same
- * image_url/end_image_url fields. Auth is hf-api-key/hf-secret headers
- * (per the playground cURL; NOT the Authorization header in older docs).
+ * The video is an attention-grabbing animation for emails and the review
+ * queue; the static composed cover is still used for the actual social post.
+ *
+ * Auth is hf-api-key/hf-secret headers (per the playground cURL; NOT the
+ * Authorization header in older docs).
  *
  * Env:
  * - HIGGSFIELD_API_KEY / HIGGSFIELD_API_SECRET — from cloud.higgsfield.ai
  * - HIGGSFIELD_VIDEO_MODEL — model path for the POST endpoint, e.g.
- *   "higgsfield-ai/dop/standard/first-last-frame". If unset, animation is
- *   skipped (carousels stay static).
+ *   "higgsfield-ai/dop/standard". If unset, animation is skipped
+ *   (carousels stay static).
  */
 
 import type { CarouselTopic } from "./topics";
@@ -50,10 +51,11 @@ function authHeaders(): Record<string, string> {
  * Build the image-to-video prompt for a cover. The per-topic emotionBeat
  * is the character's motion direction.
  *
- * v2 (2026-08-05): the original "slow, elegant, no sudden movements"
- * template made Higgsfield's DoP model render an almost-static shot (the
- * character only blinked). This version explicitly demands large, visible
- * motion — full gesture, head turn, ambient movement, energetic text-on.
+ * v3 (2026-08-06): switched from first-last-frame to standard i2v.
+ * The old first-last-frame model received near-identical start/end frames
+ * (same scene ± text overlay), so it produced almost no motion. With the
+ * end-frame constraint removed, the model is free to animate the full
+ * scene dramatically.
  */
 /** Which animation treatment a cover gets. */
 export type AnimationStyle = "smooth" | "crazy";
@@ -63,47 +65,43 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     topic.emotionBeat ??
     "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera";
   return [
-    "Dynamic, scroll-stopping social media cover animation with clear, pronounced motion throughout — this must NOT look like a still photo.",
-    `The main character performs a full, clearly visible gesture: ${emotionBeat}.`,
-    "Her whole upper body moves — head turns, shoulders shift, hands gesture, expression visibly changes. Not just blinking.",
-    "If no person is present, the scene's main subject moves expressively instead.",
-    "The environment is alive with ambient motion: steam curling from the mug, candle flame flickering, plants gently swaying, hair and fabric moving, warm light shifting across the frame.",
-    "The camera pushes forward with a confident cinematic dolly-in and noticeable parallax between foreground and background.",
-    "The bold headline text sweeps onto the screen with momentum, line by line, and snaps into place perfectly sharp and readable.",
-    "The energy is warm and premium but unmistakably in motion from the first frame to the last.",
-    "The final frame matches the provided end image exactly.",
-    "No warping or distortion of face or text.",
+    "Cinematic, scroll-stopping social media cover animation. The ENTIRE scene must come alive with dramatic, clearly visible motion from the very first frame.",
+    `The main character performs a full, expressive gesture: ${emotionBeat}. Her whole upper body moves — head turns, shoulders shift, hands gesture openly, facial expression transforms. This is NOT subtle — the motion should be immediately obvious.`,
+    "Everything in the environment moves: steam billows from a mug, candle flames dance and flicker, curtains sway, plants rustle, hair drifts naturally, fabric shifts, warm light plays across surfaces. Fill the scene with life.",
+    "The camera executes a confident cinematic move — a slow dolly-in with visible parallax between foreground and background layers, or a gentle crane-up that reveals depth.",
+    "The overall energy is warm, premium, and alive. Every element in frame should be in motion. This must look like a living scene, never a still photo with a subtle filter.",
+    "No warping or distortion of the character's face.",
   ].join(" ");
 }
 
 /**
  * "Crazy intro" variant — used for one of the five daily posts (the first
- * run of the day). Instead of the smooth cinematic treatment, the whole
- * scene spins/whips into frame with motion blur and the headline slams on,
- * built to grab attention in the first half second of the scroll.
+ * run of the day). Maximum-energy treatment: dramatic camera whip, explosive
+ * scene entrance, everything moving at once.
  */
 export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a confident head turn to camera with a knowing smile";
   return [
-    "Explosive, high-energy social media cover intro built to stop the scroll in the first half second.",
-    "The entire scene SPINS into frame — a fast rotational whip with heavy motion blur that decelerates and snaps crisply into place like a camera whip-pan landing on its subject.",
-    `As the spin settles, the main character lands mid-gesture: ${emotionBeat}.`,
-    "The headline text SLAMS onto the screen with punchy kinetic energy — each line hitting hard with a tiny impact shake, then locking perfectly sharp and readable.",
-    "The pacing is fast-then-smooth: chaotic energetic entrance in the first second, then a clean confident settle.",
-    "Bold, thrilling, premium — like a title card from a high-end brand campaign.",
-    "The motion fully decelerates and the final frame matches the provided end image exactly.",
-    "No warping or distortion of face or text.",
+    "Explosive, high-energy social media cover animation built to stop the scroll instantly. Maximum motion and energy throughout.",
+    "The camera whips in with a fast, dramatic movement — the whole scene rushes toward the viewer with motion blur that decelerates into a confident landing.",
+    `The main character performs a bold, attention-grabbing gesture: ${emotionBeat}. Full body involvement — leaning in, hands moving, expression shifting dramatically.`,
+    "The entire environment erupts with motion: objects shift, light flares across surfaces, particles or steam catch the light, fabric and hair sweep with the camera movement, background elements have visible parallax.",
+    "The pacing is fast-then-smooth: explosive energetic entrance in the first second with dramatic motion blur, then a confident cinematic settle where everything is still alive and moving but controlled.",
+    "Bold, thrilling, premium — like a title sequence from a high-end brand campaign. Every pixel should be in motion.",
+    "No warping or distortion of the character's face.",
   ].join(" ");
 }
 
 /**
  * Submit an image-to-video job. Returns the Higgsfield request ID.
+ *
+ * Uses the standard i2v model (no end-frame lock) so the model is free
+ * to produce dramatic motion from the start frame.
  */
 export async function submitCoverVideo(opts: {
   startImageUrl: string; // text-free raw cover
-  endImageUrl: string; // composed cover with headline
   prompt: string;
 }): Promise<string> {
   const model = process.env.HIGGSFIELD_VIDEO_MODEL!;
@@ -114,10 +112,8 @@ export async function submitCoverVideo(opts: {
       ...authHeaders(),
     },
     body: JSON.stringify({
-      // Body per the DoP first-last-frame playground cURL (2026-08-05).
       prompt: opts.prompt,
       image_url: opts.startImageUrl,
-      end_image_url: opts.endImageUrl,
       motions: [],
       // Never let Higgsfield rewrite our validated prompt template.
       enhance_prompt: false,

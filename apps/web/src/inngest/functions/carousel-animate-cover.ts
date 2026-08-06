@@ -90,7 +90,6 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       try {
         const requestId = await submitCoverVideo({
           startImageUrl: cover.rawImageUrl,
-          endImageUrl: cover.imageUrl,
           prompt,
         });
         return { skipped: null, requestId, slideId: cover.id } as const;
