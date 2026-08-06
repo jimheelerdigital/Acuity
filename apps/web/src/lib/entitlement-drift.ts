@@ -68,6 +68,73 @@ export function classifyDrift(input: {
   return null;
 }
 
+export interface DriftScanResult {
+  total: number;
+  checked: number;
+  unreadable: number;
+  findings: DriftFinding[];
+}
+
+/**
+ * READ-ONLY scan: for every PRO/PAST_DUE user, resolve the source-of-truth
+ * provider and classify drift. Shared by the daily monitor cron and the
+ * on-demand admin endpoint so both run identical logic. Never writes.
+ */
+export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> {
+  const { prisma } = await import("@/lib/prisma");
+  const users = await prisma.user.findMany({
+    where: { subscriptionStatus: { in: ["PRO", "PAST_DUE"] } },
+    select: {
+      id: true,
+      email: true,
+      subscriptionStatus: true,
+      subscriptionSource: true,
+      appleOriginalTransactionId: true,
+      googlePurchaseToken: true,
+      stripeSubscriptionId: true,
+    },
+  });
+
+  const findings: DriftFinding[] = [];
+  let checked = 0;
+  let unreadable = 0;
+
+  for (let i = 0; i < users.length; i += batch) {
+    const slice = users.slice(i, i + batch);
+    const results = await Promise.all(
+      slice.map(async (u) => ({ u, provider: await resolveProviderActive(u) }))
+    );
+    for (const { u, provider } of results) {
+      if (!provider.ok) {
+        unreadable++;
+        continue;
+      }
+      checked++;
+      const drift = classifyDrift({
+        source: u.subscriptionSource ?? "unknown",
+        dbStatus: u.subscriptionStatus,
+        providerActive: provider.active,
+      });
+      if (drift) {
+        findings.push({
+          userId: u.id,
+          email: u.email,
+          source: u.subscriptionSource ?? "unknown",
+          dbStatus: u.subscriptionStatus,
+          providerActive: provider.active,
+          providerDetail: provider.detail,
+          expected: drift.expected,
+          severity: drift.severity,
+          kind: drift.kind,
+        });
+      }
+    }
+  }
+
+  findings.sort((a, b) => a.severity.localeCompare(b.severity));
+  return { total: users.length, checked, unreadable, findings };
+}
+
 export interface ProviderStatus {
   ok: boolean;
   active: boolean;

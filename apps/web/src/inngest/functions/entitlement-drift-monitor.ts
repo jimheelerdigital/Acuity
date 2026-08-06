@@ -1,7 +1,6 @@
 import { inngest } from "@/inngest/client";
 import {
-  classifyDrift,
-  resolveProviderActive,
+  scanEntitlementDrift,
   type DriftFinding,
 } from "@/lib/entitlement-drift";
 import { safeLog } from "@/lib/safe-log";
@@ -33,63 +32,7 @@ export const entitlementDriftMonitorFn = inngest.createFunction(
     retries: 1,
   },
   async ({ step }) => {
-    const scan = await step.run("scan-for-drift", async () => {
-      const { prisma } = await import("@/lib/prisma");
-      const users = await prisma.user.findMany({
-        where: { subscriptionStatus: { in: ["PRO", "PAST_DUE"] } },
-        select: {
-          id: true,
-          email: true,
-          subscriptionStatus: true,
-          subscriptionSource: true,
-          appleOriginalTransactionId: true,
-          googlePurchaseToken: true,
-          stripeSubscriptionId: true,
-        },
-      });
-
-      const findings: DriftFinding[] = [];
-      let checked = 0;
-      let unreadable = 0; // provider read failed (skipped — never a demotion signal)
-
-      for (let i = 0; i < users.length; i += BATCH) {
-        const slice = users.slice(i, i + BATCH);
-        const results = await Promise.all(
-          slice.map(async (u) => {
-            const provider = await resolveProviderActive(u);
-            return { u, provider };
-          })
-        );
-        for (const { u, provider } of results) {
-          if (!provider.ok) {
-            unreadable++;
-            continue;
-          }
-          checked++;
-          const drift = classifyDrift({
-            source: u.subscriptionSource ?? "unknown",
-            dbStatus: u.subscriptionStatus,
-            providerActive: provider.active,
-          });
-          if (drift) {
-            findings.push({
-              userId: u.id,
-              email: u.email,
-              source: u.subscriptionSource ?? "unknown",
-              dbStatus: u.subscriptionStatus,
-              providerActive: provider.active,
-              providerDetail: provider.detail,
-              expected: drift.expected,
-              severity: drift.severity,
-              kind: drift.kind,
-            });
-          }
-        }
-      }
-
-      findings.sort((a, b) => a.severity.localeCompare(b.severity));
-      return { total: users.length, checked, unreadable, findings };
-    });
+    const scan = await step.run("scan-for-drift", () => scanEntitlementDrift(BATCH));
 
     safeLog.info("entitlement-drift-monitor.scan", {
       total: scan.total,
