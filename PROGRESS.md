@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-06] — Animation prompts v4: hyper-specific motion for every element
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The first test with the new model still only produced face movement and blinking — the prompts were too vague ("cinematic," "alive," "expressive"). The prompts now spell out exactly what should move: birds flying across the sky, light rays shifting, leaves swirling, steam curling, the character doing a full shrug with shoulder and hand movement, and the headline text sliding or snapping into frame. Switching to the turbo model for cheaper/faster renders.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: rewrote both `buildCoverVideoPrompt` (smooth) and `buildCrazyCoverVideoPrompt` (crazy) to v4 — replaced vague cinematic language with concrete per-layer motion instructions (character gesture, birds, light rays, particles, text animation, camera parallax, lighting shifts)
+- Doc comment updated to reference `dop/turbo` as the recommended model
+
+### Manual steps needed
+- [ ] Update Vercel env var `HIGGSFIELD_VIDEO_MODEL` from `higgsfield-ai/dop/standard` to `higgsfield-ai/dop/turbo` (Keenan)
+- [ ] Test animation from admin dashboard after deploy and judge motion quality (Keenan)
+
+### Notes
+- v3 prompts used abstract language ("cinematic," "expressive gesture," "scene comes alive") which the model interpreted minimally. v4 names every moving element explicitly — the model needs concrete motion targets, not vibes.
+- Turbo should be cheaper than standard (9 credits) and faster. If quality is too low, `dop/lite` is the next step down, or go back to `dop/standard`.
+
 ## [2026-08-06] — Cover animations now produce dramatic full-scene motion
 
 **Requested by:** Keenan

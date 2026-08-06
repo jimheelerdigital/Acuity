@@ -16,7 +16,7 @@
  * Env:
  * - HIGGSFIELD_API_KEY / HIGGSFIELD_API_SECRET — from cloud.higgsfield.ai
  * - HIGGSFIELD_VIDEO_MODEL — model path for the POST endpoint, e.g.
- *   "higgsfield-ai/dop/standard". If unset, animation is skipped
+ *   "higgsfield-ai/dop/turbo". If unset, animation is skipped
  *   (carousels stay static).
  */
 
@@ -51,11 +51,11 @@ function authHeaders(): Record<string, string> {
  * Build the image-to-video prompt for a cover. The per-topic emotionBeat
  * is the character's motion direction.
  *
- * v3 (2026-08-06): switched from first-last-frame to standard i2v.
- * The old first-last-frame model received near-identical start/end frames
- * (same scene ± text overlay), so it produced almost no motion. With the
- * end-frame constraint removed, the model is free to animate the full
- * scene dramatically.
+ * v4 (2026-08-06): v3 still only produced face movement and blinking.
+ * This version is hyper-specific about every element that must move:
+ * birds, light rays, text animation, full character gesture, particles.
+ * Vague "cinematic" language doesn't work — the model needs concrete
+ * motion instructions for each layer of the scene.
  */
 /** Which animation treatment a cover gets. */
 export type AnimationStyle = "smooth" | "crazy";
@@ -63,34 +63,48 @@ export type AnimationStyle = "smooth" | "crazy";
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera";
+    "a relaxed shrug — both shoulders rise and drop visibly — then a slow knowing smile spreads across her face";
   return [
-    "Cinematic, scroll-stopping social media cover animation. The ENTIRE scene must come alive with dramatic, clearly visible motion from the very first frame.",
-    `The main character performs a full, expressive gesture: ${emotionBeat}. Her whole upper body moves — head turns, shoulders shift, hands gesture openly, facial expression transforms. This is NOT subtle — the motion should be immediately obvious.`,
-    "Everything in the environment moves: steam billows from a mug, candle flames dance and flicker, curtains sway, plants rustle, hair drifts naturally, fabric shifts, warm light plays across surfaces. Fill the scene with life.",
-    "The camera executes a confident cinematic move — a slow dolly-in with visible parallax between foreground and background layers, or a gentle crane-up that reveals depth.",
-    "The overall energy is warm, premium, and alive. Every element in frame should be in motion. This must look like a living scene, never a still photo with a subtle filter.",
-    "No warping or distortion of the character's face.",
+    // CHARACTER — specific large motions, not "expressive gesture"
+    `The woman performs a clear, unmistakable physical gesture: ${emotionBeat}.`,
+    "Her head tilts, her shoulders move up and down, her hands shift position, her eyes blink naturally, and her facial expression visibly changes. Her hair sways with the movement. This is a FULL upper-body motion, not a micro-expression.",
+    // ENVIRONMENT — name exact animated elements
+    "The background is fully alive: birds fly across the sky in the distance, tree branches and leaves sway in a breeze, clouds drift slowly, light rays shift and move across the scene casting moving shadows.",
+    "Closer to camera: steam or smoke curls upward from a mug or candle, dust particles float through shafts of light, fabric or curtains billow gently, flowers or plants bob in the wind.",
+    // TEXT — animate the headline
+    "Any text or headline in the scene slides smoothly into position from off-screen with a confident sweeping motion, settling crisply into place.",
+    // CAMERA
+    "The camera slowly pushes forward in a dolly-in, creating visible parallax — foreground elements shift faster than background elements.",
+    // LIGHTING
+    "The lighting shifts subtly throughout — warm golden light brightens and dims as if clouds are passing, creating a living, breathing atmosphere.",
+    // QUALITY GUARDS
+    "No warping or distortion of the character's face. Maintain consistent character identity throughout.",
   ].join(" ");
 }
 
 /**
  * "Crazy intro" variant — used for one of the five daily posts (the first
- * run of the day). Maximum-energy treatment: dramatic camera whip, explosive
- * scene entrance, everything moving at once.
+ * run of the day). Maximum-energy: fast camera move, dramatic entrance,
+ * every element animated aggressively.
  */
 export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a confident head turn to camera with a knowing smile";
   return [
-    "Explosive, high-energy social media cover animation built to stop the scroll instantly. Maximum motion and energy throughout.",
-    "The camera whips in with a fast, dramatic movement — the whole scene rushes toward the viewer with motion blur that decelerates into a confident landing.",
-    `The main character performs a bold, attention-grabbing gesture: ${emotionBeat}. Full body involvement — leaning in, hands moving, expression shifting dramatically.`,
-    "The entire environment erupts with motion: objects shift, light flares across surfaces, particles or steam catch the light, fabric and hair sweep with the camera movement, background elements have visible parallax.",
-    "The pacing is fast-then-smooth: explosive energetic entrance in the first second with dramatic motion blur, then a confident cinematic settle where everything is still alive and moving but controlled.",
-    "Bold, thrilling, premium — like a title sequence from a high-end brand campaign. Every pixel should be in motion.",
-    "No warping or distortion of the character's face.",
+    // CHARACTER — bold dramatic motion
+    `The woman makes a dramatic, attention-grabbing move: ${emotionBeat}. Her whole upper body is involved — she leans forward, shoulders roll, hands gesture widely, her expression shifts from neutral to bold confidence. Hair swings with the motion.`,
+    // ENVIRONMENT — maximum life
+    "The entire scene bursts with motion: a flock of birds scatters across the sky, tree branches sway dramatically, leaves and petals swirl through the air, clouds race past overhead.",
+    "Steam or smoke pours upward energetically, candle flames flicker and dance, curtains and fabric whip in the wind, light particles and dust motes swirl through the frame.",
+    // TEXT — punchy animated entrance
+    "Any headline text punches onto the screen with kinetic energy — sliding or snapping into place with impact, like a movie title card.",
+    // CAMERA — aggressive movement
+    "The camera rushes in with a fast dolly or whip-pan that decelerates smoothly — heavy motion blur at the start that resolves into sharp clarity. Aggressive parallax between all depth layers.",
+    // LIGHTING — dramatic shifts
+    "Light flares across the scene, warm golden tones pulse and shift, dramatic shadows sweep across surfaces as if the sun just broke through clouds.",
+    // QUALITY GUARDS
+    "No warping or distortion of the character's face. Maintain consistent character identity throughout.",
   ].join(" ");
 }
 
