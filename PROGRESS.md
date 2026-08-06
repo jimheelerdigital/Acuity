@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-08-06] — Cover animations now produce dramatic full-scene motion
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c31b88d7
+
+### In plain English (for Keenan)
+The animated covers were barely moving — the character just blinked. The root cause was the video model: it was told to start on one image and end on a nearly identical image, so it correctly did almost nothing between them. The system now uses a standard image-to-video model that starts from the cover image and animates freely — the character performs a full gesture, the camera moves, steam/candles/plants come alive, and the whole scene feels like a living video, not a still photo with a subtle filter.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: switched from first-last-frame model to standard i2v — removed `end_image_url` from the API body so the model isn't constrained to land on a near-identical end frame. Rewrote both `buildCoverVideoPrompt` (smooth) and `buildCrazyCoverVideoPrompt` (crazy) to v3 — emphasizing dramatic full-scene motion, visible character gestures, alive environment, and cinematic camera moves.
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: removed `endImageUrl` from the `submitCoverVideo` call (no longer needed without end-frame constraint).
+
+### Manual steps needed
+- [ ] Update Vercel env var `HIGGSFIELD_VIDEO_MODEL` from `higgsfield-ai/dop/standard/first-last-frame` to `higgsfield-ai/dop/standard` (Keenan)
+- [ ] Check Higgsfield API credit balance at cloud.higgsfield.ai — started at 500, each video costs ~18, failures may have consumed credits without output (Keenan)
+- [ ] After env var change + redeploy, trigger a test animation from the admin dashboard or wait for the next cron run and judge the new motion quality (Keenan)
+
+### Notes
+- The first-last-frame model was the fundamental problem: when start frame (raw cover) and end frame (composed cover with text) are nearly identical, the model minimizes motion to get from A to B. No prompt can override this constraint — the model does what it's architecturally designed to do.
+- The video is now a standalone animation of the cover scene, not a "transition from raw to composed." The static composed cover is still used for the actual Instagram carousel post.
+- The 3 recent failures were likely the model struggling with the near-identical frame constraint or credit exhaustion. The standard model should be more reliable since it's a simpler task (animate from one image, no end-frame matching).
+- If the standard `dop/standard` model path doesn't work, try `higgsfield-ai/dop/turbo` as a fallback — check the model gallery at cloud.higgsfield.ai.
+
 ## [2026-08-05] — Animated cover is now playable in the review queue
 
 **Requested by:** Keenan
