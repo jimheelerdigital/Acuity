@@ -16,7 +16,7 @@
  * Env:
  * - HIGGSFIELD_API_KEY / HIGGSFIELD_API_SECRET — from cloud.higgsfield.ai
  * - HIGGSFIELD_VIDEO_MODEL — model path for the POST endpoint, e.g.
- *   "higgsfield-ai/dop/turbo". If unset, animation is skipped
+ *   "higgsfield-ai/dop/lite". If unset, animation is skipped
  *   (carousels stay static).
  */
 
@@ -48,13 +48,13 @@ function authHeaders(): Record<string, string> {
 }
 
 /**
- * Build the image-to-video prompt for a cover. The per-topic emotionBeat
- * is the character's motion direction.
+ * Build the image-to-video prompt for a cover.
  *
- * v5 (2026-08-06): v4 told the model to animate text, but the raw cover
- * has no text — causing the model to hallucinate ugly numbers/letters.
- * v5 explicitly bans text generation and focuses entirely on flowing,
- * continuous scene motion with specific choreography.
+ * v6 (2026-08-06): v5 overloaded the scene with birds, particles, swirling
+ * leaves, etc. — too chaotic. v6 is minimal and intentional: a simple
+ * character gesture that conveys the post's emotion, a gentle camera push,
+ * and just enough ambient motion to feel alive. Think polished Instagram
+ * reel cover, not a movie trailer.
  */
 /** Which animation treatment a cover gets. */
 export type AnimationStyle = "smooth" | "crazy";
@@ -62,52 +62,33 @@ export type AnimationStyle = "smooth" | "crazy";
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a relaxed shrug — both shoulders rise and drop visibly — then a slow knowing smile spreads across her face";
+    "a small knowing nod, then a gentle half-smile";
   return [
-    // CORE DIRECTIVE
-    "Smooth, flowing cinematic animation of this scene. Every element moves continuously throughout — nothing should be static at any point in the video.",
-    // CHARACTER — continuous flowing motion, not a single pose
-    `The woman performs a slow, fluid gesture: ${emotionBeat}.`,
-    "The motion is continuous and flowing — she doesn't snap into a pose and freeze. Her head turns gradually, shoulders roll smoothly, hands drift through the air, her expression shifts naturally over several seconds. Her hair sways and settles. She breathes visibly.",
-    // ENVIRONMENT — layered continuous motion
-    "Background: clouds drift across the sky, birds glide past in the distance, tree branches rock gently in a continuous breeze, distant light shifts gradually.",
-    "Midground: leaves or petals float lazily through the air, plants sway side to side in a slow rhythm, fabric or curtains ripple continuously.",
-    "Foreground: steam curls upward in slow spirals from a mug or candle, dust particles drift through warm light, small details like a pen or phone catch shifting reflections.",
-    // CAMERA — smooth continuous push
-    "The camera drifts forward in a slow, steady dolly-in throughout the entire clip — never stopping. Foreground elements slide past faster than background, creating natural depth.",
-    // LIGHTING — living light
-    "Warm golden light shifts gradually across the scene as if filtering through moving curtains or passing clouds. Soft shadows drift across her face and the surfaces around her.",
-    // STRICT PROHIBITIONS
-    "Do NOT generate, add, or show any text, numbers, letters, titles, or captions anywhere in the video. This is a text-free scene.",
-    "No warping or distortion of the character's face. Maintain consistent character identity throughout.",
+    "Simple, clean social media cover animation. Minimal but intentional motion that makes someone stop scrolling.",
+    `The woman does one clear gesture: ${emotionBeat}. Natural and unhurried. Her hair shifts slightly with the movement.`,
+    "The environment has subtle life — gentle steam from a mug, a soft curtain drift, or warm light slowly shifting. Just one or two small ambient details, not everything at once.",
+    "The camera slowly drifts forward just a few inches, creating a gentle sense of depth.",
+    "The mood is warm, relatable, and inviting. It should feel like a moment you walked in on, not a produced commercial.",
+    "Do NOT generate any text, numbers, or letters. No warping or distortion of the face.",
   ].join(" ");
 }
 
 /**
- * "Crazy intro" variant — used for one of the five daily posts (the first
- * run of the day). Maximum-energy: fast camera, dramatic entrance,
- * everything animated aggressively. Still no text generation.
+ * "Crazy intro" variant — one post per day. Bolder energy but still
+ * clean and simple — a faster camera move and a more confident gesture,
+ * not visual chaos.
  */
 export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a confident head turn to camera with a knowing smile";
+    "a confident look up to camera with a slight smile";
   return [
-    // CORE DIRECTIVE
-    "High-energy, attention-grabbing animation of this scene. Fast start, smooth settle, everything in continuous motion throughout.",
-    // CHARACTER — bold continuous motion
-    `The woman performs a dramatic, flowing gesture: ${emotionBeat}. Her whole upper body moves fluidly — leaning in, shoulders rolling, hands sweeping through the air, expression shifting from neutral to bold confidence over several seconds. Hair swings and settles naturally. She doesn't freeze into a pose.`,
-    // ENVIRONMENT — energetic layered motion
-    "Background: a flock of birds bursts across the sky, clouds race past, tree branches whip and sway, dramatic light sweeps across the horizon.",
-    "Midground: leaves and petals swirl through the air in gusts, plants rock dramatically, fabric and curtains billow outward, background objects shift with visible parallax.",
-    "Foreground: steam or smoke rushes upward, dust particles scatter through shafts of light, small objects vibrate with energy, warm reflections dance across surfaces.",
-    // CAMERA — fast approach that settles
-    "The camera rushes forward aggressively at the start with motion blur, then decelerates into a smooth, steady drift forward. Strong parallax throughout — foreground races past while background moves slowly.",
-    // LIGHTING — dramatic shifts
-    "Light flares dramatically at the start then settles into warm, shifting golden tones. Shadows sweep across the scene. The lighting keeps moving throughout, never static.",
-    // STRICT PROHIBITIONS
-    "Do NOT generate, add, or show any text, numbers, letters, titles, or captions anywhere in the video. This is a text-free scene.",
-    "No warping or distortion of the character's face. Maintain consistent character identity throughout.",
+    "Bold, scroll-stopping social media cover animation. Clean and punchy — grabs attention without being chaotic.",
+    `The woman does one confident move: ${emotionBeat}. Deliberate and eye-catching. Hair moves naturally with the gesture.`,
+    "The environment has a touch of energy — a candle flame flickers, light shifts warmly across the scene, or fabric catches a breeze. Keep it simple.",
+    "The camera pushes in with purpose — a smooth, steady move that draws you into the scene.",
+    "The feel is bold and premium, like the opening frame of a brand story. Confident, not frantic.",
+    "Do NOT generate any text, numbers, or letters. No warping or distortion of the face.",
   ].join(" ");
 }
 

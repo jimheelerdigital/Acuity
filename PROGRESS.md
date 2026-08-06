@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-06] — Simpler animation prompts v6 + email video debug logging
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+Two changes: (1) The animation was too chaotic — birds, particles, swirling leaves everywhere. The prompts now describe simple, clean motion: one clear character gesture, one or two ambient details (steam, light shift), and a gentle camera push. Think polished Instagram reel, not a movie trailer. (2) The email keeps arriving without the animated video even though the video exists in Supabase. Added detailed logging to the email function so we can see exactly WHY the video isn't being included — whether the URL is null, the fetch fails, or it's a size issue. Also removed the requirement that `useAttachments` must be true before even trying to fetch the video.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: v6 prompts — dramatically simplified both smooth and crazy variants. Removed all the layered background/midground/foreground instructions. Each prompt is now ~6 lines of clean, focused direction.
+- apps/web/src/lib/content-factory/email.ts: added console.log diagnostics for video inclusion (coverSlideId, videoUrl, imageBytes, fetch status, size). Removed the `useAttachments` gate on the video fetch — video is now fetched regardless of image size, just may not be attached if total exceeds 15MB. Download link is always shown if videoUrl exists.
+
+### Manual steps needed
+- [ ] Update Vercel env var `HIGGSFIELD_VIDEO_MODEL` from `higgsfield-ai/dop/turbo` (or standard) to `higgsfield-ai/dop/lite` (Keenan)
+- [ ] After next animation run, check Vercel function logs for `[carousel-email] Video check` to see why the video isn't attaching (Keenan)
+
+### Notes
+- The `useAttachments` gate was silently skipping the video fetch when slide images exceeded 15MB. With the gate removed, the video is always fetched and attached if it fits, or linked if it doesn't. Either way the 🎬 download link always appears.
+- All 5 of today's cron runs (8-12 UTC) ran before the force-send fix was deployed, so today's emails used old code. Tomorrow's runs will use the new force-send + logging code.
+
 ## [2026-08-06] — Animation prompts v5: ban text generation, flowing continuous motion
 
 **Requested by:** Keenan

@@ -81,23 +81,31 @@ export async function sendCarouselEmail(
   const useAttachments = totalBytes <= MAX_ATTACHMENT_BYTES;
 
   // ── Animated cover video (if the cover has one) ────────────────
-  // Attach the MP4 only if it still fits alongside the images within
-  // the 15MB budget; otherwise link it. A big video never forces the
-  // slide images out of attachment mode.
-  const coverVideoUrl = post.slides.find((s) => s.kind === "COVER")?.videoUrl ?? null;
+  const coverSlide = post.slides.find((s) => s.kind === "COVER");
+  const coverVideoUrl = coverSlide?.videoUrl ?? null;
+
+  console.log(
+    `[carousel-email] Video check for ${carouselPostId}: coverSlideId=${coverSlide?.id ?? "NONE"}, ` +
+    `videoUrl=${coverVideoUrl ? coverVideoUrl.slice(0, 80) + "..." : "NULL"}, ` +
+    `imageBytes=${totalBytes}, useAttachments=${totalBytes <= MAX_ATTACHMENT_BYTES}`
+  );
+
   let videoBuffer: Buffer | null = null;
-  if (coverVideoUrl && useAttachments) {
+  if (coverVideoUrl) {
     try {
       const res = await fetch(coverVideoUrl);
+      console.log(`[carousel-email] Video fetch: status=${res.status}, size=${res.headers.get("content-length") ?? "unknown"}`);
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         if (totalBytes + buf.length <= MAX_ATTACHMENT_BYTES) {
           videoBuffer = buf;
           totalBytes += buf.length;
+        } else {
+          console.log(`[carousel-email] Video too large to attach: ${buf.length} bytes, budget remaining: ${MAX_ATTACHMENT_BYTES - totalBytes}`);
         }
       }
-    } catch {
-      console.warn(`[carousel-email] Failed to fetch cover video ${coverVideoUrl}`);
+    } catch (err) {
+      console.warn(`[carousel-email] Failed to fetch cover video ${coverVideoUrl}: ${err instanceof Error ? err.message : err}`);
     }
   }
 
