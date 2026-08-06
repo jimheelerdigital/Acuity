@@ -64,7 +64,7 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     "a small shrug, a deep breath, then a knowing half-smile";
   return [
     "Simple, emotional social media cover animation. The woman stays in place — no walking or relocating — but her upper body is expressive and alive.",
-    `She does one emotional gesture: ${emotionBeat}. Her hands move naturally — she might adjust her grip on a mug, take a sip of coffee, tuck her hair back, or gesture softly while thinking. Her shoulders shift, she breathes visibly, her expression tells a story.`,
+    `She does one emotional gesture: ${emotionBeat}. She can shrug, sigh, rub her head, lean back in her chair, lean forward, take a sip of coffee, tuck her hair back, or gesture softly while thinking. Her shoulders shift, she breathes visibly, her expression tells a story.`,
     "The background has gentle life — birds flutter past in the distance, a breeze moves the leaves, warm light shifts softly across the scene. Steam curls from a mug if one is present.",
     "The camera slowly drifts forward a few inches, creating a gentle sense of depth.",
     "The mood is warm, still, and emotionally resonant — like a quiet moment caught on camera.",
@@ -84,7 +84,7 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     "a deep exhale, then a confident look up to camera with a slight smile";
   return [
     "Bold, scroll-stopping social media cover animation. The woman stays in place — no walking or relocating — but her upper body is confident and expressive.",
-    `She does one bold, emotional gesture: ${emotionBeat}. Her hands move with purpose — she might lift a coffee mug and take a sip, gesture confidently, or lean forward with intent. Shoulders shift, expression transforms, hair moves naturally.`,
+    `She does one bold, emotional gesture: ${emotionBeat}. She can shrug dramatically, sigh, rub her forehead, lean back confidently, lean forward with intent, take a sip of coffee, or gesture with conviction. Shoulders shift, expression transforms, hair moves naturally.`,
     "The background has energy — birds scatter across the sky, leaves drift through the air, warm golden light sweeps across the scene. A candle flame flickers or steam rises if props are present.",
     "The camera pushes in with purpose — a smooth, steady move that draws you into the scene.",
     "The feel is bold, emotional, and premium. Confident but grounded — the power comes from her expression and hands, not from locomotion.",
