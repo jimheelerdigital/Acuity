@@ -91,27 +91,31 @@ export interface DriftScanResult {
  */
 export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> {
   const { prisma } = await import("@/lib/prisma");
-  const users = await prisma.user.findMany({
-    where: {
-      subscriptionStatus: { in: ["PRO", "PAST_DUE"] },
-      // Exclude internal/test accounts and sandbox subs — they legitimately
-      // drift (comped founders, TestFlight sandbox subs that lapse) and would
-      // otherwise generate perpetual noise findings.
-      NOT: [
-        { email: { endsWith: "@heelerdigital.com" } },
-        { appleEnvironment: "sandbox" },
-      ],
-    },
+  const rows = await prisma.user.findMany({
+    where: { subscriptionStatus: { in: ["PRO", "PAST_DUE"] } },
     select: {
       id: true,
       email: true,
       subscriptionStatus: true,
       subscriptionSource: true,
+      appleEnvironment: true,
       appleOriginalTransactionId: true,
       googlePurchaseToken: true,
       stripeSubscriptionId: true,
     },
   });
+
+  // Exclude internal/test accounts and sandbox subs — they legitimately drift
+  // (comped founders, TestFlight sandbox subs that lapse) and would otherwise
+  // generate perpetual noise. Filtered in code, NOT in the Prisma WHERE: a
+  // negated `appleEnvironment != 'sandbox'` is NULL (drops the row) for the many
+  // Stripe/null-source users whose appleEnvironment is NULL — the same
+  // SQL-NULL-in-negation trap NOT_IAP_SOURCE_WHERE exists to avoid.
+  const users = rows.filter(
+    (u) =>
+      !(u.email ?? "").endsWith("@heelerdigital.com") &&
+      u.appleEnvironment !== "sandbox"
+  );
 
   const findings: DriftFinding[] = [];
   const unreadableDetails: UnreadableUser[] = [];
