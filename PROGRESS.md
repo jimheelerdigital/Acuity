@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see git log — feat commit after 88dbfdb9)
+**Commit hash:** b4b5caa4
 
 ### In plain English (for Keenan)
 Wiring up the real video engine for animated carousel covers. Two discoveries during setup: (1) the Kling 3.0 engine we tested with only exists in Higgsfield's consumer app — their developer API offers their own "DoP (First last frame)" engine instead, which does the same start-frame → end-frame trick our recipe needs; (2) the developer API uses different login headers than we'd coded, so no request would ever have been accepted. Both fixed. Also: Higgsfield's developer API bills separately from app credits — Keenan bought 500 API credits (app credits don't transfer). First live animation will reveal the real per-video cost.
