@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyDrift } from "./entitlement-drift";
+import { classifyDrift, computeCorrection } from "./entitlement-drift";
 
 describe("classifyDrift", () => {
   it("SEV1 access_denied_but_paid: provider ACTIVE but DB not PRO (the emily class)", () => {
@@ -32,5 +32,36 @@ describe("classifyDrift", () => {
     expect(
       classifyDrift({ source: "stripe", dbStatus: "FREE", providerActive: false })
     ).toBeNull();
+  });
+});
+
+describe("computeCorrection", () => {
+  it("grants PRO for any source when provider is active", () => {
+    for (const source of ["apple", "google_play", "stripe"]) {
+      expect(computeCorrection({ source, expected: "PRO" })).toMatchObject({
+        targetStatus: "PRO",
+        allowed: true,
+      });
+    }
+  });
+
+  it("demotes stripe- and null-source rows to FREE", () => {
+    expect(computeCorrection({ source: "stripe", expected: "FREE" })).toMatchObject({
+      targetStatus: "FREE",
+      allowed: true,
+    });
+    expect(computeCorrection({ source: "unknown", expected: "FREE" })).toMatchObject({
+      allowed: true,
+    });
+  });
+
+  it("DEFERS apple/google demotions to the store webhook (no cross-source demotion)", () => {
+    expect(computeCorrection({ source: "apple", expected: "FREE" })).toMatchObject({
+      targetStatus: "FREE",
+      allowed: false,
+    });
+    expect(computeCorrection({ source: "google_play", expected: "FREE" })).toMatchObject({
+      allowed: false,
+    });
   });
 });

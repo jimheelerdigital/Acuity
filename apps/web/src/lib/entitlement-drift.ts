@@ -19,6 +19,7 @@ import {
   fetchGoogleSubscription,
   readGooglePlayApiConfig,
 } from "@/lib/google-iap";
+import { NOT_IAP_SOURCE_WHERE } from "@/lib/entitlements";
 import { safeLog } from "@/lib/safe-log";
 
 export type DriftSeverity = "SEV1" | "SEV2" | "SEV3";
@@ -187,4 +188,147 @@ export async function resolveProviderActive(user: {
     });
     return { ok: false, active: false, detail: "provider-error" };
   }
+}
+
+// ─── Reconciler (correction) ──────────────────────────────────────────
+//
+// The reconciler turns drift findings into DB corrections, behind a flag.
+// Precedence rules (honoring "no cross-source demotion"):
+//   - GRANT PRO (access_denied_but_paid): always allowed — the user's OWN
+//     provider says active; a grant never wrongly locks anyone out. Written
+//     with a source-match guard so a concurrent source change can't misfire.
+//   - DEMOTE to FREE (revenue_leak / stale_past_due): allowed ONLY for
+//     non-IAP sources (stripe / null). Apple/Google demotions are DEFERRED to
+//     their own store webhooks — the reconciler never demotes an IAP-source
+//     row (reuses NOT_IAP_SOURCE_WHERE). Those stay monitor-alert-only.
+
+export interface Correction {
+  targetStatus: "PRO" | "FREE";
+  allowed: boolean;
+  reason: string;
+}
+
+/** Pure: what the reconciler would do for one finding (independent of apply). */
+export function computeCorrection(
+  finding: Pick<DriftFinding, "source" | "expected">
+): Correction {
+  if (finding.expected === "PRO") {
+    return { targetStatus: "PRO", allowed: true, reason: "grant PRO — provider active" };
+  }
+  const isIap = finding.source === "apple" || finding.source === "google_play";
+  return {
+    targetStatus: "FREE",
+    allowed: !isIap,
+    reason: isIap
+      ? "skip — IAP-source demotion deferred to store webhook (no cross-source demotion)"
+      : "demote to FREE — provider inactive",
+  };
+}
+
+export interface ReconcileEntry {
+  userId: string;
+  email: string | null;
+  source: string;
+  kind: DriftFinding["kind"];
+  from: string;
+  to: "PRO" | "FREE";
+  outcome: "applied" | "dry-run" | "skipped";
+  reason: string;
+}
+
+export interface ReconcileReport {
+  apply: boolean;
+  scanned: number;
+  checked: number;
+  unreadable: number;
+  drift: number;
+  applied: number;
+  skipped: number;
+  entries: ReconcileEntry[];
+}
+
+const RECONCILER_ACTOR = "system:entitlement-reconciler";
+
+/**
+ * Scan for drift and (if `apply`) correct it. Dry-run by default — writes
+ * NOTHING and just reports what it would do. Every applied correction writes an
+ * AdminAuditLog row. Demotions carry NOT_IAP_SOURCE_WHERE; grants carry a
+ * source-match guard.
+ */
+export async function reconcileEntitlementDrift(opts: {
+  apply: boolean;
+}): Promise<ReconcileReport> {
+  const scan = await scanEntitlementDrift();
+  const entries: ReconcileEntry[] = [];
+  let applied = 0;
+  let skipped = 0;
+
+  for (const f of scan.findings) {
+    const c = computeCorrection(f);
+    const base = {
+      userId: f.userId,
+      email: f.email,
+      source: f.source,
+      kind: f.kind,
+      from: f.dbStatus,
+      to: c.targetStatus,
+    };
+
+    if (!c.allowed) {
+      skipped++;
+      entries.push({ ...base, outcome: "skipped", reason: c.reason });
+      continue;
+    }
+    if (!opts.apply) {
+      entries.push({ ...base, outcome: "dry-run", reason: c.reason });
+      continue;
+    }
+
+    // APPLY.
+    const { prisma } = await import("@/lib/prisma");
+    const where =
+      c.targetStatus === "FREE"
+        ? { id: f.userId, ...NOT_IAP_SOURCE_WHERE } // never demote an IAP-source row
+        : { id: f.userId, subscriptionSource: f.source }; // grant only if source unchanged
+    const res = await prisma.user.updateMany({
+      where,
+      data: { subscriptionStatus: c.targetStatus },
+    });
+
+    if (res.count > 0) {
+      applied++;
+      const { logAdminAction } = await import("@/lib/admin-audit");
+      await logAdminAction({
+        adminUserId: RECONCILER_ACTOR,
+        action: "entitlement.reconcile",
+        targetUserId: f.userId,
+        metadata: {
+          from: f.dbStatus,
+          to: c.targetStatus,
+          source: f.source,
+          kind: f.kind,
+          providerDetail: f.providerDetail,
+        },
+      });
+      entries.push({ ...base, outcome: "applied", reason: c.reason });
+    } else {
+      skipped++;
+      entries.push({
+        ...base,
+        outcome: "skipped",
+        reason: "guard matched 0 rows (source changed between scan and write)",
+      });
+    }
+  }
+
+  return {
+    apply: opts.apply,
+    scanned: scan.total,
+    checked: scan.checked,
+    unreadable: scan.unreadable,
+    drift: scan.findings.length,
+    applied,
+    skipped,
+    entries,
+  };
 }

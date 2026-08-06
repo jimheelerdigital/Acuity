@@ -22,6 +22,7 @@ export const ADMIN_ACTIONS = {
   USER_SEND_EMAIL: "user.send_email",
   USER_SEND_BULK_EMAIL: "user.send_bulk_email",
   FREE_CAP_MANUAL_TOGGLE: "free_cap.manual_toggle",
+  ENTITLEMENT_RECONCILE: "entitlement.reconcile",
 } as const;
 
 export type AdminAction =

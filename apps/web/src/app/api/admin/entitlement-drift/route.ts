@@ -11,7 +11,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { scanEntitlementDrift } from "@/lib/entitlement-drift";
+import {
+  scanEntitlementDrift,
+  reconcileEntitlementDrift,
+} from "@/lib/entitlement-drift";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,6 +33,14 @@ export async function GET(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+  }
+
+  // `?mode=reconcile` runs the reconciler in DRY-RUN (writes nothing) and
+  // returns what it WOULD correct — the sample used to validate before enabling
+  // the nightly apply flag. Default is the plain read-only drift scan.
+  if (req.nextUrl.searchParams.get("mode") === "reconcile") {
+    const report = await reconcileEntitlementDrift({ apply: false });
+    return NextResponse.json({ ok: true, ...report });
   }
 
   const result = await scanEntitlementDrift();
