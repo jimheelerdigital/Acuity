@@ -614,6 +614,8 @@ function SlideStrip({
                   loop
                   muted
                   playsInline
+                  controls
+                  preload="metadata"
                   className="w-full h-auto"
                 />
               ) : (
