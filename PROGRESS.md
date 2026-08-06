@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-05] — First daily carousel gets a crazy spin-in cover intro
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** acd8f454
+
+### In plain English (for Keenan)
+One of the five daily posts (the first one, generated at 8 UTC) now gets a completely different, high-energy cover animation: the whole scene spins into frame with motion blur and the headline slams on, built to grab attention in the first half second. The other four keep the smooth cinematic style. Manual "Animate" from the dashboard and one-off generations stay smooth.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: new buildCrazyCoverVideoPrompt + exported AnimationStyle type ("smooth" | "crazy")
+- apps/web/src/inngest/functions/carousel-daily.ts: enqueue-cover-animation step sets animationStyle: "crazy" when new Date().getUTCHours() === 8, else "smooth"
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: selects prompt builder from event.data.animationStyle, defaulting to smooth
+
+### Manual steps needed
+- [ ] None — auto-deploys; no Inngest resync needed (no trigger/config change)
+- [ ] Review tomorrow's 8 UTC post to judge the spin-in treatment (Keenan)
+
+### Notes
+- Chose the fixed 8 UTC run over a random 1-in-5 so exactly one post per day gets it and it's predictable which one.
+- Both styles still end on the exact composed cover frame (first-last-frame model), so the carousel's static slide 1 always matches the video's final frame.
+
 ## [2026-08-05] — Cover animation prompt rewritten for visible motion
 
 **Requested by:** Keenan
