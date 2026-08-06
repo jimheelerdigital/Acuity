@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-08-05] — Cover animation now waits up to 20 minutes before giving up
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** fc689296
+
+### In plain English (for Keenan)
+The first real cover video took longer to render than the system was willing to wait, so the email went out with the static cover even though the video was still cooking. The system now waits up to 20 minutes for the video before falling back to the static-cover email.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: MAX_POLLS 12 → 36 (30s intervals after the 2m head start), total window ~8 min → ~20 min
+
+### Manual steps needed
+- [ ] None — auto-deploys on push; no Inngest resync needed (runtime logic only, no trigger/config change)
+
+### Notes
+- Diagnosed from the first live run (2026-08-05 21:20 UTC): submit-video-job succeeded in 2.5s, then 12 polls all returned non-terminal → timeout path → static email. The DoP standard first-last-frame render simply takes longer than 8 min sometimes.
+- Emails now can arrive up to ~22 min after generation in the worst case.
+
 ## [2026-08-05] — Daily carousels now generate at 8–12 UTC
 
 **Requested by:** Keenan
