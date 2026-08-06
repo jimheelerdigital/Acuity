@@ -69,7 +69,9 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     "The camera slowly drifts forward a few inches, creating a gentle sense of depth.",
     "The mood is warm, still, and emotionally resonant — like a quiet moment caught on camera.",
     "Her feet stay planted. No walking, no standing up, no moving to a different spot. But her upper body, hands, and face move freely.",
-    "Do NOT generate any text, numbers, or letters. No warping or distortion of the face.",
+    "She is NOT talking. Her mouth does not move as if speaking — lips stay closed or only shift for emotional expression like a smile, a pursed lip, or a slight frown. No lip-syncing, no mouthing words.",
+    "Any existing text or graphics in the image must remain fully visible and stable for at least the first 3 seconds. Do not obscure, dissolve, or remove text early.",
+    "Do NOT generate new text, numbers, or letters. No warping or distortion of the face.",
   ].join(" ");
 }
 
@@ -89,7 +91,9 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     "The camera pushes in with purpose — a smooth, steady move that draws you into the scene.",
     "The feel is bold, emotional, and premium. Confident but grounded — the power comes from her expression and hands, not from locomotion.",
     "Her feet stay planted. No walking, no standing up, no moving to a different spot. But her upper body, hands, and face move freely.",
-    "Do NOT generate any text, numbers, or letters. No warping or distortion of the face.",
+    "She is NOT talking. Her mouth does not move as if speaking — lips stay closed or only shift for emotional expression like a smile, a pursed lip, or a slight frown. No lip-syncing, no mouthing words.",
+    "Any existing text or graphics in the image must remain fully visible and stable for at least the first 3 seconds. Do not obscure, dissolve, or remove text early.",
+    "Do NOT generate new text, numbers, or letters. No warping or distortion of the face.",
   ].join(" ");
 }
 
