@@ -47,24 +47,29 @@ function authHeaders(): Record<string, string> {
 }
 
 /**
- * Build the image-to-video prompt for a cover. Template validated manually;
- * the per-topic emotionBeat is the character's motion direction.
+ * Build the image-to-video prompt for a cover. The per-topic emotionBeat
+ * is the character's motion direction.
+ *
+ * v2 (2026-08-05): the original "slow, elegant, no sudden movements"
+ * template made Higgsfield's DoP model render an almost-static shot (the
+ * character only blinked). This version explicitly demands large, visible
+ * motion — full gesture, head turn, ambient movement, energetic text-on.
  */
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera";
   return [
-    "Smooth, flowy, emotionally resonant social media cover animation in one continuous graceful take.",
-    `The main character embodies the feeling of the post: ${emotionBeat}.`,
-    "Her movement is slow, fluid and natural, like elegant slow motion.",
-    "If no person is present, apply the emotional mood to the scene's main subject with expressive, gentle motion.",
-    "The camera glides forward in one seamless, buttery-smooth push with soft parallax — no shakes, no cuts, no sudden movements.",
-    "Warm light drifts smoothly across the frame.",
-    "The bold headline text flows onto the screen gracefully, gliding into place line by line like silk, settling perfectly sharp and readable.",
-    "Everything flows as one continuous, hypnotic, satisfying motion.",
+    "Dynamic, scroll-stopping social media cover animation with clear, pronounced motion throughout — this must NOT look like a still photo.",
+    `The main character performs a full, clearly visible gesture: ${emotionBeat}.`,
+    "Her whole upper body moves — head turns, shoulders shift, hands gesture, expression visibly changes. Not just blinking.",
+    "If no person is present, the scene's main subject moves expressively instead.",
+    "The environment is alive with ambient motion: steam curling from the mug, candle flame flickering, plants gently swaying, hair and fabric moving, warm light shifting across the frame.",
+    "The camera pushes forward with a confident cinematic dolly-in and noticeable parallax between foreground and background.",
+    "The bold headline text sweeps onto the screen with momentum, line by line, and snaps into place perfectly sharp and readable.",
+    "The energy is warm and premium but unmistakably in motion from the first frame to the last.",
     "The final frame matches the provided end image exactly.",
-    "Premium, catchy, scroll-stopping. No warping or distortion of face or text.",
+    "No warping or distortion of face or text.",
   ].join(" ");
 }
 
