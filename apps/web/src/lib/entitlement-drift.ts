@@ -69,11 +69,19 @@ export function classifyDrift(input: {
   return null;
 }
 
+export interface UnreadableUser {
+  userId: string;
+  email: string | null;
+  source: string | null;
+  detail: string; // why the provider read failed
+}
+
 export interface DriftScanResult {
   total: number;
   checked: number;
   unreadable: number;
   findings: DriftFinding[];
+  unreadableDetails: UnreadableUser[];
 }
 
 /**
@@ -84,7 +92,16 @@ export interface DriftScanResult {
 export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> {
   const { prisma } = await import("@/lib/prisma");
   const users = await prisma.user.findMany({
-    where: { subscriptionStatus: { in: ["PRO", "PAST_DUE"] } },
+    where: {
+      subscriptionStatus: { in: ["PRO", "PAST_DUE"] },
+      // Exclude internal/test accounts and sandbox subs — they legitimately
+      // drift (comped founders, TestFlight sandbox subs that lapse) and would
+      // otherwise generate perpetual noise findings.
+      NOT: [
+        { email: { endsWith: "@heelerdigital.com" } },
+        { appleEnvironment: "sandbox" },
+      ],
+    },
     select: {
       id: true,
       email: true,
@@ -97,6 +114,7 @@ export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> 
   });
 
   const findings: DriftFinding[] = [];
+  const unreadableDetails: UnreadableUser[] = [];
   let checked = 0;
   let unreadable = 0;
 
@@ -108,6 +126,12 @@ export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> 
     for (const { u, provider } of results) {
       if (!provider.ok) {
         unreadable++;
+        unreadableDetails.push({
+          userId: u.id,
+          email: u.email,
+          source: u.subscriptionSource,
+          detail: provider.detail,
+        });
         continue;
       }
       checked++;
@@ -133,7 +157,7 @@ export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> 
   }
 
   findings.sort((a, b) => a.severity.localeCompare(b.severity));
-  return { total: users.length, checked, unreadable, findings };
+  return { total: users.length, checked, unreadable, findings, unreadableDetails };
 }
 
 export interface ProviderStatus {

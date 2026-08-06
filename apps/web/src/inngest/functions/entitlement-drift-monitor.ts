@@ -53,7 +53,13 @@ export const entitlementDriftMonitorFn = inngest.createFunction(
         `${scan.findings.length} drifted (${bySev("SEV1").length} SEV1 access-denied-but-paid, ` +
         `${bySev("SEV2").length} SEV2 revenue-leak, ${bySev("SEV3").length} SEV3 stale). ` +
         `Checked ${scan.checked}/${scan.total}; ${scan.unreadable} unreadable.`;
-      const body = scan.findings.map(line).join("\n");
+      const unreadableBlock = scan.unreadableDetails.length
+        ? "\n\nUnreadable (provider read failed — could hide drift):\n" +
+          scan.unreadableDetails
+            .map((u) => `- ${u.email ?? u.userId} (${u.source ?? "?"}): ${u.detail}`)
+            .join("\n")
+        : "";
+      const body = scan.findings.map(line).join("\n") + unreadableBlock;
 
       const slackUrl = process.env.SLACK_FOUNDER_WEBHOOK_URL;
       if (slackUrl) {
