@@ -74,8 +74,10 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     "The camera slowly drifts forward a few inches, creating a gentle sense of depth.",
     // TEXT PRESERVATION
     "All text, headlines, and graphics already in the image must remain perfectly sharp, readable, and in place throughout the entire video. Do not warp, dissolve, blur, or move any existing text.",
+    // CONSISTENCY
+    "The scene, colors, style, and art direction must stay consistent from first frame to last. Do not fade, transition, or shift to a different scene, setting, or color palette. The video ends looking exactly like it started, just with the gesture completed.",
     // PROHIBITIONS
-    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED.",
+    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED. No scene transitions or fades.",
   ].join(" ");
 }
 
@@ -100,8 +102,10 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     "The camera pushes in with purpose — a smooth, steady move that draws you into the scene.",
     // TEXT PRESERVATION
     "All text, headlines, and graphics already in the image must remain perfectly sharp, readable, and in place throughout the entire video. Do not warp, dissolve, blur, or move any existing text.",
+    // CONSISTENCY
+    "The scene, colors, style, and art direction must stay consistent from first frame to last. Do not fade, transition, or shift to a different scene, setting, or color palette. The video ends looking exactly like it started, just with the gesture completed.",
     // PROHIBITIONS
-    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED.",
+    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED. No scene transitions or fades.",
   ].join(" ");
 }
 
@@ -112,7 +116,7 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
  * to produce dramatic motion from the start frame.
  */
 export async function submitCoverVideo(opts: {
-  startImageUrl: string; // text-free raw cover
+  startImageUrl: string; // composed cover with text
   prompt: string;
 }): Promise<string> {
   const model = process.env.HIGGSFIELD_VIDEO_MODEL!;
@@ -125,6 +129,7 @@ export async function submitCoverVideo(opts: {
     body: JSON.stringify({
       prompt: opts.prompt,
       image_url: opts.startImageUrl,
+      duration: 4,
       motions: [],
       // Never let Higgsfield rewrite our validated prompt template.
       enhance_prompt: false,
