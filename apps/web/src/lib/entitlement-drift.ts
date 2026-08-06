@@ -111,11 +111,14 @@ export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> 
   // negated `appleEnvironment != 'sandbox'` is NULL (drops the row) for the many
   // Stripe/null-source users whose appleEnvironment is NULL — the same
   // SQL-NULL-in-negation trap NOT_IAP_SOURCE_WHERE exists to avoid.
-  const users = rows.filter(
-    (u) =>
-      !(u.email ?? "").endsWith("@heelerdigital.com") &&
+  const users = rows.filter((u) => {
+    const email = u.email ?? "";
+    return (
+      !email.endsWith("@heelerdigital.com") &&
+      !email.endsWith("@example.com") && // reserved test domain (demo@example.com, App Store reviewer login) — no provider to validate
       u.appleEnvironment !== "sandbox"
-  );
+    );
+  });
 
   const findings: DriftFinding[] = [];
   const unreadableDetails: UnreadableUser[] = [];

@@ -25,6 +25,30 @@ The animated covers had two problems: (1) the model was generating ugly text/num
 ### Notes
 - The text artifact problem: raw cover has no text overlay, but v4 prompts told the model to "slide headline text into position." The model hallucinated text, producing ugly warped numbers.
 - "Continuous" is the key word. Previous prompts described end-state poses ("she shrugs, then smiles"). v5 describes motion trajectories ("shoulders rise and drop smoothly, expression shifts gradually over several seconds"). This should prevent the snap-and-freeze pattern.
+## [2026-08-06] — Self-healing reconciler (dry-run) + drift-monitor exclusions
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 57cef9a4 (+ follow-ups)
+
+### In plain English (for Keenan)
+We built the second half of the subscription safety net. The "reconciler" is a nightly robot that re-checks every paying subscriber against Apple/Google/Stripe and can auto-fix our records when they drift — but it's shipped in **watch-only mode** (it reports what it would fix and changes nothing) until we've watched a few nights and trust it. We also taught the daily monitor to ignore our own test/founder accounts and sandbox (TestFlight) subscriptions so they don't create false alarms. When we first turned that on it accidentally hid most real subscribers, we caught it immediately, fixed it, and confirmed all 20 real paying subscribers are watched with zero problems found. The one account that couldn't be checked is a demo login (App Store reviewers) with no real payment — now also ignored.
+
+### Technical changes (for Jimmy)
+- **Reconciler (deployed, DORMANT):** `apps/web/src/inngest/functions/entitlement-reconcile-nightly.ts` (cron 04:30 UTC). Reuses `scanEntitlementDrift` + `classifyDrift`; `reconcileEntitlementDrift({apply})` in `lib/entitlement-drift.ts` — gated on `ENTITLEMENT_RECON_APPLY` (**OFF** = dry-run, writes nothing). Grants PRO for any active provider; demotes only stripe/null via `NOT_IAP_SOURCE_WHERE` (Apple/Google demotions deferred to their store webhooks); `logAdminAction` (`entitlement.reconcile`, `system:entitlement-reconciler`) on every apply. `computeCorrection` is pure + tested.
+- **On-demand endpoint:** `GET /api/admin/entitlement-drift` (CRON_SECRET or admin session) — read-only scan; `?mode=reconcile` returns the dry-run report.
+- **Exclusions:** `scanEntitlementDrift` skips `@heelerdigital.com`, `@example.com` (demo@ / reviewer login), and `appleEnvironment=sandbox` — via a null-safe **app-code filter**.
+- **Registered** both crons in `apps/web/src/app/api/inngest/route.ts`; `ENTITLEMENT_RECONCILE` slug in `admin-audit.ts`; `unreadableDetails` added to the scan result + monitor alert; `fetchAppleSubscriptionStatus` in `apple-iap.ts`.
+- Tests: `entitlement-drift.test.ts` (classifyDrift ×4, computeCorrection ×3). Typecheck clean.
+
+### Manual steps needed
+- [ ] Jimmy: watch a few nightly reconciler dry-run reports (Slack/email), then flip `ENTITLEMENT_RECON_APPLY=true` in Vercel to enable auto-apply.
+- [ ] Jimmy: decide on the 1 real drift the monitor surfaces day-to-day (e.g., your own sandbox account — now excluded).
+
+### Notes
+- **Bug caught in-flight:** the first exclusion used Prisma `NOT [{appleEnvironment:"sandbox"}]` → `appleEnvironment <> 'sandbox'`, which is NULL (drops the row) for the ~16 Stripe/null-source users whose `appleEnvironment` is NULL — the live scan monitored only 4 users. Caught by re-running the scan (`total:4`), fixed with the app-code filter (57cef9a4). Same SQL-NULL-in-negation trap `NOT_IAP_SOURCE_WHERE` exists to avoid — a recurring footgun; prefer app-code filters or explicit `OR [{x:null},{x:{not:...}}]`.
+- First validated run (post-fix): total 20, checked 19, **0 drift findings**, 1 unreadable = `demo@example.com` (comped/demo PRO, no provider handle — now excluded). The 2 earlier "unreadable" were transient provider-read failures, since re-validated fine. No paid-but-broken user was hiding.
+- Reconciler + monitor share one read path (`scanEntitlementDrift`), so the exclusion + null-fix apply to both.
 
 ## [2026-08-06] — Entitlement audit: PAST_DUE cleanup + drift monitor (read-only)
 
