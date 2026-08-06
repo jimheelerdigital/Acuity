@@ -40,9 +40,12 @@ function authHeader(): string {
  * the per-topic emotionBeat is the character's motion direction.
  */
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
+  const emotionBeat =
+    topic.emotionBeat ??
+    "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera";
   return [
     "Smooth, flowy, emotionally resonant social media cover animation in one continuous graceful take.",
-    `The main character embodies the feeling of the post: ${topic.emotionBeat}.`,
+    `The main character embodies the feeling of the post: ${emotionBeat}.`,
     "Her movement is slow, fluid and natural, like elegant slow motion.",
     "If no person is present, apply the emotional mood to the scene's main subject with expressive, gentle motion.",
     "The camera glides forward in one seamless, buttery-smooth push with soft parallax — no shakes, no cuts, no sudden movements.",

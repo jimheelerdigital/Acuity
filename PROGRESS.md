@@ -115,7 +115,7 @@ Two workflow fixes so syncing the project stops getting stuck. First: because yo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec85a524
+**Commit hash:** 99194b90
 
 ### In plain English (for Keenan)
 The first slide of each carousel can now be a short video instead of a static image. The scene opens alive (the woman moves and performs an emotion that matches the post — a tired shrug for invisible-labour posts, a relieved exhale for decompression posts, etc.), the headline text flows onto the screen, and the video ends on the exact same cover image as before. This makes the carousel far more scroll-stopping on Instagram, where the first slide can be a video. Each of the 35 topics has its own hand-written "emotion beat" so the motion always matches the feeling of the post. Covers are animated automatically after the daily generation run, and there's an "Animate" / "Re-animate" button on every cover in the admin queue. The ZIP download now includes the MP4. Recipe and prompt were validated manually in Higgsfield before building (~8.75 credits ≈ one cover video; ~44 credits/day for 5 carousels).
@@ -126,7 +126,7 @@ The first slide of each carousel can now be a short video instead of a static im
 - `apps/web/src/lib/content-factory/topics.ts`: `emotionBeat: string` added to `CarouselTopic` + written for all 35 topics
 - `apps/web/src/lib/content-factory/carousel-generate.ts`: cover's raw (pre-compose) image now uploaded as `slide-0-cover-raw.jpg` and persisted as `rawImageUrl`; `regenerateSlide`/`recomposeSlide` on COVER re-upload the raw image and null out `videoUrl` (stale video); shared `fallbackTopic()` helper
 - `apps/web/src/inngest/functions/carousel-animate-cover.ts` (new): event-driven fn on `content-factory/cover.animate`, concurrency 2. Steps: submit → sleep 2m → poll every 30s (max 12) → store. Every failure path returns gracefully — carousel keeps its static cover
-- `apps/web/src/inngest/functions/carousel-daily.ts`: sends `content-factory/cover.animate` per generated post (own try/catch)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `generate-cover` step now also uploads the raw (text-free) image as `slide-0-cover-raw.jpg` and persists it as `rawImageUrl`; new `enqueue-cover-animation` step sends `content-factory/cover.animate` after save-and-email (own try/catch)
 - `apps/web/src/app/api/inngest/route.ts`: registered `carouselAnimateCoverFn`
 - `apps/web/src/app/api/admin/carousels/route.ts`: new `animate-cover` action (clears `videoUrl`, sends the event)
 - `apps/web/src/app/admin/content-factory/carousels/page.tsx`: cover renders `<video autoplay loop muted playsinline>` when `videoUrl` exists (poster = static cover), "▶ Animated" badge, Animate/Re-animate buttons in review strip + library card
@@ -147,6 +147,7 @@ The first slide of each carousel can now be a short video instead of a static im
 - The Inngest fn skips posts whose cover predates this change (no `rawImageUrl`) and posts already animated — safe to re-fire the event
 - Cover regeneration or text edit invalidates the video (it renders the old image/text), so both actions clear `videoUrl`; re-animate from the admin UI afterwards
 - TikTok photo-mode carousels cannot include a video slide — the animated cover is for Instagram carousels (video + images mix). Platform API auth format: `Authorization: Key {key}:{secret}`
+- Rebased onto Jimmy's 2026-08-05 pipeline overhaul (Claude-generated topics, 5× daily cron, color schemes, one-off generation). Since AI-generated topics aren't in `CAROUSEL_TOPICS`, their covers use the default fallback emotion beat (tired shrug + knowing half-smile). Follow-up idea: have `generateTopic` produce an `emotionBeat` and store it on the post so every cover gets a topic-specific motion
 
 ## [2026-08-02] — Content Factory: email delivery of completed carousels via Resend
 

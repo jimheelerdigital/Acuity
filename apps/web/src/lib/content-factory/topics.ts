@@ -23,8 +23,10 @@ export interface CarouselTopic {
    * The physical gesture/emotion the cover's main character performs in the
    * animated cover video. Should embody the feeling the post invokes —
    * written as a short motion direction for image-to-video generation.
+   * Optional because AI-generated topics don't have one; the animate
+   * pipeline falls back to a default beat.
    */
-  emotionBeat: string;
+  emotionBeat?: string;
 }
 
 export const CAROUSEL_TOPICS: CarouselTopic[] = [
