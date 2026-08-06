@@ -166,7 +166,9 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { imageUrl };
     });
 
-    // ── Step N+2: Save to DB + email ─────────────────────────────
+    // ── Step N+2: Save to DB ─────────────────────────────────────
+    // Email is sent AFTER cover animation completes (see the animate
+    // function) so the video arrives in the same Resend email.
     const result = await step.run("save-and-email", async () => {
       const { prisma } = await import("@/lib/prisma");
       const { buildCaption } = await import(
@@ -231,17 +233,6 @@ export const carouselDailyCronFn = inngest.createFunction(
         },
       });
 
-      try {
-        const { sendCarouselEmail } = await import(
-          "@/lib/content-factory/email"
-        );
-        await sendCarouselEmail(post.id);
-      } catch (emailErr) {
-        console.error(
-          `[carousel-cron] Email failed: ${emailErr instanceof Error ? emailErr.message : emailErr}`
-        );
-      }
-
       return {
         postId: post.id,
         slideCount: allSlides.length,
@@ -249,20 +240,25 @@ export const carouselDailyCronFn = inngest.createFunction(
       };
     });
 
-    // ── Step N+3: fan out cover animation ────────────────────────
-    // Runs in a separate Inngest function so the 3-6 min Higgsfield video
-    // render never blocks or times out this cron. Failure there degrades
-    // gracefully to the static cover.
+    // ── Step N+3: fan out cover animation, which sends the email ─
+    // Pipeline order: carousel gen → cover animation → Resend email.
+    // The animate function sends the email on EVERY exit path (success,
+    // skip, failure, timeout) so Keenan always gets exactly one email —
+    // with the video when animation worked, static cover otherwise.
     await step.run("enqueue-cover-animation", async () => {
       try {
         await inngest.send({
           name: "content-factory/cover.animate",
-          data: { postId: result.postId },
+          data: { postId: result.postId, sendEmail: true },
         });
       } catch (animateErr) {
         logger.error(
           `[carousel-cron] Failed to enqueue cover animation for ${slug}: ${animateErr instanceof Error ? animateErr.message : animateErr}`
         );
+        // Never leave the post unsent — fall back to emailing the static
+        // carousel right away if the animation event can't be enqueued.
+        const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+        await sendCarouselEmail(result.postId);
       }
     });
 

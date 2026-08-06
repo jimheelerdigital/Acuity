@@ -21,6 +21,7 @@ interface SlideRow {
   kind: string;
   overlayText: string;
   imageUrl: string;
+  videoUrl: string | null;
 }
 
 interface PostRow {
@@ -79,6 +80,27 @@ export async function sendCarouselEmail(
 
   const useAttachments = totalBytes <= MAX_ATTACHMENT_BYTES;
 
+  // ── Animated cover video (if the cover has one) ────────────────
+  // Attach the MP4 only if it still fits alongside the images within
+  // the 15MB budget; otherwise link it. A big video never forces the
+  // slide images out of attachment mode.
+  const coverVideoUrl = post.slides.find((s) => s.kind === "COVER")?.videoUrl ?? null;
+  let videoBuffer: Buffer | null = null;
+  if (coverVideoUrl && useAttachments) {
+    try {
+      const res = await fetch(coverVideoUrl);
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (totalBytes + buf.length <= MAX_ATTACHMENT_BYTES) {
+          videoBuffer = buf;
+          totalBytes += buf.length;
+        }
+      }
+    } catch {
+      console.warn(`[carousel-email] Failed to fetch cover video ${coverVideoUrl}`);
+    }
+  }
+
   // ── Build HTML ──────────────────────────────────────────────────
   const slideList = post.slides
     .map((s, i) => `<li style="margin-bottom:4px;color:#999;">${i + 1}. ${escapeHtml(s.overlayText)}</li>`)
@@ -86,6 +108,12 @@ export async function sendCarouselEmail(
 
   const coverUrl = post.slides[0]?.imageUrl ?? "";
   const reviewUrl = `${REVIEW_BASE_URL}/admin/content-factory/carousels`;
+
+  const videoNote = coverVideoUrl
+    ? videoBuffer
+      ? `<p style="font-size:13px;color:#888;">🎬 Animated cover attached as MP4 — or <a href="${escapeHtml(coverVideoUrl)}" style="color:#F97E4E;">download it here</a>.</p>`
+      : `<p style="font-size:13px;color:#888;">🎬 Animated cover: <a href="${escapeHtml(coverVideoUrl)}" style="color:#F97E4E;">download the MP4</a> (too large to attach).</p>`
+    : "";
 
   const attachNote = useAttachments
     ? `<p style="font-size:13px;color:#888;">📎 ${slideBuffers.length} slides attached — save to Photos and post.</p>`
@@ -107,6 +135,7 @@ export async function sendCarouselEmail(
       ${escapeHtml(lane)} · ${escapeHtml(dateStr)} · ${post.slides.length} slides
     </p>
 
+    ${videoNote}
     ${attachNote}
 
     <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
@@ -136,6 +165,7 @@ export async function sendCarouselEmail(
   const text = [
     post.headline,
     `${lane} · ${dateStr} · ${post.slides.length} slides`,
+    ...(coverVideoUrl ? ["", `Animated cover: ${coverVideoUrl}`] : []),
     "",
     "── Caption ──",
     post.caption,
@@ -158,10 +188,17 @@ export async function sendCarouselEmail(
   };
 
   if (useAttachments && slideBuffers.length > 0) {
-    (emailPayload as Record<string, unknown>).attachments = slideBuffers.map((s) => ({
+    const attachments = slideBuffers.map((s) => ({
       filename: s.filename,
       content: s.buf.toString("base64"),
     }));
+    if (videoBuffer) {
+      attachments.push({
+        filename: "00-cover-animated.mp4",
+        content: videoBuffer.toString("base64"),
+      });
+    }
+    (emailPayload as Record<string, unknown>).attachments = attachments;
   }
 
   const resp = await resend.emails.send(emailPayload);

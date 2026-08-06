@@ -9,6 +9,11 @@ import { inngest } from "@/inngest/client";
  * 300s Vercel invocation ceiling: submit → sleep → poll (short steps with
  * sleeps between) → store. Any failure leaves the carousel with its static
  * cover — animation is an enhancement, never a blocker.
+ *
+ * When the event carries `sendEmail: true` (the generation pipelines set
+ * this), the Resend email is sent from HERE — after animation — on every
+ * exit path. Pipeline order: carousel gen → cover animation → email.
+ * Animation failure degrades to the static-cover email, never silence.
  */
 export const carouselAnimateCoverFn = inngest.createFunction(
   {
@@ -20,6 +25,23 @@ export const carouselAnimateCoverFn = inngest.createFunction(
   },
   async ({ event, step, logger }) => {
     const postId = event.data.postId as string;
+    const shouldEmail = Boolean(event.data.sendEmail);
+
+    // Email sender used at every exit path. Its own step so a Resend
+    // hiccup gets Inngest's retry, and it never throws past logging.
+    const sendEmailStep = async () => {
+      if (!shouldEmail) return;
+      await step.run("send-carousel-email", async () => {
+        try {
+          const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+          await sendCarouselEmail(postId);
+        } catch (emailErr) {
+          logger.error(
+            `[animate-cover] Email failed for post ${postId}: ${emailErr instanceof Error ? emailErr.message : emailErr}`
+          );
+        }
+      });
+    };
 
     // ── Step 1: validate + submit ─────────────────────────────────────
     const submission = await step.run("submit-video-job", async () => {
@@ -56,16 +78,25 @@ export const carouselAnimateCoverFn = inngest.createFunction(
         }
       );
 
-      const requestId = await submitCoverVideo({
-        startImageUrl: cover.rawImageUrl,
-        endImageUrl: cover.imageUrl,
-        prompt,
-      });
-      return { skipped: null, requestId, slideId: cover.id } as const;
+      try {
+        const requestId = await submitCoverVideo({
+          startImageUrl: cover.rawImageUrl,
+          endImageUrl: cover.imageUrl,
+          prompt,
+        });
+        return { skipped: null, requestId, slideId: cover.id } as const;
+      } catch (submitErr) {
+        // Don't throw — a failed submit must still fall through to the
+        // static-cover email instead of killing the function run.
+        return {
+          skipped: `Higgsfield submit failed: ${submitErr instanceof Error ? submitErr.message : submitErr}`,
+        } as const;
+      }
     });
 
     if (submission.skipped) {
       logger.info(`[animate-cover] Skipped for post ${postId}: ${submission.skipped}`);
+      await sendEmailStep();
       return { animated: false, reason: submission.skipped };
     }
 
@@ -88,6 +119,7 @@ export const carouselAnimateCoverFn = inngest.createFunction(
         logger.error(
           `[animate-cover] Higgsfield job ${submission.requestId} ended: ${check.status} (post ${postId})`
         );
+        await sendEmailStep();
         return { animated: false, reason: `Higgsfield status: ${check.status}` };
       }
       await step.sleep(`poll-wait-${i}`, "30s");
@@ -97,6 +129,7 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       logger.error(
         `[animate-cover] Timed out waiting for Higgsfield job ${submission.requestId} (post ${postId})`
       );
+      await sendEmailStep();
       return { animated: false, reason: "timeout" };
     }
 
@@ -107,6 +140,7 @@ export const carouselAnimateCoverFn = inngest.createFunction(
     });
 
     logger.info(`[animate-cover] Post ${postId} cover animated: ${storedUrl}`);
+    await sendEmailStep();
     return { animated: true, videoUrl: storedUrl };
   }
 );

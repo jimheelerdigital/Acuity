@@ -83,6 +83,12 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
       };
       const prompt = buildImagePrompt(lanePrefix, topicData.headline, topic, colorScheme.prompt);
       const rawBuffer = await generateImage(prompt);
+      // Upload the text-free raw image too — it's the START frame for the
+      // animated cover video (the composed cover is the END frame).
+      const rawImageUrl = await uploadImage(
+        rawBuffer,
+        `carousels/${dateStr}/${slug}/slide-0-cover-raw.jpg`
+      );
       const composed = await composeSlide(
         rawBuffer,
         topicData.headline,
@@ -94,6 +100,7 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
       );
       return {
         imageUrl,
+        rawImageUrl,
         overlayText: topicData.headline,
         imagePrompt: prompt,
       };
@@ -157,7 +164,9 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
       return { imageUrl };
     });
 
-    // ── Step N+2: Save to DB + email ─────────────────────────────
+    // ── Step N+2: Save to DB ─────────────────────────────────────
+    // Email is sent AFTER cover animation completes (see the animate
+    // function) so the video arrives in the same Resend email.
     const result = await step.run("save-and-email", async () => {
       const { prisma } = await import("@/lib/prisma");
       const { buildCaption } = await import(
@@ -174,6 +183,7 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
           overlayText: coverSlide.overlayText,
           imagePrompt: coverSlide.imagePrompt,
           imageUrl: coverSlide.imageUrl,
+          rawImageUrl: coverSlide.rawImageUrl,
         },
         ...reasonSlides.map((s, i) => ({
           order: i + 1,
@@ -215,27 +225,36 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
               overlayText: s.overlayText,
               imagePrompt: s.imagePrompt,
               imageUrl: s.imageUrl,
+              rawImageUrl: "rawImageUrl" in s ? s.rawImageUrl : undefined,
             })),
           },
         },
       });
-
-      try {
-        const { sendCarouselEmail } = await import(
-          "@/lib/content-factory/email"
-        );
-        await sendCarouselEmail(post.id);
-      } catch (emailErr) {
-        console.error(
-          `[carousel-one-off] Email failed: ${emailErr instanceof Error ? emailErr.message : emailErr}`
-        );
-      }
 
       return {
         postId: post.id,
         slideCount: allSlides.length,
         estimatedCostCents: (allSlides.length - 1) * 8 + 2,
       };
+    });
+
+    // ── Step N+3: fan out cover animation, which sends the email ─
+    // Pipeline order: carousel gen → cover animation → Resend email.
+    await step.run("enqueue-cover-animation", async () => {
+      try {
+        await inngest.send({
+          name: "content-factory/cover.animate",
+          data: { postId: result.postId, sendEmail: true },
+        });
+      } catch (animateErr) {
+        logger.error(
+          `[carousel-one-off] Failed to enqueue cover animation for ${slug}: ${animateErr instanceof Error ? animateErr.message : animateErr}`
+        );
+        // Never leave the post unsent — fall back to emailing the static
+        // carousel right away if the animation event can't be enqueued.
+        const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+        await sendCarouselEmail(result.postId);
+      }
     });
 
     logger.info(
