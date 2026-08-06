@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-08-05] — Animated cover is now playable in the review queue
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6993c401
+
+### In plain English (for Keenan)
+The animated cover looked like a frozen image in the dashboard because some browsers silently refuse to auto-play videos (low-power mode does this). The video now has a normal play/pause bar so it always works.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: added `controls` and `preload="metadata"` to the cover <video> element in SlideStrip
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- autoplay/loop/muted/playsInline kept — where autoplay is allowed it still plays automatically; controls are the fallback.
+
 ## [2026-08-05] — First daily carousel gets a crazy spin-in cover intro
 
 **Requested by:** Keenan
