@@ -19,6 +19,12 @@ export interface CarouselTopic {
   style: HeadlineStyle;
   lane: StyleLane;
   reasons: string[];
+  /**
+   * The physical gesture/emotion the cover's main character performs in the
+   * animated cover video. Should embody the feeling the post invokes —
+   * written as a short motion direction for image-to-video generation.
+   */
+  emotionBeat: string;
 }
 
 export const CAROUSEL_TOPICS: CarouselTopic[] = [
@@ -26,6 +32,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "invisible-mental-load",
     headline: "6 invisible things draining your energy every day",
+    emotionBeat:
+      "she pauses mid-task, eyes closing briefly as she steadies herself with a slow breath, shoulders heavy under an invisible weight, then a weary glance to camera",
     style: "hook",
     lane: "cinematicReal",
     reasons: [
@@ -40,6 +48,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-youre-always-tired",
     headline: "6 reasons you're exhausted (and none of them are sleep)",
+    emotionBeat:
+      "she leans back and lets her shoulders drop with a long exhausted exhale, head tilting back briefly before a drained but knowing look to camera",
     style: "listicle",
     lane: "stillLife",
     reasons: [
@@ -54,6 +64,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "things-no-one-sees",
     headline: "5 things you do every day that nobody will ever notice",
+    emotionBeat:
+      "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, self-aware half-smile to camera, as if to say 'yep, that's my life'",
     style: "listicle",
     lane: "paperDiorama",
     reasons: [
@@ -69,6 +81,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "patterns-you-repeat",
     headline: "6 patterns you keep repeating without realizing",
+    emotionBeat:
+      "she starts to gesture, stops herself mid-motion, and shakes her head with a rueful half-smile of recognition toward camera",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -83,6 +97,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-sundays-feel-heavy",
     headline: "5 reasons Sunday nights feel heavier than Monday mornings",
+    emotionBeat:
+      "she hugs her arms around herself and sighs, gaze drifting away heavily before returning to camera with quiet resignation",
     style: "listicle",
     lane: "claymation",
     reasons: [
@@ -96,6 +112,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "same-fight-different-day",
     headline: "6 reasons you keep having the same fight",
+    emotionBeat:
+      "she pinches the bridge of her nose and exhales in frustration, then looks up at camera with a tired 'here we go again' expression",
     style: "hook",
     lane: "flatGraphic",
     reasons: [
@@ -110,6 +128,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "cycles-you-know-but-cant-break",
     headline: "5 cycles you already know about but still can't break",
+    emotionBeat:
+      "she rolls her eyes gently at herself, a self-deprecating smile forming as she gives a slow one-shoulder shrug toward camera",
     style: "listicle",
     lane: "toon3d",
     reasons: [
@@ -125,6 +145,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "you-know-what-to-do",
     headline: "6 reasons knowing what to do isn't the same as doing it",
+    emotionBeat:
+      "she hesitates with her hand hovering mid-air, then lowers it slowly and meets the camera with a caught-in-the-act knowing look",
     style: "hook",
     lane: "stillLife",
     reasons: [
@@ -139,6 +161,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "advice-you-give-but-wont-take",
     headline: "Top 5 things you'd tell a friend but refuse to do yourself",
+    emotionBeat:
+      "she wags a finger as if giving advice, then catches herself, hand dropping as she gives the camera a guilty, warm smile",
     style: "listicle",
     lane: "paperDiorama",
     reasons: [
@@ -152,6 +176,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "things-you-keep-postponing",
     headline: "6 things you've been putting off (start with number 1)",
+    emotionBeat:
+      "she glances at something off-frame, winces slightly, and turns back to camera with an avoidant, sheepish half-smile",
     style: "listicle",
     lane: "risograph",
     reasons: [
@@ -168,6 +194,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "planning-vs-doing",
     headline: "5 signs your planning habit is actually holding you back",
+    emotionBeat:
+      "she stops mid-gesture as if setting a plan aside, exhales slowly, and lifts a self-aware eyebrow at the camera",
     style: "listicle",
     lane: "flatGraphic",
     reasons: [
@@ -181,6 +209,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "productivity-trap",
     headline: "6 productivity traps that are keeping you stuck",
+    emotionBeat:
+      "her busy hands gradually still, she exhales and loosens her shoulders, giving the camera a look of dawning relief",
     style: "listicle",
     lane: "claymation",
     reasons: [
@@ -195,6 +225,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "goals-that-dont-stick",
     headline: "5 reasons your goals never survive past February",
+    emotionBeat:
+      "she deflates slightly with a sigh, then softens into an honest, forgiving smile at the camera",
     style: "listicle",
     lane: "cinematicReal",
     reasons: [
@@ -210,6 +242,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-journaling-never-worked",
     headline: "6 reasons journaling never worked for you",
+    emotionBeat:
+      "she shakes her head slowly with a been-there smile, shrugging lightly as tension visibly leaves her shoulders",
     style: "listicle",
     lane: "toon3d",
     reasons: [
@@ -224,6 +258,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "voice-vs-writing",
     headline: "5 reasons talking beats writing every time",
+    emotionBeat:
+      "her face lights up as she starts speaking mid-gesture, hands opening expressively, warm and animated toward camera",
     style: "listicle",
     lane: "stillLife",
     reasons: [
@@ -237,6 +273,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "what-journaling-misses",
     headline: "6 things your journal will never do for you",
+    emotionBeat:
+      "she tilts her head skeptically, then gives a knowing look to camera with a slow one-shoulder shrug",
     style: "listicle",
     lane: "paperDiorama",
     reasons: [
@@ -253,6 +291,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "questions-you-avoid",
     headline: "5 questions you've been avoiding asking yourself",
+    emotionBeat:
+      "her gaze drifts far away in thought, breath catching, before she slowly returns to camera, vulnerable and open",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -266,6 +306,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "3am-thoughts",
     headline: "6 reasons your 3am thoughts won't leave you alone",
+    emotionBeat:
+      "she stares into the distance, restless, blinking slowly, then turns to camera with quiet, wide-awake honesty",
     style: "hook",
     lane: "cinematicReal",
     reasons: [
@@ -280,6 +322,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "mirror-not-coach",
     headline: "Top 5 reasons you need a mirror, not a coach",
+    emotionBeat:
+      "she straightens gently and meets the camera dead-on, chin lifting with calm self-recognition and a slow steadying breath",
     style: "hook",
     lane: "claymation",
     reasons: [
@@ -295,6 +339,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "emotional-labour-tax",
     headline: "6 emotional labor taxes you pay every single day",
+    emotionBeat:
+      "her practiced smile fades into a tired real expression as her shoulders finally drop, eyes meeting camera honestly",
     style: "listicle",
     lane: "flatGraphic",
     reasons: [
@@ -309,6 +355,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-you-feel-touched-out",
     headline: "5 reasons you feel completely touched out",
+    emotionBeat:
+      "she wraps her arms around herself protectively and exhales, closing her eyes for a beat before a depleted glance at camera",
     style: "hook",
     lane: "toon3d",
     reasons: [
@@ -324,6 +372,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "who-are-you-outside-roles",
     headline: "6 signs you've completely lost yourself inside your roles",
+    emotionBeat:
+      "she looks down at herself as if seeing a stranger, then up to camera with searching, quietly curious eyes",
     style: "listicle",
     lane: "stillLife",
     reasons: [
@@ -338,6 +388,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "growth-looks-different-at-40",
     headline: "5 ways growth looks totally different after 40",
+    emotionBeat:
+      "she relaxes into a slow, settled smile, shoulders easing down, a calm contented breath toward camera",
     style: "listicle",
     lane: "paperDiorama",
     reasons: [
@@ -351,6 +403,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "permission-to-change",
     headline: "6 things you have full permission to change right now",
+    emotionBeat:
+      "she lifts her chin and releases a held breath, posture opening with relief, a liberated soft smile to camera",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -367,6 +421,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "why-you-shut-down",
     headline: "5 reasons you shut down instead of speaking up",
+    emotionBeat:
+      "she starts to speak, stops, lips pressing together as she looks down, then a guarded glance back to camera",
     style: "hook",
     lane: "cinematicReal",
     reasons: [
@@ -380,6 +436,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "things-your-partner-doesnt-see",
     headline: "6 things your partner doesn't see (but should)",
+    emotionBeat:
+      "she gestures subtly at the unseen work around her, then gives the camera a tired, conspiratorial 'you see it, right?' look",
     style: "hook",
     lane: "claymation",
     reasons: [
@@ -396,6 +454,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "self-care-isnt-candles",
     headline: "Top 5 things that are actually self-care (not bath bombs)",
+    emotionBeat:
+      "she waves a dismissive hand with a wry smirk, then settles into a real, grounded smile at camera as her posture opens",
     style: "hook",
     lane: "flatGraphic",
     reasons: [
@@ -409,6 +469,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "toxic-positivity",
     headline: "6 ways toxic positivity is secretly gaslighting you",
+    emotionBeat:
+      "her forced grin drops deliberately into a real, level expression, one eyebrow raised knowingly at the camera",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -425,6 +487,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "ways-to-decompress",
     headline: "Top 5 ways to decompress when you're overwhelmed",
+    emotionBeat:
+      "she rolls her shoulders back and exhales long and slow, visible relief washing over her face, softening toward camera",
     style: "hook",
     lane: "toon3d",
     reasons: [
@@ -440,6 +504,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-youre-burnt-out",
     headline: "7 signs you're actually burnt out, not just tired",
+    emotionBeat:
+      "she rubs her temple slowly, eyes heavy, then gives the camera a flat, exhausted look of recognition",
     style: "listicle",
     lane: "claymation",
     reasons: [
@@ -455,6 +521,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-you-need-boundaries",
     headline: "6 signs you desperately need better boundaries",
+    emotionBeat:
+      "she holds up a gentle hand as if to say 'enough', exhaling as her posture firms, steady eyes on camera",
     style: "listicle",
     lane: "flatGraphic",
     reasons: [
@@ -469,6 +537,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-youre-people-pleasing",
     headline: "5 signs you're a people pleaser (and it's costing you)",
+    emotionBeat:
+      "she nods along agreeably, catches herself mid-nod, and freezes with a self-aware wince toward camera",
     style: "hook",
     lane: "paperDiorama",
     reasons: [
@@ -482,6 +552,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-youre-emotionally-exhausted",
     headline: "6 signs you're emotionally exhausted (not lazy)",
+    emotionBeat:
+      "she slumps softly, letting her head rest to one side with a long blink, then a drained honest gaze at camera",
     style: "hook",
     lane: "toon3d",
     reasons: [
@@ -496,6 +568,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-you-need-to-talk",
     headline: "5 signs you need to talk it out, not think it out",
+    emotionBeat:
+      "she presses a hand to her chest, takes a breath as if about to finally say it, lips parting toward camera",
     style: "hook",
     lane: "risograph",
     reasons: [
@@ -509,6 +583,8 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   {
     slug: "signs-youre-healing",
     headline: "6 quiet signs you're actually healing",
+    emotionBeat:
+      "a slow genuine smile spreads as she exhales, shoulders settling with ease, warm quiet pride toward camera",
     style: "listicle",
     lane: "claymation",
     reasons: [

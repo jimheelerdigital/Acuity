@@ -163,6 +163,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, imageUrl: newUrl, overlayText: newText });
     }
 
+    case "animate-cover": {
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      // Clear any existing video first so the Inngest function's
+      // "already animated" guard doesn't skip a manual re-animate.
+      await prisma.carouselSlide.updateMany({
+        where: { carouselPostId: postId, kind: "COVER" },
+        data: { videoUrl: null },
+      });
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "content-factory/cover.animate",
+        data: { postId },
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
     case "resend-email": {
       if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
       const { sendCarouselEmail } = await import("@/lib/content-factory/email");

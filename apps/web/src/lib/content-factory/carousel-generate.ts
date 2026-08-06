@@ -91,12 +91,19 @@ export async function generateCarousel(
     overlayText: string;
     imagePrompt: string;
     imageUrl: string;
+    rawImageUrl?: string;
   }[] = [];
 
-  // COVER slide (slide 0) — uses the headline
+  // COVER slide (slide 0) — uses the headline.
+  // The raw (text-free) image is uploaded too: it's the start frame for the
+  // animated cover video (composed cover = end frame).
   const coverPrompt = buildImagePrompt(lanePrefix, topic.headline, topic);
   const coverBuffer = await generateImage(coverPrompt);
   totalCostCents += estimateImageCost();
+  const coverRawUrl = await uploadImage(
+    coverBuffer,
+    `carousels/${dateStr}/${topicSlug}/slide-0-cover-raw.jpg`
+  );
   const coverComposed = await composeSlide(coverBuffer, topic.headline, "COVER");
   const coverUrl = await uploadImage(
     coverComposed,
@@ -108,6 +115,7 @@ export async function generateCarousel(
     overlayText: topic.headline,
     imagePrompt: coverPrompt,
     imageUrl: coverUrl,
+    rawImageUrl: coverRawUrl,
   });
 
   // REASON slides (1..N)
@@ -164,6 +172,7 @@ export async function generateCarousel(
           overlayText: s.overlayText,
           imagePrompt: s.imagePrompt,
           imageUrl: s.imageUrl,
+          rawImageUrl: s.rawImageUrl,
         })),
       },
     },
@@ -225,6 +234,19 @@ function estimateImageCost(): number {
   return 8; // 8 cents per image
 }
 
+/** Minimal topic for slides whose post's topicSlug isn't in CAROUSEL_TOPICS (e.g. AI-generated topics). */
+function fallbackTopic(headline: string, slug: string): CarouselTopic {
+  return {
+    headline,
+    slug,
+    style: "hook",
+    lane: "cinematicReal",
+    reasons: [],
+    emotionBeat:
+      "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera",
+  };
+}
+
 export function extractHashtags(caption: string): string[] {
   return (caption.match(/#\w+/g) ?? []).map((h) => h.toLowerCase());
 }
@@ -257,7 +279,7 @@ export async function regenerateSlide(slideId: string): Promise<string> {
   const rawBuffer = await generateImage(slide.imagePrompt || buildImagePrompt(
     lanePrefix,
     slide.overlayText,
-    topic ?? { headline: slide.carouselPost.headline, slug: slide.carouselPost.topicSlug, lane: "cinematicReal", reasons: [] },
+    topic ?? fallbackTopic(slide.carouselPost.headline, slide.carouselPost.topicSlug),
   ));
   const slideNum = slide.kind === "REASON" ? slide.order : undefined;
   const composed = await composeSlide(rawBuffer, slide.overlayText, slide.kind as "COVER" | "REASON", slideNum);
@@ -265,7 +287,23 @@ export async function regenerateSlide(slideId: string): Promise<string> {
     composed,
     `carousels/regen/${slide.carouselPostId}/${slideId}.jpg`
   );
-  await prisma.carouselSlide.update({ where: { id: slideId }, data: { imageUrl: url } });
+
+  // COVER: keep the new raw image for animation, and clear any existing
+  // video — it was rendered from the old image and is now stale.
+  let rawImageUrl: string | undefined;
+  if (slide.kind === "COVER") {
+    rawImageUrl = await uploadImage(
+      rawBuffer,
+      `carousels/regen/${slide.carouselPostId}/${slideId}-raw.jpg`
+    );
+  }
+  await prisma.carouselSlide.update({
+    where: { id: slideId },
+    data: {
+      imageUrl: url,
+      ...(slide.kind === "COVER" ? { rawImageUrl, videoUrl: null } : {}),
+    },
+  });
 
   console.log(`[carousel] Regenerated slide ${slideId}, ~$0.08 cost`);
   return url;
@@ -285,6 +323,7 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
   });
 
   let composed: Buffer;
+  let rawBuffer: Buffer | null = null;
 
   if (slide.kind === "CTA") {
     composed = await composeCTASlide(newText);
@@ -297,9 +336,9 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     const prompt = slide.imagePrompt || buildImagePrompt(
       lanePrefix,
       newText,
-      topic ?? { headline: slide.carouselPost.headline, slug: slide.carouselPost.topicSlug, lane: "cinematicReal", reasons: [] },
+      topic ?? fallbackTopic(slide.carouselPost.headline, slide.carouselPost.topicSlug),
     );
-    const rawBuffer = await generateImage(prompt);
+    rawBuffer = await generateImage(prompt);
     const slideNum = slide.kind === "REASON" ? slide.order : undefined;
     composed = await composeSlide(rawBuffer, newText, slide.kind as "COVER" | "REASON", slideNum);
   }
@@ -309,9 +348,22 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     `carousels/edit/${slide.carouselPostId}/${slideId}.jpg`
   );
 
+  // COVER: keep the new raw image for animation, clear the now-stale video.
+  let rawImageUrl: string | undefined;
+  if (slide.kind === "COVER" && rawBuffer) {
+    rawImageUrl = await uploadImage(
+      rawBuffer,
+      `carousels/edit/${slide.carouselPostId}/${slideId}-raw.jpg`
+    );
+  }
+
   await prisma.carouselSlide.update({
     where: { id: slideId },
-    data: { overlayText: newText, imageUrl: url },
+    data: {
+      overlayText: newText,
+      imageUrl: url,
+      ...(slide.kind === "COVER" ? { rawImageUrl, videoUrl: null } : {}),
+    },
   });
 
   console.log(`[carousel] Recomposed slide ${slideId} with new text`);

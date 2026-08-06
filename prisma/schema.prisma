@@ -1391,6 +1391,8 @@ model CarouselSlide {
   overlayText    String
   imagePrompt    String        @db.Text
   imageUrl       String        // Supabase Storage public URL (composed JPEG with text overlay)
+  rawImageUrl    String?       // COVER only: pre-compose image without text (video start frame)
+  videoUrl       String?       // COVER only: Higgsfield animated cover MP4 (Supabase Storage URL)
   createdAt      DateTime      @default(now())
 
   @@index([carouselPostId, order])

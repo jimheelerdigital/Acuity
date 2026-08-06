@@ -11,6 +11,7 @@ interface Slide {
   overlayText: string;
   imagePrompt: string;
   imageUrl: string;
+  videoUrl: string | null;
 }
 
 interface CarouselPost {
@@ -216,6 +217,7 @@ export default function CarouselReviewPage() {
           onCancelEdit={() => setEditSlide(null)}
           onSaveEdit={(slideId, newText) => doAction("edit-text", { slideId, newText })}
           onEditChange={(text) => setEditSlide((prev) => prev ? { ...prev, text } : null)}
+          onAnimate={() => doAction("animate-cover", { postId: selectedPost.id })}
         />
 
         {/* ── Caption preview ────────────────────────────────────────── */}
@@ -480,12 +482,17 @@ export default function CarouselReviewPage() {
                     >
                       {/* Cover thumbnail */}
                       {post.slides[0] && (
-                        <div className="h-14 w-10 shrink-0 overflow-hidden rounded-acuity-sm">
+                        <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-acuity-sm">
                           <img
                             src={post.slides[0].imageUrl}
                             alt=""
                             className="h-full w-full object-cover"
                           />
+                          {post.slides[0].videoUrl && (
+                            <span className="absolute right-0.5 top-0.5 rounded-acuity-pill bg-acuity-primary/80 px-1 text-[8px] font-mono font-bold text-white">
+                              ▶
+                            </span>
+                          )}
                         </div>
                       )}
 
@@ -559,6 +566,7 @@ function SlideStrip({
   onCancelEdit,
   onSaveEdit,
   onEditChange,
+  onAnimate,
 }: {
   slides: Slide[];
   busy: string | null;
@@ -568,6 +576,7 @@ function SlideStrip({
   onCancelEdit: () => void;
   onSaveEdit: (slideId: string, newText: string) => void;
   onEditChange: (text: string) => void;
+  onAnimate: () => void;
 }) {
   const stripRef = useRef<HTMLDivElement>(null);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -597,12 +606,24 @@ function SlideStrip({
             className="w-full shrink-0 snap-center px-4 flex justify-center"
           >
             <div className="relative overflow-hidden rounded-acuity-lg max-w-[400px] w-full">
-              <img
-                src={slide.imageUrl}
-                alt={slide.overlayText}
-                className="w-full h-auto"
-                draggable={false}
-              />
+              {slide.videoUrl ? (
+                <video
+                  src={slide.videoUrl}
+                  poster={slide.imageUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-auto"
+                />
+              ) : (
+                <img
+                  src={slide.imageUrl}
+                  alt={slide.overlayText}
+                  className="w-full h-auto"
+                  draggable={false}
+                />
+              )}
               {/* Slide label */}
               <div className="absolute left-2 top-2 flex gap-1">
                 <span className="rounded-acuity-pill bg-black/50 px-2 py-0.5 text-[9px] font-mono font-bold uppercase text-white/90">
@@ -611,11 +632,29 @@ function SlideStrip({
                 <span className="rounded-acuity-pill bg-black/50 px-2 py-0.5 text-[9px] font-mono text-white/70">
                   {slide.order + 1}/{slides.length}
                 </span>
+                {slide.videoUrl && (
+                  <span className="rounded-acuity-pill bg-acuity-primary/80 px-2 py-0.5 text-[9px] font-mono font-bold uppercase text-white">
+                    ▶ Animated
+                  </span>
+                )}
               </div>
 
               {/* Per-slide actions */}
               {slide.kind !== "CTA" && (
                 <div className="absolute bottom-2 right-2 flex gap-1">
+                  {slide.kind === "COVER" && (
+                    <button
+                      onClick={onAnimate}
+                      disabled={busy?.startsWith("animate-cover") ?? false}
+                      className="min-h-[36px] rounded-acuity-pill bg-black/50 px-3 text-[10px] font-medium text-white/90 active:bg-black/70 disabled:opacity-50"
+                    >
+                      {busy?.startsWith("animate-cover")
+                        ? "Queued…"
+                        : slide.videoUrl
+                          ? "Re-animate"
+                          : "Animate"}
+                    </button>
+                  )}
                   <button
                     onClick={() => onStartEdit(slide)}
                     className="min-h-[36px] rounded-acuity-pill bg-black/50 px-3 text-[10px] font-medium text-white/90 active:bg-black/70"

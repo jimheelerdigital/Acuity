@@ -52,6 +52,17 @@ export async function GET(req: NextRequest) {
       const buf = Buffer.from(await res.arrayBuffer());
       const num = String(slide.order + 1).padStart(2, "0");
       zip.file(`${num}-${slide.kind.toLowerCase()}.jpg`, buf);
+
+      // Animated cover video (post as the first slide on Instagram)
+      if (slide.videoUrl) {
+        const vidRes = await fetch(slide.videoUrl);
+        if (vidRes.ok) {
+          const vidBuf = Buffer.from(await vidRes.arrayBuffer());
+          zip.file(`${num}-${slide.kind.toLowerCase()}.mp4`, vidBuf);
+        } else {
+          console.warn(`[carousel-download] Failed to fetch video for slide ${slide.id}: ${vidRes.status}`);
+        }
+      }
     } catch (err) {
       console.warn(`[carousel-download] Error fetching slide ${slide.id}:`, err);
     }

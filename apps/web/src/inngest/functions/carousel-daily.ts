@@ -85,6 +85,12 @@ export const carouselDailyCronFn = inngest.createFunction(
       };
       const prompt = buildImagePrompt(lanePrefix, topicData.headline, topic, colorScheme.prompt);
       const rawBuffer = await generateImage(prompt);
+      // Upload the text-free raw image too — it's the START frame for the
+      // animated cover video (the composed cover is the END frame).
+      const rawImageUrl = await uploadImage(
+        rawBuffer,
+        `carousels/${dateStr}/${slug}/slide-0-cover-raw.jpg`
+      );
       const composed = await composeSlide(
         rawBuffer,
         topicData.headline,
@@ -96,6 +102,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       );
       return {
         imageUrl,
+        rawImageUrl,
         overlayText: topicData.headline,
         imagePrompt: prompt,
       };
@@ -176,6 +183,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           overlayText: coverSlide.overlayText,
           imagePrompt: coverSlide.imagePrompt,
           imageUrl: coverSlide.imageUrl,
+          rawImageUrl: coverSlide.rawImageUrl,
         },
         ...reasonSlides.map((s, i) => ({
           order: i + 1,
@@ -217,6 +225,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               overlayText: s.overlayText,
               imagePrompt: s.imagePrompt,
               imageUrl: s.imageUrl,
+              rawImageUrl: "rawImageUrl" in s ? s.rawImageUrl : undefined,
             })),
           },
         },
@@ -238,6 +247,23 @@ export const carouselDailyCronFn = inngest.createFunction(
         slideCount: allSlides.length,
         estimatedCostCents: (allSlides.length - 1) * 8 + 2, // images + Claude call
       };
+    });
+
+    // ── Step N+3: fan out cover animation ────────────────────────
+    // Runs in a separate Inngest function so the 3-6 min Higgsfield video
+    // render never blocks or times out this cron. Failure there degrades
+    // gracefully to the static cover.
+    await step.run("enqueue-cover-animation", async () => {
+      try {
+        await inngest.send({
+          name: "content-factory/cover.animate",
+          data: { postId: result.postId },
+        });
+      } catch (animateErr) {
+        logger.error(
+          `[carousel-cron] Failed to enqueue cover animation for ${slug}: ${animateErr instanceof Error ? animateErr.message : animateErr}`
+        );
+      }
     });
 
     logger.info(
