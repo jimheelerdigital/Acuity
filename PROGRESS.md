@@ -111,6 +111,42 @@ Two workflow fixes so syncing the project stops getting stuck. First: because yo
 - `union` merge is not perfectly chronological: when two entries are added in the same sync, both survive but their order may be arbitrary — reorder by hand if it ever matters. Rationale documented inline in `.gitattributes`.
 - Pushed to origin/main alongside the 3 previously-held security-cleanup commits (positioning copy fix, auth CVE patch, and its log entry) once Keenan gave the go-ahead.
 - Considered the more robust fix of splitting PROGRESS.md into per-date files (conflicts vanish entirely) but deferred it — too much churn against CLAUDE.md's single-file convention. The alias `;` is the symptom fix; `.gitattributes` is the root-cause fix.
+## [2026-08-05] — Content Factory: animated carousel covers via Higgsfield
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ec85a524
+
+### In plain English (for Keenan)
+The first slide of each carousel can now be a short video instead of a static image. The scene opens alive (the woman moves and performs an emotion that matches the post — a tired shrug for invisible-labour posts, a relieved exhale for decompression posts, etc.), the headline text flows onto the screen, and the video ends on the exact same cover image as before. This makes the carousel far more scroll-stopping on Instagram, where the first slide can be a video. Each of the 35 topics has its own hand-written "emotion beat" so the motion always matches the feeling of the post. Covers are animated automatically after the daily generation run, and there's an "Animate" / "Re-animate" button on every cover in the admin queue. The ZIP download now includes the MP4. Recipe and prompt were validated manually in Higgsfield before building (~8.75 credits ≈ one cover video; ~44 credits/day for 5 carousels).
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma`: `CarouselSlide` gains `rawImageUrl String?` (text-free cover, video start frame) and `videoUrl String?` (final MP4 in Supabase)
+- `apps/web/src/lib/content-factory/animate-cover.ts` (new): Higgsfield platform API client — `submitCoverVideo` (POST `platform.higgsfield.ai/{model}` with `image_url` start frame + `end_image_url` composed cover, 5s, 9:16, pro, no sound), `checkCoverVideo` (GET `/requests/{id}/status`), `storeCoverVideo` (download MP4 → Supabase `content-factory` bucket → persist `videoUrl`), `buildCoverVideoPrompt` (validated take-4 template + per-topic emotionBeat)
+- `apps/web/src/lib/content-factory/topics.ts`: `emotionBeat: string` added to `CarouselTopic` + written for all 35 topics
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: cover's raw (pre-compose) image now uploaded as `slide-0-cover-raw.jpg` and persisted as `rawImageUrl`; `regenerateSlide`/`recomposeSlide` on COVER re-upload the raw image and null out `videoUrl` (stale video); shared `fallbackTopic()` helper
+- `apps/web/src/inngest/functions/carousel-animate-cover.ts` (new): event-driven fn on `content-factory/cover.animate`, concurrency 2. Steps: submit → sleep 2m → poll every 30s (max 12) → store. Every failure path returns gracefully — carousel keeps its static cover
+- `apps/web/src/inngest/functions/carousel-daily.ts`: sends `content-factory/cover.animate` per generated post (own try/catch)
+- `apps/web/src/app/api/inngest/route.ts`: registered `carouselAnimateCoverFn`
+- `apps/web/src/app/api/admin/carousels/route.ts`: new `animate-cover` action (clears `videoUrl`, sends the event)
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: cover renders `<video autoplay loop muted playsinline>` when `videoUrl` exists (poster = static cover), "▶ Animated" badge, Animate/Re-animate buttons in review strip + library card
+- `apps/web/src/app/api/admin/carousels/download/route.ts`: ZIP includes `01-cover.mp4` when animated
+
+### Manual steps needed
+- [ ] Run `npx prisma db push` from home network (Keenan) — adds `rawImageUrl` + `videoUrl` to CarouselSlide
+- [ ] Create a Higgsfield API key pair at cloud.higgsfield.ai and add `HIGGSFIELD_API_KEY` + `HIGGSFIELD_API_SECRET` to Vercel (Keenan)
+- [ ] Find the Kling 3.0 image-to-video model path in the cloud.higgsfield.ai model gallery and set it as `HIGGSFIELD_VIDEO_MODEL` in Vercel (Keenan — until this is set, animation is skipped and carousels stay static). The only publicly documented fallback is `kling-video/v2.1/pro/image-to-video`, but verify it accepts `end_image_url` before using it — the end frame is what makes the text-flow effect work
+- [ ] Top up Higgsfield credits (Keenan — ~44 credits/day at 5 covers)
+- [ ] Vercel redeploy after env vars are added
+
+### Notes
+- The recipe was A/B'd manually in Higgsfield first (4 takes on the 2026-08-05 "things no one sees" cover). Winner: text-free start frame + composed end frame + one continuous "smooth/flowy" camera push + per-topic character emotion. Animating the composed cover directly (text present from frame 0) can't produce the text-flow effect
+- Kling renders take 3-6 min, so animation runs in a separate event-driven Inngest function with `step.sleep` between polls — never inside the daily cron, which already runs close to the 300s Vercel ceiling
+- Higgsfield end-frame-only submissions fail (validated during manual testing) — both start and end frames are required
+- Emails still go out immediately after generation, before the video finishes rendering. The video appears in the admin queue a few minutes later on refresh; the ZIP always has the latest state. If we want the MP4 in the email later, delay the email until after animation or send a follow-up
+- The Inngest fn skips posts whose cover predates this change (no `rawImageUrl`) and posts already animated — safe to re-fire the event
+- Cover regeneration or text edit invalidates the video (it renders the old image/text), so both actions clear `videoUrl`; re-animate from the admin UI afterwards
+- TikTok photo-mode carousels cannot include a video slide — the animated cover is for Instagram carousels (video + images mix). Platform API auth format: `Authorization: Key {key}:{secret}`
 
 ## [2026-08-02] — Content Factory: email delivery of completed carousels via Resend
 
@@ -9473,7 +9509,7 @@ The admin Users tab now shows where each user came from. A new "Source" column i
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** ec85a524
 
 ### In plain English (for Keenan)
 
@@ -9500,7 +9536,7 @@ Replaced raw image tags with Next.js optimized images across landing pages and t
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** ec85a524
 
 ### In plain English (for Keenan)
 
@@ -9531,7 +9567,7 @@ The AdLab auto-kill and auto-scale rules have been completely rebuilt for the va
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** ec85a524
 
 ### In plain English (for Keenan)
 
@@ -9665,7 +9701,7 @@ AdLab was showing 0 conversions for all experiments because it was looking for "
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** ec85a524
 
 ### In plain English (for Keenan)
 
@@ -10029,7 +10065,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** ec85a524
 
 ### In plain English (for Keenan)
 
@@ -10246,7 +10282,7 @@ The entire admin dashboard now starts fresh from today. All the garbage data fro
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** ec85a524
 
 ### In plain English (for Keenan)
 
