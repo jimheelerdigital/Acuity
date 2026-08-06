@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-08-05] — Cover animation prompt rewritten for visible motion
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d4f486a6
+
+### In plain English (for Keenan)
+The first animated cover barely moved — the character only blinked. The instructions we send to the video AI now explicitly demand big, visible motion: a full gesture from the character, steam/candle/plant movement in the scene, a noticeable camera push-in, and the headline sweeping on with energy.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: buildCoverVideoPrompt v2 — dropped the "slow, elegant, no sudden movements" language (DoP interpreted it as near-static), added explicit demands for character gesture, ambient motion, dolly-in, energetic text-on; end-frame lock and no-warping guards kept
+
+### Manual steps needed
+- [ ] Re-animate a cover after deploy to judge v2 motion quality (Keenan)
+
+### Notes
+- First live render cost 18 credits (500 → 482), ~6.3MB MP4, render time >8 min. At 18/video, 500 credits ≈ 27 videos ≈ 5.5 days at 5 covers/day — cost/schedule decision pending.
+- enhance_prompt stays false so Higgsfield can't rewrite the template.
+
 ## [2026-08-05] — Cover animation now waits up to 20 minutes before giving up
 
 **Requested by:** Keenan
