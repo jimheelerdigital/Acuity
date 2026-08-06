@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-06] — Entitlement audit: PAST_DUE cleanup + drift monitor (read-only)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (branch feat/entitlement-drift-monitor — pending review/deploy)
+
+### In plain English (for Keenan)
+Two customers were stuck showing as "payment overdue" forever. We checked Stripe directly: both are annual subscribers whose card failed on the very first charge back in June, Stripe retried 9 times, and neither ever paid a cent — so they correctly have no subscription. We cleaned up their records to plain free-tier (no access change; they were already free-tier). No payment was missed. Separately, we built a daily automated "drift monitor" that once a day re-checks every paying subscriber against Apple/Google/Stripe and emails us if our database ever disagrees with what the store says — so a case like emily's (paid but shown as free) gets caught within a day instead of by luck. The monitor only watches and alerts; it changes nothing. A companion job that auto-fixes the drift is designed and coming next.
+
+### Technical changes (for Jimmy)
+- **Live prod data change (done):** `l.connolly1988@gmail.com` + `kayleighxaviagray@gmail.com` — Stripe sub.status = `unpaid`, latest invoice `uncollectible`, 9 attempts, $0 paid → set `subscriptionStatus` PAST_DUE→**FREE**, cleared `stripeFirstFailureAt` + stale `stripeCurrentPeriodEnd` (2027-06-11). Single UPDATE via Supabase, 2026-08-06 13:49 UTC. No AdminAuditLog row — recorded here.
+- **Drift MONITOR (item 3), on branch, NOT deployed:**
+  - `apps/web/src/lib/entitlement-drift.ts` — `classifyDrift` (pure: SEV1 access-denied-but-paid / SEV2 revenue-leak / SEV3 stale-PAST_DUE) + `resolveProviderActive` (dispatches to Stripe/Apple/Google readers, READ-ONLY, fail-open on API error).
+  - `apps/web/src/lib/apple-iap.ts` — new `fetchAppleSubscriptionStatus` (Get All Subscription Statuses endpoint; active = status 1 or 4).
+  - `apps/web/src/inngest/functions/entitlement-drift-monitor.ts` — daily cron (05:00 UTC), pages PRO/PAST_DUE users, batched provider reads, founder Slack+email alert. Writes nothing.
+  - registered in `apps/web/src/app/api/inngest/route.ts`.
+  - `entitlement-drift.test.ts` — 4 tests on classifyDrift. Typecheck clean.
+
+### Manual steps needed
+- [ ] Jimmy: review + approve the drift-monitor branch → deploy (server-only) → confirm the Inngest cron registers (GET /api/inngest resync).
+- [ ] Jimmy: approve building the self-healing RECONCILER (item 2) — reuses `resolveProviderActive` + `classifyDrift` to CORRECT drift, observe-only behind a flag first.
+
+### Notes
+- Reconciliation verdict: no recovery was missed in the 36h webhook gap (Stripe confirms $0 paid). The gap likely caused the missed `past_due→unpaid→FREE` transition, leaving both stuck at PAST_DUE.
+- Monitor reuses the stripe-webhook-health Slack+Resend founder-alert infra. Provider reads can only exercise live in prod (Apple creds are Vercel-Sensitive); the pure classifier is unit-tested.
+
 ## [2026-08-06] — Animation prompts v4: hyper-specific motion for every element
 
 **Requested by:** Keenan

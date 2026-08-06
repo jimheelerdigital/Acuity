@@ -44,6 +44,7 @@ import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly"
 import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twice-daily";
 import { commitExtractionBackstopFn } from "@/inngest/functions/commit-extraction-backstop";
 import { stripeWebhookHealthFn } from "@/inngest/functions/stripe-webhook-health";
+import { entitlementDriftMonitorFn } from "@/inngest/functions/entitlement-drift-monitor";
 import { generateInsightsCronFn } from "@/inngest/functions/generate-insights-cron";
 import { carouselDailyCronFn } from "@/inngest/functions/carousel-daily";
 import { carouselGenerateOneOffFn } from "@/inngest/functions/carousel-one-off";
@@ -82,6 +83,7 @@ const handler = serve({
     stateOfMeAutoTickFn,
     trialEmailOrchestratorFn,
     trialExpirationCronFn,
+    entitlementDriftMonitorFn,
     trialCountdownEmailsCronFn,
     trialCountdownPushCronFn,
     calendarSyncCronFn,

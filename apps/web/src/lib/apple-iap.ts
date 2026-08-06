@@ -309,6 +309,96 @@ export async function fetchTransactionInfo(
   return prod;
 }
 
+// ─── Subscription status (source of truth for the drift monitor) ──────
+//
+// Apple's "Get All Subscription Statuses" (GET /inApps/v1/subscriptions/{id})
+// returns the CURRENT lifecycle status per subscription — authoritative for
+// active-vs-expired-vs-revoked, unlike a single transaction's expiresDate.
+//   status: 1=Active 2=Expired 3=BillingRetry 4=GracePeriod 5=Revoked
+// Active entitlement = 1 (Active) or 4 (Grace). Read-only.
+
+const APPLE_SUB_STATUS_LABEL: Record<number, string> = {
+  1: "ACTIVE",
+  2: "EXPIRED",
+  3: "BILLING_RETRY",
+  4: "GRACE_PERIOD",
+  5: "REVOKED",
+};
+
+export type AppleSubscriptionStatusResult =
+  | { ok: true; active: boolean; status: number; statusLabel: string }
+  | { ok: false; code: FetchTransactionFailure["code"]; diagnostic: string };
+
+export async function fetchAppleSubscriptionStatus(
+  originalTransactionId: string,
+  config: AppleApiJwtConfig,
+  fetchImpl: typeof fetch = fetch
+): Promise<AppleSubscriptionStatusResult> {
+  const jwt = await signAppStoreConnectJwt(config);
+
+  const tryEnv = async (
+    env: AppleEnvironment
+  ): Promise<AppleSubscriptionStatusResult> => {
+    const url = `https://${APPLE_API_HOST[env]}/inApps/v1/subscriptions/${encodeURIComponent(originalTransactionId)}`;
+    let res: Response;
+    try {
+      res = await fetchImpl(url, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        code: "APPLE_HTTP_ERROR",
+        diagnostic: `network error calling ${env}: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+    if (res.status === 401 || res.status === 403)
+      return { ok: false, code: "APPLE_AUTH_FAILED", diagnostic: `${env} ${res.status}` };
+    if (res.status === 404)
+      return { ok: false, code: "TRANSACTION_NOT_FOUND", diagnostic: `${env} 404` };
+    if (!res.ok)
+      return { ok: false, code: "APPLE_HTTP_ERROR", diagnostic: `${env} ${res.status}` };
+
+    let body: {
+      data?: Array<{
+        lastTransactions?: Array<{ originalTransactionId?: string; status?: number }>;
+      }>;
+    };
+    try {
+      body = await res.json();
+    } catch {
+      return { ok: false, code: "APPLE_HTTP_ERROR", diagnostic: `${env} non-JSON body` };
+    }
+    const txns = (body.data ?? []).flatMap((g) => g.lastTransactions ?? []);
+    const match =
+      txns.find((t) => t.originalTransactionId === originalTransactionId) ?? txns[0];
+    if (!match || typeof match.status !== "number")
+      return { ok: false, code: "APPLE_HTTP_ERROR", diagnostic: `${env} no lastTransactions` };
+    const status = match.status;
+    return {
+      ok: true,
+      active: status === 1 || status === 4,
+      status,
+      statusLabel: APPLE_SUB_STATUS_LABEL[status] ?? `UNKNOWN(${status})`,
+    };
+  };
+
+  // Same production-first, sandbox-on-404/401 fallback as fetchTransactionInfo.
+  const prod = await tryEnv("Production");
+  if (prod.ok) return prod;
+  if (prod.code === "TRANSACTION_NOT_FOUND" || prod.code === "APPLE_AUTH_FAILED") {
+    const sandbox = await tryEnv("Sandbox");
+    if (sandbox.ok) return sandbox;
+    return {
+      ok: false,
+      code: sandbox.code,
+      diagnostic: `Production: ${prod.diagnostic} | Sandbox: ${sandbox.diagnostic}`,
+    };
+  }
+  return prod;
+}
+
 // ─── JWS decode + chain validation ────────────────────────────
 //
 // Apple's signed payloads (transactions + notifications) are JWS
