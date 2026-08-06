@@ -1,18 +1,22 @@
 /**
  * Content Factory — animated cover generation via Higgsfield platform API.
  *
- * Recipe (validated manually 2026-08-05): image-to-video with the text-free
- * raw cover as the START frame and the composed cover (text baked in) as the
- * END frame. The scene opens alive, the character performs the topic's
- * emotionBeat, headline text flows on, and the video locks onto the exact
- * composed cover as its final frame. ~8.75 Higgsfield credits per cover
- * (Kling 3.0 pro, 5s, no sound).
+ * Recipe (validated manually 2026-08-05 with Kling 3.0 in the consumer app):
+ * image-to-video with the text-free raw cover as the START frame and the
+ * composed cover (text baked in) as the END frame. The scene opens alive,
+ * the character performs the topic's emotionBeat, headline text flows on,
+ * and the video locks onto the exact composed cover as its final frame.
+ *
+ * The platform API (cloud.higgsfield.ai) doesn't expose Kling, so production
+ * uses Higgsfield's own DoP first-last-frame model, which takes the same
+ * image_url/end_image_url fields. Auth is hf-api-key/hf-secret headers
+ * (per the playground cURL; NOT the Authorization header in older docs).
  *
  * Env:
  * - HIGGSFIELD_API_KEY / HIGGSFIELD_API_SECRET — from cloud.higgsfield.ai
- * - HIGGSFIELD_VIDEO_MODEL — model path for the POST endpoint, e.g. the
- *   Kling 3.0 image-to-video path from the cloud.higgsfield.ai model
- *   gallery. If unset, animation is skipped (carousels stay static).
+ * - HIGGSFIELD_VIDEO_MODEL — model path for the POST endpoint, e.g.
+ *   "higgsfield-ai/dop/standard/first-last-frame". If unset, animation is
+ *   skipped (carousels stay static).
  */
 
 import type { CarouselTopic } from "./topics";
@@ -31,8 +35,15 @@ export function higgsfieldConfigured(): boolean {
   );
 }
 
-function authHeader(): string {
-  return `Key ${process.env.HIGGSFIELD_API_KEY}:${process.env.HIGGSFIELD_API_SECRET}`;
+/**
+ * Auth headers per the cloud.higgsfield.ai playground cURL example
+ * (hf-api-key / hf-secret — NOT an Authorization header).
+ */
+function authHeaders(): Record<string, string> {
+  return {
+    "hf-api-key": process.env.HIGGSFIELD_API_KEY!,
+    "hf-secret": process.env.HIGGSFIELD_API_SECRET!,
+  };
 }
 
 /**
@@ -70,16 +81,16 @@ export async function submitCoverVideo(opts: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: authHeader(),
+      ...authHeaders(),
     },
     body: JSON.stringify({
+      // Body per the DoP first-last-frame playground cURL (2026-08-05).
       prompt: opts.prompt,
       image_url: opts.startImageUrl,
       end_image_url: opts.endImageUrl,
-      duration: 5,
-      aspect_ratio: "9:16",
-      mode: "pro",
-      sound: "off",
+      motions: [],
+      // Never let Higgsfield rewrite our validated prompt template.
+      enhance_prompt: false,
     }),
   });
 
@@ -106,7 +117,7 @@ export interface HiggsfieldStatus {
 /** Check a request's status once. */
 export async function checkCoverVideo(requestId: string): Promise<HiggsfieldStatus> {
   const res = await fetch(`${BASE_URL}/requests/${requestId}/status`, {
-    headers: { Authorization: authHeader() },
+    headers: authHeaders(),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

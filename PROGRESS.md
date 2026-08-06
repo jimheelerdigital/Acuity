@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-05] — Animated covers: switch to Higgsfield DoP model + fix API auth
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log — feat commit after 88dbfdb9)
+
+### In plain English (for Keenan)
+Wiring up the real video engine for animated carousel covers. Two discoveries during setup: (1) the Kling 3.0 engine we tested with only exists in Higgsfield's consumer app — their developer API offers their own "DoP (First last frame)" engine instead, which does the same start-frame → end-frame trick our recipe needs; (2) the developer API uses different login headers than we'd coded, so no request would ever have been accepted. Both fixed. Also: Higgsfield's developer API bills separately from app credits — Keenan bought 500 API credits (app credits don't transfer). First live animation will reveal the real per-video cost.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/animate-cover.ts`:
+  - Auth switched from `Authorization: Key {key}:{secret}` to `hf-api-key` + `hf-secret` headers (verified against the cloud.higgsfield.ai playground cURL — the Authorization format in older docs does not match the dashboard)
+  - Request body now matches DoP first-last-frame schema: `{ prompt, image_url, end_image_url, motions: [], enhance_prompt: false }` — dropped Kling-only `duration`/`aspect_ratio`/`mode`/`sound`
+  - `enhance_prompt: false` is deliberate: our take-4 prompt template is validated; don't let Higgsfield's rewriter touch it
+- `HIGGSFIELD_VIDEO_MODEL` is set to `higgsfield-ai/dop/standard/first-last-frame` in Vercel (Keenan, done)
+
+### Manual steps needed
+- [ ] Vercel redeploy to pick up the code change (Keenan — env vars already in place)
+- [ ] Live test: admin → carousels → open a post → Animate on the cover; then check cloud.higgsfield.ai Billing/Usage to see credits consumed per video (Keenan + Claude)
+
+### Notes
+- cloud.higgsfield.ai (platform API) and higgsfield.ai (consumer app) have **separate credit wallets**. Keenan's earlier app top-up cannot be spent via the API. API balance: 500 credits as of 2026-08-05.
+- The platform API model gallery only exposes Higgsfield's own models (DoP lite/standard/turbo ± first-last-frame, Popcorn, Soul) — no Kling/Veo/Sora. Any future model swap must come from that gallery, not the consumer app.
+- DoP field names conveniently match what we already sent for Kling (`image_url`, `end_image_url`), confirmed via playground cURL with fields filled. The playground cURL view only serializes non-empty fields — fill the form before copying.
+- Motion quality vs the approved Kling take 4 is unverified — eyeball the first DoP video before trusting the daily automation.
+
 ## [2026-08-05] — Stripe events were silently un-subscribing an Apple paying customer
 
 **Requested by:** Jimmy
