@@ -1,6 +1,47 @@
 import { describe, expect, it } from "vitest";
 
-import { entitlementsFor, type Entitlement } from "./entitlements";
+import {
+  entitlementsFor,
+  type Entitlement,
+  NOT_IAP_SOURCE_WHERE,
+  IAP_SUBSCRIPTION_SOURCES,
+} from "./entitlements";
+
+// ─── Cross-source demotion guard (Fix A / hardening sweep, 2026-08) ────────
+// Evaluate the NOT_IAP_SOURCE_WHERE Prisma fragment against a source value the
+// way Postgres would, so the centralized rule every non-IAP demoter shares
+// (Stripe webhook, trial-expiry cron) is unit-tested once here.
+function demotable(source: string | null): boolean {
+  return NOT_IAP_SOURCE_WHERE.OR.some((clause) => {
+    const c = (clause as { subscriptionSource?: unknown }).subscriptionSource;
+    if (c === null) return source === null;
+    if (c && typeof c === "object" && "notIn" in c) {
+      // SQL `NOT IN (...)` is NULL (excludes the row) for a NULL column.
+      const notIn = (c as { notIn: string[] }).notIn;
+      return source !== null && !notIn.includes(source);
+    }
+    return false;
+  });
+}
+
+describe("NOT_IAP_SOURCE_WHERE — cross-source demotion guard", () => {
+  it("protects apple and google_play from a non-IAP demoter", () => {
+    expect(demotable("apple")).toBe(false);
+    expect(demotable("google_play")).toBe(false);
+  });
+
+  it("still demotes stripe-source rows", () => {
+    expect(demotable("stripe")).toBe(true);
+  });
+
+  it("still demotes NULL-source rows (load-bearing: bare notIn would drop these)", () => {
+    expect(demotable(null)).toBe(true);
+  });
+
+  it("IAP_SUBSCRIPTION_SOURCES is exactly the two app stores", () => {
+    expect([...IAP_SUBSCRIPTION_SOURCES].sort()).toEqual(["apple", "google_play"]);
+  });
+});
 
 const NOW = new Date("2026-04-19T12:00:00Z");
 

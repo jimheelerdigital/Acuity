@@ -31,6 +31,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { NOT_IAP_SOURCE_WHERE } from "@/lib/entitlements";
 import { safeLog } from "@/lib/safe-log";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -56,6 +57,10 @@ export const trialExpirationCronFn = inngest.createFunction(
         subscriptionStatus: "TRIAL",
         trialEndsAt: { lt: cutoff },
         trialExpiredAt: null,
+        // Defense-in-depth: a TRIAL-status filter already excludes PRO IAP
+        // users, but never let this non-IAP demoter touch an apple/google_play
+        // row even in an anomalous TRIAL+IAP state. See NOT_IAP_SOURCE_WHERE.
+        ...NOT_IAP_SOURCE_WHERE,
       },
       select: { id: true, email: true, trialEndsAt: true },
     });
@@ -74,6 +79,7 @@ export const trialExpirationCronFn = inngest.createFunction(
         id: { in: expired.map((u) => u.id) },
         subscriptionStatus: "TRIAL",
         trialExpiredAt: null,
+        ...NOT_IAP_SOURCE_WHERE,
       },
       data: {
         subscriptionStatus: "FREE",

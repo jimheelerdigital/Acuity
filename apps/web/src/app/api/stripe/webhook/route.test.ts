@@ -211,6 +211,7 @@ vi.mock("@/lib/referrals", () => ({
 }));
 
 import { POST } from "./route";
+import { sendPaymentFailedEmail } from "@/emails/payment-failed";
 
 // ─── Harness ──────────────────────────────────────────────────────────────
 
@@ -270,6 +271,7 @@ beforeEach(() => {
   stripeEvents = [];
   onboardingEvents = [];
   evtSeq = 0;
+  vi.mocked(sendPaymentFailedEmail).mockClear();
   customersRetrieve.mockReset();
   customersRetrieve.mockResolvedValue({ id: "cus_1", email: null, metadata: {} });
   paymentIntentsRetrieve.mockReset();
@@ -436,19 +438,32 @@ describe("canceled-user guard", () => {
 describe("IAP-source clobber guard", () => {
   const seedThreeSources = () => {
     users = [
-      user({ id: "u_apple", subscriptionSource: "apple", subscriptionStatus: "PRO" }),
-      user({ id: "u_stripe", subscriptionSource: "stripe", subscriptionStatus: "PRO" }),
-      user({ id: "u_null", subscriptionSource: null, subscriptionStatus: "PRO" }),
+      user({ id: "u_apple", email: "apple@x.com", subscriptionSource: "apple", subscriptionStatus: "PRO" }),
+      user({ id: "u_stripe", email: "stripe@x.com", subscriptionSource: "stripe", subscriptionStatus: "PRO" }),
+      user({ id: "u_null", email: "null@x.com", subscriptionSource: null, subscriptionStatus: "PRO" }),
     ];
   };
   const statusOf = (id: string) => users.find((u) => u.id === id)!.subscriptionStatus;
+  const anchorOf = (id: string) => users.find((u) => u.id === id)!.stripeFirstFailureAt;
 
-  it("invoice.payment_failed: skips apple, demotes stripe + null", async () => {
+  it("invoice.payment_failed: skips apple for status, anchor, AND email", async () => {
     seedThreeSources();
     await send("invoice.payment_failed", invoice());
+    // Status downgrade
     expect(statusOf("u_apple")).toBe("PRO"); // protected
     expect(statusOf("u_stripe")).toBe("FREE");
     expect(statusOf("u_null")).toBe("FREE");
+    // Anchor stamp (drives the recovery banner) — apple must NOT be stamped
+    expect(anchorOf("u_apple")).toBeNull();
+    expect(anchorOf("u_stripe")).not.toBeNull();
+    expect(anchorOf("u_null")).not.toBeNull();
+    // Payment-failed EMAIL must not reach the apple user
+    expect(vi.mocked(sendPaymentFailedEmail)).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: "apple@x.com" })
+    );
+    expect(vi.mocked(sendPaymentFailedEmail)).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "stripe@x.com" })
+    );
   });
 
   it("customer.subscription.deleted: skips apple, demotes stripe + null", async () => {

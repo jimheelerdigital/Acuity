@@ -133,6 +133,40 @@ export function isStripeSubscription(
 }
 
 /**
+ * Subscription sources whose entitlement is owned by an app store (IAP).
+ * Source of truth for the cross-source demotion guard below.
+ */
+export const IAP_SUBSCRIPTION_SOURCES = ["apple", "google_play"] as const;
+
+/**
+ * Entitlement-precedence rule (centralized, incident 2026-08-05).
+ *
+ * A user whose active entitlement comes from a mobile IAP (Apple / Google Play)
+ * must NEVER be demoted to FREE/PAST_DUE by a NON-IAP writer — a Stripe webhook
+ * event on a defunct Stripe record, the trial-expiry cron, etc. Spread this
+ * Prisma `where` fragment into any such demoter's updateMany/updateWhere so it
+ * only touches non-IAP rows:
+ *
+ *   where: { <existing…>, ...NOT_IAP_SOURCE_WHERE }
+ *
+ * NULL handling is load-bearing: SQL `NOT IN (…)` evaluates to NULL (excludes
+ * the row) for a NULL column, so a bare `notIn` would wrongly PROTECT
+ * null-source rows from a legitimate downgrade. The explicit `null` branch
+ * keeps null- AND stripe-source rows demotable; only apple / google_play are
+ * skipped.
+ *
+ * SCOPE: cross-source demoters ONLY. The IAP webhooks themselves (Apple ASSN
+ * `/api/iap/notifications`, Google RTDN `/api/iap/google/webhook`) demote their
+ * OWN source and already guard by exact-source match — they must NOT use this.
+ */
+export const NOT_IAP_SOURCE_WHERE = {
+  OR: [
+    { subscriptionSource: null },
+    { subscriptionSource: { notIn: [...IAP_SUBSCRIPTION_SOURCES] } },
+  ],
+};
+
+/**
  * Compute the entitlement set for a user.
  *
  * @param user The relevant fields off the User row. Must not be null.
