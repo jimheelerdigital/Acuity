@@ -104,7 +104,10 @@ export const carouselAnimateCoverFn = inngest.createFunction(
     await step.sleep("initial-render-wait", "2m");
 
     let videoUrl: string | null = null;
-    const MAX_POLLS = 12; // 2m head start + 12 × 30s = up to ~8 min total
+    // 2m head start + 36 × 30s = up to ~20 min total. The first live DoP
+    // render (2026-08-05) blew past the original ~8 min budget and the
+    // email fell back to the static cover, so the window was widened.
+    const MAX_POLLS = 36;
     for (let i = 0; i < MAX_POLLS; i++) {
       const check = await step.run(`poll-status-${i}`, async () => {
         const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
