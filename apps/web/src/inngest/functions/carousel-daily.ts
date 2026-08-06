@@ -11,7 +11,7 @@ export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
-    triggers: [{ cron: "0 10,11,12,13,14 * * *" }],
+    triggers: [{ cron: "0 8,9,10,11,12 * * *" }],
     retries: 1,
   },
   async ({ step, logger }) => {
