@@ -247,9 +247,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     // with the video when animation worked, static cover otherwise.
     await step.run("enqueue-cover-animation", async () => {
       try {
+        // The first run of the day (8 UTC) gets the high-energy "crazy
+        // intro" (spin-in) treatment; the other four runs stay smooth.
+        const animationStyle =
+          new Date().getUTCHours() === 8 ? "crazy" : "smooth";
         await inngest.send({
           name: "content-factory/cover.animate",
-          data: { postId: result.postId, sendEmail: true },
+          data: { postId: result.postId, sendEmail: true, animationStyle },
         });
       } catch (animateErr) {
         logger.error(

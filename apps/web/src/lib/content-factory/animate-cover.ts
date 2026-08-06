@@ -55,6 +55,9 @@ function authHeaders(): Record<string, string> {
  * character only blinked). This version explicitly demands large, visible
  * motion — full gesture, head turn, ambient movement, energetic text-on.
  */
+/** Which animation treatment a cover gets. */
+export type AnimationStyle = "smooth" | "crazy";
+
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
@@ -69,6 +72,28 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     "The bold headline text sweeps onto the screen with momentum, line by line, and snaps into place perfectly sharp and readable.",
     "The energy is warm and premium but unmistakably in motion from the first frame to the last.",
     "The final frame matches the provided end image exactly.",
+    "No warping or distortion of face or text.",
+  ].join(" ");
+}
+
+/**
+ * "Crazy intro" variant — used for one of the five daily posts (the first
+ * run of the day). Instead of the smooth cinematic treatment, the whole
+ * scene spins/whips into frame with motion blur and the headline slams on,
+ * built to grab attention in the first half second of the scroll.
+ */
+export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
+  const emotionBeat =
+    topic.emotionBeat ??
+    "a confident head turn to camera with a knowing smile";
+  return [
+    "Explosive, high-energy social media cover intro built to stop the scroll in the first half second.",
+    "The entire scene SPINS into frame — a fast rotational whip with heavy motion blur that decelerates and snaps crisply into place like a camera whip-pan landing on its subject.",
+    `As the spin settles, the main character lands mid-gesture: ${emotionBeat}.`,
+    "The headline text SLAMS onto the screen with punchy kinetic energy — each line hitting hard with a tiny impact shake, then locking perfectly sharp and readable.",
+    "The pacing is fast-then-smooth: chaotic energetic entrance in the first second, then a clean confident settle.",
+    "Bold, thrilling, premium — like a title card from a high-end brand campaign.",
+    "The motion fully decelerates and the final frame matches the provided end image exactly.",
     "No warping or distortion of face or text.",
   ].join(" ");
 }

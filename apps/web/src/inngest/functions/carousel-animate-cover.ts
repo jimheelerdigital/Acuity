@@ -26,6 +26,9 @@ export const carouselAnimateCoverFn = inngest.createFunction(
   async ({ event, step, logger }) => {
     const postId = event.data.postId as string;
     const shouldEmail = Boolean(event.data.sendEmail);
+    // "crazy" = spin-in attention-grab intro (one post/day); default smooth.
+    const animationStyle =
+      event.data.animationStyle === "crazy" ? "crazy" : "smooth";
 
     // Email sender used at every exit path. Its own step so a Resend
     // hiccup gets Inngest's retry, and it never throws past logging.
@@ -45,8 +48,12 @@ export const carouselAnimateCoverFn = inngest.createFunction(
 
     // ── Step 1: validate + submit ─────────────────────────────────────
     const submission = await step.run("submit-video-job", async () => {
-      const { higgsfieldConfigured, buildCoverVideoPrompt, submitCoverVideo } =
-        await import("@/lib/content-factory/animate-cover");
+      const {
+        higgsfieldConfigured,
+        buildCoverVideoPrompt,
+        buildCrazyCoverVideoPrompt,
+        submitCoverVideo,
+      } = await import("@/lib/content-factory/animate-cover");
 
       if (!higgsfieldConfigured()) {
         return {
@@ -71,12 +78,14 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       if (cover.videoUrl) return { skipped: `Cover ${cover.id} already animated` } as const;
 
       const topic = CAROUSEL_TOPICS.find((t) => t.slug === cover.carouselPost.topicSlug);
-      const prompt = buildCoverVideoPrompt(
-        topic ?? {
-          emotionBeat:
-            "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera",
-        }
-      );
+      const fallback = {
+        emotionBeat:
+          "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera",
+      };
+      const prompt =
+        animationStyle === "crazy"
+          ? buildCrazyCoverVideoPrompt(topic ?? fallback)
+          : buildCoverVideoPrompt(topic ?? fallback);
 
       try {
         const requestId = await submitCoverVideo({
