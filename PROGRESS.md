@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-05] — Carousel email now waits for the animated cover
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1b93c7cb
+
+### In plain English (for Keenan)
+The daily carousel email no longer arrives before the cover video is ready. The pipeline now runs in order — generate the carousel, animate the cover, then send one email that includes the animated cover as an MP4 attachment (or a download link if it's too big to attach). If the animation ever fails or times out, you still get the email with the static cover, so there's never a missing email.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: removed sendCarouselEmail from the save step; the cover.animate event now carries `sendEmail: true`. If `inngest.send` throws, falls back to emailing the static carousel directly.
+- apps/web/src/inngest/functions/carousel-one-off.ts: same reordering, plus the raw text-free cover is now uploaded (`slide-0-cover-raw.jpg`) and `rawImageUrl` persisted on the cover slide — one-off posts previously had no raw frame, so they could never animate.
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: when `event.data.sendEmail` is true, sends the email via a `send-carousel-email` step on every exit path (skip/unconfigured, submit failure, failed/nsfw, timeout, success). Higgsfield submit errors are now caught and returned as a skip instead of failing the run, so the email always fires.
+- apps/web/src/lib/content-factory/email.ts: `SlideRow` gained `videoUrl`; the cover MP4 is fetched and attached as `00-cover-animated.mp4` only if it fits the 15MB budget alongside the images (a large video links instead of forcing images out of attachment mode). Video note added to HTML and plain-text bodies.
+- Admin "Animate cover" action unchanged — manual re-animation does NOT re-email (use the existing Resend button).
+
+### Manual steps needed
+- [ ] Vercel redeploy if not automatic on push (Keenan)
+- [ ] Live test: trigger a one-off generation or wait for the next cron; confirm ONE email arrives ~3-8 min after generation with the MP4 (Keenan)
+- [ ] Check cloud.higgsfield.ai Billing/Usage after the first video to learn per-video credit cost (Keenan)
+
+### Notes
+- Email timing shifts from "immediately after generation" to "after animation" — expect the email 3–8 minutes later than before (2m head start + up to 12×30s polls).
+- The `emailedAt` guard in sendCarouselEmail prevents double sends; Inngest step memoization prevents re-sending on retries.
+- DoP model output quality vs the manually approved Kling take-4 is still unverified — eyeball the first video before trusting the daily automation.
+
 ## [2026-08-05] — Animated covers: switch to Higgsfield DoP model + fix API auth
 
 **Requested by:** Keenan
