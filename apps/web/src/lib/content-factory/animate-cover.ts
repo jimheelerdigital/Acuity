@@ -50,11 +50,10 @@ function authHeaders(): Record<string, string> {
 /**
  * Build the image-to-video prompt for a cover.
  *
- * v6 (2026-08-06): v5 overloaded the scene with birds, particles, swirling
- * leaves, etc. — too chaotic. v6 is minimal and intentional: a simple
- * character gesture that conveys the post's emotion, a gentle camera push,
- * and just enough ambient motion to feel alive. Think polished Instagram
- * reel cover, not a movie trailer.
+ * v7 (2026-08-06): v6 had the character getting up and walking around.
+ * v7 pins her stationary — seated or standing in place — and focuses on
+ * emotional micro-gestures (shrug, deep breath, knowing smile) with
+ * birds and ambient background life. Explicit "do not walk" guardrails.
  */
 /** Which animation treatment a cover gets. */
 export type AnimationStyle = "smooth" | "crazy";
@@ -62,32 +61,34 @@ export type AnimationStyle = "smooth" | "crazy";
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a small knowing nod, then a gentle half-smile";
+    "a small shrug, a deep breath, then a knowing half-smile";
   return [
-    "Simple, clean social media cover animation. Minimal but intentional motion that makes someone stop scrolling.",
-    `The woman does one clear gesture: ${emotionBeat}. Natural and unhurried. Her hair shifts slightly with the movement.`,
-    "The environment has subtle life — gentle steam from a mug, a soft curtain drift, or warm light slowly shifting. Just one or two small ambient details, not everything at once.",
-    "The camera slowly drifts forward just a few inches, creating a gentle sense of depth.",
-    "The mood is warm, relatable, and inviting. It should feel like a moment you walked in on, not a produced commercial.",
+    "Simple, emotional social media cover animation. The woman stays seated or standing in place — she does NOT walk, stand up, or change position.",
+    `She does one small, emotional gesture while staying completely stationary: ${emotionBeat}. Her hair shifts slightly. She breathes visibly. Her expression tells a story.`,
+    "The background has gentle life — birds flutter past in the distance, a breeze moves the leaves, warm light shifts softly across the scene. Steam curls from a mug if one is present.",
+    "The camera slowly drifts forward a few inches, creating a gentle sense of depth.",
+    "The mood is warm, still, and emotionally resonant — like a quiet moment caught on camera.",
+    "The woman must stay in her original position the entire time. No walking, no standing up, no moving to a different spot.",
     "Do NOT generate any text, numbers, or letters. No warping or distortion of the face.",
   ].join(" ");
 }
 
 /**
- * "Crazy intro" variant — one post per day. Bolder energy but still
- * clean and simple — a faster camera move and a more confident gesture,
- * not visual chaos.
+ * "Crazy intro" variant — one post per day. Bolder emotional energy but
+ * the character stays stationary — more confident gesture, slightly
+ * faster camera, more ambient motion.
  */
 export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a confident look up to camera with a slight smile";
+    "a deep exhale, then a confident look up to camera with a slight smile";
   return [
-    "Bold, scroll-stopping social media cover animation. Clean and punchy — grabs attention without being chaotic.",
-    `The woman does one confident move: ${emotionBeat}. Deliberate and eye-catching. Hair moves naturally with the gesture.`,
-    "The environment has a touch of energy — a candle flame flickers, light shifts warmly across the scene, or fabric catches a breeze. Keep it simple.",
+    "Bold, scroll-stopping social media cover animation. The woman stays seated or standing in place — she does NOT walk, stand up, or change position.",
+    `She does one confident, emotional gesture while staying completely stationary: ${emotionBeat}. Deliberate and eye-catching. Hair moves naturally.`,
+    "The background has energy — birds scatter across the sky, leaves drift through the air, warm golden light sweeps across the scene. A candle flame flickers or steam rises if props are present.",
     "The camera pushes in with purpose — a smooth, steady move that draws you into the scene.",
-    "The feel is bold and premium, like the opening frame of a brand story. Confident, not frantic.",
+    "The feel is bold, emotional, and premium. Confident but still — the power comes from her expression, not from movement.",
+    "The woman must stay in her original position the entire time. No walking, no standing up, no moving to a different spot.",
     "Do NOT generate any text, numbers, or letters. No warping or distortion of the face.",
   ].join(" ");
 }
