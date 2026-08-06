@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-08-05] — Daily carousels now generate at 8–12 UTC
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d692c762
+
+### In plain English (for Keenan)
+The five daily carousel generations now run two hours earlier — at 8, 9, 10, 11, and 12 UTC instead of 10 through 14 UTC. Emails will arrive a few minutes after each run once the cover animation finishes.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron trigger changed from `0 10,11,12,13,14 * * *` to `0 8,9,10,11,12 * * *`
+
+### Manual steps needed
+- [ ] None beyond the auto-deploy; Inngest picks up the new schedule on the next sync after deploy (automatic on next GET to /api/inngest)
+
+### Notes
+- Generation time is UTC — 8 UTC is 4am ET / 1am PT during daylight saving.
+
 ## [2026-08-05] — Carousel email now waits for the animated cover
 
 **Requested by:** Keenan
