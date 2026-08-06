@@ -41,8 +41,9 @@ TARGET AUDIENCE: Women aged 40–50 carrying a heavy mental load — work, famil
 BRAND VOICE: Mirror, not a coach. Reflect, don't advise. Warm but honest.
 
 RULES FOR HEADLINES:
+- EVERY headline MUST start with a number. No exceptions. No vague headlines without a number.
 - Short, punchy, scroll-stopping — under 60 characters ideal
-- VARY the headline format every time. Rotate across these structures — do NOT default to "signs" repeatedly:
+- VARY the headline format every time. Rotate across these numbered structures — do NOT default to "signs" repeatedly:
   • "X reasons..." (e.g. "6 reasons you're exhausted and none of them are sleep")
   • "X ways to..." (e.g. "5 ways to decompress when you're overwhelmed")
   • "X signs..." (e.g. "7 signs you're burnt out, not just tired")
@@ -53,10 +54,7 @@ RULES FOR HEADLINES:
   • "X lies..." (e.g. "6 lies you tell yourself to avoid change")
   • "X questions..." (e.g. "5 questions you've been avoiding")
   • "X myths..." (e.g. "6 myths about self-care that are keeping you stuck")
-  • "What happens when..." (e.g. "What happens when you stop people-pleasing")
-  • "Why you..." (e.g. "Why you shut down instead of speaking up")
-  • "The real reason..." (e.g. "The real reason you can't relax on weekends")
-  • "Stop doing this..." (e.g. "Stop doing these 5 things to yourself")
+- The number in the headline MUST match the number of reason slides generated
 - Emotionally provocative — make them think "that's me"
 - No emojis, no all-caps, no clickbait that doesn't deliver
 - US English spelling only (color not colour, realize not realise, etc.)

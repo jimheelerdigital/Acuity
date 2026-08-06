@@ -74,9 +74,9 @@ export const carouselAnimateCoverFn = inngest.createFunction(
         include: { carouselPost: { select: { topicSlug: true } } },
       });
       if (!cover) return { skipped: `No cover slide for post ${postId}` } as const;
-      if (!cover.rawImageUrl) {
+      if (!cover.imageUrl) {
         return {
-          skipped: `Cover ${cover.id} has no rawImageUrl (generated before animation support)`,
+          skipped: `Cover ${cover.id} has no imageUrl`,
         } as const;
       }
       if (cover.videoUrl) return { skipped: `Cover ${cover.id} already animated` } as const;
@@ -93,7 +93,7 @@ export const carouselAnimateCoverFn = inngest.createFunction(
 
       try {
         const requestId = await submitCoverVideo({
-          startImageUrl: cover.rawImageUrl,
+          startImageUrl: cover.imageUrl,
           prompt,
         });
         return { skipped: null, requestId, slideId: cover.id } as const;

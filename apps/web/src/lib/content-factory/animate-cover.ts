@@ -63,15 +63,19 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     topic.emotionBeat ??
     "a small shrug, a deep breath, then a knowing half-smile";
   return [
-    "Simple, emotional social media cover animation. The woman stays in place — no walking or relocating — but her upper body is expressive and alive.",
-    `She does one emotional gesture: ${emotionBeat}. She can shrug, sigh, rub her head, lean back in her chair, lean forward, take a sip of coffee, tuck her hair back, or gesture softly while thinking. Her shoulders shift, she breathes visibly, her expression tells a story.`,
-    "The background has gentle life — birds flutter past in the distance, a breeze moves the leaves, warm light shifts softly across the scene. Steam curls from a mug if one is present.",
+    // MOUTH RULE — first so the model sees it immediately
+    "CRITICAL: The woman's mouth stays CLOSED the entire time. She is silent. Lips together or in a subtle closed-mouth smile — never open, never moving as if talking. This is the most important rule.",
+    // MOTION
+    "Simple, emotional social media cover animation. She stays in place — no walking or relocating — but her upper body is expressive.",
+    `She does one emotional gesture: ${emotionBeat}. She can shrug, sigh, rub her head, lean back, lean forward, take a sip of coffee, tuck her hair, or gesture while thinking. Shoulders shift, she breathes visibly, her eyes and expression tell the story.`,
+    // ENVIRONMENT
+    "The background has gentle life — birds flutter past in the distance, a breeze moves the leaves, warm light shifts softly. Steam curls from a mug if present.",
+    // CAMERA
     "The camera slowly drifts forward a few inches, creating a gentle sense of depth.",
-    "The mood is warm, still, and emotionally resonant — like a quiet moment caught on camera.",
-    "Her feet stay planted. No walking, no standing up, no moving to a different spot. But her upper body, hands, and face move freely.",
-    "She is NOT talking. Her mouth does not move as if speaking — lips stay closed or only shift for emotional expression like a smile, a pursed lip, or a slight frown. No lip-syncing, no mouthing words.",
-    "Any existing text or graphics in the image must remain fully visible and stable for at least the first 3 seconds. Do not obscure, dissolve, or remove text early.",
-    "Do NOT generate new text, numbers, or letters. No warping or distortion of the face.",
+    // TEXT PRESERVATION
+    "All text, headlines, and graphics already in the image must remain perfectly sharp, readable, and in place throughout the entire video. Do not warp, dissolve, blur, or move any existing text.",
+    // PROHIBITIONS
+    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED.",
   ].join(" ");
 }
 
@@ -85,15 +89,19 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     topic.emotionBeat ??
     "a deep exhale, then a confident look up to camera with a slight smile";
   return [
-    "Bold, scroll-stopping social media cover animation. The woman stays in place — no walking or relocating — but her upper body is confident and expressive.",
-    `She does one bold, emotional gesture: ${emotionBeat}. She can shrug dramatically, sigh, rub her forehead, lean back confidently, lean forward with intent, take a sip of coffee, or gesture with conviction. Shoulders shift, expression transforms, hair moves naturally.`,
-    "The background has energy — birds scatter across the sky, leaves drift through the air, warm golden light sweeps across the scene. A candle flame flickers or steam rises if props are present.",
+    // MOUTH RULE — first so the model sees it immediately
+    "CRITICAL: The woman's mouth stays CLOSED the entire time. She is silent. Lips together or in a subtle closed-mouth smile — never open, never moving as if talking. This is the most important rule.",
+    // MOTION
+    "Bold, scroll-stopping social media cover animation. She stays in place — no walking or relocating — but her upper body is confident and expressive.",
+    `She does one bold gesture: ${emotionBeat}. She can shrug dramatically, sigh, rub her forehead, lean back, lean forward, take a sip of coffee, or gesture with conviction. Shoulders shift, expression transforms, hair moves naturally.`,
+    // ENVIRONMENT
+    "The background has energy — birds scatter across the sky, leaves drift through the air, warm golden light sweeps across the scene. A candle flame flickers or steam rises if present.",
+    // CAMERA
     "The camera pushes in with purpose — a smooth, steady move that draws you into the scene.",
-    "The feel is bold, emotional, and premium. Confident but grounded — the power comes from her expression and hands, not from locomotion.",
-    "Her feet stay planted. No walking, no standing up, no moving to a different spot. But her upper body, hands, and face move freely.",
-    "She is NOT talking. Her mouth does not move as if speaking — lips stay closed or only shift for emotional expression like a smile, a pursed lip, or a slight frown. No lip-syncing, no mouthing words.",
-    "Any existing text or graphics in the image must remain fully visible and stable for at least the first 3 seconds. Do not obscure, dissolve, or remove text early.",
-    "Do NOT generate new text, numbers, or letters. No warping or distortion of the face.",
+    // TEXT PRESERVATION
+    "All text, headlines, and graphics already in the image must remain perfectly sharp, readable, and in place throughout the entire video. Do not warp, dissolve, blur, or move any existing text.",
+    // PROHIBITIONS
+    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED.",
   ].join(" ");
 }
 
