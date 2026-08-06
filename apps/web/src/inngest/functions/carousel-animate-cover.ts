@@ -32,12 +32,16 @@ export const carouselAnimateCoverFn = inngest.createFunction(
 
     // Email sender used at every exit path. Its own step so a Resend
     // hiccup gets Inngest's retry, and it never throws past logging.
-    const sendEmailStep = async () => {
+    // `force` bypasses the emailedAt guard — used on the SUCCESS path so
+    // that if a previous failed/timed-out run already sent a static email,
+    // the animated version still goes out.
+    const sendEmailStep = async (force = false) => {
       if (!shouldEmail) return;
-      await step.run("send-carousel-email", async () => {
+      const stepName = force ? "send-carousel-email-with-video" : "send-carousel-email";
+      await step.run(stepName, async () => {
         try {
           const { sendCarouselEmail } = await import("@/lib/content-factory/email");
-          await sendCarouselEmail(postId);
+          await sendCarouselEmail(postId, force);
         } catch (emailErr) {
           logger.error(
             `[animate-cover] Email failed for post ${postId}: ${emailErr instanceof Error ? emailErr.message : emailErr}`
@@ -151,7 +155,7 @@ export const carouselAnimateCoverFn = inngest.createFunction(
     });
 
     logger.info(`[animate-cover] Post ${postId} cover animated: ${storedUrl}`);
-    await sendEmailStep();
+    await sendEmailStep(true);
     return { animated: true, videoUrl: storedUrl };
   }
 );

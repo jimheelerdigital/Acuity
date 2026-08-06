@@ -34,10 +34,30 @@ Two customers were stuck showing as "payment overdue" forever. We checked Stripe
 - Monitor reuses the stripe-webhook-health Slack+Resend founder-alert infra. Provider reads can only exercise live in prod (Apple creds are Vercel-Sensitive); the pure classifier is unit-tested.
 
 ## [2026-08-06] — Animation prompts v4: hyper-specific motion for every element
+## [2026-08-06] — Animated cover now always included in email when animation succeeds
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** (pending)
+
+### In plain English (for Keenan)
+When the cover animation succeeded, the email sometimes went out without the video. This happened because a previous failed animation attempt had already sent a static email, and the system refused to send a second email for the same post. Now, when the animation succeeds, the system force-sends a fresh email with the video attached — even if a static version was already sent. You may occasionally get two emails for the same post (one static, then one with video), but you'll always get the animated version.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: `sendEmailStep` now accepts a `force` parameter. On the success path (after `store-video`), it calls `sendCarouselEmail(postId, true)` which bypasses the `emailedAt` guard. Uses a distinct Inngest step name (`send-carousel-email-with-video`) so it's not memoized with the static email step.
+
+### Manual steps needed
+- [ ] None — auto-deploys on push
+
+### Notes
+- Root cause: when two `cover.animate` events fire for the same post (e.g., cron + duplicate event), the first run may timeout and send a static email (setting `emailedAt`). The second run succeeds but can't re-send because `emailedAt` is already set. The `force: true` fix bypasses this.
+- Worst case: user gets two emails for the same carousel (one static, one with video). This is acceptable — missing the video entirely is worse.
+
+## [2026-08-06] — Animation prompts v4: hyper-specific motion for every element
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b1d2ab4
 
 ### In plain English (for Keenan)
 The first test with the new model still only produced face movement and blinking — the prompts were too vague ("cinematic," "alive," "expressive"). The prompts now spell out exactly what should move: birds flying across the sky, light rays shifting, leaves swirling, steam curling, the character doing a full shrug with shoulder and hand movement, and the headline text sliding or snapping into frame. Switching to the turbo model for cheaper/faster renders.
