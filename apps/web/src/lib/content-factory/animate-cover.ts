@@ -51,11 +51,10 @@ function authHeaders(): Record<string, string> {
  * Build the image-to-video prompt for a cover. The per-topic emotionBeat
  * is the character's motion direction.
  *
- * v4 (2026-08-06): v3 still only produced face movement and blinking.
- * This version is hyper-specific about every element that must move:
- * birds, light rays, text animation, full character gesture, particles.
- * Vague "cinematic" language doesn't work — the model needs concrete
- * motion instructions for each layer of the scene.
+ * v5 (2026-08-06): v4 told the model to animate text, but the raw cover
+ * has no text — causing the model to hallucinate ugly numbers/letters.
+ * v5 explicitly bans text generation and focuses entirely on flowing,
+ * continuous scene motion with specific choreography.
  */
 /** Which animation treatment a cover gets. */
 export type AnimationStyle = "smooth" | "crazy";
@@ -65,45 +64,49 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     topic.emotionBeat ??
     "a relaxed shrug — both shoulders rise and drop visibly — then a slow knowing smile spreads across her face";
   return [
-    // CHARACTER — specific large motions, not "expressive gesture"
-    `The woman performs a clear, unmistakable physical gesture: ${emotionBeat}.`,
-    "Her head tilts, her shoulders move up and down, her hands shift position, her eyes blink naturally, and her facial expression visibly changes. Her hair sways with the movement. This is a FULL upper-body motion, not a micro-expression.",
-    // ENVIRONMENT — name exact animated elements
-    "The background is fully alive: birds fly across the sky in the distance, tree branches and leaves sway in a breeze, clouds drift slowly, light rays shift and move across the scene casting moving shadows.",
-    "Closer to camera: steam or smoke curls upward from a mug or candle, dust particles float through shafts of light, fabric or curtains billow gently, flowers or plants bob in the wind.",
-    // TEXT — animate the headline
-    "Any text or headline in the scene slides smoothly into position from off-screen with a confident sweeping motion, settling crisply into place.",
-    // CAMERA
-    "The camera slowly pushes forward in a dolly-in, creating visible parallax — foreground elements shift faster than background elements.",
-    // LIGHTING
-    "The lighting shifts subtly throughout — warm golden light brightens and dims as if clouds are passing, creating a living, breathing atmosphere.",
-    // QUALITY GUARDS
+    // CORE DIRECTIVE
+    "Smooth, flowing cinematic animation of this scene. Every element moves continuously throughout — nothing should be static at any point in the video.",
+    // CHARACTER — continuous flowing motion, not a single pose
+    `The woman performs a slow, fluid gesture: ${emotionBeat}.`,
+    "The motion is continuous and flowing — she doesn't snap into a pose and freeze. Her head turns gradually, shoulders roll smoothly, hands drift through the air, her expression shifts naturally over several seconds. Her hair sways and settles. She breathes visibly.",
+    // ENVIRONMENT — layered continuous motion
+    "Background: clouds drift across the sky, birds glide past in the distance, tree branches rock gently in a continuous breeze, distant light shifts gradually.",
+    "Midground: leaves or petals float lazily through the air, plants sway side to side in a slow rhythm, fabric or curtains ripple continuously.",
+    "Foreground: steam curls upward in slow spirals from a mug or candle, dust particles drift through warm light, small details like a pen or phone catch shifting reflections.",
+    // CAMERA — smooth continuous push
+    "The camera drifts forward in a slow, steady dolly-in throughout the entire clip — never stopping. Foreground elements slide past faster than background, creating natural depth.",
+    // LIGHTING — living light
+    "Warm golden light shifts gradually across the scene as if filtering through moving curtains or passing clouds. Soft shadows drift across her face and the surfaces around her.",
+    // STRICT PROHIBITIONS
+    "Do NOT generate, add, or show any text, numbers, letters, titles, or captions anywhere in the video. This is a text-free scene.",
     "No warping or distortion of the character's face. Maintain consistent character identity throughout.",
   ].join(" ");
 }
 
 /**
  * "Crazy intro" variant — used for one of the five daily posts (the first
- * run of the day). Maximum-energy: fast camera move, dramatic entrance,
- * every element animated aggressively.
+ * run of the day). Maximum-energy: fast camera, dramatic entrance,
+ * everything animated aggressively. Still no text generation.
  */
 export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a confident head turn to camera with a knowing smile";
   return [
-    // CHARACTER — bold dramatic motion
-    `The woman makes a dramatic, attention-grabbing move: ${emotionBeat}. Her whole upper body is involved — she leans forward, shoulders roll, hands gesture widely, her expression shifts from neutral to bold confidence. Hair swings with the motion.`,
-    // ENVIRONMENT — maximum life
-    "The entire scene bursts with motion: a flock of birds scatters across the sky, tree branches sway dramatically, leaves and petals swirl through the air, clouds race past overhead.",
-    "Steam or smoke pours upward energetically, candle flames flicker and dance, curtains and fabric whip in the wind, light particles and dust motes swirl through the frame.",
-    // TEXT — punchy animated entrance
-    "Any headline text punches onto the screen with kinetic energy — sliding or snapping into place with impact, like a movie title card.",
-    // CAMERA — aggressive movement
-    "The camera rushes in with a fast dolly or whip-pan that decelerates smoothly — heavy motion blur at the start that resolves into sharp clarity. Aggressive parallax between all depth layers.",
+    // CORE DIRECTIVE
+    "High-energy, attention-grabbing animation of this scene. Fast start, smooth settle, everything in continuous motion throughout.",
+    // CHARACTER — bold continuous motion
+    `The woman performs a dramatic, flowing gesture: ${emotionBeat}. Her whole upper body moves fluidly — leaning in, shoulders rolling, hands sweeping through the air, expression shifting from neutral to bold confidence over several seconds. Hair swings and settles naturally. She doesn't freeze into a pose.`,
+    // ENVIRONMENT — energetic layered motion
+    "Background: a flock of birds bursts across the sky, clouds race past, tree branches whip and sway, dramatic light sweeps across the horizon.",
+    "Midground: leaves and petals swirl through the air in gusts, plants rock dramatically, fabric and curtains billow outward, background objects shift with visible parallax.",
+    "Foreground: steam or smoke rushes upward, dust particles scatter through shafts of light, small objects vibrate with energy, warm reflections dance across surfaces.",
+    // CAMERA — fast approach that settles
+    "The camera rushes forward aggressively at the start with motion blur, then decelerates into a smooth, steady drift forward. Strong parallax throughout — foreground races past while background moves slowly.",
     // LIGHTING — dramatic shifts
-    "Light flares across the scene, warm golden tones pulse and shift, dramatic shadows sweep across surfaces as if the sun just broke through clouds.",
-    // QUALITY GUARDS
+    "Light flares dramatically at the start then settles into warm, shifting golden tones. Shadows sweep across the scene. The lighting keeps moving throughout, never static.",
+    // STRICT PROHIBITIONS
+    "Do NOT generate, add, or show any text, numbers, letters, titles, or captions anywhere in the video. This is a text-free scene.",
     "No warping or distortion of the character's face. Maintain consistent character identity throughout.",
   ].join(" ");
 }

@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-08-06] — Animation prompts v5: ban text generation, flowing continuous motion
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The animated covers had two problems: (1) the model was generating ugly text/numbers on screen even though the source image has no text, and (2) the character would snap into a pose and freeze rather than moving fluidly. The prompts now explicitly ban any text/number generation and describe every motion as continuous and flowing — the character drifts through her gesture over several seconds, the camera never stops moving, and every element (birds, steam, leaves, light) keeps flowing throughout the clip.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: rewrote both prompts to v5. Key changes: (1) added explicit "Do NOT generate any text, numbers, letters" prohibition, (2) removed all text animation instructions (raw cover is text-free), (3) restructured motion into background/midground/foreground layers with specific continuous motions, (4) emphasized "continuous and flowing" over "dramatic pose" language throughout.
+
+### Manual steps needed
+- [ ] Test animation after deploy — judge motion flow and confirm no text artifacts (Keenan)
+
+### Notes
+- The text artifact problem: raw cover has no text overlay, but v4 prompts told the model to "slide headline text into position." The model hallucinated text, producing ugly warped numbers.
+- "Continuous" is the key word. Previous prompts described end-state poses ("she shrugs, then smiles"). v5 describes motion trajectories ("shoulders rise and drop smoothly, expression shifts gradually over several seconds"). This should prevent the snap-and-freeze pattern.
+
 ## [2026-08-06] — Entitlement audit: PAST_DUE cleanup + drift monitor (read-only)
 
 **Requested by:** Jimmy
@@ -38,7 +57,7 @@ Two customers were stuck showing as "payment overdue" forever. We checked Stripe
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5054fa8b
 
 ### In plain English (for Keenan)
 When the cover animation succeeded, the email sometimes went out without the video. This happened because a previous failed animation attempt had already sent a static email, and the system refused to send a second email for the same post. Now, when the animation succeeds, the system force-sends a fresh email with the video attached — even if a static version was already sent. You may occasionally get two emails for the same post (one static, then one with video), but you'll always get the animated version.
