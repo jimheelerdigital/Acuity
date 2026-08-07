@@ -50,10 +50,10 @@ function authHeaders(): Record<string, string> {
 /**
  * Build the image-to-video prompt for a cover.
  *
- * v7 (2026-08-06): v6 had the character getting up and walking around.
- * v7 pins her stationary — seated or standing in place — and focuses on
- * emotional micro-gestures (shrug, deep breath, knowing smile) with
- * birds and ambient background life. Explicit "do not walk" guardrails.
+ * v9 (2026-08-07): long prompts with many negative instructions don't
+ * work — the model latches on to verbs like "walking" and "talking" and
+ * does them. v9 is ultra-short: only describes what SHOULD happen,
+ * avoids mentioning unwanted behaviors entirely.
  */
 /** Which animation treatment a cover gets. */
 export type AnimationStyle = "smooth" | "crazy";
@@ -61,51 +61,26 @@ export type AnimationStyle = "smooth" | "crazy";
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a small shrug, a deep breath, then a knowing half-smile";
+    "a gentle shrug and a slow deep breath";
   return [
-    // MOUTH RULE — first so the model sees it immediately
-    "CRITICAL: The woman's mouth stays CLOSED the entire time. She is silent. Lips together or in a subtle closed-mouth smile — never open, never moving as if talking. This is the most important rule.",
-    // MOTION
-    "Simple, emotional social media cover animation. She stays in place — no walking or relocating — but her upper body is expressive.",
-    `She does one emotional gesture: ${emotionBeat}. She can shrug, sigh, rub her head, lean back, lean forward, take a sip of coffee, tuck her hair, or gesture while thinking. Shoulders shift, she breathes visibly, her eyes and expression tell the story.`,
-    // ENVIRONMENT
-    "The background has gentle life — birds flutter past in the distance, a breeze moves the leaves, warm light shifts softly. Steam curls from a mug if present.",
-    // CAMERA
-    "The camera slowly drifts forward a few inches, creating a gentle sense of depth.",
-    // TEXT PRESERVATION
-    "All text, headlines, and graphics already in the image must remain perfectly sharp, readable, and in place throughout the entire video. Do not warp, dissolve, blur, or move any existing text.",
-    // CONSISTENCY
-    "The scene, colors, style, and art direction must stay consistent from first frame to last. Do not fade, transition, or shift to a different scene, setting, or color palette. The video ends looking exactly like it started, just with the gesture completed.",
-    // PROHIBITIONS
-    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED. No scene transitions or fades.",
+    `A still, quiet moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
+    "Her hair sways slightly. A bird glides past in the background. Warm light shifts across the scene. Steam rises from a mug.",
+    "The camera drifts forward slowly. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place.",
   ].join(" ");
 }
 
 /**
- * "Crazy intro" variant — one post per day. Bolder emotional energy but
- * the character stays stationary — more confident gesture, slightly
- * faster camera, more ambient motion.
+ * "Crazy intro" variant — one post per day. Slightly bolder gesture
+ * but same short-prompt approach.
  */
 export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a deep exhale, then a confident look up to camera with a slight smile";
+    "a deep exhale and then looks up with quiet confidence";
   return [
-    // MOUTH RULE — first so the model sees it immediately
-    "CRITICAL: The woman's mouth stays CLOSED the entire time. She is silent. Lips together or in a subtle closed-mouth smile — never open, never moving as if talking. This is the most important rule.",
-    // MOTION
-    "Bold, scroll-stopping social media cover animation. She stays in place — no walking or relocating — but her upper body is confident and expressive.",
-    `She does one bold gesture: ${emotionBeat}. She can shrug dramatically, sigh, rub her forehead, lean back, lean forward, take a sip of coffee, or gesture with conviction. Shoulders shift, expression transforms, hair moves naturally.`,
-    // ENVIRONMENT
-    "The background has energy — birds scatter across the sky, leaves drift through the air, warm golden light sweeps across the scene. A candle flame flickers or steam rises if present.",
-    // CAMERA
-    "The camera pushes in with purpose — a smooth, steady move that draws you into the scene.",
-    // TEXT PRESERVATION
-    "All text, headlines, and graphics already in the image must remain perfectly sharp, readable, and in place throughout the entire video. Do not warp, dissolve, blur, or move any existing text.",
-    // CONSISTENCY
-    "The scene, colors, style, and art direction must stay consistent from first frame to last. Do not fade, transition, or shift to a different scene, setting, or color palette. The video ends looking exactly like it started, just with the gesture completed.",
-    // PROHIBITIONS
-    "Do NOT generate new text. No warping or distortion of the face. No walking. Mouth stays CLOSED. No scene transitions or fades.",
+    `A still, powerful moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
+    "Her hair catches a breeze. Birds fly across the sky in the background. Golden light sweeps warmly across the scene. A candle flame flickers.",
+    "The camera pushes in steadily. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place.",
   ].join(" ");
 }
 
