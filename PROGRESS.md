@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-07] — Durable comp marker (subscriptionSource="comp") + one-line comp action
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 589d25ea
+
+### In plain English (for Keenan)
+We can now give someone free PRO access ("comp" them — testers, friends, App Store reviewers) in a way that sticks. Before, a comped person was just manually flipped to PRO with no marker, which made our new subscription monitor flag them as "can't verify." Now there's a real "comp" label: comped accounts get full PRO, never show up as a problem in the monitor, and can never be accidentally downgraded. Comping someone is now a single action. Two testers (olivia and Kelly Myers) were converted to the proper comp marker.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/entitlements.ts` — `COMP_SUBSCRIPTION_SOURCE = "comp"` + `NON_DEMOTABLE_SOURCES = [apple, google_play, comp]`; `NOT_IAP_SOURCE_WHERE` now protects `comp` too (no demoter/reconciler can touch a comp row). Entitlements already read `subscriptionStatus` only, so `comp` grants full PRO; no Stripe customer → "Manage subscription" stays hidden.
+- `apps/web/src/lib/entitlement-drift.ts` — drift scan excludes `subscriptionSource="comp"` (no provider to validate → never drift/unreadable).
+- `apps/web/src/app/api/admin/comp/route.ts` — **the one-line comp action:** `POST /api/admin/comp {email}` (CRON_SECRET or admin session) → sets PRO + source=comp, clears trial/dunning fields, writes AdminAuditLog (`user.comp`). Idempotent.
+- `admin-audit.ts` — `USER_COMP` slug. `entitlements.test.ts` — `comp` is non-demotable. 39 tests pass.
+- **Live prod data change:** `livcamm811@gmail.com` (olivia) + `kel.myers94@gmail.com` (Kelly Myers) converted PRO/null → **PRO/comp** via the endpoint, 2026-08-07 14:02 UTC, each with an AdminAuditLog row. Post-change drift scan: 19 checked, 0 drift, 0 unreadable.
+
+### Manual steps needed
+- [ ] None. To comp a future tester: `curl -X POST https://goripple.io/api/admin/comp -H "Authorization: Bearer $CRON_SECRET" -H 'Content-Type: application/json' -d '{"email":"tester@..."}'` (or wire a button in the admin UI later).
+
+### Notes
+- `comp` is intentionally NOT added to `IAP_SUBSCRIPTION_SOURCES` (that stays apple/google_play for the store-source predicates); it's a separate member of `NON_DEMOTABLE_SOURCES`, used only by the demotion guard.
+- Reviewer/demo accounts on `PRO+null` (e.g., demo@example.com) are still handled by the `@example.com` exclusion; convert any real long-lived comp to `source="comp"` so it's explicit.
+
 ## [2026-08-06] — Simpler animation prompts v6 + email video debug logging
 
 **Requested by:** Keenan
