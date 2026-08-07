@@ -75,7 +75,11 @@ export function MarketingNav() {
               login page (/auth/signin; there is no /login route). Inline on
               mobile too (whitespace-nowrap + tightened mobile gap). */}
           <a
-            href="/auth/signin"
+            // Enter the app on the canonical auth host (app.goripple.io) so
+            // sign-in, OAuth callbacks, and session cookies all live on one
+            // non-redirecting origin. Absolute (not relative) because the
+            // marketing apex is a different host from the app.
+            href="https://app.goripple.io/auth/signin"
             className="font-sans text-[14.5px] font-semibold text-acuity-text transition-colors hover:text-acuity-primary whitespace-nowrap"
           >
             Log in
