@@ -64,7 +64,7 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
     "a gentle shrug and a slow deep breath";
   return [
     `A still, quiet moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
-    "Her hair sways slightly. A bird glides past in the background. Warm light shifts across the scene. Steam rises from a mug.",
+    "Her hair sways slightly. A bird glides past in the background. Steam rises from a mug.",
     "The camera drifts forward slowly. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place.",
   ].join(" ");
 }
@@ -79,7 +79,7 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     "a deep exhale and then looks up with quiet confidence";
   return [
     `A still, powerful moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
-    "Her hair catches a breeze. Birds fly across the sky in the background. Golden light sweeps warmly across the scene. A candle flame flickers.",
+    "Her hair catches a breeze. Birds fly across the sky in the background. A candle flame flickers.",
     "The camera pushes in steadily. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place.",
   ].join(" ");
 }
