@@ -139,6 +139,21 @@ export function isStripeSubscription(
 export const IAP_SUBSCRIPTION_SOURCES = ["apple", "google_play"] as const;
 
 /**
+ * Durable comp marker. A comped account is `subscriptionStatus = "PRO"` +
+ * `subscriptionSource = "comp"` (set via the admin comp action). Entitlements
+ * read status only, so a comp grants full PRO access; it has no Stripe customer
+ * so "Manage subscription" stays hidden. Recognized by the drift system (never
+ * flagged) and never demoted by any cross-source demoter.
+ */
+export const COMP_SUBSCRIPTION_SOURCE = "comp";
+
+/** Sources a cross-source demoter (Stripe webhook, trial cron) must never touch. */
+export const NON_DEMOTABLE_SOURCES = [
+  ...IAP_SUBSCRIPTION_SOURCES,
+  COMP_SUBSCRIPTION_SOURCE,
+] as const;
+
+/**
  * Entitlement-precedence rule (centralized, incident 2026-08-05).
  *
  * A user whose active entitlement comes from a mobile IAP (Apple / Google Play)
@@ -162,7 +177,7 @@ export const IAP_SUBSCRIPTION_SOURCES = ["apple", "google_play"] as const;
 export const NOT_IAP_SOURCE_WHERE = {
   OR: [
     { subscriptionSource: null },
-    { subscriptionSource: { notIn: [...IAP_SUBSCRIPTION_SOURCES] } },
+    { subscriptionSource: { notIn: [...NON_DEMOTABLE_SOURCES] } },
   ],
 };
 

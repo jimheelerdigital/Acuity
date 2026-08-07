@@ -25,9 +25,10 @@ function demotable(source: string | null): boolean {
 }
 
 describe("NOT_IAP_SOURCE_WHERE — cross-source demotion guard", () => {
-  it("protects apple and google_play from a non-IAP demoter", () => {
+  it("protects apple, google_play, and comp from a non-IAP demoter", () => {
     expect(demotable("apple")).toBe(false);
     expect(demotable("google_play")).toBe(false);
+    expect(demotable("comp")).toBe(false); // durable comp marker survives demoters
   });
 
   it("still demotes stripe-source rows", () => {

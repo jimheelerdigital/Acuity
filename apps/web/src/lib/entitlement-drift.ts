@@ -116,7 +116,8 @@ export async function scanEntitlementDrift(batch = 5): Promise<DriftScanResult> 
     return (
       !email.endsWith("@heelerdigital.com") &&
       !email.endsWith("@example.com") && // reserved test domain (demo@example.com, App Store reviewer login) — no provider to validate
-      u.appleEnvironment !== "sandbox"
+      u.appleEnvironment !== "sandbox" &&
+      u.subscriptionSource !== "comp" // durable comp marker — intentionally granted PRO, no provider to validate
     );
   });
 
