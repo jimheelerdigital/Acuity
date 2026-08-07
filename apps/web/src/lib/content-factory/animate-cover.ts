@@ -65,7 +65,7 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
   return [
     `A still, quiet moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
     "Her hair sways slightly. A bird glides past in the background. Steam rises from a mug.",
-    "The camera drifts forward slowly. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place.",
+    "The camera drifts forward slowly. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place for the first 3 seconds, then gently fades out over the final second.",
   ].join(" ");
 }
 
@@ -80,7 +80,7 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
   return [
     `A still, powerful moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
     "Her hair catches a breeze. Birds fly across the sky in the background. A candle flame flickers.",
-    "The camera pushes in steadily. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place.",
+    "The camera pushes in steadily. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place for the first 3 seconds, then gently fades out over the final second.",
   ].join(" ");
 }
 
