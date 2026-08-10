@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-10] — Slide animations now act out the slide's text, and failed renders retry
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 28becbec
+
+### In plain English (for Keenan)
+Two fixes from the first animated-post test: the slide videos were inventing random things (birds, the person wandering around) instead of showing the message on the slide — now each slide's animation has the person acting out that exact slide's statement, with nothing new allowed into the scene, and the text always stays on top. Also, when a video render fails, the system now automatically tries that slide once more, so animated posts should arrive with every slide (except the final Ripple slide) animated instead of some staying still.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: v11 prompts — `buildSlideVideoPrompt(overlayText)` now takes the slide's text and instructs "the main subject acts out '<text>'"; new shared `SAME_SCENE_LINE` ending "nothing new enters the frame"; removed the steam/mug/candle/ambient-drift lines that seeded hallucinated elements
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: rewritten as a two-attempt loop (step names suffixed `-a1`/`-a2`); each attempt submits only target slides still lacking `videoUrl`, so attempt 2 retries exactly the slides whose submit or render failed; attempt 2 gets a shorter window (1m head start + 20×30s polls)
+- Inngest resynced after deploy
+
+### Manual steps needed
+None
+
+### Notes
+- Root cause of the birds/wandering: the v10 generic slide prompt said "the scene comes alive … soft ambient details drift" — the model treated that as license to add elements. v11 both anchors the motion to the slide's own words and locks the frame.
+- First live test (post cmsn6p53e000ceo911s678ave) animated 5/7; slides 5–6 failed with no retry — hence the second attempt pass.
+
 ## [2026-08-10] — Manual trigger for the fully animated post (test hook)
 
 **Requested by:** Keenan
