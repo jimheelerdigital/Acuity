@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-10] — Manual trigger for the fully animated post (test hook)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 39c9a3c7
+
+### In plain English (for Keenan)
+There's now a way to run the fully animated post on demand instead of waiting for the daily noon run. We used it today to test-animate the "6 reasons you overthink everything but decide nothing" carousel — you'll get a second email with all the videos once the renders finish.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: POST now also accepts `Authorization: Bearer CRON_SECRET` (same pattern as adlab/comp routes) as an alternative to the admin session
+- New POST action `animate-all` — sends `content-factory/cover.animate` with `{ postId, sendEmail: true, animateAll: true, animationStyle: "smooth" }`, identical to what the 12 UTC cron enqueues
+- Triggered via: `curl -X POST https://goripple.io/api/admin/carousels -H "Authorization: Bearer $CRON_SECRET" -d '{"action":"animate-all","postId":"..."}'`
+
+### Manual steps needed
+None
+
+### Notes
+- INNGEST_EVENT_KEY / HIGGSFIELD keys are "sensitive" env vars in Vercel — `vercel env pull` returns literal `[SENSITIVE]`, so events can't be sent to Inngest directly from a laptop. CRON_SECRET is a plain var and pulls fine; that's why the trigger goes through this route.
+- The animate function skips slides that already have a videoUrl, so `animate-all` is safe to re-run after a partial failure.
+
 ## [2026-08-10] — Post 1 is a static slideshow, post 2 is fully animated (every slide except the last)
 
 **Requested by:** Keenan
