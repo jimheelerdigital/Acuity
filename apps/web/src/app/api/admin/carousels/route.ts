@@ -100,16 +100,23 @@ export async function GET(req: NextRequest) {
  * POST /api/admin/carousels — actions: approve, reject, regenerate-slide, generate-topic.
  */
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(getAuthOptions());
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const poster = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isAdmin: true },
-  });
-  if (!poster?.isAdmin) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // CRON_SECRET bearer auth (for scripted/ops triggers) or admin session.
+  const authHeader = req.headers.get("authorization");
+  const cronAuthed =
+    !!process.env.CRON_SECRET &&
+    authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  if (!cronAuthed) {
+    const session = await getServerSession(getAuthOptions());
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const poster = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isAdmin: true },
+    });
+    if (!poster?.isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   const body = await req.json();
@@ -175,6 +182,24 @@ export async function POST(req: NextRequest) {
       await inngest.send({
         name: "content-factory/cover.animate",
         data: { postId },
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
+    case "animate-all": {
+      // Full animated-post treatment: animate every slide except the CTA
+      // and send the email after renders finish. Same path as the daily
+      // 12 UTC run — used for manual tests and re-runs.
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "content-factory/cover.animate",
+        data: {
+          postId,
+          sendEmail: true,
+          animateAll: true,
+          animationStyle: "smooth",
+        },
       });
       return NextResponse.json({ ok: true, queued: true });
     }
