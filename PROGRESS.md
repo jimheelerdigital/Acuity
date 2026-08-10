@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-10] — Cover animations: clear person movement, text always readable, phone download button
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a9c7bd58
+
+### In plain English (for Keenan)
+Three fixes to the animated covers. First, the animation instructions were rewritten (v10): the woman now performs one clear, engaging movement from the very first moment instead of "a still, quiet moment" that barely moved, and the headline text stays razor-sharp and fully visible for the entire video — the text no longer fades out at the end, so viewers always know what the post is about. Second, the daily email now always has a big orange "Download animated cover (MP4)" button that works on your phone: tap it, then Share → Save Video to get it into your camera roll. Third, there's a new quality setting we can switch on in Vercel to render sharper video, and the model tier itself can be upgraded from "lite" for a bigger quality jump.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: prompts v10 — keeps v9's short/positive-only style (no negative instructions) but leads with one full, visible gesture; drops the text fade-out; adds shared TEXT_AND_QUALITY_LINES (text fixed and sharp for the whole video, HD cinematic footage). Both smooth and crazy variants.
+- apps/web/src/lib/content-factory/animate-cover.ts: submitCoverVideo optionally sends `quality` (HIGGSFIELD_VIDEO_QUALITY) and overrides the default 4s `duration` (HIGGSFIELD_VIDEO_DURATION) — both omitted when env unset, so default behavior is unchanged
+- apps/web/src/lib/content-factory/email.ts: replaced the small video link with a prominent tappable download button + save-to-camera-roll hint (HTML and plain text); fixed stale "15MB" copy in the oversized-attachments warning
+- Rebased onto the 2026-08-07 animation rework (standard i2v, no end frame, dop/lite) — kept that architecture and the email debug logging
+
+### Manual steps needed
+- [ ] Biggest quality lever: upgrade HIGGSFIELD_VIDEO_MODEL in Vercel from "higgsfield-ai/dop/lite" to a higher tier (e.g. "higgsfield-ai/dop/standard"), then redeploy (Jimmy)
+- [ ] Optionally set HIGGSFIELD_VIDEO_QUALITY=1080p in Vercel — undocumented for this endpoint, so watch the first run: if the email arrives with a static cover, remove the var (Jimmy)
+- [ ] Review the next daily emails to judge the v10 animations and the download button (Keenan)
+
+### Notes
+- Higgsfield's platform API keys are not in the local .env (Vercel only), so the `quality` field could not be verified against the live API — that's why it's env-gated instead of hardcoded. A rejected field would make submits fail and every cover degrade to static; that's the failure mode to watch.
+- Deliberately reverted d137f161's text fade-out: Keenan's 2026-08-10 direction is that the video must never impede the text, so it now stays visible for the full 4 seconds.
+- v10 respects the v9 lesson (long prompts with negative instructions make the model act out the mentioned verbs) — all new lines are short and describe only what SHOULD happen.
+
 ## [2026-08-07] — Durable comp marker (subscriptionSource="comp") + one-line comp action
 
 **Requested by:** Jimmy
@@ -184,28 +209,6 @@ The animated covers were barely moving — the character just blinked. The root 
 - The video is now a standalone animation of the cover scene, not a "transition from raw to composed." The static composed cover is still used for the actual Instagram carousel post.
 - The 3 recent failures were likely the model struggling with the near-identical frame constraint or credit exhaustion. The standard model should be more reliable since it's a simpler task (animate from one image, no end-frame matching).
 - If the standard `dop/standard` model path doesn't work, try `higgsfield-ai/dop/turbo` as a fallback — check the model gallery at cloud.higgsfield.ai.
-## [2026-08-10] — Cover animations simplified, text protected, and video downloadable on phone
-
-**Requested by:** Keenan
-**Committed by:** Claude Code
-**Commit hash:** 1ba20e7d
-
-### In plain English (for Keenan)
-The cover animations were chaotic and the movement often got in the way of the headline. The instructions to the video AI were rewritten: the person now performs one clear, engaging movement, everything else stays calm, and the headline must appear within the first second and stay perfectly readable the whole time — nothing is allowed to cross or blur it. The daily email now always has a big orange "Download animated cover (MP4)" button that works on your phone (tap it, then Share → Save Video to get it into your camera roll), whether or not the file is also attached. There are also new quality settings we can turn on to render sharper video.
-
-### Technical changes (for Jimmy)
-- apps/web/src/lib/content-factory/animate-cover.ts: buildCoverVideoPrompt v3 + buildCrazyCoverVideoPrompt v3 — one committed gesture, minimal ambient motion, shared TEXT_AND_QUALITY_GUARDS block (text lands in first second, never occluded/blurred; cinema-grade sharpness; end-frame lock kept). Crazy variant drops the full-scene spin + impact shake (they blurred the headline).
-- apps/web/src/lib/content-factory/animate-cover.ts: submitCoverVideo now includes optional `quality` and `duration` body fields from HIGGSFIELD_VIDEO_QUALITY / HIGGSFIELD_VIDEO_DURATION env vars — omitted entirely when unset, so default behavior is unchanged
-- apps/web/src/lib/content-factory/email.ts: replaced the small video link with a prominent tappable download button + save-to-camera-roll hint (HTML and plain text); fixed stale "15MB" copy in the oversized-attachments warning
-
-### Manual steps needed
-- [ ] Optionally set HIGGSFIELD_VIDEO_QUALITY=1080p (and/or HIGGSFIELD_VIDEO_DURATION) in Vercel, then redeploy — Higgsfield's platform docs don't document these fields for the DoP first-last-frame model, so watch the first run: if submits start failing (email arrives with static cover), remove the var (Jimmy)
-- [ ] Review the next daily emails to judge the v3 smooth and crazy animations (Keenan)
-
-### Notes
-- Higgsfield's platform API keys are not in the local .env (Vercel only), so the quality field could not be verified against the live API — that's why it's env-gated instead of hardcoded. A rejected field would degrade every cover to static, which is the failure mode to watch for.
-- The biggest quality lever confirmed under our control remains the prompt: v3 adds explicit sharpness/no-flicker/no-artifact language and removes the motion-blur-inducing instructions (whole-scene spin, impact shake, heavy parallax) that read as "low quality" in v2 renders.
-- The "text is untouchable" rules only govern how text *arrives* (start frame is text-free; end frame has it baked in) — the final frame still locks to the exact composed cover, so slide 1 always matches.
 
 ## [2026-08-05] — Animated cover is now playable in the review queue
 
