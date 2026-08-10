@@ -13,7 +13,10 @@ const TO_ADDRESS =
   process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital.com";
 const REVIEW_BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://goripple.io";
-const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024; // 15MB
+// Resend's hard limit is 40MB per message AFTER base64 encoding (~1.37×).
+// 28MB raw ≈ 38MB encoded, safely under. Was 15MB, which silently demoted
+// the ~10-20MB animated covers to a download link on 3 of 5 daily emails.
+const MAX_ATTACHMENT_BYTES = 28 * 1024 * 1024; // 28MB raw
 
 interface SlideRow {
   id: string;
@@ -117,15 +120,24 @@ export async function sendCarouselEmail(
   const coverUrl = post.slides[0]?.imageUrl ?? "";
   const reviewUrl = `${REVIEW_BASE_URL}/admin/content-factory/carousels`;
 
+  // Always give a big, thumb-friendly download button when a video exists —
+  // attachments are awkward to save to the camera roll on a phone, the
+  // hosted link is not. Shown whether or not the MP4 is also attached.
   const videoNote = coverVideoUrl
-    ? videoBuffer
-      ? `<p style="font-size:13px;color:#888;">🎬 Animated cover attached as MP4 — or <a href="${escapeHtml(coverVideoUrl)}" style="color:#F97E4E;">download it here</a>.</p>`
-      : `<p style="font-size:13px;color:#888;">🎬 Animated cover: <a href="${escapeHtml(coverVideoUrl)}" style="color:#F97E4E;">download the MP4</a> (too large to attach).</p>`
+    ? `
+    <div style="text-align:center;margin:20px 0;">
+      <a href="${escapeHtml(coverVideoUrl)}" download="cover-animated.mp4" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">
+        🎬 Download animated cover (MP4)
+      </a>
+      <p style="font-size:11px;color:#888;margin:8px 0 0;">
+        On your phone: tap the button to open the video, then Share&nbsp;→&nbsp;Save&nbsp;Video to add it to your camera roll.${videoBuffer ? " (Also attached to this email.)" : ""}
+      </p>
+    </div>`
     : "";
 
   const attachNote = useAttachments
     ? `<p style="font-size:13px;color:#888;">📎 ${slideBuffers.length} slides attached — save to Photos and post.</p>`
-    : `<p style="font-size:13px;color:#E06C75;font-weight:600;">⚠️ Attachments exceeded 15MB — images linked below instead.</p>` +
+    : `<p style="font-size:13px;color:#E06C75;font-weight:600;">⚠️ Attachments exceeded the size limit — images linked below instead.</p>` +
       slideBuffers
         .map((s) => `<p style="font-size:12px;"><a href="${escapeHtml(s.url)}" style="color:#F97E4E;">${escapeHtml(s.filename)}</a></p>`)
         .join("\n");
@@ -173,7 +185,9 @@ export async function sendCarouselEmail(
   const text = [
     post.headline,
     `${lane} · ${dateStr} · ${post.slides.length} slides`,
-    ...(coverVideoUrl ? ["", `Animated cover: ${coverVideoUrl}`] : []),
+    ...(coverVideoUrl
+      ? ["", `Download animated cover (MP4): ${coverVideoUrl}`, "On your phone: open the link, then Share → Save Video."]
+      : []),
     "",
     "── Caption ──",
     post.caption,

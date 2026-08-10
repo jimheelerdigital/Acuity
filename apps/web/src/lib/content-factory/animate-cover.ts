@@ -18,6 +18,8 @@
  * - HIGGSFIELD_VIDEO_MODEL — model path for the POST endpoint, e.g.
  *   "higgsfield-ai/dop/lite". If unset, animation is skipped
  *   (carousels stay static).
+ * - HIGGSFIELD_VIDEO_QUALITY (optional) — e.g. "1080p"; sent as `quality`.
+ * - HIGGSFIELD_VIDEO_DURATION (optional) — seconds; overrides the default 4.
  */
 
 import type { CarouselTopic } from "./topics";
@@ -54,33 +56,51 @@ function authHeaders(): Record<string, string> {
  * work — the model latches on to verbs like "walking" and "talking" and
  * does them. v9 is ultra-short: only describes what SHOULD happen,
  * avoids mentioning unwanted behaviors entirely.
+ *
+ * v10 (2026-08-10): v9's "a still, quiet moment" read as near-static and
+ * the text fade-out hid what the post was about. v10 keeps the short,
+ * positive-only style but leads with ONE clear, fully visible gesture
+ * from the woman, keeps all text razor-sharp and fixed for the entire
+ * video (scene moves behind it), and adds explicit high-definition
+ * cinematic quality language.
  */
 /** Which animation treatment a cover gets. */
 export type AnimationStyle = "smooth" | "crazy";
+
+/**
+ * Shared closing lines for every cover prompt (positive-only phrasing):
+ * the text never moves or fades, and the footage reads as high-end.
+ */
+const TEXT_AND_QUALITY_LINES = [
+  "All text in the image stays razor-sharp, fixed in place, and fully visible in front of the scene for the entire video, with every movement happening behind it.",
+  "Crisp, sharp, high-definition cinematic footage with steady lighting, rich color, and clean detail from first frame to last.",
+];
 
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a gentle shrug and a slow deep breath";
   return [
-    `A still, quiet moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
-    "Her hair sways slightly. A bird glides past in the background. Steam rises from a mug.",
-    "The camera drifts forward slowly. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place for the first 3 seconds, then gently fades out over the final second.",
+    `The woman is seated, lips closed. From the first moment she ${emotionBeat} — one clear, graceful, fully visible movement carried through her head, shoulders, and hands.`,
+    "Steam rises from the mug and her hair sways softly. The camera pushes in slowly and smoothly toward her.",
+    "The same scene, same colors, same setting the entire time.",
+    ...TEXT_AND_QUALITY_LINES,
   ].join(" ");
 }
 
 /**
- * "Crazy intro" variant — one post per day. Slightly bolder gesture
- * but same short-prompt approach.
+ * "Crazy intro" variant — one post per day. Bolder gesture and a faster
+ * camera land, same short-prompt approach and same text protection.
  */
 export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a deep exhale and then looks up with quiet confidence";
   return [
-    `A still, powerful moment. The woman is seated. Her lips are closed. She ${emotionBeat}.`,
-    "Her hair catches a breeze. Birds fly across the sky in the background. A candle flame flickers.",
-    "The camera pushes in steadily. The same scene, same colors, same setting the entire time. All text in the image stays sharp and in place for the first 3 seconds, then gently fades out over the final second.",
+    `The woman is seated, lips closed. From the first moment she ${emotionBeat} — one bold, confident, fully visible movement with real momentum.`,
+    "Her hair catches a breeze and a candle flame flickers. The camera sweeps in fast, then glides to a smooth, confident stop on her.",
+    "The same scene, same colors, same setting the entire time.",
+    ...TEXT_AND_QUALITY_LINES,
   ].join(" ");
 }
 
@@ -95,20 +115,34 @@ export async function submitCoverVideo(opts: {
   prompt: string;
 }): Promise<string> {
   const model = process.env.HIGGSFIELD_VIDEO_MODEL!;
+
+  const body: Record<string, unknown> = {
+    prompt: opts.prompt,
+    image_url: opts.startImageUrl,
+    duration: 4,
+    motions: [],
+    // Never let Higgsfield rewrite our validated prompt template.
+    enhance_prompt: false,
+  };
+  // Quality/duration knobs (2026-08-10). Sent only when set in env so a
+  // model that rejects `quality` can be dialed back without a code change:
+  // - HIGGSFIELD_VIDEO_QUALITY, e.g. "1080p" or "high"
+  // - HIGGSFIELD_VIDEO_DURATION, seconds — overrides the default 4
+  if (process.env.HIGGSFIELD_VIDEO_QUALITY) {
+    body.quality = process.env.HIGGSFIELD_VIDEO_QUALITY;
+  }
+  if (process.env.HIGGSFIELD_VIDEO_DURATION) {
+    const duration = Number(process.env.HIGGSFIELD_VIDEO_DURATION);
+    if (Number.isFinite(duration) && duration > 0) body.duration = duration;
+  }
+
   const res = await fetch(`${BASE_URL}/${model}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...authHeaders(),
     },
-    body: JSON.stringify({
-      prompt: opts.prompt,
-      image_url: opts.startImageUrl,
-      duration: 4,
-      motions: [],
-      // Never let Higgsfield rewrite our validated prompt template.
-      enhance_prompt: false,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
