@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-10] — Daily carousels cut from 5 to 2 per day
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The content factory now generates and emails 2 carousels per day instead of 5, cutting the daily AI image and video spend by 60%. The 8 UTC post keeps the high-energy intro animation and the 12 UTC post gets the smooth one, so you still see both styles every day. Also decided against upgrading the video model to the "standard" tier — it costs too many tokens, so we stay on the cheaper "lite" tier and rely on the improved prompts for quality.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron changed from "0 8,9,10,11,12 * * *" to "0 8,12 * * *"; comments updated (8 UTC = crazy intro, 12 UTC = smooth — unchanged logic, just fewer runs)
+- PROGRESS.md: superseded the earlier manual step suggesting a HIGGSFIELD_VIDEO_MODEL tier upgrade — staying on dop/lite per Keenan's cost call
+
+### Manual steps needed
+- [ ] Inngest resync after Vercel deploys: PUT https://goripple.io/api/inngest (cron/trigger config changed, so the schedule won't update until resync) — attempted from this session; verify tomorrow only 2 emails arrive (Keenan)
+
+### Notes
+- Trigger config changes (unlike prompt-only changes) DO require an Inngest resync — the schedule lives in Inngest's synced function config, not in our code at runtime.
+- Chose 8 and 12 UTC (the old first and last slots) to keep the crazy/smooth split and the widest spacing.
+
 ## [2026-08-10] — Cover animations: clear person movement, text always readable, phone download button
 
 **Requested by:** Keenan
@@ -23,7 +43,7 @@ Three fixes to the animated covers. First, the animation instructions were rewri
 - Rebased onto the 2026-08-07 animation rework (standard i2v, no end frame, dop/lite) — kept that architecture and the email debug logging
 
 ### Manual steps needed
-- [ ] Biggest quality lever: upgrade HIGGSFIELD_VIDEO_MODEL in Vercel from "higgsfield-ai/dop/lite" to a higher tier (e.g. "higgsfield-ai/dop/standard"), then redeploy (Jimmy)
+- [x] ~~Upgrade HIGGSFIELD_VIDEO_MODEL to a higher tier~~ — SUPERSEDED 2026-08-10: Keenan decided the standard model costs too many tokens; staying on dop/lite
 - [ ] Optionally set HIGGSFIELD_VIDEO_QUALITY=1080p in Vercel — undocumented for this endpoint, so watch the first run: if the email arrives with a static cover, remove the var (Jimmy)
 - [ ] Review the next daily emails to judge the v10 animations and the download button (Keenan)
 

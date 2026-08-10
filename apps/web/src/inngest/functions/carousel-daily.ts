@@ -1,7 +1,8 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 5× daily via cron.
+ * Carousel generation — runs 2× daily via cron (was 5×; cut 2026-08-10
+ * to reduce token/image spend).
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
@@ -11,7 +12,7 @@ export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
-    triggers: [{ cron: "0 8,9,10,11,12 * * *" }],
+    triggers: [{ cron: "0 8,12 * * *" }],
     retries: 1,
   },
   async ({ step, logger }) => {
@@ -248,7 +249,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     await step.run("enqueue-cover-animation", async () => {
       try {
         // The first run of the day (8 UTC) gets the high-energy "crazy
-        // intro" (spin-in) treatment; the other four runs stay smooth.
+        // intro" treatment; the 12 UTC run stays smooth.
         const animationStyle =
           new Date().getUTCHours() === 8 ? "crazy" : "smooth";
         await inngest.send({
