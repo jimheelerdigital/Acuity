@@ -76,29 +76,40 @@ const TEXT_AND_QUALITY_LINES = [
   "Crisp, sharp, high-definition cinematic footage with steady lighting, rich color, and clean detail from first frame to last.",
 ];
 
+/**
+ * v11 (2026-08-10): shared scene-lock line. "nothing new enters the frame"
+ * exists because the v10 generic slide prompt ("scene comes alive … ambient
+ * details drift") made the model invent new elements (birds flying through,
+ * the person wandering off-task).
+ */
+const SAME_SCENE_LINE =
+  "The same scene, same subject, same colors, same setting the entire time — nothing new enters the frame.";
+
 export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a gentle shrug and a slow deep breath";
   return [
     `The woman is seated, lips closed. From the first moment she ${emotionBeat} — one clear, graceful, fully visible movement carried through her head, shoulders, and hands.`,
-    "Steam rises from the mug and her hair sways softly. The camera pushes in slowly and smoothly toward her.",
-    "The same scene, same colors, same setting the entire time.",
+    "The camera pushes in slowly and smoothly toward her.",
+    SAME_SCENE_LINE,
     ...TEXT_AND_QUALITY_LINES,
   ].join(" ");
 }
 
 /**
  * Prompt for non-cover slides (reason slides) on fully animated posts.
- * The artwork varies by style lane (clay, flat graphic, still life, …)
- * and doesn't always contain a person, so this stays generic: one clear
- * movement from the scene's main subject, gentle push-in, text locked.
+ *
+ * v11 (2026-08-10): the movement is tied to the slide's own text — the
+ * subject acts out the statement written on the slide, so the animation
+ * matches what the viewer is reading instead of generic ambient motion.
  */
-export function buildSlideVideoPrompt(): string {
+export function buildSlideVideoPrompt(overlayText: string): string {
+  const statement = overlayText.trim().replace(/"/g, "'");
   return [
-    "The scene comes alive with one clear, gentle, fully visible movement of its main subject.",
-    "Soft ambient details drift — steam, light, or fabric. The camera pushes in slowly and smoothly.",
-    "The same scene, same colors, same setting the entire time.",
+    `One simple, clear, fully visible movement: the main subject acts out "${statement}" through natural body language and expression.`,
+    "The camera pushes in slowly and smoothly.",
+    SAME_SCENE_LINE,
     ...TEXT_AND_QUALITY_LINES,
   ].join(" ");
 }
@@ -113,8 +124,8 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     "a deep exhale and then looks up with quiet confidence";
   return [
     `The woman is seated, lips closed. From the first moment she ${emotionBeat} — one bold, confident, fully visible movement with real momentum.`,
-    "Her hair catches a breeze and a candle flame flickers. The camera sweeps in fast, then glides to a smooth, confident stop on her.",
-    "The same scene, same colors, same setting the entire time.",
+    "The camera sweeps in fast, then glides to a smooth, confident stop on her.",
+    SAME_SCENE_LINE,
     ...TEXT_AND_QUALITY_LINES,
   ].join(" ");
 }
