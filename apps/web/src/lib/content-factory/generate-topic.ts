@@ -94,9 +94,15 @@ Generate 5-10 reasons per topic. Vary the count each time.`;
 
 /**
  * Generate a fresh carousel topic using Claude, avoiding recent headlines.
+ *
+ * `maxReasons` caps the reason count (used by the fully animated daily
+ * post, where every reason slide becomes a video). The cap must be given
+ * to Claude — not applied after the fact — because the headline's number
+ * has to match the reason count.
  */
 export async function generateTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  opts?: { maxReasons?: number }
 ): Promise<GeneratedTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -104,7 +110,12 @@ export async function generateTopic(
     ? `\n\nDO NOT repeat or closely resemble any of these recent headlines:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}`
     : "";
 
-  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}
+  const maxReasons = opts?.maxReasons;
+  const reasonCap = maxReasons
+    ? `\n\nIMPORTANT: Generate at most ${maxReasons} reasons for this topic (5-${maxReasons}). The number in the headline must match the reason count.`
+    : "";
+
+  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}
 
 Return ONLY valid JSON, no other text.`;
 

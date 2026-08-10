@@ -89,6 +89,21 @@ export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">)
 }
 
 /**
+ * Prompt for non-cover slides (reason slides) on fully animated posts.
+ * The artwork varies by style lane (clay, flat graphic, still life, …)
+ * and doesn't always contain a person, so this stays generic: one clear
+ * movement from the scene's main subject, gentle push-in, text locked.
+ */
+export function buildSlideVideoPrompt(): string {
+  return [
+    "The scene comes alive with one clear, gentle, fully visible movement of its main subject.",
+    "Soft ambient details drift — steam, light, or fabric. The camera pushes in slowly and smoothly.",
+    "The same scene, same colors, same setting the entire time.",
+    ...TEXT_AND_QUALITY_LINES,
+  ].join(" ");
+}
+
+/**
  * "Crazy intro" variant — one post per day. Bolder gesture and a faster
  * camera land, same short-prompt approach and same text protection.
  */
@@ -197,13 +212,13 @@ export async function pollCoverVideo(requestId: string): Promise<string> {
 
 /**
  * Download the finished MP4 from Higgsfield's CDN, upload it to Supabase
- * Storage next to the cover JPEG, and persist videoUrl on the slide.
- * Returns the public Supabase URL.
+ * Storage next to the slide's JPEG, and persist videoUrl on the slide.
+ * Works for any slide (cover or reason). Returns the public Supabase URL.
  */
-export async function storeCoverVideo(slideId: string, higgsfieldVideoUrl: string): Promise<string> {
+export async function storeSlideVideo(slideId: string, higgsfieldVideoUrl: string): Promise<string> {
   const res = await fetch(higgsfieldVideoUrl);
   if (!res.ok) {
-    throw new Error(`Failed to download cover video (${res.status}) from ${higgsfieldVideoUrl}`);
+    throw new Error(`Failed to download slide video (${res.status}) from ${higgsfieldVideoUrl}`);
   }
   const buffer = Buffer.from(await res.arrayBuffer());
 
@@ -214,7 +229,7 @@ export async function storeCoverVideo(slideId: string, higgsfieldVideoUrl: strin
   });
 
   const dateStr = slide.carouselPost.generatedFor.toISOString().slice(0, 10);
-  const path = `carousels/${dateStr}/${slide.carouselPost.topicSlug}/slide-0-cover.mp4`;
+  const path = `carousels/${dateStr}/${slide.carouselPost.topicSlug}/slide-${slide.order}-${slide.kind.toLowerCase()}.mp4`;
 
   const { supabase } = await import("@/lib/supabase.server");
   const { error } = await supabase.storage
@@ -228,6 +243,6 @@ export async function storeCoverVideo(slideId: string, higgsfieldVideoUrl: strin
     data: { videoUrl: data.publicUrl },
   });
 
-  console.log(`[animate-cover] Stored cover video for slide ${slideId}: ${data.publicUrl}`);
+  console.log(`[animate-cover] Stored video for slide ${slideId}: ${data.publicUrl}`);
   return data.publicUrl;
 }

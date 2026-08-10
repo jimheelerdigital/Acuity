@@ -83,32 +83,33 @@ export async function sendCarouselEmail(
 
   const useAttachments = totalBytes <= MAX_ATTACHMENT_BYTES;
 
-  // ── Animated cover video (if the cover has one) ────────────────
-  const coverSlide = post.slides.find((s) => s.kind === "COVER");
-  const coverVideoUrl = coverSlide?.videoUrl ?? null;
+  // ── Animated slide videos (fully animated posts have several) ───
+  const videoSlides = post.slides.filter((s) => s.videoUrl);
 
   console.log(
-    `[carousel-email] Video check for ${carouselPostId}: coverSlideId=${coverSlide?.id ?? "NONE"}, ` +
-    `videoUrl=${coverVideoUrl ? coverVideoUrl.slice(0, 80) + "..." : "NULL"}, ` +
+    `[carousel-email] Video check for ${carouselPostId}: ${videoSlides.length} slide(s) with video, ` +
     `imageBytes=${totalBytes}, useAttachments=${totalBytes <= MAX_ATTACHMENT_BYTES}`
   );
 
-  let videoBuffer: Buffer | null = null;
-  if (coverVideoUrl) {
+  // Attach each video that still fits within the attachment budget;
+  // every video always gets a download link regardless.
+  const videoBuffers: { filename: string; buf: Buffer }[] = [];
+  for (const slide of videoSlides) {
     try {
-      const res = await fetch(coverVideoUrl);
-      console.log(`[carousel-email] Video fetch: status=${res.status}, size=${res.headers.get("content-length") ?? "unknown"}`);
+      const res = await fetch(slide.videoUrl!);
+      console.log(`[carousel-email] Video fetch (slide ${slide.order}): status=${res.status}, size=${res.headers.get("content-length") ?? "unknown"}`);
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         if (totalBytes + buf.length <= MAX_ATTACHMENT_BYTES) {
-          videoBuffer = buf;
+          const num = String(slide.order + 1).padStart(2, "0");
+          videoBuffers.push({ filename: `${num}-${slide.kind.toLowerCase()}-animated.mp4`, buf });
           totalBytes += buf.length;
         } else {
-          console.log(`[carousel-email] Video too large to attach: ${buf.length} bytes, budget remaining: ${MAX_ATTACHMENT_BYTES - totalBytes}`);
+          console.log(`[carousel-email] Video for slide ${slide.order} too large to attach: ${buf.length} bytes, budget remaining: ${MAX_ATTACHMENT_BYTES - totalBytes}`);
         }
       }
     } catch (err) {
-      console.warn(`[carousel-email] Failed to fetch cover video ${coverVideoUrl}: ${err instanceof Error ? err.message : err}`);
+      console.warn(`[carousel-email] Failed to fetch video for slide ${slide.order}: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -120,20 +121,31 @@ export async function sendCarouselEmail(
   const coverUrl = post.slides[0]?.imageUrl ?? "";
   const reviewUrl = `${REVIEW_BASE_URL}/admin/content-factory/carousels`;
 
-  // Always give a big, thumb-friendly download button when a video exists —
+  // Always give big, thumb-friendly download buttons when videos exist —
   // attachments are awkward to save to the camera roll on a phone, the
-  // hosted link is not. Shown whether or not the MP4 is also attached.
-  const videoNote = coverVideoUrl
-    ? `
+  // hosted links are not. Shown whether or not the MP4s are also attached.
+  const videoButtons = videoSlides
+    .map((s) => {
+      const label =
+        s.kind === "COVER"
+          ? "🎬 Download animated cover (MP4)"
+          : `🎬 Download slide ${s.order + 1} animation (MP4)`;
+      return `
+      <a href="${escapeHtml(s.videoUrl!)}" download="slide-${s.order + 1}-animated.mp4" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;margin-bottom:8px;">
+        ${label}
+      </a>`;
+    })
+    .join("\n");
+  const videoNote =
+    videoSlides.length > 0
+      ? `
     <div style="text-align:center;margin:20px 0;">
-      <a href="${escapeHtml(coverVideoUrl)}" download="cover-animated.mp4" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">
-        🎬 Download animated cover (MP4)
-      </a>
+      ${videoButtons}
       <p style="font-size:11px;color:#888;margin:8px 0 0;">
-        On your phone: tap the button to open the video, then Share&nbsp;→&nbsp;Save&nbsp;Video to add it to your camera roll.${videoBuffer ? " (Also attached to this email.)" : ""}
+        On your phone: tap a button to open the video, then Share&nbsp;→&nbsp;Save&nbsp;Video to add it to your camera roll.${videoBuffers.length > 0 ? ` (${videoBuffers.length} of ${videoSlides.length} also attached.)` : ""}
       </p>
     </div>`
-    : "";
+      : "";
 
   const attachNote = useAttachments
     ? `<p style="font-size:13px;color:#888;">📎 ${slideBuffers.length} slides attached — save to Photos and post.</p>`
@@ -185,8 +197,15 @@ export async function sendCarouselEmail(
   const text = [
     post.headline,
     `${lane} · ${dateStr} · ${post.slides.length} slides`,
-    ...(coverVideoUrl
-      ? ["", `Download animated cover (MP4): ${coverVideoUrl}`, "On your phone: open the link, then Share → Save Video."]
+    ...(videoSlides.length > 0
+      ? [
+          "",
+          "── Animated slides (MP4) ──",
+          ...videoSlides.map((s) =>
+            `${s.kind === "COVER" ? "Cover" : `Slide ${s.order + 1}`}: ${s.videoUrl}`
+          ),
+          "On your phone: open a link, then Share → Save Video.",
+        ]
       : []),
     "",
     "── Caption ──",
@@ -214,10 +233,10 @@ export async function sendCarouselEmail(
       filename: s.filename,
       content: s.buf.toString("base64"),
     }));
-    if (videoBuffer) {
+    for (const v of videoBuffers) {
       attachments.push({
-        filename: "00-cover-animated.mp4",
-        content: videoBuffer.toString("base64"),
+        filename: v.filename,
+        content: v.buf.toString("base64"),
       });
     }
     (emailPayload as Record<string, unknown>).attachments = attachments;

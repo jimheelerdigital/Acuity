@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-10] — Post 1 is a static slideshow, post 2 is fully animated (every slide except the last)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The two daily posts now have distinct formats. The 8 UTC post is a plain picture slideshow — no animation at all, so the email arrives as soon as the images are done. The 12 UTC post is fully animated: every slide except the final CTA slide gets its own 4-second video on the current (lite) model, and its topic is capped at 6 reasons so at most 7 slides are animated. The email for the animated post includes a download button for every video (tap → Share → Save Video on your phone), and attaches as many as fit under the email size limit.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: 8 UTC run skips animation and emails directly; 12 UTC run sends cover.animate with `animateAll: true`; topic generation passes `maxReasons: 6` for the animated run. "crazy" style no longer used by the cron (still supported by the event for manual runs).
+- apps/web/src/lib/content-factory/generate-topic.ts: generateTopic(recentHeadlines, { maxReasons? }) — cap is given to Claude in the prompt (not sliced after) because the headline's number must match the reason count
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: rewritten for multi-slide — submits one Higgsfield job per target slide (all but last when animateAll, else cover only; hard cap 7 videos), polls all jobs in shared steps, stores each finished video, emails on every exit path. Per-slide failures degrade that slide to static without killing the rest.
+- apps/web/src/lib/content-factory/animate-cover.ts: new buildSlideVideoPrompt() for reason slides (generic, works for lanes without a person); storeCoverVideo → storeSlideVideo with per-slide storage path slide-{order}-{kind}.mp4
+- apps/web/src/lib/content-factory/email.ts: handles any number of slide videos — one download button per video, attaches those that fit the 28MB budget, plain-text link list
+
+### Manual steps needed
+- [ ] Inngest resync after Vercel deploys: PUT https://goripple.io/api/inngest (function name/flow changed) — attempted from this session
+- [ ] Watch tomorrow's 12 UTC email: ~7 videos at once is the first real load test of Higgsfield concurrency and the 20-min poll window (Keenan)
+
+### Notes
+- Cost: the animated post submits up to 7 lite renders/day (vs 1 before across 5 posts). Still cheaper overall than 5 posts of images + 5 cover videos, and Keenan explicitly chose lite over standard for cost.
+- All 7 jobs are submitted up-front in one step; Higgsfield renders them server-side in parallel, so the 2m + 36×30s poll window should still hold. If timeouts appear, widen MAX_POLLS.
+- Slides already having videoUrl are skipped on retry, so an Inngest retry after partial success only renders the missing slides.
+
 ## [2026-08-10] — Daily carousels cut from 5 to 2 per day
 
 **Requested by:** Keenan

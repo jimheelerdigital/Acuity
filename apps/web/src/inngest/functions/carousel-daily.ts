@@ -4,6 +4,12 @@ import { inngest } from "@/inngest/client";
  * Carousel generation — runs 2× daily via cron (was 5×; cut 2026-08-10
  * to reduce token/image spend).
  *
+ * - 8 UTC run: static picture slideshow only — no animation, email sent
+ *   directly after generation.
+ * - 12 UTC run: fully animated — every slide except the last (CTA) gets
+ *   a 4s video; topic capped at 6 reasons (7 animated slides max). Email
+ *   is sent by the animate function after the renders finish.
+ *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
@@ -17,11 +23,15 @@ export const carouselDailyCronFn = inngest.createFunction(
   },
   async ({ step, logger }) => {
     // ── Step 1: Generate a fresh topic via Claude ──────────────────
+    // The 12 UTC run is the fully animated post — its topic is capped at
+    // 6 reasons so at most 7 slides (cover + 6 reasons) get videos.
     const topicData = await step.run("generate-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
       const { generateTopic } = await import(
         "@/lib/content-factory/generate-topic"
       );
+
+      const animatedRun = new Date().getUTCHours() !== 8;
 
       const thirtyDaysAgo = new Date(
         Date.now() - 30 * 86_400_000
@@ -32,8 +42,11 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
       const recentHeadlines = recentPosts.map((p) => p.headline);
 
-      const topic = await generateTopic(recentHeadlines);
-      return topic;
+      const topic = await generateTopic(
+        recentHeadlines,
+        animatedRun ? { maxReasons: 6 } : undefined
+      );
+      return { ...topic, animatedRun };
     });
 
     if (!topicData) {
@@ -241,24 +254,31 @@ export const carouselDailyCronFn = inngest.createFunction(
       };
     });
 
-    // ── Step N+3: fan out cover animation, which sends the email ─
-    // Pipeline order: carousel gen → cover animation → Resend email.
-    // The animate function sends the email on EVERY exit path (success,
-    // skip, failure, timeout) so Keenan always gets exactly one email —
-    // with the video when animation worked, static cover otherwise.
-    await step.run("enqueue-cover-animation", async () => {
+    // ── Step N+3: deliver ─────────────────────────────────────────
+    // 8 UTC run: static slideshow — email straight away, no animation.
+    // 12 UTC run: enqueue full-post animation (every slide except the
+    // CTA); the animate function sends the email on EVERY exit path
+    // (success, skip, failure, timeout) so Keenan always gets exactly
+    // one email — with videos when animation worked, static otherwise.
+    await step.run("deliver", async () => {
+      if (!topicData.animatedRun) {
+        const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+        await sendCarouselEmail(result.postId);
+        return;
+      }
       try {
-        // The first run of the day (8 UTC) gets the high-energy "crazy
-        // intro" treatment; the 12 UTC run stays smooth.
-        const animationStyle =
-          new Date().getUTCHours() === 8 ? "crazy" : "smooth";
         await inngest.send({
           name: "content-factory/cover.animate",
-          data: { postId: result.postId, sendEmail: true, animationStyle },
+          data: {
+            postId: result.postId,
+            sendEmail: true,
+            animateAll: true,
+            animationStyle: "smooth",
+          },
         });
       } catch (animateErr) {
         logger.error(
-          `[carousel-cron] Failed to enqueue cover animation for ${slug}: ${animateErr instanceof Error ? animateErr.message : animateErr}`
+          `[carousel-cron] Failed to enqueue animation for ${slug}: ${animateErr instanceof Error ? animateErr.message : animateErr}`
         );
         // Never leave the post unsent — fall back to emailing the static
         // carousel right away if the animation event can't be enqueued.
