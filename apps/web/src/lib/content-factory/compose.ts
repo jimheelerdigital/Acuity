@@ -154,6 +154,76 @@ async function renderText(
 // ─── Slide compositing ──────────────────────────────────────────────────────
 
 /**
+ * Render a slide's text as a transparent 1080x1920 PNG overlay.
+ *
+ * Used by the fully animated post (2026-08-10): its artwork is generated
+ * WITHOUT baked-in text so the video model can't animate the words, and
+ * this exact overlay is composited onto the static JPEG (sharp) AND
+ * burned onto the finished MP4 (ffmpeg) — pixel-identical, pixel-frozen.
+ *
+ * Layout: Poppins Bold, white with a soft dark drop shadow for
+ * legibility on any artwork, top-centered inside the safe zone.
+ */
+export async function renderSlideTextOverlay(
+  text: string,
+  kind: "COVER" | "REASON",
+  slideNumber?: number
+): Promise<Buffer> {
+  const fontPath = await ensureFontFile("Bold");
+  const display =
+    kind === "REASON" && slideNumber ? `${slideNumber}. ${text}` : text;
+
+  const fontSize = kind === "COVER" ? 52 : 44;
+  const maxChars = kind === "COVER" ? 20 : 24;
+  const lines = wordWrap(display, maxChars);
+
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+  // Shadow layer (dark, slightly offset) + main layer (white)
+  const shadow = await renderText(
+    lines, fontSize, "#111111", fontPath, maxTextW, 10, 8
+  );
+  const main = await renderText(
+    lines, fontSize, "#FFFFFF", fontPath, maxTextW, 10, 8
+  );
+
+  // Soften the shadow with a slight blur
+  const blurredShadow = await sharp(shadow.buffer).blur(4).png().toBuffer();
+
+  const textTop = 180; // inside the top safe zone, above the subject
+  const left = Math.round((OUTPUT_W - main.width) / 2);
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: OUTPUT_H,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      { input: blurredShadow, top: textTop + 4, left: left + 4 },
+      { input: main.buffer, top: textTop, left },
+    ])
+    .png()
+    .toBuffer();
+}
+
+/**
+ * Compose a text-free raw image + pre-rendered text overlay into the
+ * final static slide JPEG (animated-post pipeline).
+ */
+export async function composeSlideWithOverlay(
+  rawImage: Buffer,
+  overlayPng: Buffer
+): Promise<Buffer> {
+  return sharp(rawImage)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .composite([{ input: overlayPng, top: 0, left: 0 }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+/**
  * Compose a slide — resize the AI-generated image to 9:16 output.
  *
  * Text is now baked into the AI-generated image by gpt-image-2 (not

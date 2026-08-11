@@ -117,25 +117,25 @@ export const carouselAnimateCoverFn = inngest.createFunction(
           emotionBeat:
             "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera",
         };
-        const coverPrompt =
-          animationStyle === "crazy"
-            ? buildCrazyCoverVideoPrompt(topic ?? fallback)
-            : buildCoverVideoPrompt(topic ?? fallback);
-
         const jobs: { slideId: string; order: number; requestId: string }[] = [];
         for (const slide of targets) {
           if (jobs.length >= MAX_CONCURRENT_JOBS) break; // Higgsfield drops submits past ~4 concurrent
           if (!slide.imageUrl) continue;
           if (slide.videoUrl) continue; // already animated (earlier wave / retried run)
-          // Reason slides act out their own text; the cover has its
-          // dedicated emotion-beat prompt.
+          // Prefer the raw (text-free) artwork as the start frame — the
+          // model then has no text pixels to warp; the words get burned
+          // onto the finished video in storeSlideVideo.
+          const startImageUrl = slide.rawImageUrl ?? slide.imageUrl;
+          const textFree = Boolean(slide.rawImageUrl);
           const prompt =
             slide.kind === "COVER"
-              ? coverPrompt
-              : buildSlideVideoPrompt(slide.overlayText);
+              ? animationStyle === "crazy"
+                ? buildCrazyCoverVideoPrompt(topic ?? fallback)
+                : buildCoverVideoPrompt(topic ?? fallback, { textFree })
+              : buildSlideVideoPrompt({ textFree });
           try {
             const requestId = await submitCoverVideo({
-              startImageUrl: slide.imageUrl,
+              startImageUrl,
               prompt,
             });
             jobs.push({ slideId: slide.id, order: slide.order, requestId });

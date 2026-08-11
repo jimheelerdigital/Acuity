@@ -197,7 +197,8 @@ export function buildImagePrompt(
   sceneText: string,
   topic: CarouselTopic,
   colorPrompt?: string,
-  slideLabel?: string
+  slideLabel?: string,
+  opts?: { noText?: boolean }
 ): string {
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
@@ -205,11 +206,24 @@ export function buildImagePrompt(
     ? "Text should be prominent but not exceed 50% of the slide. Blend it creatively with the illustration — vary placement each time."
     : "Text should be prominent but not exceed 40% of the slide. Blend it creatively with the illustration — vary placement each time.";
 
+  // Text-free variant (animated posts): the words are composited on
+  // afterwards (sharp for the JPEG, ffmpeg for the video) so the video
+  // model never gets text pixels to animate. Keep the lower two thirds
+  // of the frame for the subject and the top clear for the overlay.
+  const textRules = opts?.noText
+    ? [
+        "Do not include any text, words, letters, numbers, typography, captions, or writing anywhere in the image.",
+        "Keep the top quarter of the image visually simple and uncluttered — the subject and detail belong in the middle and lower portions.",
+      ]
+    : [
+        `The slide must display this EXACT text prominently: "${displayText}"`,
+        sizeRule,
+      ];
+
   return [
     lanePrefix,
     colorPrompt ?? "",
-    `The slide must display this EXACT text prominently: "${displayText}"`,
-    sizeRule,
+    ...textRules,
     `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
     `Include relevant illustrated elements that visually represent: ${sceneText}`,
     VISUAL_DNA,

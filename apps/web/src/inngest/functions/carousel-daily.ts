@@ -18,10 +18,20 @@ export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
-    triggers: [{ cron: "0 8,12 * * *" }],
+    triggers: [
+      { cron: "0 8,12 * * *" },
+      // Manual/test trigger (admin "generate-animated" action). Event data
+      // may carry `animated: boolean` to force the mode.
+      { event: "content-factory/daily.generate" },
+    ],
     retries: 1,
   },
-  async ({ step, logger }) => {
+  async ({ event, step, logger }) => {
+    const eventAnimated =
+      event?.name === "content-factory/daily.generate"
+        ? (event.data?.animated as boolean | undefined)
+        : undefined;
+
     // ── Step 1: Generate a fresh topic via Claude ──────────────────
     // The 12 UTC run is the fully animated post — its topic is capped at
     // 6 reasons so at most 7 slides (cover + 6 reasons) get videos.
@@ -31,7 +41,12 @@ export const carouselDailyCronFn = inngest.createFunction(
         "@/lib/content-factory/generate-topic"
       );
 
-      const animatedRun = new Date().getUTCHours() !== 8;
+      // Cron: the 8 UTC run is static, everything else is animated.
+      // Event trigger: explicit `animated` flag wins when provided.
+      const animatedRun =
+        typeof eventAnimated === "boolean"
+          ? eventAnimated
+          : new Date().getUTCHours() !== 8;
 
       const thirtyDaysAgo = new Date(
         Date.now() - 30 * 86_400_000
@@ -78,6 +93,11 @@ export const carouselDailyCronFn = inngest.createFunction(
     });
 
     // ── Step 2: Generate cover slide ──────────────────────────────
+    // Animated runs generate TEXT-FREE artwork: the video model never
+    // sees the words, so they can't move or be blocked. The text is
+    // composited on afterwards — sharp for the static JPEG here, ffmpeg
+    // for the rendered MP4 (see storeSlideVideo). "-notext" in the raw
+    // path is the marker the animate pipeline keys off.
     const coverSlide = await step.run("generate-cover", async () => {
       const { STYLE_LANES } = await import("@/lib/content-factory/brand");
       const {
@@ -85,9 +105,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateImage,
         uploadImage,
       } = await import("@/lib/content-factory/carousel-generate");
-      const { composeSlide } = await import(
-        "@/lib/content-factory/compose"
-      );
+      const { composeSlide, composeSlideWithOverlay, renderSlideTextOverlay } =
+        await import("@/lib/content-factory/compose");
 
       const lanePrefix =
         STYLE_LANES[topicData.lane as keyof typeof STYLE_LANES];
@@ -97,10 +116,38 @@ export const carouselDailyCronFn = inngest.createFunction(
         lane: topicData.lane as any,
         reasons: topicData.reasons,
       };
-      const prompt = buildImagePrompt(lanePrefix, topicData.headline, topic, colorScheme.prompt);
+      const prompt = buildImagePrompt(
+        lanePrefix,
+        topicData.headline,
+        topic,
+        colorScheme.prompt,
+        undefined,
+        { noText: topicData.animatedRun }
+      );
       const rawBuffer = await generateImage(prompt);
-      // Upload the text-free raw image too — it's the START frame for the
-      // animated cover video (the composed cover is the END frame).
+
+      if (topicData.animatedRun) {
+        // Text-free start frame (resized to final 1080x1920 so the video
+        // aspect matches the overlay exactly).
+        const textFree = await composeSlide(rawBuffer, "", "COVER");
+        const rawImageUrl = await uploadImage(
+          textFree,
+          `carousels/${dateStr}/${slug}/slide-0-cover-notext.jpg`
+        );
+        const overlay = await renderSlideTextOverlay(topicData.headline, "COVER");
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
+        );
+        return {
+          imageUrl,
+          rawImageUrl,
+          overlayText: topicData.headline,
+          imagePrompt: prompt,
+        };
+      }
+
       const rawImageUrl = await uploadImage(
         rawBuffer,
         `carousels/${dateStr}/${slug}/slide-0-cover-raw.jpg`
@@ -125,6 +172,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // ── Steps 3..N: Generate reason slides ────────────────────────
     const reasonSlides: {
       imageUrl: string;
+      rawImageUrl?: string;
       overlayText: string;
       imagePrompt: string;
     }[] = [];
@@ -136,9 +184,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           generateImage,
           uploadImage,
         } = await import("@/lib/content-factory/carousel-generate");
-        const { composeSlide } = await import(
-          "@/lib/content-factory/compose"
-        );
+        const { composeSlide, composeSlideWithOverlay, renderSlideTextOverlay } =
+          await import("@/lib/content-factory/compose");
 
         const reason = topicData.reasons[i];
         const lanePrefix =
@@ -150,8 +197,32 @@ export const carouselDailyCronFn = inngest.createFunction(
           reasons: topicData.reasons,
         };
         const slideLabel = `${i + 1}. ${reason}`;
-        const prompt = buildImagePrompt(lanePrefix, reason, topic, colorScheme.prompt, slideLabel);
+        const prompt = buildImagePrompt(
+          lanePrefix,
+          reason,
+          topic,
+          colorScheme.prompt,
+          slideLabel,
+          { noText: topicData.animatedRun }
+        );
         const rawBuffer = await generateImage(prompt);
+
+        if (topicData.animatedRun) {
+          // Text-free start frame + our own text composite (see cover).
+          const textFree = await composeSlide(rawBuffer, "", "REASON");
+          const rawImageUrl = await uploadImage(
+            textFree,
+            `carousels/${dateStr}/${slug}/slide-${i + 1}-reason-notext.jpg`
+          );
+          const overlay = await renderSlideTextOverlay(reason, "REASON", i + 1);
+          const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+          const imageUrl = await uploadImage(
+            composed,
+            `carousels/${dateStr}/${slug}/slide-${i + 1}-reason.jpg`
+          );
+          return { imageUrl, rawImageUrl, overlayText: reason, imagePrompt: prompt };
+        }
+
         const composed = await composeSlide(rawBuffer, reason, "REASON", i + 1);
         const imageUrl = await uploadImage(
           composed,
@@ -207,6 +278,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           overlayText: s.overlayText,
           imagePrompt: s.imagePrompt,
           imageUrl: s.imageUrl,
+          rawImageUrl: s.rawImageUrl,
         })),
         {
           order: reasonSlides.length + 1,

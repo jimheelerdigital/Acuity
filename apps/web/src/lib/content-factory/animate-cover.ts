@@ -71,46 +71,59 @@ export type AnimationStyle = "smooth" | "crazy";
  * Shared closing lines for every cover prompt (positive-only phrasing):
  * the text never moves or fades, and the footage reads as high-end.
  */
-const TEXT_AND_QUALITY_LINES = [
-  "All text in the image stays razor-sharp, fixed in place, and fully visible in front of the scene for the entire video, with every movement happening behind it.",
-  "Crisp, sharp, high-definition cinematic footage with steady lighting, rich color, and clean detail from first frame to last.",
-];
+const TEXT_LINE =
+  "All text in the image stays razor-sharp, fixed in place, and fully visible in front of the scene for the entire video, with every movement happening behind it.";
+const QUALITY_LINE =
+  "Crisp, sharp, high-definition cinematic footage with steady lighting, rich color, and clean detail from first frame to last.";
 
 /**
- * v11 (2026-08-10): shared scene-lock line. "nothing new enters the frame"
- * exists because the v10 generic slide prompt ("scene comes alive … ambient
- * details drift") made the model invent new elements (birds flying through,
- * the person wandering off-task).
+ * v12 (2026-08-10): scene/style/camera lock. Frame-extraction on the v11
+ * output proved the model executes ANY verb it is given: quoting the slide
+ * text ("…until the window closes itself") made the character stand up,
+ * walk to a window, and even morph the claymation art style into photoreal
+ * footage — trampling the baked-in text. So v12 gives the model zero new
+ * actions: the character simply continues the activity the image already
+ * shows (each slide's artwork depicts its own reason), in place, lips
+ * closed, on a locked camera. Camera moves also warp baked-in text, so
+ * the push-in is gone.
  */
-const SAME_SCENE_LINE =
-  "The same scene, same subject, same colors, same setting the entire time — nothing new enters the frame.";
+const CAMERA_LOCK_LINE =
+  "Fixed, locked camera. Same art style, same scene, same colors, same framing from first frame to last.";
 
-export function buildCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
+/**
+ * `textFree` = the start frame has NO text (animated-post pipeline: words
+ * are burned on afterwards with ffmpeg). In that case the prompt must not
+ * mention text at all — mentioning it invites the model to invent some.
+ */
+function sceneLockLines(textFree: boolean): string[] {
+  return textFree
+    ? [CAMERA_LOCK_LINE, QUALITY_LINE]
+    : [CAMERA_LOCK_LINE, TEXT_LINE, QUALITY_LINE];
+}
+
+export function buildCoverVideoPrompt(
+  topic: Pick<CarouselTopic, "emotionBeat">,
+  opts?: { textFree?: boolean }
+): string {
   const emotionBeat =
     topic.emotionBeat ??
     "a gentle shrug and a slow deep breath";
   return [
-    `The woman is seated, lips closed. From the first moment she ${emotionBeat} — one clear, graceful, fully visible movement carried through her head, shoulders, and hands.`,
-    "The camera pushes in slowly and smoothly toward her.",
-    SAME_SCENE_LINE,
-    ...TEXT_AND_QUALITY_LINES,
+    `The woman stays seated in the same spot and pose, lips closed. She ${emotionBeat} — small, gentle, natural movement of her head, shoulders, and hands only.`,
+    ...sceneLockLines(Boolean(opts?.textFree)),
   ].join(" ");
 }
 
 /**
  * Prompt for non-cover slides (reason slides) on fully animated posts.
- *
- * v11 (2026-08-10): the movement is tied to the slide's own text — the
- * subject acts out the statement written on the slide, so the animation
- * matches what the viewer is reading instead of generic ambient motion.
+ * The slide's artwork already depicts its reason, so the animation just
+ * continues that exact activity in place — no new actions introduced.
  */
-export function buildSlideVideoPrompt(overlayText: string): string {
-  const statement = overlayText.trim().replace(/"/g, "'");
+export function buildSlideVideoPrompt(opts?: { textFree?: boolean }): string {
   return [
-    `One simple, clear, fully visible movement: the main subject acts out "${statement}" through natural body language and expression.`,
-    "The camera pushes in slowly and smoothly.",
-    SAME_SCENE_LINE,
-    ...TEXT_AND_QUALITY_LINES,
+    "The character continues the exact activity shown in the image, staying in the same spot and pose, lips closed.",
+    "Small, gentle, natural movements of the hands, eyes, and breathing only.",
+    ...sceneLockLines(Boolean(opts?.textFree)),
   ].join(" ");
 }
 
@@ -123,10 +136,8 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     topic.emotionBeat ??
     "a deep exhale and then looks up with quiet confidence";
   return [
-    `The woman is seated, lips closed. From the first moment she ${emotionBeat} — one bold, confident, fully visible movement with real momentum.`,
-    "The camera sweeps in fast, then glides to a smooth, confident stop on her.",
-    SAME_SCENE_LINE,
-    ...TEXT_AND_QUALITY_LINES,
+    `The woman stays seated in the same spot, lips closed. She ${emotionBeat} — one bold, confident movement of her head, shoulders, and hands with real momentum.`,
+    ...sceneLockLines(false),
   ].join(" ");
 }
 
@@ -231,13 +242,34 @@ export async function storeSlideVideo(slideId: string, higgsfieldVideoUrl: strin
   if (!res.ok) {
     throw new Error(`Failed to download slide video (${res.status}) from ${higgsfieldVideoUrl}`);
   }
-  const buffer = Buffer.from(await res.arrayBuffer());
+  let buffer: Buffer = Buffer.from(await res.arrayBuffer());
 
   const { prisma } = await import("@/lib/prisma");
   const slide = await prisma.carouselSlide.findUniqueOrThrow({
     where: { id: slideId },
     include: { carouselPost: { select: { topicSlug: true, generatedFor: true } } },
   });
+
+  // Text-free pipeline: the video was animated from the raw (no-text)
+  // artwork, so burn the exact overlay used on the static JPEG onto it.
+  // If the burn fails we store the text-free video rather than nothing.
+  if (slide.rawImageUrl && slide.kind !== "CTA") {
+    try {
+      const { renderSlideTextOverlay } = await import("./compose");
+      const { burnOverlayOntoVideo } = await import("./video-overlay");
+      const overlay = await renderSlideTextOverlay(
+        slide.overlayText,
+        slide.kind as "COVER" | "REASON",
+        slide.kind === "REASON" ? slide.order : undefined
+      );
+      buffer = await burnOverlayOntoVideo(buffer, overlay);
+      console.log(`[animate-cover] Burned text overlay onto video for slide ${slideId}`);
+    } catch (burnErr) {
+      console.error(
+        `[animate-cover] Overlay burn failed for slide ${slideId} — storing text-free video: ${burnErr instanceof Error ? burnErr.message : burnErr}`
+      );
+    }
+  }
 
   const dateStr = slide.carouselPost.generatedFor.toISOString().slice(0, 10);
   const path = `carousels/${dateStr}/${slide.carouselPost.topicSlug}/slide-${slide.order}-${slide.kind.toLowerCase()}.mp4`;

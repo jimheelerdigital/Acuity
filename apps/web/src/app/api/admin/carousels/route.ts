@@ -196,9 +196,24 @@ export async function POST(req: NextRequest) {
         name: "content-factory/cover.animate",
         data: {
           postId,
-          sendEmail: true,
+          // sendEmail: false allows silent prompt-validation runs.
+          sendEmail: (body as { sendEmail?: boolean }).sendEmail !== false,
           animateAll: true,
           animationStyle: "smooth",
+        },
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
+    case "generate-daily": {
+      // Kick off a full daily-style generation on demand (fresh topic,
+      // fresh images). `animated: true` runs the text-free animated
+      // pipeline; false/omitted follows the cron-hour default.
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "content-factory/daily.generate",
+        data: {
+          animated: (body as { animated?: boolean }).animated,
         },
       });
       return NextResponse.json({ ok: true, queued: true });

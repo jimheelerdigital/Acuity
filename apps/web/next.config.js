@@ -162,11 +162,21 @@ const nextConfig = {
   experimental: {
     // facebook-nodejs-business-sdk is a CJS package that webpack can't resolve
     // at build time. Mark it as external so it's loaded via require() at runtime.
-    serverComponentsExternalPackages: ["facebook-nodejs-business-sdk"],
+    serverComponentsExternalPackages: [
+      "facebook-nodejs-business-sdk",
+      // Resolved at runtime so the binary path survives bundling.
+      "ffmpeg-static",
+    ],
     // Bundle Poppins font files with serverless functions so carousel text
     // compositing works in Vercel's Lambda environment (no system fonts).
+    // ffmpeg-static's binary is traced for the Inngest route, which burns
+    // text overlays onto slide videos (animated carousel posts).
     outputFileTracingIncludes: {
-      "/api/inngest": ["./public/fonts/**"],
+      "/api/inngest": [
+        "./public/fonts/**",
+        "./node_modules/ffmpeg-static/**",
+        "../../node_modules/ffmpeg-static/**",
+      ],
       "/api/admin/carousels": ["./public/fonts/**"],
     },
   },
