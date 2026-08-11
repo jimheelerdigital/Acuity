@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-10] — Found why slides were missing videos: Higgsfield only allows ~4 renders at once
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 99e614b3
+
+### In plain English (for Keenan)
+The reason some slides kept arriving without animation: our video provider quietly ignores render requests when we send more than about 4 at the same time. The system now animates slides in batches of 4 — first batch renders, then the next — so all 7 slides of the animated daily post get their videos. Confirmed live: after resubmitting the 3 dropped slides on their own, every one rendered on the first try.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: submit loop breaks at MAX_CONCURRENT_JOBS=4 per wave; MAX_ATTEMPTS 2→3 (4+3 slides + retry margin); later waves get a 2m head start + 24×30s poll window since they render fresh jobs
+- Builds on 10c666da (retry submit failures) from the parallel session — the cap prevents the drops upfront, the retry waves catch render failures
+- Inngest resynced after deploy
+
+### Manual steps needed
+None
+
+### Notes
+- Evidence: runs shipped 5/7 then 4/7 with ZERO submit errors logged — Higgsfield returns success-shaped drops or the errors never surfaced; resubmitting the 3 missing slides alone → 3/3 success in minutes. Concurrency cap ~4-5 per account is the only consistent explanation.
+- Worst case duration is now ~3 waves ≈ 45 min before the email; fine for the 12 UTC run (email lands ~12:45 at the latest).
+
 ## [2026-08-10] — Slide animations now act out the slide's text, and failed renders retry
 
 **Requested by:** Keenan
