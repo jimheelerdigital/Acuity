@@ -135,10 +135,14 @@ export const carouselAnimateCoverFn = inngest.createFunction(
           } catch (submitErr) {
             // Log and keep going — one failed submit shouldn't kill the rest,
             // and even zero submits must still fall through to the email.
+            // (Higgsfield caps concurrent jobs at ~4-5; the next attempt
+            // resubmits these once the first wave has drained.)
             console.error(
               `[animate-cover] Submit failed for slide ${slide.id} (order ${slide.order}, attempt ${attempt}): ${submitErr instanceof Error ? submitErr.message : submitErr}`
             );
           }
+          // Space out submissions to avoid tripping rate limits.
+          await new Promise((r) => setTimeout(r, 1500));
         }
 
         if (jobs.length === 0) {
@@ -232,8 +236,10 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       }
       totalStored += stored;
 
-      // Everything this attempt submitted got stored — nothing to retry.
-      if (stored === submission.jobs.length) break;
+      // No early break on "all submitted jobs stored" — slides whose
+      // SUBMIT failed (Higgsfield concurrency cap) were never in `jobs`,
+      // so the next attempt's submit step must re-query and decide.
+      // When nothing is left it returns skipped and the loop exits.
     }
 
     if (firstAttemptSkip) {
