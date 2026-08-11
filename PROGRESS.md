@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-11] — Video download buttons in the daily email now actually download
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5e9cff05
+
+### In plain English (for Keenan)
+Tapping a "Download animation" button in the daily content email on your phone was just playing the video in the browser with no way to save it. The buttons now trigger a real file download. On iPhone the MP4 lands in Files — open it there and Share → Save Video to get it into your camera roll.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: video links now append Supabase Storage's `?download=<filename>` query flag, which makes the object serve with `Content-Disposition: attachment` (verified with curl against the live bucket). The HTML `download` attribute was being ignored because it doesn't apply to cross-origin links on mobile
+- Updated the phone-instruction copy in both the HTML and plain-text email bodies
+
+### Manual steps needed
+None
+
+### Notes
+- Supabase's public object endpoint honors `?download=` natively — no proxy route needed
+- Already-sent emails keep the old inline links; today's email was force-resent via the admin `resend-email` action after deploy
+
 ## [2026-08-11] — Cut visual style lanes from 7 to 5
 
 **Requested by:** Keenan
@@ -173,7 +193,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 The two daily posts now have distinct formats. The 8 UTC post is a plain picture slideshow — no animation at all, so the email arrives as soon as the images are done. The 12 UTC post is fully animated: every slide except the final CTA slide gets its own 4-second video on the current (lite) model, and its topic is capped at 6 reasons so at most 7 slides are animated. The email for the animated post includes a download button for every video (tap → Share → Save Video on your phone), and attaches as many as fit under the email size limit.
@@ -198,7 +218,7 @@ The two daily posts now have distinct formats. The 8 UTC post is a plain picture
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 The content factory now generates and emails 2 carousels per day instead of 5, cutting the daily AI image and video spend by 60%. The 8 UTC post keeps the high-energy intro animation and the 12 UTC post gets the smooth one, so you still see both styles every day. Also decided against upgrading the video model to the "standard" tier — it costs too many tokens, so we stay on the cheaper "lite" tier and rely on the improved prompts for quality.
@@ -266,7 +286,7 @@ We can now give someone free PRO access ("comp" them — testers, friends, App S
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 Two changes: (1) The animation was too chaotic — birds, particles, swirling leaves everywhere. The prompts now describe simple, clean motion: one clear character gesture, one or two ambient details (steam, light shift), and a gentle camera push. Think polished Instagram reel, not a movie trailer. (2) The email keeps arriving without the animated video even though the video exists in Supabase. Added detailed logging to the email function so we can see exactly WHY the video isn't being included — whether the URL is null, the fetch fails, or it's a size issue. Also removed the requirement that `useAttachments` must be true before even trying to fetch the video.
@@ -287,7 +307,7 @@ Two changes: (1) The animation was too chaotic — birds, particles, swirling le
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 The animated covers had two problems: (1) the model was generating ugly text/numbers on screen even though the source image has no text, and (2) the character would snap into a pose and freeze rather than moving fluidly. The prompts now explicitly ban any text/number generation and describe every motion as continuous and flowing — the character drifts through her gesture over several seconds, the camera never stops moving, and every element (birds, steam, leaves, light) keeps flowing throughout the clip.
@@ -6990,7 +7010,7 @@ None — no Prisma schema changes. `campaignObjective` field already exists on A
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 
