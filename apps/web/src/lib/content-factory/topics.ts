@@ -53,7 +53,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "she leans back and lets her shoulders drop with a long exhausted exhale, head tilting back briefly before a drained but knowing look to camera",
     style: "listicle",
-    lane: "stillLife",
+    lane: "paperDiorama",
     reasons: [
       "Decision fatigue hits before noon",
       "Your brain never actually switches off",
@@ -86,7 +86,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "she starts to gesture, stops herself mid-motion, and shakes her head with a rueful half-smile of recognition toward camera",
     style: "hook",
-    lane: "risograph",
+    lane: "flatGraphic",
     reasons: [
       "Saying yes when you meant no",
       "Over-explaining yourself just to feel safe",
@@ -150,7 +150,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "she hesitates with her hand hovering mid-air, then lowers it slowly and meets the camera with a caught-in-the-act knowing look",
     style: "hook",
-    lane: "stillLife",
+    lane: "paperDiorama",
     reasons: [
       "Knowing and doing live in different rooms",
       "Awareness without reflection is just noise",
@@ -181,7 +181,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "she glances at something off-frame, winces slightly, and turns back to camera with an avoidant, sheepish half-smile",
     style: "listicle",
-    lane: "risograph",
+    lane: "flatGraphic",
     reasons: [
       "That honest conversation you keep rehearsing",
       "The boundary you know needs to exist",
@@ -263,7 +263,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "her face lights up as she starts speaking mid-gesture, hands opening expressively, warm and animated toward camera",
     style: "listicle",
-    lane: "stillLife",
+    lane: "paperDiorama",
     reasons: [
       "Speaking activates completely different processing",
       "You say what you really mean, unedited",
@@ -296,7 +296,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "her gaze drifts far away in thought, breath catching, before she slowly returns to camera, vulnerable and open",
     style: "hook",
-    lane: "risograph",
+    lane: "flatGraphic",
     reasons: [
       "Am I happy or just comfortable?",
       "When did I last do something just for me?",
@@ -377,7 +377,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "she looks down at herself as if seeing a stranger, then up to camera with searching, quietly curious eyes",
     style: "listicle",
-    lane: "stillLife",
+    lane: "paperDiorama",
     reasons: [
       "Mother, partner, employee, but who else?",
       "You lost your hobbies when life got serious",
@@ -408,7 +408,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "she lifts her chin and releases a held breath, posture opening with relief, a liberated soft smile to camera",
     style: "hook",
-    lane: "risograph",
+    lane: "flatGraphic",
     reasons: [
       "What you wanted at 30 doesn't have to fit at 42",
       "Outgrowing something isn't failing at it",
@@ -474,7 +474,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "her forced grin drops deliberately into a real, level expression, one eyebrow raised knowingly at the camera",
     style: "hook",
-    lane: "risograph",
+    lane: "flatGraphic",
     reasons: [
       "Good vibes only erases legitimate pain",
       "Forcing gratitude when you're struggling isn't healing",
@@ -573,7 +573,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
     emotionBeat:
       "she presses a hand to her chest, takes a breath as if about to finally say it, lips parting toward camera",
     style: "hook",
-    lane: "risograph",
+    lane: "flatGraphic",
     reasons: [
       "The same thought looping for days",
       "You've journaled about it but nothing shifted",

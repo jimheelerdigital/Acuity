@@ -20,10 +20,8 @@ const STYLE_LANE_KEYS: StyleLane[] = [
   "cinematicReal",
   "toon3d",
   "claymation",
-  "stillLife",
   "flatGraphic",
   "paperDiorama",
-  "risograph",
 ];
 
 export interface GeneratedTopic {

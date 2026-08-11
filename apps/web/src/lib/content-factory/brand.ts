@@ -113,10 +113,8 @@ export const STYLE_LANES = {
   cinematicReal: "Illustrated graphic with soft realistic elements, warm editorial feel, gentle gradients.",
   toon3d: "Soft 3D illustrated graphic, rounded shapes, warm lighting, Pixar-inspired characters and props.",
   claymation: "Illustrated graphic with handmade clay-like textures, soft shadows, tactile warmth.",
-  stillLife: "Illustrated graphic with editorial still-life objects arranged around the text, clean layout.",
   flatGraphic: "Bold flat vector illustration, clean geometric shapes, strong graphic design composition.",
   paperDiorama: "Illustrated graphic with layered paper-craft elements, cut-paper textures, depth through layers.",
-  risograph: "Illustrated graphic with halftone dot textures, limited color palette, slight retro print feel.",
 } as const;
 
 export type StyleLane = keyof typeof STYLE_LANES;
