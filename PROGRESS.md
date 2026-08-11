@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-11] — Character emotion now matches each post's mood, with bespoke per-slide animations
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 689e8cb6
+
+### In plain English (for Keenan)
+The women in the carousels were smiling and joyous even when the post was about burnout or feeling invisible. Now the AI decides the emotional mood of every single slide (exhausted, tender, wry, frustrated, or hopeful) and writes a custom micro-gesture for each one — so the face in the artwork and the movement in the video both match what that slide is actually saying. Animation variety also jumped from 8 stock movements to 30 mood-matched ones, plus the unlimited custom-written gestures.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: Claude's system prompt + JSON output now include a post-level `mood` and per-slide `{mood, motion}` emotion directions (cover + one per reason), with strict in-place/no-verbs motion-writing rules; parsed with light validation into `GeneratedTopic.mood/coverEmotion/reasonEmotions`
+- apps/web/src/lib/content-factory/brand.ts: new `MOODS` taxonomy (heavy/tender/wry/frustrated/hopeful), `isMood()`, and `MOOD_EXPRESSIONS` (expression/body-language line per mood for image prompts)
+- apps/web/src/lib/content-factory/animate-cover.ts: `MOTION_BEATS` (8) replaced by `MOOD_MOTION_BEATS` (5 moods × 6 beats); new `SlideEmotion` type, `isSafeMotion()` banned-verb guard, and `resolveMotionBeat()` with precedence bespoke motion → curated topic emotionBeat → mood pool → flat pool; all three prompt builders accept an `emotion` option
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` takes `opts.mood` and injects the matching `MOOD_EXPRESSIONS` line (both text and no-text variants)
+- apps/web/src/inngest/functions/carousel-daily.ts: passes each slide's mood into its image prompt; sends `slideEmotions[]` (indexed by slide order, 0 = cover) in the `content-factory/cover.animate` event
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: reads `slideEmotions` from event data and passes the per-slide emotion into every video prompt; removed the hardcoded cheerful fallback beat
+
+### Manual steps needed
+None (no schema change — emotion directions travel via the Inngest event payload)
+
+### Notes
+- Bespoke Claude-written motions are validated against a banned-verb regex (walk/stand/talk/window/camera moves etc. — the verbs that broke the scene lock in the live v11/v12 runs); anything unsafe silently falls back to the slide's mood pool, so a bad generation can never wreck a video
+- Emotions are deliberately NOT persisted in the DB to avoid a prisma db push; the trade-off is that an admin "re-animate" of an AI-generated post (event without slideEmotions) falls back to mood pools instead of the original bespoke gestures
+- Curated seed-bank topics (topics.ts) keep their hand-written cover emotionBeat — bespoke event emotion outranks it only when present
+- Local typecheck env is degraded (stale Prisma client, sharp missing) — verified error count in touched files is identical before/after (24 pre-existing)
+
 ## [2026-08-11] — 5 animated posts/day, varied covers, varied motion, engagement-optimized hooks
 
 **Requested by:** Keenan
