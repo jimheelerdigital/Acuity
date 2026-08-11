@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-11] — Videos now arrive as email attachments you can save straight to the camera roll
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0c5d5313
+
+### In plain English (for Keenan)
+The animated slide videos now arrive attached to one or two follow-up "🎬 Videos" emails right after the main daily email. On your phone: tap and hold a video in the email → Save Video → it's in your camera roll. No browser, no download buttons, no Files app. (The buttons in the main email still work as a backup.)
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: videos are no longer squeezed into the main email's 28MB attachment budget (where most got silently dropped). All videos are fetched, greedy-chunked into ≤28MB groups, and sent as follow-up emails with the MP4s attached. Main email keeps images-only attachments and now tells the reader the videos are coming as separate emails
+- Failures on a video email are logged but don't fail the main send
+
+### Manual steps needed
+None
+
+### Notes
+- Root of the whole saga: a linked MP4 can't be saved to the camera roll from a phone's mail/browser flow reliably — only a real attachment gives tap-and-hold → Save Video. Resend's 40MB post-base64 cap (~28MB raw) forces the multi-email split for 6 videos
+- The /api/content-factory/download proxy route stays as the backup path
+
 ## [2026-08-11] — Download buttons now pop the native "Download" prompt on iPhone
 
 **Requested by:** Keenan
