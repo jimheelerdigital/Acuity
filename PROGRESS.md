@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-11] — Download buttons now pop the native "Download" prompt on iPhone
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1e18c11b
+
+### In plain English (for Keenan)
+Even after the first fix, tapping a video button on the phone could still just play the video in the browser with no way to save it. The buttons now go through our own website, which hands the phone the file as a download — so Safari shows its native "Do you want to download?" popup instead of playing the video.
+
+### Technical changes (for Jimmy)
+- New route: apps/web/src/app/api/content-factory/download/route.ts — streams a file from the public content-factory bucket with `Content-Disposition: attachment`; path is validated against a `carousels/...` allow-list regex so it can't be used as an open proxy
+- apps/web/src/lib/content-factory/email.ts: video links now point at `goripple.io/api/content-factory/download?path=...&name=...` instead of direct Supabase URLs
+
+### Manual steps needed
+None
+
+### Notes
+- Supabase's `?download` flag DID set `Content-Disposition: attachment` (verified with curl), but some mail apps' in-app browsers still played the MP4 inline; serving from our own domain is the reliable path to iOS Safari's native download prompt
+- Streaming ~4–17MB MP4s through a route handler is fine on the Node runtime (ReadableStream passthrough, not buffered)
+
 ## [2026-08-11] — Video download buttons in the daily email now actually download
 
 **Requested by:** Keenan
