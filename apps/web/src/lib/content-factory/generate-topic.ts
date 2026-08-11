@@ -7,7 +7,8 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { StyleLane } from "./brand";
+import { isMood, type Mood, type StyleLane } from "./brand";
+import type { SlideEmotion } from "./animate-cover";
 
 const anthropic = new Anthropic();
 
@@ -30,6 +31,12 @@ export interface GeneratedTopic {
   style: "hook" | "listicle";
   lane: StyleLane;
   reasons: string[];
+  /** Dominant mood of the post — drives cover expression + motion fallback. */
+  mood?: Mood;
+  /** Bespoke emotion direction for the cover slide. */
+  coverEmotion?: SlideEmotion;
+  /** Bespoke emotion direction per reason slide, same order as `reasons`. */
+  reasonEmotions?: SlideEmotion[];
 }
 
 const SYSTEM_PROMPT = `You are a social media content strategist for Ripple, an AI-powered voice self-reflection app. Your job is to write carousel topics that stop the scroll and make people feel deeply seen.
@@ -89,13 +96,30 @@ CONTENT THEMES TO DRAW FROM:
 - Boundaries, people-pleasing, shutting down
 - Sunday scaries, burnout, decision fatigue
 
+EMOTION DIRECTION (these posts are animated — the character's face and motion MUST match the text):
+Every post has a dominant mood and EVERY slide (cover + each reason) gets its own emotion direction matched to the emotional weight of its exact text. Available moods: "heavy" (exhausted, drained), "tender" (vulnerable, quietly sad), "wry" (knowing, self-aware, "ouch, that's me"), "frustrated" (fed up, tense), "hopeful" (relief, release, healing).
+- Never default to happy or joyous. If a slide's text is draining, an accusation, or an "ouch" truth, the woman must read tired, tender, or fed up — not smiling.
+- The mood can shift across the arc (e.g. heavy → heavy → frustrated → tender → hopeful when the last reason lands as release). The cover carries the post's dominant mood.
+- For each slide also write a "motion": ONE physical micro-gesture the woman performs in a 4-second video, embodying that slide's feeling.
+
+STRICT RULES for every "motion":
+- She stays in the same spot and pose. Lips closed — no talking, no mouthing words.
+- No walking, no standing up, no sitting down, no turning around, no leaving, no new actions, no props, no camera directions.
+- ONLY movements of her face, eyes, head, shoulders, hands, and breath. Think: a slow blink, a jaw tightening, shoulders dropping, a hand pressed to her chest, a head shake of disbelief.
+- Under 20 words, present tense, written as a continuation of "She ..." (e.g. "lets her shoulders sink with a long exhale, eyes closing briefly").
+
 OUTPUT FORMAT (strict JSON, no markdown):
 {
   "headline": "the carousel headline",
   "style": "hook" or "listicle",
   "reasons": ["reason 1", "reason 2", ...],
-  "reasonCount": 5 or 6 or 7 or 8 or 9 or 10
+  "reasonCount": 5 or 6 or 7 or 8 or 9 or 10,
+  "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
+  "cover": { "mood": "...", "motion": "..." },
+  "reasonEmotions": [{ "mood": "...", "motion": "..." }, ...]
 }
+
+"reasonEmotions" MUST have exactly one entry per reason, in the same order as "reasons".
 
 Generate 5-10 reasons per topic. Vary the count each time.`;
 
@@ -175,12 +199,31 @@ Return ONLY valid JSON, no other text.`;
     const lane =
       STYLE_LANE_KEYS[Math.floor(Math.random() * STYLE_LANE_KEYS.length)];
 
+    // Emotion directions — validated lightly here (mood must be from the
+    // taxonomy); motion safety is enforced at video-prompt build time.
+    const mood: Mood | undefined = isMood(parsed.mood) ? parsed.mood : undefined;
+    const parseEmotion = (raw: unknown): SlideEmotion => {
+      const e = (raw ?? {}) as { mood?: unknown; motion?: unknown };
+      return {
+        mood: isMood(e.mood) ? e.mood : mood,
+        motion: typeof e.motion === "string" ? e.motion : undefined,
+      };
+    };
+    const reasons = parsed.reasons as string[];
+    const rawReasonEmotions = Array.isArray(parsed.reasonEmotions)
+      ? (parsed.reasonEmotions as unknown[])
+      : [];
+    const reasonEmotions = reasons.map((_, i) => parseEmotion(rawReasonEmotions[i]));
+
     return {
       slug,
       headline: parsed.headline,
       style: parsed.style === "hook" ? "hook" : "listicle",
       lane,
-      reasons: parsed.reasons as string[],
+      reasons,
+      mood,
+      coverEmotion: parseEmotion(parsed.cover),
+      reasonEmotions,
     };
   } catch (err) {
     const durationMs = Date.now() - start;

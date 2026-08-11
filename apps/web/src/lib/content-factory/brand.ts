@@ -59,6 +59,35 @@ export const SCENE_SETTINGS = [
   "Setting: a laundry or hallway in-between moment — basket on hip, pausing, everyday realness.",
 ] as const;
 
+// ─── Mood taxonomy ─────────────────────────────────────────────────────────────
+// Every slide of an animated post carries a mood so the character's facial
+// expression (image) and micro-motion (video) match the emotional weight of
+// the slide's text — no more joyous women on dreary posts (2026-08-11).
+
+export const MOODS = ["heavy", "tender", "wry", "frustrated", "hopeful"] as const;
+export type Mood = (typeof MOODS)[number];
+
+export function isMood(value: unknown): value is Mood {
+  return typeof value === "string" && (MOODS as readonly string[]).includes(value);
+}
+
+/**
+ * Expression/body-language direction appended to the image prompt so
+ * gpt-image-2 renders a face that matches the slide's mood instead of
+ * defaulting to a smiling, joyful woman.
+ */
+export const MOOD_EXPRESSIONS: Record<Mood, string> = {
+  heavy:
+    "Her expression and body language are visibly weary — tired eyes, no smile, shoulders heavy, running on empty but holding it together.",
+  tender:
+    "Her expression is soft and vulnerable — unguarded, quietly emotional, eyes distant or glistening, no smile.",
+  wry: "Her expression is knowing and self-aware — at most a faint, rueful half-smile, a caught-in-the-act honesty. Not joyful, not laughing.",
+  frustrated:
+    "Her expression is tense and fed up — jaw set, brow slightly furrowed, exhaling through her nose, definitely not smiling.",
+  hopeful:
+    "Her expression is quietly relieved — a soft, genuine ease settling over her face, shoulders relaxing. Calm and grounded, not giddy or beaming.",
+};
+
 /**
  * Cover treatments — composition variants for the COVER slide only,
  * rotated per post so covers stop all looking like the same medium

@@ -23,6 +23,7 @@
  */
 
 import type { CarouselTopic } from "./topics";
+import { isMood, type Mood } from "./brand";
 
 const BASE_URL = "https://platform.higgsfield.ai";
 
@@ -102,30 +103,110 @@ function sceneLockLines(textFree: boolean): string[] {
 }
 
 /**
- * Gentle micro-motion beats, rotated across slides so a post's videos
- * don't all breathe identically. Same quiet, in-place style as the
- * original single beat — no walking, no talking, no new actions.
+ * Per-slide emotion direction (2026-08-11). `mood` selects a curated
+ * motion pool + the image expression; `motion` is a bespoke Claude-written
+ * micro-gesture matched to the slide's text. Bespoke motion wins when it
+ * passes the safety check; otherwise the mood pool is the fallback.
  */
-const MOTION_BEATS = [
-  "a slow, knowing head tilt and a soft exhale",
-  "briefly closing her eyes and taking one deep, settling breath",
-  "a small, wry smile slowly reaching her eyes",
-  "tucking a strand of hair back while glancing up thoughtfully",
-  "gently shaking her head, half-smiling at the truth of it",
-  "letting her shoulders drop as the tension visibly leaves them",
-  "a quiet laugh through her nose, eyes softening",
-  "nodding slowly, like she's finally admitting it to herself",
-] as const;
+export interface SlideEmotion {
+  mood?: string;
+  motion?: string;
+}
+
+/**
+ * Mood-grouped micro-motion beats, rotated within a mood so a post's
+ * videos don't all move identically while still matching the emotional
+ * weight of each slide. Same in-place style throughout — no walking,
+ * no talking, no new actions.
+ */
+export const MOOD_MOTION_BEATS: Record<Mood, readonly string[]> = {
+  heavy: [
+    "lets her eyes fall closed as her head bows slowly, shoulders sinking under the weight",
+    "rubs her temple slowly, eyes heavy, blinking like she can barely keep them open",
+    "exhales long and slow, her whole body deflating slightly, gaze drifting down",
+    "presses her palm to her forehead and holds it there, eyes closing",
+    "tips her head back briefly with eyes shut, then drifts down into a drained blink",
+    "stares ahead with heavy, unfocused eyes, one slow exhausted blink",
+  ],
+  tender: [
+    "her eyes glisten as she takes one slow blink, holding back the feeling",
+    "presses a hand softly over her heart, eyes going distant and glassy",
+    "hugs her arms around herself, gaze drifting away, breath catching",
+    "her lips press together as she swallows, eyes softening with held-back emotion",
+    "looks down slowly, lashes lowering, a fragile breath moving her shoulders",
+    "her eyes search the middle distance, vulnerable and open, breath shallow",
+  ],
+  wry: [
+    "a slow, knowing head tilt and a soft exhale",
+    "a small, wry smile slowly reaching her eyes",
+    "gently shaking her head, half-smiling at the truth of it",
+    "a quiet laugh through her nose, eyes softening",
+    "nodding slowly, like she's finally admitting it to herself",
+    "rolls her eyes gently at herself as a self-deprecating half-smile forms",
+  ],
+  frustrated: [
+    "pinches the bridge of her nose and exhales hard, jaw tightening",
+    "her jaw sets as she exhales sharply through her nose, eyes narrowing slightly",
+    "shakes her head in disbelief, lips pressed thin",
+    "closes her eyes and breathes in slowly, visibly holding her composure",
+    "her brow furrows as she stares ahead, fingers slowly tensing",
+    "tips her head back with a frustrated exhale, then levels a fed-up stare",
+  ],
+  hopeful: [
+    "briefly closing her eyes and taking one deep, settling breath",
+    "letting her shoulders drop as the tension visibly leaves them",
+    "a slow genuine smile spreads as she exhales, shoulders settling with ease",
+    "lifts her chin gently as her posture opens, a calm steadying breath",
+    "her face softens into quiet relief, eyes brightening slowly",
+    "tucking a strand of hair back while glancing up thoughtfully, lighter now",
+  ],
+};
+
+/** Flat pool used when no mood is known (legacy posts, admin re-animate). */
+const ALL_MOTION_BEATS: readonly string[] = Object.values(MOOD_MOTION_BEATS).flat();
+
+/**
+ * Verbs/nouns that have made the i2v model break the scene lock in live
+ * runs (v12 notes above: walking to a window, standing up, talking). A
+ * bespoke Claude-written motion containing any of these is discarded in
+ * favor of the curated mood pool.
+ */
+const UNSAFE_MOTION_PATTERN =
+  /\b(walks?|walking|stands?|standing|steps?|stepping|strides?|rises?|rising|gets? up|getting up|turns? around|talks?|talking|speaks?|speaking|says?|saying|sings?|singing|shouts?|mouths?|jumps?|runs?|running|dances?|dancing|leaves?|leaving|door|window|camera (?:pans|zooms|moves)|opens? her mouth)\b/i;
+
+/** True when a bespoke motion is safe to hand to the video model. */
+export function isSafeMotion(motion: unknown): motion is string {
+  return (
+    typeof motion === "string" &&
+    motion.trim().length > 0 &&
+    motion.length <= 220 &&
+    !UNSAFE_MOTION_PATTERN.test(motion)
+  );
+}
+
+/**
+ * Resolve the motion beat for a slide: bespoke Claude-written motion when
+ * safe → curated pool for the slide's mood → flat all-moods pool. `seed`
+ * rotates within the pool so slides sharing a mood still vary.
+ */
+export function resolveMotionBeat(emotion: SlideEmotion | undefined, seed: number): string {
+  if (emotion && isSafeMotion(emotion.motion)) return emotion.motion.trim();
+  const pool = emotion && isMood(emotion.mood) ? MOOD_MOTION_BEATS[emotion.mood] : ALL_MOTION_BEATS;
+  return pool[seed % pool.length];
+}
 
 export function buildCoverVideoPrompt(
-  topic: Pick<CarouselTopic, "emotionBeat">,
-  opts?: { textFree?: boolean; seed?: number }
+  topic: Pick<CarouselTopic, "emotionBeat"> | undefined,
+  opts?: { textFree?: boolean; seed?: number; emotion?: SlideEmotion }
 ): string {
+  // Precedence: bespoke per-slide motion (AI-generated topics) → curated
+  // topic emotionBeat (seed-bank topics) → mood pool.
   const emotionBeat =
-    topic.emotionBeat ??
-    MOTION_BEATS[(opts?.seed ?? 0) % MOTION_BEATS.length];
+    opts?.emotion && isSafeMotion(opts.emotion.motion)
+      ? opts.emotion.motion.trim()
+      : topic?.emotionBeat ?? resolveMotionBeat(opts?.emotion, opts?.seed ?? 0);
   return [
-    `The woman stays in the same spot and pose, lips closed. She ${emotionBeat} — small, gentle, natural movement of her head, shoulders, and hands only.`,
+    `The woman stays in the same spot and pose, lips closed. She ${emotionBeat} — subtle, natural movement of her face, head, shoulders, and hands only.`,
     ...sceneLockLines(Boolean(opts?.textFree)),
   ].join(" ");
 }
@@ -134,14 +215,19 @@ export function buildCoverVideoPrompt(
  * Prompt for non-cover slides (reason slides) on fully animated posts.
  * The slide's artwork already depicts its reason, so the animation just
  * continues that exact activity in place — no new actions introduced.
- * `seed` (usually the slide order) rotates the micro-motion beat so the
- * post's videos each move a little differently.
+ * `emotion` carries the slide's bespoke motion + mood; `seed` (usually
+ * the slide order) rotates the pool fallback so the post's videos each
+ * move a little differently.
  */
-export function buildSlideVideoPrompt(opts?: { textFree?: boolean; seed?: number }): string {
-  const beat = MOTION_BEATS[(opts?.seed ?? 0) % MOTION_BEATS.length];
+export function buildSlideVideoPrompt(opts?: {
+  textFree?: boolean;
+  seed?: number;
+  emotion?: SlideEmotion;
+}): string {
+  const beat = resolveMotionBeat(opts?.emotion, opts?.seed ?? 0);
   return [
     "The character continues the exact activity shown in the image, staying in the same spot and pose, lips closed.",
-    `Small, gentle, natural movements of the hands, eyes, and breathing, plus ${beat}.`,
+    `Subtle, natural movements of the hands, eyes, and breathing, plus ${beat}.`,
     ...sceneLockLines(Boolean(opts?.textFree)),
   ].join(" ");
 }
@@ -150,9 +236,13 @@ export function buildSlideVideoPrompt(opts?: { textFree?: boolean; seed?: number
  * "Crazy intro" variant — one post per day. Bolder gesture and a faster
  * camera land, same short-prompt approach and same text protection.
  */
-export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBeat">): string {
+export function buildCrazyCoverVideoPrompt(
+  topic: Pick<CarouselTopic, "emotionBeat"> | undefined,
+  opts?: { emotion?: SlideEmotion }
+): string {
   const emotionBeat =
-    topic.emotionBeat ??
+    (opts?.emotion && isSafeMotion(opts.emotion.motion) ? opts.emotion.motion.trim() : undefined) ??
+    topic?.emotionBeat ??
     "a deep exhale and then looks up with quiet confidence";
   return [
     `The woman stays in the same spot and pose, lips closed. She ${emotionBeat} — one bold, confident movement of her head, shoulders, and hands with real momentum.`,

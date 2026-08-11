@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import { buildCaption } from "./caption";
@@ -198,13 +198,17 @@ export function buildImagePrompt(
   topic: CarouselTopic,
   colorPrompt?: string,
   slideLabel?: string,
-  opts?: { noText?: boolean; sceneHint?: string }
+  opts?: { noText?: boolean; sceneHint?: string; mood?: string }
 ): string {
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
   const sizeRule = isCover
     ? "Text should be prominent but not exceed 50% of the slide. Blend it creatively with the illustration — vary placement each time."
     : "Text should be prominent but not exceed 40% of the slide. Blend it creatively with the illustration — vary placement each time.";
+  // Mood-matched expression so the character's face fits the slide's
+  // emotional weight instead of gpt-image-2's default cheerful woman.
+  const mood = opts?.mood;
+  const moodLine = isMood(mood) ? MOOD_EXPRESSIONS[mood] : "";
 
   // Text-free variant (animated posts): the words are composited on
   // afterwards (sharp for the JPEG, ffmpeg for the video) so the video
@@ -219,6 +223,7 @@ export function buildImagePrompt(
       colorPrompt ?? "",
       `An illustrated scene that visually represents: ${sceneText}`,
       opts.sceneHint ?? "",
+      moodLine,
       `Mood context: ${topic.headline} — self-reflection and mental load, for women.`,
       VISUAL_DNA_NOTEXT,
     ].filter(Boolean).join("\n");
@@ -229,6 +234,7 @@ export function buildImagePrompt(
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
     sizeRule,
+    moodLine,
     `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
     `Include relevant illustrated elements that visually represent: ${sceneText}`,
     VISUAL_DNA,

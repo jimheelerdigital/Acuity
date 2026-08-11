@@ -128,6 +128,9 @@ export const carouselDailyCronFn = inngest.createFunction(
             SCENE_SETTINGS[slug.length % SCENE_SETTINGS.length] +
             " " +
             COVER_TREATMENTS[slug.length % COVER_TREATMENTS.length],
+          // Her expression must match the post's emotional weight, not
+          // default to joyful (2026-08-11).
+          mood: topicData.coverEmotion?.mood ?? topicData.mood,
         }
       );
       const rawBuffer = await generateImage(prompt);
@@ -225,6 +228,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             noText: topicData.animatedRun,
             sceneHint:
               SCENE_SETTINGS[(slug.length + i + 1) % SCENE_SETTINGS.length],
+            mood: topicData.reasonEmotions?.[i]?.mood ?? topicData.mood,
           }
         );
         const rawBuffer = await generateImage(prompt);
@@ -378,6 +382,17 @@ export const carouselDailyCronFn = inngest.createFunction(
             sendEmail: true,
             animateAll: true,
             animationStyle: "smooth",
+            // Per-slide emotion directions, indexed by slide order
+            // (0 = cover, 1..N = reasons). The animate function uses the
+            // bespoke motion for each slide's video prompt, with the mood
+            // pool as fallback.
+            slideEmotions: [
+              topicData.coverEmotion ?? { mood: topicData.mood },
+              ...topicData.reasons.map(
+                (_: string, i: number) =>
+                  topicData.reasonEmotions?.[i] ?? { mood: topicData.mood }
+              ),
+            ],
           },
         });
       } catch (animateErr) {

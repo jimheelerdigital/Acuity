@@ -43,6 +43,12 @@ export const carouselAnimateCoverFn = inngest.createFunction(
     // "crazy" = high-energy intro treatment for the cover; default smooth.
     const animationStyle =
       event.data.animationStyle === "crazy" ? "crazy" : "smooth";
+    // Per-slide emotion directions from the daily cron (indexed by slide
+    // order: 0 = cover). Absent on admin/one-off triggers — the prompt
+    // builders then fall back to curated topic beats / mood pools.
+    const slideEmotions = (
+      Array.isArray(event.data.slideEmotions) ? event.data.slideEmotions : []
+    ) as { mood?: string; motion?: string }[];
 
     // Email sender used at every exit path. Its own step so a Resend
     // hiccup gets Inngest's retry, and it never throws past logging.
@@ -113,10 +119,6 @@ export const carouselAnimateCoverFn = inngest.createFunction(
         const topic = CAROUSEL_TOPICS.find(
           (t) => t.slug === slides[0].carouselPost.topicSlug
         );
-        const fallback = {
-          emotionBeat:
-            "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera",
-        };
         const jobs: { slideId: string; order: number; requestId: string }[] = [];
         for (const slide of targets) {
           if (jobs.length >= MAX_CONCURRENT_JOBS) break; // Higgsfield drops submits past ~4 concurrent
@@ -127,15 +129,19 @@ export const carouselAnimateCoverFn = inngest.createFunction(
           // onto the finished video in storeSlideVideo.
           const startImageUrl = slide.rawImageUrl ?? slide.imageUrl;
           const textFree = Boolean(slide.rawImageUrl);
+          // Bespoke emotion for this slide (from the topic generator);
+          // undefined on admin/one-off runs → builders use pools.
+          const emotion = slideEmotions[slide.order];
           const prompt =
             slide.kind === "COVER"
               ? animationStyle === "crazy"
-                ? buildCrazyCoverVideoPrompt(topic ?? fallback)
-                : buildCoverVideoPrompt(topic ?? fallback, {
+                ? buildCrazyCoverVideoPrompt(topic, { emotion })
+                : buildCoverVideoPrompt(topic, {
                     textFree,
                     seed: slides[0].carouselPost.topicSlug.length,
+                    emotion,
                   })
-              : buildSlideVideoPrompt({ textFree, seed: slide.order });
+              : buildSlideVideoPrompt({ textFree, seed: slide.order, emotion });
           try {
             const requestId = await submitCoverVideo({
               startImageUrl,
