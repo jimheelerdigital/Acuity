@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-11] — Text now actually burns onto the animated slide videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4a5e6ac8, 8f78f969
+
+### In plain English (for Keenan)
+The daily animated post's videos were coming out without the text on them — the words showed on the still images but not the videos. Both causes are fixed, and the six videos in the "5 things you celebrate for others but never for yourself" post were repaired in place, so they now show the text (verified frame-by-frame). Future posts will get the text burned on automatically.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: replaced the SVG-based badge circle and underline capsule with raw-pixel raster helpers (circlePng/capsulePng). sharp on Vercel Lambda cannot parse inline SVG ("glib: XML parse error") even though it works locally, which was aborting overlay generation in prod (commit 4a5e6ac8)
+- apps/web/src/lib/content-factory/video-overlay.ts: ffmpeg's scale2ref filter exits 0 on Vercel but produces zero output frames ("No filtered frames for output stream" → frameless ~261-byte MP4). burnOverlayOntoVideo now tries a fixed `scale=1080:1920` + overlay filter first, keeps scale2ref as a fallback, and rejects any output under 100KB (commit 8f78f969)
+- One-off local script (since deleted) re-burned and re-uploaded all 6 videos of post cmso0feso0000wf6h1ou7gx0q to Supabase Storage with upsert
+
+### Manual steps needed
+None
+
+### Notes
+- Both failures were Vercel-prod-only; everything passed locally. Root causes were found by live-tailing `npx vercel logs <deploy-url>` while triggering the job — the tail must be running during execution, it is not retroactive
+- Supabase CDN caches storage objects (~1hr), so a phone that already loaded the old text-free video may briefly keep showing it at the same URL
+- ffmpeg exiting 0 does not mean it encoded frames — the <100KB output guard is what surfaces this class of failure now
+
 ## [2026-08-11] — Animated post fixes: catchy text overlays, varied artwork, no more broken videos
 
 **Requested by:** Keenan
