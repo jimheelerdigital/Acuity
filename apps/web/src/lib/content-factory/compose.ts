@@ -146,6 +146,78 @@ async function renderMarkup(
   };
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace("#", "");
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+/**
+ * Rasterize a filled circle (with optional white ring) as a PNG.
+ * Drawn from raw pixels — Vercel's Lambda sharp build fails to parse
+ * inline SVG (glib XML error seen live 2026-08-11), so no SVG anywhere.
+ */
+async function circlePng(
+  d: number,
+  fill: { r: number; g: number; b: number },
+  opts?: { ringWidth?: number; alpha?: number }
+): Promise<Buffer> {
+  const ringW = opts?.ringWidth ?? 0;
+  const alpha = opts?.alpha ?? 1;
+  const buf = Buffer.alloc(d * d * 4);
+  const c = (d - 1) / 2;
+  const r = d / 2 - 1.5;
+  for (let y = 0; y < d; y++) {
+    for (let x = 0; x < d; x++) {
+      const dist = Math.sqrt((x - c) ** 2 + (y - c) ** 2);
+      const cov = Math.max(0, Math.min(1, r - dist + 0.5)); // antialiased edge
+      if (cov === 0) continue;
+      const i = (y * d + x) * 4;
+      const inRing = ringW > 0 && dist > r - ringW;
+      buf[i] = inRing ? 255 : fill.r;
+      buf[i + 1] = inRing ? 255 : fill.g;
+      buf[i + 2] = inRing ? 255 : fill.b;
+      buf[i + 3] = Math.round(cov * alpha * 255);
+    }
+  }
+  return sharp(buf, { raw: { width: d, height: d, channels: 4 } })
+    .png()
+    .toBuffer();
+}
+
+/** Rasterize a horizontal capsule (fully-rounded bar) as a PNG. */
+async function capsulePng(
+  w: number,
+  h: number,
+  fill: { r: number; g: number; b: number },
+  alpha = 1
+): Promise<Buffer> {
+  const buf = Buffer.alloc(w * h * 4);
+  const r = h / 2 - 0.5;
+  const x1 = r;
+  const x2 = w - 1 - r;
+  const cy = (h - 1) / 2;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = Math.max(x1, Math.min(x2, x));
+      const dist = Math.sqrt((x - px) ** 2 + (y - cy) ** 2);
+      const cov = Math.max(0, Math.min(1, r - dist + 0.5));
+      if (cov === 0) continue;
+      const i = (y * w + x) * 4;
+      buf[i] = fill.r;
+      buf[i + 1] = fill.g;
+      buf[i + 2] = fill.b;
+      buf[i + 3] = Math.round(cov * alpha * 255);
+    }
+  }
+  return sharp(buf, { raw: { width: w, height: h, channels: 4 } })
+    .png()
+    .toBuffer();
+}
+
 /**
  * Build Pango markup for wrapped lines with numeric tokens highlighted
  * in the accent color (e.g. "6 THINGS" → the "6" pops in coral).
@@ -216,20 +288,12 @@ export async function renderSlideTextOverlay(
   // REASON: accent circle badge with the slide number, centered above the text.
   if (kind === "REASON" && slideNumber) {
     const D = 118;
-    const circle = Buffer.from(
-      `<svg width="${D}" height="${D}" xmlns="http://www.w3.org/2000/svg">` +
-        `<circle cx="${D / 2}" cy="${D / 2}" r="${D / 2 - 3}" fill="${accent}" stroke="#FFFFFF" stroke-width="5"/>` +
-        `</svg>`
-    );
+    const circle = await circlePng(D, hexToRgb(accent), { ringWidth: 5 });
     const numMarkup = `<span font_desc="Poppins Bold 52" foreground="#FFFFFF">${slideNumber}</span>`;
     const num = await renderMarkup(numMarkup, fontPath, D, 0, 0);
 
     const badgeShadow = await sharp(
-      Buffer.from(
-        `<svg width="${D}" height="${D}" xmlns="http://www.w3.org/2000/svg">` +
-          `<circle cx="${D / 2}" cy="${D / 2}" r="${D / 2 - 3}" fill="#111111" fill-opacity="0.65"/>` +
-          `</svg>`
-      )
+      await circlePng(D, { r: 17, g: 17, b: 17 }, { alpha: 0.65 })
     )
       .blur(6)
       .png()
@@ -258,17 +322,9 @@ export async function renderSlideTextOverlay(
   if (kind === "COVER") {
     const barW = 180;
     const barH = 14;
-    const bar = Buffer.from(
-      `<svg width="${barW}" height="${barH}" xmlns="http://www.w3.org/2000/svg">` +
-        `<rect x="0" y="0" width="${barW}" height="${barH}" rx="${barH / 2}" fill="${accent}"/>` +
-        `</svg>`
-    );
+    const bar = await capsulePng(barW, barH, hexToRgb(accent));
     const barShadow = await sharp(
-      Buffer.from(
-        `<svg width="${barW}" height="${barH}" xmlns="http://www.w3.org/2000/svg">` +
-          `<rect x="0" y="0" width="${barW}" height="${barH}" rx="${barH / 2}" fill="#111111" fill-opacity="0.65"/>` +
-          `</svg>`
-      )
+      await capsulePng(barW, barH, { r: 17, g: 17, b: 17 }, 0.65)
     )
       .blur(5)
       .png()
