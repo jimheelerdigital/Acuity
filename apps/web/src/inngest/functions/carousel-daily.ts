@@ -1,14 +1,13 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 3× daily via cron (was 2×; raised
- * 2026-08-11 per Keenan for more posting volume).
+ * Carousel generation — runs 5× daily via cron, ALL fully animated
+ * (2026-08-11 per Keenan: no more static runs, max posting volume).
  *
- * - 8 UTC run: static picture slideshow only — no animation, email sent
- *   directly after generation.
- * - 12 & 16 UTC runs: fully animated — every slide except the last (CTA)
- *   gets a 4s video; topic capped at 6 reasons (7 animated slides max).
- *   Email is sent by the animate function after the renders finish.
+ * Runs at 12, 14, 16, 18, 20 UTC (7am–3pm Central, every 2h). Every
+ * slide except the last (CTA) gets a 4s video; topic capped at 6
+ * reasons (7 animated slides max). Email is sent by the animate
+ * function after the renders finish.
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
@@ -19,7 +18,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 8,12,16 * * *" },
+      { cron: "0 12,14,16,18,20 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
@@ -41,12 +40,10 @@ export const carouselDailyCronFn = inngest.createFunction(
         "@/lib/content-factory/generate-topic"
       );
 
-      // Cron: the 8 UTC run is static, everything else is animated.
-      // Event trigger: explicit `animated` flag wins when provided.
+      // Every cron run is fully animated. Event trigger: explicit
+      // `animated` flag wins when provided (admin/test can force static).
       const animatedRun =
-        typeof eventAnimated === "boolean"
-          ? eventAnimated
-          : new Date().getUTCHours() !== 8;
+        typeof eventAnimated === "boolean" ? eventAnimated : true;
 
       const thirtyDaysAgo = new Date(
         Date.now() - 30 * 86_400_000
@@ -99,7 +96,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // for the rendered MP4 (see storeSlideVideo). "-notext" in the raw
     // path is the marker the animate pipeline keys off.
     const coverSlide = await step.run("generate-cover", async () => {
-      const { STYLE_LANES, SCENE_SETTINGS } = await import("@/lib/content-factory/brand");
+      const { STYLE_LANES, SCENE_SETTINGS, COVER_TREATMENTS } = await import("@/lib/content-factory/brand");
       const {
         buildImagePrompt,
         generateImage,
@@ -125,8 +122,12 @@ export const carouselDailyCronFn = inngest.createFunction(
         {
           noText: topicData.animatedRun,
           // Rotate scene settings per slide (offset by slug so different
-          // carousels don't all start in the same room).
-          sceneHint: SCENE_SETTINGS[slug.length % SCENE_SETTINGS.length],
+          // carousels don't all start in the same room), plus a rotating
+          // cover composition so covers stop looking identical.
+          sceneHint:
+            SCENE_SETTINGS[slug.length % SCENE_SETTINGS.length] +
+            " " +
+            COVER_TREATMENTS[slug.length % COVER_TREATMENTS.length],
         }
       );
       const rawBuffer = await generateImage(prompt);

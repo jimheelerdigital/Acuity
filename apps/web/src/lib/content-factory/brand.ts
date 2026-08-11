@@ -60,6 +60,20 @@ export const SCENE_SETTINGS = [
 ] as const;
 
 /**
+ * Cover treatments — composition variants for the COVER slide only,
+ * rotated per post so covers stop all looking like the same medium
+ * shot. Each keeps a single woman as the subject (the animation
+ * prompts reference her), just framed differently.
+ */
+export const COVER_TREATMENTS = [
+  "Cover composition: intimate close-up — her face and shoulders fill most of the frame, eyes toward camera, raw honest expression, shallow depth of field.",
+  "Cover composition: medium shot — she's in the scene mid-thought, caught in a real moment, looking just past the camera.",
+  "Cover composition: she's lit by warm window light from the side, half her face in soft shadow, quiet and cinematic.",
+  "Cover composition: slightly low, dramatic angle — she stands or sits above the viewer, calm and self-possessed, lots of negative space above her.",
+  "Cover composition: over-the-shoulder view — we see the scene from just behind her, her profile visible, as if we're in the moment with her.",
+] as const;
+
+/**
  * Color schemes — one is picked per carousel so all slides in a carousel
  * share a cohesive palette, but each carousel looks distinct.
  */

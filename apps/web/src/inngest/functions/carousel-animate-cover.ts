@@ -131,8 +131,11 @@ export const carouselAnimateCoverFn = inngest.createFunction(
             slide.kind === "COVER"
               ? animationStyle === "crazy"
                 ? buildCrazyCoverVideoPrompt(topic ?? fallback)
-                : buildCoverVideoPrompt(topic ?? fallback, { textFree })
-              : buildSlideVideoPrompt({ textFree });
+                : buildCoverVideoPrompt(topic ?? fallback, {
+                    textFree,
+                    seed: slides[0].carouselPost.topicSlug.length,
+                  })
+              : buildSlideVideoPrompt({ textFree, seed: slide.order });
           try {
             const requestId = await submitCoverVideo({
               startImageUrl,

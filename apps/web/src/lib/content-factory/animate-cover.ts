@@ -101,15 +101,31 @@ function sceneLockLines(textFree: boolean): string[] {
     : [CAMERA_LOCK_LINE, TEXT_LINE, QUALITY_LINE];
 }
 
+/**
+ * Gentle micro-motion beats, rotated across slides so a post's videos
+ * don't all breathe identically. Same quiet, in-place style as the
+ * original single beat — no walking, no talking, no new actions.
+ */
+const MOTION_BEATS = [
+  "a slow, knowing head tilt and a soft exhale",
+  "briefly closing her eyes and taking one deep, settling breath",
+  "a small, wry smile slowly reaching her eyes",
+  "tucking a strand of hair back while glancing up thoughtfully",
+  "gently shaking her head, half-smiling at the truth of it",
+  "letting her shoulders drop as the tension visibly leaves them",
+  "a quiet laugh through her nose, eyes softening",
+  "nodding slowly, like she's finally admitting it to herself",
+] as const;
+
 export function buildCoverVideoPrompt(
   topic: Pick<CarouselTopic, "emotionBeat">,
-  opts?: { textFree?: boolean }
+  opts?: { textFree?: boolean; seed?: number }
 ): string {
   const emotionBeat =
     topic.emotionBeat ??
-    "a gentle shrug and a slow deep breath";
+    MOTION_BEATS[(opts?.seed ?? 0) % MOTION_BEATS.length];
   return [
-    `The woman stays seated in the same spot and pose, lips closed. She ${emotionBeat} — small, gentle, natural movement of her head, shoulders, and hands only.`,
+    `The woman stays in the same spot and pose, lips closed. She ${emotionBeat} — small, gentle, natural movement of her head, shoulders, and hands only.`,
     ...sceneLockLines(Boolean(opts?.textFree)),
   ].join(" ");
 }
@@ -118,11 +134,14 @@ export function buildCoverVideoPrompt(
  * Prompt for non-cover slides (reason slides) on fully animated posts.
  * The slide's artwork already depicts its reason, so the animation just
  * continues that exact activity in place — no new actions introduced.
+ * `seed` (usually the slide order) rotates the micro-motion beat so the
+ * post's videos each move a little differently.
  */
-export function buildSlideVideoPrompt(opts?: { textFree?: boolean }): string {
+export function buildSlideVideoPrompt(opts?: { textFree?: boolean; seed?: number }): string {
+  const beat = MOTION_BEATS[(opts?.seed ?? 0) % MOTION_BEATS.length];
   return [
     "The character continues the exact activity shown in the image, staying in the same spot and pose, lips closed.",
-    "Small, gentle, natural movements of the hands, eyes, and breathing only.",
+    `Small, gentle, natural movements of the hands, eyes, and breathing, plus ${beat}.`,
     ...sceneLockLines(Boolean(opts?.textFree)),
   ].join(" ");
 }
@@ -136,7 +155,7 @@ export function buildCrazyCoverVideoPrompt(topic: Pick<CarouselTopic, "emotionBe
     topic.emotionBeat ??
     "a deep exhale and then looks up with quiet confidence";
   return [
-    `The woman stays seated in the same spot, lips closed. She ${emotionBeat} — one bold, confident movement of her head, shoulders, and hands with real momentum.`,
+    `The woman stays in the same spot and pose, lips closed. She ${emotionBeat} — one bold, confident movement of her head, shoulders, and hands with real momentum.`,
     ...sceneLockLines(false),
   ].join(" ");
 }

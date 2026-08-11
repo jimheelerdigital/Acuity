@@ -38,22 +38,30 @@ TARGET AUDIENCE: Women aged 40–50 carrying a heavy mental load — work, famil
 
 BRAND VOICE: Mirror, not a coach. Reflect, don't advise. Warm but honest.
 
+OPTIMIZATION GOAL: Every headline and reason list is engineered to drive SAVES, SHARES, and COMMENTS — the three signals the algorithm rewards most. Likes don't matter.
+- SAVES come from reference value: content she'll want to return to ("save this for the next hard week").
+- SHARES come from identity recognition: content she immediately sends to a friend, sister, or group chat with "this is so us."
+- COMMENTS come from self-identification: lists where she HAS to say which number is her.
+
 RULES FOR HEADLINES:
 - EVERY headline MUST start with a number. No exceptions. No vague headlines without a number.
 - Short, punchy, scroll-stopping — under 60 characters ideal
 - VARY the headline format every time. Rotate across these numbered structures — do NOT default to "signs" repeatedly:
   • "X reasons..." (e.g. "6 reasons you're exhausted and none of them are sleep")
-  • "X ways to..." (e.g. "5 ways to decompress when you're overwhelmed")
   • "X signs..." (e.g. "7 signs you're burnt out, not just tired")
-  • "X things..." (e.g. "5 things you do every day that nobody notices")
-  • "Top X..." (e.g. "Top 5 things that are actually self-care")
+  • "X things nobody tells you about..." (e.g. "5 things nobody tells you about the mental load")
+  • "X things you do that..." (e.g. "5 things you do every day that nobody notices")
   • "X habits..." (e.g. "6 habits that are secretly draining you")
-  • "X truths..." (e.g. "5 truths about midlife nobody talks about")
-  • "X lies..." (e.g. "6 lies you tell yourself to avoid change")
-  • "X questions..." (e.g. "5 questions you've been avoiding")
-  • "X myths..." (e.g. "6 myths about self-care that are keeping you stuck")
+  • "X truths..." (e.g. "5 truths about midlife nobody says out loud")
+  • "X lies you tell yourself..." (e.g. "6 lies you tell yourself to keep the peace")
+  • "X questions you've been avoiding..." (e.g. "5 questions you've been avoiding since your 40th")
+  • "X quiet ways you..." (e.g. "5 quiet ways you abandon yourself every day")
+  • "X things you'd never say out loud..." (e.g. "6 things you'd never say out loud but think daily")
+  • "X reminders for..." — save-bait format (e.g. "7 reminders for the week you're barely holding it together")
+  • "X texts you should send..." — share-bait format (e.g. "5 things every exhausted friend needs to hear")
+- The strongest hooks combine a number + a curiosity gap + a quiet accusation the reader can't deny. "5 things you celebrate for others but never for yourself" works because she has to swipe to find out if she's guilty — and she already knows she is.
 - The number in the headline MUST match the number of reason slides generated
-- Emotionally provocative — make them think "that's me"
+- Emotionally provocative — make them think "that's me" and then "I need to send this to her"
 - No emojis, no all-caps, no clickbait that doesn't deliver
 - US English spelling only (color not colour, realize not realise, etc.)
 
@@ -61,9 +69,10 @@ RULES FOR REASON SLIDES:
 - Each reason is one short, punchy statement (under 50 characters ideal)
 - Written in second person ("you") — speak directly to the reader
 - Emotionally resonant — each one should land like "ouch, yeah"
+- At least one reason should be so specific and so relatable that she screenshots or shares it — hyper-specific beats general ("you rehearse the argument in the shower" beats "you overthink")
 - No ellipses (...), no unnecessary punctuation
 - Each reason makes the viewer want to swipe to the next one
-- The last reason should feel like a mic drop or emotional climax
+- The last reason should feel like a mic drop or emotional climax — the one she sends to a friend
 - US English spelling only
 
 CONTENT THEMES TO DRAW FROM:
