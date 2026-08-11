@@ -28,6 +28,21 @@ export const VISUAL_DNA = [
 ].join("\n");
 
 /**
+ * Text-free variant of VISUAL_DNA for the animated pipeline: the words are
+ * composited on afterwards (sharp for the JPEG, ffmpeg for the video), so
+ * the image must contain ZERO text. The standard VISUAL_DNA cannot be used
+ * because it actively instructs the model to render blended typography.
+ */
+export const VISUAL_DNA_NOTEXT = [
+  "This is a premium editorial illustration for a wellness brand — polished, high-class, magazine quality. A single scene, NOT an infographic, NOT a layout, NOT a poster.",
+  "ILLUSTRATION: Warm editorial illustration, hand-drawn feel. One diverse woman ~35-50, natural expression, mid-activity. Rich details — plants, candles, mugs, books, cozy domestic elements. Muted warm tones.",
+  "COMPOSITION: The subject and detail sit in the middle and lower portions of the frame. The top third stays visually calm and uncluttered — soft background only.",
+  "QUALITY: Like a full-page illustration from a premium wellness magazine. Clean, intentional, sophisticated. Not cluttered, not cheap, not templated.",
+  "9:16 portrait format.",
+  "IMPORTANT: This image contains absolutely NO text of any kind. No words, no letters, no numbers, no typography, no captions, no labels, no lists, no logos, no watermarks, no writing on any object. Pure illustration only.",
+].join("\n");
+
+/**
  * Color schemes — one is picked per carousel so all slides in a carousel
  * share a cohesive palette, but each carousel looks distinct.
  */

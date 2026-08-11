@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, STYLE_LANES } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import { buildCaption } from "./caption";
@@ -208,22 +208,26 @@ export function buildImagePrompt(
 
   // Text-free variant (animated posts): the words are composited on
   // afterwards (sharp for the JPEG, ffmpeg for the video) so the video
-  // model never gets text pixels to animate. Keep the lower two thirds
-  // of the frame for the subject and the top clear for the overlay.
-  const textRules = opts?.noText
-    ? [
-        "Do not include any text, words, letters, numbers, typography, captions, or writing anywhere in the image.",
-        "Keep the top quarter of the image visually simple and uncluttered — the subject and detail belong in the middle and lower portions.",
-      ]
-    : [
-        `The slide must display this EXACT text prominently: "${displayText}"`,
-        sizeRule,
-      ];
+  // model never gets text pixels to animate. The standard VISUAL_DNA
+  // demands blended typography and "carousel slide" framing — both make
+  // gpt-image-2 render full infographics even when told not to (proven
+  // live 2026-08-11) — so the noText prompt swaps in VISUAL_DNA_NOTEXT
+  // and never uses the words "slide" or "carousel".
+  if (opts?.noText) {
+    return [
+      lanePrefix,
+      colorPrompt ?? "",
+      `An illustrated scene that visually represents: ${sceneText}`,
+      `Mood context: ${topic.headline} — self-reflection and mental load, for women.`,
+      VISUAL_DNA_NOTEXT,
+    ].filter(Boolean).join("\n");
+  }
 
   return [
     lanePrefix,
     colorPrompt ?? "",
-    ...textRules,
+    `The slide must display this EXACT text prominently: "${displayText}"`,
+    sizeRule,
     `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
     `Include relevant illustrated elements that visually represent: ${sceneText}`,
     VISUAL_DNA,
