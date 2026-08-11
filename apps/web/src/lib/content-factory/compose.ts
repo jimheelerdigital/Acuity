@@ -97,21 +97,16 @@ function wordWrap(text: string, maxCharsPerLine: number): string[] {
 }
 
 /**
- * Render a text block using sharp's Pango text renderer.
+ * Render raw Pango markup using sharp's text renderer.
  * Returns the rendered PNG buffer and its dimensions.
  */
-async function renderText(
-  lines: string[],
-  fontSize: number,
-  color: string,
+async function renderMarkup(
+  markup: string,
   fontPath: string | null,
   maxWidth: number,
   lineSpacing: number,
   padding = 0
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
-  const escaped = lines.map((l) => escapePango(l)).join("\n");
-  const markup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${color}">${escaped}</span>`;
-
   const textOpts: Record<string, unknown> = {
     text: markup,
     width: maxWidth,
@@ -147,8 +142,33 @@ async function renderText(
   return {
     buffer,
     width: meta.width ?? maxWidth,
-    height: meta.height ?? fontSize,
+    height: meta.height ?? 64,
   };
+}
+
+/**
+ * Build Pango markup for wrapped lines with numeric tokens highlighted
+ * in the accent color (e.g. "6 THINGS" → the "6" pops in coral).
+ */
+function buildLinesMarkup(
+  lines: string[],
+  fontSize: number,
+  baseColor: string,
+  accentColor: string
+): string {
+  const body = lines
+    .map((line) =>
+      line
+        .split(/(\s+)/)
+        .map((tok) =>
+          /\d/.test(tok) && baseColor !== accentColor
+            ? `<span foreground="${accentColor}">${escapePango(tok)}</span>`
+            : escapePango(tok)
+        )
+        .join("")
+    )
+    .join("\n");
+  return `<span font_desc="Poppins Bold ${fontSize}" foreground="${baseColor}">${body}</span>`;
 }
 
 // ─── Slide compositing ──────────────────────────────────────────────────────
@@ -161,36 +181,104 @@ async function renderText(
  * this exact overlay is composited onto the static JPEG (sharp) AND
  * burned onto the finished MP4 (ffmpeg) — pixel-identical, pixel-frozen.
  *
- * Layout: Poppins Bold, white with a soft dark drop shadow for
- * legibility on any artwork, top-centered inside the safe zone.
+ * Design (2026-08-11 "eye-popping" pass, requested by Keenan):
+ *   - UPPERCASE Poppins Bold, big type, starting 10% from the top
+ *   - Numbers inside the text rendered in the carousel's accent color
+ *   - REASON slides get an accent-filled circle badge with the number
+ *   - COVER gets a rounded accent underline bar beneath the headline
+ *   - Heavy blurred dark shadow so it reads on any artwork
  */
 export async function renderSlideTextOverlay(
   text: string,
   kind: "COVER" | "REASON",
-  slideNumber?: number
+  slideNumber?: number,
+  accent: string = BURNT_ORANGE
 ): Promise<Buffer> {
   const fontPath = await ensureFontFile("Bold");
-  const display =
-    kind === "REASON" && slideNumber ? `${slideNumber}. ${text}` : text;
+  const display = text.toUpperCase();
 
-  const fontSize = kind === "COVER" ? 52 : 44;
-  const maxChars = kind === "COVER" ? 20 : 24;
+  const fontSize = kind === "COVER" ? 64 : 52;
+  const maxChars = kind === "COVER" ? 16 : 19;
   const lines = wordWrap(display, maxChars);
 
   const maxTextW = OUTPUT_W - PADDING_X * 2;
-  // Shadow layer (dark, slightly offset) + main layer (white)
-  const shadow = await renderText(
-    lines, fontSize, "#111111", fontPath, maxTextW, 10, 8
-  );
-  const main = await renderText(
-    lines, fontSize, "#FFFFFF", fontPath, maxTextW, 10, 8
-  );
+  // Shadow layer (all-dark, blurred, offset) + main layer (white + accent numbers)
+  const shadowMarkup = buildLinesMarkup(lines, fontSize, "#111111", "#111111");
+  const mainMarkup = buildLinesMarkup(lines, fontSize, "#FFFFFF", accent);
+  const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, 12, 10);
+  const main = await renderMarkup(mainMarkup, fontPath, maxTextW, 12, 10);
+  const blurredShadow = await sharp(shadow.buffer).blur(6).png().toBuffer();
 
-  // Soften the shadow with a slight blur
-  const blurredShadow = await sharp(shadow.buffer).blur(4).png().toBuffer();
+  const topStart = Math.round(OUTPUT_H * 0.1); // 10% buffer so text always fits on screen
+  const composites: sharp.OverlayOptions[] = [];
+  let cursorY = topStart;
 
-  const textTop = Math.round(OUTPUT_H * 0.1); // 10% buffer from the top so text always fits on screen
-  const left = Math.round((OUTPUT_W - main.width) / 2);
+  // REASON: accent circle badge with the slide number, centered above the text.
+  if (kind === "REASON" && slideNumber) {
+    const D = 118;
+    const circle = Buffer.from(
+      `<svg width="${D}" height="${D}" xmlns="http://www.w3.org/2000/svg">` +
+        `<circle cx="${D / 2}" cy="${D / 2}" r="${D / 2 - 3}" fill="${accent}" stroke="#FFFFFF" stroke-width="5"/>` +
+        `</svg>`
+    );
+    const numMarkup = `<span font_desc="Poppins Bold 52" foreground="#FFFFFF">${slideNumber}</span>`;
+    const num = await renderMarkup(numMarkup, fontPath, D, 0, 0);
+
+    const badgeShadow = await sharp(
+      Buffer.from(
+        `<svg width="${D}" height="${D}" xmlns="http://www.w3.org/2000/svg">` +
+          `<circle cx="${D / 2}" cy="${D / 2}" r="${D / 2 - 3}" fill="#111111" fill-opacity="0.65"/>` +
+          `</svg>`
+      )
+    )
+      .blur(6)
+      .png()
+      .toBuffer();
+    const badgeLeft = Math.round((OUTPUT_W - D) / 2);
+    composites.push(
+      { input: badgeShadow, top: cursorY + 5, left: badgeLeft + 4 },
+      { input: circle, top: cursorY, left: badgeLeft },
+      {
+        input: num.buffer,
+        top: Math.round(cursorY + (D - num.height) / 2),
+        left: Math.round(badgeLeft + (D - num.width) / 2),
+      }
+    );
+    cursorY += D + 26;
+  }
+
+  const textLeft = Math.round((OUTPUT_W - main.width) / 2);
+  composites.push(
+    { input: blurredShadow, top: cursorY + 5, left: textLeft + 4 },
+    { input: main.buffer, top: cursorY, left: textLeft }
+  );
+  cursorY += main.height;
+
+  // COVER: rounded accent bar under the headline for extra pop.
+  if (kind === "COVER") {
+    const barW = 180;
+    const barH = 14;
+    const bar = Buffer.from(
+      `<svg width="${barW}" height="${barH}" xmlns="http://www.w3.org/2000/svg">` +
+        `<rect x="0" y="0" width="${barW}" height="${barH}" rx="${barH / 2}" fill="${accent}"/>` +
+        `</svg>`
+    );
+    const barShadow = await sharp(
+      Buffer.from(
+        `<svg width="${barW}" height="${barH}" xmlns="http://www.w3.org/2000/svg">` +
+          `<rect x="0" y="0" width="${barW}" height="${barH}" rx="${barH / 2}" fill="#111111" fill-opacity="0.65"/>` +
+          `</svg>`
+      )
+    )
+      .blur(5)
+      .png()
+      .toBuffer();
+    const barLeft = Math.round((OUTPUT_W - barW) / 2);
+    composites.push(
+      { input: barShadow, top: cursorY + 20, left: barLeft + 3 },
+      { input: bar, top: cursorY + 16, left: barLeft }
+    );
+  }
 
   return sharp({
     create: {
@@ -200,10 +288,7 @@ export async function renderSlideTextOverlay(
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite([
-      { input: blurredShadow, top: textTop + 4, left: left + 4 },
-      { input: main.buffer, top: textTop, left },
-    ])
+    .composite(composites)
     .png()
     .toBuffer();
 }

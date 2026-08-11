@@ -263,13 +263,30 @@ export async function storeSlideVideo(slideId: string, higgsfieldVideoUrl: strin
   // If the burn fails we store the text-free video rather than nothing.
   if (slide.rawImageUrl && slide.kind !== "CTA") {
     try {
-      const { renderSlideTextOverlay } = await import("./compose");
       const { burnOverlayOntoVideo } = await import("./video-overlay");
-      const overlay = await renderSlideTextOverlay(
-        slide.overlayText,
-        slide.kind as "COVER" | "REASON",
-        slide.kind === "REASON" ? slide.order : undefined
-      );
+      const { supabase } = await import("@/lib/supabase.server");
+
+      // Prefer the overlay PNG stored at generation time — the EXACT same
+      // pixels as on the static JPEG (incl. the carousel's accent color).
+      const genDateStr = slide.carouselPost.generatedFor.toISOString().slice(0, 10);
+      const overlayPath = `carousels/${genDateStr}/${slide.carouselPost.topicSlug}/slide-${slide.order}-overlay.png`;
+      let overlay: Buffer;
+      const { data: overlayData } = await supabase.storage
+        .from("content-factory")
+        .download(overlayPath);
+      if (overlayData) {
+        overlay = Buffer.from(await overlayData.arrayBuffer());
+        console.log(`[animate-cover] Using stored overlay ${overlayPath}`);
+      } else {
+        // Older posts predate stored overlays — re-render with defaults.
+        const { renderSlideTextOverlay } = await import("./compose");
+        overlay = await renderSlideTextOverlay(
+          slide.overlayText,
+          slide.kind as "COVER" | "REASON",
+          slide.kind === "REASON" ? slide.order : undefined
+        );
+        console.log(`[animate-cover] No stored overlay at ${overlayPath} — re-rendered`);
+      }
       buffer = await burnOverlayOntoVideo(buffer, overlay);
       console.log(`[animate-cover] Burned text overlay onto video for slide ${slideId}`);
     } catch (burnErr) {

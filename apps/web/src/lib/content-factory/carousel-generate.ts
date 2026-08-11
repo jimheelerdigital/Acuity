@@ -198,7 +198,7 @@ export function buildImagePrompt(
   topic: CarouselTopic,
   colorPrompt?: string,
   slideLabel?: string,
-  opts?: { noText?: boolean }
+  opts?: { noText?: boolean; sceneHint?: string }
 ): string {
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
@@ -218,6 +218,7 @@ export function buildImagePrompt(
       lanePrefix,
       colorPrompt ?? "",
       `An illustrated scene that visually represents: ${sceneText}`,
+      opts.sceneHint ?? "",
       `Mood context: ${topic.headline} — self-reflection and mental load, for women.`,
       VISUAL_DNA_NOTEXT,
     ].filter(Boolean).join("\n");
