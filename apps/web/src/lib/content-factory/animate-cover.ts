@@ -243,6 +243,14 @@ export async function storeSlideVideo(slideId: string, higgsfieldVideoUrl: strin
     throw new Error(`Failed to download slide video (${res.status}) from ${higgsfieldVideoUrl}`);
   }
   let buffer: Buffer = Buffer.from(await res.arrayBuffer());
+  // A frameless stub from the CDN would burn into a broken file — fail the
+  // step instead so the retry / next wave resubmits the slide.
+  if (buffer.length < 100_000) {
+    throw new Error(
+      `Downloaded slide video is only ${buffer.length} bytes from ${higgsfieldVideoUrl} — refusing to store`
+    );
+  }
+  console.log(`[animate-cover] Downloaded ${buffer.length} bytes for slide ${slideId}`);
 
   const { prisma } = await import("@/lib/prisma");
   const slide = await prisma.carouselSlide.findUniqueOrThrow({

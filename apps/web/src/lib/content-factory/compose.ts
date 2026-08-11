@@ -189,7 +189,7 @@ export async function renderSlideTextOverlay(
   // Soften the shadow with a slight blur
   const blurredShadow = await sharp(shadow.buffer).blur(4).png().toBuffer();
 
-  const textTop = 180; // inside the top safe zone, above the subject
+  const textTop = Math.round(OUTPUT_H * 0.1); // 10% buffer from the top so text always fits on screen
   const left = Math.round((OUTPUT_W - main.width) / 2);
 
   return sharp({

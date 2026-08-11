@@ -52,7 +52,7 @@ export async function burnOverlayOntoVideo(
 
     const args = [
       "-y",
-      "-loglevel", "error",
+      "-loglevel", "warning",
       "-i", inVideo,
       "-i", inOverlay,
       // Scale the overlay to exactly match the video, then composite.
@@ -67,18 +67,33 @@ export async function burnOverlayOntoVideo(
       outVideo,
     ];
 
+    let stderr = "";
     await new Promise<void>((resolve, reject) => {
       const proc = spawn(bin, args);
-      let stderr = "";
       proc.stderr.on("data", (d) => (stderr += d.toString()));
       proc.on("error", reject);
       proc.on("close", (code) => {
         if (code === 0) resolve();
-        else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(0, 500)}`));
+        else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(0, 800)}`));
       });
     });
 
-    return fs.readFileSync(outVideo);
+    const out = fs.readFileSync(outVideo);
+    // ffmpeg can exit 0 yet emit a frameless ~261-byte container (seen live
+    // on Vercel 2026-08-11: every burned video was an empty MP4 shell).
+    // Treat tiny output as failure so callers fall back to the un-burned,
+    // still-playable video instead of storing a broken file.
+    if (out.length < 100_000) {
+      throw new Error(
+        `ffmpeg produced a suspiciously small output (${out.length} bytes from a ` +
+          `${videoBuffer.length}-byte input) — treating as failed burn. stderr: ${stderr.slice(0, 800)}`
+      );
+    }
+    console.log(
+      `[video-overlay] Burn ok: ${videoBuffer.length} -> ${out.length} bytes` +
+        (stderr ? ` (ffmpeg warnings: ${stderr.slice(0, 300)})` : "")
+    );
+    return out;
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
