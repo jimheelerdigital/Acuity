@@ -46,54 +46,69 @@ export async function burnOverlayOntoVideo(
   const inOverlay = path.join(dir, "overlay.png");
   const outVideo = path.join(dir, "out.mp4");
 
+  // Two filtergraph strategies, tried in order. scale2ref exited 0 with a
+  // frameless 261-byte shell on Vercel (live 2026-08-11: "No filtered
+  // frames for output stream"), so the primary strategy avoids it: upscale
+  // the video to the overlay's fixed 1080x1920 and composite directly.
+  const filterStrategies = [
+    "[0:v]scale=1080:1920:flags=lanczos[base];[base][1:v]overlay=0:0:format=auto",
+    "[1:v][0:v]scale2ref[ovr][base];[base][ovr]overlay=0:0:format=auto",
+  ];
+
   try {
     fs.writeFileSync(inVideo, videoBuffer);
     fs.writeFileSync(inOverlay, overlayPng);
 
-    const args = [
-      "-y",
-      "-loglevel", "warning",
-      "-i", inVideo,
-      "-i", inOverlay,
-      // Scale the overlay to exactly match the video, then composite.
-      "-filter_complex",
-      "[1:v][0:v]scale2ref[ovr][base];[base][ovr]overlay=0:0:format=auto",
-      "-c:v", "libx264",
-      "-preset", "fast",
-      "-crf", "20",
-      "-pix_fmt", "yuv420p",
-      "-movflags", "+faststart",
-      "-an", // slide videos have no audio track worth keeping
-      outVideo,
-    ];
+    let lastErr: Error | null = null;
+    for (const filter of filterStrategies) {
+      const args = [
+        "-y",
+        "-loglevel", "warning",
+        "-i", inVideo,
+        "-i", inOverlay,
+        "-filter_complex", filter,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "20",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        "-an", // slide videos have no audio track worth keeping
+        outVideo,
+      ];
 
-    let stderr = "";
-    await new Promise<void>((resolve, reject) => {
-      const proc = spawn(bin, args);
-      proc.stderr.on("data", (d) => (stderr += d.toString()));
-      proc.on("error", reject);
-      proc.on("close", (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(0, 800)}`));
-      });
-    });
+      let stderr = "";
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const proc = spawn(bin, args);
+          proc.stderr.on("data", (d) => (stderr += d.toString()));
+          proc.on("error", reject);
+          proc.on("close", (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(0, 800)}`));
+          });
+        });
 
-    const out = fs.readFileSync(outVideo);
-    // ffmpeg can exit 0 yet emit a frameless ~261-byte container (seen live
-    // on Vercel 2026-08-11: every burned video was an empty MP4 shell).
-    // Treat tiny output as failure so callers fall back to the un-burned,
-    // still-playable video instead of storing a broken file.
-    if (out.length < 100_000) {
-      throw new Error(
-        `ffmpeg produced a suspiciously small output (${out.length} bytes from a ` +
-          `${videoBuffer.length}-byte input) — treating as failed burn. stderr: ${stderr.slice(0, 800)}`
-      );
+        const out = fs.readFileSync(outVideo);
+        // ffmpeg can exit 0 yet emit a frameless ~261-byte container.
+        // Treat tiny output as failure so we try the next strategy (and
+        // ultimately let callers fall back to the un-burned video).
+        if (out.length < 100_000) {
+          throw new Error(
+            `ffmpeg produced a suspiciously small output (${out.length} bytes from a ` +
+              `${videoBuffer.length}-byte input) with filter "${filter}". stderr: ${stderr.slice(0, 800)}`
+          );
+        }
+        console.log(
+          `[video-overlay] Burn ok (${filter.slice(0, 40)}…): ${videoBuffer.length} -> ${out.length} bytes` +
+            (stderr ? ` (ffmpeg warnings: ${stderr.slice(0, 300)})` : "")
+        );
+        return out;
+      } catch (err) {
+        lastErr = err instanceof Error ? err : new Error(String(err));
+        console.warn(`[video-overlay] Strategy failed: ${lastErr.message.slice(0, 400)}`);
+      }
     }
-    console.log(
-      `[video-overlay] Burn ok: ${videoBuffer.length} -> ${out.length} bytes` +
-        (stderr ? ` (ffmpeg warnings: ${stderr.slice(0, 300)})` : "")
-    );
-    return out;
+    throw lastErr ?? new Error("All burn strategies failed");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
