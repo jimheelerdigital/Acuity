@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-11] — Content factory now generates 3 posts per day instead of 2
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 30ba0551
+
+### In plain English (for Keenan)
+A third daily post now generates at 11am Central (16:00 UTC), on top of the existing 3am static post and 7am animated post. The new run is fully animated like the 7am one, so each day delivers one static slideshow and two animated posts to the inbox.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron changed from `0 8,12 * * *` to `0 8,12,16 * * *`. The existing hour check (only 8 UTC is static) makes the 16 UTC run animated with no other changes
+- Inngest resynced via PUT /api/inngest after deploy
+
+### Manual steps needed
+None
+
+### Notes
+- Cost impact: one extra animated post/day ≈ 7 gpt-image generations + up to 6 Higgsfield i2v renders + Claude topic call. If spend gets uncomfortable, the cheap dial is making 16 UTC static (add it to the hour check) rather than dropping the run
+- Daily volume history: 5× → 2× (2026-08-10, cost cut) → 3× (2026-08-11)
+
 ## [2026-08-11] — Videos now arrive as email attachments you can save straight to the camera roll
 
 **Requested by:** Keenan
