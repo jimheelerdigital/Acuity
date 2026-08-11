@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-11] — Cut visual style lanes from 7 to 5
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a2114565
+
+### In plain English (for Keenan)
+The daily posts now rotate through 5 art styles instead of 7. We dropped "still life" (no character in the scene, so the animated version had nothing to move and looked frozen) and "risograph" (its halftone dot texture shimmers badly when animated). Kept: cinematic real, 3D toon, claymation, flat graphic, and paper diorama.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/brand.ts: removed stillLife and risograph from STYLE_LANES
+- apps/web/src/lib/content-factory/generate-topic.ts: removed the two keys from STYLE_LANE_KEYS so AI topic generation can't pick them
+- apps/web/src/lib/content-factory/topics.ts: remapped the static topic bank — stillLife → paperDiorama, risograph → flatGraphic — so regeneration paths that look up CAROUSEL_TOPICS never hit a missing lane key
+
+### Manual steps needed
+None
+
+### Notes
+- Selection rationale: the animated pipeline prompts tell the video model "the character continues the activity shown" — stillLife has no character, and halftone textures are the worst-case input for image-to-video models (dot crawl)
+- Old posts whose stored imagePrompt was built from a retired lane are unaffected; regeneration prefers the stored prompt
+
 ## [2026-08-11] — Text now actually burns onto the animated slide videos
 
 **Requested by:** Keenan
