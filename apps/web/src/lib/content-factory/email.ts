@@ -91,8 +91,12 @@ export async function sendCarouselEmail(
     `imageBytes=${totalBytes}, useAttachments=${totalBytes <= MAX_ATTACHMENT_BYTES}`
   );
 
-  // Attach each video that still fits within the attachment budget;
-  // every video always gets a download link regardless.
+  // Fetch every video. They are NOT attached to the main email — all six
+  // won't fit under Resend's per-message cap alongside the images, and a
+  // video that arrives as a link can't be saved to the camera roll from
+  // the inbox. Instead, videos are chunked into follow-up "Videos (n/N)"
+  // emails below, each under the cap, so every video arrives as a real
+  // attachment: tap and hold → Save Video, straight from the email.
   const videoBuffers: { filename: string; buf: Buffer }[] = [];
   for (const slide of videoSlides) {
     try {
@@ -100,13 +104,8 @@ export async function sendCarouselEmail(
       console.log(`[carousel-email] Video fetch (slide ${slide.order}): status=${res.status}, size=${res.headers.get("content-length") ?? "unknown"}`);
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
-        if (totalBytes + buf.length <= MAX_ATTACHMENT_BYTES) {
-          const num = String(slide.order + 1).padStart(2, "0");
-          videoBuffers.push({ filename: `${num}-${slide.kind.toLowerCase()}-animated.mp4`, buf });
-          totalBytes += buf.length;
-        } else {
-          console.log(`[carousel-email] Video for slide ${slide.order} too large to attach: ${buf.length} bytes, budget remaining: ${MAX_ATTACHMENT_BYTES - totalBytes}`);
-        }
+        const num = String(slide.order + 1).padStart(2, "0");
+        videoBuffers.push({ filename: `${num}-${slide.kind.toLowerCase()}-animated.mp4`, buf });
       }
     } catch (err) {
       console.warn(`[carousel-email] Failed to fetch video for slide ${slide.order}: ${err instanceof Error ? err.message : err}`);
@@ -153,7 +152,7 @@ export async function sendCarouselEmail(
     <div style="text-align:center;margin:20px 0;">
       ${videoButtons}
       <p style="font-size:11px;color:#888;margin:8px 0 0;">
-        Tap a button to download the MP4. On iPhone it saves to Files — open it there and Share&nbsp;→&nbsp;Save&nbsp;Video to add it to your camera roll.${videoBuffers.length > 0 ? ` (${videoBuffers.length} of ${videoSlides.length} also attached.)` : ""}
+        📥 The videos arrive attached to separate "Videos" emails right after this one — tap and hold a video there, then Save&nbsp;Video to add it straight to your camera roll. Buttons above are a backup download.
       </p>
     </div>`
       : "";
@@ -240,17 +239,10 @@ export async function sendCarouselEmail(
   };
 
   if (useAttachments && slideBuffers.length > 0) {
-    const attachments = slideBuffers.map((s) => ({
+    (emailPayload as Record<string, unknown>).attachments = slideBuffers.map((s) => ({
       filename: s.filename,
       content: s.buf.toString("base64"),
     }));
-    for (const v of videoBuffers) {
-      attachments.push({
-        filename: v.filename,
-        content: v.buf.toString("base64"),
-      });
-    }
-    (emailPayload as Record<string, unknown>).attachments = attachments;
   }
 
   const resp = await resend.emails.send(emailPayload);
@@ -259,6 +251,57 @@ export async function sendCarouselEmail(
   const respAny = resp as Record<string, unknown>;
   const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
   const emailId = (dataObj.id as string) ?? "";
+
+  // ── Follow-up emails with the videos attached ───────────────────
+  // Greedy-chunk videos so each follow-up stays under the Resend cap.
+  // Every video ships as a real attachment: tap and hold → Save Video.
+  if (videoBuffers.length > 0) {
+    const chunks: { filename: string; buf: Buffer }[][] = [[]];
+    let chunkBytes = 0;
+    for (const v of videoBuffers) {
+      if (chunkBytes + v.buf.length > MAX_ATTACHMENT_BYTES && chunks[chunks.length - 1].length > 0) {
+        chunks.push([]);
+        chunkBytes = 0;
+      }
+      chunks[chunks.length - 1].push(v);
+      chunkBytes += v.buf.length;
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+      const part = chunks.length > 1 ? ` (${i + 1}/${chunks.length})` : "";
+      const chunkNames = chunks[i].map((v) => v.filename).join(", ");
+      try {
+        await resend.emails.send({
+          from: FROM_ADDRESS,
+          to: TO_ADDRESS,
+          subject: `[Ripple Content] 🎬 Videos${part} — ${post.headline}`,
+          html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:500px;margin:0 auto;padding:20px;">
+    <h1 style="font-size:18px;color:#FBFAF6;margin:0 0 8px;">🎬 Animated slides${part}</h1>
+    <p style="font-size:13px;color:#AAA;margin:0 0 12px;">${escapeHtml(post.headline)}</p>
+    <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0;">
+      ${chunks[i].length} video${chunks[i].length > 1 ? "s" : ""} attached.<br/>
+      <strong>Tap and hold a video → Save Video</strong> to add it straight to your camera roll.
+    </p>
+  </div>
+</body>
+</html>`.trim(),
+          text: `Animated slides${part} — ${post.headline}\n\n${chunks[i].length} video(s) attached: ${chunkNames}\nTap and hold a video → Save Video to add it to your camera roll.`,
+          attachments: chunks[i].map((v) => ({
+            filename: v.filename,
+            content: v.buf.toString("base64"),
+          })),
+        } as Parameters<typeof resend.emails.send>[0]);
+        console.log(`[carousel-email] Sent video email${part}: ${chunkNames}`);
+      } catch (err) {
+        console.warn(`[carousel-email] Video email${part} failed: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+  }
 
   // ── Update DB ───────────────────────────────────────────────────
   await prisma.carouselPost.update({
