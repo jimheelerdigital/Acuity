@@ -1,11 +1,13 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 5× daily via cron, ALL fully animated
- * (2026-08-11 per Keenan: no more static runs, max posting volume).
+ * Carousel generation — runs 3× daily via cron, ALL fully animated
+ * (2026-08-11 per Keenan: dialed back from 5× — he clips and posts
+ * everything manually, and 5/day was more than the posting workflow
+ * could absorb).
  *
- * Runs at 12, 14, 16, 18, 20 UTC (7am–3pm Central, every 2h). Every
- * slide except the last (CTA) gets a 4s video; topic capped at 6
+ * Runs at 12, 16, 20 UTC (7am, 11am, 3pm Central). Every slide
+ * except the last (CTA) gets a 4s video; topic capped at 6
  * reasons (7 animated slides max). Email is sent by the animate
  * function after the renders finish.
  *
@@ -18,7 +20,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 12,14,16,18,20 * * *" },
+      { cron: "0 12,16,20 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
