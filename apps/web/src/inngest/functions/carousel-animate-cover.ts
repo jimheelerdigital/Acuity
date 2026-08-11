@@ -11,10 +11,12 @@ import { inngest } from "@/inngest/client";
  *   — used by the second daily post. Each video is 4s on the current
  *   (dop/lite) model.
  *
- * Runs up to TWO attempts (added 2026-08-10 after the first live
- * animateAll run shipped 5/7 videos): each attempt submits jobs only for
- * target slides that still lack a videoUrl, so attempt 2 automatically
- * retries just the slides whose submit or render failed in attempt 1.
+ * Submits in WAVES of at most 4 jobs (2026-08-10): Higgsfield silently
+ * drops submits beyond ~4 concurrent jobs per account — the first two
+ * live animateAll runs shipped 5/7 and 4/7 videos with zero submit
+ * errors logged, and resubmitting the missing 3 alone succeeded
+ * immediately. Each wave submits only target slides that still lack a
+ * videoUrl, so later waves also double as retries for failed renders.
  *
  * Uses Inngest steps so the multi-minute Higgsfield renders never hit the
  * 300s Vercel invocation ceiling: submit all → sleep → poll all (short
@@ -62,7 +64,11 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       });
     };
 
-    const MAX_ATTEMPTS = 2;
+    // 3 waves × 4 jobs covers the 7-slide max plus one retry wave for
+    // render failures. Higgsfield silently drops submits past ~4
+    // concurrent jobs, so never submit more than 4 per wave.
+    const MAX_ATTEMPTS = 3;
+    const MAX_CONCURRENT_JOBS = 4;
     let totalStored = 0;
     let totalSubmitted = 0;
     let firstAttemptSkip: string | null = null;
@@ -118,8 +124,9 @@ export const carouselAnimateCoverFn = inngest.createFunction(
 
         const jobs: { slideId: string; order: number; requestId: string }[] = [];
         for (const slide of targets) {
+          if (jobs.length >= MAX_CONCURRENT_JOBS) break; // Higgsfield drops submits past ~4 concurrent
           if (!slide.imageUrl) continue;
-          if (slide.videoUrl) continue; // already animated (earlier attempt / retried run)
+          if (slide.videoUrl) continue; // already animated (earlier wave / retried run)
           // Reason slides act out their own text; the cover has its
           // dedicated emotion-beat prompt.
           const prompt =
@@ -165,12 +172,13 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       totalSubmitted += submission.jobs.length;
 
       // ── Give the renders a head start, then poll in short steps ──────
-      await step.sleep(`initial-render-wait-a${attempt}`, attempt === 1 ? "2m" : "1m");
+      await step.sleep(`initial-render-wait-a${attempt}`, "2m");
 
-      // Attempt 1: 2m head start + 36 × 30s ≈ 20 min. The first live DoP
+      // 2m head start + 36 × 30s ≈ 20 min for wave 1. The first live DoP
       // render (2026-08-05) blew past the original ~8 min budget, so the
-      // window is wide. Attempt 2 (retries only) gets a shorter window.
-      const maxPolls = attempt === 1 ? 36 : 20;
+      // window is wide. Later waves render fresh jobs too, so they get a
+      // slightly shorter but still full-render-length window.
+      const maxPolls = attempt === 1 ? 36 : 24;
       // requestId -> CDN url for completed jobs; "" = terminal failure
       let pending = submission.jobs.map((j) => j.requestId);
       const completed: Record<string, string> = {};
