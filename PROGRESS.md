@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-08-11] — Daily video posts dialed back from 5 to 3
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 54aad09d
+
+### In plain English (for Keenan)
+The factory now makes 3 animated posts per day (7am, 11am, 3pm Central) instead of 5. Keenan clips and posts every video by hand, and 5 a day was producing more than the manual posting workflow could keep up with — 3 matches real capacity and cuts generation cost by 40%.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron `0 12,14,16,18,20 * * *` → `0 12,16,20 * * *`; header comment updated. No other logic changes
+
+### Manual steps needed
+None (Inngest picks up the new cron on next sync after deploy)
+
+### Notes
+- Volume history: 5× mixed → 2× (2026-08-10 cost cut) → 3× → 5× all-animated (2026-08-11 am) → 3× all-animated (2026-08-11 pm)
+- Context from the organic-growth audit: distribution is manual (Keenan clips + posts everything), so generation volume should track his posting capacity, not the ceiling of the pipeline
+
 ## [2026-08-11] — Character emotion now matches each post's mood, with bespoke per-slide animations
 
 **Requested by:** Keenan
