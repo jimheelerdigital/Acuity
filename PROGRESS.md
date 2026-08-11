@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-11] — Animated post fixes: catchy text overlays, varied artwork, no more broken videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9cc8b157, e7736dd2, de4ff797
+
+### In plain English (for Keenan)
+Three fixes to the animated carousel post. First, slides were coming out as full infographics with baked-in text even though we generate the words separately — the art is now genuinely text-free, so there's no double text. Second, the plain white subtitles were replaced with a bold, eye-catching treatment in the top 10% of each slide: big uppercase text, numbers in the carousel's accent color, a numbered colored badge on each reason slide, and a colored underline on the cover. Third, every slide now gets a different scene (kitchen, porch, bedroom, walk outside, etc.) instead of the same room repeated, and if a video comes out broken the system now stores a playable video without the burned text instead of a dead file.
+
+### Technical changes (for Jimmy)
+- brand.ts: new VISUAL_DNA_NOTEXT prompt (standard VISUAL_DNA demands blended typography, which made gpt-image-2 ignore "no text" instructions); per-COLOR_SCHEMES `accent` hex; SCENE_SETTINGS rotation list; variety instruction in the no-text DNA
+- carousel-generate.ts: buildImagePrompt `opts.sceneHint`; the noText branch uses a fully separate prompt that never says "slide"/"carousel"
+- compose.ts: renderSlideTextOverlay rewritten (uppercase, 64/52px, accent-colored numeric tokens via raw Pango markup, SVG accent circle badge + underline bar, blurred dark shadows, block starts at 192px = 10%)
+- carousel-daily.ts: passes colorScheme.accent + per-slide sceneHint; uploads each overlay as `slide-N-overlay.png`
+- animate-cover.ts storeSlideVideo: downloads the stored overlay PNG (pixel-identical to the static JPEG) before burning, re-renders as fallback; rejects downloaded videos <100KB
+- video-overlay.ts: throws if ffmpeg output <100KB (prod ffmpeg exited 0 with frameless 261-byte MP4s on Vercel — root cause TBD, stderr now captured at loglevel warning), so callers fall back to the un-burned playable video
+
+### Manual steps needed
+- [ ] Verify the next animated run's videos are >100KB and playable; read ffmpeg stderr in Vercel logs to diagnose the 261-byte prod burn failure (Claude/Keenan)
+
+### Notes
+- ffmpeg-static burns work locally (~2.6MB output) but produced empty 261-byte shells in prod on every slide — guard ships first, diagnosis next run
+- Overlay PNG is stored at generation time specifically so the static JPEG and the burned MP4 share exact pixels regardless of future style changes
+
+---
+
 ## [2026-08-10] — Animated posts rebuilt: text is now burned on AFTER animation so it can never move or be blocked
 
 **Requested by:** Keenan
