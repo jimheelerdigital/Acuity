@@ -124,12 +124,17 @@ export async function sendCarouselEmail(
   // Always give big, thumb-friendly download buttons when videos exist —
   // attachments are awkward to save to the camera roll on a phone, the
   // hosted links are not. Shown whether or not the MP4s are also attached.
-  // Supabase's `?download=<name>` flag makes the object serve with
-  // Content-Disposition: attachment — without it, phones just play the
-  // MP4 inline in the browser and there's no reliable way to save it
-  // (the HTML `download` attribute is ignored for cross-origin links).
-  const forceDownloadUrl = (url: string, filename: string) =>
-    `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(filename)}`;
+  // Links go through our /api/content-factory/download proxy, which
+  // streams the file with Content-Disposition: attachment from our own
+  // domain — this reliably triggers the native "Download" popup on iOS
+  // Safari. Direct Supabase links (even with the ?download flag) get
+  // played inline by some mail apps' in-app browsers, with no way to
+  // save the video.
+  const forceDownloadUrl = (url: string, filename: string) => {
+    const bucketPath = url.split("/content-factory/")[1];
+    if (!bucketPath) return url;
+    return `${REVIEW_BASE_URL}/api/content-factory/download?path=${encodeURIComponent(bucketPath)}&name=${encodeURIComponent(filename)}`;
+  };
   const videoButtons = videoSlides
     .map((s) => {
       const label =
