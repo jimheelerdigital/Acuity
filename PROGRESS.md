@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-08-10] — Animated posts rebuilt: text is now burned on AFTER animation so it can never move or be blocked
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c99c7ddd
+
+### In plain English (for Keenan)
+The animated slides kept ruining the text because the video AI was animating an image that already had words on it — it warped them, covered them, and invented new actions (people standing up, mouths moving). Now the artwork for animated posts is generated with NO text at all, the animation runs on that clean image, and our own system stamps the exact words on top of the finished video afterward. The words are physically frozen pixels — the AI never sees them, so it can never move, block, or lip-sync them. Animation prompts were also rewritten to only allow small in-place movement with lips closed.
+
+### Technical changes (for Jimmy)
+- New: apps/web/src/lib/content-factory/video-overlay.ts — burnOverlayOntoVideo() composites the 1080x1920 overlay PNG onto the MP4 via ffmpeg-static (scale2ref + overlay, libx264 crf 20)
+- apps/web/src/lib/content-factory/compose.ts — renderSlideTextOverlay() (transparent PNG, Poppins Bold, shadow) + composeSlideWithOverlay(); composeSlide() for animated runs is resize-only
+- apps/web/src/lib/content-factory/carousel-generate.ts — buildImagePrompt() gained { noText } option instructing gpt-image-2 to render zero text and keep the top quarter simple
+- apps/web/src/inngest/functions/carousel-daily.ts — animated runs generate text-free art for cover + every reason slide, upload it as slide-N-*-notext.jpg, persist rawImageUrl, and composite the static JPEG with the overlay; added event trigger "content-factory/daily.generate" (data.animated overrides the cron-hour mode)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts — animation start frame is now rawImageUrl (text-free) when present; prompts get textFree flag
+- apps/web/src/lib/content-factory/animate-cover.ts — v12 prompts: character stays in place doing the activity already shown, lips closed, locked camera; text-free variants never mention text; storeSlideVideo() burns the overlay onto the finished MP4 (falls back to text-free video if the burn fails)
+- apps/web/src/app/api/admin/carousels/route.ts — new "generate-daily" action (CRON_SECRET or admin) fires the daily.generate event on demand
+- apps/web/next.config.js — ffmpeg-static marked external + traced into the /api/inngest lambda
+- apps/web/package.json — added ffmpeg-static
+
+### Manual steps needed
+- [ ] None — Inngest resynced via PUT /api/inngest after deploy (Claude Code)
+
+### Notes
+- Frame extraction on the v11 output proved the video model executes ANY verb in the prompt: quoting the slide text made the character stand up, walk to a window, and morph the claymation style into photoreal. Prompts must describe only the desired micro-motion, never quote slide copy.
+- Camera moves (push-in) warp baked-in text — locked camera whenever text is in frame.
+- Existing posts generated before this change have no text-free reason art, so re-animating them still uses the old baked-text frames; only freshly generated animated posts get the full pipeline.
+
+---
+
 ## [2026-08-10] — Found why slides were missing videos: Higgsfield only allows ~4 renders at once
 
 **Requested by:** Keenan
