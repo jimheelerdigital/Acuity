@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-11] — 5 animated posts/day, varied covers, varied motion, engagement-optimized hooks
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 15f74da9
+
+### In plain English (for Keenan)
+Four upgrades in one: (1) the factory now makes 5 posts per day, every 2 hours from 7am–3pm Central, and every one is fully animated — no more static posts. (2) Covers rotate through 5 different compositions (close-up face, window light, low dramatic angle, over-the-shoulder, classic medium shot) so they stop looking alike. (3) Each slide's animation gets its own gentle motion (a head tilt, a knowing smile, a deep breath...) instead of every video breathing the same way. (4) Headlines and captions are now engineered for saves, shares, and comments — every caption asks "which one is you? 👇", tells her to save it, and tells her to send it to a friend.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron `0 8,12,16` → `0 12,14,16,18,20`; animatedRun now defaults to true for all cron runs (event `animated:false` can still force static); cover sceneHint now appends a rotating COVER_TREATMENTS entry
+- apps/web/src/lib/content-factory/brand.ts: new COVER_TREATMENTS (5 cover compositions, all keep a single woman subject for the animation prompts)
+- apps/web/src/lib/content-factory/animate-cover.ts: new MOTION_BEATS (8 gentle micro-motions); buildCoverVideoPrompt/buildSlideVideoPrompt take a `seed` to rotate beats; cover prompts no longer say "seated" (covers may now stand)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: passes seed (slug length / slide order) into the prompt builders
+- apps/web/src/lib/content-factory/generate-topic.ts: system prompt rewritten around a saves/shares/comments optimization goal, stronger hook formats (save-bait "reminders for...", share-bait "things every exhausted friend needs to hear", curiosity-gap + quiet-accusation guidance), hyper-specific reason requirement
+- apps/web/src/lib/content-factory/caption.ts: captions now include a comment CTA and a save/share CTA, picked deterministically by slug from small pools
+
+### Manual steps needed
+None
+
+### Notes
+- Cost: 5 animated posts/day ≈ 35 gpt-image gens + up to 30 Higgsfield renders daily. This is the ceiling Keenan asked for; the dial-down is trimming cron hours
+- Volume history: 5× mixed → 2× (2026-08-10 cost cut) → 3× → 5× all-animated (2026-08-11)
+- Cover prompts had said "stays seated" — had to become pose-agnostic once cover treatments could put her standing
+
 ## [2026-08-11] — Content factory now generates 3 posts per day instead of 2
 
 **Requested by:** Keenan
