@@ -1,14 +1,14 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 2× daily via cron (was 5×; cut 2026-08-10
- * to reduce token/image spend).
+ * Carousel generation — runs 3× daily via cron (was 2×; raised
+ * 2026-08-11 per Keenan for more posting volume).
  *
  * - 8 UTC run: static picture slideshow only — no animation, email sent
  *   directly after generation.
- * - 12 UTC run: fully animated — every slide except the last (CTA) gets
- *   a 4s video; topic capped at 6 reasons (7 animated slides max). Email
- *   is sent by the animate function after the renders finish.
+ * - 12 & 16 UTC runs: fully animated — every slide except the last (CTA)
+ *   gets a 4s video; topic capped at 6 reasons (7 animated slides max).
+ *   Email is sent by the animate function after the renders finish.
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
@@ -19,7 +19,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 8,12 * * *" },
+      { cron: "0 8,12,16 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
