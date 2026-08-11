@@ -124,6 +124,12 @@ export async function sendCarouselEmail(
   // Always give big, thumb-friendly download buttons when videos exist —
   // attachments are awkward to save to the camera roll on a phone, the
   // hosted links are not. Shown whether or not the MP4s are also attached.
+  // Supabase's `?download=<name>` flag makes the object serve with
+  // Content-Disposition: attachment — without it, phones just play the
+  // MP4 inline in the browser and there's no reliable way to save it
+  // (the HTML `download` attribute is ignored for cross-origin links).
+  const forceDownloadUrl = (url: string, filename: string) =>
+    `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(filename)}`;
   const videoButtons = videoSlides
     .map((s) => {
       const label =
@@ -131,7 +137,7 @@ export async function sendCarouselEmail(
           ? "🎬 Download animated cover (MP4)"
           : `🎬 Download slide ${s.order + 1} animation (MP4)`;
       return `
-      <a href="${escapeHtml(s.videoUrl!)}" download="slide-${s.order + 1}-animated.mp4" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;margin-bottom:8px;">
+      <a href="${escapeHtml(forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;margin-bottom:8px;">
         ${label}
       </a>`;
     })
@@ -142,7 +148,7 @@ export async function sendCarouselEmail(
     <div style="text-align:center;margin:20px 0;">
       ${videoButtons}
       <p style="font-size:11px;color:#888;margin:8px 0 0;">
-        On your phone: tap a button to open the video, then Share&nbsp;→&nbsp;Save&nbsp;Video to add it to your camera roll.${videoBuffers.length > 0 ? ` (${videoBuffers.length} of ${videoSlides.length} also attached.)` : ""}
+        Tap a button to download the MP4. On iPhone it saves to Files — open it there and Share&nbsp;→&nbsp;Save&nbsp;Video to add it to your camera roll.${videoBuffers.length > 0 ? ` (${videoBuffers.length} of ${videoSlides.length} also attached.)` : ""}
       </p>
     </div>`
       : "";
@@ -202,9 +208,9 @@ export async function sendCarouselEmail(
           "",
           "── Animated slides (MP4) ──",
           ...videoSlides.map((s) =>
-            `${s.kind === "COVER" ? "Cover" : `Slide ${s.order + 1}`}: ${s.videoUrl}`
+            `${s.kind === "COVER" ? "Cover" : `Slide ${s.order + 1}`}: ${forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`)}`
           ),
-          "On your phone: open a link, then Share → Save Video.",
+          "Links download the MP4 directly. On iPhone: open in Files, then Share → Save Video.",
         ]
       : []),
     "",
