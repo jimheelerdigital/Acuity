@@ -341,12 +341,62 @@ export function buildStoryImagePrompt(opts: {
 }
 
 /**
- * Synthesize the voiceover MP3 for the full narration via OpenAI TTS.
+ * ElevenLabs TTS (2026-08-12, per Keenan: the OpenAI voice sounded
+ * robotic). Used whenever ELEVENLABS_API_KEY is set. Default voice is
+ * "Rachel" (calm, warm, natural narration); override with
+ * ELEVENLABS_VOICE_ID after picking a favorite in their voice library.
+ */
+async function elevenLabsVoiceover(narration: string, apiKey: string): Promise<Buffer> {
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel
+  const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: narration,
+        model_id: modelId,
+        // Calm, steady read with a touch of expressiveness — tuned for
+        // the intimate voice-memo tone, not audiobook narration.
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          style: 0.35,
+          use_speaker_boost: true,
+        },
+      }),
+    }
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`ElevenLabs TTS failed (${res.status}): ${body.slice(0, 300)}`);
+  }
+  const buffer = Buffer.from(await res.arrayBuffer());
+  if (buffer.length < 5_000) {
+    throw new Error(`ElevenLabs returned a suspiciously small file (${buffer.length} bytes)`);
+  }
+  return buffer;
+}
+
+/**
+ * Synthesize the voiceover MP3 for the full narration.
+ * ElevenLabs when configured (far more natural), OpenAI TTS otherwise.
  * (Higgsfield's platform API exposes no TTS endpoint — see header note.)
  */
 export async function generateVoiceover(narration: string): Promise<Buffer> {
+  const elevenKey = process.env.ELEVENLABS_API_KEY;
+  if (elevenKey) {
+    try {
+      return await elevenLabsVoiceover(narration, elevenKey);
+    } catch (err) {
+      console.error(
+        `[story-video] ElevenLabs TTS failed — falling back to OpenAI: ${err instanceof Error ? err.message : err}`
+      );
+    }
+  }
   const model = process.env.STORY_TTS_MODEL || "gpt-4o-mini-tts";
-  const voice = process.env.STORY_TTS_VOICE || "shimmer";
+  const voice = process.env.STORY_TTS_VOICE || "coral";
   const res = await openai().audio.speech.create({
     model,
     voice,
