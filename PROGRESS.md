@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-12] — Slide videos now arrive pre-stitched as one carousel video
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bc3c5d21
+
+### In plain English (for Keenan)
+Instead of several "Videos" emails full of individual slide clips you had to clip together yourself, each post now sends exactly two video emails: one "Carousel video" email with all the animated slides already stitched into a single ready-to-post MP4, and one "Story video" email with the 30-second voiceover video. Save each attachment and post — no editing needed.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: greedy-chunked "Videos (n/N)" follow-up emails replaced with ONE follow-up email carrying a stitched compilation (reuses `stitchStoryVideo` with null audio — slide clips are silent with text burned in); compilation uploaded to Supabase at `carousels/{date}/{slug}/slides-compilation.mp4`; attached when ≤28MB else force-download link; stitch failure degrades to one email with per-slide download links; single-video posts (cover-only animation) skip the stitch and attach directly
+- Main carousel email copy updated; per-slide download buttons kept as a backup
+
+### Manual steps needed
+None
+
+### Notes
+- The stitch runs inside sendCarouselEmail, i.e. within the animate function's email step — 7×4s clip concat is well inside the 300s Vercel step ceiling
+- Per Keenan 2026-08-12: exactly one slide-video email + one story-video email per post — don't reintroduce chunked or per-clip emails
+- No new typecheck errors (207 repo baseline unchanged); run tsc from apps/web, not the repo root (root run has no web tsconfig and floods ~16k bogus errors)
+
 ## [2026-08-11] — Fully finished 30-second story video delivered with every carousel
 
 **Requested by:** Keenan
