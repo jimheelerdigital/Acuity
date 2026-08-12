@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-08-12] — Instagram numbers now flow in automatically — paste a link once, done
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 17b89e05
+
+### In plain English (for Keenan)
+No more typing engagement numbers by hand. When you post a carousel, paste its Instagram link into the new field in the admin (next to the metrics form) and hit "Save links" — the system pulls views, likes, comments, saves, and shares from Instagram immediately, and then re-pulls every morning so the numbers stay current while the post keeps climbing. The AI's feedback loop feeds on always-fresh data with zero ongoing effort. TikTok links can be pasted too (stored for when the TikTok API is hooked up — that needs a TikTok developer app approval first). Also fixed this morning's 500 error on the carousel page: the earlier `prisma db push` ran before `git pull`, so the new columns never reached the database — I pushed them from this machine and the page recovered instantly.
+
+### Technical changes (for Jimmy)
+- Prisma schema: CarouselPost gains instagramUrl, tiktokUrl (String?) — already applied to prod via db push from Keenan's home network during this session
+- New apps/web/src/lib/content-factory/instagram-metrics.ts: Graph API v21.0; fetches the IG account's media list (paged, ~200 posts) indexed by normalized permalink, then per-media /insights for views/saved/shares (combined call with per-metric fallback for unsupported media types); like_count/comments_count read off the media object
+- New apps/web/src/inngest/functions/carousel-metrics-refresh.ts: cron 13 UTC daily (before the 16 UTC generation consumes the data) + manual event "content-factory/metrics.refresh"; refreshes POSTED carousels with an instagramUrl from the last 90 days; 300ms delay between media calls for rate limits
+- apps/web/src/app/api/inngest/route.ts: registered carouselMetricsRefreshFn
+- apps/web/src/app/api/admin/carousels/route.ts: new actions save-links (validates http(s) URLs, null on blank) and refresh-metrics (fires the Inngest event)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: IG/TikTok link inputs + Save links button in the metrics card; saving an IG link fires an immediate metrics pull; status line shows "Auto-pulls daily from IG · updated {date}"
+
+### Manual steps needed
+- [ ] Add Vercel env vars IG_ACCESS_TOKEN and IG_USER_ID (Keenan — see Notes for how to get them from the Meta app), then redeploy
+- [ ] Confirm the IG account is a Business/Creator account linked to a Facebook page (Keenan)
+- [ ] TikTok: create a TikTok developer app when ready — the schema and cron have a slot for it (Keenan, later)
+
+### Notes
+- Token guidance: in Graph API Explorer pick the app → get a User token with pages_show_list, instagram_basic, instagram_manage_insights → exchange for long-lived → GET /me/accounts to get the PAGE access token (page tokens never expire — use that as IG_ACCESS_TOKEN) → GET /{page-id}?fields=instagram_business_account for IG_USER_ID
+- The cron is a silent no-op until the env vars exist (instagramConfigured() guard) — safe to deploy before the token is ready
+- Root cause of the morning 500: `prisma db push` is a no-op if the local schema wasn't pulled first — "re-synced in 3.84s" with no column list means nothing changed. Verified fix by querying information_schema over the home network (this machine CAN reach Supabase from home — the block is only on the work network)
+- Metrics for linked posts are cron-owned: manual edits to those posts get overwritten on the next refresh (by design). Posts without links keep manual-form ownership.
+
+---
+
 ## [2026-08-12] — The carousel factory now learns from what actually performs
 
 **Requested by:** Keenan
