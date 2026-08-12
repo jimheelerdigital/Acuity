@@ -20,6 +20,16 @@ const COMMENT_CTAS = [
   "If you made it to the last one, tell me which was yours 👇",
 ];
 
+// Engineered comment gap (2026-08-12, per Keenan): when the topic has a
+// deliberately withheld reason, the comment CTA points at the omission —
+// "add the one I missed" pulls far more comments than "which is you".
+const COMMENT_GAP_CTAS = [
+  "I left the most obvious one off this list on purpose. Comment it 👇",
+  "There's one missing — the one you thought of first. Comment it 👇",
+  "I know I skipped one. If you caught it, put it in the comments 👇",
+  "The biggest one isn't on this list. Tell me what it is 👇",
+];
+
 const SAVE_SHARE_CTAS = [
   "Save this for the week you need the reminder. Send it to the friend who needs it today. 🤍",
   "Save this — you'll want it again. And send it to her. You know who. 🤍",
@@ -78,7 +88,7 @@ function pickHashtags(topic: CarouselTopic): string[] {
   return [...selected];
 }
 
-export function buildCaption(topic: CarouselTopic): string {
+export function buildCaption(topic: CarouselTopic, withheldReason?: string): string {
   const lines: string[] = [];
 
   // Headline
@@ -91,7 +101,9 @@ export function buildCaption(topic: CarouselTopic): string {
   });
 
   lines.push("");
-  lines.push(pickBySlug(topic.slug, COMMENT_CTAS));
+  lines.push(
+    pickBySlug(topic.slug, withheldReason ? COMMENT_GAP_CTAS : COMMENT_CTAS)
+  );
   lines.push("");
   lines.push(pickBySlug(topic.slug, SAVE_SHARE_CTAS, 1));
   lines.push("");
@@ -101,6 +113,14 @@ export function buildCaption(topic: CarouselTopic): string {
   // Hashtags
   const tags = pickHashtags(topic);
   lines.push(tags.join(" "));
+
+  // Internal note — Keenan writes the posted caption himself, but he
+  // needs to know the withheld reason to recognize it in the comments.
+  if (withheldReason) {
+    lines.push("");
+    lines.push("―――");
+    lines.push(`(Internal — don't post) Withheld reason: ${withheldReason}`);
+  }
 
   return lines.join("\n");
 }

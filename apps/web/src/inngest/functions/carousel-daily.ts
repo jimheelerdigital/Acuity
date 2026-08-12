@@ -271,25 +271,12 @@ export const carouselDailyCronFn = inngest.createFunction(
       reasonSlides.push(slide);
     }
 
-    // ── Step N+1: CTA slide ──────────────────────────────────────
-    const ctaText = "Talk it out. See it clearly.";
-    const ctaSlide = await step.run("generate-cta", async () => {
-      const { composeCTASlide } = await import(
-        "@/lib/content-factory/compose"
-      );
-      const { uploadImage } = await import(
-        "@/lib/content-factory/carousel-generate"
-      );
+    // NOTE (2026-08-12, per Keenan): the branded CTA end slide is removed
+    // for now — ending on an ad suppressed shares. The post now ends on
+    // the mic-drop last reason. composeCTASlide is kept for existing
+    // posts and an easy restore.
 
-      const composed = await composeCTASlide(ctaText, colorScheme.ctaBg);
-      const imageUrl = await uploadImage(
-        composed,
-        `carousels/${dateStr}/${slug}/slide-${topicData.reasons.length + 1}-cta.jpg`
-      );
-      return { imageUrl };
-    });
-
-    // ── Step N+2: Save to DB ─────────────────────────────────────
+    // ── Step N+1: Save to DB ─────────────────────────────────────
     // Email is sent AFTER cover animation completes (see the animate
     // function) so the video arrives in the same Resend email.
     const result = await step.run("save-and-email", async () => {
@@ -318,13 +305,6 @@ export const carouselDailyCronFn = inngest.createFunction(
           imageUrl: s.imageUrl,
           rawImageUrl: s.rawImageUrl,
         })),
-        {
-          order: reasonSlides.length + 1,
-          kind: "CTA" as const,
-          overlayText: ctaText,
-          imagePrompt: "CTA slide — solid brand background",
-          imageUrl: ctaSlide.imageUrl,
-        },
       ];
 
       const topic = {
@@ -334,7 +314,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         lane: topicData.lane as any,
         reasons: topicData.reasons,
       };
-      const caption = buildCaption(topic);
+      const caption = buildCaption(topic, topicData.withheldReason);
 
       const post = await prisma.carouselPost.create({
         data: {
@@ -360,7 +340,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       return {
         postId: post.id,
         slideCount: allSlides.length,
-        estimatedCostCents: (allSlides.length - 1) * 8 + 2, // images + Claude call
+        estimatedCostCents: allSlides.length * 8 + 2, // every slide is a generated image now (no CTA) + Claude call
       };
     });
 

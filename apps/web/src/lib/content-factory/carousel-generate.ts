@@ -138,20 +138,8 @@ export async function generateCarousel(
     });
   }
 
-  // CTA slide (last)
-  const ctaText = "Talk it out. See it clearly.";
-  const ctaComposed = await composeCTASlide(ctaText);
-  const ctaUrl = await uploadImage(
-    ctaComposed,
-    `carousels/${dateStr}/${topicSlug}/slide-${slides.length}-cta.jpg`
-  );
-  slides.push({
-    order: slides.length,
-    kind: "CTA",
-    overlayText: ctaText,
-    imagePrompt: "CTA slide — solid brand background, no image generation needed",
-    imageUrl: ctaUrl,
-  });
+  // NOTE (2026-08-12, per Keenan): no branded CTA end slide — ending on
+  // an ad suppressed shares. The post ends on the mic-drop last reason.
 
   // ── Build caption ─────────────────────────────────────────────────
   const caption = buildCaption(topic);
