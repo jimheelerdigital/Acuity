@@ -270,10 +270,7 @@ export async function sendCarouselEmail(
         compilationUrl = videoSlides[0]?.videoUrl ?? null;
       } else {
         const { stitchStoryVideo } = await import("./story-video");
-        const stitched = await stitchStoryVideo(
-          videoBuffers.map((v) => v.buf),
-          null
-        );
+        const stitched = await stitchStoryVideo(videoBuffers.map((v) => v.buf));
         const { uploadImage } = await import("./carousel-generate");
         compilationUrl = await uploadImage(
           stitched,
@@ -404,7 +401,7 @@ export async function sendStoryVideoEmail(
 
   const partialNote =
     opts.sceneCount < opts.totalScenes
-      ? `<p style="font-size:12px;color:#E06C75;">⚠️ ${opts.totalScenes - opts.sceneCount} of ${opts.totalScenes} scenes failed to render — the video is slightly shorter than 30s and the voiceover may run past the last scene.</p>`
+      ? `<p style="font-size:12px;color:#E06C75;">⚠️ ${opts.totalScenes - opts.sceneCount} of ${opts.totalScenes} scenes failed to render — the video runs shorter than 30s, but the voiceover was rewritten to match its actual length.</p>`
       : "";
   const silentNote = opts.silent
     ? `<p style="font-size:12px;color:#E06C75;">⚠️ Voiceover generation failed — this video is silent. The narration script is below if you want to record or caption it yourself.</p>`
@@ -452,7 +449,7 @@ export async function sendStoryVideoEmail(
   const text = [
     `Story video ready to post — ${post.headline} (${dateStr})`,
     opts.sceneCount < opts.totalScenes
-      ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short.`
+      ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; voiceover was rewritten to match.`
       : "",
     opts.silent ? "NOTE: voiceover failed — video is silent. Script below." : "",
     "",
