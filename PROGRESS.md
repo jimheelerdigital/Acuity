@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-08-12] — Captions burned into story videos, loop endings, caption hooks, 1+1+1 daily schedule
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 87b6e5a7 (virality batch), 7ea5cac7 (schedule)
+
+### In plain English (for Keenan)
+Story videos now come with captions burned in — the system listens to its own voiceover, figures out exactly when each word is spoken, and draws the words on screen in perfectly synced 3–4 word chunks, so people watching muted (most people) can follow from the first second. Story videos also now end in the same scene they started in, so when the video loops it feels seamless and people rewatch without realizing. The Instagram caption no longer opens by repeating the headline that's already on the cover — the first line (the only one visible before "...more") is now a second hook like "Number 4 is the one nobody says out loud," and a searchable keyword line was added so the posts show up in Instagram caption search. Finally, daily volume is now exactly what you asked for: one static carousel, one animated carousel, and one story video per day.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: `transcribeCaptionChunks` (whisper-1, verbose_json + word timestamp_granularities, pause/length-aware chunking, hold-until-next-chunk timing); `muxNarration(video, audio, captions?)` burns per-chunk drawtext (textfile= per chunk to avoid drawtext escaping, timestamps divided by the atempo factor, y=30% height — scene images keep faces in the lower half so captions never cover them); LOOP RULE added to SCRIPT_SYSTEM_PROMPT (scene 6 mirrors scene 1's setting/framing)
+- apps/web/src/lib/content-factory/compose.ts: `ensureFontFile` exported (Poppins-Bold.ttf, /tmp cache + CDN fallback — same path the slide compositor uses)
+- apps/web/src/inngest/functions/carousel-story-video.ts: finalize-video transcribes the voiceover and passes captions to the mux; transcription failure ships the video uncaptioned (never blocks)
+- apps/web/src/lib/content-factory/caption.ts: FIRST_LINE_HOOKS pool (deterministic by slug, {n} replaced with a mid-list reason number) as line 1; SEO_LINE (IG caption-search keywords) before hashtags
+- apps/web/src/inngest/functions/carousel-daily.ts: cron "0 12,16 * * *" (was 12,16,20); animatedRun = run hour < 14 (12 UTC animated + chained story, 16 UTC static, event flag still wins)
+
+### Manual steps needed
+- [ ] None — Inngest picks up the new cron on the next sync; verify tomorrow that exactly 2 carousels + 1 story arrive (Keenan)
+
+### Notes
+- Captioned mux re-encodes the video (libx264, was stream-copy) — only when captions exist; uncaptioned path still copies
+- Whisper transcribes the ACTUAL TTS mp3, so caption timing survives any narration rewrite or TTS pacing quirk; atempo speed-up is compensated by dividing timestamps by the factor
+- drawtext textfile= per chunk sidesteps ffmpeg's text escaping entirely (apostrophes/commas/colons in narration were guaranteed breakage otherwise)
+- Captions sit at 30% height because VISUAL_DNA_NOTEXT already forces faces into the lower half and calm backgrounds up top — same reasoning as the slide headline zone
+
+---
+
 ## [2026-08-12] — Story videos now invent their own viral concepts; headline quality gates
 
 **Requested by:** Keenan
