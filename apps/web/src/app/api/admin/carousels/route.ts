@@ -4,6 +4,10 @@ import { getAuthOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+// The resend-email action downloads every slide video and stitches them
+// into one compilation MP4 (2026-08-12) before emailing — well past the
+// default API-route timeout. 300s matches the Inngest route ceiling.
+export const maxDuration = 300;
 
 /**
  * GET /api/admin/carousels — list carousel posts with slides.
