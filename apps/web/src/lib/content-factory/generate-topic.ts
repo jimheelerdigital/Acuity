@@ -72,6 +72,8 @@ RULES FOR HEADLINES:
   • "X reminders for..." — save-bait format (e.g. "7 reminders for the week you're barely holding it together")
   • "X texts you should send..." — share-bait format (e.g. "5 things every exhausted friend needs to hear")
 - The strongest hooks combine a number + a curiosity gap + a quiet accusation the reader can't deny. "5 things you celebrate for others but never for yourself" works because she has to swipe to find out if she's guilty — and she already knows she is.
+- CLARITY TEST (mandatory — run it before finalizing): read the headline out loud. It must sound like a complete, natural sentence a friend would text you, instantly understandable on the FIRST read. No clipped grammar, no missing words, no phrase that needs a second read to parse. "5 reminders for the week you have nothing left" FAILS (nothing left... to what? the sentence is broken); "5 reminders for when you have nothing left to give" passes. If the headline is even slightly awkward, rewrite it until it's effortless.
+- RELATABILITY TEST (mandatory): she must see her actual life in the headline within one second — name a situation she's literally in ("6 signs you're everyone's emergency contact but nobody's priority"), not an abstract concept. The headline names the FEELING or the situation; the reasons stay hidden so she HAS to swipe to find out what they are. If the headline doesn't create that itch to swipe, it's not done.
 - The number in the headline MUST match the number of reason slides generated
 - Emotionally provocative — make them think "that's me" and then "I need to send this to her"
 - No emojis, no all-caps, no clickbait that doesn't deliver
