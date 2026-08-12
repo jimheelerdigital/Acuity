@@ -254,7 +254,8 @@ function buildLinesMarkup(
  * burned onto the finished MP4 (ffmpeg) — pixel-identical, pixel-frozen.
  *
  * Design (2026-08-11 "eye-popping" pass, requested by Keenan):
- *   - UPPERCASE Poppins Bold, big type, starting 10% from the top
+ *   - UPPERCASE Poppins Bold, big type, starting 15% from the top
+ *     (below TikTok's status bar + search pill)
  *   - Numbers inside the text rendered in the carousel's accent color
  *   - REASON slides get an accent-filled circle badge with the number
  *   - COVER gets a rounded accent underline bar beneath the headline
@@ -281,7 +282,10 @@ export async function renderSlideTextOverlay(
   const main = await renderMarkup(mainMarkup, fontPath, maxTextW, 12, 10);
   const blurredShadow = await sharp(shadow.buffer).blur(6).png().toBuffer();
 
-  const topStart = Math.round(OUTPUT_H * 0.1); // 10% buffer so text always fits on screen
+  // 15% top buffer (2026-08-12, per Keenan): TikTok's status bar + search
+  // pill cover roughly the top 13% of the screen — at the old 10% the
+  // first headline line rendered underneath the search bar.
+  const topStart = Math.round(OUTPUT_H * 0.15);
   const composites: sharp.OverlayOptions[] = [];
   let cursorY = topStart;
 
