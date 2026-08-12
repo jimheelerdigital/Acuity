@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-08-11] — Fully finished 30-second story video delivered with every carousel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1562eee7
+
+### In plain English (for Keenan)
+Every daily carousel now comes with a second email containing a completely finished ~30-second vertical video — no clipping needed. The AI writes a 6-scene voiceover script from the post, creates 6 brand-new illustrated scenes, animates each one, records a warm female voiceover, and stitches it all into one MP4 with sound. You just save the attached video and post it. If the voiceover fails for some reason, the video still arrives (silent) with the script included so nothing is ever lost.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts (new): `generateStoryScript` (claude-sonnet-4-6, 6 scenes × narration/visual/motion, 65-80 words total, logged to ClaudeCallLog as "story-video-script"), `buildStoryImagePrompt` (mirrors the text-free VISUAL_DNA_NOTEXT branch, mood expressions, lane-consistent), `generateVoiceover` (OpenAI TTS `gpt-4o-mini-tts` voice "shimmer", env-overridable via STORY_TTS_MODEL/STORY_TTS_VOICE), `stitchStoryVideo` (ffmpeg-static: normalize each clip to 1080x1920@30fps, concat, mux AAC audio with `-shortest`, silent `-an` fallback)
+- apps/web/src/inngest/functions/carousel-story-video.ts (new): step function on event `content-factory/story.video`, concurrency 1 — load post → script → voiceover (non-blocking) → 6 gpt-image-2 scene images → Higgsfield clip submits in 2 waves of ≤4 with the same 2m + 30s-poll cadence as the animate function → store clips in Supabase → stitch (requires ≥4 clips) → email. Registered in /api/inngest/route.ts
+- Trigger chain: carousel-daily.ts adds `storyVideo: true, lane, mood` to the cover.animate event; carousel-animate-cover.ts sends the story event on both exit paths AFTER its waves drain (avoids Higgsfield's ~4-concurrent-job cap contention)
+- animate-cover.ts: `submitCoverVideo` gains optional `duration` (story clips use `HIGGSFIELD_STORY_CLIP_DURATION`, default 5s; slides stay at 4s)
+- email.ts: new `sendStoryVideoEmail` — MP4 attached when ≤28MB else force-download link, includes caption + narration script + partial/silent warnings; `forceDownloadUrl` hoisted to module scope
+- No schema changes — scene images, clips, voiceover, and final video live in Supabase Storage under `carousels/{date}/{slug}/story-*`
+
+### Manual steps needed
+- [ ] Optional env vars in Vercel if defaults need changing: STORY_TTS_MODEL, STORY_TTS_VOICE, HIGGSFIELD_STORY_CLIP_DURATION (Keenan — only if desired)
+- [ ] Watch the first live run's story email and confirm voiceover pacing/voice fits the brand (Keenan)
+
+### Notes
+- Higgsfield's platform API has NO text-to-speech endpoint — verified against their complete OpenAPI spec (docs.higgsfield.ai/docs/openapi.json) on 2026-08-11; only image and image-to-video models exist. Voiceover therefore uses OpenAI TTS with the existing gpt-image-2 key. Swap via STORY_TTS_MODEL/STORY_TTS_VOICE if a Higgsfield TTS API ever ships
+- Cost per post: ~$0.01 script + ~$0.50 images (6 × gpt-image-2) + 6 × 5s Higgsfield renders + ~$0.001 TTS. At 3 posts/day this roughly doubles daily Higgsfield video spend (18 story clips on top of ~21 slide clips)
+- Timing: story video lands ~25-50 min after the main carousel email (it waits for slide animation, then needs its own image + render + stitch time)
+- Known degradations by design: <4 clips → no stitch, no email (main carousel email already went out); missing middle scenes → voiceover runs slightly past the visuals (flagged in the email); TTS failure → silent video + script in the email
+- A slow story run can overlap the NEXT cron post's slide-animation waves on Higgsfield's account-wide ~4-job cap — the waves' built-in retry attempt covers this, same as before, but watch for dropped submits if runs stack up
+- Local typecheck: new errors are all the stale-local-Prisma-client class (carouselPost/carouselSlide missing → downstream unknowns), same as the documented baseline; story-video.ts itself typechecks clean. Resolves on Vercel where prisma generate runs
+
 ## [2026-08-11] — Daily video posts dialed back from 5 to 3
 
 **Requested by:** Keenan
