@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-08-12] — The carousel factory now learns from what actually performs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** da1c1f01
+
+### In plain English (for Keenan)
+Each carousel in the admin now has a small form where you enter the real numbers from TikTok/Instagram — views, likes, comments, saves, shares. Once at least 4 posts have numbers, the AI is shown your best and worst performing headlines every time it writes a new topic, and is told to lean into what worked and avoid what flopped. The system stops guessing and starts learning from your account. Bonus: the 30-second story video is now saved on the post itself with an "Open MP4" link in the admin (before, it only existed in the email), and re-running a story from the admin now matches the carousel's art style instead of defaulting to realistic.
+
+### Technical changes (for Jimmy)
+- Prisma schema: CarouselPost gains 10 nullable columns — views, likes, comments, saves, shares (Int?), metricsAt (DateTime?), lane, mood, storyVideoUrl (String?), withheldReason (String? @db.Text)
+- apps/web/src/inngest/functions/carousel-daily.ts: create() persists lane/mood/withheldReason; generate-topic step pulls the 30 most recent metric-bearing posts, scores them (likes + 2×comments + 3×saves + 3×shares, per-1k-views when views entered), and passes top/bottom 5 headlines to generateTopic once ≥4 posts have metrics
+- apps/web/src/lib/content-factory/generate-topic.ts: generateTopic gains opts.performance → renders a PERFORMANCE FEEDBACK block into the user prompt (extract-the-appeal, don't-copy rules)
+- apps/web/src/inngest/functions/carousel-story-video.ts: event lane/mood fall back to the post's persisted columns (admin re-runs send only postId); new save-story-url step writes storyVideoUrl after finalize
+- apps/web/src/lib/content-factory/carousel-generate.ts: one-off pipeline persists lane
+- apps/web/src/app/api/admin/carousels/route.ts: new save-metrics action (empty fields save as null, not 0)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 5-field metrics form + save button under the caption in the detail view; story video "Open MP4" banner when present
+
+### Manual steps needed
+- [ ] `npx prisma db push` from the repo root (Keenan, home network) — run IMMEDIATELY after this deploys. Between the Vercel deploy finishing and db push completing, carousel generation AND the admin carousels page will error on the missing columns, so pull + push in one sitting and avoid deploying within ~15 min before the 16:00 or 20:00 UTC cron runs
+
+### Notes
+- All new columns are nullable, so db push is non-destructive; the breakage window is code-before-columns, not columns-before-code
+- Feedback loop needs ≥4 metric-bearing posts before it activates — silently inactive until Keenan starts entering numbers
+- withheldReason is now a real column (it also still rides in the caption's internal note — the note is what Keenan actually reads)
+- Discovered: running `npx prisma generate` locally (no DB access needed) fixes the long-standing stale-Prisma-client typecheck noise — local baseline dropped from 209 to 160 errors, and the remaining 160 are pre-existing issues in adlab/unrelated files (Vercel builds have ignoreBuildErrors: true anyway)
+
+---
+
 ## [2026-08-12] — Posts end on the mic-drop, and every list now baits comments with a missing reason
 
 **Requested by:** Keenan
