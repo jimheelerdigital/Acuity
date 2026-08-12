@@ -7,6 +7,52 @@
 
 ---
 
+## [2026-08-12] — Story voiceover now matches the finished video's exact length
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2e369b74
+
+### In plain English (for Keenan)
+The story video's voiceover used to be recorded before the video clips existed, so if a scene failed to render the audio could run past the end of the video or get chopped off mid-sentence. Now the system builds the video first, measures exactly how long it is, rewrites the script to fit that length (dropping lines for any scenes that failed), and only then records the voiceover — so the narration always ends right when the video does. The story, hook, and Ripple mention stay the same; only the timing is fitted.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-story-video.ts: voiceover generation moved from before image generation to after clip rendering; new steps stitch-silent (stitch surviving clips with no audio, probe duration, upload story-video-silent.mp4), fit-narration (Claude rewrite to a word budget derived from measured seconds at ~2.4 words/sec, kept-scene lines only, falls back to joining them verbatim), generate-voiceover (unchanged TTS, now on fitted narration), finalize-video (mux audio onto silent video with -c:v copy, upload story-video.mp4; ships the silent URL if TTS or mux fails)
+- apps/web/src/lib/content-factory/story-video.ts: new probeMediaDuration (ffmpeg "-f null -" stderr Duration parse — ffmpeg-static bundles no ffprobe), fitNarrationToDuration (claude-sonnet-4-6, logged to ClaudeCallLog as "story-narration-fit"), muxNarration (atempo speed-up capped at 1.18× when audio runs long; -shortest only in that case so a short voiceover never trims the video); stitchStoryVideo is now silent-only (audio param removed); unused fullNarration removed from StoryScript
+- apps/web/src/lib/content-factory/email.ts: stitchStoryVideo call updated for the new signature; partial-scene warning no longer claims the voiceover may run past the last scene
+
+### Manual steps needed
+None — no schema changes, no new env vars.
+
+### Notes
+- The atempo cap of 1.18× means a wildly long voiceover would still be trimmed by -shortest, but the Claude word budget makes that unlikely; the fallback path (fit call fails) uses only the kept scenes' original lines, which are already ~5s each.
+- Cost: adds one small Claude call per story (~$0.005 as "story-narration-fit" in ClaudeCallLog).
+- Local tsc baseline moved 207 → 208; the one new error is the same stale-local-Prisma-client inference class (narration via step.run) and resolves on Vercel after prisma generate.
+
+---
+
+## [2026-08-12] — Slide text moved below TikTok's search bar and off faces
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 53057f2e
+
+### In plain English (for Keenan)
+On posted videos, the first line of the headline was hiding underneath TikTok's search bar, and long headlines were covering the woman's face. For all future generations the text now starts lower on the screen (clear of TikTok's top bar), and the artwork is generated with the woman's face in the lower half of the frame so the headline always sits on calm background instead of on her.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: renderSlideTextOverlay topStart raised from 10% to 15% of frame height (TikTok status bar + search pill cover ~13%); applies to both static JPEGs and the ffmpeg-burned video overlays since they share the same overlay PNG
+- apps/web/src/lib/content-factory/brand.ts: VISUAL_DNA_NOTEXT composition rule now pins the subject's face/head to the lower half with the top 45% kept as calm background; VISUAL_DNA (baked-text pipeline) gains a SAFE ZONES rule — no text in top 15% or bottom 12%, never over a face
+
+### Manual steps needed
+None.
+
+### Notes
+- Only affects new generations — existing rendered slides/videos in Supabase are unchanged. Use "Regenerate slide" in the admin if an old post needs the fix.
+- Prompt-level face placement is probabilistic; the hard guarantee is the overlay offset, and the lower-half face rule makes overlap very unlikely even for 5-line headlines (block ends ~40% of frame height).
+
+---
+
 ## [2026-08-12] — Slide videos now arrive pre-stitched as one carousel video
 
 **Requested by:** Keenan
