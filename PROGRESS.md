@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-12] — Natural ElevenLabs voice for story videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 62781b75
+
+### In plain English (for Keenan)
+The story video voiceover sounded robotic. As soon as you add an ElevenLabs API key, every story video switches to a natural human-sounding voice (their "Rachel" voice by default — you can pick any voice from their library later). Until the key is added, videos keep working with a slightly better OpenAI voice than before.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: `elevenLabsVoiceover` (eleven_multilingual_v2, Rachel default, ELEVENLABS_VOICE_ID/ELEVENLABS_MODEL_ID overrides, tuned voice_settings for the intimate tone); `generateVoiceover` tries ElevenLabs first when ELEVENLABS_API_KEY is set, falls back to OpenAI TTS (default voice shimmer → coral)
+- No schema changes; captions burn-in is unaffected (Whisper transcribes whatever mp3 is produced)
+
+### Manual steps needed
+- [ ] Create an ElevenLabs account (elevenlabs.io), generate an API key, add `ELEVENLABS_API_KEY` to Vercel env, redeploy (Keenan). Starter plan ($5/mo, 30 min of audio) covers one 30s video/day.
+- [ ] Optional: browse their voice library, pick a favorite warm female voice, set `ELEVENLABS_VOICE_ID` (Keenan)
+
+### Notes
+- ElevenLabs failure falls back to OpenAI automatically — a bad/expired key never blocks the video
+- Voice settings (stability 0.5, style 0.35) tuned for voice-memo intimacy, not audiobook narration — adjust in code if the read is too flat/too dramatic
+
+---
+
 ## [2026-08-12] — Captions burned into story videos, loop endings, caption hooks, 1+1+1 daily schedule
 
 **Requested by:** Keenan
