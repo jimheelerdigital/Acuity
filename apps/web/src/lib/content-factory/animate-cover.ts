@@ -259,6 +259,8 @@ export function buildCrazyCoverVideoPrompt(
 export async function submitCoverVideo(opts: {
   startImageUrl: string; // composed cover with text
   prompt: string;
+  /** Explicit clip length in seconds (story clips use 5). Overrides env/default. */
+  duration?: number;
 }): Promise<string> {
   const model = process.env.HIGGSFIELD_VIDEO_MODEL!;
 
@@ -280,6 +282,10 @@ export async function submitCoverVideo(opts: {
   if (process.env.HIGGSFIELD_VIDEO_DURATION) {
     const duration = Number(process.env.HIGGSFIELD_VIDEO_DURATION);
     if (Number.isFinite(duration) && duration > 0) body.duration = duration;
+  }
+  // Per-call override wins (story-video clips run longer than slide clips).
+  if (Number.isFinite(opts.duration) && (opts.duration as number) > 0) {
+    body.duration = opts.duration;
   }
 
   const res = await fetch(`${BASE_URL}/${model}`, {

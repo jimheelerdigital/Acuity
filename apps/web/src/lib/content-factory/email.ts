@@ -18,6 +18,19 @@ const REVIEW_BASE_URL =
 // the ~10-20MB animated covers to a download link on 3 of 5 daily emails.
 const MAX_ATTACHMENT_BYTES = 28 * 1024 * 1024; // 28MB raw
 
+/**
+ * Links go through our /api/content-factory/download proxy, which streams
+ * the file with Content-Disposition: attachment from our own domain — this
+ * reliably triggers the native "Download" popup on iOS Safari. Direct
+ * Supabase links (even with the ?download flag) get played inline by some
+ * mail apps' in-app browsers, with no way to save the video.
+ */
+function forceDownloadUrl(url: string, filename: string): string {
+  const bucketPath = url.split("/content-factory/")[1];
+  if (!bucketPath) return url;
+  return `${REVIEW_BASE_URL}/api/content-factory/download?path=${encodeURIComponent(bucketPath)}&name=${encodeURIComponent(filename)}`;
+}
+
 interface SlideRow {
   id: string;
   order: number;
@@ -123,17 +136,6 @@ export async function sendCarouselEmail(
   // Always give big, thumb-friendly download buttons when videos exist —
   // attachments are awkward to save to the camera roll on a phone, the
   // hosted links are not. Shown whether or not the MP4s are also attached.
-  // Links go through our /api/content-factory/download proxy, which
-  // streams the file with Content-Disposition: attachment from our own
-  // domain — this reliably triggers the native "Download" popup on iOS
-  // Safari. Direct Supabase links (even with the ?download flag) get
-  // played inline by some mail apps' in-app browsers, with no way to
-  // save the video.
-  const forceDownloadUrl = (url: string, filename: string) => {
-    const bucketPath = url.split("/content-factory/")[1];
-    if (!bucketPath) return url;
-    return `${REVIEW_BASE_URL}/api/content-factory/download?path=${encodeURIComponent(bucketPath)}&name=${encodeURIComponent(filename)}`;
-  };
   const videoButtons = videoSlides
     .map((s) => {
       const label =
@@ -314,6 +316,131 @@ export async function sendCarouselEmail(
     ` (${useAttachments ? "attached" : "linked"}, ${(totalBytes / 1024).toFixed(0)}KB, resendId=${emailId})`
   );
 
+  return { emailId };
+}
+
+/**
+ * Send the finished 30s story video (2026-08-11) — a separate email after
+ * the carousel email, with the ready-to-post MP4 attached (≤28MB) or a
+ * force-download link when it's too big. The caption from the carousel is
+ * included so the post is copy-paste ready.
+ */
+export async function sendStoryVideoEmail(
+  carouselPostId: string,
+  videoUrl: string,
+  opts: {
+    sceneCount: number;
+    totalScenes: number;
+    narration: string;
+    silent: boolean;
+  }
+): Promise<{ emailId: string }> {
+  const { prisma } = await import("@/lib/prisma");
+  const post = await prisma.carouselPost.findUniqueOrThrow({
+    where: { id: carouselPostId },
+    select: { headline: true, caption: true, generatedFor: true },
+  });
+  const dateStr = post.generatedFor.toISOString().slice(0, 10);
+  const filename = `story-${dateStr}.mp4`;
+  const downloadUrl = forceDownloadUrl(videoUrl, filename);
+
+  // Attach when it fits under the Resend cap; always include the button.
+  let videoBuf: Buffer | null = null;
+  try {
+    const res = await fetch(videoUrl);
+    if (res.ok) {
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length <= MAX_ATTACHMENT_BYTES) videoBuf = buf;
+      else console.log(`[story-email] Video is ${buf.length} bytes — link only`);
+    }
+  } catch (err) {
+    console.warn(`[story-email] Video fetch failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  const partialNote =
+    opts.sceneCount < opts.totalScenes
+      ? `<p style="font-size:12px;color:#E06C75;">⚠️ ${opts.totalScenes - opts.sceneCount} of ${opts.totalScenes} scenes failed to render — the video is slightly shorter than 30s and the voiceover may run past the last scene.</p>`
+      : "";
+  const silentNote = opts.silent
+    ? `<p style="font-size:12px;color:#E06C75;">⚠️ Voiceover generation failed — this video is silent. The narration script is below if you want to record or caption it yourself.</p>`
+    : "";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:500px;margin:0 auto;padding:20px;">
+    <h1 style="font-size:20px;color:#FBFAF6;margin:0 0 4px;">🎥 Story video ready to post</h1>
+    <p style="font-size:13px;color:#AAA;margin:0 0 16px;">${escapeHtml(post.headline)} · ${escapeHtml(dateStr)}</p>
+
+    ${partialNote}
+    ${silentNote}
+
+    <p style="font-size:14px;color:#DDD;line-height:1.6;">
+      Fully stitched ~30s vertical video${opts.silent ? "" : " with voiceover"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
+    </p>
+
+    <div style="text-align:center;margin:20px 0;">
+      <a href="${escapeHtml(downloadUrl)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">
+        🎬 Download story video (MP4)
+      </a>
+    </div>
+
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
+      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
+    </div>
+
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Voiceover script</p>
+      <pre style="white-space:pre-wrap;font-size:13px;color:#BBB;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(opts.narration)}</pre>
+    </div>
+
+    <p style="font-size:11px;color:#555;text-align:center;margin-top:20px;">
+      Ripple Content Factory · Automated story video delivery
+    </p>
+  </div>
+</body>
+</html>`.trim();
+
+  const text = [
+    `Story video ready to post — ${post.headline} (${dateStr})`,
+    opts.sceneCount < opts.totalScenes
+      ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short.`
+      : "",
+    opts.silent ? "NOTE: voiceover failed — video is silent. Script below." : "",
+    "",
+    `Download: ${downloadUrl}`,
+    "",
+    "── Caption ──",
+    post.caption,
+    "",
+    "── Voiceover script ──",
+    opts.narration,
+  ].filter(Boolean).join("\n");
+
+  const resend = getResendClient();
+  const payload: Parameters<typeof resend.emails.send>[0] = {
+    from: FROM_ADDRESS,
+    to: TO_ADDRESS,
+    subject: `[Ripple Content] 🎥 Story video — ${post.headline}`,
+    html,
+    text,
+  };
+  if (videoBuf) {
+    (payload as unknown as Record<string, unknown>).attachments = [
+      { filename, content: videoBuf.toString("base64") },
+    ];
+  }
+
+  const resp = await resend.emails.send(payload);
+  const respAny = resp as Record<string, unknown>;
+  const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
+  const emailId = (dataObj.id as string) ?? "";
+  console.log(
+    `[story-email] Sent story video for ${carouselPostId} to ${TO_ADDRESS} (${videoBuf ? "attached" : "link only"}, resendId=${emailId})`
+  );
   return { emailId };
 }
 

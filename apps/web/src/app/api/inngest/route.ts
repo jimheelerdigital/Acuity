@@ -50,6 +50,7 @@ import { generateInsightsCronFn } from "@/inngest/functions/generate-insights-cr
 import { carouselDailyCronFn } from "@/inngest/functions/carousel-daily";
 import { carouselGenerateOneOffFn } from "@/inngest/functions/carousel-one-off";
 import { carouselAnimateCoverFn } from "@/inngest/functions/carousel-animate-cover";
+import { carouselStoryVideoFn } from "@/inngest/functions/carousel-story-video";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -105,6 +106,7 @@ const handler = serve({
     carouselDailyCronFn,
     carouselGenerateOneOffFn,
     carouselAnimateCoverFn,
+    carouselStoryVideoFn,
   ],
 });
 

@@ -395,6 +395,15 @@ export const carouselDailyCronFn = inngest.createFunction(
                   topicData.reasonEmotions?.[i] ?? { mood: topicData.mood }
               ),
             ],
+            // After the slide animations finish, the animate function
+            // kicks off the 30s story video (script → 6 images → 6 clips
+            // → voiceover → stitch → email). Chained AFTER animation so
+            // story clips never fight the slide waves for Higgsfield's
+            // ~4-concurrent-job cap. Lane keeps the story's illustration
+            // style consistent with the carousel (lane isn't persisted).
+            storyVideo: true,
+            lane: topicData.lane,
+            mood: topicData.mood,
           },
         });
       } catch (animateErr) {
