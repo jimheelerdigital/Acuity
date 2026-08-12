@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-12] — Story videos were vanishing into the void; bathtub stand-ups banned
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7395ecb9
+
+### In plain English (for Keenan)
+Two fixes. First, the reason you never got a single story video: the story-video function was never registered with Inngest (the system that runs background jobs), so every daily run and every 🎥 Story button press sent a request that no one was listening for. Verified: zero story scripts have ever been written. The deploy that ships with this entry re-registers it. Second, videos will no longer show a woman standing up out of a bathtub fully clothed — every video now pins her in exactly the position the image shows, bathroom scenes place her at the mirror or on the edge of the tub instead of in the water, and the story script writer is banned from putting her in a tub or shower at all. Note: the 🎥 Story button is already fully independent of the slideshow — it only needs the post's headline and text, generates its own six images, and doesn't wait for slide animation.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: new POSTURE_LOCK_LINE in sceneLockLines — positive-only phrasing ("holds exactly the position the image shows"), inherited by cover, slide, and story clip prompts
+- apps/web/src/lib/content-factory/brand.ts: bathroom SCENE_SETTINGS entry now "seated at the mirror or on the closed edge of the tub, fully clothed"
+- apps/web/src/lib/content-factory/story-video.ts: SCRIPT_SYSTEM_PROMPT visual rules gain fully-clothed / never-in-tub-or-shower / stable-position constraints
+- Root cause of missing story videos: carouselStoryVideoFn (registered in code at /api/inngest since 2026-08-11) was never synced to Inngest Cloud — ClaudeCallLog has zero "story-video-script" rows ever, meaning the function never executed even once despite events being sent by the daily chain and the admin button
+
+### Manual steps needed
+- [ ] After this deploy, verify "Content Factory — 30s Story Video" and "Engagement Metrics Refresh" both appear in the Inngest dashboard function list; if not, hit Sync on the app in the Inngest dashboard (Keenan)
+
+### Notes
+- Diagnosis path that worked: ClaudeCallLog is the pipeline's execution trace — zero rows for a purpose string means the function never ran, which distinguishes "not registered" from "runs but fails downstream" without Inngest dashboard access
+- Local machine CAN query prod Supabase from Keenan's home network — only the work network blocks it
+- If story videos still don't arrive after a confirmed sync, next suspects in order: Higgsfield rendering <4 of 6 clips (function gives up silently — check its run logs in Inngest), then TTS/mux failures (those fall back to a silent video, which still emails)
+
+---
+
 ## [2026-08-12] — Instagram numbers now flow in automatically — paste a link once, done
 
 **Requested by:** Keenan
