@@ -7,6 +7,53 @@
 
 ---
 
+## [2026-08-12] — Posts end on the mic-drop, and every list now baits comments with a missing reason
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 50c131ea
+
+### In plain English (for Keenan)
+Two changes from the virality audit. First, the carousel no longer ends with the orange Ripple ad slide — people don't share ads, so the post now ends on the strongest emotional line. Second, every new topic is generated with a built-in trap for comments: the AI deliberately leaves the single most obvious reason OFF the list, and the caption dares viewers to comment the one that's missing. The reference caption in your email tells you what the withheld reason is (marked "internal — don't post") so you can spot it in the comments and engage.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: SYSTEM_PROMPT gains an "ENGINEERED COMMENT GAP" section; JSON output and GeneratedTopic gain withheldReason
+- apps/web/src/lib/content-factory/caption.ts: new COMMENT_GAP_CTAS pool used when a withheld reason exists; internal note appended after hashtags with the withheld reason
+- apps/web/src/inngest/functions/carousel-daily.ts: generate-cta step and CTA slide removed; buildCaption(topic, withheldReason); estimatedCostCents counts all slides now
+- apps/web/src/lib/content-factory/carousel-generate.ts: CTA slide removed from generateCarousel (one-off pipeline)
+- composeCTASlide and the CTA edit/regenerate handlers are intentionally kept — existing posts still have CTA slides and the ad slide may return later
+
+### Manual steps needed
+None — no schema changes (withheldReason lives inside the stored caption text, not a new column).
+
+### Notes
+- Keenan writes posted captions manually, so the generated caption is reference material — that's why the withheld reason rides inside it as a clearly marked internal note instead of a new DB column (avoids a prisma db push).
+- The animate function already animates "every slide except the last (CTA)" by slide count — with no CTA slide the hard cap of 7 animated slides still holds since topics are capped at 6 reasons.
+
+---
+
+## [2026-08-12] — Story videos can now be generated from the admin
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6406c6e0
+
+### In plain English (for Keenan)
+Until now the 30-second story video only existed as the email that arrived after each daily run — there was nowhere in the admin to see or trigger one. Every post's detail page now has a "🎥 Story" button that generates the story video for that post and emails it to you (takes roughly 10 minutes end to end).
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: new "generate-story" POST action sends the content-factory/story.video Inngest event with { postId }; daily summary cost now excludes legacy CTA slides
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: Story button in the post detail utility bar (next to resend-email)
+
+### Manual steps needed
+None.
+
+### Notes
+- Admin-triggered stories default to the cinematicReal illustration lane because lane/mood aren't persisted on CarouselPost — only the daily run passes the original lane through the event chain. Acceptable for now; persisting lane would need a schema change.
+- The story video URL is not stored in the DB, so the admin can't display the finished video — delivery remains email-only.
+
+---
+
 ## [2026-08-12] — Story voiceover now matches the finished video's exact length
 
 **Requested by:** Keenan
