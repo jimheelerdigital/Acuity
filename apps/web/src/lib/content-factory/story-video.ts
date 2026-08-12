@@ -1,9 +1,12 @@
 /**
  * Content Factory — 30-second story video pipeline (2026-08-11).
  *
- * For each daily carousel post, a companion vertical video is produced:
- * 1. Claude writes a ~30s voiceover script broken into 6 scenes
- *    (narration + visual direction + safe micro-motion per scene)
+ * Alongside each daily carousel post, a standalone vertical video is produced:
+ * 1. Claude invents its OWN viral story concept for the demographic —
+ *    fully independent of the carousel's headline/reasons (2026-08-12,
+ *    per Keenan) — and writes a ~30s 6-scene script (narration + visual
+ *    direction + safe micro-motion per scene), deduped against recent
+ *    themes/headlines via CarouselPost.storyTheme
  * 2. gpt-image-2 renders 6 fresh text-free scene images
  * 3. Higgsfield animates each image with the current i2v model
  * 4. ffmpeg concatenates the surviving clips (silent) and the REAL
@@ -69,22 +72,35 @@ export interface StoryScene {
 }
 
 export interface StoryScript {
+  /** Short label of the concept — persisted so future scripts avoid repeats. */
+  theme: string;
   scenes: StoryScene[];
   mood?: Mood;
 }
 
-const SCRIPT_SYSTEM_PROMPT = `You are a short-form video scriptwriter for Ripple, an AI-powered voice self-reflection app. You turn a carousel post into a ~30-second vertical video script with a voiceover.
+const SCRIPT_SYSTEM_PROMPT = `You are a short-form viral video scriptwriter for Ripple, an AI-powered voice self-reflection app. You invent an ORIGINAL ~30-second vertical story video with a voiceover. This is a STANDALONE piece — it is not based on any other post. You choose the concept.
 
-TARGET AUDIENCE: Women aged 40-50 carrying a heavy mental load. BRAND VOICE: mirror, not a coach — reflect, don't advise. Warm but honest. US English spelling.
+TARGET AUDIENCE: Women aged 40-50 carrying a heavy mental load — work, family, aging parents, invisible labor. They are capable, busy, reflective women who want to feel SEEN, not lectured. BRAND VOICE: mirror, not a coach — reflect, don't advise. Warm but honest. US English spelling.
 
-You will be given the carousel's headline and its reason list. Write a 6-scene script:
-- Scene 1 is the HOOK: reframe the headline as a spoken line that stops the scroll ("If you're the one who remembers everything for everyone — this is for you").
-- Scenes 2-5 distill the strongest reasons into spoken lines. Don't read the list verbatim — make it flow like one person talking honestly to another.
-- Scene 6 is the landing: the emotional release plus one soft mention of Ripple by name (e.g. "Ripple is where you finally say it out loud"). Never salesy, never coach-y.
+YOUR JOB: invent ONE hyper-specific, emotionally true concept this audience would watch to the end, send to a friend with "this is me", and comment on. NOT a listicle read aloud — a tiny story, confession, or recognition with a beginning, middle, and landing.
+
+CONCEPT FORMATS (pick whichever fits your idea best — vary across days, never repeat a recent theme):
+- The confession: a private truth she'd never say out loud ("I love my family. And some days I fantasize about a hotel room, alone, with nobody needing me.")
+- The specific moment: one tiny real scene told in detail — sitting in the car in the driveway an extra five minutes, the 3am ceiling stare, re-reading a text she never sent.
+- The invisible tribute: everything she did today that nobody saw, finally made visible and named.
+- The pattern: a behavior she'll recognize with a jolt ("You rehearse conversations that are never going to happen.")
+- The permission: the thing she's been waiting her whole adult life for someone to tell her she's allowed to do.
+
+VIRALITY RULES:
+- Scene 1's narration is the HOOK — the first two seconds decide everything. Open mid-thought with a line too specific to scroll past ("You've answered 'what's for dinner' every night for eleven years."). Never open with a greeting or a setup.
+- Escalate: every scene gets more specific or more vulnerable than the one before, so she has to keep watching to see where it lands.
+- Scene 6 is the landing: the emotional release or recognition — the exhale — plus ONE soft mention of Ripple by name (e.g. "Ripple is where you finally say it out loud"). Never salesy, never coach-y.
+- Specificity is the whole game. "The permission slip you signed at a red light" beats "you're always busy" every single time. Concrete objects, real times of day, exact phrases she's actually said.
 
 NARRATION RULES:
 - TOTAL narration across all 6 scenes: 65-80 words (that is ~30 seconds spoken at a calm pace). Each scene's line is ~10-14 words.
 - Second person, present tense, intimate — like a voice memo from someone who gets it.
+- Every line must read as natural spoken English — if a line needs a second read to parse, rewrite it.
 - No hashtags, no emojis, no "hey guys", no CTA except the soft Ripple line in scene 6.
 
 VISUAL RULES (each scene becomes ONE illustrated image of the same woman):
@@ -100,6 +116,7 @@ MOOD: every scene gets a "mood" from: "heavy", "tender", "wry", "frustrated", "h
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
+  "theme": "5-10 word label for this concept (used to avoid future repeats)",
   "mood": "dominant mood of the whole video",
   "scenes": [
     { "narration": "...", "visual": "...", "motion": "...", "mood": "..." },
@@ -108,22 +125,25 @@ OUTPUT FORMAT (strict JSON, no markdown):
 }`;
 
 /**
- * Write the 30s story script from the carousel's headline + reasons.
+ * Invent a standalone ~30s story concept and write its 6-scene script
+ * (2026-08-12, per Keenan: fully independent of the carousel — its own
+ * viral idea every time, deduped against recent themes and headlines).
  * Logs the Claude call to ClaudeCallLog like the topic generator.
  */
 export async function generateStoryScript(input: {
-  headline: string;
-  reasons: string[];
-  mood?: string;
+  /** Recent story themes + carousel headlines the new concept must not resemble. */
+  avoid: string[];
 }): Promise<StoryScript> {
   const { prisma } = await import("@/lib/prisma");
 
-  const userPrompt = `Carousel headline: "${input.headline}"
-Reasons:
-${input.reasons.map((r, i) => `${i + 1}. ${r}`).join("\n")}
-${isMood(input.mood) ? `Dominant mood of the post: ${input.mood}` : ""}
+  const avoidBlock =
+    input.avoid.length > 0
+      ? `\n\nDo NOT reuse or closely resemble any of these recent concepts and headlines:\n${input.avoid.map((a) => `- ${a}`).join("\n")}`
+      : "";
 
-Write the 6-scene, ~30-second story video script. Return ONLY valid JSON.`;
+  const userPrompt = `Invent one new standalone story video concept for this audience and write the 6-scene, ~30-second script.${avoidBlock}
+
+Return ONLY valid JSON.`;
 
   const start = Date.now();
   try {
@@ -157,6 +177,7 @@ Write the 6-scene, ~30-second story video script. Return ONLY valid JSON.`;
       .join("");
     const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsed = JSON.parse(jsonStr) as {
+      theme?: unknown;
       mood?: unknown;
       scenes?: { narration?: unknown; visual?: unknown; motion?: unknown; mood?: unknown }[];
     };
@@ -177,7 +198,13 @@ Write the 6-scene, ~30-second story video script. Return ONLY valid JSON.`;
       );
     }
 
+    const theme =
+      typeof parsed.theme === "string" && parsed.theme.trim()
+        ? parsed.theme.trim()
+        : scenes[0].narration.slice(0, 80);
+
     return {
+      theme,
       scenes,
       mood: isMood(parsed.mood) ? parsed.mood : undefined,
     };
@@ -212,7 +239,8 @@ const WORDS_PER_SECOND = 2.4;
 export async function fitNarrationToDuration(input: {
   narrations: string[];
   targetSeconds: number;
-  headline: string;
+  /** The story's own theme label (NOT the carousel headline). */
+  theme: string;
 }): Promise<string> {
   const { prisma } = await import("@/lib/prisma");
   const maxWords = Math.round(input.targetSeconds * WORDS_PER_SECOND);
@@ -222,7 +250,7 @@ export async function fitNarrationToDuration(input: {
 
 ${input.narrations.map((n, i) => `${i + 1}. ${n}`).join("\n")}
 
-Topic: "${input.headline}"
+Concept: "${input.theme}"
 
 Rewrite these into ONE continuous voiceover that a calm speaker finishes in ${input.targetSeconds.toFixed(0)} seconds: between ${minWords} and ${maxWords} words TOTAL. Rules:
 - Keep the lines in this order and keep each line's core idea — condense or smooth, don't invent new points.
@@ -288,7 +316,8 @@ Rewrite these into ONE continuous voiceover that a calm speaker finishes in ${in
  */
 export function buildStoryImagePrompt(opts: {
   lane: string;
-  headline: string;
+  /** The story's own theme label (NOT the carousel headline). */
+  theme: string;
   scene: StoryScene;
   sceneIndex: number;
   colorPrompt?: string;
@@ -296,7 +325,7 @@ export function buildStoryImagePrompt(opts: {
   const lanePrefix =
     opts.lane in STYLE_LANES ? STYLE_LANES[opts.lane as StyleLane] : STYLE_LANES.cinematicReal;
   const moodLine = isMood(opts.scene.mood) ? MOOD_EXPRESSIONS[opts.scene.mood] : "";
-  const sceneHint = SCENE_SETTINGS[(opts.headline.length + opts.sceneIndex) % SCENE_SETTINGS.length];
+  const sceneHint = SCENE_SETTINGS[(opts.theme.length + opts.sceneIndex) % SCENE_SETTINGS.length];
   return [
     lanePrefix,
     opts.colorPrompt ?? "",
@@ -305,7 +334,7 @@ export function buildStoryImagePrompt(opts: {
     // backup so scenes stay varied even when the visual is generic.
     opts.scene.visual.toLowerCase().includes("setting") ? "" : sceneHint,
     moodLine,
-    `Mood context: ${opts.headline} — self-reflection and mental load, for women. The SAME woman appears in a series of scenes; keep her look consistent: ~40s, warm, natural.`,
+    `Mood context: ${opts.theme} — self-reflection and mental load, for women. The SAME woman appears in a series of scenes; keep her look consistent: ~40s, warm, natural.`,
     VISUAL_DNA_NOTEXT,
   ].filter(Boolean).join("\n");
 }

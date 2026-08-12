@@ -6,8 +6,11 @@ import { inngest } from "@/inngest/client";
  * animation finishes (so story clips never contend with the slide waves
  * for Higgsfield's ~4-concurrent-job cap).
  *
- * Pipeline (2026-08-11, duration-fit added 2026-08-12 per Keenan): Claude
- * writes a ~30s six-scene script → gpt-image-2 renders 6 fresh text-free
+ * Pipeline (2026-08-11; duration-fit + standalone concepts added
+ * 2026-08-12 per Keenan): Claude invents its OWN viral story concept for
+ * the demographic — independent of the carousel, deduped against recent
+ * themes/headlines — and writes a ~30s six-scene script → gpt-image-2
+ * renders 6 fresh text-free
  * scene images → Higgsfield animates each (5s clips) in waves of ≤4 →
  * ffmpeg stitches the surviving clips SILENT and measures the real
  * duration → Claude rewrites the narration (kept scenes only) to fit
@@ -29,25 +32,35 @@ export const carouselStoryVideoFn = inngest.createFunction(
   async ({ event, step, logger }) => {
     const postId = event.data.postId as string;
     const eventLane = typeof event.data.lane === "string" ? event.data.lane : undefined;
-    const eventMood = typeof event.data.mood === "string" ? event.data.mood : undefined;
 
-    // ── Step 1: load the post ────────────────────────────────────────
+    // ── Step 1: load the post + the avoid list for concept dedup ─────
     const post = await step.run("load-post", async () => {
       const { prisma } = await import("@/lib/prisma");
       const p = await prisma.carouselPost.findUnique({
         where: { id: postId },
-        include: { slides: { orderBy: { order: "asc" } } },
       });
       if (!p) return null;
+      // The script is standalone (2026-08-12, per Keenan) — recent story
+      // themes AND carousel headlines both go on the avoid list so the
+      // video never rehashes what the feed already covered.
+      const recent = await prisma.carouselPost.findMany({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          id: { not: p.id },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: { headline: true, storyTheme: true },
+      });
+      const avoid = [
+        ...recent.map((r) => r.storyTheme).filter((t): t is string => Boolean(t)),
+        ...recent.map((r) => r.headline),
+      ];
       return {
-        headline: p.headline,
         topicSlug: p.topicSlug,
         dateStr: p.generatedFor.toISOString().slice(0, 10),
         lane: p.lane,
-        mood: p.mood,
-        reasons: p.slides
-          .filter((s) => s.kind === "REASON")
-          .map((s) => s.overlayText),
+        avoid,
       };
     });
     if (!post) {
@@ -55,11 +68,9 @@ export const carouselStoryVideoFn = inngest.createFunction(
       return { storyVideo: false, reason: "post not found" };
     }
 
-    // Event data wins (daily run passes lane/mood inline); persisted
-    // columns are the fallback for manual re-runs from the admin, which
-    // send only the postId (2026-08-12).
+    // Event lane wins (daily run passes it inline); the persisted column
+    // is the fallback for manual re-runs from the admin (2026-08-12).
     const lane = eventLane ?? post.lane ?? "cinematicReal";
-    const mood = eventMood ?? post.mood ?? undefined;
 
     const { higgsfieldOk } = await step.run("check-config", async () => {
       const { higgsfieldConfigured } = await import(
@@ -74,16 +85,23 @@ export const carouselStoryVideoFn = inngest.createFunction(
 
     const basePath = `carousels/${post.dateStr}/${post.topicSlug}`;
 
-    // ── Step 2: write the 30s script ─────────────────────────────────
+    // ── Step 2: invent the standalone concept + write the 30s script ─
     const script = await step.run("write-script", async () => {
       const { generateStoryScript } = await import(
         "@/lib/content-factory/story-video"
       );
-      return generateStoryScript({
-        headline: post.headline,
-        reasons: post.reasons,
-        mood,
-      });
+      const { prisma } = await import("@/lib/prisma");
+      const s = await generateStoryScript({ avoid: post.avoid });
+      // Persist the theme immediately so tomorrow's script avoids it even
+      // if this run dies downstream.
+      await prisma.carouselPost
+        .update({ where: { id: postId }, data: { storyTheme: s.theme } })
+        .catch((err) =>
+          console.error(
+            `[story-video] Failed to save storyTheme: ${err instanceof Error ? err.message : err}`
+          )
+        );
+      return s;
     });
 
     // NOTE (2026-08-12): the voiceover is generated AFTER the clips render
@@ -105,7 +123,7 @@ export const carouselStoryVideoFn = inngest.createFunction(
           const { composeSlide } = await import("@/lib/content-factory/compose");
           const prompt = buildStoryImagePrompt({
             lane,
-            headline: post.headline,
+            theme: script.theme,
             scene: script.scenes[i],
             sceneIndex: i,
           });
@@ -296,7 +314,7 @@ export const carouselStoryVideoFn = inngest.createFunction(
         return await fitNarrationToDuration({
           narrations: keptNarrations,
           targetSeconds: silentVideo.durationSec,
-          headline: post.headline,
+          theme: script.theme,
         });
       } catch (err) {
         console.error(

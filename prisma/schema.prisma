@@ -1378,6 +1378,7 @@ model CarouselPost {
   mood         String?             // Visual mood of the post (e.g. "cozy-evening")
   withheldReason  String?  @db.Text // Engineered comment gap: the obvious reason deliberately left off the slides
   storyVideoUrl   String?           // 30s narrated story video MP4 (Supabase Storage URL)
+  storyTheme      String?           // Short label of the standalone story concept (dedup for future scripts)
   // Where Keenan posted this carousel (pasted once in the admin). The
   // daily metrics-refresh cron pulls engagement from the platform APIs
   // for any POSTED carousel with a link.
