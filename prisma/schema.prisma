@@ -1378,13 +1378,19 @@ model CarouselPost {
   mood         String?             // Visual mood of the post (e.g. "cozy-evening")
   withheldReason  String?  @db.Text // Engineered comment gap: the obvious reason deliberately left off the slides
   storyVideoUrl   String?           // 30s narrated story video MP4 (Supabase Storage URL)
-  // Manually-entered engagement metrics (admin form) — feed the topic feedback loop
+  // Where Keenan posted this carousel (pasted once in the admin). The
+  // daily metrics-refresh cron pulls engagement from the platform APIs
+  // for any POSTED carousel with a link.
+  instagramUrl String?
+  tiktokUrl    String?
+  // Engagement metrics — auto-pulled by the cron when links exist,
+  // manually entered via the admin form otherwise. Feed the topic loop.
   views        Int?
   likes        Int?
   comments     Int?
   saves        Int?
   shares       Int?
-  metricsAt    DateTime?           // When metrics were last entered
+  metricsAt    DateTime?           // When metrics were last entered/refreshed
   slides       CarouselSlide[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt

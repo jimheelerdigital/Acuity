@@ -25,6 +25,8 @@ interface CarouselPost {
   generatedFor: string;
   emailedAt: string | null;
   emailId: string | null;
+  instagramUrl: string | null;
+  tiktokUrl: string | null;
   storyVideoUrl: string | null;
   views: number | null;
   likes: number | null;
@@ -86,6 +88,9 @@ export default function CarouselReviewPage() {
   });
   const [savingMetrics, setSavingMetrics] = useState(false);
   const [metricsSaved, setMetricsSaved] = useState(false);
+  const [linksDraft, setLinksDraft] = useState({ instagramUrl: "", tiktokUrl: "" });
+  const [savingLinks, setSavingLinks] = useState(false);
+  const [linksMsg, setLinksMsg] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async (cursor?: string) => {
     if (cursor) {
@@ -134,6 +139,11 @@ export default function CarouselReviewPage() {
       shares: p?.shares != null ? String(p.shares) : "",
     });
     setMetricsSaved(false);
+    setLinksDraft({
+      instagramUrl: p?.instagramUrl ?? "",
+      tiktokUrl: p?.tiktokUrl ?? "",
+    });
+    setLinksMsg(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPostId]);
 
@@ -214,6 +224,42 @@ export default function CarouselReviewPage() {
       alert(err instanceof Error ? err.message : "Failed to save metrics");
     } finally {
       setSavingMetrics(false);
+    }
+  };
+
+  const saveLinks = async () => {
+    if (!selectedPostId) return;
+    setSavingLinks(true);
+    setLinksMsg(null);
+    try {
+      const res = await fetch("/api/admin/carousels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-links",
+          postId: selectedPostId,
+          links: linksDraft,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // If an IG link exists, kick off an immediate metrics pull so
+      // Keenan doesn't wait for tomorrow's 13 UTC cron.
+      if (linksDraft.instagramUrl.trim()) {
+        await fetch("/api/admin/carousels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "refresh-metrics" }),
+        });
+        setLinksMsg("Saved — pulling metrics, refresh in ~1 min");
+      } else {
+        setLinksMsg("Saved");
+      }
+      setTimeout(() => setLinksMsg(null), 8000);
+      await fetchPosts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save links");
+    } finally {
+      setSavingLinks(false);
     }
   };
 
@@ -300,6 +346,38 @@ export default function CarouselReviewPage() {
 
         {/* ── Engagement metrics entry ───────────────────────────────── */}
         <div className="mx-4 mt-2 rounded-acuity-lg bg-acuity-bg-inset p-3">
+          {/* Platform links — paste once, metrics auto-pull daily */}
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              type="url"
+              placeholder="Instagram post link"
+              value={linksDraft.instagramUrl}
+              onChange={(e) =>
+                setLinksDraft((l) => ({ ...l, instagramUrl: e.target.value }))
+              }
+              className="min-w-0 flex-1 rounded-acuity-sm bg-acuity-bg px-2 py-1.5 text-xs text-acuity-text placeholder:text-acuity-text-quiet focus:outline-none focus:ring-1 focus:ring-acuity-primary"
+            />
+            <input
+              type="url"
+              placeholder="TikTok link"
+              value={linksDraft.tiktokUrl}
+              onChange={(e) =>
+                setLinksDraft((l) => ({ ...l, tiktokUrl: e.target.value }))
+              }
+              className="min-w-0 flex-1 rounded-acuity-sm bg-acuity-bg px-2 py-1.5 text-xs text-acuity-text placeholder:text-acuity-text-quiet focus:outline-none focus:ring-1 focus:ring-acuity-primary"
+            />
+            <button
+              onClick={saveLinks}
+              disabled={savingLinks}
+              title="Save links — Instagram metrics then pull automatically every day"
+              className="min-h-[36px] shrink-0 rounded-acuity-pill border border-acuity-line px-3 text-xs text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
+            >
+              {savingLinks ? "…" : "Save links"}
+            </button>
+          </div>
+          {linksMsg && (
+            <p className="mb-2 text-[10px] font-mono text-acuity-good">{linksMsg}</p>
+          )}
           <div className="grid grid-cols-5 gap-2">
             {METRIC_KEYS.map((k) => (
               <label key={k} className="flex flex-col gap-1">
@@ -322,9 +400,11 @@ export default function CarouselReviewPage() {
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
             <span className="min-w-0 truncate text-[10px] font-mono text-acuity-text-quiet">
-              {selectedPost.metricsAt
-                ? `Saved ${new Date(selectedPost.metricsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                : "Feeds tomorrow's topic prompt"}
+              {selectedPost.instagramUrl
+                ? `Auto-pulls daily from IG${selectedPost.metricsAt ? ` · updated ${new Date(selectedPost.metricsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`
+                : selectedPost.metricsAt
+                  ? `Saved ${new Date(selectedPost.metricsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                  : "Feeds tomorrow's topic prompt"}
             </span>
             <button
               onClick={saveMetrics}

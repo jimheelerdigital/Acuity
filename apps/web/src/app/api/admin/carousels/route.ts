@@ -261,6 +261,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    case "save-links": {
+      // Paste-once platform links — the metrics-refresh cron pulls
+      // engagement automatically for any POSTED carousel with a link.
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      const links = (body as { links?: { instagramUrl?: unknown; tiktokUrl?: unknown } }).links ?? {};
+      const parseLink = (v: unknown): string | null => {
+        if (typeof v !== "string" || v.trim() === "") return null;
+        const url = v.trim();
+        if (!/^https?:\/\//i.test(url)) return null;
+        return url;
+      };
+      await prisma.carouselPost.update({
+        where: { id: postId },
+        data: {
+          instagramUrl: parseLink(links.instagramUrl),
+          tiktokUrl: parseLink(links.tiktokUrl),
+        },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "refresh-metrics": {
+      // Fire the metrics-refresh cron on demand (all linked posts).
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({ name: "content-factory/metrics.refresh", data: {} });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
     case "resend-email": {
       if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
       const { sendCarouselEmail } = await import("@/lib/content-factory/email");
