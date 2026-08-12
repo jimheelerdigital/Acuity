@@ -56,10 +56,48 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
       const recentHeadlines = recentPosts.map((p) => p.headline);
 
-      const topic = await generateTopic(
-        recentHeadlines,
-        animatedRun ? { maxReasons: 6 } : undefined
-      );
+      // Engagement feedback loop (2026-08-12): Keenan enters real metrics
+      // via the admin form; the topic prompt learns from what actually
+      // performed. Needs at least 4 metric-bearing posts to kick in.
+      const metricPosts = await prisma.carouselPost.findMany({
+        where: { metricsAt: { not: null } },
+        orderBy: { metricsAt: "desc" },
+        take: 30,
+        select: {
+          headline: true,
+          views: true,
+          likes: true,
+          comments: true,
+          saves: true,
+          shares: true,
+        },
+      });
+      let performance: { top: string[]; bottom: string[] } | undefined;
+      if (metricPosts.length >= 4) {
+        const scored = metricPosts.map((p) => {
+          // Saves and shares are the algorithm's strongest signals;
+          // normalize per 1k views when views are known so small posts
+          // with great ratios still rank.
+          const engagement =
+            (p.likes ?? 0) +
+            2 * (p.comments ?? 0) +
+            3 * (p.saves ?? 0) +
+            3 * (p.shares ?? 0);
+          const score = p.views ? (engagement / p.views) * 1000 : engagement;
+          return { headline: p.headline, score };
+        });
+        scored.sort((a, b) => b.score - a.score);
+        const topCount = Math.min(5, Math.floor(scored.length / 2));
+        performance = {
+          top: scored.slice(0, topCount).map((s) => s.headline),
+          bottom: scored.slice(-topCount).map((s) => s.headline),
+        };
+      }
+
+      const topic = await generateTopic(recentHeadlines, {
+        ...(animatedRun ? { maxReasons: 6 } : {}),
+        performance,
+      });
       return { ...topic, animatedRun };
     });
 
@@ -324,6 +362,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           caption,
           hashtags: extractHashtags(caption),
           generatedFor: today,
+          // Persisted for the story-video fn (style/mood fallback) and the
+          // engagement feedback loop (2026-08-12).
+          lane: topicData.lane,
+          mood: topicData.mood ?? null,
+          withheldReason: topicData.withheldReason ?? null,
           slides: {
             create: allSlides.map((s) => ({
               order: s.order,
@@ -380,7 +423,8 @@ export const carouselDailyCronFn = inngest.createFunction(
             // → voiceover → stitch → email). Chained AFTER animation so
             // story clips never fight the slide waves for Higgsfield's
             // ~4-concurrent-job cap. Lane keeps the story's illustration
-            // style consistent with the carousel (lane isn't persisted).
+            // style consistent with the carousel (also persisted on the
+            // post now, so manual story re-runs use the same lane).
             storyVideo: true,
             lane: topicData.lane,
             mood: topicData.mood,

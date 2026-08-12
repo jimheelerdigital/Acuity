@@ -25,9 +25,20 @@ interface CarouselPost {
   generatedFor: string;
   emailedAt: string | null;
   emailId: string | null;
+  storyVideoUrl: string | null;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  saves: number | null;
+  shares: number | null;
+  metricsAt: string | null;
   slides: Slide[];
   createdAt: string;
 }
+
+const METRIC_KEYS = ["views", "likes", "comments", "saves", "shares"] as const;
+type MetricKey = (typeof METRIC_KEYS)[number];
+type MetricsDraft = Record<MetricKey, string>;
 
 interface Totals {
   all: number;
@@ -70,6 +81,11 @@ export default function CarouselReviewPage() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
+  const [metricsDraft, setMetricsDraft] = useState<MetricsDraft>({
+    views: "", likes: "", comments: "", saves: "", shares: "",
+  });
+  const [savingMetrics, setSavingMetrics] = useState(false);
+  const [metricsSaved, setMetricsSaved] = useState(false);
 
   const fetchPosts = useCallback(async (cursor?: string) => {
     if (cursor) {
@@ -104,6 +120,22 @@ export default function CarouselReviewPage() {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  // Prefill the metrics form when a post is opened. Deliberately keyed on
+  // the post ID only — background refetches must not clobber in-progress
+  // typing.
+  useEffect(() => {
+    const p = allPosts.find((x) => x.id === selectedPostId);
+    setMetricsDraft({
+      views: p?.views != null ? String(p.views) : "",
+      likes: p?.likes != null ? String(p.likes) : "",
+      comments: p?.comments != null ? String(p.comments) : "",
+      saves: p?.saves != null ? String(p.saves) : "",
+      shares: p?.shares != null ? String(p.shares) : "",
+    });
+    setMetricsSaved(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPostId]);
 
   // ── Actions ───────────────────────────────────────────────────────
   const doAction = async (action: string, params: Record<string, string>) => {
@@ -156,6 +188,32 @@ export default function CarouselReviewPage() {
       alert(err instanceof Error ? err.message : "Failed to queue generation");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const saveMetrics = async () => {
+    if (!selectedPostId) return;
+    setSavingMetrics(true);
+    try {
+      const res = await fetch("/api/admin/carousels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-metrics",
+          postId: selectedPostId,
+          metrics: Object.fromEntries(
+            METRIC_KEYS.map((k) => [k, metricsDraft[k].trim() === "" ? null : Number(metricsDraft[k])])
+          ),
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setMetricsSaved(true);
+      setTimeout(() => setMetricsSaved(false), 2500);
+      await fetchPosts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save metrics");
+    } finally {
+      setSavingMetrics(false);
     }
   };
 
@@ -225,6 +283,57 @@ export default function CarouselReviewPage() {
           <pre className="whitespace-pre-wrap text-xs text-acuity-text-sec font-sans leading-relaxed">
             {selectedPost.caption}
           </pre>
+        </div>
+
+        {/* ── Story video link ───────────────────────────────────────── */}
+        {selectedPost.storyVideoUrl && (
+          <a
+            href={selectedPost.storyVideoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mx-4 mt-2 flex min-h-[44px] items-center justify-between rounded-acuity-lg bg-acuity-primary-soft px-3 text-sm font-medium text-acuity-primary active:opacity-70"
+          >
+            <span>🎥 Story video ready</span>
+            <span className="text-xs">Open MP4 →</span>
+          </a>
+        )}
+
+        {/* ── Engagement metrics entry ───────────────────────────────── */}
+        <div className="mx-4 mt-2 rounded-acuity-lg bg-acuity-bg-inset p-3">
+          <div className="grid grid-cols-5 gap-2">
+            {METRIC_KEYS.map((k) => (
+              <label key={k} className="flex flex-col gap-1">
+                <span className="text-[9px] font-mono uppercase tracking-wider text-acuity-text-quiet">
+                  {k}
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="—"
+                  value={metricsDraft[k]}
+                  onChange={(e) =>
+                    setMetricsDraft((m) => ({ ...m, [k]: e.target.value }))
+                  }
+                  className="w-full rounded-acuity-sm bg-acuity-bg px-1.5 py-1.5 text-xs tabular-nums text-acuity-text placeholder:text-acuity-text-quiet focus:outline-none focus:ring-1 focus:ring-acuity-primary"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-[10px] font-mono text-acuity-text-quiet">
+              {selectedPost.metricsAt
+                ? `Saved ${new Date(selectedPost.metricsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                : "Feeds tomorrow's topic prompt"}
+            </span>
+            <button
+              onClick={saveMetrics}
+              disabled={savingMetrics}
+              className="min-h-[36px] shrink-0 rounded-acuity-pill bg-acuity-primary px-4 text-xs font-medium text-white active:opacity-80 disabled:opacity-50"
+            >
+              {savingMetrics ? "Saving…" : metricsSaved ? "Saved ✓" : "Save metrics"}
+            </button>
+          </div>
         </div>
 
         {/* Spacer */}

@@ -139,10 +139,17 @@ Generate 5-10 reasons per topic. Vary the count each time.`;
  * post, where every reason slide becomes a video). The cap must be given
  * to Claude — not applied after the fact — because the headline's number
  * has to match the reason count.
+ *
+ * `performance` (2026-08-12) feeds real engagement data back into the
+ * prompt: headlines that performed best/worst on the account, entered
+ * manually by Keenan via the admin metrics form.
  */
 export async function generateTopic(
   recentHeadlines: string[],
-  opts?: { maxReasons?: number }
+  opts?: {
+    maxReasons?: number;
+    performance?: { top: string[]; bottom: string[] };
+  }
 ): Promise<GeneratedTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -155,7 +162,20 @@ export async function generateTopic(
     ? `\n\nIMPORTANT: Generate at most ${maxReasons} reasons for this topic (5-${maxReasons}). The number in the headline must match the reason count.`
     : "";
 
-  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}
+  const perf = opts?.performance;
+  const performanceBlock =
+    perf && (perf.top.length > 0 || perf.bottom.length > 0)
+      ? `\n\nPERFORMANCE FEEDBACK — real engagement data from this account's posted carousels:\n` +
+        (perf.top.length > 0
+          ? `These headlines performed BEST (most saves/shares/comments):\n${perf.top.map((h) => `- ${h}`).join("\n")}\n`
+          : "") +
+        (perf.bottom.length > 0
+          ? `These headlines performed WORST:\n${perf.bottom.map((h) => `- ${h}`).join("\n")}\n`
+          : "") +
+        `Study what separates the two groups — the emotional angle, the specificity, the format — and write a topic that leans into what works. Do NOT copy or lightly rephrase a top headline (the avoid list still applies); extract the underlying appeal and apply it to a fresh angle.`
+      : "";
+
+  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${performanceBlock}
 
 Return ONLY valid JSON, no other text.`;
 

@@ -1374,6 +1374,17 @@ model CarouselPost {
   generatedFor DateTime            // The date this carousel was generated for (idempotency key with topicSlug)
   emailedAt    DateTime?           // When the carousel email was sent (null = not yet emailed)
   emailId      String?             // Resend message ID for tracking
+  lane         String?             // Topic lane (e.g. "mental-load") — persisted for the feedback loop
+  mood         String?             // Visual mood of the post (e.g. "cozy-evening")
+  withheldReason  String?  @db.Text // Engineered comment gap: the obvious reason deliberately left off the slides
+  storyVideoUrl   String?           // 30s narrated story video MP4 (Supabase Storage URL)
+  // Manually-entered engagement metrics (admin form) — feed the topic feedback loop
+  views        Int?
+  likes        Int?
+  comments     Int?
+  saves        Int?
+  shares       Int?
+  metricsAt    DateTime?           // When metrics were last entered
   slides       CarouselSlide[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt

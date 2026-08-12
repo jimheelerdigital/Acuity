@@ -236,6 +236,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "save-metrics": {
+      // Manual engagement entry (Keenan, from the platform's analytics).
+      // Feeds the topic-generation feedback loop — top/bottom performers
+      // are passed into the next daily topic prompt.
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      const metrics = (body as { metrics?: Record<string, unknown> }).metrics ?? {};
+      const parseMetric = (v: unknown): number | null => {
+        if (v === null || v === undefined || v === "") return null;
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+      };
+      await prisma.carouselPost.update({
+        where: { id: postId },
+        data: {
+          views: parseMetric(metrics.views),
+          likes: parseMetric(metrics.likes),
+          comments: parseMetric(metrics.comments),
+          saves: parseMetric(metrics.saves),
+          shares: parseMetric(metrics.shares),
+          metricsAt: new Date(),
+        },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     case "resend-email": {
       if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
       const { sendCarouselEmail } = await import("@/lib/content-factory/email");

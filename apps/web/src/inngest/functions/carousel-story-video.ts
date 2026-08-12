@@ -28,7 +28,7 @@ export const carouselStoryVideoFn = inngest.createFunction(
   },
   async ({ event, step, logger }) => {
     const postId = event.data.postId as string;
-    const lane = typeof event.data.lane === "string" ? event.data.lane : "cinematicReal";
+    const eventLane = typeof event.data.lane === "string" ? event.data.lane : undefined;
     const eventMood = typeof event.data.mood === "string" ? event.data.mood : undefined;
 
     // ── Step 1: load the post ────────────────────────────────────────
@@ -43,6 +43,8 @@ export const carouselStoryVideoFn = inngest.createFunction(
         headline: p.headline,
         topicSlug: p.topicSlug,
         dateStr: p.generatedFor.toISOString().slice(0, 10),
+        lane: p.lane,
+        mood: p.mood,
         reasons: p.slides
           .filter((s) => s.kind === "REASON")
           .map((s) => s.overlayText),
@@ -52,6 +54,12 @@ export const carouselStoryVideoFn = inngest.createFunction(
       logger.warn(`[story-video] Post ${postId} not found — skipping`);
       return { storyVideo: false, reason: "post not found" };
     }
+
+    // Event data wins (daily run passes lane/mood inline); persisted
+    // columns are the fallback for manual re-runs from the admin, which
+    // send only the postId (2026-08-12).
+    const lane = eventLane ?? post.lane ?? "cinematicReal";
+    const mood = eventMood ?? post.mood ?? undefined;
 
     const { higgsfieldOk } = await step.run("check-config", async () => {
       const { higgsfieldConfigured } = await import(
@@ -74,7 +82,7 @@ export const carouselStoryVideoFn = inngest.createFunction(
       return generateStoryScript({
         headline: post.headline,
         reasons: post.reasons,
-        mood: eventMood,
+        mood,
       });
     });
 
@@ -346,6 +354,21 @@ export const carouselStoryVideoFn = inngest.createFunction(
       }
     });
     const voiced = finalVideoUrl !== silentVideo.url;
+
+    // ── Persist the story video URL on the post (admin download link) ─
+    await step.run("save-story-url", async () => {
+      try {
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.carouselPost.update({
+          where: { id: postId },
+          data: { storyVideoUrl: finalVideoUrl },
+        });
+      } catch (err) {
+        console.error(
+          `[story-video] Failed to save storyVideoUrl for ${postId}: ${err instanceof Error ? err.message : err}`
+        );
+      }
+    });
 
     // ── Email the finished video ─────────────────────────────────────
     await step.run("email-story-video", async () => {

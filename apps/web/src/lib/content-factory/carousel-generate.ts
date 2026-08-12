@@ -153,6 +153,8 @@ export async function generateCarousel(
       caption,
       hashtags: extractHashtags(caption),
       generatedFor,
+      lane: topic.lane, // persisted so story re-runs match the carousel style
+
       slides: {
         create: slides.map((s) => ({
           order: s.order,
