@@ -105,11 +105,11 @@ export async function sendCarouselEmail(
   );
 
   // Fetch every video. They are NOT attached to the main email — all six
-  // won't fit under Resend's per-message cap alongside the images, and a
-  // video that arrives as a link can't be saved to the camera roll from
-  // the inbox. Instead, videos are chunked into follow-up "Videos (n/N)"
-  // emails below, each under the cap, so every video arrives as a real
-  // attachment: tap and hold → Save Video, straight from the email.
+  // won't fit under Resend's per-message cap alongside the images. Instead
+  // they are stitched into ONE compilation MP4 (2026-08-12 per Keenan:
+  // one slide-video email, pre-assembled — replaces his manual clipping)
+  // and sent in a single follow-up email as a real attachment: tap and
+  // hold → Save Video, straight from the email.
   const videoBuffers: { filename: string; buf: Buffer }[] = [];
   for (const slide of videoSlides) {
     try {
@@ -154,7 +154,7 @@ export async function sendCarouselEmail(
     <div style="text-align:center;margin:20px 0;">
       ${videoButtons}
       <p style="font-size:11px;color:#888;margin:8px 0 0;">
-        📥 The videos arrive attached to separate "Videos" emails right after this one — tap and hold a video there, then Save&nbsp;Video to add it straight to your camera roll. Buttons above are a backup download.
+        📥 A "Carousel video" email follows this one with every animated slide stitched into a single ready-to-post MP4 — tap and hold it there, then Save&nbsp;Video. Buttons above download individual slide clips as a backup.
       </p>
     </div>`
       : "";
@@ -254,54 +254,99 @@ export async function sendCarouselEmail(
   const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
   const emailId = (dataObj.id as string) ?? "";
 
-  // ── Follow-up emails with the videos attached ───────────────────
-  // Greedy-chunk videos so each follow-up stays under the Resend cap.
-  // Every video ships as a real attachment: tap and hold → Save Video.
+  // ── Follow-up email: ONE stitched carousel video ────────────────
+  // All slide videos (cover → reasons, text already burned in, silent)
+  // are concatenated into a single ready-to-post MP4 so nothing needs
+  // manual clipping. Exactly one follow-up email, attachment when it
+  // fits under the Resend cap, force-download link otherwise. If the
+  // stitch fails, the email still goes out with per-slide links.
   if (videoBuffers.length > 0) {
-    const chunks: { filename: string; buf: Buffer }[][] = [[]];
-    let chunkBytes = 0;
-    for (const v of videoBuffers) {
-      if (chunkBytes + v.buf.length > MAX_ATTACHMENT_BYTES && chunks[chunks.length - 1].length > 0) {
-        chunks.push([]);
-        chunkBytes = 0;
+    let attachment: { filename: string; buf: Buffer } | null = null;
+    let compilationUrl: string | null = null;
+    try {
+      if (videoBuffers.length === 1) {
+        // Nothing to stitch (e.g. cover-only animation) — ship as-is.
+        attachment = videoBuffers[0];
+        compilationUrl = videoSlides[0]?.videoUrl ?? null;
+      } else {
+        const { stitchStoryVideo } = await import("./story-video");
+        const stitched = await stitchStoryVideo(
+          videoBuffers.map((v) => v.buf),
+          null
+        );
+        const { uploadImage } = await import("./carousel-generate");
+        compilationUrl = await uploadImage(
+          stitched,
+          `carousels/${dateStr}/${post.topicSlug}/slides-compilation.mp4`,
+          "video/mp4"
+        );
+        attachment = { filename: `carousel-${dateStr}.mp4`, buf: stitched };
       }
-      chunks[chunks.length - 1].push(v);
-      chunkBytes += v.buf.length;
+    } catch (err) {
+      console.error(
+        `[carousel-email] Compilation stitch failed — sending links instead: ${err instanceof Error ? err.message : err}`
+      );
     }
 
-    for (let i = 0; i < chunks.length; i++) {
-      const part = chunks.length > 1 ? ` (${i + 1}/${chunks.length})` : "";
-      const chunkNames = chunks[i].map((v) => v.filename).join(", ");
-      try {
-        await resend.emails.send({
-          from: FROM_ADDRESS,
-          to: TO_ADDRESS,
-          subject: `[Ripple Content] 🎬 Videos${part} — ${post.headline}`,
-          html: `
+    const attachIt = attachment !== null && attachment.buf.length <= MAX_ATTACHMENT_BYTES;
+    const compilationLink = compilationUrl
+      ? forceDownloadUrl(compilationUrl, `carousel-${dateStr}.mp4`)
+      : null;
+    const linkList = compilationLink
+      ? `<a href="${escapeHtml(compilationLink)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">🎬 Download carousel video (MP4)</a>`
+      : videoSlides
+          .map((s) => `<p style="font-size:13px;"><a href="${escapeHtml(forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))}" style="color:#F97E4E;">Download slide ${s.order + 1} animation</a></p>`)
+          .join("\n");
+
+    try {
+      const videoEmail: Parameters<typeof resend.emails.send>[0] = {
+        from: FROM_ADDRESS,
+        to: TO_ADDRESS,
+        subject: `[Ripple Content] 🎬 Carousel video — ${post.headline}`,
+        html: `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:500px;margin:0 auto;padding:20px;">
-    <h1 style="font-size:18px;color:#FBFAF6;margin:0 0 8px;">🎬 Animated slides${part}</h1>
+    <h1 style="font-size:18px;color:#FBFAF6;margin:0 0 8px;">🎬 Carousel video, ready to post</h1>
     <p style="font-size:13px;color:#AAA;margin:0 0 12px;">${escapeHtml(post.headline)}</p>
-    <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0;">
-      ${chunks[i].length} video${chunks[i].length > 1 ? "s" : ""} attached.<br/>
-      <strong>Tap and hold a video → Save Video</strong> to add it straight to your camera roll.
+    <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0 0 16px;">
+      ${
+        attachment
+          ? `All ${videoBuffers.length > 1 ? `${videoBuffers.length} animated slides stitched into one MP4` : "the animated cover in one MP4"}${attachIt ? ", attached below" : ""}.<br/><strong>${attachIt ? "Tap and hold the video → Save Video" : "Use the download button below"}</strong> — no clipping needed.`
+          : `The stitched video couldn't be built this time — download the individual slide clips below.`
+      }
     </p>
+    <div style="text-align:center;margin:16px 0;">${linkList}</div>
   </div>
 </body>
 </html>`.trim(),
-          text: `Animated slides${part} — ${post.headline}\n\n${chunks[i].length} video(s) attached: ${chunkNames}\nTap and hold a video → Save Video to add it to your camera roll.`,
-          attachments: chunks[i].map((v) => ({
-            filename: v.filename,
-            content: v.buf.toString("base64"),
-          })),
-        } as Parameters<typeof resend.emails.send>[0]);
-        console.log(`[carousel-email] Sent video email${part}: ${chunkNames}`);
-      } catch (err) {
-        console.warn(`[carousel-email] Video email${part} failed: ${err instanceof Error ? err.message : err}`);
+        text: [
+          `Carousel video — ${post.headline}`,
+          attachment
+            ? attachIt
+              ? "One stitched MP4 attached. Tap and hold → Save Video. No clipping needed."
+              : "The stitched MP4 was too large to attach — use the download link:"
+            : "Stitch failed — individual slide clip links below:",
+          ...(compilationLink
+            ? [compilationLink]
+            : videoSlides.map((s) => forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))),
+        ].join("\n"),
+      };
+      if (attachIt && attachment) {
+        (videoEmail as unknown as Record<string, unknown>).attachments = [
+          { filename: attachment.filename, content: attachment.buf.toString("base64") },
+        ];
       }
+      await resend.emails.send(videoEmail);
+      console.log(
+        `[carousel-email] Sent carousel video email (${attachment ? (attachIt ? "attached" : "link only") : "links fallback"}, ${videoBuffers.length} source clip(s))`
+      );
+    } catch (err) {
+      console.warn(
+        `[carousel-email] Carousel video email failed: ${err instanceof Error ? err.message : err}`
+      );
     }
   }
 
