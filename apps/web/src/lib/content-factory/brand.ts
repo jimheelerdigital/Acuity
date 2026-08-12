@@ -55,7 +55,9 @@ export const SCENE_SETTINGS = [
   "Setting: a bedroom at lamplight — she's winding down on the edge of the bed, warm evening glow.",
   "Setting: outdoors on a quiet walk — park path, trees, golden-hour light.",
   "Setting: a desk by a rainy window — she's paused mid-thought, notebook closed, rain on the glass.",
-  "Setting: a bathroom self-care moment — bath or mirror, towels, soft steam, calm.",
+  // Never IN the tub/shower — clothed-in-bathtub renders looked absurd and
+  // the video model made her stand up out of the water (2026-08-12).
+  "Setting: a bathroom self-care moment — seated at the mirror or on the closed edge of the tub, fully clothed, towels, soft steam, calm.",
   "Setting: a living room at dusk — she's curled on the sofa under a throw blanket, one lamp on.",
   "Setting: a laundry or hallway in-between moment — basket on hip, pausing, everyday realness.",
 ] as const;

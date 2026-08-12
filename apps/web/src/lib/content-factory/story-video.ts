@@ -90,6 +90,7 @@ NARRATION RULES:
 VISUAL RULES (each scene becomes ONE illustrated image of the same woman):
 - "visual": one sentence describing the scene — the same woman (~40s) in a specific everyday setting doing a specific quiet activity that matches the narration. Vary the setting each scene. No text in the image, no other adults in focus.
 - Every scene must be visually DIFFERENT (kitchen, car, hallway, bedroom, porch, bathroom mirror, sofa...).
+- She is always fully clothed and NEVER inside a bathtub or shower. Bathroom scenes show her at the mirror or sitting on the closed edge of the tub. She is always already settled in a stable seated or standing position that she can hold for the whole clip.
 
 MOTION RULES (each image is animated for a few seconds — the character's movement):
 - "motion": ONE physical micro-gesture, present tense, continuation of "She ..." (e.g. "closes her eyes and lets her shoulders drop with a slow exhale").

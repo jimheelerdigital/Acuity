@@ -92,14 +92,23 @@ const CAMERA_LOCK_LINE =
   "Fixed, locked camera. Same art style, same scene, same colors, same framing from first frame to last.";
 
 /**
+ * v13 (2026-08-12, per Keenan): a bathtub start frame made the model have
+ * the woman STAND UP out of the water, fully clothed. Positive-only
+ * posture pin — whatever position the image shows is held for the whole
+ * clip.
+ */
+const POSTURE_LOCK_LINE =
+  "She holds exactly the position the image shows for the entire video — if seated she stays seated, if reclining she stays reclining, settled and still in place from first frame to last.";
+
+/**
  * `textFree` = the start frame has NO text (animated-post pipeline: words
  * are burned on afterwards with ffmpeg). In that case the prompt must not
  * mention text at all — mentioning it invites the model to invent some.
  */
 function sceneLockLines(textFree: boolean): string[] {
   return textFree
-    ? [CAMERA_LOCK_LINE, QUALITY_LINE]
-    : [CAMERA_LOCK_LINE, TEXT_LINE, QUALITY_LINE];
+    ? [POSTURE_LOCK_LINE, CAMERA_LOCK_LINE, QUALITY_LINE]
+    : [POSTURE_LOCK_LINE, CAMERA_LOCK_LINE, TEXT_LINE, QUALITY_LINE];
 }
 
 /**
