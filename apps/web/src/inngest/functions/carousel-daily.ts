@@ -1,15 +1,14 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 3× daily via cron, ALL fully animated
- * (2026-08-11 per Keenan: dialed back from 5× — he clips and posts
- * everything manually, and 5/day was more than the posting workflow
- * could absorb).
- *
- * Runs at 12, 16, 20 UTC (7am, 11am, 3pm Central). Every slide
- * except the last (CTA) gets a 4s video; topic capped at 6
- * reasons (7 animated slides max). Email is sent by the animate
- * function after the renders finish.
+ * Carousel generation — 2 runs daily (2026-08-12 per Keenan: exactly
+ * one animated video carousel + one static carousel + one story video
+ * per day, matching what his posting workflow can absorb):
+ * - 12 UTC (7am Central): FULLY ANIMATED — every slide gets a 4s video,
+ *   topic capped at 6 reasons (7 animated slides max), and the 30s
+ *   story video is chained after the slide animations finish.
+ * - 16 UTC (11am Central): STATIC — image slides only, emailed
+ *   immediately, no animation, no story.
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
@@ -20,7 +19,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 12,16,20 * * *" },
+      { cron: "0 12,16 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
@@ -42,10 +41,13 @@ export const carouselDailyCronFn = inngest.createFunction(
         "@/lib/content-factory/generate-topic"
       );
 
-      // Every cron run is fully animated. Event trigger: explicit
-      // `animated` flag wins when provided (admin/test can force static).
+      // Cron: the 12 UTC run is animated (+ story video), the 16 UTC run
+      // is static (2026-08-12 per Keenan: one of each per day). Event
+      // trigger: explicit `animated` flag wins when provided.
       const animatedRun =
-        typeof eventAnimated === "boolean" ? eventAnimated : true;
+        typeof eventAnimated === "boolean"
+          ? eventAnimated
+          : new Date().getUTCHours() < 14;
 
       const thirtyDaysAgo = new Date(
         Date.now() - 30 * 86_400_000
@@ -388,9 +390,9 @@ export const carouselDailyCronFn = inngest.createFunction(
     });
 
     // ── Step N+3: deliver ─────────────────────────────────────────
-    // 8 UTC run: static slideshow — email straight away, no animation.
-    // 12 UTC run: enqueue full-post animation (every slide except the
-    // CTA); the animate function sends the email on EVERY exit path
+    // 16 UTC run: static slideshow — email straight away, no animation.
+    // 12 UTC run: enqueue full-post animation + chained story video;
+    // the animate function sends the email on EVERY exit path
     // (success, skip, failure, timeout) so Keenan always gets exactly
     // one email — with videos when animation worked, static otherwise.
     await step.run("deliver", async () => {
