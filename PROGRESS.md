@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-08-12] — Story videos now invent their own viral concepts; headline quality gates
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3afa1104 (story rework), 8e2890d0 (headline gates)
+
+### In plain English (for Keenan)
+The daily story video is no longer the carousel read out loud. The AI now invents a brand-new concept every time — a confession, a specific real moment, a tribute to invisible work, a pattern she'll recognize, or a permission she's been waiting for — built for our 40–50 audience with a hook in the first two seconds. It remembers every concept it's used so it never repeats itself or rehashes a recent carousel. Separately, the headline generator now has to pass two checks before shipping: the headline must read like a real sentence a friend would text (no more broken grammar like "5 reminders for the week you have nothing left") and must name a situation she's actually living so she has to swipe to find out the reasons.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: CarouselPost gains `storyTheme String?` — the concept label persisted per post, used as the dedup avoid-list
+- apps/web/src/lib/content-factory/story-video.ts: SCRIPT_SYSTEM_PROMPT fully rewritten (standalone concept formats, virality rules, escalation, clarity rule); `generateStoryScript({ avoid })` replaces the headline/reasons signature; `StoryScript` gains `theme`; `fitNarrationToDuration` and `buildStoryImagePrompt` take `theme` instead of `headline`
+- apps/web/src/inngest/functions/carousel-story-video.ts: load-post now also queries the last 30 days of storyThemes + headlines (excluding the current post) as the avoid list; write-script persists storyTheme immediately after generation (survives downstream failures); mood plumbing removed (script picks its own)
+- apps/web/src/lib/content-factory/generate-topic.ts: SYSTEM_PROMPT gains mandatory CLARITY TEST and RELATABILITY TEST rules for headlines
+- `npx prisma db push` already run from this machine (home network) — column live in prod
+
+### Manual steps needed
+- [ ] Nothing for the schema — db push already done
+- [ ] Inngest re-sync should be automatic on deploy, but if tonight's story video doesn't arrive, re-sync the app in the Inngest dashboard (Keenan)
+
+### Notes
+- The story pipeline no longer uses the carousel's headline/reasons at all — the post only provides the art lane, storage path, and email/admin linkage
+- Theme is saved in the write-script step (not at the end) so even a run that dies mid-render still blocks tomorrow's script from reusing the concept
+- The failed headline "5 reminders for the week you have nothing left" is cited verbatim in the prompt as a counter-example — cheap and effective way to stop that exact failure mode
+
+---
+
 ## [2026-08-12] — Story videos were vanishing into the void; bathtub stand-ups banned
 
 **Requested by:** Keenan
