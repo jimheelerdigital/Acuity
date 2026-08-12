@@ -271,6 +271,14 @@ export default function CarouselReviewPage() {
             {/* Right: utilities */}
             <div className="flex gap-2">
               <button
+                onClick={() => doAction("generate-story", { postId: selectedPost.id })}
+                disabled={busy === `generate-story-${selectedPost.id}`}
+                title="Generate 30s story video (arrives by email in ~10 min)"
+                className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
+              >
+                {busy === `generate-story-${selectedPost.id}` ? "…" : "🎥 Story"}
+              </button>
+              <button
                 onClick={() => doAction("resend-email", { postId: selectedPost.id })}
                 disabled={busy === `resend-email-${selectedPost.id}`}
                 className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"

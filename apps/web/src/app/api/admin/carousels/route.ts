@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
   const tomorrow = new Date(today.getTime() + 86_400_000);
   const todayPosts = await prisma.carouselPost.findMany({
     where: { generatedFor: { gte: today, lt: tomorrow } },
-    select: { status: true, slides: { select: { id: true } } },
+    select: { status: true, slides: { select: { kind: true } } },
   });
 
   const summary = {
@@ -69,9 +69,9 @@ export async function GET(req: NextRequest) {
     rejected: todayPosts.filter((p) => p.status === "REJECTED").length,
     posted: todayPosts.filter((p) => p.status === "POSTED").length,
     total: todayPosts.length,
-    // Each image slide (non-CTA) costs ~$0.08
+    // Each image slide costs ~$0.08; legacy CTA slides were composed, not generated
     estimatedCostCents: todayPosts.reduce(
-      (acc, p) => acc + (p.slides.length > 0 ? (p.slides.length - 1) * 8 : 0),
+      (acc, p) => acc + p.slides.filter((s) => s.kind !== "CTA").length * 8,
       0
     ),
   };
@@ -219,6 +219,19 @@ export async function POST(req: NextRequest) {
         data: {
           animated: (body as { animated?: boolean }).animated,
         },
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
+    case "generate-story": {
+      // Queue the 30s story video for an existing post (script → scene
+      // images → clips → duration-fitted voiceover → stitched MP4 →
+      // "🎥 Story video" email). Same Inngest function as the daily run.
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "content-factory/story.video",
+        data: { postId },
       });
       return NextResponse.json({ ok: true, queued: true });
     }
