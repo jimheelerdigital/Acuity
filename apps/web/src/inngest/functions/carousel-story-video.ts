@@ -343,11 +343,15 @@ export const carouselStoryVideoFn = inngest.createFunction(
       }
     });
 
-    // ── Mux the voiceover onto the silent video (tempo-fit to length) ─
+    // ── Mux the voiceover onto the silent video (tempo-fit to length),
+    // with word-timed captions burned in (2026-08-12, per Keenan: most
+    // viewers watch muted — captions are the retention fix). Whisper
+    // transcribes the actual TTS audio so timing is exact; a failed
+    // transcription ships the video uncaptioned rather than not at all. ─
     const finalVideoUrl = await step.run("finalize-video", async () => {
       if (!voiceoverUrl) return silentVideo.url;
       try {
-        const { muxNarration } = await import(
+        const { muxNarration, transcribeCaptionChunks } = await import(
           "@/lib/content-factory/story-video"
         );
         const { uploadImage } = await import(
@@ -359,10 +363,17 @@ export const carouselStoryVideoFn = inngest.createFunction(
         ]);
         if (!videoRes.ok) throw new Error(`silent video re-download failed (${videoRes.status})`);
         if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
-        const muxed = await muxNarration(
-          Buffer.from(await videoRes.arrayBuffer()),
-          Buffer.from(await audioRes.arrayBuffer())
-        );
+        const videoBuf = Buffer.from(await videoRes.arrayBuffer());
+        const audioBuf = Buffer.from(await audioRes.arrayBuffer());
+        let captions;
+        try {
+          captions = await transcribeCaptionChunks(audioBuf);
+        } catch (capErr) {
+          console.error(
+            `[story-video] Caption transcription failed — shipping uncaptioned: ${capErr instanceof Error ? capErr.message : capErr}`
+          );
+        }
+        const muxed = await muxNarration(videoBuf, audioBuf, captions);
         return await uploadImage(muxed, `${basePath}/story-video.mp4`, "video/mp4");
       } catch (err) {
         console.error(

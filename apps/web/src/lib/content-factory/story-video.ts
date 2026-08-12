@@ -31,7 +31,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
@@ -105,7 +105,8 @@ NARRATION RULES:
 
 VISUAL RULES (each scene becomes ONE illustrated image of the same woman):
 - "visual": one sentence describing the scene — the same woman (~40s) in a specific everyday setting doing a specific quiet activity that matches the narration. Vary the setting each scene. No text in the image, no other adults in focus.
-- Every scene must be visually DIFFERENT (kitchen, car, hallway, bedroom, porch, bathroom mirror, sofa...).
+- Every scene must be visually DIFFERENT (kitchen, car, hallway, bedroom, porch, bathroom mirror, sofa...) — EXCEPT scene 6.
+- LOOP RULE: scene 6 returns to the SAME setting, framing, and composition as scene 1 (the only allowed repeat) — just calmer, resolved. The video's last frame should flow seamlessly back into its first frame so rewatches feel intentional.
 - She is always fully clothed and NEVER inside a bathtub or shower. Bathroom scenes show her at the mirror or sitting on the closed edge of the tub. She is always already settled in a stable seated or standing position that she can hold for the whole clip.
 
 MOTION RULES (each image is animated for a few seconds — the character's movement):
@@ -362,6 +363,61 @@ export async function generateVoiceover(narration: string): Promise<Buffer> {
   return buffer;
 }
 
+// ─── Burned-in captions (2026-08-12, per Keenan) ────────────────────────────
+// Most viewers watch muted, so the voiceover is transcribed with word-level
+// timestamps and burned into the video as short, precisely-timed chunks.
+
+export interface CaptionChunk {
+  text: string;
+  /** Seconds, relative to the voiceover AUDIO (pre-tempo-fit). */
+  start: number;
+  end: number;
+}
+
+/**
+ * Transcribe the voiceover MP3 with whisper-1 word timestamps and group
+ * the words into short caption chunks (~3-4 words, broken on pauses).
+ */
+export async function transcribeCaptionChunks(audio: Buffer): Promise<CaptionChunk[]> {
+  const res = (await openai().audio.transcriptions.create({
+    file: await toFile(audio, "voiceover.mp3", { type: "audio/mpeg" }),
+    model: "whisper-1",
+    response_format: "verbose_json",
+    timestamp_granularities: ["word"],
+  })) as unknown as { words?: { word: string; start: number; end: number }[] };
+
+  const words = Array.isArray(res.words) ? res.words : [];
+  if (words.length < 5) {
+    throw new Error(`Whisper returned only ${words.length} word timestamps`);
+  }
+
+  const chunks: CaptionChunk[] = [];
+  let cur: { word: string; start: number; end: number }[] = [];
+  const flush = () => {
+    if (cur.length === 0) return;
+    chunks.push({
+      text: cur.map((w) => w.word.trim()).join(" "),
+      start: cur[0].start,
+      end: cur[cur.length - 1].end,
+    });
+    cur = [];
+  };
+  for (const w of words) {
+    const gap = cur.length > 0 ? w.start - cur[cur.length - 1].end : 0;
+    const chars = cur.reduce((n, x) => n + x.word.trim().length + 1, 0);
+    if (cur.length >= 4 || gap > 0.6 || chars + w.word.trim().length > 24) flush();
+    cur.push(w);
+  }
+  flush();
+
+  // Hold each caption on screen until the next one starts (no dead gaps);
+  // the last one lingers half a second.
+  for (let i = 0; i < chunks.length; i++) {
+    chunks[i].end = i < chunks.length - 1 ? chunks[i + 1].start : chunks[i].end + 0.5;
+  }
+  return chunks;
+}
+
 /** Resolve the bundled ffmpeg binary path (null if unavailable). */
 function ffmpegPath(): string | null {
   try {
@@ -480,14 +536,26 @@ export async function stitchStoryVideo(clips: Buffer[]): Promise<Buffer> {
 
 /**
  * Mux the voiceover onto the already-stitched silent video (2026-08-12).
- * The video stream is copied (no re-encode). If the audio runs longer
- * than the video it is gently sped up (atempo, capped at 1.18×) so the
- * narration lands on the video's end; any tiny remainder is trimmed with
- * -shortest. If the audio is shorter, the video keeps its full length
- * and the audio simply ends early — -shortest is NOT used in that case
- * because it would trim the video.
+ * If the audio runs longer than the video it is gently sped up (atempo,
+ * capped at 1.18×) so the narration lands on the video's end; any tiny
+ * remainder is trimmed with -shortest. If the audio is shorter, the
+ * video keeps its full length and the audio simply ends early —
+ * -shortest is NOT used in that case because it would trim the video.
+ *
+ * When `captions` are provided (whisper word timings, relative to the
+ * audio) they are burned in as timed drawtext chunks — timestamps are
+ * divided by the atempo factor so the words stay frame-accurate even
+ * when the audio is sped up. Captions sit at 30% height: the scene
+ * images keep the top 45% calm and her face in the lower half, so this
+ * zone never covers a face and clears the mobile UI's top 15%. Without
+ * captions (or if the font can't be resolved) the video stream is
+ * copied unchanged.
  */
-export async function muxNarration(video: Buffer, audio: Buffer): Promise<Buffer> {
+export async function muxNarration(
+  video: Buffer,
+  audio: Buffer,
+  captions?: CaptionChunk[]
+): Promise<Buffer> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
 
@@ -502,13 +570,47 @@ export async function muxNarration(video: Buffer, audio: Buffer): Promise<Buffer
     const videoSec = await probeFileDuration(bin, videoPath);
     const audioSec = await probeFileDuration(bin, audioPath);
 
+    let factor = 1;
     const audioArgs: string[] = [];
     if (audioSec > videoSec + 0.15) {
-      const factor = Math.min(audioSec / videoSec, 1.18);
+      factor = Math.min(audioSec / videoSec, 1.18);
       audioArgs.push("-filter:a", `atempo=${factor.toFixed(4)}`, "-shortest");
       console.log(
         `[story-video] Voiceover ${audioSec.toFixed(1)}s vs video ${videoSec.toFixed(1)}s — atempo ${factor.toFixed(3)}`
       );
+    }
+
+    let videoArgs: string[] = ["-c:v", "copy"];
+    if (captions && captions.length > 0) {
+      const { ensureFontFile } = await import("./compose");
+      const fontPath = await ensureFontFile("Bold");
+      if (fontPath) {
+        // One drawtext per chunk; textfile= sidesteps drawtext's brutal
+        // text-escaping rules (apostrophes, commas, colons).
+        const filters = captions.map((c, i) => {
+          const tf = path.join(dir, `cap-${i}.txt`);
+          fs.writeFileSync(tf, c.text);
+          const s = (c.start / factor).toFixed(2);
+          const e = (c.end / factor).toFixed(2);
+          return (
+            `drawtext=fontfile='${fontPath}':textfile='${tf}'` +
+            `:x=(w-text_w)/2:y=h*0.30:fontsize=58:fontcolor=white` +
+            `:borderw=7:bordercolor=black@0.85:enable='between(t,${s},${e})'`
+          );
+        });
+        videoArgs = [
+          "-vf", filters.join(","),
+          "-c:v", "libx264",
+          "-preset", "fast",
+          "-crf", "23",
+          "-pix_fmt", "yuv420p",
+        ];
+        console.log(`[story-video] Burning ${captions.length} caption chunks`);
+      } else {
+        console.warn(
+          "[story-video] Caption font unavailable — shipping without burned-in captions"
+        );
+      }
     }
 
     await runFfmpeg(bin, [
@@ -518,7 +620,7 @@ export async function muxNarration(video: Buffer, audio: Buffer): Promise<Buffer
       "-i", audioPath,
       "-map", "0:v",
       "-map", "1:a",
-      "-c:v", "copy",
+      ...videoArgs,
       ...audioArgs,
       "-c:a", "aac",
       "-b:a", "128k",

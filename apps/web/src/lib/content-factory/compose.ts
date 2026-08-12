@@ -25,7 +25,7 @@ const PADDING_X = 72; // horizontal padding for text
  * Checks local paths first (local dev), then downloads from the CDN
  * and caches in /tmp/ (Lambda). Returns null if all attempts fail.
  */
-async function ensureFontFile(
+export async function ensureFontFile(
   variant: "Bold" | "Medium" = "Bold"
 ): Promise<string | null> {
   const filename = `Poppins-${variant}.ttf`;

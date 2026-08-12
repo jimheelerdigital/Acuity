@@ -9,6 +9,25 @@ import type { CarouselTopic } from "./topics";
 
 const CLOSING_LINE = "Ripple — debrief daily. See your life clearly. 🌊";
 
+// First caption line (2026-08-12, per Keenan): only this line shows in
+// the feed before "...more", so it must be a SECOND hook — never a
+// restatement of the headline the cover already shows. {n} is replaced
+// with a deterministic reason number so the tease is specific.
+const FIRST_LINE_HOOKS = [
+  "Number {n} is the one nobody says out loud.",
+  "You'll want to argue with number {n}. That's the point.",
+  "Be honest with yourself about number {n}.",
+  "The last one is the one you'll send her.",
+  "If nobody's said it to you today — this is for you.",
+  "Read number {n} twice.",
+];
+
+// Natural-language keyword line for Instagram caption search (captions
+// are indexed now) — free discovery for the exact phrases our audience
+// actually types.
+const SEO_LINE =
+  "For women in their 40s carrying the mental load — burnout, invisible labor, overthinking, and finally hearing yourself again.";
+
 // Engagement CTAs — every caption asks for a comment, a save, and a
 // share. These three signals outrank likes in the algorithm. One line
 // is picked per pool, deterministically by slug, so captions vary
@@ -91,6 +110,17 @@ function pickHashtags(topic: CarouselTopic): string[] {
 export function buildCaption(topic: CarouselTopic, withheldReason?: string): string {
   const lines: string[] = [];
 
+  // First line = second hook (the only line visible before "...more").
+  // {n} points at a deterministic mid-list reason so the tease is real.
+  const teaseN = Math.min(
+    topic.reasons.length,
+    2 + (Math.abs(topic.slug.length * 7) % Math.max(1, topic.reasons.length - 1))
+  );
+  lines.push(
+    pickBySlug(topic.slug, FIRST_LINE_HOOKS, 2).replace("{n}", String(teaseN))
+  );
+  lines.push("");
+
   // Headline
   lines.push(topic.headline);
   lines.push("");
@@ -108,6 +138,8 @@ export function buildCaption(topic: CarouselTopic, withheldReason?: string): str
   lines.push(pickBySlug(topic.slug, SAVE_SHARE_CTAS, 1));
   lines.push("");
   lines.push(CLOSING_LINE);
+  lines.push("");
+  lines.push(SEO_LINE);
   lines.push("");
 
   // Hashtags
