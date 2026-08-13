@@ -375,6 +375,10 @@ export async function sendStoryVideoEmail(
     totalScenes: number;
     narration: string;
     silent: boolean;
+    /** Measured length of the assembled video — the recording target. */
+    durationSec?: number;
+    /** Why TTS failed, when it did (shown so the cause is never a mystery). */
+    voiceoverError?: string | null;
   }
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
@@ -403,8 +407,21 @@ export async function sendStoryVideoEmail(
     opts.sceneCount < opts.totalScenes
       ? `<p style="font-size:12px;color:#E06C75;">⚠️ ${opts.totalScenes - opts.sceneCount} of ${opts.totalScenes} scenes failed to render — the video runs shorter than 30s, but the voiceover was rewritten to match its actual length.</p>`
       : "";
+  // When the voiceover failed, the email LEADS with the record-it-yourself
+  // block (2026-08-13, per Keenan): the exact script, the target length,
+  // and a note that matching captions are already burned into the video —
+  // so the video + script stay cohesive and he can record over it.
+  const durationLabel = opts.durationSec
+    ? `${Math.round(opts.durationSec)} seconds`
+    : "~30 seconds";
   const silentNote = opts.silent
-    ? `<p style="font-size:12px;color:#E06C75;">⚠️ Voiceover generation failed — this video is silent. The narration script is below if you want to record or caption it yourself.</p>`
+    ? `
+    <div style="background:#2A1A12;border:1px solid #F97E4E;border-radius:12px;padding:16px;margin:0 0 16px;">
+      <p style="font-size:13px;font-weight:600;color:#F97E4E;margin:0 0 8px;">🎙️ Voiceover failed — record this yourself</p>
+      <p style="font-size:12px;color:#DDD;margin:0 0 10px;line-height:1.5;">The video has NO audio, but the script below is already burned in as on-screen captions, timed to the video. Record the script in a voice memo (aim for <strong>${durationLabel}</strong> — the captions pace you), then add it as the audio when you post.</p>
+      <pre style="white-space:pre-wrap;font-size:14px;color:#FBFAF6;font-family:-apple-system,sans-serif;margin:0;line-height:1.6;background:#1A1A1A;border-radius:8px;padding:12px;">${escapeHtml(opts.narration)}</pre>
+      ${opts.voiceoverError ? `<p style="font-size:10px;color:#888;margin:10px 0 0;font-family:monospace;">Failure reason: ${escapeHtml(opts.voiceoverError.slice(0, 200))}</p>` : ""}
+    </div>`
     : "";
 
   const html = `
@@ -420,7 +437,7 @@ export async function sendStoryVideoEmail(
     ${silentNote}
 
     <p style="font-size:14px;color:#DDD;line-height:1.6;">
-      Fully stitched ~30s vertical video${opts.silent ? "" : " with voiceover"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
+      Fully stitched ~30s vertical video${opts.silent ? " with the script burned in as captions (no audio)" : " with voiceover"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
     </p>
 
     <div style="text-align:center;margin:20px 0;">
@@ -434,10 +451,10 @@ export async function sendStoryVideoEmail(
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
 
-    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
+    ${opts.silent ? "" : `<div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
       <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Voiceover script</p>
       <pre style="white-space:pre-wrap;font-size:13px;color:#BBB;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(opts.narration)}</pre>
-    </div>
+    </div>`}
 
     <p style="font-size:11px;color:#555;text-align:center;margin-top:20px;">
       Ripple Content Factory · Automated story video delivery
@@ -451,14 +468,16 @@ export async function sendStoryVideoEmail(
     opts.sceneCount < opts.totalScenes
       ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; voiceover was rewritten to match.`
       : "",
-    opts.silent ? "NOTE: voiceover failed — video is silent. Script below." : "",
+    opts.silent
+      ? `NOTE: voiceover failed — the video has NO audio, but the script is burned in as captions. Record the script below (aim for ${durationLabel}) and add it as audio when you post.${opts.voiceoverError ? ` Failure reason: ${opts.voiceoverError.slice(0, 200)}` : ""}`
+      : "",
     "",
     `Download: ${downloadUrl}`,
     "",
     "── Caption ──",
     post.caption,
     "",
-    "── Voiceover script ──",
+    opts.silent ? "── RECORD THIS SCRIPT ──" : "── Voiceover script ──",
     opts.narration,
   ].filter(Boolean).join("\n");
 
@@ -466,7 +485,7 @@ export async function sendStoryVideoEmail(
   const payload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    subject: `[Ripple Content] 🎥 Story video — ${post.headline}`,
+    subject: `[Ripple Content] ${opts.silent ? "🎙️ Story video — RECORD VOICEOVER" : "🎥 Story video"} — ${post.headline}`,
     html,
     text,
   };

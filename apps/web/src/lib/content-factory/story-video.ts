@@ -36,7 +36,7 @@ import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { isMood, type Mood, MOOD_EXPRESSIONS, VISUAL_DNA_NOTEXT, SCENE_SETTINGS, STYLE_LANES, type StyleLane } from "./brand";
+import { isMood, type Mood, MOOD_EXPRESSIONS, VISUAL_DNA_NOTEXT, STYLE_LANES, type StyleLane } from "./brand";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -326,14 +326,16 @@ export function buildStoryImagePrompt(opts: {
   const lanePrefix =
     opts.lane in STYLE_LANES ? STYLE_LANES[opts.lane as StyleLane] : STYLE_LANES.cinematicReal;
   const moodLine = isMood(opts.scene.mood) ? MOOD_EXPRESSIONS[opts.scene.mood] : "";
-  const sceneHint = SCENE_SETTINGS[(opts.theme.length + opts.sceneIndex) % SCENE_SETTINGS.length];
   return [
     lanePrefix,
     opts.colorPrompt ?? "",
     `An illustrated scene: ${opts.scene.visual}`,
-    // Claude's visual carries the setting; the rotating hint is a soft
-    // backup so scenes stay varied even when the visual is generic.
-    opts.scene.visual.toLowerCase().includes("setting") ? "" : sceneHint,
+    // NO rotating SCENE_SETTINGS hint here (removed 2026-08-13, per
+    // Keenan: the hint injected a second, conflicting location into
+    // almost every scene, so the video stopped matching the script).
+    // The script's "visual" sentence is the single source of truth for
+    // the setting — the prompt already forces one specific setting per
+    // scene, so nothing else may contradict it.
     moodLine,
     `Mood context: ${opts.theme} — self-reflection and mental load, for women. The SAME woman appears in a series of scenes; keep her look consistent: ~40s, warm, natural.`,
     VISUAL_DNA_NOTEXT,
@@ -464,6 +466,51 @@ export async function transcribeCaptionChunks(audio: Buffer): Promise<CaptionChu
   // the last one lingers half a second.
   for (let i = 0; i < chunks.length; i++) {
     chunks[i].end = i < chunks.length - 1 ? chunks[i + 1].start : chunks[i].end + 0.5;
+  }
+  return chunks;
+}
+
+/**
+ * Build caption chunks straight from the narration TEXT when there is no
+ * voiceover audio to transcribe (2026-08-13, per Keenan: a silent video
+ * must still tell the story on screen). Words are grouped with the same
+ * rules as the Whisper path (~3-4 words, ≤24 chars) and the video's
+ * measured duration is distributed across chunks proportionally to their
+ * character length — a close stand-in for spoken pacing. These captions
+ * also work as a teleprompter when Keenan records the voiceover himself.
+ */
+export function estimateCaptionChunks(
+  narration: string,
+  durationSec: number
+): CaptionChunk[] {
+  const words = narration.split(/\s+/).filter(Boolean);
+  if (words.length === 0 || !Number.isFinite(durationSec) || durationSec <= 0) {
+    return [];
+  }
+
+  const texts: string[] = [];
+  let cur: string[] = [];
+  const flush = () => {
+    if (cur.length === 0) return;
+    texts.push(cur.join(" "));
+    cur = [];
+  };
+  for (const w of words) {
+    const chars = cur.reduce((n, x) => n + x.length + 1, 0);
+    if (cur.length >= 4 || chars + w.length > 24) flush();
+    cur.push(w);
+    // Sentence-ending punctuation is a natural pause — break the chunk.
+    if (/[.!?]$/.test(w)) flush();
+  }
+  flush();
+
+  const totalChars = texts.reduce((n, t) => n + t.length, 0);
+  const chunks: CaptionChunk[] = [];
+  let t = 0;
+  for (const text of texts) {
+    const span = (text.length / totalChars) * durationSec;
+    chunks.push({ text, start: t, end: t + span });
+    t += span;
   }
   return chunks;
 }
@@ -600,14 +647,21 @@ export async function stitchStoryVideo(clips: Buffer[]): Promise<Buffer> {
  * zone never covers a face and clears the mobile UI's top 15%. Without
  * captions (or if the font can't be resolved) the video stream is
  * copied unchanged.
+ *
+ * `audio` may be null (2026-08-13, per Keenan): when the voiceover
+ * failed, the estimated script captions are still burned in so the
+ * silent video reflects the script — no audio stream is added.
  */
 export async function muxNarration(
   video: Buffer,
-  audio: Buffer,
+  audio: Buffer | null,
   captions?: CaptionChunk[]
 ): Promise<Buffer> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+  if (!audio && (!captions || captions.length === 0)) {
+    throw new Error("muxNarration called with neither audio nor captions");
+  }
 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "story-mux-"));
   try {
@@ -615,19 +669,20 @@ export async function muxNarration(
     const audioPath = path.join(dir, "voiceover.mp3");
     const outPath = path.join(dir, "out.mp4");
     fs.writeFileSync(videoPath, video);
-    fs.writeFileSync(audioPath, audio);
-
-    const videoSec = await probeFileDuration(bin, videoPath);
-    const audioSec = await probeFileDuration(bin, audioPath);
+    if (audio) fs.writeFileSync(audioPath, audio);
 
     let factor = 1;
     const audioArgs: string[] = [];
-    if (audioSec > videoSec + 0.15) {
-      factor = Math.min(audioSec / videoSec, 1.18);
-      audioArgs.push("-filter:a", `atempo=${factor.toFixed(4)}`, "-shortest");
-      console.log(
-        `[story-video] Voiceover ${audioSec.toFixed(1)}s vs video ${videoSec.toFixed(1)}s — atempo ${factor.toFixed(3)}`
-      );
+    if (audio) {
+      const videoSec = await probeFileDuration(bin, videoPath);
+      const audioSec = await probeFileDuration(bin, audioPath);
+      if (audioSec > videoSec + 0.15) {
+        factor = Math.min(audioSec / videoSec, 1.18);
+        audioArgs.push("-filter:a", `atempo=${factor.toFixed(4)}`, "-shortest");
+        console.log(
+          `[story-video] Voiceover ${audioSec.toFixed(1)}s vs video ${videoSec.toFixed(1)}s — atempo ${factor.toFixed(3)}`
+        );
+      }
     }
 
     let videoArgs: string[] = ["-c:v", "copy"];
@@ -667,13 +722,12 @@ export async function muxNarration(
       "-y",
       "-loglevel", "warning",
       "-i", videoPath,
-      "-i", audioPath,
-      "-map", "0:v",
-      "-map", "1:a",
+      ...(audio
+        ? ["-i", audioPath, "-map", "0:v", "-map", "1:a"]
+        : ["-map", "0:v", "-an"]),
       ...videoArgs,
       ...audioArgs,
-      "-c:a", "aac",
-      "-b:a", "128k",
+      ...(audio ? ["-c:a", "aac", "-b:a", "128k"] : []),
       "-movflags", "+faststart",
       outPath,
     ]);

@@ -324,8 +324,11 @@ export const carouselStoryVideoFn = inngest.createFunction(
       }
     });
 
-    // ── Voiceover (never blocks — video ships silent on failure) ─────
-    const voiceoverUrl = await step.run("generate-voiceover", async () => {
+    // ── Voiceover (never blocks — on failure the video ships without
+    // audio but WITH script captions burned in, and the email leads with
+    // the script so Keenan can record it himself; the failure reason is
+    // captured for the email, 2026-08-13) ────────────────────────────
+    const voiceover = await step.run("generate-voiceover", async () => {
       try {
         const { generateVoiceover } = await import(
           "@/lib/content-factory/story-video"
@@ -334,12 +337,14 @@ export const carouselStoryVideoFn = inngest.createFunction(
           "@/lib/content-factory/carousel-generate"
         );
         const mp3 = await generateVoiceover(narration);
-        return await uploadImage(mp3, `${basePath}/story-voiceover.mp3`, "audio/mpeg");
+        const url = await uploadImage(mp3, `${basePath}/story-voiceover.mp3`, "audio/mpeg");
+        return { url, error: null as string | null };
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.error(
-          `[story-video] Voiceover failed — video will ship silent: ${err instanceof Error ? err.message : err}`
+          `[story-video] Voiceover failed — video will ship with script captions only: ${msg}`
         );
-        return null;
+        return { url: null, error: msg };
       }
     });
 
@@ -348,41 +353,60 @@ export const carouselStoryVideoFn = inngest.createFunction(
     // viewers watch muted — captions are the retention fix). Whisper
     // transcribes the actual TTS audio so timing is exact; a failed
     // transcription ships the video uncaptioned rather than not at all. ─
-    const finalVideoUrl = await step.run("finalize-video", async () => {
-      if (!voiceoverUrl) return silentVideo.url;
+    const finalized = await step.run("finalize-video", async () => {
       try {
-        const { muxNarration, transcribeCaptionChunks } = await import(
-          "@/lib/content-factory/story-video"
-        );
+        const {
+          muxNarration,
+          transcribeCaptionChunks,
+          estimateCaptionChunks,
+        } = await import("@/lib/content-factory/story-video");
         const { uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
-        const [videoRes, audioRes] = await Promise.all([
-          fetch(silentVideo.url),
-          fetch(voiceoverUrl),
-        ]);
+        const videoRes = await fetch(silentVideo.url);
         if (!videoRes.ok) throw new Error(`silent video re-download failed (${videoRes.status})`);
-        if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
         const videoBuf = Buffer.from(await videoRes.arrayBuffer());
-        const audioBuf = Buffer.from(await audioRes.arrayBuffer());
+
+        let audioBuf: Buffer | null = null;
+        if (voiceover.url) {
+          const audioRes = await fetch(voiceover.url);
+          if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
+          audioBuf = Buffer.from(await audioRes.arrayBuffer());
+        }
+
+        // With audio: exact Whisper word timings. Without audio
+        // (voiceover failed): captions estimated from the script itself,
+        // spread over the measured duration — the silent video still
+        // reads as the story, and the captions double as a teleprompter
+        // for a self-recorded voiceover (2026-08-13, per Keenan).
         let captions;
-        try {
-          captions = await transcribeCaptionChunks(audioBuf);
-        } catch (capErr) {
-          console.error(
-            `[story-video] Caption transcription failed — shipping uncaptioned: ${capErr instanceof Error ? capErr.message : capErr}`
-          );
+        if (audioBuf) {
+          try {
+            captions = await transcribeCaptionChunks(audioBuf);
+          } catch (capErr) {
+            console.error(
+              `[story-video] Caption transcription failed — shipping uncaptioned: ${capErr instanceof Error ? capErr.message : capErr}`
+            );
+          }
+        } else {
+          captions = estimateCaptionChunks(narration, silentVideo.durationSec);
+        }
+
+        if (!audioBuf && (!captions || captions.length === 0)) {
+          return { url: silentVideo.url, voiced: false };
         }
         const muxed = await muxNarration(videoBuf, audioBuf, captions);
-        return await uploadImage(muxed, `${basePath}/story-video.mp4`, "video/mp4");
+        const url = await uploadImage(muxed, `${basePath}/story-video.mp4`, "video/mp4");
+        return { url, voiced: Boolean(audioBuf) };
       } catch (err) {
         console.error(
           `[story-video] Mux failed — shipping the silent video: ${err instanceof Error ? err.message : err}`
         );
-        return silentVideo.url;
+        return { url: silentVideo.url, voiced: false };
       }
     });
-    const voiced = finalVideoUrl !== silentVideo.url;
+    const finalVideoUrl = finalized.url;
+    const voiced = finalized.voiced;
 
     // ── Persist the story video URL on the post (admin download link) ─
     await step.run("save-story-url", async () => {
@@ -410,6 +434,8 @@ export const carouselStoryVideoFn = inngest.createFunction(
           totalScenes: script.scenes.length,
           narration,
           silent: !voiced,
+          durationSec: silentVideo.durationSec,
+          voiceoverError: voiceover.error,
         });
       } catch (err) {
         logger.error(
