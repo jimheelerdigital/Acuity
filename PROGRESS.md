@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-08-13] — Carousel slideshows now include every slide; comment-bait gap removed; cover asks an engagement question
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5b4de435
+
+### In plain English (for Keenan)
+Three fixes to the daily carousels. First, the animated slideshow you receive will now include EVERY slide — yesterday you got the cover and slides 2–6 but not slide 1, and a separate bug has been silently chopping the last reason off the compilation ever since we removed the CTA slide. If an animation fails to render, that slide now appears as a 4-second still image instead of vanishing. Second, the topic generator was deliberately leaving the most obvious reason off the list as comment bait ("comment MIRROR and I'll send it to you") — that's gone; every list is now complete, so a "6 ways to..." post actually shows all 6. Third, the cover now asks an engagement question like "Which one hits the hardest?" to spark comments instead — it varies per post based on the headline, and appears on both the static image and the animated video.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: `animateAll` targets are now `slides.filter(s => s.kind !== "CTA").slice(0, 8)` instead of the positional `slice(0, -1)` that dropped the final reason after CTA removal
+- apps/web/src/lib/content-factory/email.ts: compilation loop rebuilt — iterates all non-CTA `post.slides` in order, matching each to its animation by `order`; slides without an animation get a still clip from their JPEG; `videoBuffers` entries now carry `order`
+- apps/web/src/lib/content-factory/story-video.ts: new `stillImageClip(image, seconds)` helper (ffmpeg `-loop 1`, 1080x1920@30fps, guards against tiny output)
+- apps/web/src/lib/content-factory/generate-topic.ts: removed the ENGINEERED COMMENT GAP prompt section (replaced with a completeness requirement); `withheldReason` removed from output format, interface, and parsing
+- apps/web/src/lib/content-factory/caption.ts: removed `COMMENT_GAP_CTAS` and the withheld-reason note from `buildCaption`; new `coverEngagementLine(headline, slug)` with headline-family variations (signs/lies/reminders/questions/habits) plus defaults, picked deterministically via `pickBySlug`
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` accepts an optional `subline` rendered under the cover accent bar (smaller uppercase text)
+- apps/web/src/inngest/functions/carousel-daily.ts: computes the engagement line and passes it to both the static baked-text prompt (`coverSubline`) and the animated overlay; stopped writing `withheldReason` to the CarouselPost row
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` accepts `coverSubline` and instructs gpt-image-2 to bake the exact question below the headline on static covers
+- Prisma `withheldReason` column left in the schema (no db push needed); it's simply no longer written
+
+### Manual steps needed
+- [ ] After deploy: trigger a fresh animated carousel + story video so Keenan gets example emails with the new behavior (Claude Code / Keenan)
+
+### Notes
+- The missing slide 1 animation was a Higgsfield render failure that survived all retry waves — the still-clip fallback means a render failure can no longer produce a gap in the compilation
+- The missing LAST slide was a different bug: `slice(0, -1)` was written to exclude the CTA slide, but daily posts stopped generating CTA slides on 2026-08-12, so it started excluding the final reason instead
+- Engagement question uses regex families on the headline ("signs", "lies", "reminders", "questions", "habits") so the phrasing fits the content; falls back to generic variants like "Which one is you?"
+
 ## [2026-08-13] — Story videos self-rescue when the voiceover fails; scenes now match the script
 
 **Requested by:** Keenan
