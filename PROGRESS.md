@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-13] — Story videos self-rescue when the voiceover fails; scenes now match the script
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 20671292
+
+### In plain English (for Keenan)
+Two fixes after yesterday's silent story video. First, when the voiceover fails, the system no longer ships a mute video and moves on — it burns the script into the video as timed on-screen captions (so the video still tells the story and the captions pace you like a teleprompter), and the email now leads with a "record this yourself" block containing the exact script, the target length in seconds, and the actual reason the voiceover failed. The subject line flags it too, so you can't miss it. Second, the video will now actually match the script: a bug was injecting a random second location (e.g. "bathroom mirror") into almost every scene's image prompt, fighting the location the script asked for — that's why scenes felt disconnected from the narration. Removed.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: removed the rotating SCENE_SETTINGS hint from `buildStoryImagePrompt` — the `includes("setting")` guard almost never matched, so a conflicting location was appended to nearly every scene prompt (root cause of script/video mismatch); new `estimateCaptionChunks(narration, durationSec)` chunks the script text (~3-4 words, sentence-break aware) and distributes the measured video duration proportionally by chunk length; `muxNarration` now accepts `audio: Buffer | null` — null burns captions only (`-an`, no audio input, factor 1)
+- apps/web/src/inngest/functions/carousel-story-video.ts: generate-voiceover step returns `{ url, error }` (failure reason captured); finalize-video always runs — with audio it uses Whisper timings as before, without audio it burns estimated script captions; explicit `{ url, voiced }` return replaces the old URL-comparison voiced check
+- apps/web/src/lib/content-factory/email.ts: `sendStoryVideoEmail` opts gain `durationSec` + `voiceoverError`; silent emails lead with a record-it-yourself block (script, target seconds, failure reason) and get a "🎙️ … RECORD VOICEOVER" subject; script block no longer duplicated when silent
+- No schema changes, no new env vars
+
+### Manual steps needed
+- [ ] Verify tomorrow's story video: scenes should match the narration; if the voiceover fails again, the email's "Failure reason" line will say exactly why — send it to a Claude session to fix the root cause (Keenan)
+
+### Notes
+- Both TTS providers failing in the same run is suspicious: ElevenLabs falls back to OpenAI, and OpenAI TTS uses the same key as the scene images (which succeeded). Prime suspects: gpt-4o-mini-tts model access on the key, or ElevenLabs key not yet active + transient OpenAI error. The new failure-reason surfacing in the email exists precisely so the next occurrence is diagnosable without Vercel log archaeology.
+- Estimated captions (no-audio path) are proportional-by-characters, not word-exact — close enough to read naturally, and intentionally usable as a recording pace guide. If Keenan records his own VO, his audio replaces nothing (video has no audio track) — he adds it in the posting app.
+- `estimateCaptionChunks` verified locally: an 80-word script over 27.4s produces 11 chunks spanning exactly 0→27.4s
+
+---
+
 ## [2026-08-12] — Natural ElevenLabs voice for story videos
 
 **Requested by:** Keenan
