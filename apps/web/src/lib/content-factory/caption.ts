@@ -39,15 +39,75 @@ const COMMENT_CTAS = [
   "If you made it to the last one, tell me which was yours 👇",
 ];
 
-// Engineered comment gap (2026-08-12, per Keenan): when the topic has a
-// deliberately withheld reason, the comment CTA points at the omission —
-// "add the one I missed" pulls far more comments than "which is you".
-const COMMENT_GAP_CTAS = [
-  "I left the most obvious one off this list on purpose. Comment it 👇",
-  "There's one missing — the one you thought of first. Comment it 👇",
-  "I know I skipped one. If you caught it, put it in the comments 👇",
-  "The biggest one isn't on this list. Tell me what it is 👇",
+// NOTE (2026-08-13, per Keenan): the "engineered comment gap" (a
+// deliberately withheld reason + "comment the one I missed" CTA) is
+// REMOVED — the list must be complete. The engagement ask now lives on
+// the cover itself (see coverEngagementLine).
+
+// On-cover engagement question (2026-08-13, per Keenan): the cover
+// asks what they think — "which one hits the hardest" — to pull
+// comments from the first frame. Phrasing follows the headline's noun
+// (signs → "which sign", lies → "which one do you tell") and one
+// variant is picked deterministically by slug so posts vary but each
+// post is stable across re-renders.
+const ENGAGEMENT_LINE_FAMILIES: { match: RegExp; lines: string[] }[] = [
+  {
+    match: /\bsigns?\b/i,
+    lines: [
+      "Which sign is you?",
+      "How many of these are you?",
+      "Which one called you out?",
+    ],
+  },
+  {
+    match: /\blies\b/i,
+    lines: [
+      "Which one do you tell the most?",
+      "Which one did you tell today?",
+      "Which one felt personal?",
+    ],
+  },
+  {
+    match: /\breminders?\b/i,
+    lines: [
+      "Which one did you need today?",
+      "Which one are you keeping?",
+      "Which one hit home?",
+    ],
+  },
+  {
+    match: /\bquestions?\b/i,
+    lines: [
+      "Which one are you avoiding?",
+      "Which one stopped you?",
+      "Which one can't you answer?",
+    ],
+  },
+  {
+    match: /\bhabits?\b/i,
+    lines: [
+      "Which one is yours?",
+      "Which one hits the hardest?",
+      "Which one called you out?",
+    ],
+  },
 ];
+
+const ENGAGEMENT_LINES_DEFAULT = [
+  "Which one hits the hardest?",
+  "Which one is you?",
+  "Which one hit home?",
+  "Be honest — which one is you?",
+];
+
+/**
+ * The engagement question shown on the cover slide (static + animated).
+ * Keep it short — it renders as a sub-line under the headline.
+ */
+export function coverEngagementLine(headline: string, slug: string): string {
+  const family = ENGAGEMENT_LINE_FAMILIES.find((f) => f.match.test(headline));
+  return pickBySlug(slug, family ? family.lines : ENGAGEMENT_LINES_DEFAULT, 3);
+}
 
 const SAVE_SHARE_CTAS = [
   "Save this for the week you need the reminder. Send it to the friend who needs it today. 🤍",
@@ -107,7 +167,7 @@ function pickHashtags(topic: CarouselTopic): string[] {
   return [...selected];
 }
 
-export function buildCaption(topic: CarouselTopic, withheldReason?: string): string {
+export function buildCaption(topic: CarouselTopic): string {
   const lines: string[] = [];
 
   // First line = second hook (the only line visible before "...more").
@@ -131,9 +191,7 @@ export function buildCaption(topic: CarouselTopic, withheldReason?: string): str
   });
 
   lines.push("");
-  lines.push(
-    pickBySlug(topic.slug, withheldReason ? COMMENT_GAP_CTAS : COMMENT_CTAS)
-  );
+  lines.push(pickBySlug(topic.slug, COMMENT_CTAS));
   lines.push("");
   lines.push(pickBySlug(topic.slug, SAVE_SHARE_CTAS, 1));
   lines.push("");
@@ -145,14 +203,6 @@ export function buildCaption(topic: CarouselTopic, withheldReason?: string): str
   // Hashtags
   const tags = pickHashtags(topic);
   lines.push(tags.join(" "));
-
-  // Internal note — Keenan writes the posted caption himself, but he
-  // needs to know the withheld reason to recognize it in the comments.
-  if (withheldReason) {
-    lines.push("");
-    lines.push("―――");
-    lines.push(`(Internal — don't post) Withheld reason: ${withheldReason}`);
-  }
 
   return lines.join("\n");
 }

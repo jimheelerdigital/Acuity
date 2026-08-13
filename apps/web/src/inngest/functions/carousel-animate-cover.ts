@@ -7,8 +7,8 @@ import { inngest } from "@/inngest/client";
  *
  * Two modes (2026-08-10):
  * - default: animate the cover only (admin action, one-off pipeline)
- * - `animateAll: true`: animate EVERY slide except the last one (the CTA)
- *   — used by the second daily post. Each video is 4s on the current
+ * - `animateAll: true`: animate EVERY non-CTA slide (cover + all reasons)
+ *   — used by the animated daily post. Each video is 4s on the current
  *   (dop/lite) model.
  *
  * Submits in WAVES of at most 4 jobs (2026-08-10): Higgsfield silently
@@ -70,9 +70,9 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       });
     };
 
-    // 3 waves × 4 jobs covers the 7-slide max plus one retry wave for
-    // render failures. Higgsfield silently drops submits past ~4
-    // concurrent jobs, so never submit more than 4 per wave.
+    // 3 waves × 4 jobs covers the 8-slide max (cover + 7 reasons) plus a
+    // retry wave for render failures. Higgsfield silently drops submits
+    // past ~4 concurrent jobs, so never submit more than 4 per wave.
     const MAX_ATTEMPTS = 3;
     const MAX_CONCURRENT_JOBS = 4;
     let totalStored = 0;
@@ -110,10 +110,13 @@ export const carouselAnimateCoverFn = inngest.createFunction(
           return { skipped: `No slides for post ${postId}` } as const;
         }
 
-        // animateAll: every slide except the last (the CTA), hard-capped at
-        // 7 videos (cover + 6 reasons) as a cost ceiling. Default: cover only.
+        // animateAll: EVERY non-CTA slide (2026-08-13, per Keenan: the old
+        // slice(0, -1) assumed a trailing CTA slide, but daily posts
+        // dropped the CTA on 2026-08-12 — so it was silently chopping the
+        // last reason off the slideshow). Filter by kind, not position.
+        // Hard cap 8 (cover + 7 reasons) as a cost ceiling. Default: cover only.
         const targets = animateAll
-          ? slides.slice(0, -1).slice(0, 7)
+          ? slides.filter((s) => s.kind !== "CTA").slice(0, 8)
           : slides.filter((s) => s.kind === "COVER");
 
         const topic = CAROUSEL_TOPICS.find(

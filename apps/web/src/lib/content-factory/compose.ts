@@ -265,7 +265,13 @@ export async function renderSlideTextOverlay(
   text: string,
   kind: "COVER" | "REASON",
   slideNumber?: number,
-  accent: string = BURNT_ORANGE
+  accent: string = BURNT_ORANGE,
+  /**
+   * COVER only (2026-08-13, per Keenan): a short engagement question
+   * ("Which one hits the hardest?") rendered as a smaller line under the
+   * accent bar — the ask lives on the cover itself, static AND animated.
+   */
+  subline?: string
 ): Promise<Buffer> {
   const fontPath = await ensureFontFile("Bold");
   const display = text.toUpperCase();
@@ -338,6 +344,23 @@ export async function renderSlideTextOverlay(
       { input: barShadow, top: cursorY + 20, left: barLeft + 3 },
       { input: bar, top: cursorY + 16, left: barLeft }
     );
+    cursorY += barH + 16;
+
+    // Engagement sub-line under the bar (smaller, same shadow treatment).
+    if (subline) {
+      const subLines = wordWrap(subline.toUpperCase(), 26);
+      const subShadowMarkup = buildLinesMarkup(subLines, 38, "#111111", "#111111");
+      const subMainMarkup = buildLinesMarkup(subLines, 38, "#FFFFFF", accent);
+      const subShadow = await renderMarkup(subShadowMarkup, fontPath, maxTextW, 8, 6);
+      const subMain = await renderMarkup(subMainMarkup, fontPath, maxTextW, 8, 6);
+      const subBlurred = await sharp(subShadow.buffer).blur(5).png().toBuffer();
+      const subLeft = Math.round((OUTPUT_W - subMain.width) / 2);
+      const subTop = cursorY + 26;
+      composites.push(
+        { input: subBlurred, top: subTop + 4, left: subLeft + 3 },
+        { input: subMain.buffer, top: subTop, left: subLeft }
+      );
+    }
   }
 
   return sharp({

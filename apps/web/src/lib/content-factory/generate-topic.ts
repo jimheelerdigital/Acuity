@@ -31,11 +31,6 @@ export interface GeneratedTopic {
   style: "hook" | "listicle";
   lane: StyleLane;
   reasons: string[];
-  /**
-   * Engineered comment gap (2026-08-12): the most obvious reason,
-   * deliberately kept off the slides so viewers add it in the comments.
-   */
-  withheldReason?: string;
   /** Dominant mood of the post — drives cover expression + motion fallback. */
   mood?: Mood;
   /** Bespoke emotion direction for the cover slide. */
@@ -89,8 +84,7 @@ RULES FOR REASON SLIDES:
 - The last reason should feel like a mic drop or emotional climax — the one she sends to a friend
 - US English spelling only
 
-ENGINEERED COMMENT GAP:
-Also write "withheldReason" — the MOST OBVIOUS, most universally relatable reason for this topic, deliberately kept OFF the slide list. The list should feel almost complete but missing the one everyone thinks of first, so viewers rush to the comments to add it ("how did you not include X??"). The withheld reason must genuinely belong on the list (same voice, same specificity) and must NOT overlap with any listed reason. It is used as comment bait in the caption, never shown on a slide.
+COMPLETENESS (2026-08-13, per Keenan): the list must be COMPLETE — include the most obvious, most relatable reason on the slides. Never deliberately withhold one; a list that visibly skips the one everyone thinks of first reads as broken, not clever.
 
 CONTENT THEMES TO DRAW FROM:
 - Mental load and invisible labor
@@ -123,7 +117,6 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "headline": "the carousel headline",
   "style": "hook" or "listicle",
   "reasons": ["reason 1", "reason 2", ...],
-  "withheldReason": "the obvious one deliberately left off the list",
   "reasonCount": 5 or 6 or 7 or 8 or 9 or 10,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
   "cover": { "mood": "...", "motion": "..." },
@@ -252,10 +245,6 @@ Return ONLY valid JSON, no other text.`;
       style: parsed.style === "hook" ? "hook" : "listicle",
       lane,
       reasons,
-      withheldReason:
-        typeof parsed.withheldReason === "string" && parsed.withheldReason.trim()
-          ? parsed.withheldReason.trim()
-          : undefined,
       mood,
       coverEmotion: parseEmotion(parsed.cover),
       reasonEmotions,

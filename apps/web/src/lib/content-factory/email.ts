@@ -110,7 +110,7 @@ export async function sendCarouselEmail(
   // one slide-video email, pre-assembled — replaces his manual clipping)
   // and sent in a single follow-up email as a real attachment: tap and
   // hold → Save Video, straight from the email.
-  const videoBuffers: { filename: string; buf: Buffer }[] = [];
+  const videoBuffers: { filename: string; buf: Buffer; order: number }[] = [];
   for (const slide of videoSlides) {
     try {
       const res = await fetch(slide.videoUrl!);
@@ -118,7 +118,7 @@ export async function sendCarouselEmail(
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         const num = String(slide.order + 1).padStart(2, "0");
-        videoBuffers.push({ filename: `${num}-${slide.kind.toLowerCase()}-animated.mp4`, buf });
+        videoBuffers.push({ filename: `${num}-${slide.kind.toLowerCase()}-animated.mp4`, buf, order: slide.order });
       }
     } catch (err) {
       console.warn(`[carousel-email] Failed to fetch video for slide ${slide.order}: ${err instanceof Error ? err.message : err}`);
@@ -264,13 +264,43 @@ export async function sendCarouselEmail(
     let attachment: { filename: string; buf: Buffer } | null = null;
     let compilationUrl: string | null = null;
     try {
-      if (videoBuffers.length === 1) {
-        // Nothing to stitch (e.g. cover-only animation) — ship as-is.
+      if (videoBuffers.length === 1 && post.slides.length <= 1) {
+        // Single-slide post — nothing to assemble.
         attachment = videoBuffers[0];
         compilationUrl = videoSlides[0]?.videoUrl ?? null;
       } else {
-        const { stitchStoryVideo } = await import("./story-video");
-        const stitched = await stitchStoryVideo(videoBuffers.map((v) => v.buf));
+        // The compilation contains EVERY non-CTA slide in order
+        // (2026-08-13, per Keenan: the slideshow must go through ALL the
+        // reasons). Slides whose animation failed every retry wave are
+        // included as 4s still clips of their static JPEG instead of
+        // being skipped.
+        const { stitchStoryVideo, stillImageClip } = await import("./story-video");
+        const segments: Buffer[] = [];
+        for (const slide of post.slides) {
+          if (slide.kind === "CTA") continue;
+          const animated = videoBuffers.find((v) => v.order === slide.order);
+          if (animated) {
+            segments.push(animated.buf);
+            continue;
+          }
+          try {
+            const res = await fetch(slide.imageUrl);
+            if (!res.ok) throw new Error(`image fetch failed (${res.status})`);
+            const still = await stillImageClip(
+              Buffer.from(await res.arrayBuffer()),
+              4
+            );
+            segments.push(still);
+            console.log(
+              `[carousel-email] Slide ${slide.order} has no animation — using a 4s still clip`
+            );
+          } catch (stillErr) {
+            console.error(
+              `[carousel-email] Still clip failed for slide ${slide.order} — compilation will skip it: ${stillErr instanceof Error ? stillErr.message : stillErr}`
+            );
+          }
+        }
+        const stitched = await stitchStoryVideo(segments);
         const { uploadImage } = await import("./carousel-generate");
         compilationUrl = await uploadImage(
           stitched,

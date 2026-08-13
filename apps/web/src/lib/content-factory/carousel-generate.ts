@@ -188,7 +188,17 @@ export function buildImagePrompt(
   topic: CarouselTopic,
   colorPrompt?: string,
   slideLabel?: string,
-  opts?: { noText?: boolean; sceneHint?: string; mood?: string }
+  opts?: {
+    noText?: boolean;
+    sceneHint?: string;
+    mood?: string;
+    /**
+     * COVER, baked-text runs only (2026-08-13, per Keenan): a short
+     * engagement question rendered smaller below the headline.
+     * Animated runs put the same line in the composited overlay instead.
+     */
+    coverSubline?: string;
+  }
 ): string {
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
@@ -223,6 +233,9 @@ export function buildImagePrompt(
     lanePrefix,
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
+    isCover && opts?.coverSubline
+      ? `Below the headline, in clearly smaller text, display this EXACT question: "${opts.coverSubline}"`
+      : "",
     sizeRule,
     moodLine,
     `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,

@@ -155,6 +155,13 @@ export const carouselDailyCronFn = inngest.createFunction(
         lane: topicData.lane as any,
         reasons: topicData.reasons,
       };
+      // On-cover engagement ask (2026-08-13, per Keenan): the cover asks
+      // "which one hits the hardest" (varied per post) — static and
+      // animated both carry it.
+      const { coverEngagementLine } = await import(
+        "@/lib/content-factory/caption"
+      );
+      const engagementLine = coverEngagementLine(topicData.headline, slug);
       const prompt = buildImagePrompt(
         lanePrefix,
         topicData.headline,
@@ -163,6 +170,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         undefined,
         {
           noText: topicData.animatedRun,
+          coverSubline: topicData.animatedRun ? undefined : engagementLine,
           // Rotate scene settings per slide (offset by slug so different
           // carousels don't all start in the same room), plus a rotating
           // cover composition so covers stop looking identical.
@@ -189,7 +197,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           topicData.headline,
           "COVER",
           undefined,
-          colorScheme.accent
+          colorScheme.accent,
+          engagementLine
         );
         // Persist the overlay so the video burn (storeSlideVideo) uses the
         // EXACT same pixels as the static JPEG.
@@ -354,7 +363,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         lane: topicData.lane as any,
         reasons: topicData.reasons,
       };
-      const caption = buildCaption(topic, topicData.withheldReason);
+      const caption = buildCaption(topic);
 
       const post = await prisma.carouselPost.create({
         data: {
@@ -368,7 +377,6 @@ export const carouselDailyCronFn = inngest.createFunction(
           // engagement feedback loop (2026-08-12).
           lane: topicData.lane,
           mood: topicData.mood ?? null,
-          withheldReason: topicData.withheldReason ?? null,
           slides: {
             create: allSlides.map((s) => ({
               order: s.order,

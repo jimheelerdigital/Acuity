@@ -573,6 +573,45 @@ export async function probeMediaDuration(media: Buffer, ext: string): Promise<nu
 }
 
 /**
+ * Render a static image as a silent MP4 clip of the given duration
+ * (2026-08-13, per Keenan: the carousel compilation must contain EVERY
+ * slide — when a slide's Higgsfield animation fails all retry waves, its
+ * static JPEG becomes a still clip so the slideshow never skips a
+ * reason). 1080x1920 @ 30fps to match stitchStoryVideo's normalization.
+ */
+export async function stillImageClip(image: Buffer, seconds: number): Promise<Buffer> {
+  const bin = ffmpegPath();
+  if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "still-clip-"));
+  try {
+    const inPath = path.join(dir, "in.jpg");
+    const outPath = path.join(dir, "out.mp4");
+    fs.writeFileSync(inPath, image);
+    await runFfmpeg(bin, [
+      "-y",
+      "-loglevel", "warning",
+      "-loop", "1",
+      "-i", inPath,
+      "-t", seconds.toFixed(2),
+      "-vf", "scale=1080:1920:flags=lanczos,fps=30,setsar=1",
+      "-c:v", "libx264",
+      "-preset", "fast",
+      "-crf", "23",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      outPath,
+    ]);
+    const out = fs.readFileSync(outPath);
+    if (out.length < 20_000) {
+      throw new Error(`Still clip is suspiciously small (${out.length} bytes)`);
+    }
+    return out;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
  * Concatenate the scene clips into one silent vertical MP4. Every clip is
  * normalized to 1080x1920 @ 30fps first (Higgsfield's output resolution
  * varies by model/quality). The voiceover is muxed separately AFTER the
