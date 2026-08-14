@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-14] — Cover engagement question moved to the bottom of the slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1a48af87
+
+### In plain English (for Keenan)
+The "Which one hit home?" question no longer sits crammed under the headline at the top of the cover — it's now anchored near the bottom of the slide, which looks cleaner and keeps the headline as the sole hook up top. It's positioned high enough that TikTok's caption and music bar won't cover it.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` subline is bottom-anchored — text bottom edge at 86% of frame height (1080x1920) instead of flowing under the accent bar
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` static baked-text instruction changed from "below the headline" to "lower quarter of the image, above the bottom 12%"
+
+### Manual steps needed
+None
+
+### Notes
+- 86% anchor chosen because TikTok's caption/music UI covers roughly the bottom 12–15% of the screen (mirrors the 15% top buffer added 2026-08-12 for the status bar/search pill)
+- Static covers rely on gpt-image-2 honoring the placement instruction, so bottom placement on static runs is best-effort; the animated overlay placement is exact
+
 ## [2026-08-13] — Carousel slideshows now include every slide; comment-bait gap removed; cover asks an engagement question
 
 **Requested by:** Keenan
