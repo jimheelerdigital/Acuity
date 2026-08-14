@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 012d94fe
+**Commit hash:** 8404372f
 
 ### In plain English (for Keenan)
 Two fixes to the daily story video. First, the "voiceover failures" on the 13th and 14th weren't voiceover failures at all — the voiceover generated fine both days, but the tool that stamps the captions onto the video is missing on the server, so the whole final assembly step crashed and you got the raw silent video with a misleading error email. Captions are now drawn with the same system that renders the slide text (which works every day), and even if captions ever break again, the video will still ship WITH the voiceover instead of silent. Second, the story scripts no longer mention Ripple at all — they're pure viral story videos; the account posting them carries the brand.
