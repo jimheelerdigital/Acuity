@@ -94,14 +94,14 @@ CONCEPT FORMATS (pick whichever fits your idea best — vary across days, never 
 VIRALITY RULES:
 - Scene 1's narration is the HOOK — the first two seconds decide everything. Open mid-thought with a line too specific to scroll past ("You've answered 'what's for dinner' every night for eleven years."). Never open with a greeting or a setup.
 - Escalate: every scene gets more specific or more vulnerable than the one before, so she has to keep watching to see where it lands.
-- Scene 6 is the landing: the emotional release or recognition — the exhale — plus ONE soft mention of Ripple by name (e.g. "Ripple is where you finally say it out loud"). Never salesy, never coach-y.
+- Scene 6 is the landing: the emotional release or recognition — the exhale. The story IS the whole video (2026-08-14, per Keenan: these are viral videos, not ads) — NEVER mention Ripple, any app, or any product in the narration. The account posting it carries the brand; the script never sells.
 - Specificity is the whole game. "The permission slip you signed at a red light" beats "you're always busy" every single time. Concrete objects, real times of day, exact phrases she's actually said.
 
 NARRATION RULES:
 - TOTAL narration across all 6 scenes: 65-80 words (that is ~30 seconds spoken at a calm pace). Each scene's line is ~10-14 words.
 - Second person, present tense, intimate — like a voice memo from someone who gets it.
 - Every line must read as natural spoken English — if a line needs a second read to parse, rewrite it.
-- No hashtags, no emojis, no "hey guys", no CTA except the soft Ripple line in scene 6.
+- No hashtags, no emojis, no "hey guys", no CTA of any kind, no app or brand mentions.
 
 VISUAL RULES (each scene becomes ONE illustrated image of the same woman):
 - "visual": one sentence describing the scene — the same woman (~40s) in a specific everyday setting doing a specific quiet activity that matches the narration. Vary the setting each scene. No text in the image, no other adults in focus.
@@ -234,7 +234,8 @@ const WORDS_PER_SECOND = 2.4;
  * (2026-08-12). Called after the clips render, with only the lines whose
  * scenes survived. Claude condenses/smooths them into one flowing
  * voiceover sized to the measured seconds — keeping the hook opening,
- * scene order, and the soft Ripple landing. Falls back to the joined
+ * scene order, and the emotional landing (never a brand mention —
+ * 2026-08-14, per Keenan: viral videos, not ads). Falls back to the joined
  * input lines if the call fails (caller handles that).
  */
 export async function fitNarrationToDuration(input: {
@@ -255,8 +256,9 @@ Concept: "${input.theme}"
 
 Rewrite these into ONE continuous voiceover that a calm speaker finishes in ${input.targetSeconds.toFixed(0)} seconds: between ${minWords} and ${maxWords} words TOTAL. Rules:
 - Keep the lines in this order and keep each line's core idea — condense or smooth, don't invent new points.
-- The first line stays a hook; the last line keeps the soft Ripple mention.
-- Second person, present tense, intimate. No hashtags, no emojis, no CTA beyond the Ripple line.
+- The first line stays a hook; the last line keeps its emotional landing.
+- NEVER mention Ripple, any app, or any product — if an input line contains a brand mention, drop it (2026-08-14, per Keenan: viral videos, not ads).
+- Second person, present tense, intimate. No hashtags, no emojis, no CTA, no brand mentions.
 - Return ONLY the narration text, nothing else.`;
 
   const start = Date.now();
@@ -679,13 +681,17 @@ export async function stitchStoryVideo(clips: Buffer[]): Promise<Buffer> {
  * -shortest is NOT used in that case because it would trim the video.
  *
  * When `captions` are provided (whisper word timings, relative to the
- * audio) they are burned in as timed drawtext chunks — timestamps are
- * divided by the atempo factor so the words stay frame-accurate even
- * when the audio is sped up. Captions sit at 30% height: the scene
- * images keep the top 45% calm and her face in the lower half, so this
- * zone never covers a face and clears the mobile UI's top 15%. Without
- * captions (or if the font can't be resolved) the video stream is
- * copied unchanged.
+ * audio) they are burned in as timed PNG overlays — each chunk is
+ * rendered to a transparent PNG with the sharp/Pango pipeline (proven
+ * daily in prod on slides) and composited with ffmpeg's `overlay`
+ * filter. 2026-08-14: this REPLACED drawtext, which is absent from the
+ * ffmpeg-static linux binary — every drawtext mux threw on Vercel and
+ * the silent stitch shipped two days running. Timestamps are divided by
+ * the atempo factor so the words stay frame-accurate even when the
+ * audio is sped up. Captions sit at 30% height: the scene images keep
+ * the top 45% calm and her face in the lower half, so this zone never
+ * covers a face and clears the mobile UI's top 15%. Without captions
+ * (or if rendering fails) the video stream is copied unchanged.
  *
  * `audio` may be null (2026-08-13, per Keenan): when the voiceover
  * failed, the estimated script captions are still burned in so the
@@ -711,65 +717,95 @@ export async function muxNarration(
     if (audio) fs.writeFileSync(audioPath, audio);
 
     let factor = 1;
-    const audioArgs: string[] = [];
+    let atempoNeeded = false;
     if (audio) {
       const videoSec = await probeFileDuration(bin, videoPath);
       const audioSec = await probeFileDuration(bin, audioPath);
       if (audioSec > videoSec + 0.15) {
         factor = Math.min(audioSec / videoSec, 1.18);
-        audioArgs.push("-filter:a", `atempo=${factor.toFixed(4)}`, "-shortest");
+        atempoNeeded = true;
         console.log(
           `[story-video] Voiceover ${audioSec.toFixed(1)}s vs video ${videoSec.toFixed(1)}s — atempo ${factor.toFixed(3)}`
         );
       }
     }
 
-    let videoArgs: string[] = ["-c:v", "copy"];
+    // Render each caption chunk to a transparent PNG. If any render
+    // fails the whole batch is dropped (audio still muxes) — a missing
+    // caption mid-video would look broken, and captions must never be
+    // the reason a video ships silent again.
+    const capPngs: string[] = [];
     if (captions && captions.length > 0) {
-      const { ensureFontFile } = await import("./compose");
-      const fontPath = await ensureFontFile("Bold");
-      if (fontPath) {
-        // One drawtext per chunk; textfile= sidesteps drawtext's brutal
-        // text-escaping rules (apostrophes, commas, colons).
-        const filters = captions.map((c, i) => {
-          const tf = path.join(dir, `cap-${i}.txt`);
-          fs.writeFileSync(tf, c.text);
-          const s = (c.start / factor).toFixed(2);
-          const e = (c.end / factor).toFixed(2);
-          return (
-            `drawtext=fontfile='${fontPath}':textfile='${tf}'` +
-            `:x=(w-text_w)/2:y=h*0.30:fontsize=58:fontcolor=white` +
-            `:borderw=7:bordercolor=black@0.85:enable='between(t,${s},${e})'`
-          );
-        });
-        videoArgs = [
-          "-vf", filters.join(","),
-          "-c:v", "libx264",
-          "-preset", "fast",
-          "-crf", "23",
-          "-pix_fmt", "yuv420p",
-        ];
-        console.log(`[story-video] Burning ${captions.length} caption chunks`);
-      } else {
+      try {
+        const { renderCaptionPng } = await import("./compose");
+        for (let i = 0; i < captions.length; i++) {
+          const png = await renderCaptionPng(captions[i].text);
+          const p = path.join(dir, `cap-${i}.png`);
+          fs.writeFileSync(p, png.buffer);
+          capPngs.push(p);
+        }
+        console.log(
+          `[story-video] Burning ${capPngs.length} caption chunks as PNG overlays`
+        );
+      } catch (err) {
+        capPngs.length = 0;
         console.warn(
-          "[story-video] Caption font unavailable — shipping without burned-in captions"
+          `[story-video] Caption PNG rendering failed — shipping without captions: ${err instanceof Error ? err.message : err}`
         );
       }
     }
 
-    await runFfmpeg(bin, [
-      "-y",
-      "-loglevel", "warning",
-      "-i", videoPath,
-      ...(audio
-        ? ["-i", audioPath, "-map", "0:v", "-map", "1:a"]
-        : ["-map", "0:v", "-an"]),
-      ...videoArgs,
-      ...audioArgs,
-      ...(audio ? ["-c:a", "aac", "-b:a", "128k"] : []),
-      "-movflags", "+faststart",
-      outPath,
-    ]);
+    const args = ["-y", "-loglevel", "warning", "-i", videoPath];
+    if (audio) args.push("-i", audioPath);
+    for (const p of capPngs) args.push("-i", p);
+
+    if (capPngs.length > 0) {
+      // Chain one timed overlay per chunk. scale2ref is avoided and the
+      // PNGs are pre-sized (see video-overlay.ts, 2026-08-11: scale2ref
+      // produced a frameless shell on Vercel).
+      const base = audio ? 2 : 1; // input index of the first caption PNG
+      const parts = captions!.slice(0, capPngs.length).map((c, i) => {
+        const s = (c.start / factor).toFixed(2);
+        const e = (c.end / factor).toFixed(2);
+        const src = i === 0 ? "[0:v]" : `[v${i - 1}]`;
+        return (
+          `${src}[${base + i}:v]overlay=x=(W-w)/2:y=H*0.30:format=auto` +
+          `:enable='between(t,${s},${e})'[v${i}]`
+        );
+      });
+      if (audio && atempoNeeded) {
+        parts.push(`[1:a]atempo=${factor.toFixed(4)}[aout]`);
+      }
+      args.push("-filter_complex", parts.join(";"));
+      args.push("-map", `[v${capPngs.length - 1}]`);
+      if (audio) {
+        args.push("-map", atempoNeeded ? "[aout]" : "1:a");
+        if (atempoNeeded) args.push("-shortest");
+      } else {
+        args.push("-an");
+      }
+      args.push(
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p"
+      );
+    } else {
+      args.push("-map", "0:v");
+      if (audio) {
+        args.push("-map", "1:a");
+        if (atempoNeeded) {
+          args.push("-filter:a", `atempo=${factor.toFixed(4)}`, "-shortest");
+        }
+      } else {
+        args.push("-an");
+      }
+      args.push("-c:v", "copy");
+    }
+    if (audio) args.push("-c:a", "aac", "-b:a", "128k");
+    args.push("-movflags", "+faststart", outPath);
+
+    await runFfmpeg(bin, args);
 
     const out = fs.readFileSync(outPath);
     if (out.length < 100_000) {

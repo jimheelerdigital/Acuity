@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-14] — Story videos: silent-video bug fixed + no more Ripple ads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 012d94fe
+
+### In plain English (for Keenan)
+Two fixes to the daily story video. First, the "voiceover failures" on the 13th and 14th weren't voiceover failures at all — the voiceover generated fine both days, but the tool that stamps the captions onto the video is missing on the server, so the whole final assembly step crashed and you got the raw silent video with a misleading error email. Captions are now drawn with the same system that renders the slide text (which works every day), and even if captions ever break again, the video will still ship WITH the voiceover instead of silent. Second, the story scripts no longer mention Ripple at all — they're pure viral story videos; the account posting them carries the brand.
+
+### Technical changes (for Jimmy)
+- Root cause: ffmpeg-static b6.1.1's linux binary has NO drawtext filter (verified by grepping the release binary — 0 hits; `overlay` has 8). Every captioned mux since caption burn-in deployed (2026-08-12 ~20:52 UTC) threw, and the finalize-video catch shipped the silent stitch. Voiceover MP3s exist in storage for both failure days.
+- apps/web/src/lib/content-factory/compose.ts: new exported `renderCaptionPng(text)` — white Poppins Bold 58 with blurred dark shadow, transparent PNG, same sharp/Pango pipeline as slides.
+- apps/web/src/lib/content-factory/story-video.ts: `muxNarration` rewritten — caption chunks rendered to PNGs and composited via chained `overlay=...:enable='between(t,s,e)'` filter_complex (timestamps still divided by the atempo factor; atempo moved into filter_complex when captions present). Caption render failure degrades to uncaptioned, never throws. Also: script prompts (SCRIPT_SYSTEM_PROMPT, narration rules, fitNarrationToDuration) now ban all Ripple/app/product mentions.
+- apps/web/src/inngest/functions/carousel-story-video.ts: finalize-video now retries audio-only mux if the captioned mux throws (silent shipping cannot recur while audio exists); returns `captioned` + `error`, both passed to the email.
+- apps/web/src/lib/content-factory/email.ts: `sendStoryVideoEmail` takes `captioned` — the email only claims burned-in captions when they actually are (the 8-13/8-14 emails claimed captions on caption-less videos); mux errors surface in the failure-reason line.
+
+### Manual steps needed
+None — deploys automatically on push. Tomorrow's 12 UTC story video is the live verification.
+
+### Notes
+- ffmpeg-static's linux build ships WITHOUT drawtext/textfile (no fontconfig). It DOES have overlay, atempo, concat, scale, libx264. Never use drawtext in this repo.
+- Diagnosis technique that cracked it: compare Supabase storage artifacts per day (voiceover MP3 present + muxed MP4 absent = mux failure, not TTS failure). The 8-12 "success" predated the caption deploy by 5 minutes.
+- scale2ref remains banned in overlay filters (frameless 261-byte output on Vercel, 2026-08-11) — caption PNGs are pre-sized instead.
+
+---
+
 ## [2026-08-14] — Cover engagement question moved to the bottom of the slide
 
 **Requested by:** Keenan

@@ -393,16 +393,38 @@ export const carouselStoryVideoFn = inngest.createFunction(
         }
 
         if (!audioBuf && (!captions || captions.length === 0)) {
-          return { url: silentVideo.url, voiced: false };
+          return {
+            url: silentVideo.url,
+            voiced: false,
+            captioned: false,
+            error: null as string | null,
+          };
         }
-        const muxed = await muxNarration(videoBuf, audioBuf, captions);
+
+        // Captioned mux first; if that throws and we have audio, retry
+        // audio-only (-c:v copy) so a caption problem can never ship a
+        // silent video again (2026-08-14: drawtext missing from prod
+        // ffmpeg silently muted two days of videos this exact way).
+        let muxed: Buffer;
+        let captioned = Boolean(captions && captions.length > 0);
+        let muxError: string | null = null;
+        try {
+          muxed = await muxNarration(videoBuf, audioBuf, captions);
+        } catch (muxErr) {
+          if (!audioBuf) throw muxErr;
+          muxError = muxErr instanceof Error ? muxErr.message : String(muxErr);
+          console.error(
+            `[story-video] Captioned mux failed — retrying audio-only: ${muxError}`
+          );
+          muxed = await muxNarration(videoBuf, audioBuf, undefined);
+          captioned = false;
+        }
         const url = await uploadImage(muxed, `${basePath}/story-video.mp4`, "video/mp4");
-        return { url, voiced: Boolean(audioBuf) };
+        return { url, voiced: Boolean(audioBuf), captioned, error: muxError };
       } catch (err) {
-        console.error(
-          `[story-video] Mux failed — shipping the silent video: ${err instanceof Error ? err.message : err}`
-        );
-        return { url: silentVideo.url, voiced: false };
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[story-video] Mux failed — shipping the silent video: ${msg}`);
+        return { url: silentVideo.url, voiced: false, captioned: false, error: msg };
       }
     });
     const finalVideoUrl = finalized.url;
@@ -434,8 +456,9 @@ export const carouselStoryVideoFn = inngest.createFunction(
           totalScenes: script.scenes.length,
           narration,
           silent: !voiced,
+          captioned: finalized.captioned,
           durationSec: silentVideo.durationSec,
-          voiceoverError: voiceover.error,
+          voiceoverError: voiceover.error ?? finalized.error,
         });
       } catch (err) {
         logger.error(

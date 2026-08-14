@@ -396,6 +396,52 @@ export async function composeSlideWithOverlay(
 }
 
 /**
+ * Render a story-video caption chunk as a transparent PNG (2026-08-14).
+ *
+ * The prod ffmpeg-static linux binary ships WITHOUT the drawtext filter
+ * (verified by grepping the b6.1.1 release binary — zero hits), so every
+ * drawtext-based caption mux threw on Vercel and the silent stitch
+ * shipped instead. Captions are now rendered here with the same
+ * sharp/Pango pipeline the slides use daily in prod, then composited
+ * onto the video with ffmpeg's `overlay` filter (which IS in the binary).
+ *
+ * Style matches the old drawtext intent: white Poppins Bold 58 with a
+ * blurred dark shadow so it reads on any footage.
+ */
+export async function renderCaptionPng(
+  text: string
+): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const fontPath = await ensureFontFile("Bold");
+  const lines = wordWrap(text, 24);
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+
+  const shadowMarkup = buildLinesMarkup(lines, 58, "#111111", "#111111");
+  const mainMarkup = buildLinesMarkup(lines, 58, "#FFFFFF", "#FFFFFF");
+  const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, 10, 10);
+  const main = await renderMarkup(mainMarkup, fontPath, maxTextW, 10, 10);
+  const blurredShadow = await sharp(shadow.buffer).blur(6).png().toBuffer();
+
+  const width = Math.max(main.width, shadow.width + 4);
+  const height = Math.max(main.height, shadow.height + 5);
+  const buffer = await sharp({
+    create: {
+      width,
+      height,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      { input: blurredShadow, top: 5, left: 4 },
+      { input: main.buffer, top: 0, left: 0 },
+    ])
+    .png()
+    .toBuffer();
+
+  return { buffer, width, height };
+}
+
+/**
  * Compose a slide — resize the AI-generated image to 9:16 output.
  *
  * Text is now baked into the AI-generated image by gpt-image-2 (not
