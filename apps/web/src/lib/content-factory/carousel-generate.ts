@@ -234,7 +234,7 @@ export function buildImagePrompt(
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
     isCover && opts?.coverSubline
-      ? `Below the headline, in clearly smaller text, display this EXACT question: "${opts.coverSubline}"`
+      ? `Near the BOTTOM of the image (lower quarter of the frame, but kept above the bottom 12% so platform UI never covers it), in clearly smaller text than the headline, display this EXACT question: "${opts.coverSubline}"`
       : "",
     sizeRule,
     moodLine,

@@ -268,8 +268,9 @@ export async function renderSlideTextOverlay(
   accent: string = BURNT_ORANGE,
   /**
    * COVER only (2026-08-13, per Keenan): a short engagement question
-   * ("Which one hits the hardest?") rendered as a smaller line under the
-   * accent bar — the ask lives on the cover itself, static AND animated.
+   * ("Which one hits the hardest?") rendered as a smaller line anchored
+   * near the bottom of the slide — the ask lives on the cover itself,
+   * static AND animated.
    */
   subline?: string
 ): Promise<Buffer> {
@@ -346,7 +347,10 @@ export async function renderSlideTextOverlay(
     );
     cursorY += barH + 16;
 
-    // Engagement sub-line under the bar (smaller, same shadow treatment).
+    // Engagement sub-line anchored near the BOTTOM of the slide
+    // (2026-08-14, per Keenan: cleaner than stacking it under the
+    // headline). Bottom edge sits at 86% of the frame so TikTok's
+    // caption/music UI (bottom ~12-15%) never covers it.
     if (subline) {
       const subLines = wordWrap(subline.toUpperCase(), 26);
       const subShadowMarkup = buildLinesMarkup(subLines, 38, "#111111", "#111111");
@@ -355,7 +359,7 @@ export async function renderSlideTextOverlay(
       const subMain = await renderMarkup(subMainMarkup, fontPath, maxTextW, 8, 6);
       const subBlurred = await sharp(subShadow.buffer).blur(5).png().toBuffer();
       const subLeft = Math.round((OUTPUT_W - subMain.width) / 2);
-      const subTop = cursorY + 26;
+      const subTop = Math.round(OUTPUT_H * 0.86) - subMain.height;
       composites.push(
         { input: subBlurred, top: subTop + 4, left: subLeft + 3 },
         { input: subMain.buffer, top: subTop, left: subLeft }
