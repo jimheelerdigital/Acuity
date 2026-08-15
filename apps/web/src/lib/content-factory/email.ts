@@ -300,7 +300,9 @@ export async function sendCarouselEmail(
             );
           }
         }
-        const stitched = await stitchStoryVideo(segments);
+        // 0.4s fade-to-black on every clip (2026-08-15, per Keenan):
+        // slide changes read as transitions instead of hard cuts.
+        const stitched = await stitchStoryVideo(segments, { fadeOutSec: 0.4 });
         const { uploadImage } = await import("./carousel-generate");
         compilationUrl = await uploadImage(
           stitched,

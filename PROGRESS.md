@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-15] — Fade-out transitions between slides in the carousel video
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The stitched carousel video (the one MP4 with all the animated slides back to back) now fades each slide out to black before the next one starts, so slide changes look like intentional transitions instead of abrupt jump cuts.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: `stitchStoryVideo` takes optional `{ fadeOutSec }` — each clip is probed for its real duration and gets `fade=t=out:st=<dur-fade>:d=<fade>` appended to its normalize chain before concat. Default (no opts) is unchanged, so the story-video stitch is unaffected.
+- apps/web/src/lib/content-factory/email.ts: the slides-compilation stitch now passes `{ fadeOutSec: 0.4 }`.
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- The `fade` filter was exact-string verified present in the ffmpeg-static linux binary before use (same check that caught the missing drawtext on 8-14). `xfade` is also present if we ever want cross-dissolves instead of fade-to-black, but xfade requires offset math across cumulative durations and re-encoding pairs — fade+concat is simpler and uses the already-proven concat path.
+- Fade start times are probed per clip (Higgsfield clip lengths drift slightly from the nominal 4s), so the fade always lands exactly at each clip's end.
+
+---
+
 ## [2026-08-14] — Story videos: silent-video bug fixed + no more Ripple ads
 
 **Requested by:** Keenan

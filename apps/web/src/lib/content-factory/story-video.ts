@@ -619,8 +619,19 @@ export async function stillImageClip(image: Buffer, seconds: number): Promise<Bu
  * varies by model/quality). The voiceover is muxed separately AFTER the
  * duration is measured (muxNarration) so the narration can be fitted to
  * the video's real length.
+ *
+ * `opts.fadeOutSec` (2026-08-15, per Keenan): fade each clip out to
+ * black over the given duration before the cut to the next one — used
+ * by the carousel slideshow compilation so slide changes read as
+ * transitions instead of hard cuts. Each clip is probed for its real
+ * length so the fade lands exactly at its end. (The `fade` filter is
+ * confirmed present in the ffmpeg-static linux binary — exact-string
+ * verified 2026-08-15, same method that caught the missing drawtext.)
  */
-export async function stitchStoryVideo(clips: Buffer[]): Promise<Buffer> {
+export async function stitchStoryVideo(
+  clips: Buffer[],
+  opts?: { fadeOutSec?: number }
+): Promise<Buffer> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
   if (clips.length === 0) throw new Error("No clips to stitch");
@@ -635,8 +646,26 @@ export async function stitchStoryVideo(clips: Buffer[]): Promise<Buffer> {
       inputs.push("-i", p);
     });
 
+    const fadeSec = opts?.fadeOutSec ?? 0;
+    let durations: number[] | null = null;
+    if (fadeSec > 0) {
+      durations = [];
+      for (let i = 0; i < clips.length; i++) {
+        durations.push(
+          await probeFileDuration(bin, path.join(dir, `clip-${i}.mp4`))
+        );
+      }
+    }
+
     const norm = clips
-      .map((_, i) => `[${i}:v]scale=1080:1920:flags=lanczos,fps=30,setsar=1[v${i}]`)
+      .map((_, i) => {
+        let chain = `[${i}:v]scale=1080:1920:flags=lanczos,fps=30,setsar=1`;
+        if (durations) {
+          const st = Math.max(0, durations[i] - fadeSec);
+          chain += `,fade=t=out:st=${st.toFixed(2)}:d=${fadeSec.toFixed(2)}`;
+        }
+        return `${chain}[v${i}]`;
+      })
       .join(";");
     const concat =
       clips.map((_, i) => `[v${i}]`).join("") + `concat=n=${clips.length}:v=1:a=0[v]`;
