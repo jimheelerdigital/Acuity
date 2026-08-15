@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** a5c63a3e
 
 ### In plain English (for Keenan)
 The stitched carousel video (the one MP4 with all the animated slides back to back) now fades each slide out to black before the next one starts, so slide changes look like intentional transitions instead of abrupt jump cuts.
