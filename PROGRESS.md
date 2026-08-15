@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-15] — Cover engagement question switched to present tense
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The question on the cover slide ("Which one hit home?") was phrased in past tense, but the viewer sees the cover BEFORE reading the list — they haven't read anything yet. All cover question variants are now present tense ("Which one hits home?", "Which one calls you out?", etc.).
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/caption.ts: all past-tense lines in ENGAGEMENT_LINE_FAMILIES and ENGAGEMENT_LINES_DEFAULT rewritten to present tense (hit home → hits home, called you out → calls you out, did you tell today → are you telling today, felt personal → feels personal, did you need → do you need, stopped you → stops you). Comment added so future variants stay present tense.
+- COMMENT_CTAS (the post-caption asks) intentionally left in past tense — those are read after swiping through the carousel.
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- Same deterministic pick-by-slug behavior; only the strings changed, so already-generated posts are unaffected and future posts stay stable per slug.
+
+---
+
 ## [2026-08-15] — Fade-out transitions between slides in the carousel video
 
 **Requested by:** Keenan

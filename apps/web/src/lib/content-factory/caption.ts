@@ -56,30 +56,30 @@ const ENGAGEMENT_LINE_FAMILIES: { match: RegExp; lines: string[] }[] = [
     lines: [
       "Which sign is you?",
       "How many of these are you?",
-      "Which one called you out?",
+      "Which one calls you out?",
     ],
   },
   {
     match: /\blies\b/i,
     lines: [
       "Which one do you tell the most?",
-      "Which one did you tell today?",
-      "Which one felt personal?",
+      "Which one are you telling today?",
+      "Which one feels personal?",
     ],
   },
   {
     match: /\breminders?\b/i,
     lines: [
-      "Which one did you need today?",
+      "Which one do you need today?",
       "Which one are you keeping?",
-      "Which one hit home?",
+      "Which one hits home?",
     ],
   },
   {
     match: /\bquestions?\b/i,
     lines: [
       "Which one are you avoiding?",
-      "Which one stopped you?",
+      "Which one stops you?",
       "Which one can't you answer?",
     ],
   },
@@ -88,15 +88,18 @@ const ENGAGEMENT_LINE_FAMILIES: { match: RegExp; lines: string[] }[] = [
     lines: [
       "Which one is yours?",
       "Which one hits the hardest?",
-      "Which one called you out?",
+      "Which one calls you out?",
     ],
   },
 ];
 
+// All lines stay PRESENT tense (2026-08-15, per Keenan): the question
+// renders on the cover, BEFORE the reader has seen the list — past
+// tense ("hit home", "called you out") reads wrong there.
 const ENGAGEMENT_LINES_DEFAULT = [
   "Which one hits the hardest?",
   "Which one is you?",
-  "Which one hit home?",
+  "Which one hits home?",
   "Be honest — which one is you?",
 ];
 
