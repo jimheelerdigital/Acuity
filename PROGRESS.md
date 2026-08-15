@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** c2c46506
 
 ### In plain English (for Keenan)
 The question on the cover slide ("Which one hit home?") was phrased in past tense, but the viewer sees the cover BEFORE reading the list — they haven't read anything yet. All cover question variants are now present tense ("Which one hits home?", "Which one calls you out?", etc.).
