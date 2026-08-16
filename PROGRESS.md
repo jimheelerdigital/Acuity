@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-08-16] — Story videos rebuilt: every word now plays on its own scene
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5b167c94
+
+### In plain English (for Keenan)
+The story videos were incoherent because the system recorded ONE continuous monologue and laid it over the whole video — the words were never attached to their scenes, so by scene 4 you'd hear scene 3's line. Now each scene's line is recorded separately and its clip is cut to exactly that line's length, so the words physically cannot drift off their scene. Also: a warmer voice (Matilda) is now the default, the AI can no longer swap a scene's gesture for a random unrelated one, images must literally show what the narration describes (phone in the line = phone in the picture), and the email now says which voice engine was used so "the voice sounds bad" is diagnosable.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/story-video.ts`:
+  - `fitNarrationToDuration` DELETED (the monologue rewrite was the desync root cause)
+  - `generateVoiceover` returns `{audio, engine}` and takes `{previousText, nextText}` (ElevenLabs `previous_text`/`next_text` keeps prosody continuous across scene cuts); default ElevenLabs voice Rachel→Matilda (`XrExE9yKIg1WjnnlVkGX`); OpenAI fallback coral→sage
+  - New `fitClipToDuration(clip, seconds)` — trims, or freeze-extends via last-frame extraction (`-sseof`) + `stillImageClip` + concat (tpad deliberately avoided: unverified on prod ffmpeg-static, like the drawtext incident)
+  - New `concatAudioWithGaps(audios, gapSec)` — apad + concat, libmp3lame out
+  - New `rewriteUnsafeMotions()` — one Claude call rewrites filter-tripping motions to still act out the narration; script prompt gains visual-coherence hard rule + coherence check
+- `apps/web/src/inngest/functions/carousel-story-video.ts`: tail rebuilt — per-scene `tts-scene-{i}` steps, `fit-clip-{i}` steps (target = scene audio + 0.35s gap), `build-audio` (concat with gaps + per-scene Whisper captions offset to scene starts), `finalize-video` (stitch fitted clips + mux, factor ≈ 1); `finalize-silent` fallback if any scene TTS fails
+- `apps/web/src/lib/content-factory/email.ts`: `voiceEngine` option displayed next to the script; stale "voiceover rewritten" wording updated
+- Deleted `apps/web/scripts/finish-story.tmp.ts`
+
+### Manual steps needed
+- [ ] Screenshot the failed Inngest runs (~20:53 and ~21:16 UTC 2026-08-16) so we can root-cause the earlier prod stitch deaths (Keenan)
+- [ ] Proof the next story video: voice quality (email now names the engine) and scene/word sync (Keenan)
+
+### Notes
+- New Supabase artifacts per story: `story-audio-{i}.mp3`, `story-clip-fitted-{i}.mp4`; `story-video-silent.mp4` now only written on the silent fallback path.
+- Audio and video timelines are equal by construction (scene video = scene audio + 0.35s; audio padded 0.35s), so muxNarration's atempo never engages and caption offsets are exact.
+- `apad` is used in concatAudioWithGaps and is the one filter not exact-string-verified on the prod ffmpeg-static binary; if build-audio fails there, that's the first suspect.
+- Voice can be auditioned/overridden via `ELEVENLABS_VOICE_ID` without a code change.
+
 ## [2026-08-16] — Story voiceover sounds human and animations now act out the story
 
 **Requested by:** Keenan
