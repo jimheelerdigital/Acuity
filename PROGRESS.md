@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-16] — One consistent art style per post
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 32c6213d
+
+### In plain English (for Keenan)
+Slides inside a single post could jump between looks — one slide realistic, the next cartoon-3D, another clay. Each post already picks one style, but the image AI was getting two competing style instructions and obeyed a different one on each slide. Now the post's chosen style is a hard "style lock" rule, so every slide in a post looks like it came from the same artist.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/carousel-generate.ts: buildImagePrompt wraps the lane prefix in a STYLE LOCK hard-rule sentence (baked-text and noText paths)
+- apps/web/src/lib/content-factory/brand.ts: VISUAL_DNA + VISUAL_DNA_NOTEXT illustration lines defer to the STYLE LOCK instead of hardcoding "warm editorial illustration, hand-drawn feel"
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- Root cause: STYLE_LANES was line 1 of the prompt but VISUAL_DNA (appended last) also dictated a style, and gpt-image-2 obeyed whichever it latched onto per slide. Prompt-level fix; if drift persists, next step is passing the cover image as a style reference for reason slides.
+
+---
+
 ## [2026-08-16] — Photo carousel fixes: TikTok safe zone + cover list matches the slides
 
 **Requested by:** Keenan
