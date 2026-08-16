@@ -2,7 +2,8 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 
-import { entitlementsFor, type Entitlement } from "@/lib/entitlements";
+import { type Entitlement } from "@/lib/entitlements";
+import { resolveEntitlement } from "@/lib/entitlements/resolve";
 import { safeLog } from "@/lib/safe-log";
 
 /**
@@ -36,17 +37,13 @@ export async function requireEntitlement(
   >,
   userId: string
 ): Promise<PaywallGate> {
-  const { prisma } = await import("@/lib/prisma");
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      subscriptionStatus: true,
-      trialEndsAt: true,
-      stripeFirstFailureAt: true,
-    },
-  });
+  // Goes through the single resolver (lib/entitlements/resolve.ts) rather
+  // than reading Prisma directly, so the eventual RevenueCat cutover is one
+  // source swap instead of an edit in every gate. Same query, same rule,
+  // same result as before.
+  const resolved = await resolveEntitlement(userId);
 
-  if (!user) {
+  if (!resolved) {
     // Stale session — no row to evaluate against. Soft-lock with
     // the same shape as a paywall rejection so the client handles it
     // consistently.
@@ -64,7 +61,7 @@ export async function requireEntitlement(
     };
   }
 
-  const entitlement = entitlementsFor(user);
+  const { entitlement, state } = resolved;
   if (entitlement[flag]) {
     return { ok: true, entitlement };
   }
@@ -72,8 +69,12 @@ export async function requireEntitlement(
   safeLog.info("paywall.reject", {
     userId,
     flag,
-    subscriptionStatus: user.subscriptionStatus,
+    subscriptionStatus: state.subscriptionStatus,
     isPostTrialFree: entitlement.isPostTrialFree,
+    // Which source answered — noise today ("db"), load-bearing during the
+    // RC cutover window when a reject could come from a fallback read.
+    entitlementSource: resolved.source,
+    entitlementFellBack: resolved.fellBack,
   });
 
   return {
