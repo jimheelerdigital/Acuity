@@ -115,9 +115,11 @@ VISUAL RULES (each scene becomes ONE illustrated image of the same woman):
 - LOOP RULE: scene 6 returns to the SAME setting, framing, and composition as scene 1 (the only allowed repeat) — just calmer, resolved. The video's last frame should flow seamlessly back into its first frame so rewatches feel intentional.
 - She is always fully clothed and NEVER inside a bathtub or shower. Bathroom scenes show her at the mirror or sitting on the closed edge of the tub. She is always already settled in a stable seated or standing position that she can hold for the whole clip.
 
-MOTION RULES (each image is animated for a few seconds — the character's movement):
-- "motion": ONE physical micro-gesture, present tense, continuation of "She ..." (e.g. "closes her eyes and lets her shoulders drop with a slow exhale").
-- She stays in the same spot and pose, lips closed — no talking, no walking, no standing up, no turning around, no props appearing, no camera directions. Face, eyes, head, shoulders, hands, and breath ONLY. Under 20 words.
+MOTION RULES (each image is animated for a few seconds — the character's movement; 2026-08-16, per Keenan: the motion MUST act out that scene's narration, not a generic idle):
+- "motion": the physical action that VISIBLY performs this scene's narration line. If the narration says she reads the text again, her eyes drop to the phone in her hands; if she can't say the words, her lips press shut and her jaw works. The viewer must see the story happening.
+- Present tense, continuation of "She ..." (e.g. "grips the steering wheel tighter, then lets her hands fall to her lap with a shaking exhale").
+- She stays in the same spot and pose, lips closed — no talking, no walking, no standing up, no turning around, no camera directions. She may interact with objects the "visual" already shows (phone, mug, wheel, letter) but no NEW props appear.
+- Make it emotionally unmistakable — real feeling in the face and hands, not just breathing. Under 25 words.
 
 MOOD: every scene gets a "mood" from: "heavy", "tender", "wry", "frustrated", "hopeful". The arc usually moves heavy/frustrated → tender → hopeful by scene 6. Faces must match — never default to smiling.
 
@@ -387,12 +389,14 @@ async function elevenLabsVoiceover(narration: string, apiKey: string): Promise<B
       body: JSON.stringify({
         text: narration,
         model_id: modelId,
-        // Calm, steady read with a touch of expressiveness — tuned for
-        // the intimate voice-memo tone, not audiobook narration.
+        // 2026-08-16, per Keenan: the read sounded flat/terrible. Lower
+        // stability + higher style = far more expressive, emotional
+        // delivery (the intimate confession tone the scripts are written
+        // in), while similarity + speaker boost keep the voice grounded.
         voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.35,
+          stability: 0.35,
+          similarity_boost: 0.8,
+          style: 0.55,
           use_speaker_boost: true,
         },
       }),
@@ -425,8 +429,10 @@ export async function generateVoiceover(narration: string): Promise<Buffer> {
       );
     }
   }
+  // 2026-08-16, per Keenan: the "coral" fallback read sounded terrible —
+  // switched to "sage" with much stronger emotional-delivery direction.
   const model = process.env.STORY_TTS_MODEL || "gpt-4o-mini-tts";
-  const voice = process.env.STORY_TTS_VOICE || "coral";
+  const voice = process.env.STORY_TTS_VOICE || "sage";
   const res = await openai().audio.speech.create({
     model,
     voice,
@@ -434,7 +440,7 @@ export async function generateVoiceover(narration: string): Promise<Buffer> {
     response_format: "mp3",
     // gpt-4o-mini-tts supports style instructions; older models ignore it.
     instructions:
-      "Warm, intimate, unhurried voice of a woman in her mid-40s. Calm and honest, like a voice memo to a close friend. Gentle pauses between sentences. Never peppy, never salesy.",
+      "You are a woman in her mid-40s confessing something true to her closest friend, late at night, voice low. Speak slowly with real emotional weight: let some sentences almost break, let others land flat and tired. Vary your pace — linger on the painful words, rush nothing. Breathe audibly between thoughts. Slightly husky, imperfect, human. Absolutely never chipper, never announcer-like, never smooth-podcast polished.",
   });
   const buffer = Buffer.from(await res.arrayBuffer());
   if (buffer.length < 5_000) {

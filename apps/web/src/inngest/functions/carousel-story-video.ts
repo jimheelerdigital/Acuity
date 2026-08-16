@@ -228,7 +228,7 @@ export const carouselStoryVideoFn = inngest.createFunction(
       if (pendingScenes.length === 0) break;
 
       const jobs = await step.run(`submit-clips-a${attempt}`, async () => {
-        const { buildSlideVideoPrompt, submitCoverVideo } = await import(
+        const { buildStorySceneVideoPrompt, submitCoverVideo } = await import(
           "@/lib/content-factory/animate-cover"
         );
         const { storyClipDuration } = await import(
@@ -238,10 +238,11 @@ export const carouselStoryVideoFn = inngest.createFunction(
         for (const i of pendingScenes) {
           if (out.length >= MAX_CONCURRENT_JOBS) break;
           const scene = script.scenes[i];
-          const prompt = buildSlideVideoPrompt({
-            textFree: true,
+          // 2026-08-16, per Keenan: story clips must act out the scene's
+          // narration — bespoke script motion leads, pool is fallback only.
+          const prompt = buildStorySceneVideoPrompt({
+            scene: { motion: scene.motion, mood: scene.mood },
             seed: i,
-            emotion: { mood: scene.mood, motion: scene.motion },
           });
           try {
             const requestId = await submitCoverVideo({

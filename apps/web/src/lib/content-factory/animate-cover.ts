@@ -98,7 +98,19 @@ const CAMERA_LOCK_LINE =
  * clip.
  */
 const POSTURE_LOCK_LINE =
-  "She holds exactly the position the image shows for the entire video — if seated she stays seated, if reclining she stays reclining, settled and still in place from first frame to last.";
+  "She holds the position the image shows for the entire video — if seated she stays seated, if reclining she stays reclining — while her face, hands, and body move naturally and expressively within that pose.";
+
+/**
+ * v14 (2026-08-16, per Keenan): locked-camera micro-motion clips read as
+ * boring/static. Text-free clips (VIDEO slides + STORY scenes) have no
+ * baked text to warp, so they get a slow cinematic push-in and a living
+ * environment. Baked-text clips keep the hard camera lock (camera motion
+ * warps the text — v12 note above).
+ */
+const CAMERA_DRIFT_LINE =
+  "The camera pushes in toward her very slowly and smoothly, one continuous gentle cinematic drift — no cuts, no shake, no fast moves. Same art style, same scene, same colors from first frame to last.";
+const AMBIENT_LINE =
+  "The environment is quietly alive: light shifts softly, and any steam, rain, curtains, dust, screens, or reflections in the scene keep moving naturally.";
 
 /**
  * `textFree` = the start frame has NO text (animated-post pipeline: words
@@ -107,7 +119,7 @@ const POSTURE_LOCK_LINE =
  */
 function sceneLockLines(textFree: boolean): string[] {
   return textFree
-    ? [POSTURE_LOCK_LINE, CAMERA_LOCK_LINE, QUALITY_LINE]
+    ? [POSTURE_LOCK_LINE, CAMERA_DRIFT_LINE, AMBIENT_LINE, QUALITY_LINE]
     : [POSTURE_LOCK_LINE, CAMERA_LOCK_LINE, TEXT_LINE, QUALITY_LINE];
 }
 
@@ -236,8 +248,31 @@ export function buildSlideVideoPrompt(opts?: {
   const beat = resolveMotionBeat(opts?.emotion, opts?.seed ?? 0);
   return [
     "The character continues the exact activity shown in the image, staying in the same spot and pose, lips closed.",
-    `Subtle, natural movements of the hands, eyes, and breathing, plus ${beat}.`,
+    `She ${beat} — a clearly visible, emotionally charged movement, with natural life in her hands, eyes, and breathing.`,
     ...sceneLockLines(Boolean(opts?.textFree)),
+  ].join(" ");
+}
+
+/**
+ * Prompt for STORY scene clips (2026-08-16, per Keenan: the animation
+ * MUST line up with what's happening in the story). Unlike carousel
+ * slides, each story scene has a bespoke script-written motion that acts
+ * out that scene's narration line — so the bespoke motion is the star,
+ * and the fallback pool is only used when the script's motion trips the
+ * safety check. Text-free, so the clip also gets the cinematic push-in
+ * and living environment.
+ */
+export function buildStorySceneVideoPrompt(opts: {
+  scene: { motion?: string; mood?: string };
+  seed: number;
+}): string {
+  const beat = isSafeMotion(opts.scene.motion)
+    ? opts.scene.motion.trim()
+    : resolveMotionBeat({ mood: opts.scene.mood }, opts.seed);
+  return [
+    "One moment in an emotional story. She continues exactly what the image shows, staying in the same spot, lips closed.",
+    `She ${beat} — the movement is clearly visible and emotionally true to this moment of the story.`,
+    ...sceneLockLines(true),
   ].join(" ");
 }
 

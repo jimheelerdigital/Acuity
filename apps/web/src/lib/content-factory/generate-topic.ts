@@ -137,9 +137,10 @@ Every post has a dominant mood and EVERY slide (cover + each reason) gets its ow
 - For each slide also write a "motion": ONE physical micro-gesture the woman performs in a 4-second video, embodying that slide's feeling.
 
 STRICT RULES for every "motion":
+- The gesture must ACT OUT that slide's exact text — visible and emotionally unmistakable, never a generic idle (2026-08-16, per Keenan: subtle-only clips read as boring).
 - She stays in the same spot and pose. Lips closed — no talking, no mouthing words.
-- No walking, no standing up, no sitting down, no turning around, no leaving, no new actions, no props, no camera directions.
-- ONLY movements of her face, eyes, head, shoulders, hands, and breath. Think: a slow blink, a jaw tightening, shoulders dropping, a hand pressed to her chest, a head shake of disbelief.
+- No walking, no standing up, no sitting down, no turning around, no leaving, no camera directions, no NEW props appearing (she may interact with objects already in the scene).
+- Movements of her face, eyes, head, shoulders, hands, and breath. Think: a jaw tightening as she sets the phone face-down, a hand pressed hard to her chest, a fed-up head shake, shoulders finally dropping in relief.
 - Under 20 words, present tense, written as a continuation of "She ..." (e.g. "lets her shoulders sink with a long exhale, eyes closing briefly").
 
 OUTPUT FORMAT (strict JSON, no markdown):
