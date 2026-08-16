@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-16] — Story voiceover sounds human and animations now act out the story
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e8511565
+
+### In plain English (for Keenan)
+Two fixes to the story videos: the voiceover now reads like a real woman confessing something to a friend (slower, emotional, imperfect) instead of a flat robotic announcer, and each scene's animation now performs what the narration is saying — if the line is about gripping the steering wheel, you see her grip the wheel. Text-free clips also get a slow cinematic camera push-in and a scene that feels alive (light, steam, rain moving) instead of a frozen frame with a blinking woman.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/story-video.ts`: ElevenLabs voice_settings retuned for expressiveness (stability 0.5→0.35, style 0.35→0.55, similarity 0.75→0.8); OpenAI TTS fallback voice coral→sage with much stronger delivery instructions; story script MOTION RULES rewritten to require the motion to act out the scene's narration (in-scene object interaction allowed, 25-word cap)
+- `apps/web/src/lib/content-factory/animate-cover.ts`: new `buildStorySceneVideoPrompt()` that leads with the script's bespoke scene motion; new `CAMERA_DRIFT_LINE` (slow push-in) + `AMBIENT_LINE` (living environment) used in `sceneLockLines()` for text-free clips only — baked-text clips keep the hard camera lock since camera motion warps text; posture lock softened to allow expressive in-pose movement
+- `apps/web/src/inngest/functions/carousel-story-video.ts`: clip submits switched from `buildSlideVideoPrompt` to `buildStorySceneVideoPrompt`
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SYSTEM_PROMPT motion STRICT RULES require visible, text-specific gestures; "no props" relaxed to "no NEW props"
+
+### Manual steps needed
+- [ ] Screenshot the failed Inngest runs (~20:53 and ~21:16 UTC today) so we can root-cause why prod dies at the stitch step — both daily crons hit that code (Keenan)
+
+### Notes
+- The "terrible" voiceover Keenan heard was the OpenAI fallback: the story was rescued locally where the ElevenLabs key is a `[SENSITIVE]` placeholder. Prod has the real ElevenLabs key, so the next prod story is the first true test of the ElevenLabs path with the new settings.
+- Camera drift is safe only on text-free clips (VIDEO slides + STORY scenes); v12 history shows camera moves warp baked-in text, so PHOTO-era baked-text animation keeps the locked camera.
+- The isSafeMotion() blocklist still discards script motions containing walk/stand/talk verbs — fallback then comes from the mood pool, which won't match the narration. If mismatched clips persist, check whether scripts are tripping the blocklist.
+
 ## [2026-08-16] — Cover photos now tease only a few answers instead of the whole list
 
 **Requested by:** Keenan
