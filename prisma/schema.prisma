@@ -808,6 +808,10 @@ model Entry {
   tasks                 Task[]
   themeMentions         ThemeMention[]
   entityMentions        EntityMention[]
+  // Insights citing this entry as evidence. Cascade-deletes with the entry,
+  // so deleting a recording also retracts every receipt that quoted it —
+  // an insight must never outlive the proof it rests on.
+  insightEvidence       InsightEvidence[]
   // Anchor People slice 2 (2026-05-25) — stamped by the NER step in
   // process-entry. Drives idempotency on backfill + replay. Null on
   // legacy entries (the slice 7 backfill cron stamps them).
@@ -1610,8 +1614,70 @@ model UserInsight {
   dismissedAt     DateTime?
   createdAt       DateTime  @default(now())
 
+  // ── Evidence / receipts (2026-08-16, flag: EVIDENCE_RECEIPTS) ────────
+  //
+  // All additive and nullable. A row written before this change — or by
+  // the generator with the flag OFF — has confidence=null and zero
+  // InsightEvidence rows, which the confidence rule classifies as
+  // UNSOURCED. That is the correct reading: we genuinely cannot evidence
+  // those, so they must never be surfaced as confirmed patterns.
+
+  /// Model-reported confidence, 0..1. NULL means "not reported" — which is
+  /// NOT the same as low confidence, and is never treated as high. Only
+  /// meaningful alongside evidence; see lib/evidence/confidence.ts, where a
+  /// high value with zero evidence is explicitly refused a promotion.
+  confidence      Float?
+
+  /// User correction state: "ACCURATE" | "INCOMPLETE" | "WRONG" | null.
+  /// Plain String rather than an enum, matching this schema's existing
+  /// convention (Entry.status, UserInsight.severity) for cross-Postgres
+  /// compatibility and to avoid a migration on every added value.
+  correctionState String?
+  correctionNote  String?   @db.Text
+  correctedAt     DateTime?
+
+  evidence        InsightEvidence[]
+
   @@index([userId, createdAt])
   @@index([userId, dismissedAt])
+  @@index([userId, correctionState])
+}
+
+/// Provenance for a generated insight: which entries it was derived from,
+/// and the specific excerpt within each.
+///
+/// Deliberately mirrors EntityMention (entryId + startIndex/endIndex +
+/// stored text) — that model already proved the shape for "point at the
+/// exact words in a transcript", and reusing it keeps the receipts UI able
+/// to render person-mentions and insight-evidence the same way.
+///
+/// The excerpt is STORED rather than resolved from the transcript at read
+/// time, on purpose: transcripts can be edited or an entry deleted, and a
+/// receipt that silently changes out from under a claim is worse than no
+/// receipt. The offsets are kept so the excerpt can still be highlighted
+/// in-place when the transcript is unchanged.
+model InsightEvidence {
+  id         String      @id @default(cuid())
+  insightId  String
+  insight    UserInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  entryId    String
+  entry      Entry       @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  /// The quoted words backing the insight. Verbatim from the transcript
+  /// (or summary when no transcript exists) — never paraphrased.
+  excerpt    String      @db.Text
+  /// Character offsets into Entry.transcript. Null when the excerpt came
+  /// from the summary, or when the source text was unavailable.
+  startIndex Int?
+  endIndex   Int?
+  createdAt  DateTime    @default(now())
+
+  /// One excerpt per (insight, entry). Makes re-running generation
+  /// idempotent, and keeps a single insight from citing the same entry
+  /// repeatedly to look better-evidenced than it is.
+  @@unique([insightId, entryId])
+  @@index([insightId])
+  @@index([entryId])
 }
 
 // ─── Theme Evolution Map ─────────────────────────────────────────────────────
