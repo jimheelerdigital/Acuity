@@ -24,7 +24,7 @@
  * image and image-to-video models exist). The voiceover therefore uses
  * OpenAI TTS with the key we already have for gpt-image-2. Env knobs:
  * - STORY_TTS_MODEL (default "gpt-4o-mini-tts")
- * - STORY_TTS_VOICE (default "shimmer" — warm female voice)
+ * - STORY_TTS_VOICE (default "sage" — warm female voice)
  * If TTS fails the video ships silent rather than not at all.
  *
  * Clip duration: HIGGSFIELD_STORY_CLIP_DURATION (default 5) — 6 × 5s = 30s.
@@ -37,6 +37,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { isMood, type Mood, MOOD_EXPRESSIONS, VISUAL_DNA_NOTEXT, STYLE_LANES, type StyleLane } from "./brand";
+import { isSafeMotion } from "./animate-cover";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -110,7 +111,8 @@ NARRATION RULES:
 - No hashtags, no emojis, no "hey guys", no CTA of any kind, no app or brand mentions.
 
 VISUAL RULES (each scene becomes ONE illustrated image of the same woman):
-- "visual": one sentence describing the scene — the same woman (~40s) in a specific everyday setting doing a specific quiet activity that matches the narration. Vary the setting each scene. No text in the image, no other adults in focus.
+- "visual": one sentence describing the scene — the same woman (~40s) shown in the EXACT moment the narration describes. HARD RULE (2026-08-16, per Keenan: image, words, and motion must all be the same beat): every object, place, and action the narration mentions appears in the image — if the line mentions a phone, the phone is in her hands; if it's the driveway, she's in the parked car. Never a generic "woman in a room" while the narration talks about something else. No text in the image, no other adults in focus.
+- COHERENCE CHECK before you output: for each scene, narration + visual + motion must all describe the SAME moment — if any one of the three could belong to a different scene, rewrite it.
 - Every scene must be visually DIFFERENT (kitchen, car, hallway, bedroom, porch, bathroom mirror, sofa...) — EXCEPT scene 6.
 - LOOP RULE: scene 6 returns to the SAME setting, framing, and composition as scene 1 (the only allowed repeat) — just calmer, resolved. The video's last frame should flow seamlessly back into its first frame so rewatches feel intentional.
 - She is always fully clothed and NEVER inside a bathtub or shower. Bathroom scenes show her at the mirror or sitting on the closed edge of the tub. She is always already settled in a stable seated or standing position that she can hold for the whole clip.
@@ -218,6 +220,13 @@ Return ONLY valid JSON.`;
       );
     }
 
+    // 2026-08-16, per Keenan: a motion that trips the i2v safety filter
+    // used to be silently swapped for a RANDOM mood-pool gesture at
+    // submit time — the animation stopped matching the story. Now unsafe
+    // motions are rewritten HERE into a safe gesture that still acts out
+    // that scene's narration; the pool is only the last resort.
+    await rewriteUnsafeMotions(scenes);
+
     const theme =
       typeof parsed.theme === "string" && parsed.theme.trim()
         ? parsed.theme.trim()
@@ -254,91 +263,69 @@ Return ONLY valid JSON.`;
   }
 }
 
-/** Calm spoken pace used to convert measured seconds into a word budget. */
-const WORDS_PER_SECOND = 2.4;
-
 /**
- * Rewrite the narration to fit the ACTUAL stitched video duration
- * (2026-08-12). Called after the clips render, with only the lines whose
- * scenes survived. Claude condenses/smooths them into one flowing
- * voiceover sized to the measured seconds — keeping the hook opening,
- * scene order, and the emotional landing (never a brand mention —
- * 2026-08-14, per Keenan: viral videos, not ads). Falls back to the joined
- * input lines if the call fails (caller handles that).
+ * Rewrite motions that trip the i2v safety filter into safe gestures
+ * that still act out their scene's narration. Mutates `scenes` in place;
+ * a failed call or a still-unsafe rewrite leaves the motion untouched
+ * (the submit-time pool fallback remains the last resort). One Claude
+ * call covers all unsafe scenes.
  */
-export async function fitNarrationToDuration(input: {
-  narrations: string[];
-  targetSeconds: number;
-  /** The story's own theme label (NOT the carousel headline). */
-  theme: string;
-}): Promise<string> {
-  const { prisma } = await import("@/lib/prisma");
-  const maxWords = Math.round(input.targetSeconds * WORDS_PER_SECOND);
-  const minWords = Math.max(10, Math.round(input.targetSeconds * (WORDS_PER_SECOND - 0.3)));
-
-  const userPrompt = `The assembled video runs exactly ${input.targetSeconds.toFixed(1)} seconds. Here are the voiceover lines for the scenes that made it into the cut, in order:
-
-${input.narrations.map((n, i) => `${i + 1}. ${n}`).join("\n")}
-
-Concept: "${input.theme}"
-
-Rewrite these into ONE continuous voiceover that a calm speaker finishes in ${input.targetSeconds.toFixed(0)} seconds: between ${minWords} and ${maxWords} words TOTAL. Rules:
-- Keep the lines in this order and keep each line's core idea — condense or smooth, don't invent new points.
-- The first line stays a hook; the last line keeps its emotional landing.
-- NEVER mention Ripple, any app, or any product — if an input line contains a brand mention, drop it (2026-08-14, per Keenan: viral videos, not ads).
-- Second person, present tense, intimate. No hashtags, no emojis, no CTA, no brand mentions.
-- Return ONLY the narration text, nothing else.`;
-
-  const start = Date.now();
+async function rewriteUnsafeMotions(scenes: StoryScene[]): Promise<void> {
+  const unsafe = scenes
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => s.motion && !isSafeMotion(s.motion));
+  if (unsafe.length === 0) return;
+  console.warn(
+    `[story-video] ${unsafe.length} scene motion(s) tripped the safety filter — rewriting: ${unsafe
+      .map(({ i, s }) => `#${i} "${s.motion}"`)
+      .join("; ")}`
+  );
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 400,
-      system:
-        "You are a short-form video voiceover editor for Ripple, an AI-powered voice self-reflection app for women 40-50 carrying a heavy mental load. Mirror, not a coach. US English.",
-      messages: [{ role: "user", content: userPrompt }],
-    });
-    const durationMs = Date.now() - start;
-    const tokensIn = response.usage.input_tokens;
-    const tokensOut = response.usage.output_tokens;
-    await prisma.claudeCallLog.create({
-      data: {
-        purpose: "story-narration-fit",
-        model: CLAUDE_MODEL,
-        tokensIn,
-        tokensOut,
-        costCents: Math.ceil(
-          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
-        ),
-        durationMs,
-        success: true,
-      },
+      max_tokens: 500,
+      messages: [
+        {
+          role: "user",
+          content: `These video-scene motions were rejected because they contain movement a locked-in-place character can't do (walking, standing up, turning around, talking, camera moves, doors/windows). Rewrite each into a gesture that still ACTS OUT its narration line while she stays in the same spot and pose, lips closed — only her face, eyes, head, shoulders, hands, breath, and objects already in the scene. Under 20 words each, present tense, continuation of "She ...".
+
+${unsafe.map(({ s }, k) => `${k + 1}. narration: "${s.narration}"\n   rejected motion: "${s.motion}"`).join("\n")}
+
+Return ONLY a JSON array of ${unsafe.length} rewritten motion strings, in order.`,
+        },
+      ],
     });
     const text = response.content
       .filter((b) => b.type === "text")
       .map((b) => b.text)
-      .join("")
-      .trim();
-    if (text.split(/\s+/).length < 8) {
-      throw new Error("Fitted narration is suspiciously short");
-    }
-    return text;
-  } catch (err) {
-    await prisma.claudeCallLog.create({
-      data: {
-        purpose: "story-narration-fit",
-        model: CLAUDE_MODEL,
-        tokensIn: 0,
-        tokensOut: 0,
-        costCents: 0,
-        durationMs: Date.now() - start,
-        success: false,
-        errorMessage: err instanceof Error ? err.message : "Unknown error",
-      },
+      .join("");
+    const arr = JSON.parse(
+      text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+    ) as unknown[];
+    unsafe.forEach(({ s, i }, k) => {
+      const m = arr[k];
+      if (isSafeMotion(m)) {
+        console.log(`[story-video] Scene ${i} motion rewritten: "${m}"`);
+        s.motion = m.trim();
+      } else {
+        console.warn(`[story-video] Scene ${i} rewrite still unsafe — leaving original`);
+      }
     });
-    throw err;
+  } catch (err) {
+    console.warn(
+      `[story-video] Motion rewrite failed — keeping originals: ${err instanceof Error ? err.message : err}`
+    );
   }
 }
+
+/** Calm spoken pace used to convert measured seconds into a word budget. */
+const WORDS_PER_SECOND = 2.4;
+
+// NOTE (2026-08-16, per Keenan): fitNarrationToDuration is GONE. It
+// rewrote the six scene lines into one continuous monologue fitted to
+// the stitched length — which is exactly why the words never lined up
+// with the scenes. The pipeline is now per-scene synced: each scene's
+// narration is voiced separately and its clip is cut to that audio.
 
 /**
  * Image prompt for one story scene — mirrors the text-free branch of
@@ -372,14 +359,26 @@ export function buildStoryImagePrompt(opts: {
   ].filter(Boolean).join("\n");
 }
 
+/** Context lines for per-scene TTS so prosody flows across scene cuts. */
+export interface VoiceoverContext {
+  previousText?: string;
+  nextText?: string;
+}
+
 /**
  * ElevenLabs TTS (2026-08-12, per Keenan: the OpenAI voice sounded
  * robotic). Used whenever ELEVENLABS_API_KEY is set. Default voice is
- * "Rachel" (calm, warm, natural narration); override with
- * ELEVENLABS_VOICE_ID after picking a favorite in their voice library.
+ * "Matilda" (2026-08-16, per Keenan: Rachel still sounded terrible —
+ * Matilda is ElevenLabs' warm, middle-aged narrative voice, the closest
+ * premade fit for an intimate confession to women 40-50). Override with
+ * ELEVENLABS_VOICE_ID after auditioning in their voice library.
  */
-async function elevenLabsVoiceover(narration: string, apiKey: string): Promise<Buffer> {
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel
+async function elevenLabsVoiceover(
+  narration: string,
+  apiKey: string,
+  ctx?: VoiceoverContext
+): Promise<Buffer> {
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || "XrExE9yKIg1WjnnlVkGX"; // Matilda
   const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
@@ -389,6 +388,10 @@ async function elevenLabsVoiceover(narration: string, apiKey: string): Promise<B
       body: JSON.stringify({
         text: narration,
         model_id: modelId,
+        // Per-scene synthesis: surrounding lines keep the intonation
+        // continuous across scene boundaries.
+        ...(ctx?.previousText ? { previous_text: ctx.previousText } : {}),
+        ...(ctx?.nextText ? { next_text: ctx.nextText } : {}),
         // 2026-08-16, per Keenan: the read sounded flat/terrible. Lower
         // stability + higher style = far more expressive, emotional
         // delivery (the intimate confession tone the scripts are written
@@ -414,15 +417,23 @@ async function elevenLabsVoiceover(narration: string, apiKey: string): Promise<B
 }
 
 /**
- * Synthesize the voiceover MP3 for the full narration.
+ * Synthesize a voiceover MP3 (per scene or full narration).
  * ElevenLabs when configured (far more natural), OpenAI TTS otherwise.
+ * Returns which engine produced the audio so the email can report it —
+ * 2026-08-16, per Keenan: the voice kept "sounding terrible" and we
+ * couldn't tell whether he was hearing ElevenLabs or the fallback.
  * (Higgsfield's platform API exposes no TTS endpoint — see header note.)
  */
-export async function generateVoiceover(narration: string): Promise<Buffer> {
+export async function generateVoiceover(
+  narration: string,
+  ctx?: VoiceoverContext
+): Promise<{ audio: Buffer; engine: string }> {
   const elevenKey = process.env.ELEVENLABS_API_KEY;
   if (elevenKey) {
     try {
-      return await elevenLabsVoiceover(narration, elevenKey);
+      const audio = await elevenLabsVoiceover(narration, elevenKey, ctx);
+      const voiceId = process.env.ELEVENLABS_VOICE_ID || "XrExE9yKIg1WjnnlVkGX";
+      return { audio, engine: `elevenlabs:${voiceId}` };
     } catch (err) {
       console.error(
         `[story-video] ElevenLabs TTS failed — falling back to OpenAI: ${err instanceof Error ? err.message : err}`
@@ -446,7 +457,7 @@ export async function generateVoiceover(narration: string): Promise<Buffer> {
   if (buffer.length < 5_000) {
     throw new Error(`TTS returned a suspiciously small file (${buffer.length} bytes)`);
   }
-  return buffer;
+  return { audio: buffer, engine: `openai:${model}/${voice}` };
 }
 
 // ─── Burned-in captions (2026-08-12, per Keenan) ────────────────────────────
@@ -638,6 +649,110 @@ export async function stillImageClip(image: Buffer, seconds: number): Promise<Bu
     const out = fs.readFileSync(outPath);
     if (out.length < 20_000) {
       throw new Error(`Still clip is suspiciously small (${out.length} bytes)`);
+    }
+    return out;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Fit a clip to an exact duration (2026-08-16, per Keenan: per-scene
+ * narration sync — each scene's clip is cut to the length of its own
+ * voiceover line). Longer clips are trimmed; shorter ones are extended
+ * by freezing the last frame (extracted with -sseof and turned into a
+ * still clip — reuses stillImageClip/stitch, whose filters are already
+ * proven on the prod ffmpeg-static binary; tpad is deliberately avoided,
+ * unverified there like drawtext was). Output is normalized 1080x1920@30.
+ */
+export async function fitClipToDuration(clip: Buffer, seconds: number): Promise<Buffer> {
+  const bin = ffmpegPath();
+  if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clip-fit-"));
+  try {
+    const inPath = path.join(dir, "in.mp4");
+    const outPath = path.join(dir, "out.mp4");
+    fs.writeFileSync(inPath, clip);
+    const cur = await probeFileDuration(bin, inPath);
+
+    const pad = seconds - cur;
+    if (pad > 0.25) {
+      // Freeze the last frame for the remainder.
+      const framePath = path.join(dir, "last.jpg");
+      await runFfmpeg(bin, [
+        "-y", "-loglevel", "warning",
+        "-sseof", "-0.1",
+        "-i", inPath,
+        "-update", "1",
+        "-frames:v", "1",
+        "-q:v", "2",
+        framePath,
+      ]);
+      const still = await stillImageClip(fs.readFileSync(framePath), pad);
+      return await stitchStoryVideo([clip, still]);
+    }
+
+    // Trim (or just normalize when already within ~0.25s).
+    await runFfmpeg(bin, [
+      "-y", "-loglevel", "warning",
+      "-i", inPath,
+      "-t", Math.min(seconds, cur).toFixed(2),
+      "-vf", "scale=1080:1920:flags=lanczos,fps=30,setsar=1",
+      "-an",
+      "-c:v", "libx264",
+      "-preset", "fast",
+      "-crf", "23",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      outPath,
+    ]);
+    const out = fs.readFileSync(outPath);
+    if (out.length < 50_000) {
+      throw new Error(`Fitted clip is suspiciously small (${out.length} bytes)`);
+    }
+    return out;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Concatenate per-scene voiceover MP3s into one track, padding each
+ * scene's audio with `gapSec` of silence (the same breathing gap added
+ * to each scene's video length) so the combined audio timeline matches
+ * the combined video timeline exactly — this is what keeps every word
+ * on its own scene.
+ */
+export async function concatAudioWithGaps(audios: Buffer[], gapSec: number): Promise<Buffer> {
+  const bin = ffmpegPath();
+  if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+  if (audios.length === 0) throw new Error("No audio segments to concat");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "audio-concat-"));
+  try {
+    const inputs: string[] = [];
+    audios.forEach((buf, i) => {
+      const p = path.join(dir, `seg-${i}.mp3`);
+      fs.writeFileSync(p, buf);
+      inputs.push("-i", p);
+    });
+    const pads = audios
+      .map((_, i) => `[${i}:a]aresample=44100,apad=pad_dur=${gapSec.toFixed(2)}[a${i}]`)
+      .join(";");
+    const concat =
+      audios.map((_, i) => `[a${i}]`).join("") + `concat=n=${audios.length}:v=0:a=1[a]`;
+    const outPath = path.join(dir, "out.mp3");
+    await runFfmpeg(bin, [
+      "-y", "-loglevel", "warning",
+      ...inputs,
+      "-filter_complex", `${pads};${concat}`,
+      "-map", "[a]",
+      "-c:a", "libmp3lame",
+      "-b:a", "128k",
+      outPath,
+    ]);
+    const out = fs.readFileSync(outPath);
+    if (out.length < 5_000) {
+      throw new Error(`Audio concat produced a suspiciously small file (${out.length} bytes)`);
     }
     return out;
   } finally {

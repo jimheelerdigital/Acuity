@@ -427,6 +427,12 @@ export async function sendStoryVideoEmail(
     durationSec?: number;
     /** Why TTS or the mux failed (shown so the cause is never a mystery). */
     voiceoverError?: string | null;
+    /**
+     * Which TTS engine voiced the video, e.g. "elevenlabs:<voiceId>" or
+     * "openai:gpt-4o-mini-tts/sage" (2026-08-16, per Keenan: the voice
+     * kept sounding bad and we couldn't tell WHICH engine he was hearing).
+     */
+    voiceEngine?: string | null;
   }
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
@@ -453,7 +459,7 @@ export async function sendStoryVideoEmail(
 
   const partialNote =
     opts.sceneCount < opts.totalScenes
-      ? `<p style="font-size:12px;color:#E06C75;">⚠️ ${opts.totalScenes - opts.sceneCount} of ${opts.totalScenes} scenes failed to render — the video runs shorter than 30s, but the voiceover was rewritten to match its actual length.</p>`
+      ? `<p style="font-size:12px;color:#E06C75;">⚠️ ${opts.totalScenes - opts.sceneCount} of ${opts.totalScenes} scenes failed to render — the video runs shorter than 30s, but each remaining scene keeps its own narration line so nothing is out of sync.</p>`
       : "";
   // When the voiceover failed, the email LEADS with the record-it-yourself
   // block (2026-08-13, per Keenan): the exact script, the target length,
@@ -501,7 +507,7 @@ export async function sendStoryVideoEmail(
     </div>
 
     ${opts.silent ? "" : `<div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
-      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Voiceover script</p>
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Voiceover script${opts.voiceEngine ? ` · voiced by ${escapeHtml(opts.voiceEngine)}` : ""}</p>
       <pre style="white-space:pre-wrap;font-size:13px;color:#BBB;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(opts.narration)}</pre>
     </div>`}
 
@@ -515,7 +521,7 @@ export async function sendStoryVideoEmail(
   const text = [
     `Story video ready to post — ${post.headline} (${dateStr})`,
     opts.sceneCount < opts.totalScenes
-      ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; voiceover was rewritten to match.`
+      ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; each remaining scene keeps its own narration line.`
       : "",
     opts.silent
       ? `NOTE: voiceover failed — the video has NO audio${captioned ? ", but the script is burned in as captions" : " and NO captions"}. Record the script below (aim for ${durationLabel}) and add it as audio when you post.${opts.voiceoverError ? ` Failure reason: ${opts.voiceoverError.slice(0, 200)}` : ""}`

@@ -347,159 +347,228 @@ export const carouselStoryVideoFn = inngest.createFunction(
       return { storyVideo: false, reason: `only ${readyClips.length} clips rendered` };
     }
 
-    // ── Stitch the silent video and measure its REAL duration ────────
-    const silentVideo = await step.run("stitch-silent", async () => {
-      const { stitchStoryVideo, probeMediaDuration } = await import(
-        "@/lib/content-factory/story-video"
-      );
-      const { uploadImage } = await import(
-        "@/lib/content-factory/carousel-generate"
-      );
-      const clipBuffers: Buffer[] = [];
-      // Keep scene order — skip scenes whose clip failed both attempts.
-      for (const url of clipUrls) {
-        if (!url) continue;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`clip re-download failed (${res.status}): ${url}`);
-        clipBuffers.push(Buffer.from(await res.arrayBuffer()));
-      }
-      const stitched = await stitchStoryVideo(clipBuffers);
-      const durationSec = await probeMediaDuration(stitched, "mp4");
-      const url = await uploadImage(
-        stitched,
-        `${basePath}/story-video-silent.mp4`,
-        "video/mp4"
-      );
-      return { url, durationSec };
-    });
+    // ── Per-scene narration sync (2026-08-16, per Keenan: the voiceover
+    // never lined up with the scenes — it was one rewritten monologue
+    // tempo-fitted over the whole video. Now each scene's line is voiced
+    // on its own, its clip is cut to that audio's length, and the pieces
+    // are joined scene-by-scene, so words physically cannot drift). ────
+    const GAP_SEC = 0.35; // breathing room after each scene's line
+    const keptIdx = clipUrls.map((u, i) => (u ? i : -1)).filter((i) => i >= 0);
+    const narration = keptIdx.map((i) => script.scenes[i].narration).join(" ");
 
-    // ── Rewrite the narration to fit the measured duration ───────────
-    // Only lines whose scenes actually rendered; falls back to joining
-    // them verbatim if the fit call fails (still no dropped-scene desync).
-    const narration = await step.run("fit-narration", async () => {
-      const keptNarrations = script.scenes
-        .filter((_, i) => Boolean(clipUrls[i]))
-        .map((s) => s.narration);
-      try {
-        const { fitNarrationToDuration } = await import(
-          "@/lib/content-factory/story-video"
-        );
-        return await fitNarrationToDuration({
-          narrations: keptNarrations,
-          targetSeconds: silentVideo.durationSec,
-          theme: script.theme,
+    const sceneAudios: {
+      scene: number;
+      url: string | null;
+      durationSec: number;
+      engine: string | null;
+      error: string | null;
+    }[] = [];
+    for (let k = 0; k < keptIdx.length; k++) {
+      const i = keptIdx[k];
+      const result = await step.run(`tts-scene-${i}`, async () => {
+        try {
+          const { generateVoiceover, probeMediaDuration } = await import(
+            "@/lib/content-factory/story-video"
+          );
+          const { uploadImage } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          // previous/next lines keep ElevenLabs' intonation continuous
+          // across the scene cuts.
+          const { audio, engine } = await generateVoiceover(
+            script.scenes[i].narration,
+            {
+              previousText: k > 0 ? script.scenes[keptIdx[k - 1]].narration : undefined,
+              nextText:
+                k < keptIdx.length - 1
+                  ? script.scenes[keptIdx[k + 1]].narration
+                  : undefined,
+            }
+          );
+          const durationSec = await probeMediaDuration(audio, "mp3");
+          const url = await uploadImage(
+            audio,
+            `${basePath}/story-audio-${i}.mp3`,
+            "audio/mpeg"
+          );
+          return { scene: i, url, durationSec, engine, error: null as string | null };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[story-video] TTS failed for scene ${i}: ${msg}`);
+          return { scene: i, url: null, durationSec: 0, engine: null, error: msg };
+        }
+      });
+      sceneAudios.push(result);
+    }
+    const allVoiced = sceneAudios.every((a) => a.url);
+    const voiceEngine = sceneAudios.find((a) => a.engine)?.engine ?? null;
+    const voiceError = sceneAudios.find((a) => a.error)?.error ?? null;
+
+    let finalized: {
+      url: string;
+      voiced: boolean;
+      captioned: boolean;
+      durationSec: number;
+      error: string | null;
+    };
+
+    if (allVoiced) {
+      // ── Cut each clip to its own narration's length ────────────────
+      const fittedUrls: string[] = [];
+      for (let k = 0; k < keptIdx.length; k++) {
+        const i = keptIdx[k];
+        const target = sceneAudios[k].durationSec + GAP_SEC;
+        const fitted = await step.run(`fit-clip-${i}`, async () => {
+          const { fitClipToDuration } = await import(
+            "@/lib/content-factory/story-video"
+          );
+          const { uploadImage } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          const res = await fetch(clipUrls[i]!);
+          if (!res.ok) throw new Error(`clip re-download failed (${res.status})`);
+          const buf = await fitClipToDuration(
+            Buffer.from(await res.arrayBuffer()),
+            target
+          );
+          return await uploadImage(
+            buf,
+            `${basePath}/story-clip-fitted-${i}.mp4`,
+            "video/mp4"
+          );
         });
-      } catch (err) {
-        console.error(
-          `[story-video] Narration fit failed — using kept scene lines verbatim: ${err instanceof Error ? err.message : err}`
-        );
-        return keptNarrations.join(" ");
+        fittedUrls.push(fitted);
       }
-    });
 
-    // ── Voiceover (never blocks — on failure the video ships without
-    // audio but WITH script captions burned in, and the email leads with
-    // the script so Keenan can record it himself; the failure reason is
-    // captured for the email, 2026-08-13) ────────────────────────────
-    const voiceover = await step.run("generate-voiceover", async () => {
-      try {
-        const { generateVoiceover } = await import(
+      // ── Combined audio + per-scene word-timed captions ─────────────
+      const audioTrack = await step.run("build-audio", async () => {
+        const { concatAudioWithGaps, transcribeCaptionChunks } = await import(
           "@/lib/content-factory/story-video"
         );
         const { uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
-        const mp3 = await generateVoiceover(narration);
-        const url = await uploadImage(mp3, `${basePath}/story-voiceover.mp3`, "audio/mpeg");
-        return { url, error: null as string | null };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(
-          `[story-video] Voiceover failed — video will ship with script captions only: ${msg}`
+        const bufs: Buffer[] = [];
+        for (const a of sceneAudios) {
+          const res = await fetch(a.url!);
+          if (!res.ok) throw new Error(`scene audio re-download failed (${res.status})`);
+          bufs.push(Buffer.from(await res.arrayBuffer()));
+        }
+        const combined = await concatAudioWithGaps(bufs, GAP_SEC);
+        const url = await uploadImage(
+          combined,
+          `${basePath}/story-voiceover.mp3`,
+          "audio/mpeg"
         );
-        return { url: null, error: msg };
-      }
-    });
+        // Whisper each scene's audio and shift its word timings to the
+        // scene's start in the final cut (audio and video timelines are
+        // identical by construction, so no tempo factor is involved).
+        let captions: { text: string; start: number; end: number }[] = [];
+        try {
+          let offset = 0;
+          for (let k = 0; k < bufs.length; k++) {
+            const chunks = await transcribeCaptionChunks(bufs[k]);
+            for (const c of chunks) {
+              captions.push({ text: c.text, start: c.start + offset, end: c.end + offset });
+            }
+            offset += sceneAudios[k].durationSec + GAP_SEC;
+          }
+        } catch (capErr) {
+          captions = [];
+          console.error(
+            `[story-video] Caption transcription failed — shipping uncaptioned: ${capErr instanceof Error ? capErr.message : capErr}`
+          );
+        }
+        const durationSec = sceneAudios.reduce((s, a) => s + a.durationSec + GAP_SEC, 0);
+        return { url, captions, durationSec };
+      });
 
-    // ── Mux the voiceover onto the silent video (tempo-fit to length),
-    // with word-timed captions burned in (2026-08-12, per Keenan: most
-    // viewers watch muted — captions are the retention fix). Whisper
-    // transcribes the actual TTS audio so timing is exact; a failed
-    // transcription ships the video uncaptioned rather than not at all. ─
-    const finalized = await step.run("finalize-video", async () => {
-      try {
+      // ── Stitch the fitted clips and mux the synced audio ───────────
+      finalized = await step.run("finalize-video", async () => {
+        const { stitchStoryVideo, muxNarration } = await import(
+          "@/lib/content-factory/story-video"
+        );
+        const { uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const clips: Buffer[] = [];
+        for (const u of fittedUrls) {
+          const res = await fetch(u);
+          if (!res.ok) throw new Error(`fitted clip re-download failed (${res.status})`);
+          clips.push(Buffer.from(await res.arrayBuffer()));
+        }
+        const stitched = await stitchStoryVideo(clips);
+        const audioRes = await fetch(audioTrack.url);
+        if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
+        const audioBuf = Buffer.from(await audioRes.arrayBuffer());
+
+        // Captioned mux first; audio-only retry so a caption problem can
+        // never ship a silent video (2026-08-14 drawtext incident).
+        let muxed: Buffer;
+        let captioned = audioTrack.captions.length > 0;
+        let muxError: string | null = null;
+        try {
+          muxed = await muxNarration(
+            stitched,
+            audioBuf,
+            captioned ? audioTrack.captions : undefined
+          );
+        } catch (muxErr) {
+          muxError = muxErr instanceof Error ? muxErr.message : String(muxErr);
+          console.error(
+            `[story-video] Captioned mux failed — retrying audio-only: ${muxError}`
+          );
+          muxed = await muxNarration(stitched, audioBuf, undefined);
+          captioned = false;
+        }
+        const url = await uploadImage(muxed, `${basePath}/story-video.mp4`, "video/mp4");
+        return {
+          url,
+          voiced: true,
+          captioned,
+          durationSec: audioTrack.durationSec,
+          error: muxError,
+        };
+      });
+    } else {
+      // ── Voiceover failed: silent video with estimated script captions
+      // (doubles as a teleprompter for a self-recorded voiceover,
+      // 2026-08-13, per Keenan). ─────────────────────────────────────
+      finalized = await step.run("finalize-silent", async () => {
         const {
+          stitchStoryVideo,
+          probeMediaDuration,
           muxNarration,
-          transcribeCaptionChunks,
           estimateCaptionChunks,
         } = await import("@/lib/content-factory/story-video");
         const { uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
-        const videoRes = await fetch(silentVideo.url);
-        if (!videoRes.ok) throw new Error(`silent video re-download failed (${videoRes.status})`);
-        const videoBuf = Buffer.from(await videoRes.arrayBuffer());
-
-        let audioBuf: Buffer | null = null;
-        if (voiceover.url) {
-          const audioRes = await fetch(voiceover.url);
-          if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
-          audioBuf = Buffer.from(await audioRes.arrayBuffer());
+        const clips: Buffer[] = [];
+        for (const i of keptIdx) {
+          const res = await fetch(clipUrls[i]!);
+          if (!res.ok) throw new Error(`clip re-download failed (${res.status})`);
+          clips.push(Buffer.from(await res.arrayBuffer()));
         }
-
-        // With audio: exact Whisper word timings. Without audio
-        // (voiceover failed): captions estimated from the script itself,
-        // spread over the measured duration — the silent video still
-        // reads as the story, and the captions double as a teleprompter
-        // for a self-recorded voiceover (2026-08-13, per Keenan).
-        let captions;
-        if (audioBuf) {
-          try {
-            captions = await transcribeCaptionChunks(audioBuf);
-          } catch (capErr) {
-            console.error(
-              `[story-video] Caption transcription failed — shipping uncaptioned: ${capErr instanceof Error ? capErr.message : capErr}`
-            );
-          }
-        } else {
-          captions = estimateCaptionChunks(narration, silentVideo.durationSec);
-        }
-
-        if (!audioBuf && (!captions || captions.length === 0)) {
-          return {
-            url: silentVideo.url,
-            voiced: false,
-            captioned: false,
-            error: null as string | null,
-          };
-        }
-
-        // Captioned mux first; if that throws and we have audio, retry
-        // audio-only (-c:v copy) so a caption problem can never ship a
-        // silent video again (2026-08-14: drawtext missing from prod
-        // ffmpeg silently muted two days of videos this exact way).
-        let muxed: Buffer;
-        let captioned = Boolean(captions && captions.length > 0);
-        let muxError: string | null = null;
+        const stitched = await stitchStoryVideo(clips);
+        const durationSec = await probeMediaDuration(stitched, "mp4");
+        const silentUrl = await uploadImage(
+          stitched,
+          `${basePath}/story-video-silent.mp4`,
+          "video/mp4"
+        );
         try {
-          muxed = await muxNarration(videoBuf, audioBuf, captions);
-        } catch (muxErr) {
-          if (!audioBuf) throw muxErr;
-          muxError = muxErr instanceof Error ? muxErr.message : String(muxErr);
-          console.error(
-            `[story-video] Captioned mux failed — retrying audio-only: ${muxError}`
-          );
-          muxed = await muxNarration(videoBuf, audioBuf, undefined);
-          captioned = false;
+          const captions = estimateCaptionChunks(narration, durationSec);
+          const muxed = await muxNarration(stitched, null, captions);
+          const url = await uploadImage(muxed, `${basePath}/story-video.mp4`, "video/mp4");
+          return { url, voiced: false, captioned: true, durationSec, error: null as string | null };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[story-video] Silent captioned mux failed — shipping silent: ${msg}`);
+          return { url: silentUrl, voiced: false, captioned: false, durationSec, error: msg };
         }
-        const url = await uploadImage(muxed, `${basePath}/story-video.mp4`, "video/mp4");
-        return { url, voiced: Boolean(audioBuf), captioned, error: muxError };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[story-video] Mux failed — shipping the silent video: ${msg}`);
-        return { url: silentVideo.url, voiced: false, captioned: false, error: msg };
-      }
-    });
+      });
+    }
     const finalVideoUrl = finalized.url;
     const voiced = finalized.voiced;
 
@@ -530,8 +599,9 @@ export const carouselStoryVideoFn = inngest.createFunction(
           narration,
           silent: !voiced,
           captioned: finalized.captioned,
-          durationSec: silentVideo.durationSec,
-          voiceoverError: voiceover.error ?? finalized.error,
+          durationSec: finalized.durationSec,
+          voiceoverError: voiceError ?? finalized.error,
+          voiceEngine,
         });
       } catch (err) {
         logger.error(
@@ -541,14 +611,14 @@ export const carouselStoryVideoFn = inngest.createFunction(
     });
 
     logger.info(
-      `[story-video] Post ${postId}: story video complete (${readyClips.length}/${script.scenes.length} scenes, ${silentVideo.durationSec.toFixed(1)}s${voiced ? ", voiced" : ", silent"})`
+      `[story-video] Post ${postId}: story video complete (${readyClips.length}/${script.scenes.length} scenes, ${finalized.durationSec.toFixed(1)}s${voiced ? `, voiced via ${voiceEngine}` : ", silent"})`
     );
     return {
       storyVideo: true,
       standalone,
       postId,
       scenes: readyClips.length,
-      durationSec: silentVideo.durationSec,
+      durationSec: finalized.durationSec,
       videoUrl: finalVideoUrl,
       voiced,
     };
