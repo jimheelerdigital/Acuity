@@ -210,6 +210,12 @@ export function buildImagePrompt(
   const sizeRule = isCover
     ? "Text should be prominent but not exceed 50% of the slide. Blend it creatively with the illustration — vary placement each time."
     : "Text should be prominent but not exceed 40% of the slide. Blend it creatively with the illustration — vary placement each time.";
+  // TikTok photo-mode chrome overlaps the image itself (2026-08-16, per
+  // Keenan: live post had the headline running under the search bar and
+  // clipped at the top edge). Baked-in text must stay inside the same
+  // safe zone the animated bucket's overlays already use.
+  const safeZoneRule =
+    "CRITICAL TEXT SAFE ZONE — TikTok's interface covers parts of the image, so EVERY letter of text must sit inside the central safe area: nothing in the top 15% of the image (the search bar covers it), nothing in the bottom 15% (caption and music info cover it), and nothing in the right-most 15% (like/comment/share buttons sit there). Keep text at least 6% in from the left edge. If the text does not fit inside this zone, make the type smaller — text must NEVER touch or cross these boundaries, and must never be cropped by the image edge.";
   // Mood-matched expression so the character's face fits the slide's
   // emotional weight instead of gpt-image-2's default cheerful woman.
   const mood = opts?.mood;
@@ -239,7 +245,7 @@ export function buildImagePrompt(
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
     isCover && opts?.coverSubline
-      ? `Near the BOTTOM of the image (lower quarter of the frame, but kept above the bottom 12% so platform UI never covers it), in clearly smaller text than the headline, display this EXACT question: "${opts.coverSubline}"`
+      ? `Near the BOTTOM of the safe area (lower quarter of the frame, but kept fully above the bottom 15% so platform UI never covers it), in clearly smaller text than the headline, display this EXACT question: "${opts.coverSubline}"`
       : "",
     // Supporting detail line (2026-08-16): smaller "how/why" sentence
     // under the main text, styled to match but clearly secondary.
@@ -247,6 +253,7 @@ export function buildImagePrompt(
       ? `Directly below the main text, display this EXACT supporting sentence in smaller, lighter type (same font family, clearly secondary): "${opts.detailText}"`
       : "",
     sizeRule,
+    safeZoneRule,
     moodLine,
     `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
     `Include relevant illustrated elements that visually represent: ${sceneText}`,

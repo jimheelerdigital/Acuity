@@ -22,7 +22,7 @@ export const VISUAL_DNA = [
   "  • Text can be integrated throughout the scene with elements weaving between lines",
   "  • Be creative with placement — never feel formulaic or templated",
   "TEXT: Bold, clean sans-serif. Perfectly crisp and readable. Use visual hierarchy — key words or numbers can be larger. Spell every word EXACTLY as provided. No warping or distortion.",
-  "SAFE ZONES: Keep ALL text out of the top 15% and bottom 12% of the frame — mobile app UI (search bar, captions, buttons) covers those areas. Text must NEVER overlap any person's face; keep faces fully unobstructed.",
+  "SAFE ZONES (hard rule — TikTok's interface covers these areas of the image): keep ALL text out of the top 15%, the bottom 15%, AND the right-most 15% of the frame. Text starts BELOW the top 15% line — never at the very top, never touching or cropped by any edge. If the text won't fit, make the type smaller. Text must NEVER overlap any person's face; keep faces fully unobstructed.",
   "ILLUSTRATION: Warm editorial illustration, hand-drawn feel. Diverse women ~35-50, natural expressions. Rich details — plants, candles, mugs, books, sticky notes, cozy domestic elements. Muted warm tones.",
   "QUALITY: Every slide should feel like a page from a premium wellness magazine. Clean, intentional, sophisticated. Not cluttered, not cheap, not templated.",
   "9:16 portrait format. NO watermarks, NO logos, NO extra text beyond what is specified.",
