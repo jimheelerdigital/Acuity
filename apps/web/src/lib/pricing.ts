@@ -18,9 +18,28 @@
  */
 
 // ── Active prices ───────────────────────────────────────────────────
-export const MONTHLY_PRICE_CENTS = 499;
-export const ANNUAL_PRICE_CENTS = 3999;
+//
+// Derived from the shared catalog (packages/shared/src/pricing-plans.ts)
+// rather than written twice. LEGACY_TIER is the live tier, so these values
+// are UNCHANGED — $4.99 / $39.99 — but there is now exactly one definition,
+// shared with mobile, instead of two constants that had to be kept in sync
+// by comment ("Web is canonical. Any price change there MUST be mirrored
+// here"). Raising prices later is a config change (newPricingEnabled), not
+// an edit to every surface. See docs/REVENUECAT_MIGRATION.md.
+import { LEGACY_TIER, V2_TIER } from "@acuity/shared";
+
+export const MONTHLY_PRICE_CENTS = LEGACY_TIER.monthlyCents;
+export const ANNUAL_PRICE_CENTS = LEGACY_TIER.annualCents;
 export const ANNUAL_AS_MONTHLY_CENTS = Math.round(ANNUAL_PRICE_CENTS / 12);
+
+/**
+ * The not-yet-active V2 tier, re-exported so surfaces that need to *quote*
+ * the future price (internal previews, migration comms drafts) can do so
+ * without importing from the shared package directly. Nothing user-facing
+ * should read this until the pricing decision ships.
+ */
+export const V2_MONTHLY_PRICE_CENTS = V2_TIER.monthlyCents;
+export const V2_ANNUAL_PRICE_CENTS = V2_TIER.annualCents;
 
 // ── Rollback reference ──────────────────────────────────────────────
 // Old monthly $12.99: price_1TPqUqD9XJakJqj54TZyFYXZ
@@ -57,18 +76,44 @@ export const PRICING = {
   monthly: {
     price: MONTHLY_PRICE_CENTS / 100,
     cents: MONTHLY_PRICE_CENTS,
+    // Env wins; the catalog supplies the local-dev / documentation fallback.
     stripeId:
-      process.env.STRIPE_PRICE_MONTHLY ?? "price_1Tb335D9XJakJqj5nwTjb4cf",
+      process.env.STRIPE_PRICE_MONTHLY ??
+      LEGACY_TIER.products.monthly.stripe ??
+      "",
   },
   annual: {
     price: ANNUAL_PRICE_CENTS / 100,
     cents: ANNUAL_PRICE_CENTS,
     stripeId:
-      process.env.STRIPE_PRICE_YEARLY ?? "price_1TcSPvD9XJakJqj5C2dITYrR",
+      process.env.STRIPE_PRICE_YEARLY ??
+      LEGACY_TIER.products.annual.stripe ??
+      "",
     savingsVsMonthly: `${annualSavingsPct}%`,
     savingsCents: annualSavingsCents,
   },
 } as const;
+
+/**
+ * Analytics/CAPI value for a plan, in dollars.
+ *
+ * Exists so pixel + Conversions API call sites stop hardcoding
+ * `interval === "yearly" ? 39.99 : 4.99`. Those literals were duplicated
+ * across seven call sites; each one is a place where a price change silently
+ * starts reporting the wrong revenue to Meta, which then optimizes ad
+ * delivery against bad numbers.
+ */
+export function planValueDollars(
+  interval: string | null | undefined
+): number {
+  const yearly = interval === "yearly" || interval === "annual" || interval === "year";
+  return (yearly ? ANNUAL_PRICE_CENTS : MONTHLY_PRICE_CENTS) / 100;
+}
+
+/** Monthly price in dollars — the `predicted_ltv` / StartTrial value. */
+export const MONTHLY_PRICE_DOLLARS = MONTHLY_PRICE_CENTS / 100;
+/** Annual price in dollars. */
+export const ANNUAL_PRICE_DOLLARS = ANNUAL_PRICE_CENTS / 100;
 
 export function formatDollars(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;

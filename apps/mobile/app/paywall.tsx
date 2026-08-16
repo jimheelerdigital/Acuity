@@ -17,6 +17,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { isIapEnabled } from "@/lib/iap-config";
 import type { AcuityTokens } from "@/lib/theme/tokens";
+import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 
 /**
  * Native paywall screen for post-trial users. Per
@@ -236,8 +237,8 @@ export default function PaywallScreen() {
                 automatically renews unless it is canceled at least
                 24 hours before the end of the current period. Your
                 account will be charged for renewal within 24 hours
-                prior to the end of the current period at $4.99
-                /month. You can manage and cancel your subscriptions
+                prior to the end of the current period at{" "}
+                {formatDollars(MONTHLY_PRICE_CENTS)}/month. You can manage and cancel your subscriptions
                 by going to your account settings on the App Store
                 after purchase.
               </Text>

@@ -4,6 +4,12 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
+import {
+  ANNUAL_PRICE_DOLLARS,
+  MONTHLY_PRICE_DOLLARS,
+  planValueDollars,
+} from "@/lib/pricing";
+
 /**
  * Safe fbq wrapper — only fires if the pixel has loaded.
  * Uses window.fbq check to avoid issues with SSR and race conditions.
@@ -136,7 +142,7 @@ export function TrackCompleteRegistration() {
         const fbqReady = await waitForFbq();
         if (fbqReady) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, data.eventId);
-          fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+          fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
         } else {
           console.warn("[meta-pixel] fbq not available after 5s (no marketing consent?), CAPI-only for this signup");
         }
@@ -156,7 +162,7 @@ export function TrackSubscribe() {
   useEffect(() => {
     if (searchParams.get("upgraded") === "1") {
       const plan = searchParams.get("plan");
-      const value = plan === "yearly" ? 39.99 : 4.99;
+      const value = planValueDollars(plan);
       fireFbq("Subscribe", { value, currency: "USD" });
     }
   }, [searchParams]);

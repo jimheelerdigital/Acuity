@@ -39,14 +39,19 @@ import {
   isIapEnabled,
 } from "@/lib/iap-config";
 import type { AcuityTokens } from "@/lib/theme/tokens";
+import {
+  ANNUAL_PRICE_CENTS,
+  MONTHLY_PRICE_CENTS,
+  formatDollars,
+} from "@/lib/pricing";
 
 type Tier = "monthly" | "annual";
 
 // Fallback display strings used only during the brief window between
 // screen mount and StoreKit returning. Once `products.{monthly|annual}`
 // is populated, the real Apple-localized price replaces these.
-const MONTHLY_FALLBACK_PRICE = "$4.99";
-const ANNUAL_FALLBACK_PRICE = "$39.99";
+const MONTHLY_FALLBACK_PRICE = formatDollars(MONTHLY_PRICE_CENTS);
+const ANNUAL_FALLBACK_PRICE = formatDollars(ANNUAL_PRICE_CENTS);
 
 /**
  * Phase 3a — Subscribe screen. Modal-style native paywall that
