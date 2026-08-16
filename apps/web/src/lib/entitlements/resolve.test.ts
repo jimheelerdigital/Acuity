@@ -259,3 +259,140 @@ describe("resolveEntitlementFromState", () => {
     expect(findUniqueMock).not.toHaveBeenCalled();
   });
 });
+
+// ─── App-managed trial overlay (RevenueCat migration, task 9) ─────────
+//
+// Ripple's trial needs no payment method, so RC has nothing to observe and
+// reports a trialing user as FREE. These tests are the regression guard that
+// flipping RC_SOURCE_OF_TRUTH does not revoke access from the 7 users who are
+// mid-trial at cutover.
+
+describe("app-managed trial overlay", () => {
+  const NOW = new Date("2026-08-15T12:00:00Z");
+  const rcFree = {
+    subscriptionStatus: "FREE",
+    trialEndsAt: null,
+    stripeFirstFailureAt: null,
+    subscriptionSource: null,
+  };
+
+  it("keeps a mid-trial user entitled even though RC says FREE", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+
+    rcLoadMock.mockResolvedValue(rcFree);
+    findUniqueMock.mockResolvedValue(
+      dbRow({
+        subscriptionStatus: "TRIAL",
+        trialEndsAt: new Date("2026-08-18T12:00:00Z"),
+        subscriptionSource: null,
+      })
+    );
+
+    const res = await resolveEntitlement("u1", NOW);
+    // The assertion that matters: a trialing user does NOT lose access.
+    expect(res!.entitlement.isTrialing).toBe(true);
+    expect(res!.entitlement.canExtractEntries).toBe(true);
+    expect(res!.entitlement.trialDaysRemaining).toBe(3);
+  });
+
+  it("covers a brand-new account whose trialEndsAt is not set yet", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue(rcFree);
+    findUniqueMock.mockResolvedValue(
+      dbRow({ subscriptionStatus: "TRIAL", trialEndsAt: null, subscriptionSource: null })
+    );
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.isTrialing).toBe(true);
+  });
+
+  it("does NOT resurrect an EXPIRED trial", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue(rcFree);
+    findUniqueMock.mockResolvedValue(
+      dbRow({
+        subscriptionStatus: "TRIAL",
+        trialEndsAt: new Date("2026-08-01T12:00:00Z"),
+        subscriptionSource: null,
+      })
+    );
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.isTrialing).toBe(false);
+    expect(res!.entitlement.isPostTrialFree).toBe(true);
+  });
+
+  it("does NOT overlay for a genuinely FREE (lapsed) user", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue(rcFree);
+    findUniqueMock.mockResolvedValue(
+      dbRow({ subscriptionStatus: "FREE", trialEndsAt: null })
+    );
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.isPostTrialFree).toBe(true);
+    expect(res!.entitlement.canExtractEntries).toBe(false);
+  });
+
+  it("skips the overlay entirely when RC reports a paid entitlement", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue({
+      subscriptionStatus: "PRO",
+      trialEndsAt: null,
+      stripeFirstFailureAt: null,
+      subscriptionSource: "apple",
+    });
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.isActive).toBe(true);
+    // No extra DB query on the paid path.
+    expect(findUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it("lets a store-managed RC trial through as TRIAL without the overlay", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue({
+      subscriptionStatus: "TRIAL",
+      trialEndsAt: new Date("2026-08-20T12:00:00Z"),
+      stripeFirstFailureAt: null,
+      subscriptionSource: "apple",
+    });
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.isTrialing).toBe(true);
+    expect(findUniqueMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("isActiveAppManagedTrial", () => {
+  const NOW = new Date("2026-08-15T12:00:00Z");
+  const st = (over: Record<string, unknown> = {}) => ({
+    subscriptionStatus: "TRIAL",
+    trialEndsAt: new Date("2026-08-20T12:00:00Z"),
+    stripeFirstFailureAt: null,
+    subscriptionSource: null,
+    ...over,
+  });
+
+  it("is true for a future trialEndsAt and for null", async () => {
+    const { isActiveAppManagedTrial } = await subject();
+    expect(isActiveAppManagedTrial(st(), NOW)).toBe(true);
+    expect(isActiveAppManagedTrial(st({ trialEndsAt: null }), NOW)).toBe(true);
+  });
+
+  it("is false for an expired trial, and for any non-TRIAL status", async () => {
+    const { isActiveAppManagedTrial } = await subject();
+    expect(
+      isActiveAppManagedTrial(st({ trialEndsAt: new Date("2026-08-01") }), NOW)
+    ).toBe(false);
+    for (const s of ["PRO", "FREE", "PAST_DUE"]) {
+      expect(isActiveAppManagedTrial(st({ subscriptionStatus: s }), NOW)).toBe(false);
+    }
+  });
+
+  it("treats trialEndsAt exactly === now as expired (no boundary slop)", async () => {
+    const { isActiveAppManagedTrial } = await subject();
+    expect(isActiveAppManagedTrial(st({ trialEndsAt: NOW }), NOW)).toBe(false);
+  });
+});

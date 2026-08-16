@@ -173,6 +173,25 @@ export async function resolveEntitlement(
       fellBack = true;
       safeLog.warn("entitlements.rc-source-fellback", { userId });
       state = await SOURCES.db.load(userId);
+    } else if (state.subscriptionStatus === "FREE") {
+      // ── APP-MANAGED TRIAL OVERLAY (load-bearing) ────────────────────
+      // Ripple's 7-day trial requires NO payment method ("No card
+      // required" is a repeated public promise). RevenueCat therefore has
+      // no record of a trialing user at all — there is no transaction to
+      // observe. Without this overlay, flipping RC_SOURCE_OF_TRUTH would
+      // read RC's (correct, from its perspective) "no entitlement" and
+      // instantly revoke access from every user mid-trial.
+      //
+      // So the resolver UNIONS the two: RC owns paid entitlement, the app
+      // keeps owning the trial clock. Only consulted when RC says FREE, so
+      // a real paid entitlement always wins and this costs one extra query
+      // exclusively on the not-entitled path.
+      // See docs/REVENUECAT_MIGRATION.md §Trials.
+      const dbState = await SOURCES.db.load(userId);
+      if (dbState && isActiveAppManagedTrial(dbState, now)) {
+        safeLog.info("entitlements.app-trial-overlay", { userId });
+        state = dbState;
+      }
     }
   } else {
     state = await SOURCES.db.load(userId);
@@ -186,6 +205,27 @@ export async function resolveEntitlement(
     source: fellBack ? "db" : configured,
     fellBack,
   };
+}
+
+/**
+ * Is this state an ACTIVE app-managed trial?
+ *
+ * Mirrors `entitlementsFor`'s TRIAL branch exactly, including the
+ * `trialEndsAt === null` case (a brand-new account between createUser and
+ * the trialEndsAt-setting hook is treated as trialing rather than locked
+ * out). Kept as a separate predicate rather than reusing entitlementsFor
+ * because we need to distinguish "entitled because trialing" from "entitled
+ * because paid" — entitlementsFor deliberately flattens that.
+ *
+ * Exported for the trial-mapping tests.
+ */
+export function isActiveAppManagedTrial(
+  state: EntitlementState,
+  now: Date = new Date()
+): boolean {
+  if (state.subscriptionStatus !== "TRIAL") return false;
+  if (state.trialEndsAt === null) return true;
+  return state.trialEndsAt.getTime() > now.getTime();
 }
 
 /**
