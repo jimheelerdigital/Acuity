@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-08-16] — Photo carousel fixes: TikTok safe zone + cover list matches the slides
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bf965891, 20d77eaa
+
+### In plain English (for Keenan)
+Two fixes from proofing the live photo carousel. First, the text on photo slides was running under TikTok's search bar and getting clipped at the edges — the image prompts now force all text into the safe middle area (away from the top, bottom, and right side where TikTok's buttons sit). Second, the cover was showing its own made-up list of answers (the sticky notes) that didn't match the actual slides. Now each slide leads with a short punchy answer (like "more rest") with a smaller explanation line under it, and the cover's preview list uses those exact same answers — so what you see on the cover is what you get in the slides.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/brand.ts: VISUAL_DNA SAFE ZONES rule strengthened — all text out of top 15%, bottom 15%, right-most 15%; shrink type rather than cross boundaries; never cover faces
+- apps/web/src/lib/content-factory/carousel-generate.ts: buildImagePrompt gains a safeZoneRule for baked-text slides, plus new opts.coverListItems — the cover prompt now instructs gpt-image-2 that any preview list must contain exactly the given items, in order, spelled exactly
+- apps/web/src/lib/content-factory/generate-topic.ts: item-slide rules rewritten — each "reason" is now a 2-5 word main answer (sticky-note length), with the required details[] sentence carrying the explanation, for both RESONANCE and ACTIONABLE archetypes
+- apps/web/src/inngest/functions/carousel-daily.ts: photo bucket passes topicData.reasons as coverListItems; animated bucket unchanged (its overlays already respect the safe zone)
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- gpt-image-2 invents a mini answer-list on covers whenever the headline promises "X things" — it only ever received the headline, so the list was fabricated. Feeding it the exact items is prompt-level enforcement; spot-check the next few covers since image models can still typo long lists.
+- Short main answers also make the animated bucket's overlays cleaner (short line + detail below), no code change needed there — renderSlideTextOverlay already supported the detail parameter.
+
+---
+
 ## [2026-08-16] — Content factory reset: 3 daily buckets, better stories, helpful lists, crossfades, and trackable bio links
 
 **Requested by:** Keenan
