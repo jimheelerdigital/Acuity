@@ -7,6 +7,53 @@
 
 ---
 
+## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 8edcbf70 (+ 7 prior on feat/revenuecat-migration)
+
+### In plain English (for Keenan)
+We're moving to RevenueCat as the one system that decides who has a paid subscription, instead of tracking it separately for Apple, Google, and the website. Tonight the whole thing got built, but **none of it is switched on** — every new piece is behind an off switch, and Stripe/Apple/Google are still fully in charge of billing exactly as before. Nobody's subscription changed and no prices changed.
+
+The approach is "watch first, then trust." RevenueCat will sit alongside our current system and just observe, and we compare its answers to ours. Only once it agrees with us on all 26 accounts (17 paying, 2 comped, 7 on trial) do we let it take over. If it ever misbehaves after that, flipping one switch puts us straight back to today's setup with no data cleanup.
+
+Two real problems got caught while building. First, the 7 people currently on free trials would have **lost access** the moment we switched over — RevenueCat has no way to know about our trials, because our trial doesn't ask for a card. That's fixed. Second, we found that people who cancel would have lost the rest of the time they'd already paid for; also fixed.
+
+Also groundwork (not switched on) for the planned $8.99/$79.99 pricing, including the rule that the 17 current subscribers keep their current price forever. One thing needs your call: our drip emails currently promise "$4.99 — the lowest price Ripple will ever be," which new pricing would break.
+
+### Technical changes (for Jimmy)
+- **Audit:** `docs/REVENUECAT_ENTITLEMENT_AUDIT.md` — every entitlement decision + write site with file/line refs, plus the 8 invariants each tied to its originating incident.
+- **Resolver:** new `apps/web/src/lib/entitlements/resolve.ts` — single source-selection point; `activeSourceName()` is the one-line cutover swap. `entitlements-fetch.ts` + `paywall.ts` now read through it (signatures unchanged). `entitlementsFor` untouched. Dual-read fallback: RC null/throw → DB, `fellBack: true`.
+- **Trial overlay (bug fix):** RC reports trialing users FREE (no transaction to observe, since our trial is card-free). Resolver now unions RC-paid with app-managed trial; only queries DB on the not-entitled path. Would have revoked all 7 trials at cutover.
+- **Webhook:** `apps/web/src/app/api/revenuecat/webhook/route.ts` behind `RC_SOURCE_OF_TRUTH`. Timing-safe auth compare (RC gives a raw shared secret, no SDK does this for us), event-id idempotency via new `RevenueCatEvent` model, SQL-layer comp guard. Mapping extracted to pure `lib/revenuecat/webhook-events.ts` (13 event types). CANCELLATION does NOT revoke while the paid period runs. BILLING_ISSUE → FREE + anchor, preserving our no-grace spec rather than RC's keep-through-grace model.
+- **Mobile:** `react-native-purchases` + `-ui` @10.7.1, `expo-dev-client` pinned ~6.0.21 (dev profile set `developmentClient: true` with the package absent). `apps/mobile/lib/revenuecat/` — lazy native import so flags-off means the module never loads. `auth-context.tsx` aliases RC identity to `User.id` on sign-in, resets on sign-out (the logIn alias is what fixes the Tessa-class cross-provider login bug).
+- **Import script:** `apps/web/scripts/rc-import-receipts.ts` — dry-run default, `RC_SECRET_KEY` from env only (never argv), local ledger written after every success so reruns resume, `--only/--limit/--concurrency`. Exercised against synthetic fixtures.
+- **Drift monitor:** `scanRcParity()` + pure `rcParityReadyForCutover()` in `entitlement-drift.ts`; exposed as `?mode=rc-parity`. SEV1 (DB entitled, RC not) blocks cutover; SEV2 (RC entitled, DB not) does not. No RC reconciler by design.
+- **Pricing:** `packages/shared/src/pricing-plans.ts` is now the single catalog; web + mobile derive from it (kills the documented mirror-by-comment drift risk). `planValueDollars()` replaces `interval === "yearly" ? 39.99 : 4.99` in 7 analytics call sites. Verified at runtime: still $4.99/$39.99, badge still 33%, Stripe Price ID unchanged.
+- **Flags:** `packages/shared/src/revenuecat.ts` — `RC_OBSERVER` / `RC_SOURCE_OF_TRUTH` / `RC_SDK_PURCHASES`, strict fail-closed parsing (only 1/true/on/yes). Verified all three resolve false and no RC var is set in any env file or eas.json.
+- **Tests:** +150 new, all passing. Suite 568/574; the 6 failures are pre-existing stale tests on `main` (paywall PAST_DUE-grace vs the 2026-06-12 no-grace change; auth-flows asserting 14-day trials vs the current 7). `next build` compiles successfully.
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home network — creates `RevenueCatEvent`. Required before `RC_SOURCE_OF_TRUTH`; harmless before (Jimmy)
+- [ ] RC dashboard: create project, entitlement id exactly `pro`, offerings `default` + `grandfathered`, connect App Store / Play / Stripe (Jimmy)
+- [ ] Vercel env: `RC_SECRET_KEY`, `RC_WEBHOOK_AUTH` (we choose), `RC_PROJECT_ID` (Jimmy)
+- [ ] EAS secrets: `EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY` (Jimmy)
+- [ ] Cowork: id→receipt mapping keyed on our `User.id`, kept outside the repo (Cowork)
+- [ ] Verify `react-native-iap@15`'s StoreKit version matches the RC observer-mode `storeKitVersion` before enabling observer in prod (Jimmy)
+- [ ] Decide: route `feature-flags.ts:tierMatches` through the resolver? It gates PRO flags on `status === "PRO"`, so TRIAL users fail PRO flags today (Jimmy)
+- [ ] Decide: drip-email "lowest price Ripple will ever be" promise vs new pricing (Keenan)
+- [ ] NOT PUSHED — branch `feat/revenuecat-migration` is local only, per instruction (Jimmy)
+
+### Notes
+- Nothing was pushed and no flag was flipped, per the run's hard rules. Old billing handlers are marked, not removed, and stay authoritative until cutover.
+- `sharp` was declared in `apps/web/package.json` but missing from `node_modules`, so `next build` was already broken before this work. `npm install` repaired it. Worth knowing if a Vercel build ever fails on it.
+- Adding `RevenueCatEvent` as a new MODEL is safe pre-`db push` — unlike a new User column it can't widen an existing projection into a P2022 (the trap documented in `feature-flags.ts`).
+- Trials must stay app-managed: store-managed intro offers require a card, and "No card required" appears in landing copy, the FAQ, and every `/for/*` lander. Consequence: the trial-expiration cron stays live after cutover and is NOT retired in phase 4.
+- Mobile flags must use static `process.env.EXPO_PUBLIC_*` reads — Metro only inlines those for static member access, so a dynamic lookup would silently pin every flag off in a release bundle.
+- Cutover order is load-bearing: `RC_SDK_PURCHASES` before `RC_SOURCE_OF_TRUTH` would charge users and grant nothing. `configureRevenueCat` warns, but the ordering is on us.
+- Full runbook + the 5 open decisions: `docs/REVENUECAT_MIGRATION.md`.
+
 ## [2026-08-07] — Durable comp marker (subscriptionSource="comp") + one-line comp action
 
 **Requested by:** Jimmy
