@@ -140,12 +140,27 @@ describe("requireEntitlement — canExtractEntries (PRO + TRIAL allow)", () => {
     expect(gate.ok).toBe(true);
   });
 
-  it("PAST_DUE allows canExtractEntries (Stripe grace)", async () => {
+  // 2026-06-12 no-grace spec: a failed payment drops to FREE-tier access
+  // IMMEDIATELY. There is no PAST_DUE grace window any more — the
+  // *FirstFailureAt timestamps are audit-only and drive the recovery
+  // banner's 30-day window, they no longer gate access.
+  // (This test previously asserted the opposite, under the old
+  // "Stripe grace" behavior, and had been failing since that change.)
+  it("PAST_DUE denies canExtractEntries (no grace)", async () => {
     findUniqueMock.mockResolvedValue({
       subscriptionStatus: "PAST_DUE",
       trialEndsAt: null,
     });
     const gate = await requireEntitlement("canExtractEntries", "u1");
+    expect(gate.ok).toBe(false);
+  });
+
+  it("PAST_DUE still allows canRecord — recording is the FREE loop", async () => {
+    findUniqueMock.mockResolvedValue({
+      subscriptionStatus: "PAST_DUE",
+      trialEndsAt: null,
+    });
+    const gate = await requireEntitlement("canRecord", "u1");
     expect(gate.ok).toBe(true);
   });
 });
@@ -169,13 +184,14 @@ describe("requireEntitlement — canSyncCalendar (PRO + TRIAL allow, v1.1 slice 
     expect(gate.ok).toBe(true);
   });
 
-  it("PAST_DUE allows canSyncCalendar (Stripe grace)", async () => {
+  // See the no-grace note above — same change, same reason.
+  it("PAST_DUE denies canSyncCalendar (no grace)", async () => {
     findUniqueMock.mockResolvedValue({
       subscriptionStatus: "PAST_DUE",
       trialEndsAt: null,
     });
     const gate = await requireEntitlement("canSyncCalendar", "u1");
-    expect(gate.ok).toBe(true);
+    expect(gate.ok).toBe(false);
   });
 
   it("FREE blocks canSyncCalendar with 402", async () => {
