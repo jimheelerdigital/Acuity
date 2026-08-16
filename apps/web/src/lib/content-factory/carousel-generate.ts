@@ -199,6 +199,13 @@ export function buildImagePrompt(
      */
     coverSubline?: string;
     /**
+     * COVER, baked-text runs only (2026-08-16, per Keenan): the exact
+     * short answers from the reason slides. gpt-image-2 loves inventing
+     * its own sticky-note preview list on covers, which then doesn't
+     * match the actual slides — if a list appears it must be THESE.
+     */
+    coverListItems?: string[];
+    /**
      * REASON, baked-text runs only (2026-08-16, per Keenan): the
      * supporting "how/why" sentence rendered smaller below the main text.
      */
@@ -244,6 +251,9 @@ export function buildImagePrompt(
     lanePrefix,
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
+    isCover && opts?.coverListItems && opts.coverListItems.length > 0
+      ? `The cover also shows a preview list of the answers (e.g. on sticky notes, a written list, or small labels woven into the scene). This list MUST contain EXACTLY these ${opts.coverListItems.length} items, in this exact order, spelled exactly as written — do NOT invent, reword, add, or omit any item:\n${opts.coverListItems.map((item, i) => `${i + 1}. "${item}"`).join("\n")}\nEach item in smaller text than the headline, all fully inside the safe zone.`
+      : "",
     isCover && opts?.coverSubline
       ? `Near the BOTTOM of the safe area (lower quarter of the frame, but kept fully above the bottom 15% so platform UI never covers it), in clearly smaller text than the headline, display this EXACT question: "${opts.coverSubline}"`
       : "",

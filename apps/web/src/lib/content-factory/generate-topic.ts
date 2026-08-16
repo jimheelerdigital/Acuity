@@ -91,19 +91,21 @@ RULES FOR HEADLINES:
 - No emojis, no all-caps, no clickbait that doesn't deliver
 - US English spelling only (color not colour, realize not realise, etc.)
 
-RULES FOR ITEM SLIDES (each "reason" is one slide):
-- Each item is one short, punchy line (under 50 characters ideal)
-- RESONANCE items: second person ("you"), each lands like "ouch, yeah". At least one so hyper-specific she screenshots it ("you rehearse the argument in the shower" beats "you overthink"). The last one is the mic drop she sends to a friend.
-- ACTIONABLE items: a clear, doable habit or move, phrased warmly ("drink water before your coffee", "say no to one thing today", "step outside before you check your phone"). The last one should land emotionally, not just practically.
+RULES FOR ITEM SLIDES (each "reason" is one slide) — MAIN ANSWER + EXPLANATION structure (2026-08-16, per Keenan):
+- Each item is a SHORT, punchy MAIN ANSWER — 2 to 5 words, like the headline of the slide ("more rest", "a big change", "setting boundaries", "asking for help", "say no once today"). NEVER a full sentence. The details entry carries the explanation.
+- Think of the item as what would fit on a sticky note. If it's longer than ~30 characters, cut it down and move the rest into the detail.
+- RESONANCE items: name the thing she does or feels in 2-5 words ("the shower argument", "peacekeeping by silence", "replying instantly to everyone"). The detail delivers the "ouch, yeah" recognition in a full sentence.
+- ACTIONABLE items: a clear, doable habit named in 2-5 words ("water before coffee", "one honest no", "step outside first"). The detail explains how or why. The last item should land emotionally, not just practically.
 - No ellipses (...), no unnecessary punctuation
 - Each item makes the viewer want to swipe to the next one
 - US English spelling only
 
 COMPLETENESS (2026-08-13, per Keenan): the list must be COMPLETE — include the most obvious, most relatable reason on the slides. Never deliberately withhold one; a list that visibly skips the one everyone thinks of first reads as broken, not clever.
 
-RULES FOR DETAILS (every item ALSO gets one supporting sentence, shown smaller under the main line):
+RULES FOR DETAILS (every item ALSO gets one supporting sentence, shown smaller under the main answer — this is the explanation, it is REQUIRED):
 - One sentence per item, under 90 characters, sentence case
-- RESONANCE details: deepen the recognition with a second, even more specific beat ("Even the group chat gets a faster reply than your own needs do.")
+- The detail carries the meaning the short main answer can't — together they read like "more rest — sometimes it's a good thing to catch up on sleep" or "a big change — your greatest growth can come from big changes"
+- RESONANCE details: deepen the recognition with a specific, undeniable beat ("Even the group chat gets a faster reply than your own needs do.")
 - ACTIONABLE details: say how or why in plain, human words ("Your brain sorts itself out when your hands are busy and your phone isn't.")
 - Written like a real person talking to a friend — warm, direct, zero jargon, zero wellness-speak
 - Never repeat the main line's words back at her; add something new

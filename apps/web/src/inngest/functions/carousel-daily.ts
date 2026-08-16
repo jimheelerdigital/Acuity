@@ -204,6 +204,12 @@ export const carouselDailyCronFn = inngest.createFunction(
         {
           noText: topicData.animatedRun,
           coverSubline: topicData.animatedRun ? undefined : engagementLine,
+          // Photo bucket: gpt-image-2 invents its own preview list on
+          // covers if left alone, and it never matches the real slides
+          // (2026-08-16, per Keenan). Feed it the exact answers.
+          coverListItems: topicData.animatedRun
+            ? undefined
+            : topicData.reasons,
           // Rotate scene settings per slide (offset by slug so different
           // carousels don't all start in the same room), plus a rotating
           // cover composition so covers stop looking identical.
