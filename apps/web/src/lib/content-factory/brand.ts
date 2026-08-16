@@ -23,7 +23,7 @@ export const VISUAL_DNA = [
   "  • Be creative with placement — never feel formulaic or templated",
   "TEXT: Bold, clean sans-serif. Perfectly crisp and readable. Use visual hierarchy — key words or numbers can be larger. Spell every word EXACTLY as provided. No warping or distortion.",
   "SAFE ZONES (hard rule — TikTok's interface covers these areas of the image): keep ALL text out of the top 15%, the bottom 15%, AND the right-most 15% of the frame. Text starts BELOW the top 15% line — never at the very top, never touching or cropped by any edge. If the text won't fit, make the type smaller. Text must NEVER overlap any person's face; keep faces fully unobstructed.",
-  "ILLUSTRATION: Warm editorial illustration, hand-drawn feel. Diverse women ~35-50, natural expressions. Rich details — plants, candles, mugs, books, sticky notes, cozy domestic elements. Muted warm tones.",
+  "ILLUSTRATION: Rendered strictly in the STYLE LOCK art style stated above — never any other style. Diverse women ~35-50, natural expressions. Rich details — plants, candles, mugs, books, sticky notes, cozy domestic elements. Muted warm tones.",
   "QUALITY: Every slide should feel like a page from a premium wellness magazine. Clean, intentional, sophisticated. Not cluttered, not cheap, not templated.",
   "9:16 portrait format. NO watermarks, NO logos, NO extra text beyond what is specified.",
 ].join("\n");
@@ -36,7 +36,7 @@ export const VISUAL_DNA = [
  */
 export const VISUAL_DNA_NOTEXT = [
   "This is a premium editorial illustration for a wellness brand — polished, high-class, magazine quality. A single scene, NOT an infographic, NOT a layout, NOT a poster.",
-  "ILLUSTRATION: Warm editorial illustration, hand-drawn feel. One diverse woman ~35-50, natural expression, mid-activity. Muted warm tones. The scene, setting, activity, camera angle, and supporting props must all be DIFFERENT from any other illustration in the series — make this scene distinctly its own.",
+  "ILLUSTRATION: Rendered strictly in the STYLE LOCK art style stated above — never any other style. One diverse woman ~35-50, natural expression, mid-activity. Muted warm tones. The scene, setting, activity, camera angle, and supporting props must all be DIFFERENT from any other illustration in the series — make this scene distinctly its own.",
   "COMPOSITION: The woman's face and head sit in the LOWER HALF of the frame — never in the top 45%. The entire top 45% stays visually calm and uncluttered — soft background only (a large multi-line text headline will be overlaid there later, and it must never cover her face).",
   "QUALITY: Like a full-page illustration from a premium wellness magazine. Clean, intentional, sophisticated. Not cluttered, not cheap, not templated.",
   "9:16 portrait format.",

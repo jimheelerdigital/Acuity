@@ -214,6 +214,11 @@ export function buildImagePrompt(
 ): string {
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
+  // One art style per post (2026-08-16, per Keenan): the lane used to be a
+  // soft one-liner that fought with VISUAL_DNA's own style language, so
+  // slides within a post drifted between realistic/toon/clay renders.
+  // Locking it as a hard rule keeps every slide in the same treatment.
+  const styleLock = `STYLE LOCK (hard rule — every image in this post's series uses this ONE art style): ${lanePrefix} Every slide must look like it was made by the same artist in the same medium — do NOT drift toward photorealism, 3D, clay, flat vector, or any other rendering style unless it IS the stated style.`;
   const sizeRule = isCover
     ? "Text should be prominent but not exceed 50% of the slide. Blend it creatively with the illustration — vary placement each time."
     : "Text should be prominent but not exceed 40% of the slide. Blend it creatively with the illustration — vary placement each time.";
@@ -237,7 +242,7 @@ export function buildImagePrompt(
   // and never uses the words "slide" or "carousel".
   if (opts?.noText) {
     return [
-      lanePrefix,
+      styleLock,
       colorPrompt ?? "",
       `An illustrated scene that visually represents: ${sceneText}`,
       opts.sceneHint ?? "",
@@ -248,7 +253,7 @@ export function buildImagePrompt(
   }
 
   return [
-    lanePrefix,
+    styleLock,
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
     isCover && opts?.coverListItems && opts.coverListItems.length > 0
