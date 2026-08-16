@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-08-16] — Content factory reset: 3 daily buckets, better stories, helpful lists, crossfades, and trackable bio links
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bc19005a
+
+### In plain English (for Keenan)
+The daily content system now creates three genuinely different posts per day instead of variations of the same one: a picture carousel in the morning, a fully animated carousel video midday, and a 30-second story video with voiceover in the afternoon. The story is no longer a robot reading the carousel list out loud — it's a first-person mini-story with its own topic. Carousel topics now alternate between "that's so me" lists and genuinely helpful lists (small doable habits, like those "7 things to do every day for yourself" posts), and every slide gets a second, smaller line explaining the how or why. The animated video now blends smoothly between slides instead of hard-cutting. When the voiceover fails, the system retries, and if it still ships silent the email subject warns you loudly. And your bio links can now be goripple.io/go/tiktok (etc.) so social traffic finally shows up in analytics instead of as "direct". The admin page shows which of the three types each post is, plays the story video, and has three generate buttons (📷 🎬 🎥) to fire any bucket on demand.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: CarouselPost gains `format` (new enum CarouselFormat: PHOTO/VIDEO/STORY, default PHOTO) and `storyVoiced` (Boolean?); SlideKind gains `SCENE`. (storyVideoUrl/metrics/links columns already existed from the 8-12 work — no postedUrl/postedAt added, instagramUrl/tiktokUrl cover it.)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron 12/16/20 UTC now maps explicitly to photo/video/story buckets (hour-keyed off event.ts); story bucket sends `content-factory/story.video` with `{standalone: true}` and returns; story no longer chained after animation; detail sentences threaded into image prompts (photo) and overlays (video)
+- apps/web/src/inngest/functions/carousel-story-video.ts: standalone mode (`{standalone: true}`, no postId) invents its own concept, creates a `format: STORY` CarouselPost with SCENE slides + storyTheme; kept the existing captioned mux with audio-only retry (the 8-14 drawtext fix) and now persists storyVideoUrl/storyVoiced on every exit
+- apps/web/src/lib/content-factory/story-video.ts: script output gains title/captionHook/commentPrompt alongside theme (standalone de-branded concept prompt from 8-14 kept as-is — narration never mentions Ripple); new `stitchClipsWithCrossfade` (per-clip duration probe + xfade chain + fade in/out from black)
+- apps/web/src/lib/content-factory/generate-topic.ts: two archetypes (resonance / actionable), `details[]` (one supporting sentence per item), humanistic-tone + proofread rules, actionable headline formats
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` gains optional `detail` param — smaller Poppins Medium line under the main text with matching shadow
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` gains `detailText` opt (photo bucket bakes the detail line via gpt-image-2)
+- apps/web/src/lib/content-factory/email.ts: carousel compilation keeps the all-slides/still-clip completeness loop and now stitches it with crossfades (falls back to the 8-15 fade-to-black concat); story email subject prefixes ⚠️ SILENT when voiceover failed
+- apps/web/src/lib/content-factory/caption.ts: `buildStoryCaption`; closing line now "link in bio" style pointing at the free week
+- apps/web/src/app/go/[channel]/route.ts (new): bio-link redirect adding utm_source=channel, utm_medium=social, utm_campaign=bio-link; unknown channels → utm_source=social, never 404
+- apps/web/src/app/api/admin/carousels/route.ts: `generate-daily` accepts `bucket`; `generate-story` works without postId (standalone)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: FormatBadge in list + detail, story video player with SILENT warning, three bucket generate buttons
+
+### Manual steps needed
+- [ ] Run `npx prisma db push` from home network BEFORE today's 20:00 UTC cron — the story bucket writes the new `format`/`storyVoiced` columns and will fail without them (Keenan)
+- [ ] Update every platform's bio link to goripple.io/go/tiktok, /go/instagram, /go/pinterest, etc. (Keenan)
+- [ ] Verify Inngest picked up the updated functions after the Vercel deploy (usually automatic on next GET to /api/inngest) (Keenan)
+
+### Notes
+- Production had been running pre-Aug-11 hour-based behavior despite newer code being on main — almost certainly a stale Inngest app sync pinned to an old deployment. Keenan resynced; the bucket split is now explicit and hour-keyed so a stale sync can't silently change the daily mix again.
+- Voiceover root cause: muxNarration fails ~50% of the time on Vercel and silently fell back to the silent video. Now retried twice, persisted to the post, and flagged in the email subject — if it still ships silent, that's visible everywhere.
+- Slide detail lines are NOT stored as a separate DB column — they live in the baked image prompt (photo) and the stored overlay PNG (video), so no extra schema change and edit-text/regenerate keep working off overlayText.
+- Crossfade stitch probes each clip with `ffmpeg -f null -` (ffmpeg-static bundles no ffprobe) and normalizes timebases with settb — xfade errors out on mismatched timebases otherwise. Falls back to the old hard-cut concat on any failure.
+- tsc: all remaining errors in touched files exist identically on the pre-merge main (verified against e9002aaa) — nothing new introduced.
+- This commit was rebased onto ~27 parallel commits (metrics feedback loop, cover engagement sublines, caption burn-in, de-branded story scripts, still-clip completeness). Where philosophies clashed, the newer on-main decisions won: the engineered comment gap stays REMOVED (8-13 COMPLETENESS rule), story narration never mentions Ripple (8-14), and my simple mux-retry loop was dropped in favor of the existing captioned-mux + audio-only-retry pipeline.
+
+---
+
+
 ## [2026-08-15] — Cover engagement question switched to present tense
 
 **Requested by:** Keenan
@@ -307,42 +346,9 @@ Each carousel in the admin now has a small form where you enter the real numbers
 - Feedback loop needs ≥4 metric-bearing posts before it activates — silently inactive until Keenan starts entering numbers
 - withheldReason is now a real column (it also still rides in the caption's internal note — the note is what Keenan actually reads)
 - Discovered: running `npx prisma generate` locally (no DB access needed) fixes the long-standing stale-Prisma-client typecheck noise — local baseline dropped from 209 to 160 errors, and the remaining 160 are pre-existing issues in adlab/unrelated files (Vercel builds have ignoreBuildErrors: true anyway)
-## [2026-08-16] — Content factory reset: 3 daily buckets, better stories, helpful lists, crossfades, and trackable bio links
-
-**Requested by:** Keenan
-**Committed by:** Claude Code
-**Commit hash:** 86d3e5f0
-
-### In plain English (for Keenan)
-The daily content system now creates three genuinely different posts per day instead of variations of the same one: a picture carousel in the morning, a fully animated carousel video midday, and a 30-second story video with voiceover in the afternoon. The story is no longer a robot reading the carousel list out loud — it's a first-person mini-story with its own topic. Carousel topics now alternate between "that's so me" lists and genuinely helpful lists (small doable habits, like those "7 things to do every day for yourself" posts), and every slide gets a second, smaller line explaining the how or why. The animated video now blends smoothly between slides instead of hard-cutting. When the voiceover fails, the system retries, and if it still ships silent the email subject warns you loudly. And your bio links can now be goripple.io/go/tiktok (etc.) so social traffic finally shows up in analytics instead of as "direct". The admin page shows which of the three types each post is, plays the story video, and has three generate buttons (📷 🎬 🎥) to fire any bucket on demand.
-
-### Technical changes (for Jimmy)
-- prisma/schema.prisma: CarouselPost gains `format` (new enum CarouselFormat: PHOTO/VIDEO/STORY, default PHOTO), `storyVideoUrl`, `storyVoiced`, `postedUrl`, `postedAt`; SlideKind gains `SCENE`
-- apps/web/src/inngest/functions/carousel-daily.ts: cron 12/16/20 UTC now maps explicitly to photo/video/story buckets (hour-keyed off event.ts); story bucket sends `content-factory/story.video` with `{standalone: true}` and returns; story no longer chained after animation; detail sentences threaded into image prompts (photo) and overlays (video)
-- apps/web/src/inngest/functions/carousel-story-video.ts: rewritten — standalone mode generates its own narrative topic, creates a `format: STORY` CarouselPost with SCENE slides, mux retry loop (2 attempts, 3s backoff) before falling back silent, persists storyVideoUrl/storyVoiced
-- apps/web/src/lib/content-factory/story-video.ts: first-person narrative script prompt (6-scene arc, 70–85 words, title/captionHook/commentPrompt output); new `stitchClipsWithCrossfade` (per-clip duration probe + xfade chain + fade in/out from black)
-- apps/web/src/lib/content-factory/generate-topic.ts: two archetypes (resonance / actionable), `details[]` (one supporting sentence per item), humanistic-tone + proofread rules, actionable headline formats
-- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` gains optional `detail` param — smaller Poppins Medium line under the main text with matching shadow
-- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` gains `detailText` opt (photo bucket bakes the detail line via gpt-image-2)
-- apps/web/src/lib/content-factory/email.ts: carousel compilation uses crossfade stitch with hard-cut fallback; story email subject prefixes ⚠️ SILENT when voiceover failed
-- apps/web/src/lib/content-factory/caption.ts: `buildStoryCaption`; closing line now "link in bio" style pointing at the free week
-- apps/web/src/app/go/[channel]/route.ts (new): bio-link redirect adding utm_source=channel, utm_medium=social, utm_campaign=bio-link; unknown channels → utm_source=social, never 404
-- apps/web/src/app/api/admin/carousels/route.ts: `generate-daily` accepts `bucket`; `generate-story` works without postId (standalone)
-- apps/web/src/app/admin/content-factory/carousels/page.tsx: FormatBadge in list + detail, story video player with SILENT warning, three bucket generate buttons
-
-### Manual steps needed
-- [ ] Run `npx prisma db push` from home network BEFORE today's 20:00 UTC cron — the story bucket writes the new `format`/`storyVideoUrl`/`storyVoiced` columns and will fail without them (Keenan)
-- [ ] Update every platform's bio link to goripple.io/go/tiktok, /go/instagram, /go/pinterest, etc. (Keenan)
-- [ ] Verify Inngest picked up the updated functions after the Vercel deploy (usually automatic on next GET to /api/inngest) (Keenan)
-
-### Notes
-- Production had been running pre-Aug-11 hour-based behavior despite newer code being on main — almost certainly a stale Inngest app sync pinned to an old deployment. Keenan resynced; the bucket split is now explicit and hour-keyed so a stale sync can't silently change the daily mix again.
-- Voiceover root cause: muxNarration fails ~50% of the time on Vercel and silently fell back to the silent video. Now retried twice, persisted to the post, and flagged in the email subject — if it still ships silent, that's visible everywhere.
-- Slide detail lines are NOT stored as a separate DB column — they live in the baked image prompt (photo) and the stored overlay PNG (video), so no extra schema change and edit-text/regenerate keep working off overlayText.
-- Crossfade stitch probes each clip with `ffmpeg -f null -` (ffmpeg-static bundles no ffprobe) and normalizes timebases with settb — xfade errors out on mismatched timebases otherwise. Falls back to the old hard-cut concat on any failure.
-- tsc: 182 pre-existing errors after `npx prisma generate` (down from ~207 baseline), none in files touched here.
 
 ---
+
 
 ## [2026-08-12] — Posts end on the mic-drop, and every list now baits comments with a missing reason
 
