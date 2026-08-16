@@ -257,7 +257,7 @@ export function buildImagePrompt(
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
     isCover && opts?.coverListItems && opts.coverListItems.length > 0
-      ? `The cover also shows a preview list of the answers (e.g. on sticky notes, a written list, or small labels woven into the scene). This list MUST contain EXACTLY these ${opts.coverListItems.length} items, in this exact order, spelled exactly as written — do NOT invent, reword, add, or omit any item:\n${opts.coverListItems.map((item, i) => `${i + 1}. "${item}"`).join("\n")}\nEach item in smaller text than the headline, all fully inside the safe zone.`
+      ? buildCoverTeaser(opts.coverListItems)
       : "",
     isCover && opts?.coverSubline
       ? `Near the BOTTOM of the safe area (lower quarter of the frame, but kept fully above the bottom 15% so platform UI never covers it), in clearly smaller text than the headline, display this EXACT question: "${opts.coverSubline}"`
@@ -274,6 +274,25 @@ export function buildImagePrompt(
     `Include relevant illustrated elements that visually represent: ${sceneText}`,
     VISUAL_DNA,
   ].filter(Boolean).join("\n");
+}
+
+/**
+ * Cover teaser list (2026-08-16, per Keenan): the cover previews AT MOST
+ * 40% of the answers — 1 of 5, 2 of 6-7, 3 of 8-10 — so she has to swipe
+ * for the rest. The teased items are the EXACT slide answers (never
+ * invented), and the cover must not hint at any of the hidden ones.
+ */
+function buildCoverTeaser(items: string[]): string {
+  const n = items.length;
+  const teaserCount = n <= 5 ? 1 : n <= 7 ? 2 : 3;
+  const teased = items.slice(0, teaserCount);
+  return [
+    `The cover shows a small PARTIAL preview of the list (e.g. on sticky notes, a short written list, or small labels woven into the scene) — a teaser, NOT the full list.`,
+    `Show ONLY ${teaserCount === 1 ? "this 1 item" : `these ${teaserCount} items`} of the ${n}, spelled exactly as written — do NOT invent, reword, add, or omit any:`,
+    ...teased.map((item, i) => `${i + 1}. "${item}"`),
+    `The remaining ${n - teaserCount} answers stay completely hidden — do not show, hint at, or leave blank spots for them. It's fine to imply there's more inside (e.g. a trailing "..." or a partially visible next note), but NO readable text beyond the ${teaserCount} item${teaserCount === 1 ? "" : "s"} above.`,
+    `Each teased item in smaller text than the headline, all fully inside the safe zone.`,
+  ].join("\n");
 }
 
 export async function generateImage(prompt: string): Promise<Buffer> {
