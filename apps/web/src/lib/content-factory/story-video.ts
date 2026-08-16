@@ -76,6 +76,12 @@ export interface StoryScript {
   theme: string;
   scenes: StoryScene[];
   mood?: Mood;
+  /** Short scroll-stopping title for the post (admin/email/caption). */
+  title: string;
+  /** 1-2 caption lines that tee up the video, same voice. */
+  captionHook?: string;
+  /** One question inviting viewers to share their version. */
+  commentPrompt?: string;
 }
 
 const SCRIPT_SYSTEM_PROMPT = `You are a short-form viral video scriptwriter for Ripple, an AI-powered voice self-reflection app. You invent an ORIGINAL ~30-second vertical story video with a voiceover. This is a STANDALONE piece — it is not based on any other post. You choose the concept.
@@ -115,9 +121,17 @@ MOTION RULES (each image is animated for a few seconds — the character's movem
 
 MOOD: every scene gets a "mood" from: "heavy", "tender", "wry", "frustrated", "hopeful". The arc usually moves heavy/frustrated → tender → hopeful by scene 6. Faces must match — never default to smiling.
 
+ALSO OUTPUT (for the post wrapped around the video):
+- "title": a short scroll-stopping title for this story, max 60 characters, in her voice — NOT a numbered-listicle format ("The 11 minutes I spent in my own driveway")
+- "captionHook": 1-2 caption lines that tee up the video without spoiling the turn
+- "commentPrompt": one question inviting viewers to share their version of this moment ("Where do you hide when the house is full?")
+
 OUTPUT FORMAT (strict JSON, no markdown):
 {
   "theme": "5-10 word label for this concept (used to avoid future repeats)",
+  "title": "...",
+  "captionHook": "...",
+  "commentPrompt": "...",
   "mood": "dominant mood of the whole video",
   "scenes": [
     { "narration": "...", "visual": "...", "motion": "...", "mood": "..." },
@@ -179,6 +193,9 @@ Return ONLY valid JSON.`;
     const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsed = JSON.parse(jsonStr) as {
       theme?: unknown;
+      title?: unknown;
+      captionHook?: unknown;
+      commentPrompt?: unknown;
       mood?: unknown;
       scenes?: { narration?: unknown; visual?: unknown; motion?: unknown; mood?: unknown }[];
     };
@@ -203,11 +220,20 @@ Return ONLY valid JSON.`;
       typeof parsed.theme === "string" && parsed.theme.trim()
         ? parsed.theme.trim()
         : scenes[0].narration.slice(0, 80);
+    const title =
+      typeof parsed.title === "string" && parsed.title.trim()
+        ? parsed.title.trim().slice(0, 80)
+        : scenes[0].narration.slice(0, 60);
 
     return {
       theme,
       scenes,
       mood: isMood(parsed.mood) ? parsed.mood : undefined,
+      title,
+      captionHook:
+        typeof parsed.captionHook === "string" ? parsed.captionHook.trim() : undefined,
+      commentPrompt:
+        typeof parsed.commentPrompt === "string" ? parsed.commentPrompt.trim() : undefined,
     };
   } catch (err) {
     await prisma.claudeCallLog.create({
@@ -694,6 +720,101 @@ export async function stitchStoryVideo(
     }
     console.log(
       `[story-video] Stitched ${clips.length} clips (silent): ${out.length} bytes`
+    );
+    return out;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Stitch clips into one silent vertical MP4 with PROPER BLENDING
+ * (2026-08-16, per Keenan): ~0.5s crossfade between every pair of clips,
+ * a fade-in from black at the start, and a fade-out at the end — instead
+ * of the hard cuts stitchStoryVideo produces. Used for the animated
+ * carousel compilation.
+ *
+ * xfade needs every clip's real duration to compute overlap offsets, so
+ * each clip is probed first (ffmpeg "-f null -", no ffprobe in
+ * ffmpeg-static). All clips are normalized to 1080x1920 @ 30fps with a
+ * shared timebase (settb) — xfade refuses mismatched timebases.
+ */
+export async function stitchClipsWithCrossfade(
+  clips: Buffer[],
+  opts?: { crossfadeSec?: number }
+): Promise<Buffer> {
+  const bin = ffmpegPath();
+  if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+  if (clips.length === 0) throw new Error("No clips to stitch");
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "story-xfade-"));
+  const outVideo = path.join(dir, "out.mp4");
+  try {
+    const inputs: string[] = [];
+    const files: string[] = [];
+    clips.forEach((buf, i) => {
+      const p = path.join(dir, `clip-${i}.mp4`);
+      fs.writeFileSync(p, buf);
+      files.push(p);
+      inputs.push("-i", p);
+    });
+
+    const durations: number[] = [];
+    for (const f of files) durations.push(await probeFileDuration(bin, f));
+
+    // Crossfade can't exceed half the shortest clip.
+    const minDur = Math.min(...durations);
+    const xf = Math.max(0.2, Math.min(opts?.crossfadeSec ?? 0.5, minDur / 2));
+    const fadeEdge = 0.4; // fade-in/out from/to black at the very ends
+
+    const norm = clips
+      .map(
+        (_, i) =>
+          `[${i}:v]scale=1080:1920:flags=lanczos,fps=30,setsar=1,settb=AVTB${
+            i === 0 ? `,fade=t=in:st=0:d=${fadeEdge}` : ""
+          }[v${i}]`
+      )
+      .join(";");
+
+    let chain = "";
+    let last = "v0";
+    let offset = 0;
+    for (let i = 1; i < clips.length; i++) {
+      offset += durations[i - 1] - xf;
+      const out = i === clips.length - 1 ? "vx" : `x${i}`;
+      chain += `;[${last}][v${i}]xfade=transition=fade:duration=${xf.toFixed(3)}:offset=${offset.toFixed(3)}[${out}]`;
+      last = out;
+    }
+
+    const total =
+      durations.reduce((a, b) => a + b, 0) - (clips.length - 1) * xf;
+    const finalIn = clips.length === 1 ? "v0" : "vx";
+    chain += `;[${finalIn}]fade=t=out:st=${Math.max(0, total - fadeEdge).toFixed(3)}:d=${fadeEdge}[v]`;
+
+    const args = [
+      "-y",
+      "-loglevel", "warning",
+      ...inputs,
+      "-filter_complex", `${norm}${chain}`,
+      "-map", "[v]",
+      "-an",
+      "-c:v", "libx264",
+      "-preset", "fast",
+      "-crf", "23",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      outVideo,
+    ];
+
+    await runFfmpeg(bin, args);
+    const out = fs.readFileSync(outVideo);
+    if (out.length < 100_000) {
+      throw new Error(
+        `Crossfade stitch produced a suspiciously small output (${out.length} bytes from ${clips.length} clips)`
+      );
+    }
+    console.log(
+      `[story-video] Crossfade-stitched ${clips.length} clips (xfade=${xf.toFixed(2)}s): ${out.length} bytes`
     );
     return out;
   } finally {

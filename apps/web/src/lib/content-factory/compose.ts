@@ -272,7 +272,12 @@ export async function renderSlideTextOverlay(
    * near the bottom of the slide — the ask lives on the cover itself,
    * static AND animated.
    */
-  subline?: string
+  subline?: string,
+  /**
+   * REASON only (2026-08-16, per Keenan): the supporting "how/why"
+   * sentence from the topic engine, rendered smaller under the main text.
+   */
+  detail?: string
 ): Promise<Buffer> {
   const fontPath = await ensureFontFile("Bold");
   const display = text.toUpperCase();
@@ -328,6 +333,28 @@ export async function renderSlideTextOverlay(
     { input: main.buffer, top: cursorY, left: textLeft }
   );
   cursorY += main.height;
+
+  // Supporting detail line (2026-08-16, per Keenan): a smaller sentence
+  // under the main text — the "how/why" beat from the topic engine.
+  // Poppins Medium, sentence case, same shadow treatment.
+  if (detail && detail.trim()) {
+    const mediumPath = await ensureFontFile("Medium");
+    const detailLines = wordWrap(detail.trim(), 34);
+    const detailBody = detailLines.map((l) => escapePango(l)).join("\n");
+    const detailSize = 30;
+    const detailMarkupMain = `<span font_desc="Poppins Medium ${detailSize}" foreground="#FFFFFF">${detailBody}</span>`;
+    const detailMarkupShadow = `<span font_desc="Poppins Medium ${detailSize}" foreground="#111111">${detailBody}</span>`;
+    const dShadow = await renderMarkup(detailMarkupShadow, mediumPath ?? fontPath, maxTextW, 8, 8);
+    const dMain = await renderMarkup(detailMarkupMain, mediumPath ?? fontPath, maxTextW, 8, 8);
+    const dBlurred = await sharp(dShadow.buffer).blur(5).png().toBuffer();
+    const dLeft = Math.round((OUTPUT_W - dMain.width) / 2);
+    const dTop = cursorY + 18;
+    composites.push(
+      { input: dBlurred, top: dTop + 4, left: dLeft + 3 },
+      { input: dMain.buffer, top: dTop, left: dLeft }
+    );
+    cursorY = dTop + dMain.height;
+  }
 
   // COVER: rounded accent bar under the headline for extra pop.
   if (kind === "COVER") {

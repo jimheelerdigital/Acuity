@@ -1,25 +1,33 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — 2 runs daily (2026-08-12 per Keenan: exactly
- * one animated video carousel + one static carousel + one story video
- * per day, matching what his posting workflow can absorb):
- * - 12 UTC (7am Central): FULLY ANIMATED — every slide gets a 4s video,
- *   topic capped at 6 reasons (7 animated slides max), and the 30s
- *   story video is chained after the slide animations finish.
- * - 16 UTC (11am Central): STATIC — image slides only, emailed
- *   immediately, no animation, no story.
+ * Carousel generation — runs 3× daily via cron, each run an EXPLICIT
+ * bucket (2026-08-16 reset per Keenan — production was mysteriously
+ * running the old hour-based split, so the split is now deliberate,
+ * hour-keyed, and each bucket is a genuinely different post):
+ *
+ * - 12 UTC (7am Central):  PHOTO — static picture carousel
+ * - 16 UTC (11am Central): VIDEO — fully animated carousel video
+ *                          (topic capped at 6 reasons → 7 clips max)
+ * - 20 UTC (3pm Central):  STORY — standalone 30s narrative story video
+ *                          with voiceover (its OWN topic — not a re-read
+ *                          of a carousel; handled by carouselStoryVideoFn)
+ *
+ * Manual/test trigger (admin): event "content-factory/daily.generate"
+ * with data.bucket = "photo" | "video" | "story" (legacy data.animated
+ * boolean still honored: true→video, false→photo).
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
  */
+type DailyBucket = "photo" | "video" | "story";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 12,16 * * *" },
+      { cron: "0 12,16,20 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
@@ -27,27 +35,52 @@ export const carouselDailyCronFn = inngest.createFunction(
     retries: 1,
   },
   async ({ event, step, logger }) => {
-    const eventAnimated =
-      event?.name === "content-factory/daily.generate"
-        ? (event.data?.animated as boolean | undefined)
-        : undefined;
+    // ── Resolve the bucket ─────────────────────────────────────────
+    // Event trigger: explicit bucket wins; legacy `animated` maps to
+    // video/photo. Cron: keyed off the trigger hour (event.ts is stable
+    // across retries) — 12→photo, 16→video, 20→story.
+    let bucket: DailyBucket;
+    if (event?.name === "content-factory/daily.generate") {
+      const b = event.data?.bucket as DailyBucket | undefined;
+      const legacyAnimated = event.data?.animated as boolean | undefined;
+      bucket =
+        b === "photo" || b === "video" || b === "story"
+          ? b
+          : typeof legacyAnimated === "boolean"
+            ? legacyAnimated
+              ? "video"
+              : "photo"
+            : "video";
+    } else {
+      const ts = typeof event?.ts === "number" ? event.ts : Date.now();
+      const hour = new Date(ts).getUTCHours();
+      bucket = hour < 14 ? "photo" : hour < 18 ? "video" : "story";
+    }
+    logger.info(`[carousel-cron] Bucket: ${bucket}`);
+
+    // ── STORY bucket: hand off to the standalone story pipeline ────
+    // No postId — the story function generates its own narrative topic,
+    // creates its own CarouselPost (format=STORY), and emails the result.
+    if (bucket === "story") {
+      await step.run("enqueue-standalone-story", async () => {
+        await inngest.send({
+          name: "content-factory/story.video",
+          data: { standalone: true },
+        });
+      });
+      return { generated: 0, bucket, delegated: "story.video" };
+    }
 
     // ── Step 1: Generate a fresh topic via Claude ──────────────────
-    // The 12 UTC run is the fully animated post — its topic is capped at
-    // 6 reasons so at most 7 slides (cover + 6 reasons) get videos.
+    // The VIDEO bucket's topic is capped at 6 reasons so at most
+    // 7 slides (cover + 6 reasons) get videos.
     const topicData = await step.run("generate-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
       const { generateTopic } = await import(
         "@/lib/content-factory/generate-topic"
       );
 
-      // Cron: the 12 UTC run is animated (+ story video), the 16 UTC run
-      // is static (2026-08-12 per Keenan: one of each per day). Event
-      // trigger: explicit `animated` flag wins when provided.
-      const animatedRun =
-        typeof eventAnimated === "boolean"
-          ? eventAnimated
-          : new Date().getUTCHours() < 14;
+      const animatedRun = bucket === "video";
 
       const thirtyDaysAgo = new Date(
         Date.now() - 30 * 86_400_000
@@ -260,6 +293,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           await import("@/lib/content-factory/compose");
 
         const reason = topicData.reasons[i];
+        // Supporting detail sentence for this item (2026-08-16 revamp).
+        const detail = topicData.details?.[i] || undefined;
         const lanePrefix =
           STYLE_LANES[topicData.lane as keyof typeof STYLE_LANES];
         const topic = {
@@ -280,6 +315,9 @@ export const carouselDailyCronFn = inngest.createFunction(
             sceneHint:
               SCENE_SETTINGS[(slug.length + i + 1) % SCENE_SETTINGS.length],
             mood: topicData.reasonEmotions?.[i]?.mood ?? topicData.mood,
+            // Photo bucket: gpt-image-2 bakes the detail line into the art.
+            // Video bucket uses noText art — detail goes on the overlay below.
+            detailText: topicData.animatedRun ? undefined : detail,
           }
         );
         const rawBuffer = await generateImage(prompt);
@@ -295,7 +333,9 @@ export const carouselDailyCronFn = inngest.createFunction(
             reason,
             "REASON",
             i + 1,
-            colorScheme.accent
+            colorScheme.accent,
+            undefined,
+            detail
           );
           await uploadImage(
             overlay,
@@ -370,6 +410,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           topicSlug: slug,
           headline: topicData.headline,
           status: "DRAFT",
+          format: topicData.animatedRun ? "VIDEO" : "PHOTO",
           caption,
           hashtags: extractHashtags(caption),
           generatedFor: today,
@@ -398,11 +439,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     });
 
     // ── Step N+3: deliver ─────────────────────────────────────────
-    // 16 UTC run: static slideshow — email straight away, no animation.
-    // 12 UTC run: enqueue full-post animation + chained story video;
-    // the animate function sends the email on EVERY exit path
-    // (success, skip, failure, timeout) so Keenan always gets exactly
-    // one email — with videos when animation worked, static otherwise.
+    // PHOTO bucket: email straight away, no animation.
+    // VIDEO bucket: enqueue full-post animation (every slide); the
+    // animate function sends the email on EVERY exit path (success,
+    // skip, failure, timeout) so Keenan always gets exactly one email —
+    // with videos when animation worked, static otherwise.
+    // NOTE (2026-08-16): the story video is NO LONGER chained after
+    // animation — it's the standalone 20 UTC bucket with its own topic.
     await step.run("deliver", async () => {
       if (!topicData.animatedRun) {
         const { sendCarouselEmail } = await import("@/lib/content-factory/email");
@@ -428,16 +471,6 @@ export const carouselDailyCronFn = inngest.createFunction(
                   topicData.reasonEmotions?.[i] ?? { mood: topicData.mood }
               ),
             ],
-            // After the slide animations finish, the animate function
-            // kicks off the 30s story video (script → 6 images → 6 clips
-            // → voiceover → stitch → email). Chained AFTER animation so
-            // story clips never fight the slide waves for Higgsfield's
-            // ~4-concurrent-job cap. Lane keeps the story's illustration
-            // style consistent with the carousel (also persisted on the
-            // post now, so manual story re-runs use the same lane).
-            storyVideo: true,
-            lane: topicData.lane,
-            mood: topicData.mood,
           },
         });
       } catch (animateErr) {

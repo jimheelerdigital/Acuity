@@ -7,7 +7,11 @@
 
 import type { CarouselTopic } from "./topics";
 
-const CLOSING_LINE = "Ripple — debrief daily. See your life clearly. 🌊";
+// Link-in-bio pointer added 2026-08-16: captions previously named the app
+// with no path to it. The bio link should point at goripple.io/go/tiktok
+// (or /go/instagram etc.) so social traffic is UTM-attributed.
+const CLOSING_LINE =
+  "Ripple — debrief daily. See your life clearly. Start your free week — link in bio. 🌊";
 
 // First caption line (2026-08-12, per Keenan): only this line shows in
 // the feed before "...more", so it must be a SECOND hook — never a
@@ -151,7 +155,7 @@ const HASHTAG_POOL = [
  * Pick 6 hashtags: always include #rippleapp and #voicejournal,
  * then fill with topic-relevant ones from the pool.
  */
-function pickHashtags(topic: CarouselTopic): string[] {
+function pickHashtags(topic: { slug: string }): string[] {
   const must = ["#rippleapp", "#voicejournal"];
   const pool = HASHTAG_POOL.filter((h) => !must.includes(h));
 
@@ -207,5 +211,32 @@ export function buildCaption(topic: CarouselTopic): string {
   const tags = pickHashtags(topic);
   lines.push(tags.join(" "));
 
+  return lines.join("\n");
+}
+
+/**
+ * Caption for standalone STORY posts (2026-08-16). Stories are narrative,
+ * not listicles — so the caption is a hook + a share-your-version question
+ * instead of a numbered list + comment-gap bait.
+ */
+export function buildStoryCaption(opts: {
+  slug: string;
+  title: string;
+  captionHook?: string;
+  commentPrompt?: string;
+}): string {
+  const lines: string[] = [];
+  lines.push(opts.captionHook?.trim() || opts.title);
+  lines.push("");
+  if (opts.commentPrompt) {
+    const q = opts.commentPrompt.trim().replace(/\s*👇?\s*$/, "");
+    lines.push(`${q} Tell me in the comments 👇`);
+    lines.push("");
+  }
+  lines.push(pickBySlug(opts.slug, SAVE_SHARE_CTAS, 1));
+  lines.push("");
+  lines.push(CLOSING_LINE);
+  lines.push("");
+  lines.push(pickHashtags({ slug: opts.slug }).join(" "));
   return lines.join("\n");
 }

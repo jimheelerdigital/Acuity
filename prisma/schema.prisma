@@ -1368,6 +1368,10 @@ model CarouselPost {
   topicSlug    String
   headline     String
   status       CarouselPostStatus  @default(DRAFT)
+  // Which of the 3 daily buckets this post is (2026-08-16): PHOTO = static
+  // picture carousel, VIDEO = animated carousel video, STORY = standalone
+  // 30s story video with voiceover.
+  format       CarouselFormat      @default(PHOTO)
   caption      String              @db.Text
   hashtags     String[]
   musicNote    String?
@@ -1378,6 +1382,7 @@ model CarouselPost {
   mood         String?             // Visual mood of the post (e.g. "cozy-evening")
   withheldReason  String?  @db.Text // Engineered comment gap: the obvious reason deliberately left off the slides
   storyVideoUrl   String?           // 30s narrated story video MP4 (Supabase Storage URL)
+  storyVoiced     Boolean?          // Whether the voiceover actually muxed (false = video shipped SILENT)
   storyTheme      String?           // Short label of the standalone story concept (dedup for future scripts)
   // Where Keenan posted this carousel (pasted once in the admin). The
   // daily metrics-refresh cron pulls engagement from the platform APIs
@@ -1427,6 +1432,13 @@ enum SlideKind {
   COVER
   REASON
   CTA
+  SCENE // story-video scene image (STORY posts)
+}
+
+enum CarouselFormat {
+  PHOTO // static picture carousel
+  VIDEO // fully animated carousel video
+  STORY // standalone 30s story video + voiceover
 }
 
 // ─── Auto-Blog System ───────────────────────────────────────────────────────

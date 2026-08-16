@@ -210,13 +210,14 @@ export async function POST(req: NextRequest) {
     }
 
     case "generate-daily": {
-      // Kick off a full daily-style generation on demand (fresh topic,
-      // fresh images). `animated: true` runs the text-free animated
-      // pipeline; false/omitted follows the cron-hour default.
+      // Kick off a daily-bucket generation on demand (fresh topic, fresh
+      // images). `bucket`: "photo" | "video" | "story" (legacy `animated`
+      // boolean still honored: true→video, false→photo; omitted→video).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",
         data: {
+          bucket: (body as { bucket?: string }).bucket,
           animated: (body as { animated?: boolean }).animated,
         },
       });
@@ -224,14 +225,14 @@ export async function POST(req: NextRequest) {
     }
 
     case "generate-story": {
-      // Queue the 30s story video for an existing post (script → scene
-      // images → clips → duration-fitted voiceover → stitched MP4 →
-      // "🎥 Story video" email). Same Inngest function as the daily run.
-      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      // Queue the 30s story video. With postId: a story inside that
+      // post's theme, saved onto the post. Without: a fully standalone
+      // story (same as the daily 20 UTC bucket) that creates its own
+      // STORY post.
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/story.video",
-        data: { postId },
+        data: postId ? { postId } : { standalone: true },
       });
       return NextResponse.json({ ok: true, queued: true });
     }

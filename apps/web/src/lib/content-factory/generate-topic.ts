@@ -31,6 +31,13 @@ export interface GeneratedTopic {
   style: "hook" | "listicle";
   lane: StyleLane;
   reasons: string[];
+  /**
+   * One short supporting sentence per reason (2026-08-16, per Keenan —
+   * modeled on "things to do every day for yourself" infographics where
+   * each item has a title + a one-line explanation). Same order as
+   * `reasons`. Rendered smaller under the main slide text.
+   */
+  details?: string[];
   /** Dominant mood of the post — drives cover expression + motion fallback. */
   mood?: Mood;
   /** Bespoke emotion direction for the cover slide. */
@@ -50,41 +57,62 @@ OPTIMIZATION GOAL: Every headline and reason list is engineered to drive SAVES, 
 - SHARES come from identity recognition: content she immediately sends to a friend, sister, or group chat with "this is so us."
 - COMMENTS come from self-identification: lists where she HAS to say which number is her.
 
+TWO CONTENT ARCHETYPES — pick ONE per post, and alternate so the feed stays fresh (roughly half and half over time):
+
+1. RESONANCE — "that's me" recognition lists. Signs, truths, quiet ways, lies you tell yourself. She sees herself in every item and has to send it to a friend. Optimized for shares and comments.
+
+2. ACTIONABLE — genuinely helpful, save-worthy lists. Small habits, daily resets, things to do for yourself, questions worth asking yourself. Think of the classic "7 things to do every day for yourself" infographic: each item is a doable habit with a one-line explanation of how or why. Every item must be something a busy, exhausted woman could actually do — no "wake up at 5am", no expensive wellness, no 20-step routines. Optimized for saves ("I'll come back to this").
+
 RULES FOR HEADLINES:
 - EVERY headline MUST start with a number. No exceptions. No vague headlines without a number.
 - Short, punchy, scroll-stopping — under 60 characters ideal
-- VARY the headline format every time. Rotate across these numbered structures — do NOT default to "signs" repeatedly:
+- VARY the headline format every time — these are starting points, not templates. Remix them, invent new ones in the same spirit. Nothing is set in stone:
+  RESONANCE structures:
   • "X reasons..." (e.g. "6 reasons you're exhausted and none of them are sleep")
   • "X signs..." (e.g. "7 signs you're burnt out, not just tired")
   • "X things nobody tells you about..." (e.g. "5 things nobody tells you about the mental load")
-  • "X things you do that..." (e.g. "5 things you do every day that nobody notices")
-  • "X habits..." (e.g. "6 habits that are secretly draining you")
   • "X truths..." (e.g. "5 truths about midlife nobody says out loud")
   • "X lies you tell yourself..." (e.g. "6 lies you tell yourself to keep the peace")
-  • "X questions you've been avoiding..." (e.g. "5 questions you've been avoiding since your 40th")
   • "X quiet ways you..." (e.g. "5 quiet ways you abandon yourself every day")
   • "X things you'd never say out loud..." (e.g. "6 things you'd never say out loud but think daily")
-  • "X reminders for..." — save-bait format (e.g. "7 reminders for the week you're barely holding it together")
   • "X texts you should send..." — share-bait format (e.g. "5 things every exhausted friend needs to hear")
-- The strongest hooks combine a number + a curiosity gap + a quiet accusation the reader can't deny. "5 things you celebrate for others but never for yourself" works because she has to swipe to find out if she's guilty — and she already knows she is.
+  ACTIONABLE structures:
+  • "X things to do every day for..." (e.g. "7 things to do every day for yourself")
+  • "X tiny habits..." (e.g. "6 tiny habits for the weeks you're running on empty")
+  • "X ways to get a piece of yourself back"
+  • "X questions to ask yourself..." (e.g. "5 questions to ask yourself before you say yes again")
+  • "X small resets for..." (e.g. "6 small resets for when the day already got away from you")
+  • "X reminders for..." — save-bait (e.g. "7 reminders for the week you're barely holding it together")
+- The strongest hooks combine a number + a curiosity gap + something she can't deny — either a quiet accusation or a need she recognizes. "5 things you celebrate for others but never for yourself" works because she has to swipe to find out if she's guilty — and she already knows she is.
 - CLARITY TEST (mandatory — run it before finalizing): read the headline out loud. It must sound like a complete, natural sentence a friend would text you, instantly understandable on the FIRST read. No clipped grammar, no missing words, no phrase that needs a second read to parse. "5 reminders for the week you have nothing left" FAILS (nothing left... to what? the sentence is broken); "5 reminders for when you have nothing left to give" passes. If the headline is even slightly awkward, rewrite it until it's effortless.
 - RELATABILITY TEST (mandatory): she must see her actual life in the headline within one second — name a situation she's literally in ("6 signs you're everyone's emergency contact but nobody's priority"), not an abstract concept. The headline names the FEELING or the situation; the reasons stay hidden so she HAS to swipe to find out what they are. If the headline doesn't create that itch to swipe, it's not done.
-- The number in the headline MUST match the number of reason slides generated
-- Emotionally provocative — make them think "that's me" and then "I need to send this to her"
+- The number in the headline MUST match the number of item slides generated
+- Emotionally provocative — make them think "that's me" and then "I need to send this to her" (or, for ACTIONABLE, "I need to save this")
 - No emojis, no all-caps, no clickbait that doesn't deliver
 - US English spelling only (color not colour, realize not realise, etc.)
 
-RULES FOR REASON SLIDES:
-- Each reason is one short, punchy statement (under 50 characters ideal)
-- Written in second person ("you") — speak directly to the reader
-- Emotionally resonant — each one should land like "ouch, yeah"
-- At least one reason should be so specific and so relatable that she screenshots or shares it — hyper-specific beats general ("you rehearse the argument in the shower" beats "you overthink")
+RULES FOR ITEM SLIDES (each "reason" is one slide):
+- Each item is one short, punchy line (under 50 characters ideal)
+- RESONANCE items: second person ("you"), each lands like "ouch, yeah". At least one so hyper-specific she screenshots it ("you rehearse the argument in the shower" beats "you overthink"). The last one is the mic drop she sends to a friend.
+- ACTIONABLE items: a clear, doable habit or move, phrased warmly ("drink water before your coffee", "say no to one thing today", "step outside before you check your phone"). The last one should land emotionally, not just practically.
 - No ellipses (...), no unnecessary punctuation
-- Each reason makes the viewer want to swipe to the next one
-- The last reason should feel like a mic drop or emotional climax — the one she sends to a friend
+- Each item makes the viewer want to swipe to the next one
 - US English spelling only
 
 COMPLETENESS (2026-08-13, per Keenan): the list must be COMPLETE — include the most obvious, most relatable reason on the slides. Never deliberately withhold one; a list that visibly skips the one everyone thinks of first reads as broken, not clever.
+
+RULES FOR DETAILS (every item ALSO gets one supporting sentence, shown smaller under the main line):
+- One sentence per item, under 90 characters, sentence case
+- RESONANCE details: deepen the recognition with a second, even more specific beat ("Even the group chat gets a faster reply than your own needs do.")
+- ACTIONABLE details: say how or why in plain, human words ("Your brain sorts itself out when your hands are busy and your phone isn't.")
+- Written like a real person talking to a friend — warm, direct, zero jargon, zero wellness-speak
+- Never repeat the main line's words back at her; add something new
+- US English spelling only
+
+TONE + PROOFREAD (non-negotiable):
+- Write in as human a tone as possible. Read every line back as if you're a normal, tired person scrolling at 9pm — if a line sounds like a brand, a therapist's pamphlet, or an AI wrote it, rewrite it.
+- Every line must make immediate sense on first read. No abstract phrasing, no poetry that needs decoding.
+- Proofread the whole set before answering: grammar, natural phrasing, headline number matches item count, no near-duplicate items.
 
 CONTENT THEMES TO DRAW FROM:
 - Mental load and invisible labor
@@ -115,17 +143,19 @@ STRICT RULES for every "motion":
 OUTPUT FORMAT (strict JSON, no markdown):
 {
   "headline": "the carousel headline",
+  "archetype": "resonance" | "actionable",
   "style": "hook" or "listicle",
-  "reasons": ["reason 1", "reason 2", ...],
+  "reasons": ["item 1", "item 2", ...],
+  "details": ["supporting sentence for item 1", "supporting sentence for item 2", ...],
   "reasonCount": 5 or 6 or 7 or 8 or 9 or 10,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
   "cover": { "mood": "...", "motion": "..." },
   "reasonEmotions": [{ "mood": "...", "motion": "..." }, ...]
 }
 
-"reasonEmotions" MUST have exactly one entry per reason, in the same order as "reasons".
+"details" and "reasonEmotions" MUST each have exactly one entry per item, in the same order as "reasons". ACTIONABLE posts usually lean hopeful or tender (calm, relief, small acts of care) — the emotion must still match each slide's exact text.
 
-Generate 5-10 reasons per topic. Vary the count each time.`;
+Generate 5-10 items per topic. Vary the count each time.`;
 
 /**
  * Generate a fresh carousel topic using Claude, avoiding recent headlines.
@@ -239,12 +269,21 @@ Return ONLY valid JSON, no other text.`;
       : [];
     const reasonEmotions = reasons.map((_, i) => parseEmotion(rawReasonEmotions[i]));
 
+    // One supporting detail sentence per reason (missing/blank → "").
+    const rawDetails = Array.isArray(parsed.details)
+      ? (parsed.details as unknown[])
+      : [];
+    const details = reasons.map((_, i) =>
+      typeof rawDetails[i] === "string" ? (rawDetails[i] as string).trim() : ""
+    );
+
     return {
       slug,
       headline: parsed.headline,
       style: parsed.style === "hook" ? "hook" : "listicle",
       lane,
       reasons,
+      details,
       mood,
       coverEmotion: parseEmotion(parsed.cover),
       reasonEmotions,

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface Slide {
   id: string;
   order: number;
-  kind: "COVER" | "REASON" | "CTA";
+  kind: "COVER" | "REASON" | "CTA" | "SCENE";
   overlayText: string;
   imagePrompt: string;
   imageUrl: string;
@@ -19,6 +19,7 @@ interface CarouselPost {
   topicSlug: string;
   headline: string;
   status: "DRAFT" | "APPROVED" | "REJECTED" | "POSTED";
+  format?: "PHOTO" | "VIDEO" | "STORY";
   caption: string;
   hashtags: string[];
   musicNote: string | null;
@@ -28,6 +29,7 @@ interface CarouselPost {
   instagramUrl: string | null;
   tiktokUrl: string | null;
   storyVideoUrl: string | null;
+  storyVoiced?: boolean | null;
   views: number | null;
   likes: number | null;
   comments: number | null;
@@ -63,6 +65,21 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`rounded-acuity-pill px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[status] ?? "bg-acuity-bg-inset text-acuity-text-quiet"}`}>
       {status}
+    </span>
+  );
+}
+
+const FORMAT_META: Record<string, { label: string; style: string }> = {
+  PHOTO: { label: "📷 Photo", style: "bg-acuity-bg-inset text-acuity-text-sec" },
+  VIDEO: { label: "🎬 Video", style: "bg-acuity-primary-soft text-acuity-primary" },
+  STORY: { label: "🎥 Story", style: "bg-acuity-secondary-soft text-acuity-secondary" },
+};
+
+function FormatBadge({ format }: { format?: string }) {
+  const meta = FORMAT_META[format ?? "PHOTO"] ?? FORMAT_META.PHOTO;
+  return (
+    <span className={`rounded-acuity-pill px-2 py-0.5 text-[9px] font-mono font-bold uppercase ${meta.style}`}>
+      {meta.label}
     </span>
   );
 }
@@ -182,17 +199,18 @@ export default function CarouselReviewPage() {
     }
   };
 
-  const generateOneOff = async () => {
+  const generateBucket = async (bucket: "photo" | "video" | "story") => {
     setGenerating(true);
     setGenerateMsg(null);
     try {
       const res = await fetch("/api/admin/carousels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate-one-off" }),
+        body: JSON.stringify({ action: "generate-daily", bucket }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setGenerateMsg("Queued — check email in ~3 min");
+      const eta = bucket === "photo" ? "~3 min" : "~10-15 min";
+      setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ${eta}`);
       setTimeout(() => setGenerateMsg(null), 10000);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to queue generation");
@@ -298,6 +316,7 @@ export default function CarouselReviewPage() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <FormatBadge format={selectedPost.format} />
             {selectedPost.emailedAt ? (
               <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
                 Emailed
@@ -324,25 +343,40 @@ export default function CarouselReviewPage() {
           onAnimate={() => doAction("animate-cover", { postId: selectedPost.id })}
         />
 
+        {/* ── Story video (if generated) ─────────────────────────────── */}
+        {selectedPost.storyVideoUrl && (
+          <div className="mx-4 mt-3">
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-[1.4px] font-mono text-acuity-text-ter">
+                Story video
+              </span>
+              {selectedPost.storyVoiced === false && (
+                <span className="rounded-acuity-pill bg-acuity-warn-soft px-2 py-0.5 text-[9px] font-mono font-bold text-acuity-warn">
+                  ⚠️ SILENT — voiceover failed
+                </span>
+              )}
+              {selectedPost.storyVoiced === true && (
+                <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
+                  🔊 Voiceover
+                </span>
+              )}
+            </div>
+            <video
+              src={selectedPost.storyVideoUrl}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full max-w-[400px] rounded-acuity-lg"
+            />
+          </div>
+        )}
+
         {/* ── Caption preview ────────────────────────────────────────── */}
         <div className="mx-4 mt-2 max-h-28 overflow-y-auto rounded-acuity-lg bg-acuity-bg-inset p-3">
           <pre className="whitespace-pre-wrap text-xs text-acuity-text-sec font-sans leading-relaxed">
             {selectedPost.caption}
           </pre>
         </div>
-
-        {/* ── Story video link ───────────────────────────────────────── */}
-        {selectedPost.storyVideoUrl && (
-          <a
-            href={selectedPost.storyVideoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mx-4 mt-2 flex min-h-[44px] items-center justify-between rounded-acuity-lg bg-acuity-primary-soft px-3 text-sm font-medium text-acuity-primary active:opacity-70"
-          >
-            <span>🎥 Story video ready</span>
-            <span className="text-xs">Open MP4 →</span>
-          </a>
-        )}
 
         {/* ── Engagement metrics entry ───────────────────────────────── */}
         <div className="mx-4 mt-2 rounded-acuity-lg bg-acuity-bg-inset p-3">
@@ -538,11 +572,28 @@ export default function CarouselReviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={generateOneOff}
+            onClick={() => generateBucket("photo")}
             disabled={generating}
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+            title="Generate a picture carousel now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "Queuing…" : "Generate"}
+            {generating ? "…" : "📷"}
+          </button>
+          <button
+            onClick={() => generateBucket("video")}
+            disabled={generating}
+            title="Generate an animated carousel video now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🎬"}
+          </button>
+          <button
+            onClick={() => generateBucket("story")}
+            disabled={generating}
+            title="Generate a standalone story video now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🎥"}
           </button>
           <button
             onClick={() => fetchPosts()}
@@ -624,7 +675,7 @@ export default function CarouselReviewPage() {
             </p>
             {!allFilter && (
               <button
-                onClick={generateOneOff}
+                onClick={() => generateBucket("photo")}
                 disabled={generating}
                 className="mt-3 min-h-[44px] rounded-acuity-pill bg-acuity-primary px-6 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
               >
@@ -713,6 +764,7 @@ export default function CarouselReviewPage() {
 
                       {/* Badges */}
                       <div className="flex shrink-0 items-center gap-1.5">
+                        <FormatBadge format={post.format} />
                         {post.emailedAt && (
                           <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
                             Emailed

@@ -198,6 +198,11 @@ export function buildImagePrompt(
      * Animated runs put the same line in the composited overlay instead.
      */
     coverSubline?: string;
+    /**
+     * REASON, baked-text runs only (2026-08-16, per Keenan): the
+     * supporting "how/why" sentence rendered smaller below the main text.
+     */
+    detailText?: string;
   }
 ): string {
   const isCover = !slideLabel;
@@ -235,6 +240,11 @@ export function buildImagePrompt(
     `The slide must display this EXACT text prominently: "${displayText}"`,
     isCover && opts?.coverSubline
       ? `Near the BOTTOM of the image (lower quarter of the frame, but kept above the bottom 12% so platform UI never covers it), in clearly smaller text than the headline, display this EXACT question: "${opts.coverSubline}"`
+      : "",
+    // Supporting detail line (2026-08-16): smaller "how/why" sentence
+    // under the main text, styled to match but clearly secondary.
+    opts?.detailText
+      ? `Directly below the main text, display this EXACT supporting sentence in smaller, lighter type (same font family, clearly secondary): "${opts.detailText}"`
       : "",
     sizeRule,
     moodLine,

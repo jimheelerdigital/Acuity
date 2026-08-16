@@ -274,7 +274,8 @@ export async function sendCarouselEmail(
         // reasons). Slides whose animation failed every retry wave are
         // included as 4s still clips of their static JPEG instead of
         // being skipped.
-        const { stitchStoryVideo, stillImageClip } = await import("./story-video");
+        const { stitchStoryVideo, stillImageClip, stitchClipsWithCrossfade } =
+          await import("./story-video");
         const segments: Buffer[] = [];
         for (const slide of post.slides) {
           if (slide.kind === "CTA") continue;
@@ -300,9 +301,17 @@ export async function sendCarouselEmail(
             );
           }
         }
-        // 0.4s fade-to-black on every clip (2026-08-15, per Keenan):
-        // slide changes read as transitions instead of hard cuts.
-        const stitched = await stitchStoryVideo(segments, { fadeOutSec: 0.4 });
+        // Crossfade blending between slides (2026-08-16, per Keenan) —
+        // fall back to 0.4s fade-to-black concat (2026-08-15) if xfade fails.
+        let stitched: Buffer;
+        try {
+          stitched = await stitchClipsWithCrossfade(segments);
+        } catch (xfadeErr) {
+          console.error(
+            `[carousel-email] Crossfade stitch failed — falling back to fade-out cuts: ${xfadeErr instanceof Error ? xfadeErr.message : xfadeErr}`
+          );
+          stitched = await stitchStoryVideo(segments, { fadeOutSec: 0.4 });
+        }
         const { uploadImage } = await import("./carousel-generate");
         compilationUrl = await uploadImage(
           stitched,
@@ -525,7 +534,11 @@ export async function sendStoryVideoEmail(
   const payload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    subject: `[Ripple Content] ${opts.silent ? "🎙️ Story video — RECORD VOICEOVER" : "🎥 Story video"} — ${post.headline}`,
+    // A silent story is a broken deliverable — say so in the subject so
+    // it can't be posted by accident (2026-08-16).
+    subject: opts.silent
+      ? `[Ripple Content] ⚠️ SILENT story video — RECORD VOICEOVER — ${post.headline}`
+      : `[Ripple Content] 🎥 Story video — ${post.headline}`,
     html,
     text,
   };
