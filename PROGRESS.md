@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-16] — Cover photos now tease only a few answers instead of the whole list
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** affbc6d5
+
+### In plain English (for Keenan)
+The carousel cover was giving away every answer up front, so there was no reason to swipe through the post. Now the cover previews at most 40% of them — 1 answer on a 5-item post, 2 on a 6-7 item post, 3 on an 8-10 item post — and the previewed ones are the exact same answers that appear on the slides. The rest stay hidden so she has to swipe to get the full list.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/carousel-generate.ts: new buildCoverTeaser() — slices coverListItems (1 for n≤5, 2 for n≤7, 3 for n≥8) and prompts gpt-image-2 to render only those exact items, explicitly forbidding readable text for the hidden ones ("..." / partially visible note allowed)
+- Photo bucket only; animated covers carry just the headline + engagement line overlay (no list), which already satisfies the rule
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- Teaser ratios per Keenan: 1/5 (2/5 acceptable), 2/6, 2/7, 3/8, 3/9, 3/10. Implemented as the strict lower option; bump n≤5 to 2 if covers look too sparse.
+
+---
+
 ## [2026-08-16] — One consistent art style per post
 
 **Requested by:** Keenan
