@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1080, initial-scale=1" />
+  <title>Acuity store-screenshot harness</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; padding: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    *, *::before, *::after { box-sizing: border-box; }
+    /* app screen animations (reused by the embedded screens) */
+    @keyframes acuity-orbit-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes acuity-orbit-rev  { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+    @keyframes acuity-pulse-soft { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
+    @keyframes acuity-wave { 0% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } 100% { transform: scaleY(0.25); } }
+    @keyframes acuity-shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- design system + real app screens, same load order as Marketing Home.html -->
+  <script src="badge-system.js"></script>
+  <script type="text/babel" src="acuity-tokens.jsx"></script>
+  <script type="text/babel" src="acuity-chrome.jsx"></script>
+  <script type="text/babel" src="screen-entry.jsx"></script>
+  <script type="text/babel" src="screen-home.jsx"></script>
+  <script type="text/babel" src="screen-thememap.jsx"></script>
+  <script type="text/babel" src="screen-lifematrix.jsx"></script>
+
+  <!-- mount a single screen, centered on a 1080x1920 Play-sized canvas -->
+  <script type="text/babel" data-presets="react">
+    const params = new URLSearchParams(location.search);
+    const screen = params.get("screen") || "home";
+
+    const tDark = makeAcuityTokens({ dark: true, accent: "coral" });
+    const tLight = makeAcuityTokens({ dark: false, accent: "coral" });
+
+    // Home + Theme Map ship dark in the product; Life Matrix shown light
+    // (mirrors how marketing.jsx renders each screen).
+    const MAP = {
+      home: { Comp: HomeDashboard, t: tDark },
+      thememap: { Comp: ThemeMap, t: tDark },
+      lifematrix: { Comp: LifeMatrix, t: tLight },
+    };
+    const sel = MAP[screen] || MAP.home;
+    const t = sel.t;
+    const Comp = sel.Comp;
+
+    // 874 device height scaled to leave ~108px top/bottom padding inside 1920
+    const SCALE = 1.95;
+
+    function Stage() {
+      return (
+        <div style={{
+          width: 1080, height: 1920,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: t.heroGrad, overflow: "hidden", fontFamily: t.sans,
+        }}>
+          <div style={{ transform: `scale(${SCALE})`, transformOrigin: "center center" }}>
+            <Comp t={t} />
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<Stage />);
+
+    // signal to Playwright that React has painted
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => document.body.setAttribute("data-ready", "1"))
+    );
+  </script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acuity — Orb Exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #0F0F1A;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    color: oklch(0.98 0.004 280);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  .grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 56px 32px 80px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: oklch(0.18 0.018 280);
+    border: 0.5px solid oklch(1 0 0 / 0.07);
+    border-radius: 24px;
+    overflow: hidden;
+  }
+  .stage {
+    height: 280px;
+    background: radial-gradient(ellipse at 50% 40%, oklch(0.22 0.020 280) 0%, #0F0F1A 70%);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .row { display: flex; gap: 0; }
+  .row .stage { flex: 1; border-right: 0.5px solid oklch(1 0 0 / 0.06); }
+  .row .stage:last-child { border-right: 0; }
+  .label {
+    position: absolute; top: 14px; left: 16px;
+    font: 600 9px/1 "Geist Mono", monospace;
+    letter-spacing: 1.4px; text-transform: uppercase;
+    color: oklch(0.62 0.012 280);
+  }
+
+  .meta { padding: 18px 20px 20px; }
+  .h {
+    font-family: "Manrope", system-ui;
+    font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
+    color: oklch(0.98 0.004 280); margin: 0 0 6px;
+  }
+  .desc {
+    font-size: 13px; line-height: 1.5; color: oklch(0.74 0.010 280);
+    margin: 0 0 10px;
+  }
+  .spec {
+    font-family: "Geist Mono", monospace;
+    font-size: 10px; letter-spacing: 0.3px; color: oklch(0.56 0.012 280);
+  }
+
+  /* Page header */
+  header {
+    max-width: 1200px; margin: 0 auto;
+    padding: 60px 32px 8px;
+    border-bottom: 0.5px solid oklch(1 0 0 / 0.07);
+  }
+  header .eyebrow {
+    font-family: "Geist Mono", monospace;
+    font-size: 10px; letter-spacing: 1.6px;
+    text-transform: uppercase; color: oklch(0.56 0.012 280); margin-bottom: 14px;
+  }
+  header h1 {
+    font-family: "Manrope", system-ui;
+    font-size: 36px; font-weight: 700; letter-spacing: -0.8px;
+    margin: 0 0 10px; line-height: 1.05;
+  }
+  header p {
+    font-size: 15px; line-height: 1.55; color: oklch(0.74 0.010 280);
+    max-width: 700px; margin: 0 0 28px;
+  }
+
+  /* Replay button */
+  .replay {
+    position: absolute; top: 12px; right: 12px;
+    padding: 5px 10px; border-radius: 999px;
+    border: 0.5px solid oklch(1 0 0 / 0.13);
+    background: oklch(1 0 0 / 0.04); color: oklch(0.98 0.004 280);
+    font: 600 10px/1 -apple-system, system-ui; cursor: pointer;
+    letter-spacing: 0.2px;
+  }
+
+  /* All variations use shared SVG patterns. Coral palette gradient stops: */
+  /*   primaryHi  = oklch(0.84 0.155 38)   */
+  /*   primary    = oklch(0.76 0.155 38)   */
+  /*   primaryLo  = oklch(0.66 0.155 38)   */
+  /*   secondary  = oklch(0.66 0.18 285)   (violet) */
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Orb · Exploration v1</div>
+  <h1>Three lava-lamp orbs.</h1>
+  <p>
+    Three distinct approaches to the recording orb. All organic, all pure gradient fill
+    (no specular gloss), all show idle on the left and mid-pulse on the right. Pick a
+    direction; I'll refine to spec and add it to the recording screen.
+  </p>
+</header>
+
+<div class="grid">
+
+  <!-- ─────────── A · Single morph blob ─────────── -->
+  <div class="card">
+    <div class="row">
+      <div class="stage">
+        <span class="label">IDLE</span>
+        <svg width="200" height="200" viewBox="-110 -110 220 220" class="orb-a idle">
+          <defs>
+            <radialGradient id="a-amb" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="oklch(0.76 0.155 38)" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="oklch(0.76 0.155 38)" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="a-fill" cx="38%" cy="34%" r="72%">
+              <stop offset="0%"  stop-color="oklch(0.86 0.155 38)"/>
+              <stop offset="55%" stop-color="oklch(0.74 0.155 38)"/>
+              <stop offset="100%" stop-color="oklch(0.55 0.16 18)"/>
+            </radialGradient>
+          </defs>
+          <circle r="96" fill="url(#a-amb)"/>
+          <path class="blob-a" d="" fill="url(#a-fill)"/>
+        </svg>
+      </div>
+      <div class="stage">
+        <span class="label">MID-PULSE</span>
+        <button class="replay" data-target=".orb-a">Replay ↻</button>
+        <svg width="200" height="200" viewBox="-110 -110 220 220" class="orb-a active">
+          <defs>
+            <radialGradient id="a-amb2" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="oklch(0.76 0.155 38)" stop-opacity="0.28"/>
+              <stop offset="100%" stop-color="oklch(0.76 0.155 38)" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle r="104" fill="url(#a-amb2)"/>
+          <g class="scale-a">
+            <path class="blob-a2" d="" fill="url(#a-fill)"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="meta">
+      <h2 class="h">A · Single morph blob</h2>
+      <p class="desc">
+        One organic shape. Five control points around the perimeter, each gently inhaling
+        with a unique slow frequency (4–7s). Always reads as a single, soft form — never
+        a perfect circle, never deformed. Light internal radial gradient gives mass.
+      </p>
+      <div class="spec">5-point bezier · ±4% radius · 4–7s phases · scale 1.0→1.15 on amp</div>
+    </div>
+  </div>
+
+  <!-- ─────────── B · Two-layer parallax (depth) ─────────── -->
+  <div class="card">
+    <div class="row">
+      <div class="stage">
+        <span class="label">IDLE</span>
+        <svg width="200" height="200" viewBox="-110 -110 220 220" class="orb-b idle">
+          <defs>
+            <radialGradient id="b-amb" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="oklch(0.66 0.18 285)" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="oklch(0.66 0.18 285)" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="b-back" cx="60%" cy="60%" r="65%">
+              <stop offset="0%"  stop-color="oklch(0.62 0.18 285)"/>
+              <stop offset="100%" stop-color="oklch(0.42 0.16 295)"/>
+            </radialGradient>
+            <radialGradient id="b-front" cx="38%" cy="32%" r="70%">
+              <stop offset="0%"  stop-color="oklch(0.86 0.155 38)"/>
+              <stop offset="55%" stop-color="oklch(0.72 0.155 38)"/>
+              <stop offset="100%" stop-color="oklch(0.55 0.16 18)" stop-opacity="0.96"/>
+            </radialGradient>
+          </defs>
+          <circle r="98" fill="url(#b-amb)"/>
+          <path class="blob-b-back" d="" fill="url(#b-back)" opacity="0.9"/>
+          <path class="blob-b-front" d="" fill="url(#b-front)"/>
+        </svg>
+      </div>
+      <div class="stage">
+        <span class="label">MID-PULSE</span>
+        <button class="replay" data-target=".orb-b">Replay ↻</button>
+        <svg width="200" height="200" viewBox="-110 -110 220 220" class="orb-b active">
+          <defs>
+            <radialGradient id="b-amb2" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="oklch(0.66 0.18 285)" stop-opacity="0.24"/>
+              <stop offset="100%" stop-color="oklch(0.66 0.18 285)" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle r="106" fill="url(#b-amb2)"/>
+          <g class="scale-b">
+            <path class="blob-b-back2" d="" fill="url(#b-back)" opacity="0.9"/>
+            <path class="blob-b-front2" d="" fill="url(#b-front)"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="meta">
+      <h2 class="h">B · Two-layer parallax</h2>
+      <p class="desc">
+        Two stacked blobs — a slightly larger violet shape behind, the coral fill in front,
+        each on its own 5–8s phase. They drift in and out of perfect alignment, giving the
+        orb depth without ever showing a separate ring or aura.
+      </p>
+      <div class="spec">2 layers · phase offset 1.6s · violet→coral · scale 1.0→1.15 on amp</div>
+    </div>
+  </div>
+
+  <!-- ─────────── C · Liquid grain (painterly) ─────────── -->
+  <div class="card">
+    <div class="row">
+      <div class="stage">
+        <span class="label">IDLE</span>
+        <svg width="200" height="200" viewBox="-110 -110 220 220" class="orb-c idle">
+          <defs>
+            <radialGradient id="c-amb" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="oklch(0.76 0.155 38)" stop-opacity="0.16"/>
+              <stop offset="100%" stop-color="oklch(0.76 0.155 38)" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="c-fill" cx="42%" cy="36%" r="70%">
+              <stop offset="0%"  stop-color="oklch(0.86 0.155 38)"/>
+              <stop offset="55%" stop-color="oklch(0.72 0.155 38)"/>
+              <stop offset="100%" stop-color="oklch(0.55 0.16 12)"/>
+            </radialGradient>
+            <filter id="c-turb" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="3">
+                <animate attributeName="seed" from="3" to="12" dur="9s" repeatCount="indefinite"/>
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" scale="14"/>
+            </filter>
+            <filter id="c-turb-active" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02 0.025" numOctaves="2" seed="6">
+                <animate attributeName="seed" from="6" to="20" dur="4s" repeatCount="indefinite"/>
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" scale="22"/>
+            </filter>
+          </defs>
+          <circle r="96" fill="url(#c-amb)"/>
+          <circle r="78" fill="url(#c-fill)" filter="url(#c-turb)"/>
+        </svg>
+      </div>
+      <div class="stage">
+        <span class="label">MID-PULSE</span>
+        <button class="replay" data-target=".orb-c">Replay ↻</button>
+        <svg width="200" height="200" viewBox="-110 -110 220 220" class="orb-c active">
+          <defs>
+            <radialGradient id="c-amb2" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="oklch(0.76 0.155 38)" stop-opacity="0.26"/>
+              <stop offset="100%" stop-color="oklch(0.76 0.155 38)" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle r="106" fill="url(#c-amb2)"/>
+          <g class="scale-c">
+            <circle r="78" fill="url(#c-fill)" filter="url(#c-turb-active)"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="meta">
+      <h2 class="h">C · Liquid grain (painterly)</h2>
+      <p class="desc">
+        Painterly distortion via SVG turbulence — feels like ink suspended in glass.
+        Idle uses a slow 9s seed drift with light displacement; speaking ramps the
+        frequency and displacement so the edges ripple. No discrete control points,
+        which means it never reads as "deformed" — always intentional.
+      </p>
+      <div class="spec">feTurbulence + feDisplacementMap · scale 14→22 on amp · seed drift 9s</div>
+    </div>
+  </div>
+
+</div>
+
+<footer style="text-align:center;padding:0 0 56px;font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:1.6px;color:oklch(0.56 0.012 280);text-transform:uppercase">
+  Acuity · Orb directions · v1
+</footer>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Programmatic blob path builder — Catmull-Rom-ish smoothed loop
+// ─────────────────────────────────────────────────────────────
+function blobPath({ pts = 5, baseR = 70, amps = [], phases = [], time = 0, freqs = [], drift = 0 }) {
+  // Compute the noisy radius at each control point
+  const xs = [], ys = [];
+  for (let i = 0; i < pts; i++) {
+    const baseAngle = (i / pts) * Math.PI * 2 + drift;
+    const wob = Math.sin(time * (freqs[i] || 0.001) + (phases[i] || 0)) * (amps[i] || 4);
+    const r = baseR + wob;
+    xs.push(Math.cos(baseAngle) * r);
+    ys.push(Math.sin(baseAngle) * r);
+  }
+  // Build closed cardinal-spline path via cubic bezier control points.
+  let d = `M ${xs[0].toFixed(2)} ${ys[0].toFixed(2)}`;
+  const tension = 0.18; // smoothing factor — higher = looser curves
+  for (let i = 0; i < pts; i++) {
+    const p0 = ((i - 1) + pts) % pts;
+    const p1 = i;
+    const p2 = (i + 1) % pts;
+    const p3 = (i + 2) % pts;
+    // tangents
+    const c1x = xs[p1] + (xs[p2] - xs[p0]) * tension;
+    const c1y = ys[p1] + (ys[p2] - ys[p0]) * tension;
+    const c2x = xs[p2] - (xs[p3] - xs[p1]) * tension;
+    const c2y = ys[p2] - (ys[p3] - ys[p1]) * tension;
+    d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${xs[p2].toFixed(2)} ${ys[p2].toFixed(2)}`;
+  }
+  return d + ' Z';
+}
+
+// ─────────────────────────────────────────────────────────────
+// Variation A — single blob, gentle 5-point morph
+// ─────────────────────────────────────────────────────────────
+const A_CFG = {
+  pts: 5,
+  amps:   [3.5, 3.0, 4.0, 3.2, 3.6],
+  phases: [0, 1.1, 2.3, 4.0, 5.5],
+  freqs:  [0.00080, 0.00065, 0.00095, 0.00075, 0.00085],
+};
+const A_CFG_ACTIVE = {
+  pts: 5,
+  amps:   [5.5, 5.0, 6.0, 5.2, 5.6],
+  phases: [0, 1.1, 2.3, 4.0, 5.5],
+  freqs:  [0.0016, 0.0013, 0.0019, 0.0015, 0.0017],
+};
+// Variation B — back layer slightly larger, slower; front coral on top
+const B_BACK = {
+  pts: 6,
+  baseR: 76,
+  amps:   [5, 4, 6, 5, 4, 5],
+  phases: [0, 1.5, 3.0, 4.5, 6.0, 7.5],
+  freqs:  [0.00055, 0.00045, 0.00065, 0.00050, 0.00060, 0.00055],
+  drift: 0.4,
+};
+const B_FRONT = {
+  pts: 5,
+  baseR: 70,
+  amps:   [3.5, 3, 4, 3.2, 3.6],
+  phases: [1.6, 2.7, 3.9, 5.5, 7.0],   // phase-shifted from back
+  freqs:  [0.0008, 0.00065, 0.00095, 0.00075, 0.00085],
+};
+const B_BACK_ACTIVE = {
+  pts: 6, baseR: 80,
+  amps:   [7, 6, 8, 7, 6, 7],
+  phases: [0, 1.5, 3.0, 4.5, 6.0, 7.5],
+  freqs:  [0.0011, 0.0009, 0.0013, 0.0010, 0.0012, 0.0011],
+  drift: 0.4,
+};
+const B_FRONT_ACTIVE = {
+  pts: 5, baseR: 72,
+  amps:   [5.5, 5, 6, 5.2, 5.6],
+  phases: [1.6, 2.7, 3.9, 5.5, 7.0],
+  freqs:  [0.0016, 0.0013, 0.0019, 0.0015, 0.0017],
+};
+
+function setPath(selector, d) {
+  document.querySelectorAll(selector).forEach((el) => el.setAttribute('d', d));
+}
+
+// Scale wrapper for mid-pulse cards — adds a gentle 1.0→1.15 oscillation
+const ACTIVE_GROUPS = ['.scale-a', '.scale-b', '.scale-c'];
+
+let startTime = performance.now();
+function animate(now) {
+  const t = now - startTime;
+
+  // Variation A
+  setPath('.orb-a.idle .blob-a',   blobPath({ ...A_CFG, baseR: 72, time: t }));
+  setPath('.orb-a.active .blob-a2', blobPath({ ...A_CFG_ACTIVE, baseR: 72, time: t }));
+
+  // Variation B
+  setPath('.orb-b.idle .blob-b-back',   blobPath({ ...B_BACK,  time: t }));
+  setPath('.orb-b.idle .blob-b-front',  blobPath({ ...B_FRONT, time: t }));
+  setPath('.orb-b.active .blob-b-back2', blobPath({ ...B_BACK_ACTIVE,  time: t }));
+  setPath('.orb-b.active .blob-b-front2', blobPath({ ...B_FRONT_ACTIVE, time: t }));
+
+  // Mid-pulse scale on the active cards — gentle organic breath
+  const ampA = 1.0 + Math.max(0, Math.sin(t * 0.0028)) * 0.12 + (Math.sin(t * 0.011) * 0.5 + 0.5) * 0.04;
+  const ampB = 1.0 + Math.max(0, Math.sin(t * 0.0024 + 1.2)) * 0.12 + (Math.sin(t * 0.009) * 0.5 + 0.5) * 0.04;
+  const ampC = 1.0 + Math.max(0, Math.sin(t * 0.0032 + 0.6)) * 0.12 + (Math.sin(t * 0.012) * 0.5 + 0.5) * 0.04;
+  document.querySelectorAll('.scale-a').forEach((g) => g.setAttribute('transform', `scale(${ampA})`));
+  document.querySelectorAll('.scale-b').forEach((g) => g.setAttribute('transform', `scale(${ampB})`));
+  document.querySelectorAll('.scale-c').forEach((g) => g.setAttribute('transform', `scale(${ampC})`));
+
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// Replay buttons reset the time offset for that card.
+document.querySelectorAll('.replay').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    // Re-seed the turbulence in Variation C so its idle resets visibly
+    const sel = btn.getAttribute('data-target');
+    if (sel === '.orb-c') {
+      document.querySelectorAll('#c-turb feTurbulence, #c-turb-active feTurbulence')
+        .forEach((el) => el.setAttribute('seed', String(Math.random() * 100 | 0)));
+    }
+    // Snap the global clock so phases visibly shift for A/B
+    startTime = performance.now() - Math.random() * 1e4;
+  });
+});
+</script>
+</body>
+</html>
