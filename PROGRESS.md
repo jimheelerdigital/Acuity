@@ -35,7 +35,8 @@ Also groundwork (not switched on) for the planned $8.99/$79.99 pricing, includin
 - **Tests:** +150 new, all passing. Suite 568/574; the 6 failures are pre-existing stale tests on `main` (paywall PAST_DUE-grace vs the 2026-06-12 no-grace change; auth-flows asserting 14-day trials vs the current 7). `next build` compiles successfully.
 
 ### Manual steps needed
-- [ ] `npx prisma db push` from home network — creates `RevenueCatEvent`. Required before `RC_SOURCE_OF_TRUTH`; harmless before (Jimmy)
+- [ ] Apply `prisma/manual/2026-08-16-revenuecat-event.sql` to create `RevenueCatEvent` — **do NOT use `prisma db push`**, it would drop 13 live `CarouselPost` columns incl. 5 real `storyVideoUrl` values (verified 2026-08-16). Required before `RC_SOURCE_OF_TRUTH` (Jimmy)
+- [ ] Reconcile `schema.prisma` with prod (prod is ahead on `CarouselPost`) so `db push` is safe again repo-wide (Jimmy)
 - [ ] RC dashboard: create project, entitlement id exactly `pro`, offerings `default` + `grandfathered`, connect App Store / Play / Stripe (Jimmy)
 - [ ] Vercel env: `RC_SECRET_KEY`, `RC_WEBHOOK_AUTH` (we choose), `RC_PROJECT_ID` (Jimmy)
 - [ ] EAS secrets: `EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY` (Jimmy)

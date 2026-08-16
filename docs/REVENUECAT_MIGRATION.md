@@ -45,7 +45,11 @@ Each step is independently reversible. Do not batch them.
 1. Create the RC project; set entitlement identifier to exactly **`pro`**.
 2. Connect App Store, Play Store, and Stripe in the RC dashboard.
 3. Provision keys (§5).
-4. **`npx prisma db push`** to create the `RevenueCatEvent` table. Required before step 3.3; harmless before then.
+4. **Create the `RevenueCatEvent` table — but NOT with `prisma db push`.** Apply `prisma/manual/2026-08-16-revenuecat-event.sql` instead. Required before step 3.3; harmless before then.
+
+   > ⚠️ **`prisma db push` is currently destructive on this repo.** Verified 2026-08-16 via `prisma migrate diff`: it would drop 13 columns from `CarouselPost` (`comments`, `instagramUrl`, `lane`, `likes`, `metricsAt`, `mood`, `saves`, `shares`, `storyTheme`, `storyVideoUrl`, `tiktokUrl`, `views`, `withheldReason`). Those exist in prod but not in this branch's `schema.prisma` — prod is **ahead**, having been changed by the carousel / content-factory work — and `db push` reconciles the DB *to* the local schema. A read-only count confirmed `storyVideoUrl` holds **5 real values**. This is live data loss.
+   >
+   > This is a **pre-existing repo-wide hazard**, not specific to this migration: anyone running `db push` from a branch whose `schema.prisma` lags prod will revert prod. Fix properly by pulling the missing columns into `schema.prisma` (`prisma db pull` on a scratch branch, or re-adding them by hand) so schema and prod agree again. Until then, treat `db push` as unsafe and apply additive SQL by hand.
 5. Cowork delivers the id→receipt mapping (§5).
 
 ### Phase 1 — observe (no user impact)
@@ -145,7 +149,7 @@ Set `RC_SOURCE_OF_TRUTH=false` and redeploy. Nothing else. The DB is still curre
 | `RC_SECRET_KEY` (server secret) | Vercel env | import script, RC reads, parity scan |
 | `RC_WEBHOOK_AUTH` (we choose the value) | Vercel env **and** RC dashboard | webhook auth |
 | `RC_PROJECT_ID` | Vercel env | some v2 endpoints |
-| `npx prisma db push` | from home network (work Mac blocks Supabase ports) | `RevenueCatEvent` table, needed before `RC_SOURCE_OF_TRUTH` |
+| Apply `prisma/manual/2026-08-16-revenuecat-event.sql` (**not** `prisma db push` — see Phase 0.4) | Supabase SQL editor, or psql via `DIRECT_URL` | `RevenueCatEvent` table, needed before `RC_SOURCE_OF_TRUTH` |
 | RC dashboard: entitlement `pro`, offerings `default` + `grandfathered`, store + Stripe connections | app.revenuecat.com | everything |
 
 ### From Cowork
@@ -214,7 +218,7 @@ apps/web/src/app/api/admin/entitlement-drift/route.ts  + ?mode=rc-parity
 apps/web/src/lib/pricing.ts                  derives from shared catalog + planValueDollars
 apps/mobile/lib/pricing.ts                   derives from shared catalog
 apps/mobile/contexts/auth-context.tsx        RC identity aliasing on sign-in / reset on sign-out
-prisma/schema.prisma                         + RevenueCatEvent (needs db push)
+prisma/schema.prisma                         + RevenueCatEvent (apply prisma/manual/*.sql, NOT db push)
 ```
 
 **Not touched, by design:** the Stripe webhook's entitlement writers, Apple verify-receipt + ASSN, the Google RTDN handler, and the trial-expiration cron. They remain the source of truth until cutover.
