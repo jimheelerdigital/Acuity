@@ -1695,6 +1695,22 @@ model StripeEvent {
   processedAt DateTime @default(now())
 }
 
+// Idempotency ledger for RevenueCat webhooks — RC retries at-least-once, so
+// the receiver claims event.id BEFORE processing and treats a P2002 unique
+// violation as "already handled" (same pattern + ordering as StripeEvent).
+//
+// ⚠️ REQUIRES `npx prisma db push` BEFORE RC_SOURCE_OF_TRUTH IS TURNED ON.
+// Nothing reads or writes this table while the flag is off (the webhook runs
+// in observer mode and never touches Prisma for dedup), so the table being
+// absent today is harmless. Adding a new MODEL is also safe for existing
+// queries — unlike a new User column, it cannot widen any current projection
+// into a P2022. See docs/REVENUECAT_MIGRATION.md.
+model RevenueCatEvent {
+  id          String   @id // RC event.id
+  type        String
+  processedAt DateTime @default(now())
+}
+
 // One row per trial→paid conversion that had a referrer. Reward
 // fulfillment is a TODO (Jim picks the reward) — this table just
 // records the event so accounting stays clean when we wire rewards.
