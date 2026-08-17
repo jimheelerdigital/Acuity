@@ -308,6 +308,33 @@ export async function generateImage(prompt: string): Promise<Buffer> {
   return Buffer.from(b64, "base64");
 }
 
+/**
+ * Generate an image with a REFERENCE image via gpt-image-2's edit
+ * endpoint (2026-08-16, per Keenan: the story video's woman looked like
+ * a different person in every scene — each scene was generated from
+ * text alone. Passing scene 1's raw render as the reference keeps the
+ * same face/hair/outfit across all scenes; same pattern AdLab already
+ * uses for creative direction).
+ */
+export async function generateImageWithReference(
+  prompt: string,
+  reference: Buffer
+): Promise<Buffer> {
+  const file = await OpenAI.toFile(reference, "reference.jpg", { type: "image/jpeg" });
+  const response = await openai().images.edit({
+    model: "gpt-image-2",
+    image: file,
+    prompt,
+    n: 1,
+    // The edit endpoint's tallest portrait size (1024x1792 is
+    // generate-only); composeSlide cover-crops to 1080x1920 downstream.
+    size: "1024x1536",
+  });
+  const b64 = response.data?.[0]?.b64_json;
+  if (!b64) throw new Error("gpt-image-2 edit returned no image data");
+  return Buffer.from(b64, "base64");
+}
+
 /** gpt-image-2 at 1024x1536 costs ~$0.04-0.08 per image. Estimate conservatively. */
 function estimateImageCost(): number {
   return 8; // 8 cents per image

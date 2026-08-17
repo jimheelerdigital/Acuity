@@ -7,16 +7,16 @@
  *    per Keenan) — and writes a ~30s 6-scene script (narration + visual
  *    direction + safe micro-motion per scene), deduped against recent
  *    themes/headlines via CarouselPost.storyTheme
- * 2. gpt-image-2 renders 6 fresh text-free scene images
+ * 2. gpt-image-2 renders 6 text-free scene images — scene 1 from text,
+ *    scenes 2-6 via images.edit against scene 1's render so she is the
+ *    SAME woman throughout (2026-08-16, per Keenan)
  * 3. Higgsfield animates each image with the current i2v model
- * 4. ffmpeg concatenates the surviving clips (silent) and the REAL
- *    duration is measured from the stitched output
- * 5. Claude condenses the narration — only lines for scenes that actually
- *    rendered — to a word budget matched to the measured duration
- *    (2026-08-12, per Keenan: script must reflect the assembled video's
- *    actual length, so failed scenes never cause audio/video desync)
- * 6. The voiceover is synthesized for the fitted narration, gently
- *    tempo-adjusted (≤18% faster) if it still runs long, and muxed in
+ * 4. Each scene's narration line is voiced separately (per-scene TTS)
+ *    and its clip is cut/extended to that audio's exact length
+ * 5. Clips and per-scene audio are concatenated in lockstep (0.35s gap
+ *    after each line) so every word plays on its own scene
+ * 6. Captions come straight from the script text, chunked 3-4 words and
+ *    timed over each scene's measured audio, then muxed in as PNGs
  * 7. The finished MP4 is emailed to Keenan, ready to post
  *
  * VOICEOVER NOTE: the Higgsfield *platform* API has no text-to-speech
@@ -31,7 +31,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import OpenAI, { toFile } from "openai";
+import OpenAI from "openai";
 import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
@@ -339,11 +339,20 @@ export function buildStoryImagePrompt(opts: {
   scene: StoryScene;
   sceneIndex: number;
   colorPrompt?: string;
+  /**
+   * True when the prompt goes to images.edit with scene 1's render as
+   * the character reference (2026-08-16, per Keenan: she must be the
+   * SAME woman in every scene).
+   */
+  withReference?: boolean;
 }): string {
   const lanePrefix =
     opts.lane in STYLE_LANES ? STYLE_LANES[opts.lane as StyleLane] : STYLE_LANES.cinematicReal;
   const moodLine = isMood(opts.scene.mood) ? MOOD_EXPRESSIONS[opts.scene.mood] : "";
   return [
+    opts.withReference
+      ? `The woman in the reference image — keep her EXACT face, hairstyle, hair color, age, build, and outfit identical — now in a completely new scene and setting:`
+      : "",
     lanePrefix,
     opts.colorPrompt ?? "",
     `An illustrated scene: ${opts.scene.visual}`,
@@ -355,6 +364,12 @@ export function buildStoryImagePrompt(opts: {
     // scene, so nothing else may contradict it.
     moodLine,
     `Mood context: ${opts.theme} — self-reflection and mental load, for women. The SAME woman appears in a series of scenes; keep her look consistent: ~40s, warm, natural.`,
+    // 2026-08-16, per Keenan: rendered scenes showed her mid-speech with
+    // her mouth open, plus stray rain/smoke overlays indoors. Both are
+    // banned at the image level (the i2v model inherits whatever the
+    // start frame shows, so this is where it must be enforced).
+    `Her lips are gently closed — she is NOT talking, mouth shut, expression carried by her eyes and posture.`,
+    `No rain, smoke, steam, fog, mist, sparkles, or floating particles anywhere unless the scene description explicitly mentions them.`,
     VISUAL_DNA_NOTEXT,
   ].filter(Boolean).join("\n");
 }
@@ -461,8 +476,8 @@ export async function generateVoiceover(
 }
 
 // ─── Burned-in captions (2026-08-12, per Keenan) ────────────────────────────
-// Most viewers watch muted, so the voiceover is transcribed with word-level
-// timestamps and burned into the video as short, precisely-timed chunks.
+// Most viewers watch muted, so the script text is chunked into short,
+// precisely-timed captions and burned into the video.
 
 export interface CaptionChunk {
   text: string;
@@ -471,49 +486,11 @@ export interface CaptionChunk {
   end: number;
 }
 
-/**
- * Transcribe the voiceover MP3 with whisper-1 word timestamps and group
- * the words into short caption chunks (~3-4 words, broken on pauses).
- */
-export async function transcribeCaptionChunks(audio: Buffer): Promise<CaptionChunk[]> {
-  const res = (await openai().audio.transcriptions.create({
-    file: await toFile(audio, "voiceover.mp3", { type: "audio/mpeg" }),
-    model: "whisper-1",
-    response_format: "verbose_json",
-    timestamp_granularities: ["word"],
-  })) as unknown as { words?: { word: string; start: number; end: number }[] };
-
-  const words = Array.isArray(res.words) ? res.words : [];
-  if (words.length < 5) {
-    throw new Error(`Whisper returned only ${words.length} word timestamps`);
-  }
-
-  const chunks: CaptionChunk[] = [];
-  let cur: { word: string; start: number; end: number }[] = [];
-  const flush = () => {
-    if (cur.length === 0) return;
-    chunks.push({
-      text: cur.map((w) => w.word.trim()).join(" "),
-      start: cur[0].start,
-      end: cur[cur.length - 1].end,
-    });
-    cur = [];
-  };
-  for (const w of words) {
-    const gap = cur.length > 0 ? w.start - cur[cur.length - 1].end : 0;
-    const chars = cur.reduce((n, x) => n + x.word.trim().length + 1, 0);
-    if (cur.length >= 4 || gap > 0.6 || chars + w.word.trim().length > 24) flush();
-    cur.push(w);
-  }
-  flush();
-
-  // Hold each caption on screen until the next one starts (no dead gaps);
-  // the last one lingers half a second.
-  for (let i = 0; i < chunks.length; i++) {
-    chunks[i].end = i < chunks.length - 1 ? chunks[i + 1].start : chunks[i].end + 0.5;
-  }
-  return chunks;
-}
+// NOTE (2026-08-16, per Keenan): transcribeCaptionChunks (whisper-1
+// word timestamps) is GONE. Re-transcribing our own TTS audio garbled
+// the words ("house wants To the") and the emotional read's pauses
+// split captions into lone floating words. Captions now come straight
+// from the script text via estimateCaptionChunks per scene.
 
 /**
  * Build caption chunks straight from the narration TEXT when there is no
@@ -641,7 +618,10 @@ export async function stillImageClip(image: Buffer, seconds: number): Promise<Bu
       "-vf", "scale=1080:1920:flags=lanczos,fps=30,setsar=1",
       "-c:v", "libx264",
       "-preset", "fast",
-      "-crf", "23",
+      // crf 18 (2026-08-16, per Keenan: clips pass through several x264
+      // generations — fit → stitch → mux — and stacked crf-23 encodes
+      // left the final video visibly soft).
+      "-crf", "18",
       "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
       outPath,
@@ -701,7 +681,10 @@ export async function fitClipToDuration(clip: Buffer, seconds: number): Promise<
       "-an",
       "-c:v", "libx264",
       "-preset", "fast",
-      "-crf", "23",
+      // crf 18 (2026-08-16, per Keenan: clips pass through several x264
+      // generations — fit → stitch → mux — and stacked crf-23 encodes
+      // left the final video visibly soft).
+      "-crf", "18",
       "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
       outPath,
@@ -826,7 +809,10 @@ export async function stitchStoryVideo(
       "-an",
       "-c:v", "libx264",
       "-preset", "fast",
-      "-crf", "23",
+      // crf 18 (2026-08-16, per Keenan: clips pass through several x264
+      // generations — fit → stitch → mux — and stacked crf-23 encodes
+      // left the final video visibly soft).
+      "-crf", "18",
       "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
       outVideo,
@@ -921,7 +907,10 @@ export async function stitchClipsWithCrossfade(
       "-an",
       "-c:v", "libx264",
       "-preset", "fast",
-      "-crf", "23",
+      // crf 18 (2026-08-16, per Keenan: clips pass through several x264
+      // generations — fit → stitch → mux — and stacked crf-23 encodes
+      // left the final video visibly soft).
+      "-crf", "18",
       "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
       outVideo,
@@ -1058,7 +1047,11 @@ export async function muxNarration(
       args.push(
         "-c:v", "libx264",
         "-preset", "fast",
-        "-crf", "23",
+        // Final generation: crf 19 keeps the delivery file reasonable
+        // while the crf-18 intermediates (fit/still/stitch) preserve
+        // detail upstream (2026-08-16, per Keenan: stacked crf-23
+        // encodes left the final video visibly soft).
+        "-crf", "19",
         "-pix_fmt", "yuv420p"
       );
     } else {

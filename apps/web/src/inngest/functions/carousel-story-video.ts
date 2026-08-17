@@ -166,24 +166,54 @@ export const carouselStoryVideoFn = inngest.createFunction(
     const basePath = `carousels/${post.dateStr}/${post.topicSlug}`;
 
     // ── Steps 4..9: scene images ─────────────────────────────────────
+    // 2026-08-16, per Keenan: she looked like a DIFFERENT woman in every
+    // scene — text-only prompts can't hold a face. Scene 0's raw render
+    // is uploaded as the character reference and every later scene is
+    // generated via images.edit against it (same face/hair/outfit),
+    // falling back to text-only generation if the edit call fails.
     const sceneImageUrls: (string | null)[] = [];
+    let refImageUrl: string | null = null;
     for (let i = 0; i < script.scenes.length; i++) {
-      const url = await step.run(`story-image-${i}`, async () => {
+      const result = await step.run(`story-image-${i}`, async () => {
         try {
           const { buildStoryImagePrompt } = await import(
             "@/lib/content-factory/story-video"
           );
-          const { generateImage, uploadImage } = await import(
-            "@/lib/content-factory/carousel-generate"
-          );
+          const { generateImage, generateImageWithReference, uploadImage } =
+            await import("@/lib/content-factory/carousel-generate");
           const { composeSlide } = await import("@/lib/content-factory/compose");
           const prompt = buildStoryImagePrompt({
             lane,
             theme: script.theme,
             scene: script.scenes[i],
             sceneIndex: i,
+            withReference: i > 0 && Boolean(refImageUrl),
           });
-          const raw = await generateImage(prompt);
+          let raw: Buffer;
+          if (i > 0 && refImageUrl) {
+            try {
+              const refRes = await fetch(refImageUrl);
+              if (!refRes.ok) throw new Error(`reference download failed (${refRes.status})`);
+              raw = await generateImageWithReference(
+                prompt,
+                Buffer.from(await refRes.arrayBuffer())
+              );
+            } catch (refErr) {
+              console.warn(
+                `[story-video] Reference edit failed for scene ${i} — falling back to plain generation: ${refErr instanceof Error ? refErr.message : refErr}`
+              );
+              raw = await generateImage(prompt);
+            }
+          } else {
+            raw = await generateImage(prompt);
+          }
+          // Scene 0's RAW render becomes the character reference for the
+          // rest of the scenes (uploaded before framing so the edit call
+          // sees the full unletterboxed illustration).
+          let newRefUrl: string | null = null;
+          if (i === 0) {
+            newRefUrl = await uploadImage(raw, `${basePath}/story-scene-ref.jpg`);
+          }
           // Resize to the final 1080x1920 frame (no text — voiceover carries
           // the words) so the clip aspect is exact.
           const framed = await composeSlide(raw, "", "COVER");
@@ -203,15 +233,16 @@ export const carouselStoryVideoFn = inngest.createFunction(
               },
             });
           }
-          return imageUrl;
+          return { imageUrl, refUrl: newRefUrl };
         } catch (err) {
           console.error(
             `[story-video] Scene image ${i} failed: ${err instanceof Error ? err.message : err}`
           );
-          return null;
+          return { imageUrl: null, refUrl: null };
         }
       });
-      sceneImageUrls.push(url);
+      sceneImageUrls.push(result.imageUrl);
+      if (i === 0 && result.refUrl) refImageUrl = result.refUrl;
     }
 
     // ── Steps 10+: animate scenes in waves of ≤4 (Higgsfield silently
@@ -440,9 +471,9 @@ export const carouselStoryVideoFn = inngest.createFunction(
         fittedUrls.push(fitted);
       }
 
-      // ── Combined audio + per-scene word-timed captions ─────────────
+      // ── Combined audio + per-scene captions from the SCRIPT ────────
       const audioTrack = await step.run("build-audio", async () => {
-        const { concatAudioWithGaps, transcribeCaptionChunks } = await import(
+        const { concatAudioWithGaps, estimateCaptionChunks } = await import(
           "@/lib/content-factory/story-video"
         );
         const { uploadImage } = await import(
@@ -460,24 +491,23 @@ export const carouselStoryVideoFn = inngest.createFunction(
           `${basePath}/story-voiceover.mp3`,
           "audio/mpeg"
         );
-        // Whisper each scene's audio and shift its word timings to the
-        // scene's start in the final cut (audio and video timelines are
-        // identical by construction, so no tempo factor is involved).
-        let captions: { text: string; start: number; end: number }[] = [];
-        try {
-          let offset = 0;
-          for (let k = 0; k < bufs.length; k++) {
-            const chunks = await transcribeCaptionChunks(bufs[k]);
-            for (const c of chunks) {
-              captions.push({ text: c.text, start: c.start + offset, end: c.end + offset });
-            }
-            offset += sceneAudios[k].durationSec + GAP_SEC;
-          }
-        } catch (capErr) {
-          captions = [];
-          console.error(
-            `[story-video] Caption transcription failed — shipping uncaptioned: ${capErr instanceof Error ? capErr.message : capErr}`
+        // Captions come from the SCRIPT TEXT, not a re-transcription
+        // (2026-08-16, per Keenan: whisper garbled the words — "house
+        // wants To the" — and the slow emotional read's pauses split
+        // captions into lone floating words). We already know every
+        // word; each scene's line is chunked 3-4 words and spread over
+        // that scene's measured audio, offset to its start in the cut.
+        const captions: { text: string; start: number; end: number }[] = [];
+        let offset = 0;
+        for (let k = 0; k < sceneAudios.length; k++) {
+          const chunks = estimateCaptionChunks(
+            script.scenes[keptIdx[k]].narration,
+            sceneAudios[k].durationSec
           );
+          for (const c of chunks) {
+            captions.push({ text: c.text, start: c.start + offset, end: c.end + offset });
+          }
+          offset += sceneAudios[k].durationSec + GAP_SEC;
         }
         const durationSec = sceneAudios.reduce((s, a) => s + a.durationSec + GAP_SEC, 0);
         return { url, captions, durationSec };
