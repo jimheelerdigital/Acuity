@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-16] — Story videos: same woman in every scene, readable captions, sharper picture
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3f2c8698
+
+### In plain English (for Keenan)
+The story video's biggest problem was that the main character looked like a completely different woman in every scene — new face, new hair, new outfit every few seconds — which made the story feel like random clips. Now the first scene's image is used as a visual reference for all the others, so it's literally the same woman throughout. Captions also stopped being garbled nonsense ("house wants To the") and lone floating words — they now come straight from the script, grouped 3-4 words at a time. She's no longer drawn mid-speech with her mouth hanging open, random rain/smoke effects are banned, and the final video is visibly sharper.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: new `generateImageWithReference(prompt, reference)` using gpt-image-2 `images.edit` at 1024x1536 (edit endpoint doesn't accept 1024x1792 — composeSlide cover-crops to 9:16 anyway)
+- `apps/web/src/inngest/functions/carousel-story-video.ts`: scene 0's raw render uploads as `story-scene-ref.jpg` and scenes 1-5 generate via images.edit against it, with plain-generation fallback; `build-audio` step now builds captions with `estimateCaptionChunks(scene.narration, sceneAudio.durationSec)` per scene instead of whisper re-transcription
+- `apps/web/src/lib/content-factory/story-video.ts`: `buildStoryImagePrompt` gains `withReference` option + hard lines forcing lips closed / no rain-smoke-fog-particles; `transcribeCaptionChunks` deleted (whisper garbled words and the slow emotional read's pauses split captions into single words); encode ladder crf 23 → 18 on intermediates (fitClipToDuration, stillImageClip, stitchStoryVideo, stitchClipsWithCrossfade) and 19 on the captioned mux — the pipeline stacks 3 x264 generations, which is why the old output looked soft
+
+### Manual steps needed
+- [ ] Watch the next story email and confirm: same woman in all scenes, captions readable 3-4 word groups, mouth closed, sharper picture (Keenan)
+- [ ] Still open from earlier today: Inngest dashboard screenshots for the two stitch-step deaths (~20:53 and ~21:16 UTC) if they recur (Keenan)
+
+### Notes
+- Keenan's "it's absolutely horrible still" email was the OLD pipeline's video ("The letter you wrote at 2am and never sent", emailed 23:06 UTC) — it has no voice-engine line, which only the new email template includes. The NEW pipeline's first output (23:26 UTC) had the same four defects anyway, confirmed by frame extraction.
+- Whisper caption garbling root cause: re-transcribing our own TTS is lossy, and the expressive ElevenLabs read pauses >0.6s between words, which the chunker treated as chunk boundaries → lone-word captions. We always knew the exact words; transcription was never needed once per-scene audio durations existed.
+- The reference-edit call falls back to text-only generation per scene on failure, so a broken edit endpoint degrades to yesterday's (inconsistent) behavior rather than killing the run.
+- fitted-clip files were 1.4-3.6MB vs 9-12MB originals at crf 23 — that 5x compression was the softness Keenan saw.
+
+---
+
 ## [2026-08-16] — Story videos rebuilt: every word now plays on its own scene
 
 **Requested by:** Keenan
