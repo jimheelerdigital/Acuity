@@ -7,6 +7,54 @@
 
 ---
 
+## [2026-08-16] — Evidence-backed insights ("show your receipts") data layer + suite fully green
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 400f8349 (+ 5 prior on feat/evidence-receipts)
+
+### In plain English (for Keenan)
+This builds the foundation for the thing that most sets us apart: when Ripple tells you it noticed a pattern, it can show you the exact words you said that led it there. Receipts.
+
+The important part is what it now refuses to do. Before, an insight was just a sentence in the database with no link back to any recording — so if the AI made something up that sounded plausible, nothing could catch it. Worse, we found the code was literally instructing the AI, on quiet weeks, to "surface whatever pattern reads as meaningful" with no evidence at all. Now every insight has to point at the specific recordings behind it, and **anything it can't point at is never shown as a pattern** — no matter how confident the AI claims to be, and even if the user says it's correct. If we can't show the quote, we don't make the claim.
+
+There's also a new "what Ripple knows about you" data feed: the people you mention, your goals, recurring themes, plus an honest list of things Ripple suspects but can't prove. That last list is the point — a mirror that admits what it's unsure about is more trustworthy than one that quietly rounds a hunch up to a finding.
+
+Nothing is switched on and nothing users see has changed, with one approved exception: the 5 people currently on free trials will get access to the State of Me report, which they should have had all along.
+
+Also: the test suite is fully green for the first time in a while (659 of 659). Six tests had been failing for months — not because anything was broken, but because they were checking for old behavior we'd deliberately changed. A permanently-red suite is dangerous because people stop reading it.
+
+### Technical changes (for Jimmy)
+- **Audit:** `docs/INSIGHT_GENERATION_AUDIT.md` — every generated artifact, its writer, its inputs, file+line refs. Key finding: only themes (`ThemeMention.entryId`) and people (`EntityMention.entryId`) were traceable; `UserInsight` and `WeeklyReport` both build digests that discard entry ids (`compute-user-insights.ts:411-420`, `generate-weekly-report.ts:118-127`). Documents the fabrication path at `compute-user-insights.ts:452`.
+- **Schema (additive, 0 destructive ops in the prod diff):** new `InsightEvidence` (insightId → entryId + excerpt + startIndex/endIndex, `@@unique([insightId, entryId])`, cascades from Entry so deleting a recording retracts its receipts); `UserInsight` + `confidence`, `correctionState`, `correctionNote`, `correctedAt`.
+- **THE RULE:** `packages/shared/src/evidence.ts` `classifyInsightConfidence()` → REFUTED / UNSOURCED / PROVISIONAL / CONFIRMED. A **gate, not a weight** — a weighting lets a confident fabrication through. Zero evidence ⇒ never `surfaceAsPattern`, not overridable by model confidence (swept 0→1) nor by user ACCURATE.
+- **Receipts without sending transcripts to the model:** `buildDigestWithSources()` labels digest lines `[E1]…` and retains ids; the model cites labels + self-reports confidence; `lib/evidence/excerpt.ts` then picks the actual sentence server-side by stemmed token overlap. Verbatim by construction. `resolveEvidence()` drops refs we never issued and entries whose text doesn't support the claim.
+- The stemmer is load-bearing, not cosmetic: model writes "run", user said "running" — without it `selectExcerpt` returned null and well-supported insights were suppressed as unsourced.
+- **APIs (both 404 when flag off):** `POST /api/insights/:id/correction`; `GET /api/memory-ledger` + `lib/evidence/memory-ledger.ts` (people, goals, recurring themes ≥2 mentions, key facts from UserMemory, patterns-with-receipts, uncertainty-with-reasons, corrections, `summary.unassertedShare`).
+- **Flag:** `EVIDENCE_RECEIPTS`, env-based (`lib/evidence/flags.ts`) because it must evaluate inside an Inngest cron where a DB-scoped FeatureFlag lookup has no user. Off path in `compute-user-insights` is byte-identical to before, including the original prompt and the same `createMany`.
+- **`tierMatches` fix (APPROVED, changes live behavior):** `feature-flags.ts` was a second entitlement authority — `requiredTier:"PRO"` compared `subscriptionStatus === "PRO"`, rejecting active trials that `entitlementsFor` grants full access. Now reads `canExtractEntries` off the resolver. FREE branch deliberately unchanged.
+- **Stale tests:** `paywall.test.ts` ×2 (PAST_DUE grace → no-grace, plus a new canRecord companion), `auth-flows.test.ts` ×4 (now assert against `TRIAL_DAYS` / a named reduced constant instead of literals 14 and 3).
+- **Verified:** 659/659 tests; `next build` compiles with both new routes registered; typecheck 137 (unchanged baseline); flag resolves `false` with no env var set anywhere.
+
+### Manual steps needed
+- [ ] `prisma db push` for `InsightEvidence` + the 4 `UserInsight` columns — additive only, 0 destructive ops verified. **Note the CarouselPost hazard: that reconciliation landed on `feat/revenuecat-migration`, not this branch** (Jimmy)
+- [ ] Merge order: **`feat/revenuecat-migration` first**, then this branch — it's based on the RC branch because task 7 needs `lib/entitlements/resolve.ts` (Jimmy)
+- [ ] After deploy, watch State of Me volume + Claude spend (5 newly-eligible trial users, flagship-model call) (Jimmy)
+- [ ] Decide: may a receipt quote a model-written summary, or must it always quote the user's own words? (Jimmy)
+- [ ] Decide: give the heuristic detectors citations? Ids are already in the queries (`:277-319`, `:343-387`) (Jimmy)
+- [ ] Decide: `WeeklyReport.insightBullets` is a bare `String[]` with nowhere to hang provenance — needs a schema call (Jimmy)
+- [ ] Tune `CONFIRMED_MIN_EVIDENCE=2` / `CONFIRMED_MIN_CONFIDENCE=0.7` against real observer output (Jimmy)
+- [ ] Review the ledger payload shape before any UI is designed against it (Both)
+- [ ] NOT PUSHED — `feat/evidence-receipts` is local only, per instruction (Jimmy)
+
+### Notes
+- Unsourced observations are **written and logged, not rejected at generation**. Suppression happens at read time, so observer mode can measure how often the generator over-reaches (`summary.unassertedShare` + the `unsourced observation` log line). Rejecting at write time would hide the very signal we want.
+- Excerpts are **stored, not resolved at read time**. Transcripts can be edited and entries deleted; a receipt that silently changes under a claim is worse than no receipt. Offsets are kept so it can still be highlighted in place when the transcript is unchanged.
+- `selectExcerpt` returning null is a feature — it means nothing in that entry supports the claim, so the citation is dropped. An empty receipt is a fabricated receipt.
+- Prisma rejects `/** */` block comments inside a model body; use `///`. Cost one validation cycle.
+- The `FREE` requiredTier branch was left on raw status on purpose. Re-deriving it from the entitlement would flip TRIAL out of the upgrade-nudge audience and PAST_DUE into it — unrelated product decision. No flag uses `requiredTier:"FREE"` today anyway.
+- Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
+
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
 
 **Requested by:** Jimmy

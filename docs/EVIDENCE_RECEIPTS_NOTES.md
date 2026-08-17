@@ -53,7 +53,9 @@ Unsourced observations are **written and logged, not rejected at generation**. S
 
 ---
 
-## 4. ⚠️ LIVE BEHAVIOR CHANGE — needs a go/no-go
+## 4. ✅ LIVE BEHAVIOR CHANGE — APPROVED by Jim 2026-08-16
+
+**Decision: GO.** Jim approved this on 2026-08-16 after reviewing the measured blast radius below. The change ships as committed; no further action needed before merge.
 
 The `tierMatches` fix (hygiene task 7) is **not** behind `EVIDENCE_RECEIPTS` and changes production behavior on merge.
 
@@ -71,7 +73,7 @@ The `tierMatches` fix (hygiene task 7) is **not** behind `EVIDENCE_RECEIPTS` and
 
 That is the intended fix (trials get consistent access), and it's consistent with how every other PRO feature already treats trials. But it is a real, user-visible change to a live app, so it wants an explicit yes rather than riding in on a hygiene commit.
 
-**If the answer is no:** revert the `PRO` branch of `tierMatches` to `resolved.state.subscriptionStatus === "PRO"`. Everything else in this branch is unaffected — the resolver plumbing and tests stay valid either way.
+**Rollback, if it ever needs undoing after merge:** revert the `PRO` branch of `tierMatches` to `resolved.state.subscriptionStatus === "PRO"`. Everything else in this branch is unaffected — the resolver plumbing and tests stay valid either way. Worth watching after deploy: State of Me generation volume (5 newly-eligible trial users) and any Claude cost bump from it, since that report is a flagship-model call.
 
 **Deliberately NOT changed:** the `FREE` branch still reads raw status. "FREE tier" flags target non-paying users (upgrade nudges), and trials are a prime audience; re-deriving that branch from the entitlement would have flipped TRIAL out of it and PAST_DUE into it. No flag uses `requiredTier: "FREE"` today, so this is about not making an unrelated product decision by accident.
 
