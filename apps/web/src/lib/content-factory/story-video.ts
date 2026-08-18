@@ -381,6 +381,25 @@ export interface VoiceoverContext {
 }
 
 /**
+ * Per-call voice overrides (2026-08-18): the AMBIENT calm-video pipeline
+ * uses a dedicated soothing voice + steadier delivery settings without
+ * touching the story pipeline's expressive defaults.
+ */
+export interface VoiceoverOptions {
+  /** ElevenLabs voice ID override (defaults to ELEVENLABS_VOICE_ID / Matilda). */
+  voiceId?: string;
+  /** ElevenLabs voice_settings override. */
+  voiceSettings?: {
+    stability: number;
+    similarity_boost: number;
+    style: number;
+    use_speaker_boost: boolean;
+  };
+  /** OpenAI TTS fallback style instructions override. */
+  openaiInstructions?: string;
+}
+
+/**
  * ElevenLabs TTS (2026-08-12, per Keenan: the OpenAI voice sounded
  * robotic). Used whenever ELEVENLABS_API_KEY is set. Default voice is
  * "Matilda" (2026-08-16, per Keenan: Rachel still sounded terrible —
@@ -391,9 +410,11 @@ export interface VoiceoverContext {
 async function elevenLabsVoiceover(
   narration: string,
   apiKey: string,
-  ctx?: VoiceoverContext
+  ctx?: VoiceoverContext,
+  opts?: VoiceoverOptions
 ): Promise<Buffer> {
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "XrExE9yKIg1WjnnlVkGX"; // Matilda
+  const voiceId =
+    opts?.voiceId || process.env.ELEVENLABS_VOICE_ID || "XrExE9yKIg1WjnnlVkGX"; // Matilda
   const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
@@ -411,7 +432,7 @@ async function elevenLabsVoiceover(
         // stability + higher style = far more expressive, emotional
         // delivery (the intimate confession tone the scripts are written
         // in), while similarity + speaker boost keep the voice grounded.
-        voice_settings: {
+        voice_settings: opts?.voiceSettings ?? {
           stability: 0.35,
           similarity_boost: 0.8,
           style: 0.55,
@@ -441,13 +462,15 @@ async function elevenLabsVoiceover(
  */
 export async function generateVoiceover(
   narration: string,
-  ctx?: VoiceoverContext
+  ctx?: VoiceoverContext,
+  opts?: VoiceoverOptions
 ): Promise<{ audio: Buffer; engine: string }> {
   const elevenKey = process.env.ELEVENLABS_API_KEY;
   if (elevenKey) {
     try {
-      const audio = await elevenLabsVoiceover(narration, elevenKey, ctx);
-      const voiceId = process.env.ELEVENLABS_VOICE_ID || "XrExE9yKIg1WjnnlVkGX";
+      const audio = await elevenLabsVoiceover(narration, elevenKey, ctx, opts);
+      const voiceId =
+        opts?.voiceId || process.env.ELEVENLABS_VOICE_ID || "XrExE9yKIg1WjnnlVkGX";
       return { audio, engine: `elevenlabs:${voiceId}` };
     } catch (err) {
       console.error(
@@ -466,6 +489,7 @@ export async function generateVoiceover(
     response_format: "mp3",
     // gpt-4o-mini-tts supports style instructions; older models ignore it.
     instructions:
+      opts?.openaiInstructions ??
       "You are a woman in her mid-40s confessing something true to her closest friend, late at night, voice low. Speak slowly with real emotional weight: let some sentences almost break, let others land flat and tired. Vary your pace — linger on the painful words, rush nothing. Breathe audibly between thoughts. Slightly husky, imperfect, human. Absolutely never chipper, never announcer-like, never smooth-podcast polished.",
   });
   const buffer = Buffer.from(await res.arrayBuffer());

@@ -2,10 +2,12 @@ import { inngest } from "@/inngest/client";
 
 /**
  * Daily engagement metrics refresh (2026-08-12) — fully automates the
- * topic feedback loop. For every POSTED carousel where Keenan pasted an
+ * topic feedback loop. For every carousel where Keenan pasted an
  * Instagram link, this pulls views/likes/comments/saves/shares from the
  * Meta Graph API and writes them to the post. Runs daily so numbers keep
- * updating while a post is still climbing.
+ * updating while a post is still climbing. (2026-08-18: the POSTED
+ * status gate is gone with the approval workflow — a pasted link IS the
+ * "posted" signal now.)
  *
  * TikTok slot: when the TikTok developer app is approved, add a
  * tiktok-metrics lib and a second fetch here; metrics from both
@@ -21,7 +23,7 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
     name: "Content Factory — Engagement Metrics Refresh",
     retries: 1,
     triggers: [
-      { cron: "0 13 * * *" }, // 8am Central, before the 16 UTC generation uses the data
+      { cron: "0 3 * * *" }, // 10pm Central — before the overnight 4-10 UTC generation runs use the data (2026-08-18)
       { event: "content-factory/metrics.refresh" },
     ],
   },
@@ -33,12 +35,11 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
       if (!instagramConfigured()) return { configured: false, posts: [] };
 
       const { prisma } = await import("@/lib/prisma");
-      // Refresh POSTED carousels from the last 90 days — after that the
+      // Refresh linked carousels from the last 90 days — after that the
       // numbers have flattened and the feedback loop already has them.
       const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000);
       const rows = await prisma.carouselPost.findMany({
         where: {
-          status: "POSTED",
           instagramUrl: { not: null },
           generatedFor: { gte: ninetyDaysAgo },
         },

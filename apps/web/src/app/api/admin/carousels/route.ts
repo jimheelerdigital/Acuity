@@ -11,7 +11,12 @@ export const maxDuration = 300;
 
 /**
  * GET /api/admin/carousels — list carousel posts with slides.
- * Query params: status (optional), date (optional YYYY-MM-DD).
+ * Query params: format (optional PHOTO|VIDEO|STORY|AMBIENT), date
+ * (optional YYYY-MM-DD).
+ *
+ * 2026-08-18 revamp (per Keenan): the approval workflow is gone from the
+ * UI — filtering/sorting is by FORMAT, "posted" is derived from pasted
+ * platform links, and every cost figure includes Higgsfield clip renders.
  */
 export async function GET(req: NextRequest) {
   const session = await getServerSession(getAuthOptions());
@@ -27,13 +32,15 @@ export async function GET(req: NextRequest) {
   }
 
   const url = new URL(req.url);
-  const status = url.searchParams.get("status");
+  const format = url.searchParams.get("format");
   const date = url.searchParams.get("date");
   const cursor = url.searchParams.get("cursor"); // cursor-based pagination
   const limit = Math.min(Number(url.searchParams.get("limit")) || 30, 100);
 
   const where: Record<string, unknown> = {};
-  if (status) where.status = status;
+  if (format && ["PHOTO", "VIDEO", "STORY", "AMBIENT"].includes(format)) {
+    where.format = format;
+  }
   if (date) {
     const d = new Date(date);
     d.setUTCHours(0, 0, 0, 0);
@@ -53,55 +60,77 @@ export async function GET(req: NextRequest) {
   if (hasMore) posts.pop();
   const nextCursor = hasMore ? posts[posts.length - 1]?.id : null;
 
-  // Daily summary: stats for today's generation run
+  const { estimatePostCostCents } = await import("@/lib/content-factory/costs");
+  const postsWithCost = posts.map((p) => ({
+    ...p,
+    estCostCents: estimatePostCostCents(p),
+  }));
+
+  // Spend summaries: today's generation run + running month total.
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 86_400_000);
-  const todayPosts = await prisma.carouselPost.findMany({
-    where: { generatedFor: { gte: today, lt: tomorrow } },
-    select: { status: true, slides: { select: { kind: true } } },
-  });
+  const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  const [todayPosts, monthPosts] = await Promise.all([
+    prisma.carouselPost.findMany({
+      where: { generatedFor: { gte: today, lt: tomorrow } },
+      select: { format: true, slides: { select: { kind: true } } },
+    }),
+    prisma.carouselPost.findMany({
+      where: { generatedFor: { gte: monthStart } },
+      select: { format: true, slides: { select: { kind: true } } },
+    }),
+  ]);
 
   const summary = {
     date: today.toISOString().slice(0, 10),
-    drafts: todayPosts.filter((p) => p.status === "DRAFT").length,
-    approved: todayPosts.filter((p) => p.status === "APPROVED").length,
-    rejected: todayPosts.filter((p) => p.status === "REJECTED").length,
-    posted: todayPosts.filter((p) => p.status === "POSTED").length,
     total: todayPosts.length,
-    // Each image slide costs ~$0.08; legacy CTA slides were composed, not generated
     estimatedCostCents: todayPosts.reduce(
-      (acc, p) => acc + p.slides.filter((s) => s.kind !== "CTA").length * 8,
+      (acc, p) => acc + estimatePostCostCents(p),
+      0
+    ),
+    monthCostCents: monthPosts.reduce(
+      (acc, p) => acc + estimatePostCostCents(p),
       0
     ),
   };
 
-  // Aggregate stats across all posts (for library header)
-  const [totalCount, draftCount, approvedCount, rejectedCount, postedCount] =
+  // Format totals for the library filter pills. "posted" = has a pasted
+  // platform link (the old POSTED status is UI-retired).
+  const [totalCount, photoCount, videoCount, storyCount, ambientCount, postedCount] =
     await Promise.all([
       prisma.carouselPost.count(),
-      prisma.carouselPost.count({ where: { status: "DRAFT" } }),
-      prisma.carouselPost.count({ where: { status: "APPROVED" } }),
-      prisma.carouselPost.count({ where: { status: "REJECTED" } }),
-      prisma.carouselPost.count({ where: { status: "POSTED" } }),
+      prisma.carouselPost.count({ where: { format: "PHOTO" } }),
+      prisma.carouselPost.count({ where: { format: "VIDEO" } }),
+      prisma.carouselPost.count({ where: { format: "STORY" } }),
+      prisma.carouselPost.count({ where: { format: "AMBIENT" } }),
+      prisma.carouselPost.count({
+        where: {
+          OR: [{ instagramUrl: { not: null } }, { tiktokUrl: { not: null } }],
+        },
+      }),
     ]);
 
   return NextResponse.json({
-    posts,
+    posts: postsWithCost,
     summary,
     nextCursor,
     totals: {
       all: totalCount,
-      draft: draftCount,
-      approved: approvedCount,
-      rejected: rejectedCount,
+      photo: photoCount,
+      video: videoCount,
+      story: storyCount,
+      ambient: ambientCount,
       posted: postedCount,
     },
   });
 }
 
 /**
- * POST /api/admin/carousels — actions: approve, reject, regenerate-slide, generate-topic.
+ * POST /api/admin/carousels — actions: regenerate-slide, edit-text,
+ * animate-cover, animate-all, generate-daily, generate-story,
+ * save-metrics, save-links, refresh-metrics, resend-email,
+ * generate-topic, generate-one-off.
  */
 export async function POST(req: NextRequest) {
   // CRON_SECRET bearer auth (for scripted/ops triggers) or admin session.
@@ -133,38 +162,15 @@ export async function POST(req: NextRequest) {
   };
 
   switch (action) {
-    case "approve": {
-      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
-      await prisma.carouselPost.update({
-        where: { id: postId },
-        data: { status: "APPROVED" },
-      });
-      return NextResponse.json({ ok: true });
-    }
-
-    case "reject": {
-      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
-      await prisma.carouselPost.update({
-        where: { id: postId },
-        data: { status: "REJECTED" },
-      });
-      return NextResponse.json({ ok: true });
-    }
-
+    // NOTE (2026-08-18, per Keenan): the approve / reject / mark-posted
+    // actions are retired — the approval workflow is gone from the UI.
+    // The status column stays in the DB untouched; "posted" is now
+    // derived from pasted platform links (save-links).
     case "regenerate-slide": {
       if (!slideId) return NextResponse.json({ error: "slideId required" }, { status: 400 });
       const { regenerateSlide } = await import("@/lib/content-factory/carousel-generate");
       const newUrl = await regenerateSlide(slideId);
       return NextResponse.json({ ok: true, imageUrl: newUrl });
-    }
-
-    case "mark-posted": {
-      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
-      await prisma.carouselPost.update({
-        where: { id: postId },
-        data: { status: "POSTED" },
-      });
-      return NextResponse.json({ ok: true });
     }
 
     case "edit-text": {
@@ -211,8 +217,9 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "photo" | "video" | "story" (legacy `animated`
-      // boolean still honored: true→video, false→photo; omitted→video).
+      // images). `bucket`: "photo" | "video" | "story" | "ambient"
+      // (legacy `animated` boolean still honored: true→video,
+      // false→photo; omitted→video).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",
@@ -264,7 +271,8 @@ export async function POST(req: NextRequest) {
 
     case "save-links": {
       // Paste-once platform links — the metrics-refresh cron pulls
-      // engagement automatically for any POSTED carousel with a link.
+      // engagement automatically for any post with a link, and having a
+      // link is what marks a post as "posted" in the UI (2026-08-18).
       if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
       const links = (body as { links?: { instagramUrl?: unknown; tiktokUrl?: unknown } }).links ?? {};
       const parseLink = (v: unknown): string | null => {

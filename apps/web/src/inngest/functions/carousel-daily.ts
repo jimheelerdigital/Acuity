@@ -1,33 +1,36 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 3× daily via cron, each run an EXPLICIT
- * bucket (2026-08-16 reset per Keenan — production was mysteriously
- * running the old hour-based split, so the split is now deliberate,
- * hour-keyed, and each bucket is a genuinely different post):
+ * Carousel generation — runs 4× daily via cron, each run an EXPLICIT
+ * bucket. 2026-08-18 per Keenan: ALL buckets moved overnight so every
+ * post is waiting when he wakes up (times below are CDT; they shift
+ * one hour later in winter CST):
  *
- * - 12 UTC (7am Central):  PHOTO — static picture carousel
- * - 16 UTC (11am Central): VIDEO — fully animated carousel video
+ * -  4 UTC (11pm Central): PHOTO — static picture carousel
+ * -  6 UTC (1am Central):  VIDEO — fully animated carousel video
  *                          (topic capped at 6 reasons → 7 clips max)
- * - 20 UTC (3pm Central):  STORY — standalone 30s narrative story video
+ * -  8 UTC (3am Central):  STORY — standalone 30s narrative story video
  *                          with voiceover (its OWN topic — not a re-read
  *                          of a carousel; handled by carouselStoryVideoFn)
+ * - 10 UTC (5am Central):  AMBIENT — calm single-scene looped video with
+ *                          a soothing lesson voiceover (handled by
+ *                          carouselAmbientVideoFn)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
- * with data.bucket = "photo" | "video" | "story" (legacy data.animated
- * boolean still honored: true→video, false→photo).
+ * with data.bucket = "photo" | "video" | "story" | "ambient" (legacy
+ * data.animated boolean still honored: true→video, false→photo).
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
  */
-type DailyBucket = "photo" | "video" | "story";
+type DailyBucket = "photo" | "video" | "story" | "ambient";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 12,16,20 * * *" },
+      { cron: "0 4,6,8,10 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
@@ -38,13 +41,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     // ── Resolve the bucket ─────────────────────────────────────────
     // Event trigger: explicit bucket wins; legacy `animated` maps to
     // video/photo. Cron: keyed off the trigger hour (event.ts is stable
-    // across retries) — 12→photo, 16→video, 20→story.
+    // across retries) — 4→photo, 6→video, 8→story, 10→ambient.
     let bucket: DailyBucket;
     if (event?.name === "content-factory/daily.generate") {
       const b = event.data?.bucket as DailyBucket | undefined;
       const legacyAnimated = event.data?.animated as boolean | undefined;
       bucket =
-        b === "photo" || b === "video" || b === "story"
+        b === "photo" || b === "video" || b === "story" || b === "ambient"
           ? b
           : typeof legacyAnimated === "boolean"
             ? legacyAnimated
@@ -54,7 +57,8 @@ export const carouselDailyCronFn = inngest.createFunction(
     } else {
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
-      bucket = hour < 14 ? "photo" : hour < 18 ? "video" : "story";
+      bucket =
+        hour < 5 ? "photo" : hour < 7 ? "video" : hour < 9 ? "story" : "ambient";
     }
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
 
@@ -69,6 +73,16 @@ export const carouselDailyCronFn = inngest.createFunction(
         });
       });
       return { generated: 0, bucket, delegated: "story.video" };
+    }
+
+    // ── AMBIENT bucket: hand off to the calm-video pipeline ────────
+    // The ambient function generates its own concept, creates its own
+    // CarouselPost (format=AMBIENT), and emails the result.
+    if (bucket === "ambient") {
+      await step.run("enqueue-ambient-video", async () => {
+        await inngest.send({ name: "content-factory/ambient.video", data: {} });
+      });
+      return { generated: 0, bucket, delegated: "ambient.video" };
     }
 
     // ── Step 1: Generate a fresh topic via Claude ──────────────────

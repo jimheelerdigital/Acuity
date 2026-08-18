@@ -1436,9 +1436,10 @@ enum SlideKind {
 }
 
 enum CarouselFormat {
-  PHOTO // static picture carousel
-  VIDEO // fully animated carousel video
-  STORY // standalone 30s story video + voiceover
+  PHOTO   // static picture carousel
+  VIDEO   // fully animated carousel video
+  STORY   // standalone 30s story video + voiceover
+  AMBIENT // calm single-scene looped video + soothing lesson voiceover (2026-08-18)
 }
 
 // ─── Auto-Blog System ───────────────────────────────────────────────────────

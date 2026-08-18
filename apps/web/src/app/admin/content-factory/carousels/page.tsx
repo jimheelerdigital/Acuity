@@ -18,8 +18,7 @@ interface CarouselPost {
   id: string;
   topicSlug: string;
   headline: string;
-  status: "DRAFT" | "APPROVED" | "REJECTED" | "POSTED";
-  format?: "PHOTO" | "VIDEO" | "STORY";
+  format?: "PHOTO" | "VIDEO" | "STORY" | "AMBIENT";
   caption: string;
   hashtags: string[];
   musicNote: string | null;
@@ -38,6 +37,8 @@ interface CarouselPost {
   metricsAt: string | null;
   slides: Slide[];
   createdAt: string;
+  /** Server-computed generation cost (images + Higgsfield clips + TTS). */
+  estCostCents?: number;
 }
 
 const METRIC_KEYS = ["views", "likes", "comments", "saves", "shares"] as const;
@@ -46,34 +47,51 @@ type MetricsDraft = Record<MetricKey, string>;
 
 interface Totals {
   all: number;
-  draft: number;
-  approved: number;
-  rejected: number;
+  photo: number;
+  video: number;
+  story: number;
+  ambient: number;
   posted: number;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-const STATUS_STYLE: Record<string, string> = {
-  DRAFT: "bg-acuity-warn-soft text-acuity-warn",
-  APPROVED: "bg-acuity-good-soft text-acuity-good",
-  REJECTED: "bg-acuity-bad-soft text-acuity-bad",
-  POSTED: "bg-acuity-secondary-soft text-acuity-secondary",
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={`rounded-acuity-pill px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[status] ?? "bg-acuity-bg-inset text-acuity-text-quiet"}`}>
-      {status}
-    </span>
-  );
+interface Summary {
+  date: string;
+  total: number;
+  estimatedCostCents: number;
+  monthCostCents: number;
 }
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+// 2026-08-18 (per Keenan): the approval workflow (draft/approved/rejected/
+// posted) is retired from the UI. Filtering is by FORMAT, and "posted" is
+// derived from a pasted platform link.
 
 const FORMAT_META: Record<string, { label: string; style: string }> = {
   PHOTO: { label: "📷 Photo", style: "bg-acuity-bg-inset text-acuity-text-sec" },
   VIDEO: { label: "🎬 Video", style: "bg-acuity-primary-soft text-acuity-primary" },
   STORY: { label: "🎥 Story", style: "bg-acuity-secondary-soft text-acuity-secondary" },
+  AMBIENT: { label: "🌙 Calm", style: "bg-acuity-good-soft text-acuity-good" },
 };
+
+/** "Posted" = a platform link was pasted (the old status flow is gone). */
+function isPosted(post: CarouselPost): boolean {
+  return Boolean(post.instagramUrl || post.tiktokUrl);
+}
+
+function PostedBadge({ post }: { post: CarouselPost }) {
+  if (!isPosted(post)) return null;
+  return (
+    <span className="rounded-acuity-pill bg-acuity-secondary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-acuity-secondary">
+      Posted
+    </span>
+  );
+}
+
+function costLabel(post: CarouselPost): string {
+  const cents =
+    post.estCostCents ?? Math.max(1, post.slides.length) * 8;
+  return `~$${(cents / 100).toFixed(2)}`;
+}
 
 function FormatBadge({ format }: { format?: string }) {
   const meta = FORMAT_META[format ?? "PHOTO"] ?? FORMAT_META.PHOTO;
@@ -89,6 +107,7 @@ function FormatBadge({ format }: { format?: string }) {
 export default function CarouselReviewPage() {
   const [allPosts, setAllPosts] = useState<CarouselPost[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +137,7 @@ export default function CarouselReviewPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (allFilter) params.set("status", allFilter);
+      if (allFilter) params.set("format", allFilter);
       if (cursor) params.set("cursor", cursor);
       params.set("limit", "30");
       const res = await fetch(`/api/admin/carousels?${params}`);
@@ -130,6 +149,7 @@ export default function CarouselReviewPage() {
         setAllPosts(data.posts ?? []);
       }
       if (data.totals) setTotals(data.totals);
+      if (data.summary) setSummary(data.summary);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
@@ -199,7 +219,7 @@ export default function CarouselReviewPage() {
     }
   };
 
-  const generateBucket = async (bucket: "photo" | "video" | "story") => {
+  const generateBucket = async (bucket: "photo" | "video" | "story" | "ambient") => {
     setGenerating(true);
     setGenerateMsg(null);
     try {
@@ -209,7 +229,8 @@ export default function CarouselReviewPage() {
         body: JSON.stringify({ action: "generate-daily", bucket }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const eta = bucket === "photo" ? "~3 min" : "~10-15 min";
+      const eta =
+        bucket === "photo" ? "~3 min" : bucket === "ambient" ? "~8 min" : "~10-15 min";
       setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ${eta}`);
       setTimeout(() => setGenerateMsg(null), 10000);
     } catch (err) {
@@ -261,7 +282,7 @@ export default function CarouselReviewPage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // If an IG link exists, kick off an immediate metrics pull so
-      // Keenan doesn't wait for tomorrow's 13 UTC cron.
+      // Keenan doesn't wait for tomorrow's 3 UTC cron.
       if (linksDraft.instagramUrl.trim()) {
         await fetch("/api/admin/carousels", {
           method: "POST",
@@ -326,7 +347,10 @@ export default function CarouselReviewPage() {
                 Not emailed
               </span>
             )}
-            <StatusBadge status={selectedPost.status} />
+            <PostedBadge post={selectedPost} />
+            <span className="rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-[9px] font-mono tabular-nums text-acuity-text-quiet">
+              {costLabel(selectedPost)}
+            </span>
           </div>
         </div>
 
@@ -348,7 +372,7 @@ export default function CarouselReviewPage() {
           <div className="mx-4 mt-3">
             <div className="mb-1.5 flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-[1.4px] font-mono text-acuity-text-ter">
-                Story video
+                {selectedPost.format === "AMBIENT" ? "Calm video" : "Story video"}
               </span>
               {selectedPost.storyVoiced === false && (
                 <span className="rounded-acuity-pill bg-acuity-warn-soft px-2 py-0.5 text-[9px] font-mono font-bold text-acuity-warn">
@@ -459,37 +483,12 @@ export default function CarouselReviewPage() {
           style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}
         >
           <div className="flex items-center justify-between gap-2">
-            {/* Left: status actions */}
-            {selectedPost.status === "DRAFT" && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => doAction("reject", { postId: selectedPost.id })}
-                  disabled={!!busy}
-                  className="min-h-[44px] rounded-acuity-pill bg-acuity-bad px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => doAction("approve", { postId: selectedPost.id })}
-                  disabled={!!busy}
-                  className="min-h-[44px] rounded-acuity-pill bg-acuity-good px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-                >
-                  Approve
-                </button>
-              </div>
-            )}
-            {selectedPost.status === "APPROVED" && (
-              <button
-                onClick={() => doAction("mark-posted", { postId: selectedPost.id })}
-                disabled={busy === `mark-posted-${selectedPost.id}`}
-                className="min-h-[44px] rounded-acuity-pill bg-acuity-secondary-soft px-4 text-sm font-bold text-acuity-secondary active:opacity-70 disabled:opacity-50"
-              >
-                {busy === `mark-posted-${selectedPost.id}` ? "…" : "Mark posted"}
-              </button>
-            )}
-            {(selectedPost.status === "REJECTED" || selectedPost.status === "POSTED") && (
-              <div />
-            )}
+            {/* Left: posted state (a pasted link IS the posted signal) */}
+            <span className="min-w-0 truncate text-[10px] font-mono text-acuity-text-quiet">
+              {isPosted(selectedPost)
+                ? "Posted — link saved"
+                : "Paste a link above once posted"}
+            </span>
 
             {/* Right: utilities */}
             <div className="flex gap-2">
@@ -541,10 +540,10 @@ export default function CarouselReviewPage() {
   const filterCounts = totals
     ? [
         { key: "", label: "All", count: totals.all },
-        { key: "DRAFT", label: "Drafts", count: totals.draft },
-        { key: "APPROVED", label: "Approved", count: totals.approved },
-        { key: "REJECTED", label: "Rejected", count: totals.rejected },
-        { key: "POSTED", label: "Posted", count: totals.posted },
+        { key: "PHOTO", label: "📷 Photo", count: totals.photo },
+        { key: "VIDEO", label: "🎬 Video", count: totals.video },
+        { key: "STORY", label: "🎥 Story", count: totals.story },
+        { key: "AMBIENT", label: "🌙 Calm", count: totals.ambient },
       ]
     : null;
 
@@ -596,6 +595,14 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "🎥"}
           </button>
           <button
+            onClick={() => generateBucket("ambient")}
+            disabled={generating}
+            title="Generate a calm ambient video now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🌙"}
+          </button>
+          <button
             onClick={() => fetchPosts()}
             disabled={loading}
             className="min-h-[44px] min-w-[44px] rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub"
@@ -612,15 +619,22 @@ export default function CarouselReviewPage() {
         </div>
       )}
 
-      {/* ── Aggregate stats ──────────────────────────────────────── */}
+      {/* ── Aggregate stats + spend ──────────────────────────────── */}
       {totals && (
         <div className="mx-4 mb-3 rounded-acuity-lg bg-acuity-card-bg border border-acuity-card-border px-4 py-3">
-          <div className="flex items-center gap-4 text-xs tabular-nums">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs tabular-nums">
             <span className="font-display font-bold text-acuity-text">{totals.all} total</span>
-            <span className="text-acuity-warn">{totals.draft} drafts</span>
-            <span className="text-acuity-good">{totals.approved} approved</span>
-            <span className="text-acuity-bad">{totals.rejected} rejected</span>
             <span className="text-acuity-secondary">{totals.posted} posted</span>
+            {summary && (
+              <>
+                <span className="text-acuity-text-sec">
+                  today ~${(summary.estimatedCostCents / 100).toFixed(2)}
+                </span>
+                <span className="text-acuity-text-sec">
+                  month ~${(summary.monthCostCents / 100).toFixed(2)}
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -629,10 +643,10 @@ export default function CarouselReviewPage() {
       <div className="mx-4 mb-3 flex gap-2 overflow-x-auto pb-1">
         {(filterCounts ?? [
           { key: "", label: "All", count: null },
-          { key: "DRAFT", label: "Drafts", count: null },
-          { key: "APPROVED", label: "Approved", count: null },
-          { key: "REJECTED", label: "Rejected", count: null },
-          { key: "POSTED", label: "Posted", count: null },
+          { key: "PHOTO", label: "📷 Photo", count: null },
+          { key: "VIDEO", label: "🎬 Video", count: null },
+          { key: "STORY", label: "🎥 Story", count: null },
+          { key: "AMBIENT", label: "🌙 Calm", count: null },
         ]).map((f) => (
           <button
             key={f.key}
@@ -671,7 +685,7 @@ export default function CarouselReviewPage() {
           <div className="text-center text-acuity-text-ter">
             <p className="text-lg font-display font-bold text-acuity-text-sec">No carousels found</p>
             <p className="mt-1 text-sm">
-              {allFilter ? `No ${allFilter.toLowerCase()} carousels.` : "Nothing generated yet."}
+              {allFilter ? `No ${allFilter.toLowerCase()} posts.` : "Nothing generated yet."}
             </p>
             {!allFilter && (
               <button
@@ -716,7 +730,7 @@ export default function CarouselReviewPage() {
                     {dayPosts.length} post{dayPosts.length !== 1 ? "s" : ""}
                   </span>
                   <span className="text-[10px] font-mono text-acuity-text-quiet">
-                    ~${(dayPosts.reduce((a, p) => a + Math.max(0, p.slides.length - 1) * 8, 0) / 100).toFixed(2)}
+                    ~${(dayPosts.reduce((a, p) => a + (p.estCostCents ?? Math.max(1, p.slides.length) * 8), 0) / 100).toFixed(2)}
                   </span>
                 </div>
 
@@ -754,10 +768,10 @@ export default function CarouselReviewPage() {
                             {post.topicSlug}
                           </span>
                           <span className="text-[10px] font-mono text-acuity-text-quiet">
-                            {post.slides.length} slides
+                            {post.slides.length} slide{post.slides.length !== 1 ? "s" : ""}
                           </span>
                           <span className="text-[10px] font-mono text-acuity-text-quiet">
-                            ~${((Math.max(0, post.slides.length - 1) * 8) / 100).toFixed(2)}
+                            {costLabel(post)}
                           </span>
                         </div>
                       </div>
@@ -770,7 +784,7 @@ export default function CarouselReviewPage() {
                             Emailed
                           </span>
                         )}
-                        <StatusBadge status={post.status} />
+                        <PostedBadge post={post} />
                       </div>
                     </button>
                   ))}
