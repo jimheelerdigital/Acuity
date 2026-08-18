@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-08-18] — New 4th daily post: calm ambient video + carousel dashboard revamp
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d88699dc
+
+### In plain English (for Keenan)
+There's now a fourth daily post type: a calm "ambient" video like the wakingupapp format — one beautiful soothing scene (clouds, water, light) that moves gently in a loop, with a slow warm voiceover sharing a short reflective lesson and the words appearing as captions. All four daily posts now generate overnight (11pm, 1am, 3am, 5am Central) so everything is waiting in your inbox when you wake up. The dashboard also dropped the approve/reject workflow entirely — you now sort by post type (Photo/Video/Story/Calm), a post counts as "posted" the moment you paste its Instagram/TikTok link, and every cost number finally includes the Higgsfield video renders and the voiceover, not just the images.
+
+### Technical changes (for Jimmy)
+- Prisma: `AMBIENT` added to `CarouselFormat` enum (CarouselPost.status column kept in DB, retired from UI only)
+- New `apps/web/src/lib/content-factory/ambient-video.ts`: `generateAmbientScript` (Claude, 70-90 word calm script + scene concept, logged to ClaudeCallLog as "ambient-video-script"), `buildAmbientImagePrompt` (photoreal, NOT the illustrated STYLE_LANES), `buildAmbientVideoPrompt` (loop-friendly ambient drift, locked camera), `loopClipToDuration` (repeats the 5s clip with 0.6s xfade crossfades then trims — `reverse` avoided, unverified on prod ffmpeg-static), `ambientVoiceoverOptions` (AMBIENT_ELEVENLABS_VOICE_ID env, stability 0.65)
+- New `apps/web/src/inngest/functions/carousel-ambient-video.ts` (event `content-factory/ambient.video`): script → 1 image → 1 Higgsfield clip (2 attempts) → full-script ElevenLabs TTS → loop clip to audio length → script-true captions → mux with caption-less retry → persists storyVideoUrl/storyVoiced → sendStoryVideoEmail. Silent-captioned fallback at ~40s if TTS fails. Registered in `api/inngest/route.ts`
+- `carousel-daily.ts`: cron `0 12,16,20 * * *` → `0 4,6,8,10 * * *`; hour mapping 4→photo, 6→video, 8→story, 10→ambient; new ambient delegation + `bucket: "ambient"` on the manual event
+- `carousel-metrics-refresh.ts`: `status: "POSTED"` filter dropped (any post with an IG link refreshes); cron 13 UTC → 3 UTC so the feedback loop has fresh data before the overnight runs
+- New `apps/web/src/lib/content-factory/costs.ts`: `estimatePostCostCents` by format — images 8¢ + clips (`HIGGSFIELD_CLIP_COST_CENTS`, default 10¢ = 2 credits at the $5/100 top-up rate) + TTS (`TTS_COST_CENTS`, default 10¢) + 2¢ Claude
+- `story-video.ts`: `generateVoiceover`/`elevenLabsVoiceover` gain optional `VoiceoverOptions` (voiceId, voice_settings, OpenAI instructions) — story behavior unchanged
+- `api/admin/carousels/route.ts`: GET filters by `format` (not status), totals per format, `posted` = has platform link, per-post `estCostCents`, today + running-month spend; `approve`/`reject`/`mark-posted` actions removed
+- `admin/content-factory/carousels/page.tsx`: format filter pills with counts, StatusBadge/approval bar removed, PostedBadge (link-derived), per-post + per-day + today/month costs, 4th generate button (🌙), AMBIENT in FORMAT_META
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home network BEFORE the first ambient run — the AMBIENT enum value must exist in Postgres or post creation throws (Keenan)
+- [ ] Add ElevenLabs voice: in the ElevenLabs dashboard add "Vanessa - Beach Girl" or "Hope - Smooth, Engaging, and Kind" from the Voice Library to My Voices, then set `AMBIENT_ELEVENLABS_VOICE_ID` in Vercel to that voice's ID (Keenan). Until set, ambient uses the story voice (Matilda)
+- [ ] Optional Vercel env vars: `HIGGSFIELD_CLIP_COST_CENTS` / `TTS_COST_CENTS` if the default 10¢ estimates are off (Keenan)
+
+### Notes
+- Higgsfield's platform API has NO TTS endpoint (verified against their OpenAPI spec — all 50 endpoints are image/video), so "the same Higgsfield voice" is impossible server-side; ElevenLabs stock voices are the replacement Keenan picked
+- `ELEVENLABS_API_KEY` is marked **sensitive** in Vercel — `vercel env pull` returns the literal `[SENSITIVE]`, so voice-ID lookups via API need the key pasted or run by Keenan
+- Cron times are UTC: 4/6/8/10 UTC = 11pm/1am/3am/5am CDT; in winter (CST) they land 10pm/12am/2am/4am — acceptable per the "while I sleep" intent
+- Library voices must be added to "My Voices" in the ElevenLabs account before the API can use them
+- Local npm cache has root-owned dirs (past sudo npm) — `npm install --cache /tmp/npm-cache-claude` works around it; sharp was missing locally until this install
+
+---
+
 ## [2026-08-16] — Story videos: same woman in every scene, readable captions, sharper picture
 
 **Requested by:** Keenan
