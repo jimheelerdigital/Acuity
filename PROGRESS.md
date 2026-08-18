@@ -29,7 +29,7 @@ There's now a fourth daily post type: a calm "ambient" video like the wakingupap
 
 ### Manual steps needed
 - [ ] `npx prisma db push` from home network BEFORE the first ambient run — the AMBIENT enum value must exist in Postgres or post creation throws (Keenan)
-- [ ] Add ElevenLabs voice: in the ElevenLabs dashboard add "Vanessa - Beach Girl" or "Hope - Smooth, Engaging, and Kind" from the Voice Library to My Voices, then set `AMBIENT_ELEVENLABS_VOICE_ID` in Vercel to that voice's ID (Keenan). Until set, ambient uses the story voice (Matilda)
+- [x] ~~Add ElevenLabs voices~~ DONE same session: Keenan added "Vanessa - Beach Girl" (8DzKSPdgEQPaK5vKG0Rs) and "Hope - Smooth, Engaging and Kind" (WAhoMTNdLdMoq1j3wf3I) to My Voices; both IDs are hardcoded and ambient alternates randomly between them. `AMBIENT_ELEVENLABS_VOICE_ID` now only needed to FORCE one voice
 - [ ] Optional Vercel env vars: `HIGGSFIELD_CLIP_COST_CENTS` / `TTS_COST_CENTS` if the default 10¢ estimates are off (Keenan)
 
 ### Notes

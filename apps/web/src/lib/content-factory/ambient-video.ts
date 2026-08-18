@@ -13,14 +13,15 @@
  * 3. Higgsfield animates it (5s, ambient drift only)
  * 4. The clip is looped with crossfades to the voiceover's length
  * 5. ElevenLabs voices the whole script in one continuous calm read
- *    (dedicated voice via AMBIENT_ELEVENLABS_VOICE_ID; falls back to the
- *    story voice — Higgsfield's platform API has no TTS endpoint, so a
- *    voice generated inside the Higgsfield app cannot be called here)
+ *    (random pick between Vanessa and Hope, Keenan's chosen calm voices;
+ *    AMBIENT_ELEVENLABS_VOICE_ID forces one — Higgsfield's platform API
+ *    has no TTS endpoint, so a Higgsfield-app voice can't be called here)
  * 6. Captions come straight from the script text (estimateCaptionChunks)
  *    and are muxed in as timed PNG overlays
  *
  * Env knobs:
- * - AMBIENT_ELEVENLABS_VOICE_ID — dedicated calm voice (optional)
+ * - AMBIENT_ELEVENLABS_VOICE_ID — force a single calm voice (optional;
+ *   default alternates Vanessa/Hope)
  * - HIGGSFIELD_AMBIENT_CLIP_DURATION — seconds per source clip (default 5)
  */
 
@@ -254,15 +255,25 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
 }
 
 /**
- * Voice settings for the calm read: a dedicated soothing voice when
- * AMBIENT_ELEVENLABS_VOICE_ID is set (Keenan can clone his preferred
- * Higgsfield voice into ElevenLabs and paste the ID), otherwise the
- * story pipeline's voice. Higher stability + lower style than the story
- * read = steady, meditative delivery instead of emotional confession.
+ * Keenan's picked calm voices (2026-08-18) — both added to My Voices in
+ * the ElevenLabs account. Each ambient post picks one at random;
+ * AMBIENT_ELEVENLABS_VOICE_ID forces a single voice if set.
+ */
+const AMBIENT_VOICES = [
+  "8DzKSPdgEQPaK5vKG0Rs", // Vanessa - Beach Girl
+  "WAhoMTNdLdMoq1j3wf3I", // Hope - Smooth, Engaging and Kind
+];
+
+/**
+ * Voice settings for the calm read. Higher stability + lower style than
+ * the story read = steady, meditative delivery instead of emotional
+ * confession.
  */
 export function ambientVoiceoverOptions(): VoiceoverOptions {
   return {
-    voiceId: process.env.AMBIENT_ELEVENLABS_VOICE_ID || undefined,
+    voiceId:
+      process.env.AMBIENT_ELEVENLABS_VOICE_ID ||
+      AMBIENT_VOICES[Math.floor(Math.random() * AMBIENT_VOICES.length)],
     voiceSettings: {
       stability: 0.65,
       similarity_boost: 0.8,
