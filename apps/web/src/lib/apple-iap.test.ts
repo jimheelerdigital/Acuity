@@ -29,6 +29,11 @@ function info(overrides: Partial<AppleTransactionInfo> = {}): AppleTransactionIn
     expiresDate: FUTURE,
     environment: "Sandbox",
     rawPayload: {},
+    // The signed original Apple returned. Retained as of 2026-08-19 so the
+    // transaction can be proved to RevenueCat (JWSTransaction is a valid
+    // fetch_token for POST /v1/receipts). Not a real signature — these tests
+    // exercise the pure decision functions, which never verify it.
+    signedTransactionInfo: "eyJhbGciOiJFUzI1NiJ9.test.signature",
     ...overrides,
   };
 }
