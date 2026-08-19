@@ -27,7 +27,9 @@ None
 
 ### Notes
 - Video duration is driven entirely by the voiceover length (the loop step matches the clip to the audio), so the script word budget is the only real duration lever; speed stays 0.85 for the calm read
-- The 30-word minimum sanity check in generateAmbientScript still holds under the new 50-65 budget
+- The 30-word minimum sanity check in generateAmbientScript still holds under the new budget
+- Follow-up (commit 2afa9803): the first 50-65-word test read at 30.0s of audio and the clean-loop boundary rounding pushed the MP4 to 34s — budget briefly tightened to 45-58 words
+- Final call (this commit, per Keenan): 15-45s finished videos are all acceptable and length VARIANCE is encouraged while finding the format — budget widened to 40-80 words and the prompt now tells the writer to let the idea pick the length (sharp recognition = short, small story = long)
 
 ## [2026-08-19] — Captions in every content email; calm captions lead with a question and sound human
 
