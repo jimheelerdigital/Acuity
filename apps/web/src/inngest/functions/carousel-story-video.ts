@@ -115,16 +115,19 @@ export const carouselStoryVideoFn = inngest.createFunction(
           postId: p.id,
           topicSlug: p.topicSlug,
           dateStr: p.generatedFor.toISOString().slice(0, 10),
-          lane: eventLane ?? "cinematicReal",
+          lane: (await import("@/lib/content-factory/brand")).resolveStyleLane(eventLane),
         };
       }
       const { buildStoryCaption } = await import("@/lib/content-factory/caption");
       const { extractHashtags } = await import(
         "@/lib/content-factory/carousel-generate"
       );
-      const { STYLE_LANES } = await import("@/lib/content-factory/brand");
+      const { STYLE_LANES, FORCED_STYLE_LANE } = await import("@/lib/content-factory/brand");
       const laneKeys = Object.keys(STYLE_LANES);
-      const lane = laneKeys[Math.floor(Math.random() * laneKeys.length)];
+      // Forced lane first (2026-08-19, per Keenan: toon3d everywhere for
+      // now), else random rotation.
+      const lane =
+        FORCED_STYLE_LANE ?? laneKeys[Math.floor(Math.random() * laneKeys.length)];
 
       const slug =
         "story-" +

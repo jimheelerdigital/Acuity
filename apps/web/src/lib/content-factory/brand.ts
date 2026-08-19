@@ -164,3 +164,21 @@ export const STYLE_LANES = {
 } as const;
 
 export type StyleLane = keyof typeof STYLE_LANES;
+
+/**
+ * 2026-08-19, per Keenan: the "cartoonish realistic" look (the toon3d
+ * lane — Pixar-inspired soft 3D) is outperforming every other format on
+ * photos and carousels, so EVERY post renders in it for now. Set to
+ * null to restore per-post lane rotation.
+ */
+export const FORCED_STYLE_LANE: StyleLane | null = "toon3d";
+
+/**
+ * Resolve the effective style lane for a post, honoring the override.
+ * Use this everywhere a lane is picked or a STYLE_LANES prefix is looked
+ * up — stored/seed lanes pass through only when no override is set.
+ */
+export function resolveStyleLane(lane?: string | null): StyleLane {
+  if (FORCED_STYLE_LANE) return FORCED_STYLE_LANE;
+  return lane && lane in STYLE_LANES ? (lane as StyleLane) : "cinematicReal";
+}

@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-08-19] — Every post now renders in the cartoonish-realistic (toon3d) art style
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The cartoonish-realistic look (the soft Pixar-style 3D illustration) is outperforming the other four art styles, so every post — daily carousels, story videos, one-off carousels, and slide regenerations — now uses that style instead of rotating randomly between five looks. It's controlled by a single switch, so when you want variety back (or want to test a different style), it's a one-line change. Calm videos are unaffected — they were never illustrated (real scenery footage).
+
+### Technical changes (for Jimmy)
+- `brand.ts`: new `FORCED_STYLE_LANE = "toon3d"` constant + `resolveStyleLane()` helper (set constant to null to restore rotation)
+- `generate-topic.ts`: daily topic lane pick honors the override before random rotation
+- `carousel-story-video.ts`: story lane pick + eventLane fallback go through the override
+- `carousel-daily.ts`, `carousel-one-off.ts`: lanePrefix lookups use `resolveStyleLane(topicData.lane)`
+- `carousel-generate.ts` (generateCarousel, regenerateSlide, recomposeSlide) and `story-video.ts` scene prompts: same
+- Stored `lane` values on old posts are untouched — the override applies at render time
+
+### Manual steps needed
+None
+
+### Notes
+- "Cartoonish realistic" interpreted as the toon3d lane ("Soft 3D illustrated graphic, rounded shapes, warm lighting, Pixar-inspired") — if Keenan meant a different lane, flip FORCED_STYLE_LANE in brand.ts
+- The 4 pre-existing tsc errors in carousel-daily/one-off (topic object missing `style` field) predate this change — verified via git stash
+
 ## [2026-08-19] — Fixed the phantom "blind/curtain" movement in animated carousel backgrounds
 
 **Requested by:** Keenan

@@ -7,7 +7,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { isMood, type Mood, type StyleLane } from "./brand";
+import { FORCED_STYLE_LANE, isMood, type Mood, type StyleLane } from "./brand";
 import type { SlideEmotion } from "./animate-cover";
 
 const anthropic = new Anthropic();
@@ -252,8 +252,10 @@ Return ONLY valid JSON, no other text.`;
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
-    // Pick a random style lane
+    // Style lane: forced override first (2026-08-19, per Keenan: toon3d
+    // "cartoonish realistic" everywhere for now), else random rotation.
     const lane =
+      FORCED_STYLE_LANE ??
       STYLE_LANE_KEYS[Math.floor(Math.random() * STYLE_LANE_KEYS.length)];
 
     // Emotion directions — validated lightly here (mood must be from the

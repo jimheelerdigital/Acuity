@@ -185,7 +185,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // for the rendered MP4 (see storeSlideVideo). "-notext" in the raw
     // path is the marker the animate pipeline keys off.
     const coverSlide = await step.run("generate-cover", async () => {
-      const { STYLE_LANES, SCENE_SETTINGS, COVER_TREATMENTS } = await import("@/lib/content-factory/brand");
+      const { STYLE_LANES, SCENE_SETTINGS, COVER_TREATMENTS, resolveStyleLane } = await import("@/lib/content-factory/brand");
       const {
         buildImagePrompt,
         generateImage,
@@ -195,7 +195,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         await import("@/lib/content-factory/compose");
 
       const lanePrefix =
-        STYLE_LANES[topicData.lane as keyof typeof STYLE_LANES];
+          STYLE_LANES[resolveStyleLane(topicData.lane)];
       const topic = {
         headline: topicData.headline,
         slug,
@@ -303,7 +303,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     }[] = [];
     for (let i = 0; i < topicData.reasons.length; i++) {
       const slide = await step.run(`generate-reason-${i}`, async () => {
-        const { STYLE_LANES, SCENE_SETTINGS } = await import("@/lib/content-factory/brand");
+        const { STYLE_LANES, SCENE_SETTINGS, resolveStyleLane } = await import("@/lib/content-factory/brand");
         const {
           buildImagePrompt,
           generateImage,
@@ -316,7 +316,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         // Supporting detail sentence for this item (2026-08-16 revamp).
         const detail = topicData.details?.[i] || undefined;
         const lanePrefix =
-          STYLE_LANES[topicData.lane as keyof typeof STYLE_LANES];
+          STYLE_LANES[resolveStyleLane(topicData.lane)];
         const topic = {
           headline: topicData.headline,
           slug,

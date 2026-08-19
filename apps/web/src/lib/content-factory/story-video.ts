@@ -36,7 +36,7 @@ import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { isMood, type Mood, MOOD_EXPRESSIONS, VISUAL_DNA_NOTEXT, STYLE_LANES, type StyleLane } from "./brand";
+import { isMood, type Mood, MOOD_EXPRESSIONS, VISUAL_DNA_NOTEXT, STYLE_LANES, resolveStyleLane } from "./brand";
 import { isSafeMotion } from "./animate-cover";
 
 const anthropic = new Anthropic();
@@ -349,8 +349,7 @@ export function buildStoryImagePrompt(opts: {
    */
   withReference?: boolean;
 }): string {
-  const lanePrefix =
-    opts.lane in STYLE_LANES ? STYLE_LANES[opts.lane as StyleLane] : STYLE_LANES.cinematicReal;
+  const lanePrefix = STYLE_LANES[resolveStyleLane(opts.lane)];
   const moodLine = isMood(opts.scene.mood) ? MOOD_EXPRESSIONS[opts.scene.mood] : "";
   return [
     opts.withReference

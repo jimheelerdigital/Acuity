@@ -63,7 +63,7 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
 
     // ── Step 2: Generate cover slide ──────────────────────────────
     const coverSlide = await step.run("generate-cover", async () => {
-      const { STYLE_LANES } = await import("@/lib/content-factory/brand");
+      const { STYLE_LANES, resolveStyleLane } = await import("@/lib/content-factory/brand");
       const {
         buildImagePrompt,
         generateImage,
@@ -74,7 +74,7 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
       );
 
       const lanePrefix =
-        STYLE_LANES[topicData.lane as keyof typeof STYLE_LANES];
+          STYLE_LANES[resolveStyleLane(topicData.lane)];
       const topic = {
         headline: topicData.headline,
         slug,
@@ -114,7 +114,7 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
     }[] = [];
     for (let i = 0; i < topicData.reasons.length; i++) {
       const slide = await step.run(`generate-reason-${i}`, async () => {
-        const { STYLE_LANES } = await import("@/lib/content-factory/brand");
+        const { STYLE_LANES, resolveStyleLane } = await import("@/lib/content-factory/brand");
         const {
           buildImagePrompt,
           generateImage,
@@ -126,7 +126,7 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
 
         const reason = topicData.reasons[i];
         const lanePrefix =
-          STYLE_LANES[topicData.lane as keyof typeof STYLE_LANES];
+          STYLE_LANES[resolveStyleLane(topicData.lane)];
         const topic = {
           headline: topicData.headline,
           slug,

@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import { buildCaption } from "./caption";
@@ -81,7 +81,7 @@ export async function generateCarousel(
     return { postId: existing.id, slideCount: 0, estimatedCostCents: 0 };
   }
 
-  const lanePrefix = STYLE_LANES[topic.lane];
+  const lanePrefix = STYLE_LANES[resolveStyleLane(topic.lane)];
   let totalCostCents = 0;
 
   // ── Generate images for each reason slide ─────────────────────────
@@ -380,7 +380,7 @@ export async function regenerateSlide(slideId: string): Promise<string> {
   }
 
   const topic = CAROUSEL_TOPICS.find((t) => t.slug === slide.carouselPost.topicSlug);
-  const lanePrefix = topic ? STYLE_LANES[topic.lane] : STYLE_LANES.cinematicReal;
+  const lanePrefix = STYLE_LANES[resolveStyleLane(topic?.lane)];
 
   const rawBuffer = await generateImage(slide.imagePrompt || buildImagePrompt(
     lanePrefix,
@@ -438,7 +438,7 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // We can't strip text from an already-composed image, so we regenerate the
     // underlying image. This costs ~$0.08 but gives a clean result.
     const topic = CAROUSEL_TOPICS.find((t) => t.slug === slide.carouselPost.topicSlug);
-    const lanePrefix = topic ? STYLE_LANES[topic.lane] : STYLE_LANES.cinematicReal;
+    const lanePrefix = STYLE_LANES[resolveStyleLane(topic?.lane)];
     const prompt = slide.imagePrompt || buildImagePrompt(
       lanePrefix,
       newText,
