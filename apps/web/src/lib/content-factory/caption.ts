@@ -2,7 +2,7 @@
  * Content Factory — caption builder.
  *
  * Builds the carousel caption from headline + numbered reasons +
- * a fixed Ripple closing line + 6 hashtags.
+ * a fixed Ripple closing line + 5 hashtags.
  */
 
 import type { CarouselTopic } from "./topics";
@@ -151,8 +151,11 @@ const HASHTAG_POOL = [
   "#carouselpost",
 ];
 
+// Hashtag count is 5 across ALL posts (2026-08-19, per Keenan).
+const HASHTAG_COUNT = 5;
+
 /**
- * Pick 6 hashtags: always include #rippleapp and #voicejournal,
+ * Pick 5 hashtags: always include #rippleapp and #voicejournal,
  * then fill with topic-relevant ones from the pool.
  */
 function pickHashtags(topic: { slug: string }): string[] {
@@ -166,7 +169,7 @@ function pickHashtags(topic: { slug: string }): string[] {
 
   const selected = new Set(must);
   let i = Math.abs(hash);
-  while (selected.size < 6) {
+  while (selected.size < HASHTAG_COUNT) {
     selected.add(pool[i % pool.length]);
     i++;
   }
@@ -307,7 +310,7 @@ export function buildAmbientCaption(opts: {
   for (const c of opts.slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
   const selected = new Set<string>();
   let i = Math.abs(hash);
-  while (selected.size < 6) {
+  while (selected.size < HASHTAG_COUNT) {
     selected.add(REACH_HASHTAGS[i % REACH_HASHTAGS.length]);
     i++;
   }

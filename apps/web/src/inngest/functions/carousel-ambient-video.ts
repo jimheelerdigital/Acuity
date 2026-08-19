@@ -259,9 +259,10 @@ export const carouselAmbientVideoFn = inngest.createFunction(
 
     // ── Step 7: loop the clip to length + captions + mux ──────────────
     // Voiced: loop to the audio's length (+1s of quiet tail). Silent
-    // fallback: loop to ~40s with script captions as a teleprompter.
+    // fallback: loop to ~25s (2026-08-19, per Keenan: calm posts should
+    // run 20-30s) with script captions as a teleprompter.
     const TAIL_SEC = 1.0;
-    const targetSec = tts.url ? tts.durationSec + TAIL_SEC : 40;
+    const targetSec = tts.url ? tts.durationSec + TAIL_SEC : 25;
 
     // Looping and muxing are SEPARATE steps (2026-08-18): each is a full
     // x264 encode of the whole runtime, and both in one step blew

@@ -8,7 +8,7 @@
  * burned over the video.
  *
  * Pipeline (see carousel-ambient-video.ts):
- * 1. Claude writes a calm ~40s lesson/story script + the scene concept
+ * 1. Claude writes a calm ~20-30s lesson/story script + the scene concept
  * 2. gpt-image-2 renders one photoreal soothing 9:16 image (no text)
  * 3. Higgsfield animates it (5s, ambient drift only)
  * 4. The clip is looped with crossfades to the voiceover's length
@@ -75,13 +75,15 @@ THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thou
 
 STRUCTURE — every script follows this exact arc, in order (2026-08-19, per Keenan: earlier scripts read as vague poetry that "made little to no sense"):
 1. HOOK (first 1-2 lines): a direct question to her, OR a bold statement she might briefly disagree with. It must make her stop mid-scroll and think "wait — that's me." Examples of the shape (do not copy): "When did you stop planning things that were just for you?" / "You're not tired. You're unwitnessed." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
-2. CONTEXT (the middle): explain the hook with concrete, relatable moments from her real life — the calendar full of everyone else's appointments, the car as the only quiet room, answering "I'm fine" on autopilot. Every line follows logically from the one before. She should NEVER have to work to decode a metaphor.
+2. CONTEXT (the middle): explain the hook with AT LEAST 2-3 distinct, concrete moments from her real life — the calendar full of everyone else's appointments, the car as the only quiet room, answering "I'm fine" on autopilot. Every line must add a NEW specific detail or push the idea one step further — no line may just restate the previous one in different words. Every line follows logically from the one before. She should NEVER have to work to decode a metaphor.
 3. RELEASE (last 1-2 lines): a recognition, a permission, or a question she could answer out loud.
+
+SUBSTANCE TEST (2026-08-19, per Keenan): by the end she should have RECOGNIZED something specific she hadn't put into words — a real observation with insight, not a vibe. If you removed the middle lines and nothing was lost, the script has no substance. Rewrite it.
 
 COHERENCE TEST: one idea per script. If a stranger heard it once at half-attention, could she repeat the point back in one sentence? If not, rewrite it.
 
 SCRIPT RULES:
-- 70-90 words TOTAL, read slowly (~40 seconds). One continuous narration, not scenes.
+- 50-65 words TOTAL, read slowly (~20-30 seconds — 2026-08-19, per Keenan: videos were running long). One continuous narration, not scenes. The shorter budget means every word earns its place — cut filler, keep the concrete details.
 - Second person or first person, present tense, intimate and unhurried.
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
@@ -112,7 +114,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "title": "...",
   "captionHook": "...",
   "commentPrompt": "...",
-  "script": "the full 70-90 word narration",
+  "script": "the full 50-65 word narration",
   "vocalScript": "the same narration with [softly]/[whispers]/[sighs]/[exhales] tags placed for delivery",
   "visual": "...",
   "motion": "..."

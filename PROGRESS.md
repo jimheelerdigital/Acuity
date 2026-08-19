@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-19] — 5 hashtags on every post; calm videos now 20-30s with more substance
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Two changes. (1) Every post caption — carousel, story, and calm — now carries exactly 5 hashtags instead of 6 (and the old Instagram generator was told 5 instead of 15-20). (2) Calm videos are now written to land at 20-30 seconds instead of ~40: the script budget dropped from 70-90 words to 50-65, and to keep them from getting thinner, the writer now has hard substance rules — the middle must contain at least 2-3 distinct concrete moments from her real life, every line has to add something new, and there's a test baked in: if she couldn't name something specific she recognized by the end, the script gets rewritten.
+
+### Technical changes (for Jimmy)
+- `caption.ts`: new HASHTAG_COUNT = 5 constant used by both `pickHashtags` (carousel/story) and `buildAmbientCaption` (calm)
+- `generate.ts` generateInstagramPost prompt: "15-20 hashtags" → "exactly 5"
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: 50-65 word budget (~20-30s), CONTEXT requires ≥2-3 distinct concrete moments + every-line-adds-new-info rule, new SUBSTANCE TEST block; JSON spec updated to match
+- `carousel-ambient-video.ts`: silent-fallback loop target 40s → 25s (voiced videos track the TTS length, so the word budget is what shortens them)
+
+### Manual steps needed
+None
+
+### Notes
+- Video duration is driven entirely by the voiceover length (the loop step matches the clip to the audio), so the script word budget is the only real duration lever; speed stays 0.85 for the calm read
+- The 30-word minimum sanity check in generateAmbientScript still holds under the new 50-65 budget
+
 ## [2026-08-19] — Captions in every content email; calm captions lead with a question and sound human
 
 **Requested by:** Keenan
