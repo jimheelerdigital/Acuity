@@ -65,8 +65,30 @@ Do NOT use the Notes section for marketing language. This is an internal log.
 - Both = shared decision made on a call or async
 - If the session prompter does not state who requested the change, ASK before proceeding
 
+### 🔴 Schema rule — back-declare out-of-band SQL IMMEDIATELY
+
+**Any change made to the database outside Prisma — a column, table, enum value, index, added via the Supabase SQL editor or a raw migration — MUST be added to `prisma/schema.prisma` in the same working session.**
+
+Not "soon". Immediately. Here is why:
+
+`prisma db push` reconciles the DATABASE TO THE SCHEMA. If `schema.prisma` doesn't know about something that exists in prod, push does not ignore it — **it drops it.** So an undeclared column is a live landmine for the next person who runs `db push` from any branch.
+
+This has fired twice:
+- **2026-08-16** — a push from a stale branch would have dropped 13 `CarouselPost` columns including 5 populated `storyVideoUrl` values. Caught by a manual diff, before running.
+- **2026-08-19** — a push from a branch predating `RevenueCatEvent` **did drop that table**, and added `CarouselPost.format` (populated on all 120 rows), `storyVoiced`, and the `CarouselFormat` enum. Caught only by noticing the table had vanished.
+
+Neither was recklessness. The command is silently destructive when the schema lags, and nothing was checking.
+
+**Guardrail (added 2026-08-19):** `scripts/check-destructive-diff.ts` fails on any `DROP TABLE` / `DROP COLUMN` / `DROP TYPE` / column-type rewrite.
+- `npm run db:push` runs it first and aborts on failure. **Use this, never bare `prisma db push`.**
+- A `pre-push` hook runs it when `schema.prisma` differs from `origin/main`.
+- `.github/workflows/schema-destructive-check.yml` re-checks on PRs (needs the `DIRECT_URL` repo secret).
+- Deliberate drops: `ALLOW_DESTRUCTIVE_SCHEMA_DIFF=1`. Destruction should be a decision, never an accident.
+
+If the guard fires, the fix is almost always **add the missing thing to `schema.prisma`** so the diff goes additive — not to force the push through.
+
 ### Manual step categories to always check
-- npx prisma db push (required after any schema change — Keenan must run from home network, work Mac blocks Supabase ports)
+- npx prisma db push (required after any schema change — Keenan must run from home network, work Mac blocks Supabase ports). **Run `npm run db:push`, which is guarded — not bare `prisma db push`.**
 - New env vars in Vercel (specify which ones and who adds them)
 - Vercel redeploy trigger (usually automatic on push, but required after env var changes)
 - Inngest app resync (usually automatic on next GET to /api/inngest, but flag if manual resync is needed)

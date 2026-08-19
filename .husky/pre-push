@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+
+# Destructive-schema-diff guard.
+#
+# Blocks a push whose prisma/schema.prisma would DESTROY live data if
+# applied — see scripts/check-destructive-diff.ts for the two incidents
+# that motivated it.
+#
+# Only runs when schema.prisma actually differs from origin/main, so normal
+# pushes pay nothing. Skips silently when the DB is unreachable (no
+# .env.local, offline) — this is a safety net, not a gate on working
+# offline; CI re-checks with --require-db.
+#
+# Bypass for a deliberate drop:
+#   ALLOW_DESTRUCTIVE_SCHEMA_DIFF=1 git push
+# Bypass entirely (discouraged):
+#   git push --no-verify
+
+if git diff --quiet origin/main -- prisma/schema.prisma 2>/dev/null; then
+  exit 0
+fi
+
+echo "prisma/schema.prisma differs from origin/main — checking for destructive changes…"
+
+if ! command -v npx >/dev/null 2>&1; then
+  echo "warning: npx not found; skipping destructive-schema-diff check."
+  exit 0
+fi
+
+npx dotenv -e .env.local -- npx tsx scripts/check-destructive-diff.ts || exit 1
