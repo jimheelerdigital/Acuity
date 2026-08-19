@@ -83,7 +83,7 @@ SUBSTANCE TEST (2026-08-19, per Keenan): by the end she should have RECOGNIZED s
 COHERENCE TEST: one idea per script. If a stranger heard it once at half-attention, could she repeat the point back in one sentence? If not, rewrite it.
 
 SCRIPT RULES:
-- 50-65 words TOTAL, read slowly (~20-30 seconds — 2026-08-19, per Keenan: videos were running long). One continuous narration, not scenes. The shorter budget means every word earns its place — cut filler, keep the concrete details.
+- 45-58 words TOTAL, read slowly (~20-26 seconds of audio — 2026-08-19, per Keenan: finished videos must land at 20-30s, and the loop rounds the video UP a few seconds past the audio). One continuous narration, not scenes. The short budget means every word earns its place — cut filler, keep the concrete details.
 - Second person or first person, present tense, intimate and unhurried.
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
@@ -114,7 +114,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "title": "...",
   "captionHook": "...",
   "commentPrompt": "...",
-  "script": "the full 50-65 word narration",
+  "script": "the full 45-58 word narration",
   "vocalScript": "the same narration with [softly]/[whispers]/[sighs]/[exhales] tags placed for delivery",
   "visual": "...",
   "motion": "..."
