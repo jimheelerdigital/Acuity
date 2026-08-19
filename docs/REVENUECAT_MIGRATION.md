@@ -62,7 +62,19 @@ npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json
 npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json --limit 1 --apply
 npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json --apply
 ```
-1.4. Turn on `EXPO_PUBLIC_RC_OBSERVER` in a **preview** EAS build only. Confirm RC records a sandbox purchase.
+1.4. Build the `observer` EAS profile (added 2026-08-19 — `extends: production`, channel `rc-observer`, sets `EXPO_PUBLIC_RC_OBSERVER=1`). Confirm RC records a sandbox purchase.
+
+   > **The RC SDK keys must be in EAS env vars, not eas.json.** `EXPO_PUBLIC_RC_IOS_KEY` / `EXPO_PUBLIC_RC_ANDROID_KEY` are deliberately NOT committed in the profile. Verify with `eas env:list --environment production` before building — if they're absent, `rcApiKeyFor()` returns null, `configureRevenueCat()` returns `"no-key"`, and the build is a silent no-op that *looks* like observer mode is running while recording nothing.
+
+### ⚠️ Apple import needs a token we do not store
+
+Verified 2026-08-19. RC's `POST /v1/receipts` needs `fetch_token` = a base64 App Store receipt or a StoreKit 2 **signed** JWS. We store:
+- `appleOriginalTransactionId` — an id, not a receipt;
+- `appleLatestReceiptInfo` — the **decoded** JWS payload (`transactionId`, `productId`, `signedDate`, …), not the signed original.
+
+Neither is usable as a `fetch_token`. The 12 Stripe rows are fine (`stripeSubscriptionId` is exactly what RC wants); the 4 Apple rows are blocked.
+
+Likely path: our own `fetchTransactionInfo` (`lib/apple-iap.ts:219`) already calls Apple's `/inApps/v1/transactions/{id}`, whose response contains `signedTransactionInfo` — a signed JWS. It currently decodes and discards it. Retaining the raw JWS would give us a usable token. **Needs confirming against RC's docs that it accepts a StoreKit 2 JWS for import**, and needs `APPLE_IAP_*` credentials wherever the script runs.
 1.5. Let it run. Watch `revenuecat.webhook.observed` logs — specifically the `agrees` field, which compares RC's would-be decision against the current DB value.
 
 ### Phase 2 — verify (the gate)
