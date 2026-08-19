@@ -872,7 +872,7 @@ export async function stitchStoryVideo(
  */
 export async function stitchClipsWithCrossfade(
   clips: Buffer[],
-  opts?: { crossfadeSec?: number }
+  opts?: { crossfadeSec?: number; trimToSec?: number }
 ): Promise<Buffer> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
@@ -919,8 +919,13 @@ export async function stitchClipsWithCrossfade(
 
     const total =
       durations.reduce((a, b) => a + b, 0) - (clips.length - 1) * xf;
+    // Optional trim in the same encode (2026-08-18, ambient loops): a
+    // separate fitClipToDuration pass doubled the encode time and blew
+    // Vercel's 300s limit. The fade-out lands on the trimmed end.
+    const effEnd =
+      opts?.trimToSec && opts.trimToSec < total ? opts.trimToSec : total;
     const finalIn = clips.length === 1 ? "v0" : "vx";
-    chain += `;[${finalIn}]fade=t=out:st=${Math.max(0, total - fadeEdge).toFixed(3)}:d=${fadeEdge}[v]`;
+    chain += `;[${finalIn}]fade=t=out:st=${Math.max(0, effEnd - fadeEdge).toFixed(3)}:d=${fadeEdge}[v]`;
 
     const args = [
       "-y",
@@ -928,6 +933,7 @@ export async function stitchClipsWithCrossfade(
       ...inputs,
       "-filter_complex", `${norm}${chain}`,
       "-map", "[v]",
+      ...(opts?.trimToSec ? ["-t", effEnd.toFixed(3)] : []),
       "-an",
       "-c:v", "libx264",
       "-preset", "fast",

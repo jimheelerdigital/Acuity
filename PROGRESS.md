@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-18] — Fix: ambient video render timed out on Vercel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The first live test of the new calm ambient video got 90% of the way there — the scene image, the moving clip, and the voiceover all generated — but the final assembly step (looping the clip to match the voiceover and burning in captions) took longer than the 5 minutes Vercel allows a single function to run, so it died twice and no email went out. The assembly now does half the redundant video processing and is split into two shorter steps, each safely inside the limit.
+
+### Technical changes (for Jimmy)
+- `story-video.ts`: `stitchClipsWithCrossfade` gains optional `trimToSec` — trims (`-t`) inside the same x264 encode and moves the fade-out to the trimmed end, instead of a second full `fitClipToDuration` re-encode afterwards. Story pipeline unaffected (doesn't pass it)
+- `ambient-video.ts`: `loopClipToDuration` passes `trimToSec` to the stitch — one encode instead of two
+- `carousel-ambient-video.ts`: the single `finalize-video` step split into `loop-clip` (loop + upload `ambient-looped.mp4`) and `mux-video` (captions + mux + upload `ambient-video.mp4`) so each x264 encode gets its own 300s serverless invocation
+- Also this session (no code): `AMBIENT` enum value applied to prod Postgres via `ALTER TYPE` — Keenan's earlier `db push` ran against a stale checkout and never added it, which killed the first test run at post creation
+
+### Manual steps needed
+None
+
+### Notes
+- Failure signature in Vercel logs: `[story-video] Crossfade-stitched 7 clips` followed by `Vercel Runtime Timeout Error: Task timed out after 300 seconds` — the stitch finished, the second+third encodes didn't. `api/inngest/route.ts` is already at `maxDuration = 300`, the plan max
+- A stale local checkout running `prisma db push` will PROMPT TO REMOVE enum values added later — Keenan hit this; always `git pull` before `db push`
+- Unrelated recurring error spotted in the same logs: `trialEmailLog.upsert()` unique constraint failures on `resendId` — flagging for Jimmy, not touched here
+
 ## [2026-08-18] — New 4th daily post: calm ambient video + carousel dashboard revamp
 
 **Requested by:** Keenan
@@ -28,7 +51,7 @@ There's now a fourth daily post type: a calm "ambient" video like the wakingupap
 - `admin/content-factory/carousels/page.tsx`: format filter pills with counts, StatusBadge/approval bar removed, PostedBadge (link-derived), per-post + per-day + today/month costs, 4th generate button (🌙), AMBIENT in FORMAT_META
 
 ### Manual steps needed
-- [ ] `npx prisma db push` from home network BEFORE the first ambient run — the AMBIENT enum value must exist in Postgres or post creation throws (Keenan)
+- [x] ~~`npx prisma db push` from home network~~ DONE 2026-08-18: AMBIENT applied directly via `ALTER TYPE` after a stale-checkout `db push` missed it; Keenan re-ran `db push` after `git pull` to confirm alignment
 - [x] ~~Add ElevenLabs voices~~ DONE same session: Keenan added "Vanessa - Beach Girl" (8DzKSPdgEQPaK5vKG0Rs) and "Hope - Smooth, Engaging and Kind" (WAhoMTNdLdMoq1j3wf3I) to My Voices; both IDs are hardcoded and ambient alternates randomly between them. `AMBIENT_ELEVENLABS_VOICE_ID` now only needed to FORCE one voice
 - [ ] Optional Vercel env vars: `HIGGSFIELD_CLIP_COST_CENTS` / `TTS_COST_CENTS` if the default 10¢ estimates are off (Keenan)
 

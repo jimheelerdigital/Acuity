@@ -225,12 +225,14 @@ export function buildAmbientVideoPrompt(script: Pick<AmbientScript, "motion">): 
 }
 
 /**
- * Loop one short clip into a video at least `targetSec` long, then trim
- * to exactly `targetSec`. Uses stitchClipsWithCrossfade (xfade verified
- * on the prod ffmpeg-static binary 2026-08-16) so the loop point reads
- * as a soft dissolve instead of a hard reset, and fitClipToDuration for
- * the final trim/normalize. `reverse` is deliberately avoided — it
- * buffers every frame in memory and is unverified on prod.
+ * Loop one short clip into a video trimmed to exactly `targetSec`.
+ * Uses stitchClipsWithCrossfade (xfade verified on the prod
+ * ffmpeg-static binary 2026-08-16) so the loop point reads as a soft
+ * dissolve instead of a hard reset; the trim rides along in the same
+ * encode via trimToSec — a single encode pass, because two back-to-back
+ * encodes blew Vercel's 300s limit (2026-08-18). `reverse` is
+ * deliberately avoided — it buffers every frame in memory and is
+ * unverified on prod.
  */
 export async function loopClipToDuration(clip: Buffer, targetSec: number): Promise<Buffer> {
   const { probeMediaDuration, stitchClipsWithCrossfade, fitClipToDuration } =
@@ -247,11 +249,13 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
   if (copies === 1 && clipSec >= targetSec) {
     return fitClipToDuration(clip, targetSec);
   }
-  const looped = await stitchClipsWithCrossfade(
+  // Trim happens inside the stitch encode (2026-08-18): stitching and
+  // then re-encoding again via fitClipToDuration doubled the encode
+  // time and blew Vercel's 300s function limit.
+  return stitchClipsWithCrossfade(
     Array.from({ length: copies }, () => clip),
-    { crossfadeSec: XFADE_SEC }
+    { crossfadeSec: XFADE_SEC, trimToSec: targetSec }
   );
-  return fitClipToDuration(looped, targetSec);
 }
 
 /**

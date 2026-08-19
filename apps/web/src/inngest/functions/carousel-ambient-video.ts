@@ -256,12 +256,13 @@ export const carouselAmbientVideoFn = inngest.createFunction(
     const TAIL_SEC = 1.0;
     const targetSec = tts.url ? tts.durationSec + TAIL_SEC : 40;
 
-    const finalized = await step.run("finalize-video", async () => {
+    // Looping and muxing are SEPARATE steps (2026-08-18): each is a full
+    // x264 encode of the whole runtime, and both in one step blew
+    // Vercel's 300s function limit on every attempt. Splitting gives
+    // each encode its own serverless invocation.
+    const loopedUrl = await step.run("loop-clip", async () => {
       const { loopClipToDuration } = await import(
         "@/lib/content-factory/ambient-video"
-      );
-      const { muxNarration, estimateCaptionChunks } = await import(
-        "@/lib/content-factory/story-video"
       );
       const { uploadImage } = await import(
         "@/lib/content-factory/carousel-generate"
@@ -272,6 +273,25 @@ export const carouselAmbientVideoFn = inngest.createFunction(
         Buffer.from(await clipRes.arrayBuffer()),
         targetSec
       );
+      return await uploadImage(
+        looped,
+        `${basePath}/ambient-looped.mp4`,
+        "video/mp4"
+      );
+    });
+
+    const finalized = await step.run("mux-video", async () => {
+      const { muxNarration, estimateCaptionChunks } = await import(
+        "@/lib/content-factory/story-video"
+      );
+      const { uploadImage } = await import(
+        "@/lib/content-factory/carousel-generate"
+      );
+      const loopedRes = await fetch(loopedUrl);
+      if (!loopedRes.ok) {
+        throw new Error(`looped clip re-download failed (${loopedRes.status})`);
+      }
+      const looped = Buffer.from(await loopedRes.arrayBuffer());
 
       let audioBuf: Buffer | null = null;
       if (tts.url) {
