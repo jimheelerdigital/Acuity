@@ -257,9 +257,15 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
   if (copies === 1 && clipSec >= targetSec) {
     return fitClipToDuration(clip, targetSec);
   }
+  // maxrate 5M (2026-08-19): this stitch IS the final encode for voiced
+  // calm videos (the mux stream-copies it). An unconstrained crf 18 on a
+  // noisy scene hit 52.6MB → Supabase's 50MB global upload cap 413'd it
+  // and the run died. 5 Mbps bounds a 40s video to ~25MB — under both
+  // the upload cap and the 28MB email attachment cap — and IG/TikTok
+  // recompress to about that bitrate anyway.
   return stitchClipsWithCrossfade(
     Array.from({ length: copies }, () => clip),
-    { crossfadeSec: XFADE_SEC, noEdgeFades: true }
+    { crossfadeSec: XFADE_SEC, noEdgeFades: true, maxrate: "5M" }
   );
 }
 

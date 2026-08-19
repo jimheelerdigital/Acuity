@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-19] — Fix: calm video died when a detailed scene made the file bigger than Supabase allows
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The calm video you asked for this morning silently died halfway: the scene it invented was so visually detailed (lots of texture/motion) that the rendered video came out at 52MB, and our storage provider rejects anything over 50MB — so the upload failed and no email went out. The video encoder now caps the file size (~25MB worst case), which also guarantees the video is always small enough to attach directly to your email. Quality is unaffected in practice — Instagram and TikTok compress to about that level anyway.
+
+### Technical changes (for Jimmy)
+- `story-video.ts` `stitchClipsWithCrossfade`: new `maxrate` opt → `-maxrate 5M -bufsize 10M` alongside crf 18; story pipeline unaffected (doesn't pass it)
+- `ambient-video.ts` `loopClipToDuration`: passes `maxrate: "5M"` — this stitch is the FINAL encode for voiced calm videos (mux is `-c:v copy`)
+- Root cause confirmed by direct probe: uploading the 52.6MB file returned Supabase `413 EntityTooLarge` (global 50MB upload cap; the bucket itself has `file_size_limit: null`)
+- Reproduced the whole loop step locally with the failed run's real artifacts via tsx — capped output: 21.8MB / 34.0s
+
+### Manual steps needed
+- [ ] Optional: raise the global upload limit in Supabase dashboard (Storage settings) as belt-and-suspenders (Jimmy)
+
+### Notes
+- The failed run (post cmt04rxss0001r6y5xbzcjke9, "You'd never speak to her...") left scene/clip/voiceover in storage but no video and no email — loop-clip 413'd on upload twice and Inngest gave up. Nothing in Vercel live logs because the step fails at the very end (after a silent 3-min encode)
+- macOS has no `timeout` command — earlier log captures this session silently failed because stderr was redirected; that cost ~20 min of watching a dead run
+- 5 Mbps × worst-case 40s ≈ 25MB: under the 50MB upload cap AND the 28MB Resend attachment cap (yesterday's video attached at 27.9MB — one hair under)
+
 ## [2026-08-19] — Calm + story videos: human scripts, expressive v3 voice, clean loop, 🌙 email subject
 
 **Requested by:** Keenan

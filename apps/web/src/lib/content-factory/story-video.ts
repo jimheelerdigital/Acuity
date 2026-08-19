@@ -903,7 +903,17 @@ export async function stitchStoryVideo(
  */
 export async function stitchClipsWithCrossfade(
   clips: Buffer[],
-  opts?: { crossfadeSec?: number; noEdgeFades?: boolean }
+  opts?: {
+    crossfadeSec?: number;
+    noEdgeFades?: boolean;
+    /**
+     * Cap the encoder bitrate, e.g. "5M" (2026-08-19): a visually noisy
+     * ambient scene at unconstrained crf 18 hit 52.6MB and Supabase's
+     * global 50MB upload limit rejected it (413 EntityTooLarge), killing
+     * the run. bufsize is set to 2x the cap.
+     */
+    maxrate?: string;
+  }
 ): Promise<Buffer> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
@@ -972,6 +982,9 @@ export async function stitchClipsWithCrossfade(
       // generations — fit → stitch → mux — and stacked crf-23 encodes
       // left the final video visibly soft).
       "-crf", "18",
+      ...(opts?.maxrate
+        ? ["-maxrate", opts.maxrate, "-bufsize", `${parseInt(opts.maxrate, 10) * 2}M`]
+        : []),
       "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
       outVideo,
@@ -985,7 +998,7 @@ export async function stitchClipsWithCrossfade(
       );
     }
     console.log(
-      `[story-video] Crossfade-stitched ${clips.length} clips (xfade=${xf.toFixed(2)}s): ${out.length} bytes`
+      `[story-video] Crossfade-stitched ${clips.length} clips (xfade=${xf.toFixed(2)}s${opts?.maxrate ? `, maxrate=${opts.maxrate}` : ""}): ${out.length} bytes`
     );
     return out;
   } finally {
