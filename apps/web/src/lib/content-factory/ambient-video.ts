@@ -46,6 +46,13 @@ export interface AmbientScript {
   title: string;
   /** The full voiceover text, read as ONE continuous calm narration. */
   script: string;
+  /**
+   * The same script with ElevenLabs v3 audio tags ([softly], [sighs]...)
+   * placed by the scriptwriter for delivery (2026-08-19, per Keenan: the
+   * read needed more tone and inflection). TTS-only — email/captions/admin
+   * always show the clean `script`.
+   */
+  vocalScript?: string;
   /** What the single image shows — a serene scene, no people, no text. */
   visual: string;
   /** The ambient movement for the i2v prompt (clouds drift, light shifts...). */
@@ -64,9 +71,15 @@ BRAND VOICE — MIRROR, NOT A COACH: reflect, don't advise. Name what is true ab
 
 THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thought that lands. Reference example of the register (do not copy): "How long must you spend locked in the prison of a negative emotion? Not a moment longer than you want to." Yours should be gentler and more reflective than that — a small story, an observation, or a truth about the weight she carries.
 
+STRUCTURE — every script follows this exact arc, in order (2026-08-19, per Keenan: earlier scripts read as vague poetry that "made little to no sense"):
+1. HOOK (first 1-2 lines): a direct question to her, OR a bold statement she might briefly disagree with. It must make her stop mid-scroll and think "wait — that's me." Examples of the shape (do not copy): "When did you stop planning things that were just for you?" / "You're not tired. You're unwitnessed." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
+2. CONTEXT (the middle): explain the hook with concrete, relatable moments from her real life — the calendar full of everyone else's appointments, the car as the only quiet room, answering "I'm fine" on autopilot. Every line follows logically from the one before. She should NEVER have to work to decode a metaphor.
+3. RELEASE (last 1-2 lines): a recognition, a permission, or a question she could answer out loud.
+
+COHERENCE TEST: one idea per script. If a stranger heard it once at half-attention, could she repeat the point back in one sentence? If not, rewrite it.
+
 SCRIPT RULES:
 - 70-90 words TOTAL, read slowly (~40 seconds). One continuous narration, not scenes.
-- Open with a line too specific or too true to scroll past — mid-thought, no greeting, no setup.
 - Second person or first person, present tense, intimate and unhurried.
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
@@ -89,6 +102,7 @@ ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
 - "captionHook": 1-2 caption lines that tee up the video without repeating its first line
 - "commentPrompt": one gentle question inviting viewers to answer in the comments
+- "vocalScript": the EXACT same script text with 2-4 ElevenLabs v3 audio performance tags inserted in square brackets where the narrator's delivery should shift. Allowed tags ONLY: [softly], [whispers], [sighs], [exhales]. Start it with [softly]. Tags direct delivery — they never replace or change the words. Place them where a real person's voice would actually drop, catch, or breathe.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -97,6 +111,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "captionHook": "...",
   "commentPrompt": "...",
   "script": "the full 70-90 word narration",
+  "vocalScript": "the same narration with [softly]/[whispers]/[sighs]/[exhales] tags placed for delivery",
   "visual": "...",
   "motion": "..."
 }`;
@@ -159,6 +174,22 @@ Return ONLY valid JSON.`;
       throw new Error("Ambient script returned an unusable script/visual");
     }
 
+    // vocalScript must be the same words (tags aside) — if the model
+    // paraphrased, fall back to the clean script rather than letting the
+    // spoken words drift from the emailed/captioned ones.
+    let vocalScript =
+      typeof parsed.vocalScript === "string" ? parsed.vocalScript.trim() : undefined;
+    if (vocalScript) {
+      const stripped = vocalScript.replace(/\[[a-z][a-z ]*\]\s*/gi, "");
+      const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+      if (Math.abs(words(stripped) - words(script)) > 5) {
+        console.warn(
+          "[ambient-video] vocalScript diverged from script — using untagged script"
+        );
+        vocalScript = undefined;
+      }
+    }
+
     const title =
       typeof parsed.title === "string" && parsed.title.trim()
         ? parsed.title.trim().slice(0, 80)
@@ -170,6 +201,7 @@ Return ONLY valid JSON.`;
           : title,
       title,
       script,
+      vocalScript,
       visual,
       motion:
         typeof parsed.motion === "string" && parsed.motion.trim()
@@ -270,12 +302,11 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
 }
 
 /**
- * Keenan's picked calm voices (2026-08-18) — both added to My Voices in
- * the ElevenLabs account. Each ambient post picks one at random;
- * AMBIENT_ELEVENLABS_VOICE_ID forces a single voice if set.
+ * Keenan's calm voice (2026-08-19): Hope only. Vanessa (8DzKSPdgEQPaK5vKG0Rs)
+ * was dropped after he heard her on the 08-19 video and called the voice
+ * "meh". AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
  */
 const AMBIENT_VOICES = [
-  "8DzKSPdgEQPaK5vKG0Rs", // Vanessa - Beach Girl
   "WAhoMTNdLdMoq1j3wf3I", // Hope - Smooth, Engaging and Kind
 ];
 
@@ -296,7 +327,11 @@ export function ambientVoiceoverOptions(): VoiceoverOptions {
       AMBIENT_VOICES[Math.floor(Math.random() * AMBIENT_VOICES.length)],
     modelId: "eleven_v3",
     voiceSettings: {
-      stability: 0.5,
+      // v3 stability is effectively discrete: 0.0 Creative / 0.5 Natural /
+      // 1.0 Robust. 0.5 still sounded flat to Keenan (2026-08-19, "meh")
+      // — 0.0 Creative is the most emotional, expressive delivery.
+      // Verified live on Hope with inline tags (HTTP 200).
+      stability: 0.0,
       similarity_boost: 0.8,
       style: 0.5,
       use_speaker_boost: true,
@@ -308,12 +343,20 @@ export function ambientVoiceoverOptions(): VoiceoverOptions {
 }
 
 /**
- * The text actually sent to TTS (2026-08-19): eleven_v3 responds to
- * inline audio tags, so a leading [softly] sets the low, intimate
- * register for the whole read. The stored script stays clean — email,
- * captions, and the admin UI never see the tag. If TTS falls back to
- * eleven_multilingual_v2 the tag is stripped there, not spoken.
+ * The text actually sent to TTS (2026-08-19): the scriptwriter's
+ * vocalScript carries eleven_v3 audio tags ([softly], [sighs]...) placed
+ * where the delivery should shift; without one, a leading [softly] still
+ * sets the register. The stored script stays clean — email, captions,
+ * and the admin UI never see tags. If TTS falls back to
+ * eleven_multilingual_v2 the tags are stripped there, not spoken.
  */
-export function ambientTtsText(script: string): string {
-  return `[softly] ${script}`;
+export function ambientTtsText(
+  script: Pick<AmbientScript, "script" | "vocalScript">
+): string {
+  if (script.vocalScript) {
+    return /^\s*\[/.test(script.vocalScript)
+      ? script.vocalScript
+      : `[softly] ${script.vocalScript}`;
+  }
+  return `[softly] ${script.script}`;
 }

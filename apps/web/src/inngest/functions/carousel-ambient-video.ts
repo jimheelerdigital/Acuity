@@ -231,10 +231,10 @@ export const carouselAmbientVideoFn = inngest.createFunction(
         const { uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
-        // ambientTtsText adds the [softly] v3 audio tag; the stored
-        // script (email, captions, admin) stays clean.
+        // ambientTtsText uses the tagged vocalScript for v3 delivery;
+        // the stored script (email, captions, admin) stays clean.
         const { audio, engine } = await generateVoiceover(
-          ambientTtsText(script.script),
+          ambientTtsText(script),
           undefined,
           ambientVoiceoverOptions()
         );

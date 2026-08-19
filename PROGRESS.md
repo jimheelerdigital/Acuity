@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-19] — Calm video round 3: hook-first scripts, Hope only, max-expressive delivery
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three changes from your feedback on the "version of next year" video. (1) Every calm script now follows a strict arc: it opens with a hook — a direct question or a bold statement — then explains it with concrete, relatable moments from her real life, then lands on a release. There's a coherence test baked in: if a stranger couldn't repeat the point back in one sentence, the script gets rewritten. No more vague poetry. (2) Vanessa is out — every calm video is voiced by Hope (the smoother of the two voices you picked). (3) The delivery got two upgrades: the voice model now runs at its most emotional, expressive setting, and the scriptwriter itself now marks WHERE the voice should soften, sigh, or drop to a whisper — so the inflection follows the meaning of the words instead of being random.
+
+### Technical changes (for Jimmy)
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: new mandatory STRUCTURE arc (HOOK → CONTEXT → RELEASE) + coherence test; replaces the "open mid-thought" rule that produced decode-the-metaphor scripts
+- `ambient-video.ts`: `AmbientScript.vocalScript` — same words with v3 audio tags ([softly]/[whispers]/[sighs]/[exhales]) placed by Claude; validated against the clean script (±5 words after tag-strip, else discarded); `ambientTtsText()` now takes the script object and prefers vocalScript
+- `ambient-video.ts` AMBIENT_VOICES: Hope only (WAhoMTNdLdMoq1j3wf3I); Vanessa dropped per Keenan ("meh"). Confirmed via the email's engine string that the 08-19 video was Vanessa
+- `ambient-video.ts` voiceSettings: stability 0.5 → 0.0 (v3 "Creative" — most expressive; v3 stability is effectively discrete 0.0/0.5/1.0). Verified live on Hope with inline tags, HTTP 200
+- `carousel-ambient-video.ts`: passes the script object to `ambientTtsText`
+
+### Manual steps needed
+- [ ] Rotate the ElevenLabs API key pasted into chat on 2026-08-18 (Keenan — still outstanding)
+
+### Notes
+- ElevenLabs' history API returns voice_id: null for v3 requests — the reliable way to know which voice a video used is the "voiced by elevenlabs:<id>" line in the email HTML
+- stability 0.0 (Creative) can occasionally over-act; if a read comes back theatrical, the fallback position is 0.5 with the vocalScript tags carrying the inflection
+
 ## [2026-08-19] — Fix: calm video died when a detailed scene made the file bigger than Supabase allows
 
 **Requested by:** Keenan
