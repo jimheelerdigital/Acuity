@@ -107,6 +107,9 @@ VIRALITY RULES:
 NARRATION RULES:
 - TOTAL narration across all 6 scenes: 65-80 words (that is ~30 seconds spoken at a calm pace). Each scene's line is ~10-14 words.
 - Second person, present tense, intimate — like a voice memo from someone who gets it.
+- WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
+- BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 2-3 times across the video. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
+- The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
 - Every line must read as natural spoken English — if a line needs a second read to parse, rewrite it.
 - No hashtags, no emojis, no "hey guys", no CTA of any kind, no app or brand mentions.
 
@@ -388,11 +391,17 @@ export interface VoiceoverContext {
 export interface VoiceoverOptions {
   /** ElevenLabs voice ID override (defaults to ELEVENLABS_VOICE_ID / Matilda). */
   voiceId?: string;
+  /**
+   * ElevenLabs model override, e.g. "eleven_v3" for the expressive model
+   * that honors inline audio tags like [softly] (2026-08-19, ambient).
+   * On failure the call retries once on eleven_multilingual_v2.
+   */
+  modelId?: string;
   /** ElevenLabs voice_settings override. */
   voiceSettings?: {
     stability: number;
     similarity_boost: number;
-    style: number;
+    style?: number;
     use_speaker_boost: boolean;
     /** Playback speed 0.7–1.2 (ElevenLabs), e.g. 0.85 for a slower calm read. */
     speed?: number;
@@ -417,32 +426,52 @@ async function elevenLabsVoiceover(
 ): Promise<Buffer> {
   const voiceId =
     opts?.voiceId || process.env.ELEVENLABS_VOICE_ID || "XrExE9yKIg1WjnnlVkGX"; // Matilda
-  const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
-  const res = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
-    {
-      method: "POST",
-      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: narration,
-        model_id: modelId,
-        // Per-scene synthesis: surrounding lines keep the intonation
-        // continuous across scene boundaries.
-        ...(ctx?.previousText ? { previous_text: ctx.previousText } : {}),
-        ...(ctx?.nextText ? { next_text: ctx.nextText } : {}),
-        // 2026-08-16, per Keenan: the read sounded flat/terrible. Lower
-        // stability + higher style = far more expressive, emotional
-        // delivery (the intimate confession tone the scripts are written
-        // in), while similarity + speaker boost keep the voice grounded.
-        voice_settings: opts?.voiceSettings ?? {
-          stability: 0.35,
-          similarity_boost: 0.8,
-          style: 0.55,
-          use_speaker_boost: true,
-        },
-      }),
-    }
-  );
+  const modelId =
+    opts?.modelId || process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
+
+  const call = async (model: string) =>
+    fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+      {
+        method: "POST",
+        headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Inline audio tags like [softly] are prosody hints on v3 but
+          // spoken words on older models — strip them off-v3.
+          text: model.startsWith("eleven_v3")
+            ? narration
+            : narration.replace(/\[[a-z][a-z ]*\]\s*/gi, ""),
+          model_id: model,
+          // Per-scene synthesis: surrounding lines keep the intonation
+          // continuous across scene boundaries.
+          ...(ctx?.previousText ? { previous_text: ctx.previousText } : {}),
+          ...(ctx?.nextText ? { next_text: ctx.nextText } : {}),
+          // 2026-08-16, per Keenan: the read sounded flat/terrible. Lower
+          // stability + higher style = far more expressive, emotional
+          // delivery (the intimate confession tone the scripts are written
+          // in), while similarity + speaker boost keep the voice grounded.
+          // speed 0.9 (2026-08-19, per Keenan: reads were too fast).
+          voice_settings: opts?.voiceSettings ?? {
+            stability: 0.35,
+            similarity_boost: 0.8,
+            style: 0.55,
+            use_speaker_boost: true,
+            speed: 0.9,
+          },
+        }),
+      }
+    );
+
+  let res = await call(modelId);
+  // A per-call model override (e.g. eleven_v3) falls back to the stock
+  // model rather than losing ElevenLabs entirely to the OpenAI fallback.
+  if (!res.ok && opts?.modelId && opts.modelId !== "eleven_multilingual_v2") {
+    const body = await res.text().catch(() => "");
+    console.warn(
+      `[story-video] ElevenLabs ${opts.modelId} failed (${res.status}): ${body.slice(0, 200)} — retrying on eleven_multilingual_v2`
+    );
+    res = await call("eleven_multilingual_v2");
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`ElevenLabs TTS failed (${res.status}): ${body.slice(0, 300)}`);
@@ -874,7 +903,7 @@ export async function stitchStoryVideo(
  */
 export async function stitchClipsWithCrossfade(
   clips: Buffer[],
-  opts?: { crossfadeSec?: number; trimToSec?: number }
+  opts?: { crossfadeSec?: number; noEdgeFades?: boolean }
 ): Promise<Buffer> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
@@ -900,11 +929,15 @@ export async function stitchClipsWithCrossfade(
     const xf = Math.max(0.2, Math.min(opts?.crossfadeSec ?? 0.5, minDur / 2));
     const fadeEdge = 0.4; // fade-in/out from/to black at the very ends
 
+    // noEdgeFades (2026-08-19, ambient loops): a looping calm video must
+    // NOT fade to black at its ends — on replay the black blink breaks
+    // the loop. Story videos keep the cinematic edge fades.
+    const edgeFades = !opts?.noEdgeFades;
     const norm = clips
       .map(
         (_, i) =>
           `[${i}:v]scale=1080:1920:flags=lanczos,fps=30,setsar=1,settb=AVTB${
-            i === 0 ? `,fade=t=in:st=0:d=${fadeEdge}` : ""
+            i === 0 && edgeFades ? `,fade=t=in:st=0:d=${fadeEdge}` : ""
           }[v${i}]`
       )
       .join(";");
@@ -921,13 +954,10 @@ export async function stitchClipsWithCrossfade(
 
     const total =
       durations.reduce((a, b) => a + b, 0) - (clips.length - 1) * xf;
-    // Optional trim in the same encode (2026-08-18, ambient loops): a
-    // separate fitClipToDuration pass doubled the encode time and blew
-    // Vercel's 300s limit. The fade-out lands on the trimmed end.
-    const effEnd =
-      opts?.trimToSec && opts.trimToSec < total ? opts.trimToSec : total;
     const finalIn = clips.length === 1 ? "v0" : "vx";
-    chain += `;[${finalIn}]fade=t=out:st=${Math.max(0, effEnd - fadeEdge).toFixed(3)}:d=${fadeEdge}[v]`;
+    chain += edgeFades
+      ? `;[${finalIn}]fade=t=out:st=${Math.max(0, total - fadeEdge).toFixed(3)}:d=${fadeEdge}[v]`
+      : `;[${finalIn}]null[v]`;
 
     const args = [
       "-y",
@@ -935,7 +965,6 @@ export async function stitchClipsWithCrossfade(
       ...inputs,
       "-filter_complex", `${norm}${chain}`,
       "-map", "[v]",
-      ...(opts?.trimToSec ? ["-t", effEnd.toFixed(3)] : []),
       "-an",
       "-c:v", "libx264",
       "-preset", "fast",

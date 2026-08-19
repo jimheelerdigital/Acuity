@@ -68,7 +68,9 @@ SCRIPT RULES:
 - 70-90 words TOTAL, read slowly (~40 seconds). One continuous narration, not scenes.
 - Open with a line too specific or too true to scroll past — mid-thought, no greeting, no setup.
 - Second person or first person, present tense, intimate and unhurried.
-- Short sentences. Real pauses implied by punctuation. Every line must read as natural spoken English.
+- WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
+- BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
+- The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
 - Land on a release: a recognition, a permission, or a question that lingers — never a to-do.
 - No hashtags, no emojis, no CTA, no advice-verbs ("try", "start", "practice", "remember to").
 
@@ -225,14 +227,20 @@ export function buildAmbientVideoPrompt(script: Pick<AmbientScript, "motion">): 
 }
 
 /**
- * Loop one short clip into a video trimmed to exactly `targetSec`.
+ * Loop one short clip into a video AT LEAST `targetSec` long.
  * Uses stitchClipsWithCrossfade (xfade verified on the prod
- * ffmpeg-static binary 2026-08-16) so the loop point reads as a soft
- * dissolve instead of a hard reset; the trim rides along in the same
- * encode via trimToSec — a single encode pass, because two back-to-back
+ * ffmpeg-static binary 2026-08-16) so each loop point reads as a soft
+ * dissolve instead of a hard reset. One encode pass — two back-to-back
  * encodes blew Vercel's 300s limit (2026-08-18). `reverse` is
  * deliberately avoided — it buffers every frame in memory and is
  * unverified on prod.
+ *
+ * NOT trimmed and NO edge fades (2026-08-19, per Keenan: the video must
+ * loop cleanly). The source clip is prompted so its last frame matches
+ * its first, so ending exactly at a copy boundary makes the posted
+ * video's end flow back into its start. A mid-copy trim or a
+ * fade-to-black would break that. The overshoot past the voiceover is
+ * at most one clip length (~4.4s of quiet tail).
  */
 export async function loopClipToDuration(clip: Buffer, targetSec: number): Promise<Buffer> {
   const { probeMediaDuration, stitchClipsWithCrossfade, fitClipToDuration } =
@@ -249,12 +257,9 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
   if (copies === 1 && clipSec >= targetSec) {
     return fitClipToDuration(clip, targetSec);
   }
-  // Trim happens inside the stitch encode (2026-08-18): stitching and
-  // then re-encoding again via fitClipToDuration doubled the encode
-  // time and blew Vercel's 300s function limit.
   return stitchClipsWithCrossfade(
     Array.from({ length: copies }, () => clip),
-    { crossfadeSec: XFADE_SEC, trimToSec: targetSec }
+    { crossfadeSec: XFADE_SEC, noEdgeFades: true }
   );
 }
 
@@ -269,19 +274,23 @@ const AMBIENT_VOICES = [
 ];
 
 /**
- * Voice settings for the calm read. Retuned 2026-08-18 after the first
- * live video (per Keenan: reduce her talking speed, add more
- * inflection): speed 0.85 slows the read, and lower stability + higher
- * style let the voice rise and fall instead of the flat meditative
- * monotone the original 0.65/0.2 settings produced.
+ * Voice settings for the calm read. Moved to eleven_v3 2026-08-19 (per
+ * Keenan, second retune: the read still needed more tone and
+ * inflection — "more realistic and engaging"). v3 is ElevenLabs'
+ * expressive model and reads punctuation (ellipses, em-dashes,
+ * paragraph breaks) as real prosody instead of flattening it; verified
+ * live against the account 2026-08-19 with these exact settings.
+ * elevenLabsVoiceover falls back to eleven_multilingual_v2 if a v3
+ * call fails.
  */
 export function ambientVoiceoverOptions(): VoiceoverOptions {
   return {
     voiceId:
       process.env.AMBIENT_ELEVENLABS_VOICE_ID ||
       AMBIENT_VOICES[Math.floor(Math.random() * AMBIENT_VOICES.length)],
+    modelId: "eleven_v3",
     voiceSettings: {
-      stability: 0.4,
+      stability: 0.5,
       similarity_boost: 0.8,
       style: 0.5,
       use_speaker_boost: true,
@@ -290,4 +299,15 @@ export function ambientVoiceoverOptions(): VoiceoverOptions {
     openaiInstructions:
       "You are a warm, unhurried female narrator guiding a quiet moment of reflection. Speak slowly and evenly, voice low and soft, with long natural pauses at punctuation. Calm, grounded, soothing — like a meditation guide who never performs. Never chipper, never announcer-like, never rushed.",
   };
+}
+
+/**
+ * The text actually sent to TTS (2026-08-19): eleven_v3 responds to
+ * inline audio tags, so a leading [softly] sets the low, intimate
+ * register for the whole read. The stored script stays clean — email,
+ * captions, and the admin UI never see the tag. If TTS falls back to
+ * eleven_multilingual_v2 the tag is stripped there, not spoken.
+ */
+export function ambientTtsText(script: string): string {
+  return `[softly] ${script}`;
 }

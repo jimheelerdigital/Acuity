@@ -225,14 +225,16 @@ export const carouselAmbientVideoFn = inngest.createFunction(
         const { generateVoiceover, probeMediaDuration } = await import(
           "@/lib/content-factory/story-video"
         );
-        const { ambientVoiceoverOptions } = await import(
+        const { ambientVoiceoverOptions, ambientTtsText } = await import(
           "@/lib/content-factory/ambient-video"
         );
         const { uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
+        // ambientTtsText adds the [softly] v3 audio tag; the stored
+        // script (email, captions, admin) stays clean.
         const { audio, engine } = await generateVoiceover(
-          script.script,
+          ambientTtsText(script.script),
           undefined,
           ambientVoiceoverOptions()
         );
@@ -260,24 +262,31 @@ export const carouselAmbientVideoFn = inngest.createFunction(
     // x264 encode of the whole runtime, and both in one step blew
     // Vercel's 300s function limit on every attempt. Splitting gives
     // each encode its own serverless invocation.
-    const loopedUrl = await step.run("loop-clip", async () => {
+    const looped = await step.run("loop-clip", async () => {
       const { loopClipToDuration } = await import(
         "@/lib/content-factory/ambient-video"
+      );
+      const { probeMediaDuration } = await import(
+        "@/lib/content-factory/story-video"
       );
       const { uploadImage } = await import(
         "@/lib/content-factory/carousel-generate"
       );
       const clipRes = await fetch(clipUrl!);
       if (!clipRes.ok) throw new Error(`clip re-download failed (${clipRes.status})`);
-      const looped = await loopClipToDuration(
+      const buf = await loopClipToDuration(
         Buffer.from(await clipRes.arrayBuffer()),
         targetSec
       );
-      return await uploadImage(
-        looped,
+      // The loop ends at a copy boundary, not at targetSec (clean loop,
+      // 2026-08-19) — report the real length for captions and the email.
+      const durationSec = await probeMediaDuration(buf, "mp4");
+      const url = await uploadImage(
+        buf,
         `${basePath}/ambient-looped.mp4`,
         "video/mp4"
       );
+      return { url, durationSec };
     });
 
     const finalized = await step.run("mux-video", async () => {
@@ -287,11 +296,11 @@ export const carouselAmbientVideoFn = inngest.createFunction(
       const { uploadImage } = await import(
         "@/lib/content-factory/carousel-generate"
       );
-      const loopedRes = await fetch(loopedUrl);
+      const loopedRes = await fetch(looped.url);
       if (!loopedRes.ok) {
         throw new Error(`looped clip re-download failed (${loopedRes.status})`);
       }
-      const looped = Buffer.from(await loopedRes.arrayBuffer());
+      const loopedBuf = Buffer.from(await loopedRes.arrayBuffer());
 
       let audioBuf: Buffer | null = null;
       if (tts.url) {
@@ -305,7 +314,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
       // script captions as a teleprompter, where exact sync is moot.
       const captions = tts.url
         ? []
-        : estimateCaptionChunks(script.script, targetSec);
+        : estimateCaptionChunks(script.script, looped.durationSec);
 
       // Captioned mux first; retry without captions so a caption problem
       // can never ship a silent/broken video (2026-08-14 drawtext incident).
@@ -313,18 +322,18 @@ export const carouselAmbientVideoFn = inngest.createFunction(
       let captioned = captions.length > 0;
       let muxError: string | null = null;
       try {
-        muxed = await muxNarration(looped, audioBuf, captioned ? captions : undefined);
+        muxed = await muxNarration(loopedBuf, audioBuf, captioned ? captions : undefined);
       } catch (muxErr) {
         muxError = muxErr instanceof Error ? muxErr.message : String(muxErr);
         console.error(
           `[ambient-video] Captioned mux failed — retrying without captions: ${muxError}`
         );
         if (!audioBuf) throw muxErr; // silent AND captionless = nothing to ship
-        muxed = await muxNarration(looped, audioBuf, undefined);
+        muxed = await muxNarration(loopedBuf, audioBuf, undefined);
         captioned = false;
       }
       const url = await uploadImage(muxed, `${basePath}/ambient-video.mp4`, "video/mp4");
-      return { url, captioned, durationSec: targetSec, error: muxError };
+      return { url, captioned, durationSec: looped.durationSec, error: muxError };
     });
 
     const voiced = Boolean(tts.url);
@@ -355,6 +364,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
           silent: !voiced,
           captioned: finalized.captioned,
           captionsByHand: voiced, // voiced ambient ships caption-free by design
+          calm: true, // 🌙 subject — distinguishable from story-video emails
           durationSec: finalized.durationSec,
           voiceoverError: tts.error ?? finalized.error,
           voiceEngine: tts.engine,

@@ -439,6 +439,13 @@ export async function sendStoryVideoEmail(
      * the "captions failed" wording.
      */
     captionsByHand?: boolean;
+    /**
+     * AMBIENT calm video (2026-08-19, per Keenan: "i never received the
+     * content video" ×3 — the emails WERE in his inbox but wore the same
+     * "🎥 Story video" subject as the daily story emails, so they were
+     * invisible). Calm videos get their own 🌙 subject and heading.
+     */
+    calm?: boolean;
   }
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
@@ -447,7 +454,8 @@ export async function sendStoryVideoEmail(
     select: { headline: true, caption: true, generatedFor: true },
   });
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
-  const filename = `story-${dateStr}.mp4`;
+  const kind = opts.calm ? "calm video" : "story video";
+  const filename = `${opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
   const downloadUrl = forceDownloadUrl(videoUrl, filename);
 
   // Attach when it fits under the Resend cap; always include the button.
@@ -491,19 +499,19 @@ export async function sendStoryVideoEmail(
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:500px;margin:0 auto;padding:20px;">
-    <h1 style="font-size:20px;color:#FBFAF6;margin:0 0 4px;">🎥 Story video ready to post</h1>
+    <h1 style="font-size:20px;color:#FBFAF6;margin:0 0 4px;">${opts.calm ? "🌙 Calm video ready to post" : "🎥 Story video ready to post"}</h1>
     <p style="font-size:13px;color:#AAA;margin:0 0 16px;">${escapeHtml(post.headline)} · ${escapeHtml(dateStr)}</p>
 
     ${partialNote}
     ${silentNote}
 
     <p style="font-size:14px;color:#DDD;line-height:1.6;">
-      Fully stitched ~30s vertical video${opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
+      ${opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
     </p>
 
     <div style="text-align:center;margin:20px 0;">
       <a href="${escapeHtml(downloadUrl)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">
-        🎬 Download story video (MP4)
+        ${opts.calm ? "🌙 Download calm video (MP4)" : "🎬 Download story video (MP4)"}
       </a>
     </div>
 
@@ -525,7 +533,7 @@ export async function sendStoryVideoEmail(
 </html>`.trim();
 
   const text = [
-    `Story video ready to post — ${post.headline} (${dateStr})`,
+    `${opts.calm ? "Calm" : "Story"} video ready to post — ${post.headline} (${dateStr})`,
     opts.sceneCount < opts.totalScenes
       ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; each remaining scene keeps its own narration line.`
       : "",
@@ -549,8 +557,8 @@ export async function sendStoryVideoEmail(
     // A silent story is a broken deliverable — say so in the subject so
     // it can't be posted by accident (2026-08-16).
     subject: opts.silent
-      ? `[Ripple Content] ⚠️ SILENT story video — RECORD VOICEOVER — ${post.headline}`
-      : `[Ripple Content] 🎥 Story video — ${post.headline}`,
+      ? `[Ripple Content] ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
+      : `[Ripple Content] ${opts.calm ? "🌙 Calm video" : "🎥 Story video"} — ${post.headline}`,
     html,
     text,
   };

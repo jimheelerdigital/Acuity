@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-19] — Calm + story videos: human scripts, expressive v3 voice, clean loop, 🌙 email subject
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Four fixes from your feedback. (1) The scripts for both the story videos and the calm videos are now written the way a real person talks — contractions, sentence fragments, and built-in pauses (ellipses) that the voice actually honors — instead of reading like polished ad copy. (2) The calm-video narrator moved to ElevenLabs' expressive v3 model with a "softly" performance direction, so the read has real tone and inflection instead of a flat synthetic cadence. (3) The calm video no longer fades to black or gets cut mid-motion — it ends exactly where the scene loops back to its start, so it replays cleanly on Instagram/TikTok. (4) The reason you "never received" the calm videos: they were in your inbox wearing the exact same "🎥 Story video" subject line as the daily story emails. Calm videos now arrive as "[Ripple Content] 🌙 Calm video — …" with their own heading, so you can't miss them.
+
+### Technical changes (for Jimmy)
+- `ambient-video.ts`: AMBIENT_SYSTEM_PROMPT gains conversational rules (contractions, fragments, 3-4 ellipsis pauses, read-out-loud test); `ambientVoiceoverOptions` moves to `modelId: "eleven_v3"` (stability 0.5, style 0.5, speed 0.85 — verified live 2026-08-19); new `ambientTtsText()` prepends the `[softly]` v3 audio tag to the TTS text only (stored script stays clean); `loopClipToDuration` no longer trims — passes `noEdgeFades: true` and ends at a copy boundary (source clips are prompted last-frame-matches-first, so the boundary IS the loop point; overshoot past the audio ≤ one clip length of quiet tail)
+- `story-video.ts`: SCRIPT_SYSTEM_PROMPT gains the same conversational/pauses rules; `VoiceoverOptions.modelId` + `elevenLabsVoiceover` retries once on `eleven_multilingual_v2` if a model override fails; audio tags like `[softly]` are stripped for non-v3 models (v2 would speak them); `stitchClipsWithCrossfade` `trimToSec` replaced with `noEdgeFades` (fade-in/out skipped, `null[v]` passthrough); story defaults now stability 0.35 / style 0.55 / speed 0.9
+- `carousel-ambient-video.ts`: TTS uses `ambientTtsText(script.script)`; `loop-clip` step returns `{url, durationSec}` (probed — video is no longer exactly targetSec); silent-fallback captions and the email use the real looped duration; email opts gain `calm: true`
+- `email.ts` `sendStoryVideoEmail`: new `calm` opt — 🌙 subject/heading/button, `calm-YYYY-MM-DD.mp4` filename, "Looping calm video" copy
+
+### Manual steps needed
+- [ ] Rotate the ElevenLabs API key pasted into chat on 2026-08-18 (Keenan)
+
+### Notes
+- eleven_v3 verified working on this account via live calls (HTTP 200) with the exact shipped voice_settings; the code still falls back to `eleven_multilingual_v2` (tags stripped) and then OpenAI TTS if v3 ever fails
+- muxNarration without captions is `-c:v copy` — the voiced calm path never re-encodes the looped video, so the loop boundary survives muxing untouched
+- The mid-loop crossfades remain (soft dissolve every ~4.4s); only the END of the video changed — it now lands on a frame that matches frame 1
+
 ## [2026-08-18] — Calm video voice retune: slower, more inflection, no burned captions
 
 **Requested by:** Keenan
