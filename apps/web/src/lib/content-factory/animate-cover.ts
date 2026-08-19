@@ -109,8 +109,16 @@ const POSTURE_LOCK_LINE =
  */
 const CAMERA_DRIFT_LINE =
   "The camera pushes in toward her very slowly and smoothly, one continuous gentle cinematic drift — no cuts, no shake, no fast moves. Same art style, same scene, same colors from first frame to last.";
+/**
+ * v15 (2026-08-19, per Keenan): the old ambient line listed object nouns
+ * ("steam, rain, curtains, dust, screens, reflections") as things that
+ * may keep moving — and per the v9/v12 lesson the model EXECUTES any noun
+ * it's given, so it invented moving curtains/blinds behind the character
+ * in scenes that had none. Positive-only now, zero inventable nouns: only
+ * movement already present in the image continues.
+ */
 const AMBIENT_LINE =
-  "The environment is quietly alive: light shifts softly, and any steam, rain, curtains, dust, screens, or reflections in the scene keep moving naturally.";
+  "The background stays exactly what the image already shows, softly alive — only movement that is already part of the scene continues, gently and naturally. Nothing new appears, and nothing enters or leaves the frame.";
 
 /**
  * `textFree` = the start frame has NO text (animated-post pipeline: words

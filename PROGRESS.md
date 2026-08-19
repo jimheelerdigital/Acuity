@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-08-19] — Fixed the phantom "blind/curtain" movement in animated carousel backgrounds
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Animated carousel slides kept growing weird moving blinds/curtains behind the woman. The cause: the animation instructions listed examples of background things that were allowed to keep moving — "steam, rain, curtains, dust, screens, reflections" — and this video model treats any object you name as a request to create it. So it invented curtains in scenes that never had any. The instruction now says only movement already in the image may continue and nothing new may appear, without naming a single object. Applies to animated covers, reason slides, and story scenes from the next run onward.
+
+### Technical changes (for Jimmy)
+- `animate-cover.ts`: AMBIENT_LINE rewritten (v15) — removed the object-noun list, replaced with positive-only "only movement already part of the scene continues... nothing new appears, nothing enters or leaves the frame". Used by sceneLockLines(textFree=true), i.e. all text-free i2v prompts (cover, slide, story scene)
+
+### Manual steps needed
+None
+
+### Notes
+- Same failure class as v9 ("walking"/"talking") and v12 ("window" made her walk to a window): the i2v model executes any noun/verb present in the prompt. Never list example objects in animation prompts, even permissively ("any X in the scene") — the model reads it as a build order
+
 ## [2026-08-19] — 5 hashtags on every post; calm videos now 20-30s with more substance
 
 **Requested by:** Keenan
