@@ -167,6 +167,22 @@ export interface AppleTransactionInfo {
   subscriptionGroupIdentifier?: string;
   /** Raw decoded payload; persisted verbatim to appleLatestReceiptInfo. */
   rawPayload: Record<string, unknown>;
+  /**
+   * The ORIGINAL Apple-signed JWS this info was decoded from.
+   *
+   * Retained (2026-08-19) because it is the only artifact that can prove a
+   * purchase to a third party. The decoded `rawPayload` cannot — it's just
+   * JSON we produced, with Apple's signature stripped off.
+   *
+   * Concretely: RevenueCat's `POST /v1/receipts` takes `fetch_token` =
+   * "the base64 encoded receipt file (or JWSTransaction for StoreKit2)".
+   * We store `appleOriginalTransactionId` (an id, not a receipt) and the
+   * decoded payload — neither is a valid fetch_token — so before this
+   * change our 4 Apple subscribers could not be imported into RC at all.
+   *
+   * Treat as sensitive: it is a bearer proof of purchase.
+   */
+  signedTransactionInfo: string;
 }
 
 export interface FetchTransactionResult {
@@ -590,6 +606,9 @@ function decodeSignedTransactionInfo(
       subscriptionGroupIdentifier:
         stringField(payload.subscriptionGroupIdentifier) ?? undefined,
       rawPayload: payload,
+      // Keep the signed original alongside the decode. Previously discarded
+      // here — see the field docs on AppleTransactionInfo.
+      signedTransactionInfo: jws,
     },
   };
 }
