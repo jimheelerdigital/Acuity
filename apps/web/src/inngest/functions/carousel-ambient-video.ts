@@ -299,12 +299,13 @@ export const carouselAmbientVideoFn = inngest.createFunction(
         if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
         audioBuf = Buffer.from(await audioRes.arrayBuffer());
       }
-      // Captions from the SCRIPT text spread over the measured audio
-      // (or the whole silent runtime) — never a re-transcription.
-      const captions = estimateCaptionChunks(
-        script.script,
-        tts.url ? tts.durationSec : targetSec
-      );
+      // NO captions on voiced ambient videos (2026-08-18, per Keenan:
+      // the estimated timings didn't line up with the voiceover — he
+      // adds captions manually when posting). The silent fallback keeps
+      // script captions as a teleprompter, where exact sync is moot.
+      const captions = tts.url
+        ? []
+        : estimateCaptionChunks(script.script, targetSec);
 
       // Captioned mux first; retry without captions so a caption problem
       // can never ship a silent/broken video (2026-08-14 drawtext incident).
@@ -353,6 +354,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
           narration: script.script,
           silent: !voiced,
           captioned: finalized.captioned,
+          captionsByHand: voiced, // voiced ambient ships caption-free by design
           durationSec: finalized.durationSec,
           voiceoverError: tts.error ?? finalized.error,
           voiceEngine: tts.engine,

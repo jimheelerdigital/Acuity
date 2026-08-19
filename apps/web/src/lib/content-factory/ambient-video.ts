@@ -269,9 +269,11 @@ const AMBIENT_VOICES = [
 ];
 
 /**
- * Voice settings for the calm read. Higher stability + lower style than
- * the story read = steady, meditative delivery instead of emotional
- * confession.
+ * Voice settings for the calm read. Retuned 2026-08-18 after the first
+ * live video (per Keenan: reduce her talking speed, add more
+ * inflection): speed 0.85 slows the read, and lower stability + higher
+ * style let the voice rise and fall instead of the flat meditative
+ * monotone the original 0.65/0.2 settings produced.
  */
 export function ambientVoiceoverOptions(): VoiceoverOptions {
   return {
@@ -279,10 +281,11 @@ export function ambientVoiceoverOptions(): VoiceoverOptions {
       process.env.AMBIENT_ELEVENLABS_VOICE_ID ||
       AMBIENT_VOICES[Math.floor(Math.random() * AMBIENT_VOICES.length)],
     voiceSettings: {
-      stability: 0.65,
+      stability: 0.4,
       similarity_boost: 0.8,
-      style: 0.2,
+      style: 0.5,
       use_speaker_boost: true,
+      speed: 0.85,
     },
     openaiInstructions:
       "You are a warm, unhurried female narrator guiding a quiet moment of reflection. Speak slowly and evenly, voice low and soft, with long natural pauses at punctuation. Calm, grounded, soothing — like a meditation guide who never performs. Never chipper, never announcer-like, never rushed.",

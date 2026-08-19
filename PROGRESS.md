@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-18] — Calm video voice retune: slower, more inflection, no burned captions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+After watching the first finished calm video: the narrator now talks noticeably slower and with more natural rise and fall in her voice instead of a flat meditative monotone. Captions are no longer burned into voiced calm videos — the estimated timings didn't line up with the voiceover, so you add captions yourself when posting (the email says so). If the voiceover ever fails, the silent backup video still gets the script burned in as a teleprompter.
+
+### Technical changes (for Jimmy)
+- `ambient-video.ts` `ambientVoiceoverOptions`: stability 0.65→0.4, style 0.2→0.5, new `speed: 0.85` (verified live against the ElevenLabs API — HTTP 200 with these exact settings on the Vanessa voice)
+- `story-video.ts` `VoiceoverOptions.voiceSettings`: optional `speed` field (0.7–1.2); story pipeline unaffected
+- `carousel-ambient-video.ts` mux-video step: `estimateCaptionChunks` only runs for the silent fallback; voiced videos mux audio-only. Email opts gain `captionsByHand: voiced`
+- `email.ts` `sendStoryVideoEmail`: new `captionsByHand` opt — copy reads "no captions burned in, add them when you post" instead of the misleading "captions failed"
+
+### Manual steps needed
+None
+
+### Notes
+- ElevenLabs `speed` lives inside `voice_settings` (0.7–1.2); 0.85 ≈ 15% slower
+- Caption sync for voiced videos was estimation-based (word-count pacing over measured audio), not transcription — that's why it drifted; manual captioning in the posting app is the accepted workflow now
+
 ## [2026-08-18] — Fix: ambient video render timed out on Vercel
 
 **Requested by:** Keenan

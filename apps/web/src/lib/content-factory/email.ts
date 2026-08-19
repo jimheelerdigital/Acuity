@@ -433,6 +433,12 @@ export async function sendStoryVideoEmail(
      * kept sounding bad and we couldn't tell WHICH engine he was hearing).
      */
     voiceEngine?: string | null;
+    /**
+     * Captions are deliberately left off (2026-08-18, ambient videos:
+     * Keenan captions them manually when posting) — say so instead of
+     * the "captions failed" wording.
+     */
+    captionsByHand?: boolean;
   }
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
@@ -492,7 +498,7 @@ export async function sendStoryVideoEmail(
     ${silentNote}
 
     <p style="font-size:14px;color:#DDD;line-height:1.6;">
-      Fully stitched ~30s vertical video${opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
+      Fully stitched ~30s vertical video${opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
     </p>
 
     <div style="text-align:center;margin:20px 0;">

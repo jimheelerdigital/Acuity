@@ -394,6 +394,8 @@ export interface VoiceoverOptions {
     similarity_boost: number;
     style: number;
     use_speaker_boost: boolean;
+    /** Playback speed 0.7–1.2 (ElevenLabs), e.g. 0.85 for a slower calm read. */
+    speed?: number;
   };
   /** OpenAI TTS fallback style instructions override. */
   openaiInstructions?: string;
