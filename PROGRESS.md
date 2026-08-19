@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-19] — Captions in every content email; calm captions lead with a question and sound human
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Two changes. (1) Every content email now includes the post caption ready to copy — the follow-up "Carousel video" email was the one missing it, so you had to go back to the first email to grab the caption. Now it's in all of them. (2) Calm video captions got restructured to read like a person wrote them: the first line is now the question (the only line people see in the feed before "...more"), then one or two plain follow-up lines, then a simple share ask like "Send this to someone who's carrying a lot right now" — no emojis, no "tell me in the comments 👇" bait, then the six reach hashtags. The scriptwriter was also told its caption lines must sound like a text message, not marketing copy.
+
+### Technical changes (for Jimmy)
+- `email.ts`: follow-up carousel-video email (HTML + plain text) now includes the "Caption (select all to copy)" block; main carousel email and story/calm email already had it
+- `caption.ts` `buildAmbientCaption`: commentPrompt (stripped of 👇) is now line 1, captionHook follows, "Tell me in the comments 👇" boilerplate removed; new emoji-free AMBIENT_SHARE_LINES pool replaces SAVE_SHARE_CTAS (🤍 lines) for ambient only — carousel/story captions unchanged
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: captionHook/commentPrompt guidance rewritten — question must stand alone as the caption's first line, no emoji, no "comment below" phrasing, text-message tone
+
+### Manual steps needed
+None
+
+### Notes
+- Verified locally: question-first caption renders with zero emojis and 6 reach hashtags; falls back to hook/title when the model omits commentPrompt
+- Pre-existing tsc errors in adlab/compose/email.ts:244 are untouched (they predate this change)
+
 ## [2026-08-19] — Calm video captions: no more Acuity plug — pure audience-building
 
 **Requested by:** Keenan

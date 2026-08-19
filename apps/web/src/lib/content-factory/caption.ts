@@ -260,12 +260,23 @@ const REACH_HASHTAGS = [
   "#patternbreaker",
 ];
 
+// Plain share lines for ambient captions (2026-08-19, per Keenan: the
+// caption must lead with a QUESTION, read like a person wrote it, and
+// keep emojis minimal). No "tell me in the comments 👇" boilerplate —
+// the question itself does that work.
+const AMBIENT_SHARE_LINES = [
+  "Save this for the day you need it.",
+  "Send this to someone who's carrying a lot right now.",
+  "If this found you at the right time, pass it on.",
+  "Save it. You'll want it again.",
+];
+
 /**
  * Caption for AMBIENT calm posts (2026-08-19, per Keenan: "this video is
  * NOT a plug for acuity — the goal is to build a following of our target
- * market"). No Ripple closing line, no branded hashtags — just the hook,
- * the comment question, a save/share ask, and reach hashtags. The
- * account posting it carries the brand.
+ * market"). No Ripple closing line, no branded hashtags. Structure:
+ * question first (it's the only line visible in the feed), then the
+ * hook line, then a plain share ask, then reach hashtags.
  */
 export function buildAmbientCaption(opts: {
   slug: string;
@@ -274,14 +285,22 @@ export function buildAmbientCaption(opts: {
   commentPrompt?: string;
 }): string {
   const lines: string[] = [];
-  lines.push(opts.captionHook?.trim() || opts.title);
-  lines.push("");
-  if (opts.commentPrompt) {
-    const q = opts.commentPrompt.trim().replace(/\s*👇?\s*$/, "");
-    lines.push(`${q} Tell me in the comments 👇`);
+
+  // Lead with the question — it invites a comment without asking for one.
+  const question = opts.commentPrompt?.trim().replace(/\s*👇\s*$/, "");
+  const hook = opts.captionHook?.trim();
+  if (question) {
+    lines.push(question);
+    lines.push("");
+    if (hook && hook !== question) {
+      lines.push(hook);
+      lines.push("");
+    }
+  } else {
+    lines.push(hook || opts.title);
     lines.push("");
   }
-  lines.push(pickBySlug(opts.slug, SAVE_SHARE_CTAS, 1));
+  lines.push(pickBySlug(opts.slug, AMBIENT_SHARE_LINES));
   lines.push("");
 
   let hash = 0;

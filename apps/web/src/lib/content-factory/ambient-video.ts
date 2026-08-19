@@ -102,8 +102,8 @@ MOTION RULES ("motion" — how the scene moves for a few seconds):
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
-- "captionHook": 1-2 caption lines that tee up the video without repeating its first line
-- "commentPrompt": one gentle question inviting viewers to answer in the comments
+- "commentPrompt": one short question a real woman would ask a friend. It becomes the FIRST line of the post caption, so it must stop the scroll on its own. Plain words, no emoji, no "comment below" / "drop it in the comments" phrasing — the question itself is the invitation.
+- "captionHook": 1-2 plain lines that follow the question in the caption. Simple and human, like a text message — not marketing copy. No emoji. Never repeats the script's first line or the question.
 - "vocalScript": the EXACT same script text with 2-4 ElevenLabs v3 audio performance tags inserted in square brackets where the narrator's delivery should shift. Allowed tags ONLY: [softly], [whispers], [sighs], [exhales]. Start it with [softly]. Tags direct delivery — they never replace or change the words. Place them where a real person's voice would actually drop, catch, or breathe.
 
 OUTPUT FORMAT (strict JSON, no markdown):

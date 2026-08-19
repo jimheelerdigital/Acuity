@@ -357,6 +357,10 @@ export async function sendCarouselEmail(
       }
     </p>
     <div style="text-align:center;margin:16px 0;">${linkList}</div>
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
+      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
+    </div>
   </div>
 </body>
 </html>`.trim(),
@@ -370,6 +374,9 @@ export async function sendCarouselEmail(
           ...(compilationLink
             ? [compilationLink]
             : videoSlides.map((s) => forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))),
+          "",
+          "── Caption ──",
+          post.caption,
         ].join("\n"),
       };
       if (attachIt && attachment) {
