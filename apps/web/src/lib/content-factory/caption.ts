@@ -240,3 +240,58 @@ export function buildStoryCaption(opts: {
   lines.push(pickHashtags({ slug: opts.slug }).join(" "));
   return lines.join("\n");
 }
+
+// Reach-only hashtags for plug-free posts: no brand or product-category
+// tags — these captions compete on relatability, not conversion.
+const REACH_HASHTAGS = [
+  "#mentalload",
+  "#womenintheirmidlife",
+  "#momlife",
+  "#selfreflection",
+  "#selfawareness",
+  "#knowyourself",
+  "#emotionalintelligence",
+  "#innerwork",
+  "#mindfulmoments",
+  "#midlifeshift",
+  "#burnoutrecovery",
+  "#overthinkersclub",
+  "#mentalhealthmatters",
+  "#patternbreaker",
+];
+
+/**
+ * Caption for AMBIENT calm posts (2026-08-19, per Keenan: "this video is
+ * NOT a plug for acuity — the goal is to build a following of our target
+ * market"). No Ripple closing line, no branded hashtags — just the hook,
+ * the comment question, a save/share ask, and reach hashtags. The
+ * account posting it carries the brand.
+ */
+export function buildAmbientCaption(opts: {
+  slug: string;
+  title: string;
+  captionHook?: string;
+  commentPrompt?: string;
+}): string {
+  const lines: string[] = [];
+  lines.push(opts.captionHook?.trim() || opts.title);
+  lines.push("");
+  if (opts.commentPrompt) {
+    const q = opts.commentPrompt.trim().replace(/\s*👇?\s*$/, "");
+    lines.push(`${q} Tell me in the comments 👇`);
+    lines.push("");
+  }
+  lines.push(pickBySlug(opts.slug, SAVE_SHARE_CTAS, 1));
+  lines.push("");
+
+  let hash = 0;
+  for (const c of opts.slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+  const selected = new Set<string>();
+  let i = Math.abs(hash);
+  while (selected.size < 6) {
+    selected.add(REACH_HASHTAGS[i % REACH_HASHTAGS.length]);
+    i++;
+  }
+  lines.push([...selected].join(" "));
+  return lines.join("\n");
+}

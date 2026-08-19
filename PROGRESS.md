@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-19] — Calm video captions: no more Acuity plug — pure audience-building
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Calm videos are for building a following, not selling the app — so their captions no longer end with the "Ripple — start your free week — link in bio" line, and the branded hashtags (#rippleapp, #voicejournal, #dailydebrief) are gone. What's left is engineered for reach: the hook, a comment question, a save/share ask, and six relatable hashtags like #mentalload and #womenintheirmidlife. The scriptwriter also now has the goal spelled out: success is her sending the video to a friend or tagging her sister — so it picks the most universally relatable version of every idea.
+
+### Technical changes (for Jimmy)
+- `caption.ts`: new `buildAmbientCaption` (hook + comment CTA + save/share CTA + 6 REACH_HASHTAGS, no CLOSING_LINE, no brand tags); new REACH_HASHTAGS pool. Carousel and story captions unchanged
+- `carousel-ambient-video.ts` create-post: uses `buildAmbientCaption` instead of `buildStoryCaption`
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: explicit THE GOAL block — virality/relatability, not app promotion
+
+### Manual steps needed
+None
+
+### Notes
+- The script itself never mentioned the brand (that rule predates this) — the plug lived only in the caption template shared with story posts
+- The round-3 test video generated 2026-08-19 morning still carries the old caption in its email; everything from the next run onward is plug-free
+
 ## [2026-08-19] — Calm video round 3: hook-first scripts, Hope only, max-expressive delivery
 
 **Requested by:** Keenan

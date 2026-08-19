@@ -70,7 +70,12 @@ export const carouselAmbientVideoFn = inngest.createFunction(
     // ── Step 3: create the AMBIENT post row ───────────────────────────
     const post = await step.run("create-post", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const { buildStoryCaption } = await import("@/lib/content-factory/caption");
+      // buildAmbientCaption, not buildStoryCaption (2026-08-19, per
+      // Keenan): calm videos build a following — no Ripple plug line,
+      // no branded hashtags.
+      const { buildAmbientCaption } = await import(
+        "@/lib/content-factory/caption"
+      );
       const { extractHashtags } = await import(
         "@/lib/content-factory/carousel-generate"
       );
@@ -83,7 +88,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
           .slice(0, 52);
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
-      const caption = buildStoryCaption({
+      const caption = buildAmbientCaption({
         slug,
         title: script.title,
         captionHook: script.captionHook,
