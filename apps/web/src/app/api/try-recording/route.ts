@@ -16,7 +16,11 @@ import { randomBytes } from "crypto";
 
 import { MAX_AUDIO_BYTES } from "@acuity/shared";
 
-import { normalizeAudioMimeType, extensionForMimeType } from "@/lib/audio";
+import {
+  normalizeAudioMimeType,
+  extensionForMimeType,
+  verifyStoredAudio,
+} from "@/lib/audio";
 import { transcribeAudio, extractFromTranscript } from "@/lib/pipeline";
 import { toClientError } from "@/lib/api-errors";
 import {
@@ -57,33 +61,75 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── 3. Parse + validate audio ──────────────────────────────────────
-  let formData: FormData;
-  try {
-    formData = await req.formData();
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid form data — expected multipart/form-data" },
-      { status: 400 }
-    );
+  // ── 3. Parse — JSON (direct-to-storage) or multipart (legacy) ──────
+  //
+  // Same dual-accept as /api/record and the mobile try endpoint. The
+  // browser gets fresh JS on every load so it converts immediately, but
+  // the multipart branch stays for one release to match the other two —
+  // one wire contract to reason about, one release to remove.
+  const contentType = req.headers.get("content-type") ?? "";
+  const isJsonUpload = contentType.includes("application/json");
+
+  let audioFile: Blob | null = null;
+  let storagePath: string | null = null;
+  let rawMime = "audio/webm";
+
+  if (isJsonUpload) {
+    let jsonBody: Record<string, unknown>;
+    try {
+      jsonBody = (await req.json()) as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const rawPath = jsonBody.storagePath;
+    storagePath =
+      typeof rawPath === "string" && rawPath.trim().length > 0
+        ? rawPath.trim()
+        : null;
+    if (!storagePath) {
+      return NextResponse.json(
+        { error: "Missing required field: storagePath" },
+        { status: 400 }
+      );
+    }
+    // Flat, unguessable paths minted by /api/record/upload-url. Rejecting
+    // separators keeps a caller from pointing outside that namespace.
+    if (storagePath.includes("/") || storagePath.includes("..")) {
+      return NextResponse.json(
+        { error: "Invalid storagePath" },
+        { status: 400 }
+      );
+    }
+    if (typeof jsonBody.mimeType === "string") rawMime = jsonBody.mimeType;
+  } else {
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid form data — expected multipart/form-data or JSON" },
+        { status: 400 }
+      );
+    }
+
+    const file = formData.get("audio");
+    if (!file || !(file instanceof Blob)) {
+      return NextResponse.json(
+        { error: "Missing required field: audio" },
+        { status: 400 }
+      );
+    }
+    audioFile = file;
+
+    if (audioFile.size > MAX_AUDIO_BYTES) {
+      return NextResponse.json(
+        { error: "Audio file exceeds the 25 MB limit" },
+        { status: 413 }
+      );
+    }
+    rawMime = audioFile.type || "audio/webm";
   }
 
-  const audioFile = formData.get("audio");
-  if (!audioFile || !(audioFile instanceof Blob)) {
-    return NextResponse.json(
-      { error: "Missing required field: audio" },
-      { status: 400 }
-    );
-  }
-
-  if (audioFile.size > MAX_AUDIO_BYTES) {
-    return NextResponse.json(
-      { error: "Audio file exceeds the 25 MB limit" },
-      { status: 413 }
-    );
-  }
-
-  const rawMime = audioFile.type || "audio/webm";
   const mimeType = normalizeAudioMimeType(rawMime);
   if (!mimeType) {
     return NextResponse.json(
@@ -92,26 +138,72 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-
   // ── 4. Generate session token ──────────────────────────────────────
   const sessionToken = randomBytes(32).toString("hex");
 
-  // ── 5. Upload audio to try-specific bucket ─────────────────────────
+  // ── 5. Get the audio bytes ─────────────────────────────────────────
   const { supabase } = await import("@/lib/supabase.server");
   const ext = extensionForMimeType(mimeType);
-  const audioPath = `${sessionToken}.${ext}`;
+  let audioPath: string;
+  let audioBuffer: Buffer;
 
-  const { error: uploadError } = await supabase.storage
-    .from(TRY_STORAGE_BUCKET)
-    .upload(audioPath, audioBuffer, { contentType: mimeType, upsert: false });
+  if (storagePath) {
+    const check = await verifyStoredAudio(TRY_STORAGE_BUCKET, storagePath);
+    if (!check.ok) {
+      if (check.reason === "too_large") {
+        return NextResponse.json(
+          { error: "Audio file exceeds the 25 MB limit" },
+          { status: 413 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Uploaded audio was not found. Please try recording again." },
+        { status: 400 }
+      );
+    }
 
-  if (uploadError) {
-    console.error("[try-recording] Upload failed:", uploadError);
-    return NextResponse.json(
-      { error: "Audio upload failed" },
-      { status: 502 }
-    );
+    // One extraction per uploaded object — otherwise a caller could replay
+    // the same storagePath and re-run Whisper + Claude on our dime, past
+    // the rate limiter, which counts requests rather than recordings.
+    const { prisma: prismaCheck } = await import("@/lib/prisma");
+    const alreadyUsed = await prismaCheck.trySession.findFirst({
+      where: { audioPath: storagePath },
+      select: { id: true },
+    });
+    if (alreadyUsed) {
+      return NextResponse.json(
+        { error: "This recording has already been processed." },
+        { status: 409 }
+      );
+    }
+
+    audioPath = storagePath;
+    const { data, error: dlError } = await supabase.storage
+      .from(TRY_STORAGE_BUCKET)
+      .download(storagePath);
+    if (dlError || !data) {
+      console.error("[try-recording] Download failed:", dlError);
+      return NextResponse.json(
+        { error: "Could not read the uploaded audio." },
+        { status: 502 }
+      );
+    }
+    audioBuffer = Buffer.from(await data.arrayBuffer());
+  } else {
+    audioBuffer = Buffer.from(await audioFile!.arrayBuffer());
+    audioPath = `${sessionToken}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(TRY_STORAGE_BUCKET)
+      .upload(audioPath, audioBuffer, { contentType: mimeType, upsert: false });
+
+    if (uploadError) {
+      console.error("[try-recording] Upload failed:", uploadError);
+      return NextResponse.json(
+        { error: "Audio upload failed" },
+        { status: 502 }
+      );
+    }
   }
 
   // ── 6. Run pipeline: Whisper → Claude ──────────────────────────────

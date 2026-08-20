@@ -21,7 +21,6 @@ import {
   MOOD_GLOW,
   formatTime,
   bestMimeType,
-  extFromMime,
   MoodDot,
   MicIcon,
   CheckboxIcon,
@@ -31,6 +30,8 @@ import {
   AppleLogo,
   GoogleLogo,
 } from "@/components/debrief-shared";
+
+import { uploadAudioDirect } from "@/lib/direct-upload.client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -251,7 +252,9 @@ function TryRecordScreen({
         if (timerRef.current) clearInterval(timerRef.current);
         const baseMime = mr.mimeType.split(";")[0] || "audio/webm";
         const blob = new Blob(chunksRef.current, { type: baseMime });
-        upload(blob, baseMime);
+        // The Blob carries its own type; the signed-URL request reads it
+        // from there, so the mime no longer needs threading through.
+        upload(blob);
       };
       mr.start(1000);
       startTimeRef.current = Date.now();
@@ -275,12 +278,23 @@ function TryRecordScreen({
     mediaRecorderRef.current?.stop();
   };
 
-  const upload = (blob: Blob, mime: string) => {
+  const upload = (blob: Blob) => {
     trackTry("try_recording_completed");
-    const fd = new FormData();
-    fd.append("audio", blob, `recording.${extFromMime(mime)}`);
 
-    const promise = fetch("/api/try-recording", { method: "POST", body: fd })
+    // Bytes go browser → Supabase via a signed URL; this request carries
+    // metadata only, so Vercel's 4.5MB body cap no longer truncates long
+    // recordings.
+    const promise = uploadAudioDirect(blob, "try")
+      .then((uploaded) =>
+        fetch("/api/try-recording", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storagePath: uploaded.storagePath,
+            mimeType: uploaded.mimeType,
+          }),
+        })
+      )
       .then(async (res) => {
         if (res.status === 403) {
           throw new Error("You\u2019ve already tried a recording. Sign up to continue.");

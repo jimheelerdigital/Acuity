@@ -491,6 +491,7 @@ export async function processEntry({
   entryId,
   userId,
   audioBuffer,
+  audioPath,
   mimeType,
   durationSeconds,
   goalId,
@@ -498,7 +499,17 @@ export async function processEntry({
 }: {
   entryId: string;
   userId: string;
-  audioBuffer: Buffer;
+  /**
+   * Raw bytes — the legacy multipart path. Mutually exclusive with
+   * `audioPath`; exactly one must be supplied.
+   */
+  audioBuffer?: Buffer;
+  /**
+   * Storage object path — the direct-to-storage path. The client has ALREADY
+   * written the bytes to the bucket, so this function must NOT upload them
+   * again; it downloads them for Whisper and reuses the existing object.
+   */
+  audioPath?: string;
   mimeType: string;
   durationSeconds?: number;
   /** Set when the recording was initiated from a goal detail/card. Passed
@@ -516,16 +527,54 @@ export async function processEntry({
   });
 
   try {
-    // ── Upload audio (non-fatal) ──────────────────────────────────────────
+    // ── Resolve audio: already in storage, or bytes to upload ─────────────
+    //
+    // Direct-to-storage (audioPath): the client wrote the object itself, so
+    // uploading again would duplicate it and orphan the first copy. Download
+    // the bytes instead — Whisper needs them in memory regardless, since
+    // transcribeAudio takes a Buffer.
+    //
+    // Legacy multipart (audioBuffer): unchanged. Upload stays non-fatal —
+    // a storage hiccup should not cost the user their transcript.
+    // Where the object lives, split by column. `audioPath` is the modern
+    // field the async pipeline and the delete/export paths read; `audioUrl`
+    // is the legacy signed-URL column the sync path has always written.
+    // Direct-to-storage entries populate audioPath so deletion actually
+    // finds the object — writing the path into audioUrl instead would leave
+    // audioPath null and orphan the audio on delete.
+    let storedAudioPath: string | null = null;
     let audioUrl: string | null = null;
-    try {
-      audioUrl = await uploadAudio(audioBuffer, userId, entryId, mimeType);
-    } catch (err) {
-      console.error("[pipeline] uploadAudio failed (non-fatal):", err);
+    let buffer: Buffer;
+
+    if (audioPath) {
+      storedAudioPath = audioPath;
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data, error } = await supabase.storage
+        .from("voice-entries")
+        .download(audioPath);
+      if (error || !data) {
+        throw new Error(
+          `Audio download failed for ${audioPath}: ${error?.message ?? "no data"}`
+        );
+      }
+      buffer = Buffer.from(await data.arrayBuffer());
+    } else if (audioBuffer) {
+      buffer = audioBuffer;
+      try {
+        audioUrl = await uploadAudio(audioBuffer, userId, entryId, mimeType);
+      } catch (err) {
+        console.error("[pipeline] uploadAudio failed (non-fatal):", err);
+      }
+    } else {
+      // Programming error, not a user-facing state — surface it loudly at
+      // the caller rather than transcribing silence.
+      throw new Error(
+        "processEntry requires exactly one of audioBuffer or audioPath"
+      );
     }
 
     // ── Transcribe ────────────────────────────────────────────────────────
-    const transcript = await transcribeAudio(audioBuffer, mimeType);
+    const transcript = await transcribeAudio(buffer, mimeType);
 
     if (transcript.trim().length < 10) {
       throw new Error(NO_SPEECH_MESSAGE);
@@ -550,6 +599,7 @@ export async function processEntry({
       const entryRow = await prisma.entry.update({
         where: { id: entryId },
         data: {
+          ...(storedAudioPath ? { audioPath: storedAudioPath } : {}),
           audioUrl,
           audioDuration: durationSeconds ?? null,
           transcript,
@@ -673,6 +723,7 @@ export async function processEntry({
       const entry = await tx.entry.update({
         where: { id: entryId },
         data: {
+          ...(storedAudioPath ? { audioPath: storedAudioPath } : {}),
           audioUrl,
           audioDuration: durationSeconds ?? null,
           transcript,
