@@ -46,12 +46,44 @@ export interface RcCredentials {
   secretKey: string | null;
   webhookAuth: string | null;
   projectId: string | null;
+  /**
+   * PUBLIC app-specific key used for RC's CLIENT-FACING v1 endpoints.
+   *
+   * ⚠️ Non-obvious and easy to get wrong: `GET /v1/subscribers` — which is
+   * how we read a customer's entitlement state — is one of the endpoints RC
+   * classes as client-facing, alongside POST /receipts, POST /attributes,
+   * POST /attribution and GET /offerings. Sending the `sk_` SECRET key to
+   * any of them fails with HTTP 400 / code 7243 ("Secret API keys should
+   * not be used in your app").
+   *
+   * Discovered 2026-08-19 when the receipt import hit 7243 on all 12 rows.
+   * The same mistake was latent here and would have surfaced only when
+   * RC_SOURCE_OF_TRUTH was flipped — i.e. at cutover, on live traffic.
+   *
+   * Any app's public key in the project works for a server-side read; we
+   * prefer the Stripe/web app's since this code runs on the web server, and
+   * fall back to the iOS key.
+   */
+  publicReadKey: string | null;
+}
+
+function firstNonEmpty(...vals: Array<string | undefined>): string | null {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return null;
 }
 
 export function rcCredentials(): RcCredentials {
   return {
+    // Secret key: for genuinely server-side endpoints only (v2 reads,
+    // entitlement grants). NOT for /subscribers or /receipts.
     secretKey: process.env.RC_SECRET_KEY ?? null,
     webhookAuth: process.env.RC_WEBHOOK_AUTH ?? null,
     projectId: process.env.RC_PROJECT_ID ?? null,
+    publicReadKey: firstNonEmpty(
+      process.env.RC_PUBLIC_KEY_STRIPE,
+      process.env.RC_PUBLIC_KEY_IOS
+    ),
   };
 }

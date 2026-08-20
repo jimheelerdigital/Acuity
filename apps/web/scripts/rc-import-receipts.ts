@@ -16,9 +16,27 @@
  *    already succeeded. A rerun after a network failure resumes rather than
  *    re-posting everything.
  *
+ * ── Which API key ────────────────────────────────────────────────────
+ * `POST /v1/receipts` requires a **PUBLIC, app-specific** key — NOT the
+ * `sk_` secret key. Passing a secret returns HTTP 400 / code 7243
+ * ("Secret API keys should not be used in your app"). RC treats
+ * /receipts as client-facing; the same is true of GET /subscribers,
+ * POST /attributes, POST /attribution and GET /offerings.
+ *
+ * The key is per-APP, so it depends on which store the row came from:
+ *   kind: "stripe" → RC_PUBLIC_KEY_STRIPE  (the Stripe/web app's key)
+ *   kind: "apple"  → RC_PUBLIC_KEY_IOS     (appl_…)
+ *
+ * There is no v2 alternative: API v2 can read customers/subscriptions,
+ * transfer them, and grant entitlements, but has NO import-a-purchase
+ * endpoint. Granting an entitlement via v2 was considered and rejected —
+ * it creates a PROMOTIONAL grant with no real renewal date, which is both
+ * the wrong data and, in our mapping, the `comp` source.
+ *
  * ── Usage ────────────────────────────────────────────────────────────
  *   # 1. put the mapping file somewhere OUTSIDE the repo (it contains receipts)
- *   # 2. export RC_SECRET_KEY=...            (never pass it as an argument)
+ *   # 2. export the PUBLIC key(s) for the platforms you're importing
+ *   export RC_PUBLIC_KEY_STRIPE=...          (never pass as an argument)
  *   npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json
  *   npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json --apply
  *
@@ -208,11 +226,34 @@ const RC_API_BASE = "https://api.revenuecat.com/v1";
  * the dashboard — which is why the Stripe integration must be configured in RC
  * BEFORE running this for Stripe rows.
  */
+/** X-Platform value RC expects, per mapping row kind. */
+function platformFor(kind: ImportKind): string {
+  return kind === "apple" ? "ios" : "stripe";
+}
+
+/** Env var holding the PUBLIC app key for this kind. */
+export function publicKeyEnvVar(kind: ImportKind): string {
+  return kind === "apple" ? "RC_PUBLIC_KEY_IOS" : "RC_PUBLIC_KEY_STRIPE";
+}
+
+/**
+ * Resolve the public key for a row's platform.
+ *
+ * Deliberately refuses to fall back to RC_SECRET_KEY: doing so would
+ * reproduce the 7243 failure with a confusing message, and quietly sending
+ * a secret to a client-facing endpoint is exactly what RC's error is
+ * warning about.
+ */
+function publicKeyFor(kind: ImportKind): string | null {
+  const raw = process.env[publicKeyEnvVar(kind)];
+  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
+}
+
 async function postReceipt(
   row: MappingRow,
-  secretKey: string
+  apiKey: string
 ): Promise<{ ok: true; httpStatus: number } | { ok: false; httpStatus: number; detail: string }> {
-  const platform = row.kind === "apple" ? "ios" : "stripe";
+  const platform = platformFor(row.kind);
 
   const body: Record<string, unknown> = {
     app_user_id: row.app_user_id,
@@ -225,7 +266,8 @@ async function postReceipt(
     res = await fetch(`${RC_API_BASE}/receipts`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${secretKey}`,
+        // PUBLIC app-specific key. A secret key here returns 7243.
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "X-Platform": platform,
       },
@@ -289,7 +331,10 @@ RevenueCat receipt import
   --ledger <path>    success ledger (default <file>.ledger.json)
   --concurrency <n>  parallel requests (default 2)
 
-  RC_SECRET_KEY must be set in the environment (never passed as an argument).
+  PUBLIC app-specific keys must be in the environment (never as arguments):
+    RC_PUBLIC_KEY_STRIPE   for kind: "stripe"
+    RC_PUBLIC_KEY_IOS      for kind: "apple"
+  NOT the sk_ secret key — POST /v1/receipts rejects it with code 7243.
 `);
 }
 
@@ -304,13 +349,12 @@ async function main(): Promise<void> {
     fail("--file is required");
   }
 
-  // Secret from env ONLY.
-  const secretKey = process.env.RC_SECRET_KEY ?? null;
-  if (opts.apply && !secretKey) {
-    fail(
-      "RC_SECRET_KEY is not set. Export it in your shell (do NOT pass it as an argument):\n" +
-        "  export RC_SECRET_KEY=sk_...\n" +
-        "Dry runs work without it."
+  // Keys from env ONLY, and PUBLIC app-specific keys — not the sk_ secret.
+  // See the header: POST /v1/receipts rejects secret keys with code 7243.
+  if (process.env.RC_SECRET_KEY && !process.env.RC_PUBLIC_KEY_STRIPE && !process.env.RC_PUBLIC_KEY_IOS) {
+    console.warn(
+      "\n⚠ RC_SECRET_KEY is set but no RC_PUBLIC_KEY_* is. /v1/receipts needs a\n" +
+        "  PUBLIC app-specific key; a secret key returns 400 code 7243.\n"
     );
   }
 
@@ -322,7 +366,9 @@ async function main(): Promise<void> {
   console.log(`  mode        : ${opts.apply ? "APPLY (will POST)" : "DRY RUN (no requests)"}`);
   console.log(`  mapping     : ${resolve(opts.file)} (${rawRows.length} rows)`);
   console.log(`  ledger      : ${ledgerPath} (${Object.keys(ledger.imported).length} already imported)`);
-  console.log(`  secret key  : ${secretKey ? "present" : "absent"}`);
+  console.log(
+    `  keys        : stripe=${publicKeyFor("stripe") ? "present" : "absent"} apple=${publicKeyFor("apple") ? "present" : "absent"} (PUBLIC app keys)`
+  );
   if (opts.only) console.log(`  only        : ${opts.only}`);
   if (opts.limit) console.log(`  limit       : ${opts.limit}`);
   console.log("");
@@ -363,6 +409,23 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Fail BEFORE any request if a platform in the queue has no public key —
+  // better one clear error than N identical 7243s.
+  if (opts.apply) {
+    const kinds = [...new Set(queue.map((r) => r.kind))];
+    const missing = kinds.filter((k) => publicKeyFor(k) === null);
+    if (missing.length > 0) {
+      fail(
+        `Missing PUBLIC API key(s) for: ${missing.join(", ")}\n` +
+          missing.map((k) => `  export ${publicKeyEnvVar(k)}=...`).join("\n") +
+          `\n\nThese are the per-app PUBLIC keys from RevenueCat → Project settings →\n` +
+          `API keys → App-specific keys (Stripe/web app for stripe rows, iOS app for\n` +
+          `apple rows). NOT the sk_ secret key — /v1/receipts rejects secrets with\n` +
+          `code 7243. Dry runs need no key at all.`
+      );
+    }
+  }
+
   const processed = await mapWithConcurrency(queue, opts.concurrency, async (row) => {
     const label = `${row.kind.padEnd(6)} ${row.app_user_id}${row.email ? ` <${row.email}>` : ""}`;
 
@@ -376,7 +439,7 @@ async function main(): Promise<void> {
       };
     }
 
-    const res = await postReceipt(row, secretKey!);
+    const res = await postReceipt(row, publicKeyFor(row.kind)!);
     if (res.ok) {
       console.log(`  ✓ imported ${label} (HTTP ${res.httpStatus})`);
       ledger.imported[ledgerKey(row)] = new Date().toISOString();

@@ -196,9 +196,16 @@ export async function fetchRcSubscriber(
   appUserId: string,
   fetchImpl: typeof fetch = fetch
 ): Promise<RcFetchResult> {
-  const { secretKey } = rcCredentials();
-  if (!secretKey) {
-    return { ok: false, code: "NO_CREDENTIALS", detail: "RC_SECRET_KEY not set" };
+  // PUBLIC app key, NOT the secret. GET /v1/subscribers is one of RC's
+  // client-facing endpoints and rejects `sk_` keys with code 7243 — see the
+  // publicReadKey docs in ./flags.ts.
+  const { publicReadKey } = rcCredentials();
+  if (!publicReadKey) {
+    return {
+      ok: false,
+      code: "NO_CREDENTIALS",
+      detail: "no RC_PUBLIC_KEY_STRIPE / RC_PUBLIC_KEY_IOS set",
+    };
   }
 
   let res: Response;
@@ -208,7 +215,7 @@ export async function fetchRcSubscriber(
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${secretKey}`,
+          Authorization: `Bearer ${publicReadKey}`,
           "Content-Type": "application/json",
         },
       }
