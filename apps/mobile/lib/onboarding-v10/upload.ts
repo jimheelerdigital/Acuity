@@ -37,6 +37,12 @@ import { submitTryRecording } from "@/lib/try-session";
  * nothing else in the v10 screens changes.
  */
 
+// The recording cap lives in ./limits (dependency-free so it can be
+// asserted by a test). Re-exported here because this is where the 413
+// constraint that motivates it is documented.
+export { V10_MAX_RECORDING_MS } from "./limits";
+
+
 export interface UploadResult {
   ok: boolean;
   /** True when the failure is worth offering a retry for. */

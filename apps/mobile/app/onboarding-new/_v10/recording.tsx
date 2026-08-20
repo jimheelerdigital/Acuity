@@ -24,6 +24,7 @@ import {
 } from "@/lib/onboarding-v10/branches";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
+import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 
 /**
  * Screen 3 — Recording (light).
@@ -46,7 +47,7 @@ import { getV10Branch } from "@/lib/onboarding-v10/state";
  * is no floor. Nothing about the UI should imply a target length.
  */
 
-const MAX_MS = 120_000; // existing recorder max — 120s, per app.json copy
+// 🔒 Capped centrally — see V10_MAX_RECORDING_MS. Do not inline a number here.
 const TICK_MS = 100;
 
 export default function V10Recording() {
