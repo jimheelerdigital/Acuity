@@ -185,7 +185,20 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
     }));
     const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
     await trialDaysForEmail("MixedCase@Example.COM");
-    expect(lookedUpCandidates).toContain("mixedcase@example.com");
+
+    // DeletedUser.email now stores an HMAC digest, so the lookup probes
+    // digests rather than addresses. The casing guarantee is unchanged —
+    // it just has to be asserted one layer down: the digest of the
+    // lowercased address must be among the candidates, and no plaintext
+    // may appear at all.
+    const { hashDeletedUserEmail } = await import("@/lib/deleted-user-hash");
+    expect(lookedUpCandidates).toContain(
+      hashDeletedUserEmail("mixedcase@example.com")
+    );
+    for (const c of lookedUpCandidates) {
+      expect(c).not.toContain("@");
+      expect(c).toMatch(/^[0-9a-f]{64}$/);
+    }
   });
 });
 

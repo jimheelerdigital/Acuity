@@ -693,7 +693,27 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
                   userId: user.id,
                   emailKey: MILESTONES[i].key,
                   sentAt: now,
-                  resendId: "skipped_backlog",
+                  // resendId MUST stay null here.
+                  //
+                  // It previously wrote the constant "skipped_backlog", but
+                  // `resendId` is `@unique` GLOBALLY (schema.prisma) — not
+                  // scoped per user — so only the very first skipped row in
+                  // the entire table could ever be written. Every subsequent
+                  // one threw a unique-constraint violation and failed the
+                  // job: 53 failures in 24h, with exactly one
+                  // "skipped_backlog" row in the DB to show for it.
+                  //
+                  // Postgres permits unlimited NULLs under a UNIQUE
+                  // constraint, so null is the correct marker for "no Resend
+                  // message exists" — which is the truth here: nothing was
+                  // sent. The row's purpose is served by (userId, emailKey)
+                  // existing at all, which is what stops the milestone
+                  // firing later.
+                  //
+                  // Do not put any constant in this column. If a skipped-vs-
+                  // sent distinction is ever needed, add a dedicated
+                  // `status` field rather than overloading resendId.
+                  resendId: null,
                 },
               });
             }

@@ -1,24 +1,37 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Animated cover generation — triggered per carousel post by
+ * Carousel slide animation — triggered per carousel post by
  * "content-factory/cover.animate" (sent by the daily cron and by the
  * admin "animate cover" action).
  *
- * Uses Inngest steps so the 3-6 minute Higgsfield render never hits the
- * 300s Vercel invocation ceiling: submit → sleep → poll (short steps with
- * sleeps between) → store. Any failure leaves the carousel with its static
- * cover — animation is an enhancement, never a blocker.
+ * Two modes (2026-08-10):
+ * - default: animate the cover only (admin action, one-off pipeline)
+ * - `animateAll: true`: animate EVERY non-CTA slide (cover + all reasons)
+ *   — used by the animated daily post. Each video is 4s on the current
+ *   (dop/lite) model.
  *
- * When the event carries `sendEmail: true` (the generation pipelines set
- * this), the Resend email is sent from HERE — after animation — on every
- * exit path. Pipeline order: carousel gen → cover animation → email.
- * Animation failure degrades to the static-cover email, never silence.
+ * Submits in WAVES of at most 4 jobs (2026-08-10): Higgsfield silently
+ * drops submits beyond ~4 concurrent jobs per account — the first two
+ * live animateAll runs shipped 5/7 and 4/7 videos with zero submit
+ * errors logged, and resubmitting the missing 3 alone succeeded
+ * immediately. Each wave submits only target slides that still lack a
+ * videoUrl, so later waves also double as retries for failed renders.
+ *
+ * Uses Inngest steps so the multi-minute Higgsfield renders never hit the
+ * 300s Vercel invocation ceiling: submit all → sleep → poll all (short
+ * steps with sleeps between) → store each. Any slide that fails both
+ * attempts stays static — animation is an enhancement, never a blocker.
+ *
+ * When the event carries `sendEmail: true`, the Resend email is sent from
+ * HERE — after animation — on every exit path. Pipeline order: carousel
+ * gen → animation → email. Animation failure degrades to the static email,
+ * never silence.
  */
 export const carouselAnimateCoverFn = inngest.createFunction(
   {
     id: "carousel-animate-cover",
-    name: "Content Factory — Animate Carousel Cover",
+    name: "Content Factory — Animate Carousel Slides",
     retries: 1,
     concurrency: { limit: 2 }, // be gentle on Higgsfield rate limits
     triggers: [{ event: "content-factory/cover.animate" }],
@@ -26,9 +39,16 @@ export const carouselAnimateCoverFn = inngest.createFunction(
   async ({ event, step, logger }) => {
     const postId = event.data.postId as string;
     const shouldEmail = Boolean(event.data.sendEmail);
-    // "crazy" = spin-in attention-grab intro (one post/day); default smooth.
+    const animateAll = Boolean(event.data.animateAll);
+    // "crazy" = high-energy intro treatment for the cover; default smooth.
     const animationStyle =
       event.data.animationStyle === "crazy" ? "crazy" : "smooth";
+    // Per-slide emotion directions from the daily cron (indexed by slide
+    // order: 0 = cover). Absent on admin/one-off triggers — the prompt
+    // builders then fall back to curated topic beats / mood pools.
+    const slideEmotions = (
+      Array.isArray(event.data.slideEmotions) ? event.data.slideEmotions : []
+    ) as { mood?: string; motion?: string }[];
 
     // Email sender used at every exit path. Its own step so a Resend
     // hiccup gets Inngest's retry, and it never throws past logging.
@@ -50,112 +70,234 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       });
     };
 
-    // ── Step 1: validate + submit ─────────────────────────────────────
-    const submission = await step.run("submit-video-job", async () => {
-      const {
-        higgsfieldConfigured,
-        buildCoverVideoPrompt,
-        buildCrazyCoverVideoPrompt,
-        submitCoverVideo,
-      } = await import("@/lib/content-factory/animate-cover");
+    // 3 waves × 4 jobs covers the 8-slide max (cover + 7 reasons) plus a
+    // retry wave for render failures. Higgsfield silently drops submits
+    // past ~4 concurrent jobs, so never submit more than 4 per wave.
+    const MAX_ATTEMPTS = 3;
+    const MAX_CONCURRENT_JOBS = 4;
+    let totalStored = 0;
+    let totalSubmitted = 0;
+    let firstAttemptSkip: string | null = null;
 
-      if (!higgsfieldConfigured()) {
-        return {
-          skipped:
-            "Higgsfield not configured — set HIGGSFIELD_API_KEY, HIGGSFIELD_API_SECRET and HIGGSFIELD_VIDEO_MODEL",
-        } as const;
-      }
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // ── Submit one Higgsfield job per target slide still lacking a
+      // video. Attempt 2 naturally picks up only attempt 1's failures. ──
+      const submission = await step.run(`submit-video-jobs-a${attempt}`, async () => {
+        const {
+          higgsfieldConfigured,
+          buildCoverVideoPrompt,
+          buildCrazyCoverVideoPrompt,
+          buildSlideVideoPrompt,
+          submitCoverVideo,
+        } = await import("@/lib/content-factory/animate-cover");
 
-      const { prisma } = await import("@/lib/prisma");
-      const { CAROUSEL_TOPICS } = await import("@/lib/content-factory/topics");
+        if (!higgsfieldConfigured()) {
+          return {
+            skipped:
+              "Higgsfield not configured — set HIGGSFIELD_API_KEY, HIGGSFIELD_API_SECRET and HIGGSFIELD_VIDEO_MODEL",
+          } as const;
+        }
 
-      const cover = await prisma.carouselSlide.findFirst({
-        where: { carouselPostId: postId, kind: "COVER" },
-        include: { carouselPost: { select: { topicSlug: true } } },
-      });
-      if (!cover) return { skipped: `No cover slide for post ${postId}` } as const;
-      if (!cover.imageUrl) {
-        return {
-          skipped: `Cover ${cover.id} has no imageUrl`,
-        } as const;
-      }
-      if (cover.videoUrl) return { skipped: `Cover ${cover.id} already animated` } as const;
+        const { prisma } = await import("@/lib/prisma");
+        const { CAROUSEL_TOPICS } = await import("@/lib/content-factory/topics");
 
-      const topic = CAROUSEL_TOPICS.find((t) => t.slug === cover.carouselPost.topicSlug);
-      const fallback = {
-        emotionBeat:
-          "a small tired shrug — shoulders lifting then dropping with a slow exhale — followed by a soft, knowing half-smile to camera",
-      };
-      const prompt =
-        animationStyle === "crazy"
-          ? buildCrazyCoverVideoPrompt(topic ?? fallback)
-          : buildCoverVideoPrompt(topic ?? fallback);
-
-      try {
-        const requestId = await submitCoverVideo({
-          startImageUrl: cover.imageUrl,
-          prompt,
+        const slides = await prisma.carouselSlide.findMany({
+          where: { carouselPostId: postId },
+          orderBy: { order: "asc" },
+          include: { carouselPost: { select: { topicSlug: true } } },
         });
-        return { skipped: null, requestId, slideId: cover.id } as const;
-      } catch (submitErr) {
-        // Don't throw — a failed submit must still fall through to the
-        // static-cover email instead of killing the function run.
-        return {
-          skipped: `Higgsfield submit failed: ${submitErr instanceof Error ? submitErr.message : submitErr}`,
-        } as const;
-      }
-    });
+        if (slides.length === 0) {
+          return { skipped: `No slides for post ${postId}` } as const;
+        }
 
-    if (submission.skipped) {
-      logger.info(`[animate-cover] Skipped for post ${postId}: ${submission.skipped}`);
-      await sendEmailStep();
-      return { animated: false, reason: submission.skipped };
-    }
+        // animateAll: EVERY non-CTA slide (2026-08-13, per Keenan: the old
+        // slice(0, -1) assumed a trailing CTA slide, but daily posts
+        // dropped the CTA on 2026-08-12 — so it was silently chopping the
+        // last reason off the slideshow). Filter by kind, not position.
+        // Hard cap 8 (cover + 7 reasons) as a cost ceiling. Default: cover only.
+        const targets = animateAll
+          ? slides.filter((s) => s.kind !== "CTA").slice(0, 8)
+          : slides.filter((s) => s.kind === "COVER");
 
-    // ── Step 2: give the render a head start, then poll in short steps ──
-    await step.sleep("initial-render-wait", "2m");
+        const topic = CAROUSEL_TOPICS.find(
+          (t) => t.slug === slides[0].carouselPost.topicSlug
+        );
+        const jobs: { slideId: string; order: number; requestId: string }[] = [];
+        for (const slide of targets) {
+          if (jobs.length >= MAX_CONCURRENT_JOBS) break; // Higgsfield drops submits past ~4 concurrent
+          if (!slide.imageUrl) continue;
+          if (slide.videoUrl) continue; // already animated (earlier wave / retried run)
+          // Prefer the raw (text-free) artwork as the start frame — the
+          // model then has no text pixels to warp; the words get burned
+          // onto the finished video in storeSlideVideo.
+          const startImageUrl = slide.rawImageUrl ?? slide.imageUrl;
+          const textFree = Boolean(slide.rawImageUrl);
+          // Bespoke emotion for this slide (from the topic generator);
+          // undefined on admin/one-off runs → builders use pools.
+          const emotion = slideEmotions[slide.order];
+          const prompt =
+            slide.kind === "COVER"
+              ? animationStyle === "crazy"
+                ? buildCrazyCoverVideoPrompt(topic, { emotion })
+                : buildCoverVideoPrompt(topic, {
+                    textFree,
+                    seed: slides[0].carouselPost.topicSlug.length,
+                    emotion,
+                  })
+              : buildSlideVideoPrompt({ textFree, seed: slide.order, emotion });
+          try {
+            const requestId = await submitCoverVideo({
+              startImageUrl,
+              prompt,
+            });
+            jobs.push({ slideId: slide.id, order: slide.order, requestId });
+          } catch (submitErr) {
+            // Log and keep going — one failed submit shouldn't kill the rest,
+            // and even zero submits must still fall through to the email.
+            // (Higgsfield caps concurrent jobs at ~4-5; the next attempt
+            // resubmits these once the first wave has drained.)
+            console.error(
+              `[animate-cover] Submit failed for slide ${slide.id} (order ${slide.order}, attempt ${attempt}): ${submitErr instanceof Error ? submitErr.message : submitErr}`
+            );
+          }
+          // Space out submissions to avoid tripping rate limits.
+          await new Promise((r) => setTimeout(r, 1500));
+        }
 
-    let videoUrl: string | null = null;
-    // 2m head start + 36 × 30s = up to ~20 min total. The first live DoP
-    // render (2026-08-05) blew past the original ~8 min budget and the
-    // email fell back to the static cover, so the window was widened.
-    const MAX_POLLS = 36;
-    for (let i = 0; i < MAX_POLLS; i++) {
-      const check = await step.run(`poll-status-${i}`, async () => {
-        const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
-        return checkCoverVideo(submission.requestId);
+        if (jobs.length === 0) {
+          return { skipped: "No slides needed animation or all submits failed" } as const;
+        }
+        return { skipped: null, jobs } as const;
       });
 
-      if (check.status === "completed" && check.videoUrl) {
-        videoUrl = check.videoUrl;
+      if (submission.skipped) {
+        if (attempt === 1) {
+          firstAttemptSkip = submission.skipped;
+        }
+        // On attempt 2 a skip just means nothing was left to retry
+        // (or resubmits failed too) — either way we're done animating.
+        logger.info(
+          `[animate-cover] Attempt ${attempt} skipped for post ${postId}: ${submission.skipped}`
+        );
         break;
       }
-      if (check.status === "failed" || check.status === "nsfw") {
-        logger.error(
-          `[animate-cover] Higgsfield job ${submission.requestId} ended: ${check.status} (post ${postId})`
-        );
-        await sendEmailStep();
-        return { animated: false, reason: `Higgsfield status: ${check.status}` };
+      totalSubmitted += submission.jobs.length;
+
+      // ── Give the renders a head start, then poll in short steps ──────
+      await step.sleep(`initial-render-wait-a${attempt}`, "2m");
+
+      // 2m head start + 36 × 30s ≈ 20 min for wave 1. The first live DoP
+      // render (2026-08-05) blew past the original ~8 min budget, so the
+      // window is wide. Later waves render fresh jobs too, so they get a
+      // slightly shorter but still full-render-length window.
+      const maxPolls = attempt === 1 ? 36 : 24;
+      // requestId -> CDN url for completed jobs; "" = terminal failure
+      let pending = submission.jobs.map((j) => j.requestId);
+      const completed: Record<string, string> = {};
+
+      for (let i = 0; i < maxPolls && pending.length > 0; i++) {
+        const results = await step.run(`poll-status-a${attempt}-${i}`, async () => {
+          const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
+          const out: { requestId: string; status: string; videoUrl: string | null }[] = [];
+          for (const requestId of pending) {
+            try {
+              const check = await checkCoverVideo(requestId);
+              out.push({ requestId, ...check });
+            } catch (checkErr) {
+              // Transient status error — keep the job pending for the next poll.
+              console.warn(
+                `[animate-cover] Status check failed for ${requestId}: ${checkErr instanceof Error ? checkErr.message : checkErr}`
+              );
+              out.push({ requestId, status: "in_progress", videoUrl: null });
+            }
+          }
+          return out;
+        });
+
+        for (const r of results) {
+          if (r.status === "completed" && r.videoUrl) {
+            completed[r.requestId] = r.videoUrl;
+          } else if (r.status === "failed" || r.status === "nsfw") {
+            logger.error(
+              `[animate-cover] Higgsfield job ${r.requestId} ended: ${r.status} (post ${postId}, attempt ${attempt})`
+            );
+            // Terminal failure — drop it; attempt 2 will resubmit the slide.
+            completed[r.requestId] = "";
+          }
+        }
+        pending = pending.filter((id) => !(id in completed));
+
+        if (pending.length > 0) {
+          await step.sleep(`poll-wait-a${attempt}-${i}`, "30s");
+        }
       }
-      await step.sleep(`poll-wait-${i}`, "30s");
+
+      if (pending.length > 0) {
+        logger.error(
+          `[animate-cover] Timed out waiting for ${pending.length} Higgsfield job(s) (post ${postId}, attempt ${attempt})`
+        );
+      }
+
+      // ── Download, store in Supabase, persist videoUrl per slide ──────
+      const succeededJobs = submission.jobs.filter((j) => completed[j.requestId]);
+      let stored = 0;
+      for (const job of succeededJobs) {
+        try {
+          await step.run(`store-video-a${attempt}-${job.order}`, async () => {
+            const { storeSlideVideo } = await import("@/lib/content-factory/animate-cover");
+            return storeSlideVideo(job.slideId, completed[job.requestId]);
+          });
+          stored++;
+        } catch (storeErr) {
+          logger.error(
+            `[animate-cover] Store failed for slide ${job.slideId}: ${storeErr instanceof Error ? storeErr.message : storeErr}`
+          );
+        }
+      }
+      totalStored += stored;
+
+      // No early break on "all submitted jobs stored" — slides whose
+      // SUBMIT failed (Higgsfield concurrency cap) were never in `jobs`,
+      // so the next attempt's submit step must re-query and decide.
+      // When nothing is left it returns skipped and the loop exits.
     }
 
-    if (!videoUrl) {
-      logger.error(
-        `[animate-cover] Timed out waiting for Higgsfield job ${submission.requestId} (post ${postId})`
-      );
+    // Kick off the 30s story video AFTER the slide waves have drained so
+    // its Higgsfield jobs don't fight the animation for the ~4-concurrent
+    // cap. Runs even when animation partially failed — the story pipeline
+    // only needs the post row (it generates its own images). Own step so
+    // a send failure never blocks the email below.
+    const sendStoryStep = async () => {
+      if (!event.data.storyVideo) return;
+      await step.run("enqueue-story-video", async () => {
+        try {
+          await inngest.send({
+            name: "content-factory/story.video",
+            data: {
+              postId,
+              lane: event.data.lane,
+              mood: event.data.mood,
+            },
+          });
+        } catch (err) {
+          logger.error(
+            `[animate-cover] Failed to enqueue story video for post ${postId}: ${err instanceof Error ? err.message : err}`
+          );
+        }
+      });
+    };
+
+    if (firstAttemptSkip) {
       await sendEmailStep();
-      return { animated: false, reason: "timeout" };
+      await sendStoryStep();
+      return { animated: 0, reason: firstAttemptSkip };
     }
 
-    // ── Step 3: download, store in Supabase, persist videoUrl ──────────
-    const storedUrl = await step.run("store-video", async () => {
-      const { storeCoverVideo } = await import("@/lib/content-factory/animate-cover");
-      return storeCoverVideo(submission.slideId, videoUrl!);
-    });
-
-    logger.info(`[animate-cover] Post ${postId} cover animated: ${storedUrl}`);
-    await sendEmailStep(true);
-    return { animated: true, videoUrl: storedUrl };
+    logger.info(
+      `[animate-cover] Post ${postId}: ${totalStored}/${totalSubmitted} submitted job(s) animated across attempts`
+    );
+    await sendEmailStep(totalStored > 0);
+    await sendStoryStep();
+    return { animated: totalStored, submitted: totalSubmitted };
   }
 );

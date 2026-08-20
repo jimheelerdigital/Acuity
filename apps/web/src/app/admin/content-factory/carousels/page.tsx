@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface Slide {
   id: string;
   order: number;
-  kind: "COVER" | "REASON" | "CTA";
+  kind: "COVER" | "REASON" | "CTA" | "SCENE";
   overlayText: string;
   imagePrompt: string;
   imageUrl: string;
@@ -18,38 +18,86 @@ interface CarouselPost {
   id: string;
   topicSlug: string;
   headline: string;
-  status: "DRAFT" | "APPROVED" | "REJECTED" | "POSTED";
+  format?: "PHOTO" | "VIDEO" | "STORY" | "AMBIENT";
   caption: string;
   hashtags: string[];
   musicNote: string | null;
   generatedFor: string;
   emailedAt: string | null;
   emailId: string | null;
+  instagramUrl: string | null;
+  tiktokUrl: string | null;
+  storyVideoUrl: string | null;
+  storyVoiced?: boolean | null;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  saves: number | null;
+  shares: number | null;
+  metricsAt: string | null;
   slides: Slide[];
   createdAt: string;
+  /** Server-computed generation cost (images + Higgsfield clips + TTS). */
+  estCostCents?: number;
 }
+
+const METRIC_KEYS = ["views", "likes", "comments", "saves", "shares"] as const;
+type MetricKey = (typeof METRIC_KEYS)[number];
+type MetricsDraft = Record<MetricKey, string>;
 
 interface Totals {
   all: number;
-  draft: number;
-  approved: number;
-  rejected: number;
+  photo: number;
+  video: number;
+  story: number;
+  ambient: number;
   posted: number;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+interface Summary {
+  date: string;
+  total: number;
+  estimatedCostCents: number;
+  monthCostCents: number;
+}
 
-const STATUS_STYLE: Record<string, string> = {
-  DRAFT: "bg-acuity-warn-soft text-acuity-warn",
-  APPROVED: "bg-acuity-good-soft text-acuity-good",
-  REJECTED: "bg-acuity-bad-soft text-acuity-bad",
-  POSTED: "bg-acuity-secondary-soft text-acuity-secondary",
+// ─── Helpers ────────────────────────────────────────────────────────────────
+// 2026-08-18 (per Keenan): the approval workflow (draft/approved/rejected/
+// posted) is retired from the UI. Filtering is by FORMAT, and "posted" is
+// derived from a pasted platform link.
+
+const FORMAT_META: Record<string, { label: string; style: string }> = {
+  PHOTO: { label: "📷 Photo", style: "bg-acuity-bg-inset text-acuity-text-sec" },
+  VIDEO: { label: "🎬 Video", style: "bg-acuity-primary-soft text-acuity-primary" },
+  STORY: { label: "🎥 Story", style: "bg-acuity-secondary-soft text-acuity-secondary" },
+  AMBIENT: { label: "🌙 Calm", style: "bg-acuity-good-soft text-acuity-good" },
 };
 
-function StatusBadge({ status }: { status: string }) {
+/** "Posted" = a platform link was pasted (the old status flow is gone). */
+function isPosted(post: CarouselPost): boolean {
+  return Boolean(post.instagramUrl || post.tiktokUrl);
+}
+
+function PostedBadge({ post }: { post: CarouselPost }) {
+  if (!isPosted(post)) return null;
   return (
-    <span className={`rounded-acuity-pill px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[status] ?? "bg-acuity-bg-inset text-acuity-text-quiet"}`}>
-      {status}
+    <span className="rounded-acuity-pill bg-acuity-secondary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-acuity-secondary">
+      Posted
+    </span>
+  );
+}
+
+function costLabel(post: CarouselPost): string {
+  const cents =
+    post.estCostCents ?? Math.max(1, post.slides.length) * 8;
+  return `~$${(cents / 100).toFixed(2)}`;
+}
+
+function FormatBadge({ format }: { format?: string }) {
+  const meta = FORMAT_META[format ?? "PHOTO"] ?? FORMAT_META.PHOTO;
+  return (
+    <span className={`rounded-acuity-pill px-2 py-0.5 text-[9px] font-mono font-bold uppercase ${meta.style}`}>
+      {meta.label}
     </span>
   );
 }
@@ -59,6 +107,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function CarouselReviewPage() {
   const [allPosts, setAllPosts] = useState<CarouselPost[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +119,14 @@ export default function CarouselReviewPage() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
+  const [metricsDraft, setMetricsDraft] = useState<MetricsDraft>({
+    views: "", likes: "", comments: "", saves: "", shares: "",
+  });
+  const [savingMetrics, setSavingMetrics] = useState(false);
+  const [metricsSaved, setMetricsSaved] = useState(false);
+  const [linksDraft, setLinksDraft] = useState({ instagramUrl: "", tiktokUrl: "" });
+  const [savingLinks, setSavingLinks] = useState(false);
+  const [linksMsg, setLinksMsg] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async (cursor?: string) => {
     if (cursor) {
@@ -80,7 +137,7 @@ export default function CarouselReviewPage() {
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (allFilter) params.set("status", allFilter);
+      if (allFilter) params.set("format", allFilter);
       if (cursor) params.set("cursor", cursor);
       params.set("limit", "30");
       const res = await fetch(`/api/admin/carousels?${params}`);
@@ -92,6 +149,7 @@ export default function CarouselReviewPage() {
         setAllPosts(data.posts ?? []);
       }
       if (data.totals) setTotals(data.totals);
+      if (data.summary) setSummary(data.summary);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
@@ -104,6 +162,27 @@ export default function CarouselReviewPage() {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  // Prefill the metrics form when a post is opened. Deliberately keyed on
+  // the post ID only — background refetches must not clobber in-progress
+  // typing.
+  useEffect(() => {
+    const p = allPosts.find((x) => x.id === selectedPostId);
+    setMetricsDraft({
+      views: p?.views != null ? String(p.views) : "",
+      likes: p?.likes != null ? String(p.likes) : "",
+      comments: p?.comments != null ? String(p.comments) : "",
+      saves: p?.saves != null ? String(p.saves) : "",
+      shares: p?.shares != null ? String(p.shares) : "",
+    });
+    setMetricsSaved(false);
+    setLinksDraft({
+      instagramUrl: p?.instagramUrl ?? "",
+      tiktokUrl: p?.tiktokUrl ?? "",
+    });
+    setLinksMsg(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPostId]);
 
   // ── Actions ───────────────────────────────────────────────────────
   const doAction = async (action: string, params: Record<string, string>) => {
@@ -140,22 +219,86 @@ export default function CarouselReviewPage() {
     }
   };
 
-  const generateOneOff = async () => {
+  const generateBucket = async (bucket: "photo" | "video" | "story" | "ambient") => {
     setGenerating(true);
     setGenerateMsg(null);
     try {
       const res = await fetch("/api/admin/carousels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate-one-off" }),
+        body: JSON.stringify({ action: "generate-daily", bucket }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setGenerateMsg("Queued — check email in ~3 min");
+      const eta =
+        bucket === "photo" ? "~3 min" : bucket === "ambient" ? "~8 min" : "~10-15 min";
+      setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ${eta}`);
       setTimeout(() => setGenerateMsg(null), 10000);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to queue generation");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const saveMetrics = async () => {
+    if (!selectedPostId) return;
+    setSavingMetrics(true);
+    try {
+      const res = await fetch("/api/admin/carousels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-metrics",
+          postId: selectedPostId,
+          metrics: Object.fromEntries(
+            METRIC_KEYS.map((k) => [k, metricsDraft[k].trim() === "" ? null : Number(metricsDraft[k])])
+          ),
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setMetricsSaved(true);
+      setTimeout(() => setMetricsSaved(false), 2500);
+      await fetchPosts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save metrics");
+    } finally {
+      setSavingMetrics(false);
+    }
+  };
+
+  const saveLinks = async () => {
+    if (!selectedPostId) return;
+    setSavingLinks(true);
+    setLinksMsg(null);
+    try {
+      const res = await fetch("/api/admin/carousels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-links",
+          postId: selectedPostId,
+          links: linksDraft,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // If an IG link exists, kick off an immediate metrics pull so
+      // Keenan doesn't wait for tomorrow's 3 UTC cron.
+      if (linksDraft.instagramUrl.trim()) {
+        await fetch("/api/admin/carousels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "refresh-metrics" }),
+        });
+        setLinksMsg("Saved — pulling metrics, refresh in ~1 min");
+      } else {
+        setLinksMsg("Saved");
+      }
+      setTimeout(() => setLinksMsg(null), 8000);
+      await fetchPosts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save links");
+    } finally {
+      setSavingLinks(false);
     }
   };
 
@@ -194,6 +337,7 @@ export default function CarouselReviewPage() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <FormatBadge format={selectedPost.format} />
             {selectedPost.emailedAt ? (
               <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
                 Emailed
@@ -203,7 +347,10 @@ export default function CarouselReviewPage() {
                 Not emailed
               </span>
             )}
-            <StatusBadge status={selectedPost.status} />
+            <PostedBadge post={selectedPost} />
+            <span className="rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-[9px] font-mono tabular-nums text-acuity-text-quiet">
+              {costLabel(selectedPost)}
+            </span>
           </div>
         </div>
 
@@ -220,11 +367,111 @@ export default function CarouselReviewPage() {
           onAnimate={() => doAction("animate-cover", { postId: selectedPost.id })}
         />
 
+        {/* ── Story video (if generated) ─────────────────────────────── */}
+        {selectedPost.storyVideoUrl && (
+          <div className="mx-4 mt-3">
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-[1.4px] font-mono text-acuity-text-ter">
+                {selectedPost.format === "AMBIENT" ? "Calm video" : "Story video"}
+              </span>
+              {selectedPost.storyVoiced === false && (
+                <span className="rounded-acuity-pill bg-acuity-warn-soft px-2 py-0.5 text-[9px] font-mono font-bold text-acuity-warn">
+                  ⚠️ SILENT — voiceover failed
+                </span>
+              )}
+              {selectedPost.storyVoiced === true && (
+                <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
+                  🔊 Voiceover
+                </span>
+              )}
+            </div>
+            <video
+              src={selectedPost.storyVideoUrl}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full max-w-[400px] rounded-acuity-lg"
+            />
+          </div>
+        )}
+
         {/* ── Caption preview ────────────────────────────────────────── */}
         <div className="mx-4 mt-2 max-h-28 overflow-y-auto rounded-acuity-lg bg-acuity-bg-inset p-3">
           <pre className="whitespace-pre-wrap text-xs text-acuity-text-sec font-sans leading-relaxed">
             {selectedPost.caption}
           </pre>
+        </div>
+
+        {/* ── Engagement metrics entry ───────────────────────────────── */}
+        <div className="mx-4 mt-2 rounded-acuity-lg bg-acuity-bg-inset p-3">
+          {/* Platform links — paste once, metrics auto-pull daily */}
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              type="url"
+              placeholder="Instagram post link"
+              value={linksDraft.instagramUrl}
+              onChange={(e) =>
+                setLinksDraft((l) => ({ ...l, instagramUrl: e.target.value }))
+              }
+              className="min-w-0 flex-1 rounded-acuity-sm bg-acuity-bg px-2 py-1.5 text-xs text-acuity-text placeholder:text-acuity-text-quiet focus:outline-none focus:ring-1 focus:ring-acuity-primary"
+            />
+            <input
+              type="url"
+              placeholder="TikTok link"
+              value={linksDraft.tiktokUrl}
+              onChange={(e) =>
+                setLinksDraft((l) => ({ ...l, tiktokUrl: e.target.value }))
+              }
+              className="min-w-0 flex-1 rounded-acuity-sm bg-acuity-bg px-2 py-1.5 text-xs text-acuity-text placeholder:text-acuity-text-quiet focus:outline-none focus:ring-1 focus:ring-acuity-primary"
+            />
+            <button
+              onClick={saveLinks}
+              disabled={savingLinks}
+              title="Save links — Instagram metrics then pull automatically every day"
+              className="min-h-[36px] shrink-0 rounded-acuity-pill border border-acuity-line px-3 text-xs text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
+            >
+              {savingLinks ? "…" : "Save links"}
+            </button>
+          </div>
+          {linksMsg && (
+            <p className="mb-2 text-[10px] font-mono text-acuity-good">{linksMsg}</p>
+          )}
+          <div className="grid grid-cols-5 gap-2">
+            {METRIC_KEYS.map((k) => (
+              <label key={k} className="flex flex-col gap-1">
+                <span className="text-[9px] font-mono uppercase tracking-wider text-acuity-text-quiet">
+                  {k}
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="—"
+                  value={metricsDraft[k]}
+                  onChange={(e) =>
+                    setMetricsDraft((m) => ({ ...m, [k]: e.target.value }))
+                  }
+                  className="w-full rounded-acuity-sm bg-acuity-bg px-1.5 py-1.5 text-xs tabular-nums text-acuity-text placeholder:text-acuity-text-quiet focus:outline-none focus:ring-1 focus:ring-acuity-primary"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-[10px] font-mono text-acuity-text-quiet">
+              {selectedPost.instagramUrl
+                ? `Auto-pulls daily from IG${selectedPost.metricsAt ? ` · updated ${new Date(selectedPost.metricsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`
+                : selectedPost.metricsAt
+                  ? `Saved ${new Date(selectedPost.metricsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                  : "Feeds tomorrow's topic prompt"}
+            </span>
+            <button
+              onClick={saveMetrics}
+              disabled={savingMetrics}
+              className="min-h-[36px] shrink-0 rounded-acuity-pill bg-acuity-primary px-4 text-xs font-medium text-white active:opacity-80 disabled:opacity-50"
+            >
+              {savingMetrics ? "Saving…" : metricsSaved ? "Saved ✓" : "Save metrics"}
+            </button>
+          </div>
         </div>
 
         {/* Spacer */}
@@ -236,40 +483,23 @@ export default function CarouselReviewPage() {
           style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}
         >
           <div className="flex items-center justify-between gap-2">
-            {/* Left: status actions */}
-            {selectedPost.status === "DRAFT" && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => doAction("reject", { postId: selectedPost.id })}
-                  disabled={!!busy}
-                  className="min-h-[44px] rounded-acuity-pill bg-acuity-bad px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => doAction("approve", { postId: selectedPost.id })}
-                  disabled={!!busy}
-                  className="min-h-[44px] rounded-acuity-pill bg-acuity-good px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-                >
-                  Approve
-                </button>
-              </div>
-            )}
-            {selectedPost.status === "APPROVED" && (
-              <button
-                onClick={() => doAction("mark-posted", { postId: selectedPost.id })}
-                disabled={busy === `mark-posted-${selectedPost.id}`}
-                className="min-h-[44px] rounded-acuity-pill bg-acuity-secondary-soft px-4 text-sm font-bold text-acuity-secondary active:opacity-70 disabled:opacity-50"
-              >
-                {busy === `mark-posted-${selectedPost.id}` ? "…" : "Mark posted"}
-              </button>
-            )}
-            {(selectedPost.status === "REJECTED" || selectedPost.status === "POSTED") && (
-              <div />
-            )}
+            {/* Left: posted state (a pasted link IS the posted signal) */}
+            <span className="min-w-0 truncate text-[10px] font-mono text-acuity-text-quiet">
+              {isPosted(selectedPost)
+                ? "Posted — link saved"
+                : "Paste a link above once posted"}
+            </span>
 
             {/* Right: utilities */}
             <div className="flex gap-2">
+              <button
+                onClick={() => doAction("generate-story", { postId: selectedPost.id })}
+                disabled={busy === `generate-story-${selectedPost.id}`}
+                title="Generate 30s story video (arrives by email in ~10 min)"
+                className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
+              >
+                {busy === `generate-story-${selectedPost.id}` ? "…" : "🎥 Story"}
+              </button>
               <button
                 onClick={() => doAction("resend-email", { postId: selectedPost.id })}
                 disabled={busy === `resend-email-${selectedPost.id}`}
@@ -310,10 +540,10 @@ export default function CarouselReviewPage() {
   const filterCounts = totals
     ? [
         { key: "", label: "All", count: totals.all },
-        { key: "DRAFT", label: "Drafts", count: totals.draft },
-        { key: "APPROVED", label: "Approved", count: totals.approved },
-        { key: "REJECTED", label: "Rejected", count: totals.rejected },
-        { key: "POSTED", label: "Posted", count: totals.posted },
+        { key: "PHOTO", label: "📷 Photo", count: totals.photo },
+        { key: "VIDEO", label: "🎬 Video", count: totals.video },
+        { key: "STORY", label: "🎥 Story", count: totals.story },
+        { key: "AMBIENT", label: "🌙 Calm", count: totals.ambient },
       ]
     : null;
 
@@ -341,11 +571,36 @@ export default function CarouselReviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={generateOneOff}
+            onClick={() => generateBucket("photo")}
             disabled={generating}
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-4 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+            title="Generate a picture carousel now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "Queuing…" : "Generate"}
+            {generating ? "…" : "📷"}
+          </button>
+          <button
+            onClick={() => generateBucket("video")}
+            disabled={generating}
+            title="Generate an animated carousel video now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🎬"}
+          </button>
+          <button
+            onClick={() => generateBucket("story")}
+            disabled={generating}
+            title="Generate a standalone story video now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🎥"}
+          </button>
+          <button
+            onClick={() => generateBucket("ambient")}
+            disabled={generating}
+            title="Generate a calm ambient video now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🌙"}
           </button>
           <button
             onClick={() => fetchPosts()}
@@ -364,15 +619,22 @@ export default function CarouselReviewPage() {
         </div>
       )}
 
-      {/* ── Aggregate stats ──────────────────────────────────────── */}
+      {/* ── Aggregate stats + spend ──────────────────────────────── */}
       {totals && (
         <div className="mx-4 mb-3 rounded-acuity-lg bg-acuity-card-bg border border-acuity-card-border px-4 py-3">
-          <div className="flex items-center gap-4 text-xs tabular-nums">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs tabular-nums">
             <span className="font-display font-bold text-acuity-text">{totals.all} total</span>
-            <span className="text-acuity-warn">{totals.draft} drafts</span>
-            <span className="text-acuity-good">{totals.approved} approved</span>
-            <span className="text-acuity-bad">{totals.rejected} rejected</span>
             <span className="text-acuity-secondary">{totals.posted} posted</span>
+            {summary && (
+              <>
+                <span className="text-acuity-text-sec">
+                  today ~${(summary.estimatedCostCents / 100).toFixed(2)}
+                </span>
+                <span className="text-acuity-text-sec">
+                  month ~${(summary.monthCostCents / 100).toFixed(2)}
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -381,10 +643,10 @@ export default function CarouselReviewPage() {
       <div className="mx-4 mb-3 flex gap-2 overflow-x-auto pb-1">
         {(filterCounts ?? [
           { key: "", label: "All", count: null },
-          { key: "DRAFT", label: "Drafts", count: null },
-          { key: "APPROVED", label: "Approved", count: null },
-          { key: "REJECTED", label: "Rejected", count: null },
-          { key: "POSTED", label: "Posted", count: null },
+          { key: "PHOTO", label: "📷 Photo", count: null },
+          { key: "VIDEO", label: "🎬 Video", count: null },
+          { key: "STORY", label: "🎥 Story", count: null },
+          { key: "AMBIENT", label: "🌙 Calm", count: null },
         ]).map((f) => (
           <button
             key={f.key}
@@ -423,11 +685,11 @@ export default function CarouselReviewPage() {
           <div className="text-center text-acuity-text-ter">
             <p className="text-lg font-display font-bold text-acuity-text-sec">No carousels found</p>
             <p className="mt-1 text-sm">
-              {allFilter ? `No ${allFilter.toLowerCase()} carousels.` : "Nothing generated yet."}
+              {allFilter ? `No ${allFilter.toLowerCase()} posts.` : "Nothing generated yet."}
             </p>
             {!allFilter && (
               <button
-                onClick={generateOneOff}
+                onClick={() => generateBucket("photo")}
                 disabled={generating}
                 className="mt-3 min-h-[44px] rounded-acuity-pill bg-acuity-primary px-6 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
               >
@@ -468,7 +730,7 @@ export default function CarouselReviewPage() {
                     {dayPosts.length} post{dayPosts.length !== 1 ? "s" : ""}
                   </span>
                   <span className="text-[10px] font-mono text-acuity-text-quiet">
-                    ~${(dayPosts.reduce((a, p) => a + Math.max(0, p.slides.length - 1) * 8, 0) / 100).toFixed(2)}
+                    ~${(dayPosts.reduce((a, p) => a + (p.estCostCents ?? Math.max(1, p.slides.length) * 8), 0) / 100).toFixed(2)}
                   </span>
                 </div>
 
@@ -506,22 +768,23 @@ export default function CarouselReviewPage() {
                             {post.topicSlug}
                           </span>
                           <span className="text-[10px] font-mono text-acuity-text-quiet">
-                            {post.slides.length} slides
+                            {post.slides.length} slide{post.slides.length !== 1 ? "s" : ""}
                           </span>
                           <span className="text-[10px] font-mono text-acuity-text-quiet">
-                            ~${((Math.max(0, post.slides.length - 1) * 8) / 100).toFixed(2)}
+                            {costLabel(post)}
                           </span>
                         </div>
                       </div>
 
                       {/* Badges */}
                       <div className="flex shrink-0 items-center gap-1.5">
+                        <FormatBadge format={post.format} />
                         {post.emailedAt && (
                           <span className="rounded-acuity-pill bg-acuity-good-soft px-2 py-0.5 text-[9px] font-mono text-acuity-good">
                             Emailed
                           </span>
                         )}
-                        <StatusBadge status={post.status} />
+                        <PostedBadge post={post} />
                       </div>
                     </button>
                   ))}

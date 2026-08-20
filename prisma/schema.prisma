@@ -1383,65 +1383,38 @@ model CarouselPost {
   topicSlug    String
   headline     String
   status       CarouselPostStatus  @default(DRAFT)
+  // Which of the 3 daily buckets this post is (2026-08-16): PHOTO = static
+  // picture carousel, VIDEO = animated carousel video, STORY = standalone
+  // 30s story video with voiceover.
+  format       CarouselFormat      @default(PHOTO)
   caption      String              @db.Text
   hashtags     String[]
   musicNote    String?
   generatedFor DateTime            // The date this carousel was generated for (idempotency key with topicSlug)
   emailedAt    DateTime?           // When the carousel email was sent (null = not yet emailed)
   emailId      String?             // Resend message ID for tracking
+  lane         String?             // Topic lane (e.g. "mental-load") — persisted for the feedback loop
+  mood         String?             // Visual mood of the post (e.g. "cozy-evening")
+  withheldReason  String?  @db.Text // Engineered comment gap: the obvious reason deliberately left off the slides
+  storyVideoUrl   String?           // 30s narrated story video MP4 (Supabase Storage URL)
+  storyVoiced     Boolean?          // Whether the voiceover actually muxed (false = video shipped SILENT)
+  storyTheme      String?           // Short label of the standalone story concept (dedup for future scripts)
+  // Where Keenan posted this carousel (pasted once in the admin). The
+  // daily metrics-refresh cron pulls engagement from the platform APIs
+  // for any POSTED carousel with a link.
+  instagramUrl String?
+  tiktokUrl    String?
+  // Engagement metrics — auto-pulled by the cron when links exist,
+  // manually entered via the admin form otherwise. Feed the topic loop.
+  views        Int?
+  likes        Int?
+  comments     Int?
+  saves        Int?
+  shares       Int?
+  metricsAt    DateTime?           // When metrics were last entered/refreshed
   slides       CarouselSlide[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
-
-  // ── Reconciled from production 2026-08-16 ────────────────────────────
-  //
-  // These 13 columns were added DIRECTLY to the production database via
-  // SQL (Supabase editor / migration), not through Prisma — no commit in
-  // this repo's history has ever contained them in schema.prisma. The
-  // result was that prod was AHEAD of the schema, so `prisma db push`
-  // from any branch would "reconcile" by DROPPING them, destroying live
-  // data (a read-only count on 2026-08-16 found 5 populated
-  // storyVideoUrl values across 94 rows).
-  //
-  // Declaring them here makes schema.prisma match prod, which is what
-  // makes `db push` non-destructive again. Types mirror prod exactly:
-  // every column is nullable with no default, ints are int4, and
-  // metricsAt is timestamp(3) — matching Prisma's own DateTime mapping,
-  // verified against the precision of the existing Prisma-managed
-  // timestamps on this table.
-  //
-  // Same lesson as the AdminInsight note in PROGRESS.md: a table or
-  // column created outside Prisma must still be back-declared here, or
-  // the next db push treats it as drift to be removed.
-
-  // Engagement metrics, backfilled by the content-factory metrics job.
-  likes          Int?
-  views          Int?
-  comments       Int?
-  shares         Int?
-  saves          Int?
-  metricsAt      DateTime?         // When metrics were last pulled (null = never)
-
-  // Published post URLs, set once the carousel goes live on each network.
-  instagramUrl   String?
-  tiktokUrl      String?
-
-  // Story variant (vertical cut) — theme + rendered video.
-  storyTheme     String?
-  storyVideoUrl  String?
-
-  // Editorial routing / review state.
-  lane           String?
-  mood           String?
-  withheldReason String?           // Set when a post was held back from publishing
-
-  // ── Second reconciliation, 2026-08-19 ───────────────────────────────
-  // Added to prod out-of-band AFTER the 2026-08-16 reconciliation, by the
-  // same carousel work. Caught because `migrate diff` wanted to drop them.
-  // `format` is populated on all 120 rows, so dropping it was live data
-  // loss for a second time. See docs/REVENUECAT_MIGRATION.md.
-  format         CarouselFormat @default(PHOTO)
-  storyVoiced    Boolean?
 
   @@unique([topicSlug, generatedFor])
   @@index([status, generatedFor(sort: Desc)])
@@ -1474,19 +1447,14 @@ enum SlideKind {
   COVER
   REASON
   CTA
-  // Reconciled from prod 2026-08-19 (added out-of-band by the carousel work).
-  SCENE
+  SCENE // story-video scene image (STORY posts)
 }
 
-/// Reconciled from prod 2026-08-19. Added directly to the database by the
-/// carousel/content-factory work rather than through Prisma, so it was
-/// missing here — which made `prisma db push` from this branch want to
-/// DROP TYPE it along with CarouselPost.format (120/120 rows populated).
 enum CarouselFormat {
-  PHOTO
-  VIDEO
-  STORY
-  AMBIENT
+  PHOTO   // static picture carousel
+  VIDEO   // fully animated carousel video
+  STORY   // standalone 30s story video + voiceover
+  AMBIENT // calm single-scene looped video + soothing lesson voiceover (2026-08-18)
 }
 
 // ─── Auto-Blog System ───────────────────────────────────────────────────────

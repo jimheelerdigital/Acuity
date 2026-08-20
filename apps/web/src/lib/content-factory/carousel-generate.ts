@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, STYLE_LANES } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import { buildCaption } from "./caption";
@@ -81,7 +81,7 @@ export async function generateCarousel(
     return { postId: existing.id, slideCount: 0, estimatedCostCents: 0 };
   }
 
-  const lanePrefix = STYLE_LANES[topic.lane];
+  const lanePrefix = STYLE_LANES[resolveStyleLane(topic.lane)];
   let totalCostCents = 0;
 
   // ── Generate images for each reason slide ─────────────────────────
@@ -138,20 +138,8 @@ export async function generateCarousel(
     });
   }
 
-  // CTA slide (last)
-  const ctaText = "Talk it out. See it clearly.";
-  const ctaComposed = await composeCTASlide(ctaText);
-  const ctaUrl = await uploadImage(
-    ctaComposed,
-    `carousels/${dateStr}/${topicSlug}/slide-${slides.length}-cta.jpg`
-  );
-  slides.push({
-    order: slides.length,
-    kind: "CTA",
-    overlayText: ctaText,
-    imagePrompt: "CTA slide — solid brand background, no image generation needed",
-    imageUrl: ctaUrl,
-  });
+  // NOTE (2026-08-12, per Keenan): no branded CTA end slide — ending on
+  // an ad suppressed shares. The post ends on the mic-drop last reason.
 
   // ── Build caption ─────────────────────────────────────────────────
   const caption = buildCaption(topic);
@@ -165,6 +153,8 @@ export async function generateCarousel(
       caption,
       hashtags: extractHashtags(caption),
       generatedFor,
+      lane: topic.lane, // persisted so story re-runs match the carousel style
+
       slides: {
         create: slides.map((s) => ({
           order: s.order,
@@ -197,23 +187,112 @@ export function buildImagePrompt(
   sceneText: string,
   topic: CarouselTopic,
   colorPrompt?: string,
-  slideLabel?: string
+  slideLabel?: string,
+  opts?: {
+    noText?: boolean;
+    sceneHint?: string;
+    mood?: string;
+    /**
+     * COVER, baked-text runs only (2026-08-13, per Keenan): a short
+     * engagement question rendered smaller below the headline.
+     * Animated runs put the same line in the composited overlay instead.
+     */
+    coverSubline?: string;
+    /**
+     * COVER, baked-text runs only (2026-08-16, per Keenan): the exact
+     * short answers from the reason slides. gpt-image-2 loves inventing
+     * its own sticky-note preview list on covers, which then doesn't
+     * match the actual slides — if a list appears it must be THESE.
+     */
+    coverListItems?: string[];
+    /**
+     * REASON, baked-text runs only (2026-08-16, per Keenan): the
+     * supporting "how/why" sentence rendered smaller below the main text.
+     */
+    detailText?: string;
+  }
 ): string {
   const isCover = !slideLabel;
   const displayText = slideLabel ?? sceneText;
+  // One art style per post (2026-08-16, per Keenan): the lane used to be a
+  // soft one-liner that fought with VISUAL_DNA's own style language, so
+  // slides within a post drifted between realistic/toon/clay renders.
+  // Locking it as a hard rule keeps every slide in the same treatment.
+  const styleLock = `STYLE LOCK (hard rule — every image in this post's series uses this ONE art style): ${lanePrefix} Every slide must look like it was made by the same artist in the same medium — do NOT drift toward photorealism, 3D, clay, flat vector, or any other rendering style unless it IS the stated style.`;
   const sizeRule = isCover
     ? "Text should be prominent but not exceed 50% of the slide. Blend it creatively with the illustration — vary placement each time."
     : "Text should be prominent but not exceed 40% of the slide. Blend it creatively with the illustration — vary placement each time.";
+  // TikTok photo-mode chrome overlaps the image itself (2026-08-16, per
+  // Keenan: live post had the headline running under the search bar and
+  // clipped at the top edge). Baked-in text must stay inside the same
+  // safe zone the animated bucket's overlays already use.
+  const safeZoneRule =
+    "CRITICAL TEXT SAFE ZONE — TikTok's interface covers parts of the image, so EVERY letter of text must sit inside the central safe area: nothing in the top 15% of the image (the search bar covers it), nothing in the bottom 15% (caption and music info cover it), and nothing in the right-most 15% (like/comment/share buttons sit there). Keep text at least 6% in from the left edge. If the text does not fit inside this zone, make the type smaller — text must NEVER touch or cross these boundaries, and must never be cropped by the image edge.";
+  // Mood-matched expression so the character's face fits the slide's
+  // emotional weight instead of gpt-image-2's default cheerful woman.
+  const mood = opts?.mood;
+  const moodLine = isMood(mood) ? MOOD_EXPRESSIONS[mood] : "";
+
+  // Text-free variant (animated posts): the words are composited on
+  // afterwards (sharp for the JPEG, ffmpeg for the video) so the video
+  // model never gets text pixels to animate. The standard VISUAL_DNA
+  // demands blended typography and "carousel slide" framing — both make
+  // gpt-image-2 render full infographics even when told not to (proven
+  // live 2026-08-11) — so the noText prompt swaps in VISUAL_DNA_NOTEXT
+  // and never uses the words "slide" or "carousel".
+  if (opts?.noText) {
+    return [
+      styleLock,
+      colorPrompt ?? "",
+      `An illustrated scene that visually represents: ${sceneText}`,
+      opts.sceneHint ?? "",
+      moodLine,
+      `Mood context: ${topic.headline} — self-reflection and mental load, for women.`,
+      VISUAL_DNA_NOTEXT,
+    ].filter(Boolean).join("\n");
+  }
 
   return [
-    lanePrefix,
+    styleLock,
     colorPrompt ?? "",
     `The slide must display this EXACT text prominently: "${displayText}"`,
+    isCover && opts?.coverListItems && opts.coverListItems.length > 0
+      ? buildCoverTeaser(opts.coverListItems)
+      : "",
+    isCover && opts?.coverSubline
+      ? `Near the BOTTOM of the safe area (lower quarter of the frame, but kept fully above the bottom 15% so platform UI never covers it), in clearly smaller text than the headline, display this EXACT question: "${opts.coverSubline}"`
+      : "",
+    // Supporting detail line (2026-08-16): smaller "how/why" sentence
+    // under the main text, styled to match but clearly secondary.
+    opts?.detailText
+      ? `Directly below the main text, display this EXACT supporting sentence in smaller, lighter type (same font family, clearly secondary): "${opts.detailText}"`
+      : "",
     sizeRule,
+    safeZoneRule,
+    moodLine,
     `Topic context: "${topic.headline}" — a carousel about self-reflection and mental load for women.`,
     `Include relevant illustrated elements that visually represent: ${sceneText}`,
     VISUAL_DNA,
   ].filter(Boolean).join("\n");
+}
+
+/**
+ * Cover teaser list (2026-08-16, per Keenan): the cover previews AT MOST
+ * 40% of the answers — 1 of 5, 2 of 6-7, 3 of 8-10 — so she has to swipe
+ * for the rest. The teased items are the EXACT slide answers (never
+ * invented), and the cover must not hint at any of the hidden ones.
+ */
+function buildCoverTeaser(items: string[]): string {
+  const n = items.length;
+  const teaserCount = n <= 5 ? 1 : n <= 7 ? 2 : 3;
+  const teased = items.slice(0, teaserCount);
+  return [
+    `The cover shows a small PARTIAL preview of the list (e.g. on sticky notes, a short written list, or small labels woven into the scene) — a teaser, NOT the full list.`,
+    `Show ONLY ${teaserCount === 1 ? "this 1 item" : `these ${teaserCount} items`} of the ${n}, spelled exactly as written — do NOT invent, reword, add, or omit any:`,
+    ...teased.map((item, i) => `${i + 1}. "${item}"`),
+    `The remaining ${n - teaserCount} answers stay completely hidden — do not show, hint at, or leave blank spots for them. It's fine to imply there's more inside (e.g. a trailing "..." or a partially visible next note), but NO readable text beyond the ${teaserCount} item${teaserCount === 1 ? "" : "s"} above.`,
+    `Each teased item in smaller text than the headline, all fully inside the safe zone.`,
+  ].join("\n");
 }
 
 export async function generateImage(prompt: string): Promise<Buffer> {
@@ -226,6 +305,33 @@ export async function generateImage(prompt: string): Promise<Buffer> {
 
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("gpt-image-2 returned no image data");
+  return Buffer.from(b64, "base64");
+}
+
+/**
+ * Generate an image with a REFERENCE image via gpt-image-2's edit
+ * endpoint (2026-08-16, per Keenan: the story video's woman looked like
+ * a different person in every scene — each scene was generated from
+ * text alone. Passing scene 1's raw render as the reference keeps the
+ * same face/hair/outfit across all scenes; same pattern AdLab already
+ * uses for creative direction).
+ */
+export async function generateImageWithReference(
+  prompt: string,
+  reference: Buffer
+): Promise<Buffer> {
+  const file = await OpenAI.toFile(reference, "reference.jpg", { type: "image/jpeg" });
+  const response = await openai().images.edit({
+    model: "gpt-image-2",
+    image: file,
+    prompt,
+    n: 1,
+    // The edit endpoint's tallest portrait size (1024x1792 is
+    // generate-only); composeSlide cover-crops to 1080x1920 downstream.
+    size: "1024x1536",
+  });
+  const b64 = response.data?.[0]?.b64_json;
+  if (!b64) throw new Error("gpt-image-2 edit returned no image data");
   return Buffer.from(b64, "base64");
 }
 
@@ -274,7 +380,7 @@ export async function regenerateSlide(slideId: string): Promise<string> {
   }
 
   const topic = CAROUSEL_TOPICS.find((t) => t.slug === slide.carouselPost.topicSlug);
-  const lanePrefix = topic ? STYLE_LANES[topic.lane] : STYLE_LANES.cinematicReal;
+  const lanePrefix = STYLE_LANES[resolveStyleLane(topic?.lane)];
 
   const rawBuffer = await generateImage(slide.imagePrompt || buildImagePrompt(
     lanePrefix,
@@ -332,7 +438,7 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // We can't strip text from an already-composed image, so we regenerate the
     // underlying image. This costs ~$0.08 but gives a clean result.
     const topic = CAROUSEL_TOPICS.find((t) => t.slug === slide.carouselPost.topicSlug);
-    const lanePrefix = topic ? STYLE_LANES[topic.lane] : STYLE_LANES.cinematicReal;
+    const lanePrefix = STYLE_LANES[resolveStyleLane(topic?.lane)];
     const prompt = slide.imagePrompt || buildImagePrompt(
       lanePrefix,
       newText,

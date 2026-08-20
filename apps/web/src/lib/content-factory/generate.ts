@@ -298,7 +298,7 @@ Content type for this post: ${chosenType}
 
 Requirements:
 - Caption: up to 2200 characters, conversational and specific. Open with a hook line that stops the scroll.
-- Hashtags: 15-20 relevant hashtags, mix of broad (#selfcare, #mindfulness) and niche (#voicejournal, #nightroutine, #shutdownritual)
+- Hashtags: exactly 5 relevant hashtags, mix of broad (#selfcare, #mindfulness) and niche (#voicejournal, #nightroutine, #shutdownritual)
 - Image prompt: a detailed description for an AI image generator (gpt-image-2). Style: clean, minimal, warm-toned, dark backgrounds with warm amber/gold accents, no text on the image, abstract or lifestyle imagery. 1080x1080 square format.
 
 Respond in JSON format:

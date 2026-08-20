@@ -1,7 +1,25 @@
 import { NextResponse } from "next/server";
 import { generateLandingPage } from "@/lib/adlab/landing-page";
+import { requireAdmin } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * ⚠️ SECURITY (2026-08-20): this route shipped with NO authentication on
+ * GET, POST or PATCH. Every sibling admin route uses `requireAdmin`; this
+ * one was missed.
+ *
+ * The middleware does NOT cover it — its matcher is `/admin/adlab/:path*`,
+ * which guards the PAGE, not `/api/admin/*`. Verified against production:
+ * an unauthenticated GET returned 200, while the guarded
+ * /api/admin/entitlement-drift returned 401.
+ *
+ * Impact: anyone could read landing-page rows, PATCH them, and POST to
+ * trigger `generateLandingPage()` — an LLM call, so unauthenticated spend.
+ *
+ * Every handler below must start with the guard. Do not add a handler here
+ * without it.
+ */
 
 /**
  * POST /api/admin/adlab/landing-page
@@ -17,6 +35,9 @@ export const dynamic = "force-dynamic";
  */
 
 export async function GET(request: Request) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const { prisma } = await import("@/lib/prisma");
   const url = new URL(request.url);
   const experimentId = url.searchParams.get("experimentId");
@@ -33,6 +54,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const body = await request.json();
   const { experimentId } = body;
 
@@ -53,6 +77,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
   const { prisma } = await import("@/lib/prisma");
   const body = await request.json();
   const { experimentId, ...fields } = body;

@@ -102,6 +102,1274 @@ Also groundwork (not switched on) for the planned $8.99/$79.99 pricing, includin
 - Mobile flags must use static `process.env.EXPO_PUBLIC_*` reads — Metro only inlines those for static member access, so a dynamic lookup would silently pin every flag off in a release bundle.
 - Cutover order is load-bearing: `RC_SDK_PURCHASES` before `RC_SOURCE_OF_TRUTH` would charge users and grant nothing. `configureRevenueCat` warns, but the ordering is on us.
 - Full runbook + the 5 open decisions: `docs/REVENUECAT_MIGRATION.md`.
+## [2026-08-19] — Every post now renders in the cartoonish-realistic (toon3d) art style
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The cartoonish-realistic look (the soft Pixar-style 3D illustration) is outperforming the other four art styles, so every post — daily carousels, story videos, one-off carousels, and slide regenerations — now uses that style instead of rotating randomly between five looks. It's controlled by a single switch, so when you want variety back (or want to test a different style), it's a one-line change. Calm videos are unaffected — they were never illustrated (real scenery footage).
+
+### Technical changes (for Jimmy)
+- `brand.ts`: new `FORCED_STYLE_LANE = "toon3d"` constant + `resolveStyleLane()` helper (set constant to null to restore rotation)
+- `generate-topic.ts`: daily topic lane pick honors the override before random rotation
+- `carousel-story-video.ts`: story lane pick + eventLane fallback go through the override
+- `carousel-daily.ts`, `carousel-one-off.ts`: lanePrefix lookups use `resolveStyleLane(topicData.lane)`
+- `carousel-generate.ts` (generateCarousel, regenerateSlide, recomposeSlide) and `story-video.ts` scene prompts: same
+- Stored `lane` values on old posts are untouched — the override applies at render time
+
+### Manual steps needed
+None
+
+### Notes
+- "Cartoonish realistic" interpreted as the toon3d lane ("Soft 3D illustrated graphic, rounded shapes, warm lighting, Pixar-inspired") — if Keenan meant a different lane, flip FORCED_STYLE_LANE in brand.ts
+- The 4 pre-existing tsc errors in carousel-daily/one-off (topic object missing `style` field) predate this change — verified via git stash
+
+## [2026-08-19] — Fixed the phantom "blind/curtain" movement in animated carousel backgrounds
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Animated carousel slides kept growing weird moving blinds/curtains behind the woman. The cause: the animation instructions listed examples of background things that were allowed to keep moving — "steam, rain, curtains, dust, screens, reflections" — and this video model treats any object you name as a request to create it. So it invented curtains in scenes that never had any. The instruction now says only movement already in the image may continue and nothing new may appear, without naming a single object. Applies to animated covers, reason slides, and story scenes from the next run onward.
+
+### Technical changes (for Jimmy)
+- `animate-cover.ts`: AMBIENT_LINE rewritten (v15) — removed the object-noun list, replaced with positive-only "only movement already part of the scene continues... nothing new appears, nothing enters or leaves the frame". Used by sceneLockLines(textFree=true), i.e. all text-free i2v prompts (cover, slide, story scene)
+
+### Manual steps needed
+None
+
+### Notes
+- Same failure class as v9 ("walking"/"talking") and v12 ("window" made her walk to a window): the i2v model executes any noun/verb present in the prompt. Never list example objects in animation prompts, even permissively ("any X in the scene") — the model reads it as a build order
+
+## [2026-08-19] — 5 hashtags on every post; calm videos now 20-30s with more substance
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Two changes. (1) Every post caption — carousel, story, and calm — now carries exactly 5 hashtags instead of 6 (and the old Instagram generator was told 5 instead of 15-20). (2) Calm videos are now written to land at 20-30 seconds instead of ~40: the script budget dropped from 70-90 words to 50-65, and to keep them from getting thinner, the writer now has hard substance rules — the middle must contain at least 2-3 distinct concrete moments from her real life, every line has to add something new, and there's a test baked in: if she couldn't name something specific she recognized by the end, the script gets rewritten.
+
+### Technical changes (for Jimmy)
+- `caption.ts`: new HASHTAG_COUNT = 5 constant used by both `pickHashtags` (carousel/story) and `buildAmbientCaption` (calm)
+- `generate.ts` generateInstagramPost prompt: "15-20 hashtags" → "exactly 5"
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: 50-65 word budget (~20-30s), CONTEXT requires ≥2-3 distinct concrete moments + every-line-adds-new-info rule, new SUBSTANCE TEST block; JSON spec updated to match
+- `carousel-ambient-video.ts`: silent-fallback loop target 40s → 25s (voiced videos track the TTS length, so the word budget is what shortens them)
+
+### Manual steps needed
+None
+
+### Notes
+- Video duration is driven entirely by the voiceover length (the loop step matches the clip to the audio), so the script word budget is the only real duration lever; speed stays 0.85 for the calm read
+- The 30-word minimum sanity check in generateAmbientScript still holds under the new budget
+- Follow-up (commit 2afa9803): the first 50-65-word test read at 30.0s of audio and the clean-loop boundary rounding pushed the MP4 to 34s — budget briefly tightened to 45-58 words
+- Final call (this commit, per Keenan): 15-45s finished videos are all acceptable and length VARIANCE is encouraged while finding the format — budget widened to 40-80 words and the prompt now tells the writer to let the idea pick the length (sharp recognition = short, small story = long)
+
+## [2026-08-19] — Captions in every content email; calm captions lead with a question and sound human
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Two changes. (1) Every content email now includes the post caption ready to copy — the follow-up "Carousel video" email was the one missing it, so you had to go back to the first email to grab the caption. Now it's in all of them. (2) Calm video captions got restructured to read like a person wrote them: the first line is now the question (the only line people see in the feed before "...more"), then one or two plain follow-up lines, then a simple share ask like "Send this to someone who's carrying a lot right now" — no emojis, no "tell me in the comments 👇" bait, then the six reach hashtags. The scriptwriter was also told its caption lines must sound like a text message, not marketing copy.
+
+### Technical changes (for Jimmy)
+- `email.ts`: follow-up carousel-video email (HTML + plain text) now includes the "Caption (select all to copy)" block; main carousel email and story/calm email already had it
+- `caption.ts` `buildAmbientCaption`: commentPrompt (stripped of 👇) is now line 1, captionHook follows, "Tell me in the comments 👇" boilerplate removed; new emoji-free AMBIENT_SHARE_LINES pool replaces SAVE_SHARE_CTAS (🤍 lines) for ambient only — carousel/story captions unchanged
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: captionHook/commentPrompt guidance rewritten — question must stand alone as the caption's first line, no emoji, no "comment below" phrasing, text-message tone
+
+### Manual steps needed
+None
+
+### Notes
+- Verified locally: question-first caption renders with zero emojis and 6 reach hashtags; falls back to hook/title when the model omits commentPrompt
+- Pre-existing tsc errors in adlab/compose/email.ts:244 are untouched (they predate this change)
+
+## [2026-08-19] — Calm video captions: no more Acuity plug — pure audience-building
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Calm videos are for building a following, not selling the app — so their captions no longer end with the "Ripple — start your free week — link in bio" line, and the branded hashtags (#rippleapp, #voicejournal, #dailydebrief) are gone. What's left is engineered for reach: the hook, a comment question, a save/share ask, and six relatable hashtags like #mentalload and #womenintheirmidlife. The scriptwriter also now has the goal spelled out: success is her sending the video to a friend or tagging her sister — so it picks the most universally relatable version of every idea.
+
+### Technical changes (for Jimmy)
+- `caption.ts`: new `buildAmbientCaption` (hook + comment CTA + save/share CTA + 6 REACH_HASHTAGS, no CLOSING_LINE, no brand tags); new REACH_HASHTAGS pool. Carousel and story captions unchanged
+- `carousel-ambient-video.ts` create-post: uses `buildAmbientCaption` instead of `buildStoryCaption`
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: explicit THE GOAL block — virality/relatability, not app promotion
+
+### Manual steps needed
+None
+
+### Notes
+- The script itself never mentioned the brand (that rule predates this) — the plug lived only in the caption template shared with story posts
+- The round-3 test video generated 2026-08-19 morning still carries the old caption in its email; everything from the next run onward is plug-free
+
+## [2026-08-19] — Calm video round 3: hook-first scripts, Hope only, max-expressive delivery
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three changes from your feedback on the "version of next year" video. (1) Every calm script now follows a strict arc: it opens with a hook — a direct question or a bold statement — then explains it with concrete, relatable moments from her real life, then lands on a release. There's a coherence test baked in: if a stranger couldn't repeat the point back in one sentence, the script gets rewritten. No more vague poetry. (2) Vanessa is out — every calm video is voiced by Hope (the smoother of the two voices you picked). (3) The delivery got two upgrades: the voice model now runs at its most emotional, expressive setting, and the scriptwriter itself now marks WHERE the voice should soften, sigh, or drop to a whisper — so the inflection follows the meaning of the words instead of being random.
+
+### Technical changes (for Jimmy)
+- `ambient-video.ts` AMBIENT_SYSTEM_PROMPT: new mandatory STRUCTURE arc (HOOK → CONTEXT → RELEASE) + coherence test; replaces the "open mid-thought" rule that produced decode-the-metaphor scripts
+- `ambient-video.ts`: `AmbientScript.vocalScript` — same words with v3 audio tags ([softly]/[whispers]/[sighs]/[exhales]) placed by Claude; validated against the clean script (±5 words after tag-strip, else discarded); `ambientTtsText()` now takes the script object and prefers vocalScript
+- `ambient-video.ts` AMBIENT_VOICES: Hope only (WAhoMTNdLdMoq1j3wf3I); Vanessa dropped per Keenan ("meh"). Confirmed via the email's engine string that the 08-19 video was Vanessa
+- `ambient-video.ts` voiceSettings: stability 0.5 → 0.0 (v3 "Creative" — most expressive; v3 stability is effectively discrete 0.0/0.5/1.0). Verified live on Hope with inline tags, HTTP 200
+- `carousel-ambient-video.ts`: passes the script object to `ambientTtsText`
+
+### Manual steps needed
+- [ ] Rotate the ElevenLabs API key pasted into chat on 2026-08-18 (Keenan — still outstanding)
+
+### Notes
+- ElevenLabs' history API returns voice_id: null for v3 requests — the reliable way to know which voice a video used is the "voiced by elevenlabs:<id>" line in the email HTML
+- stability 0.0 (Creative) can occasionally over-act; if a read comes back theatrical, the fallback position is 0.5 with the vocalScript tags carrying the inflection
+
+## [2026-08-19] — Fix: calm video died when a detailed scene made the file bigger than Supabase allows
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The calm video you asked for this morning silently died halfway: the scene it invented was so visually detailed (lots of texture/motion) that the rendered video came out at 52MB, and our storage provider rejects anything over 50MB — so the upload failed and no email went out. The video encoder now caps the file size (~25MB worst case), which also guarantees the video is always small enough to attach directly to your email. Quality is unaffected in practice — Instagram and TikTok compress to about that level anyway.
+
+### Technical changes (for Jimmy)
+- `story-video.ts` `stitchClipsWithCrossfade`: new `maxrate` opt → `-maxrate 5M -bufsize 10M` alongside crf 18; story pipeline unaffected (doesn't pass it)
+- `ambient-video.ts` `loopClipToDuration`: passes `maxrate: "5M"` — this stitch is the FINAL encode for voiced calm videos (mux is `-c:v copy`)
+- Root cause confirmed by direct probe: uploading the 52.6MB file returned Supabase `413 EntityTooLarge` (global 50MB upload cap; the bucket itself has `file_size_limit: null`)
+- Reproduced the whole loop step locally with the failed run's real artifacts via tsx — capped output: 21.8MB / 34.0s
+
+### Manual steps needed
+- [ ] Optional: raise the global upload limit in Supabase dashboard (Storage settings) as belt-and-suspenders (Jimmy)
+
+### Notes
+- The failed run (post cmt04rxss0001r6y5xbzcjke9, "You'd never speak to her...") left scene/clip/voiceover in storage but no video and no email — loop-clip 413'd on upload twice and Inngest gave up. Nothing in Vercel live logs because the step fails at the very end (after a silent 3-min encode)
+- macOS has no `timeout` command — earlier log captures this session silently failed because stderr was redirected; that cost ~20 min of watching a dead run
+- 5 Mbps × worst-case 40s ≈ 25MB: under the 50MB upload cap AND the 28MB Resend attachment cap (yesterday's video attached at 27.9MB — one hair under)
+
+## [2026-08-19] — Calm + story videos: human scripts, expressive v3 voice, clean loop, 🌙 email subject
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Four fixes from your feedback. (1) The scripts for both the story videos and the calm videos are now written the way a real person talks — contractions, sentence fragments, and built-in pauses (ellipses) that the voice actually honors — instead of reading like polished ad copy. (2) The calm-video narrator moved to ElevenLabs' expressive v3 model with a "softly" performance direction, so the read has real tone and inflection instead of a flat synthetic cadence. (3) The calm video no longer fades to black or gets cut mid-motion — it ends exactly where the scene loops back to its start, so it replays cleanly on Instagram/TikTok. (4) The reason you "never received" the calm videos: they were in your inbox wearing the exact same "🎥 Story video" subject line as the daily story emails. Calm videos now arrive as "[Ripple Content] 🌙 Calm video — …" with their own heading, so you can't miss them.
+
+### Technical changes (for Jimmy)
+- `ambient-video.ts`: AMBIENT_SYSTEM_PROMPT gains conversational rules (contractions, fragments, 3-4 ellipsis pauses, read-out-loud test); `ambientVoiceoverOptions` moves to `modelId: "eleven_v3"` (stability 0.5, style 0.5, speed 0.85 — verified live 2026-08-19); new `ambientTtsText()` prepends the `[softly]` v3 audio tag to the TTS text only (stored script stays clean); `loopClipToDuration` no longer trims — passes `noEdgeFades: true` and ends at a copy boundary (source clips are prompted last-frame-matches-first, so the boundary IS the loop point; overshoot past the audio ≤ one clip length of quiet tail)
+- `story-video.ts`: SCRIPT_SYSTEM_PROMPT gains the same conversational/pauses rules; `VoiceoverOptions.modelId` + `elevenLabsVoiceover` retries once on `eleven_multilingual_v2` if a model override fails; audio tags like `[softly]` are stripped for non-v3 models (v2 would speak them); `stitchClipsWithCrossfade` `trimToSec` replaced with `noEdgeFades` (fade-in/out skipped, `null[v]` passthrough); story defaults now stability 0.35 / style 0.55 / speed 0.9
+- `carousel-ambient-video.ts`: TTS uses `ambientTtsText(script.script)`; `loop-clip` step returns `{url, durationSec}` (probed — video is no longer exactly targetSec); silent-fallback captions and the email use the real looped duration; email opts gain `calm: true`
+- `email.ts` `sendStoryVideoEmail`: new `calm` opt — 🌙 subject/heading/button, `calm-YYYY-MM-DD.mp4` filename, "Looping calm video" copy
+
+### Manual steps needed
+- [ ] Rotate the ElevenLabs API key pasted into chat on 2026-08-18 (Keenan)
+
+### Notes
+- eleven_v3 verified working on this account via live calls (HTTP 200) with the exact shipped voice_settings; the code still falls back to `eleven_multilingual_v2` (tags stripped) and then OpenAI TTS if v3 ever fails
+- muxNarration without captions is `-c:v copy` — the voiced calm path never re-encodes the looped video, so the loop boundary survives muxing untouched
+- The mid-loop crossfades remain (soft dissolve every ~4.4s); only the END of the video changed — it now lands on a frame that matches frame 1
+
+## [2026-08-18] — Calm video voice retune: slower, more inflection, no burned captions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+After watching the first finished calm video: the narrator now talks noticeably slower and with more natural rise and fall in her voice instead of a flat meditative monotone. Captions are no longer burned into voiced calm videos — the estimated timings didn't line up with the voiceover, so you add captions yourself when posting (the email says so). If the voiceover ever fails, the silent backup video still gets the script burned in as a teleprompter.
+
+### Technical changes (for Jimmy)
+- `ambient-video.ts` `ambientVoiceoverOptions`: stability 0.65→0.4, style 0.2→0.5, new `speed: 0.85` (verified live against the ElevenLabs API — HTTP 200 with these exact settings on the Vanessa voice)
+- `story-video.ts` `VoiceoverOptions.voiceSettings`: optional `speed` field (0.7–1.2); story pipeline unaffected
+- `carousel-ambient-video.ts` mux-video step: `estimateCaptionChunks` only runs for the silent fallback; voiced videos mux audio-only. Email opts gain `captionsByHand: voiced`
+- `email.ts` `sendStoryVideoEmail`: new `captionsByHand` opt — copy reads "no captions burned in, add them when you post" instead of the misleading "captions failed"
+
+### Manual steps needed
+None
+
+### Notes
+- ElevenLabs `speed` lives inside `voice_settings` (0.7–1.2); 0.85 ≈ 15% slower
+- Caption sync for voiced videos was estimation-based (word-count pacing over measured audio), not transcription — that's why it drifted; manual captioning in the posting app is the accepted workflow now
+
+## [2026-08-18] — Fix: ambient video render timed out on Vercel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The first live test of the new calm ambient video got 90% of the way there — the scene image, the moving clip, and the voiceover all generated — but the final assembly step (looping the clip to match the voiceover and burning in captions) took longer than the 5 minutes Vercel allows a single function to run, so it died twice and no email went out. The assembly now does half the redundant video processing and is split into two shorter steps, each safely inside the limit.
+
+### Technical changes (for Jimmy)
+- `story-video.ts`: `stitchClipsWithCrossfade` gains optional `trimToSec` — trims (`-t`) inside the same x264 encode and moves the fade-out to the trimmed end, instead of a second full `fitClipToDuration` re-encode afterwards. Story pipeline unaffected (doesn't pass it)
+- `ambient-video.ts`: `loopClipToDuration` passes `trimToSec` to the stitch — one encode instead of two
+- `carousel-ambient-video.ts`: the single `finalize-video` step split into `loop-clip` (loop + upload `ambient-looped.mp4`) and `mux-video` (captions + mux + upload `ambient-video.mp4`) so each x264 encode gets its own 300s serverless invocation
+- Also this session (no code): `AMBIENT` enum value applied to prod Postgres via `ALTER TYPE` — Keenan's earlier `db push` ran against a stale checkout and never added it, which killed the first test run at post creation
+
+### Manual steps needed
+None
+
+### Notes
+- Failure signature in Vercel logs: `[story-video] Crossfade-stitched 7 clips` followed by `Vercel Runtime Timeout Error: Task timed out after 300 seconds` — the stitch finished, the second+third encodes didn't. `api/inngest/route.ts` is already at `maxDuration = 300`, the plan max
+- A stale local checkout running `prisma db push` will PROMPT TO REMOVE enum values added later — Keenan hit this; always `git pull` before `db push`
+- Unrelated recurring error spotted in the same logs: `trialEmailLog.upsert()` unique constraint failures on `resendId` — flagging for Jimmy, not touched here
+
+## [2026-08-18] — New 4th daily post: calm ambient video + carousel dashboard revamp
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d88699dc
+
+### In plain English (for Keenan)
+There's now a fourth daily post type: a calm "ambient" video like the wakingupapp format — one beautiful soothing scene (clouds, water, light) that moves gently in a loop, with a slow warm voiceover sharing a short reflective lesson and the words appearing as captions. All four daily posts now generate overnight (11pm, 1am, 3am, 5am Central) so everything is waiting in your inbox when you wake up. The dashboard also dropped the approve/reject workflow entirely — you now sort by post type (Photo/Video/Story/Calm), a post counts as "posted" the moment you paste its Instagram/TikTok link, and every cost number finally includes the Higgsfield video renders and the voiceover, not just the images.
+
+### Technical changes (for Jimmy)
+- Prisma: `AMBIENT` added to `CarouselFormat` enum (CarouselPost.status column kept in DB, retired from UI only)
+- New `apps/web/src/lib/content-factory/ambient-video.ts`: `generateAmbientScript` (Claude, 70-90 word calm script + scene concept, logged to ClaudeCallLog as "ambient-video-script"), `buildAmbientImagePrompt` (photoreal, NOT the illustrated STYLE_LANES), `buildAmbientVideoPrompt` (loop-friendly ambient drift, locked camera), `loopClipToDuration` (repeats the 5s clip with 0.6s xfade crossfades then trims — `reverse` avoided, unverified on prod ffmpeg-static), `ambientVoiceoverOptions` (AMBIENT_ELEVENLABS_VOICE_ID env, stability 0.65)
+- New `apps/web/src/inngest/functions/carousel-ambient-video.ts` (event `content-factory/ambient.video`): script → 1 image → 1 Higgsfield clip (2 attempts) → full-script ElevenLabs TTS → loop clip to audio length → script-true captions → mux with caption-less retry → persists storyVideoUrl/storyVoiced → sendStoryVideoEmail. Silent-captioned fallback at ~40s if TTS fails. Registered in `api/inngest/route.ts`
+- `carousel-daily.ts`: cron `0 12,16,20 * * *` → `0 4,6,8,10 * * *`; hour mapping 4→photo, 6→video, 8→story, 10→ambient; new ambient delegation + `bucket: "ambient"` on the manual event
+- `carousel-metrics-refresh.ts`: `status: "POSTED"` filter dropped (any post with an IG link refreshes); cron 13 UTC → 3 UTC so the feedback loop has fresh data before the overnight runs
+- New `apps/web/src/lib/content-factory/costs.ts`: `estimatePostCostCents` by format — images 8¢ + clips (`HIGGSFIELD_CLIP_COST_CENTS`, default 10¢ = 2 credits at the $5/100 top-up rate) + TTS (`TTS_COST_CENTS`, default 10¢) + 2¢ Claude
+- `story-video.ts`: `generateVoiceover`/`elevenLabsVoiceover` gain optional `VoiceoverOptions` (voiceId, voice_settings, OpenAI instructions) — story behavior unchanged
+- `api/admin/carousels/route.ts`: GET filters by `format` (not status), totals per format, `posted` = has platform link, per-post `estCostCents`, today + running-month spend; `approve`/`reject`/`mark-posted` actions removed
+- `admin/content-factory/carousels/page.tsx`: format filter pills with counts, StatusBadge/approval bar removed, PostedBadge (link-derived), per-post + per-day + today/month costs, 4th generate button (🌙), AMBIENT in FORMAT_META
+
+### Manual steps needed
+- [x] ~~`npx prisma db push` from home network~~ DONE 2026-08-18: AMBIENT applied directly via `ALTER TYPE` after a stale-checkout `db push` missed it; Keenan re-ran `db push` after `git pull` to confirm alignment
+- [x] ~~Add ElevenLabs voices~~ DONE same session: Keenan added "Vanessa - Beach Girl" (8DzKSPdgEQPaK5vKG0Rs) and "Hope - Smooth, Engaging and Kind" (WAhoMTNdLdMoq1j3wf3I) to My Voices; both IDs are hardcoded and ambient alternates randomly between them. `AMBIENT_ELEVENLABS_VOICE_ID` now only needed to FORCE one voice
+- [ ] Optional Vercel env vars: `HIGGSFIELD_CLIP_COST_CENTS` / `TTS_COST_CENTS` if the default 10¢ estimates are off (Keenan)
+
+### Notes
+- Higgsfield's platform API has NO TTS endpoint (verified against their OpenAPI spec — all 50 endpoints are image/video), so "the same Higgsfield voice" is impossible server-side; ElevenLabs stock voices are the replacement Keenan picked
+- `ELEVENLABS_API_KEY` is marked **sensitive** in Vercel — `vercel env pull` returns the literal `[SENSITIVE]`, so voice-ID lookups via API need the key pasted or run by Keenan
+- Cron times are UTC: 4/6/8/10 UTC = 11pm/1am/3am/5am CDT; in winter (CST) they land 10pm/12am/2am/4am — acceptable per the "while I sleep" intent
+- Library voices must be added to "My Voices" in the ElevenLabs account before the API can use them
+- Local npm cache has root-owned dirs (past sudo npm) — `npm install --cache /tmp/npm-cache-claude` works around it; sharp was missing locally until this install
+
+---
+
+## [2026-08-16] — Story videos: same woman in every scene, readable captions, sharper picture
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3f2c8698
+
+### In plain English (for Keenan)
+The story video's biggest problem was that the main character looked like a completely different woman in every scene — new face, new hair, new outfit every few seconds — which made the story feel like random clips. Now the first scene's image is used as a visual reference for all the others, so it's literally the same woman throughout. Captions also stopped being garbled nonsense ("house wants To the") and lone floating words — they now come straight from the script, grouped 3-4 words at a time. She's no longer drawn mid-speech with her mouth hanging open, random rain/smoke effects are banned, and the final video is visibly sharper.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: new `generateImageWithReference(prompt, reference)` using gpt-image-2 `images.edit` at 1024x1536 (edit endpoint doesn't accept 1024x1792 — composeSlide cover-crops to 9:16 anyway)
+- `apps/web/src/inngest/functions/carousel-story-video.ts`: scene 0's raw render uploads as `story-scene-ref.jpg` and scenes 1-5 generate via images.edit against it, with plain-generation fallback; `build-audio` step now builds captions with `estimateCaptionChunks(scene.narration, sceneAudio.durationSec)` per scene instead of whisper re-transcription
+- `apps/web/src/lib/content-factory/story-video.ts`: `buildStoryImagePrompt` gains `withReference` option + hard lines forcing lips closed / no rain-smoke-fog-particles; `transcribeCaptionChunks` deleted (whisper garbled words and the slow emotional read's pauses split captions into single words); encode ladder crf 23 → 18 on intermediates (fitClipToDuration, stillImageClip, stitchStoryVideo, stitchClipsWithCrossfade) and 19 on the captioned mux — the pipeline stacks 3 x264 generations, which is why the old output looked soft
+
+### Manual steps needed
+- [ ] Watch the next story email and confirm: same woman in all scenes, captions readable 3-4 word groups, mouth closed, sharper picture (Keenan)
+- [ ] Still open from earlier today: Inngest dashboard screenshots for the two stitch-step deaths (~20:53 and ~21:16 UTC) if they recur (Keenan)
+
+### Notes
+- Keenan's "it's absolutely horrible still" email was the OLD pipeline's video ("The letter you wrote at 2am and never sent", emailed 23:06 UTC) — it has no voice-engine line, which only the new email template includes. The NEW pipeline's first output (23:26 UTC) had the same four defects anyway, confirmed by frame extraction.
+- Whisper caption garbling root cause: re-transcribing our own TTS is lossy, and the expressive ElevenLabs read pauses >0.6s between words, which the chunker treated as chunk boundaries → lone-word captions. We always knew the exact words; transcription was never needed once per-scene audio durations existed.
+- The reference-edit call falls back to text-only generation per scene on failure, so a broken edit endpoint degrades to yesterday's (inconsistent) behavior rather than killing the run.
+- fitted-clip files were 1.4-3.6MB vs 9-12MB originals at crf 23 — that 5x compression was the softness Keenan saw.
+
+---
+
+## [2026-08-16] — Story videos rebuilt: every word now plays on its own scene
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5b167c94
+
+### In plain English (for Keenan)
+The story videos were incoherent because the system recorded ONE continuous monologue and laid it over the whole video — the words were never attached to their scenes, so by scene 4 you'd hear scene 3's line. Now each scene's line is recorded separately and its clip is cut to exactly that line's length, so the words physically cannot drift off their scene. Also: a warmer voice (Matilda) is now the default, the AI can no longer swap a scene's gesture for a random unrelated one, images must literally show what the narration describes (phone in the line = phone in the picture), and the email now says which voice engine was used so "the voice sounds bad" is diagnosable.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/story-video.ts`:
+  - `fitNarrationToDuration` DELETED (the monologue rewrite was the desync root cause)
+  - `generateVoiceover` returns `{audio, engine}` and takes `{previousText, nextText}` (ElevenLabs `previous_text`/`next_text` keeps prosody continuous across scene cuts); default ElevenLabs voice Rachel→Matilda (`XrExE9yKIg1WjnnlVkGX`); OpenAI fallback coral→sage
+  - New `fitClipToDuration(clip, seconds)` — trims, or freeze-extends via last-frame extraction (`-sseof`) + `stillImageClip` + concat (tpad deliberately avoided: unverified on prod ffmpeg-static, like the drawtext incident)
+  - New `concatAudioWithGaps(audios, gapSec)` — apad + concat, libmp3lame out
+  - New `rewriteUnsafeMotions()` — one Claude call rewrites filter-tripping motions to still act out the narration; script prompt gains visual-coherence hard rule + coherence check
+- `apps/web/src/inngest/functions/carousel-story-video.ts`: tail rebuilt — per-scene `tts-scene-{i}` steps, `fit-clip-{i}` steps (target = scene audio + 0.35s gap), `build-audio` (concat with gaps + per-scene Whisper captions offset to scene starts), `finalize-video` (stitch fitted clips + mux, factor ≈ 1); `finalize-silent` fallback if any scene TTS fails
+- `apps/web/src/lib/content-factory/email.ts`: `voiceEngine` option displayed next to the script; stale "voiceover rewritten" wording updated
+- Deleted `apps/web/scripts/finish-story.tmp.ts`
+
+### Manual steps needed
+- [ ] Screenshot the failed Inngest runs (~20:53 and ~21:16 UTC 2026-08-16) so we can root-cause the earlier prod stitch deaths (Keenan)
+- [ ] Proof the next story video: voice quality (email now names the engine) and scene/word sync (Keenan)
+
+### Notes
+- New Supabase artifacts per story: `story-audio-{i}.mp3`, `story-clip-fitted-{i}.mp4`; `story-video-silent.mp4` now only written on the silent fallback path.
+- Audio and video timelines are equal by construction (scene video = scene audio + 0.35s; audio padded 0.35s), so muxNarration's atempo never engages and caption offsets are exact.
+- `apad` is used in concatAudioWithGaps and is the one filter not exact-string-verified on the prod ffmpeg-static binary; if build-audio fails there, that's the first suspect.
+- Voice can be auditioned/overridden via `ELEVENLABS_VOICE_ID` without a code change.
+
+## [2026-08-16] — Story voiceover sounds human and animations now act out the story
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e8511565
+
+### In plain English (for Keenan)
+Two fixes to the story videos: the voiceover now reads like a real woman confessing something to a friend (slower, emotional, imperfect) instead of a flat robotic announcer, and each scene's animation now performs what the narration is saying — if the line is about gripping the steering wheel, you see her grip the wheel. Text-free clips also get a slow cinematic camera push-in and a scene that feels alive (light, steam, rain moving) instead of a frozen frame with a blinking woman.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/story-video.ts`: ElevenLabs voice_settings retuned for expressiveness (stability 0.5→0.35, style 0.35→0.55, similarity 0.75→0.8); OpenAI TTS fallback voice coral→sage with much stronger delivery instructions; story script MOTION RULES rewritten to require the motion to act out the scene's narration (in-scene object interaction allowed, 25-word cap)
+- `apps/web/src/lib/content-factory/animate-cover.ts`: new `buildStorySceneVideoPrompt()` that leads with the script's bespoke scene motion; new `CAMERA_DRIFT_LINE` (slow push-in) + `AMBIENT_LINE` (living environment) used in `sceneLockLines()` for text-free clips only — baked-text clips keep the hard camera lock since camera motion warps text; posture lock softened to allow expressive in-pose movement
+- `apps/web/src/inngest/functions/carousel-story-video.ts`: clip submits switched from `buildSlideVideoPrompt` to `buildStorySceneVideoPrompt`
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SYSTEM_PROMPT motion STRICT RULES require visible, text-specific gestures; "no props" relaxed to "no NEW props"
+
+### Manual steps needed
+- [ ] Screenshot the failed Inngest runs (~20:53 and ~21:16 UTC today) so we can root-cause why prod dies at the stitch step — both daily crons hit that code (Keenan)
+
+### Notes
+- The "terrible" voiceover Keenan heard was the OpenAI fallback: the story was rescued locally where the ElevenLabs key is a `[SENSITIVE]` placeholder. Prod has the real ElevenLabs key, so the next prod story is the first true test of the ElevenLabs path with the new settings.
+- Camera drift is safe only on text-free clips (VIDEO slides + STORY scenes); v12 history shows camera moves warp baked-in text, so PHOTO-era baked-text animation keeps the locked camera.
+- The isSafeMotion() blocklist still discards script motions containing walk/stand/talk verbs — fallback then comes from the mood pool, which won't match the narration. If mismatched clips persist, check whether scripts are tripping the blocklist.
+
+## [2026-08-16] — Cover photos now tease only a few answers instead of the whole list
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** affbc6d5
+
+### In plain English (for Keenan)
+The carousel cover was giving away every answer up front, so there was no reason to swipe through the post. Now the cover previews at most 40% of them — 1 answer on a 5-item post, 2 on a 6-7 item post, 3 on an 8-10 item post — and the previewed ones are the exact same answers that appear on the slides. The rest stay hidden so she has to swipe to get the full list.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/carousel-generate.ts: new buildCoverTeaser() — slices coverListItems (1 for n≤5, 2 for n≤7, 3 for n≥8) and prompts gpt-image-2 to render only those exact items, explicitly forbidding readable text for the hidden ones ("..." / partially visible note allowed)
+- Photo bucket only; animated covers carry just the headline + engagement line overlay (no list), which already satisfies the rule
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- Teaser ratios per Keenan: 1/5 (2/5 acceptable), 2/6, 2/7, 3/8, 3/9, 3/10. Implemented as the strict lower option; bump n≤5 to 2 if covers look too sparse.
+
+---
+
+## [2026-08-16] — One consistent art style per post
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 32c6213d
+
+### In plain English (for Keenan)
+Slides inside a single post could jump between looks — one slide realistic, the next cartoon-3D, another clay. Each post already picks one style, but the image AI was getting two competing style instructions and obeyed a different one on each slide. Now the post's chosen style is a hard "style lock" rule, so every slide in a post looks like it came from the same artist.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/carousel-generate.ts: buildImagePrompt wraps the lane prefix in a STYLE LOCK hard-rule sentence (baked-text and noText paths)
+- apps/web/src/lib/content-factory/brand.ts: VISUAL_DNA + VISUAL_DNA_NOTEXT illustration lines defer to the STYLE LOCK instead of hardcoding "warm editorial illustration, hand-drawn feel"
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- Root cause: STYLE_LANES was line 1 of the prompt but VISUAL_DNA (appended last) also dictated a style, and gpt-image-2 obeyed whichever it latched onto per slide. Prompt-level fix; if drift persists, next step is passing the cover image as a style reference for reason slides.
+
+---
+
+## [2026-08-16] — Photo carousel fixes: TikTok safe zone + cover list matches the slides
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bf965891, 20d77eaa
+
+### In plain English (for Keenan)
+Two fixes from proofing the live photo carousel. First, the text on photo slides was running under TikTok's search bar and getting clipped at the edges — the image prompts now force all text into the safe middle area (away from the top, bottom, and right side where TikTok's buttons sit). Second, the cover was showing its own made-up list of answers (the sticky notes) that didn't match the actual slides. Now each slide leads with a short punchy answer (like "more rest") with a smaller explanation line under it, and the cover's preview list uses those exact same answers — so what you see on the cover is what you get in the slides.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/brand.ts: VISUAL_DNA SAFE ZONES rule strengthened — all text out of top 15%, bottom 15%, right-most 15%; shrink type rather than cross boundaries; never cover faces
+- apps/web/src/lib/content-factory/carousel-generate.ts: buildImagePrompt gains a safeZoneRule for baked-text slides, plus new opts.coverListItems — the cover prompt now instructs gpt-image-2 that any preview list must contain exactly the given items, in order, spelled exactly
+- apps/web/src/lib/content-factory/generate-topic.ts: item-slide rules rewritten — each "reason" is now a 2-5 word main answer (sticky-note length), with the required details[] sentence carrying the explanation, for both RESONANCE and ACTIONABLE archetypes
+- apps/web/src/inngest/functions/carousel-daily.ts: photo bucket passes topicData.reasons as coverListItems; animated bucket unchanged (its overlays already respect the safe zone)
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- gpt-image-2 invents a mini answer-list on covers whenever the headline promises "X things" — it only ever received the headline, so the list was fabricated. Feeding it the exact items is prompt-level enforcement; spot-check the next few covers since image models can still typo long lists.
+- Short main answers also make the animated bucket's overlays cleaner (short line + detail below), no code change needed there — renderSlideTextOverlay already supported the detail parameter.
+
+---
+
+## [2026-08-16] — Content factory reset: 3 daily buckets, better stories, helpful lists, crossfades, and trackable bio links
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bc19005a
+
+### In plain English (for Keenan)
+The daily content system now creates three genuinely different posts per day instead of variations of the same one: a picture carousel in the morning, a fully animated carousel video midday, and a 30-second story video with voiceover in the afternoon. The story is no longer a robot reading the carousel list out loud — it's a first-person mini-story with its own topic. Carousel topics now alternate between "that's so me" lists and genuinely helpful lists (small doable habits, like those "7 things to do every day for yourself" posts), and every slide gets a second, smaller line explaining the how or why. The animated video now blends smoothly between slides instead of hard-cutting. When the voiceover fails, the system retries, and if it still ships silent the email subject warns you loudly. And your bio links can now be goripple.io/go/tiktok (etc.) so social traffic finally shows up in analytics instead of as "direct". The admin page shows which of the three types each post is, plays the story video, and has three generate buttons (📷 🎬 🎥) to fire any bucket on demand.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: CarouselPost gains `format` (new enum CarouselFormat: PHOTO/VIDEO/STORY, default PHOTO) and `storyVoiced` (Boolean?); SlideKind gains `SCENE`. (storyVideoUrl/metrics/links columns already existed from the 8-12 work — no postedUrl/postedAt added, instagramUrl/tiktokUrl cover it.)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron 12/16/20 UTC now maps explicitly to photo/video/story buckets (hour-keyed off event.ts); story bucket sends `content-factory/story.video` with `{standalone: true}` and returns; story no longer chained after animation; detail sentences threaded into image prompts (photo) and overlays (video)
+- apps/web/src/inngest/functions/carousel-story-video.ts: standalone mode (`{standalone: true}`, no postId) invents its own concept, creates a `format: STORY` CarouselPost with SCENE slides + storyTheme; kept the existing captioned mux with audio-only retry (the 8-14 drawtext fix) and now persists storyVideoUrl/storyVoiced on every exit
+- apps/web/src/lib/content-factory/story-video.ts: script output gains title/captionHook/commentPrompt alongside theme (standalone de-branded concept prompt from 8-14 kept as-is — narration never mentions Ripple); new `stitchClipsWithCrossfade` (per-clip duration probe + xfade chain + fade in/out from black)
+- apps/web/src/lib/content-factory/generate-topic.ts: two archetypes (resonance / actionable), `details[]` (one supporting sentence per item), humanistic-tone + proofread rules, actionable headline formats
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` gains optional `detail` param — smaller Poppins Medium line under the main text with matching shadow
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` gains `detailText` opt (photo bucket bakes the detail line via gpt-image-2)
+- apps/web/src/lib/content-factory/email.ts: carousel compilation keeps the all-slides/still-clip completeness loop and now stitches it with crossfades (falls back to the 8-15 fade-to-black concat); story email subject prefixes ⚠️ SILENT when voiceover failed
+- apps/web/src/lib/content-factory/caption.ts: `buildStoryCaption`; closing line now "link in bio" style pointing at the free week
+- apps/web/src/app/go/[channel]/route.ts (new): bio-link redirect adding utm_source=channel, utm_medium=social, utm_campaign=bio-link; unknown channels → utm_source=social, never 404
+- apps/web/src/app/api/admin/carousels/route.ts: `generate-daily` accepts `bucket`; `generate-story` works without postId (standalone)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: FormatBadge in list + detail, story video player with SILENT warning, three bucket generate buttons
+
+### Manual steps needed
+- [ ] Run `npx prisma db push` from home network BEFORE today's 20:00 UTC cron — the story bucket writes the new `format`/`storyVoiced` columns and will fail without them (Keenan)
+- [ ] Update every platform's bio link to goripple.io/go/tiktok, /go/instagram, /go/pinterest, etc. (Keenan)
+- [ ] Verify Inngest picked up the updated functions after the Vercel deploy (usually automatic on next GET to /api/inngest) (Keenan)
+
+### Notes
+- Production had been running pre-Aug-11 hour-based behavior despite newer code being on main — almost certainly a stale Inngest app sync pinned to an old deployment. Keenan resynced; the bucket split is now explicit and hour-keyed so a stale sync can't silently change the daily mix again.
+- Voiceover root cause: muxNarration fails ~50% of the time on Vercel and silently fell back to the silent video. Now retried twice, persisted to the post, and flagged in the email subject — if it still ships silent, that's visible everywhere.
+- Slide detail lines are NOT stored as a separate DB column — they live in the baked image prompt (photo) and the stored overlay PNG (video), so no extra schema change and edit-text/regenerate keep working off overlayText.
+- Crossfade stitch probes each clip with `ffmpeg -f null -` (ffmpeg-static bundles no ffprobe) and normalizes timebases with settb — xfade errors out on mismatched timebases otherwise. Falls back to the old hard-cut concat on any failure.
+- tsc: all remaining errors in touched files exist identically on the pre-merge main (verified against e9002aaa) — nothing new introduced.
+- This commit was rebased onto ~27 parallel commits (metrics feedback loop, cover engagement sublines, caption burn-in, de-branded story scripts, still-clip completeness). Where philosophies clashed, the newer on-main decisions won: the engineered comment gap stays REMOVED (8-13 COMPLETENESS rule), story narration never mentions Ripple (8-14), and my simple mux-retry loop was dropped in favor of the existing captioned-mux + audio-only-retry pipeline.
+
+---
+
+
+## [2026-08-15] — Cover engagement question switched to present tense
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c2c46506
+
+### In plain English (for Keenan)
+The question on the cover slide ("Which one hit home?") was phrased in past tense, but the viewer sees the cover BEFORE reading the list — they haven't read anything yet. All cover question variants are now present tense ("Which one hits home?", "Which one calls you out?", etc.).
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/caption.ts: all past-tense lines in ENGAGEMENT_LINE_FAMILIES and ENGAGEMENT_LINES_DEFAULT rewritten to present tense (hit home → hits home, called you out → calls you out, did you tell today → are you telling today, felt personal → feels personal, did you need → do you need, stopped you → stops you). Comment added so future variants stay present tense.
+- COMMENT_CTAS (the post-caption asks) intentionally left in past tense — those are read after swiping through the carousel.
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- Same deterministic pick-by-slug behavior; only the strings changed, so already-generated posts are unaffected and future posts stay stable per slug.
+
+---
+
+## [2026-08-15] — Fade-out transitions between slides in the carousel video
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a5c63a3e
+
+### In plain English (for Keenan)
+The stitched carousel video (the one MP4 with all the animated slides back to back) now fades each slide out to black before the next one starts, so slide changes look like intentional transitions instead of abrupt jump cuts.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: `stitchStoryVideo` takes optional `{ fadeOutSec }` — each clip is probed for its real duration and gets `fade=t=out:st=<dur-fade>:d=<fade>` appended to its normalize chain before concat. Default (no opts) is unchanged, so the story-video stitch is unaffected.
+- apps/web/src/lib/content-factory/email.ts: the slides-compilation stitch now passes `{ fadeOutSec: 0.4 }`.
+
+### Manual steps needed
+None — deploys automatically on push.
+
+### Notes
+- The `fade` filter was exact-string verified present in the ffmpeg-static linux binary before use (same check that caught the missing drawtext on 8-14). `xfade` is also present if we ever want cross-dissolves instead of fade-to-black, but xfade requires offset math across cumulative durations and re-encoding pairs — fade+concat is simpler and uses the already-proven concat path.
+- Fade start times are probed per clip (Higgsfield clip lengths drift slightly from the nominal 4s), so the fade always lands exactly at each clip's end.
+
+---
+
+## [2026-08-14] — Story videos: silent-video bug fixed + no more Ripple ads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 8404372f
+
+### In plain English (for Keenan)
+Two fixes to the daily story video. First, the "voiceover failures" on the 13th and 14th weren't voiceover failures at all — the voiceover generated fine both days, but the tool that stamps the captions onto the video is missing on the server, so the whole final assembly step crashed and you got the raw silent video with a misleading error email. Captions are now drawn with the same system that renders the slide text (which works every day), and even if captions ever break again, the video will still ship WITH the voiceover instead of silent. Second, the story scripts no longer mention Ripple at all — they're pure viral story videos; the account posting them carries the brand.
+
+### Technical changes (for Jimmy)
+- Root cause: ffmpeg-static b6.1.1's linux binary has NO drawtext filter (verified by grepping the release binary — 0 hits; `overlay` has 8). Every captioned mux since caption burn-in deployed (2026-08-12 ~20:52 UTC) threw, and the finalize-video catch shipped the silent stitch. Voiceover MP3s exist in storage for both failure days.
+- apps/web/src/lib/content-factory/compose.ts: new exported `renderCaptionPng(text)` — white Poppins Bold 58 with blurred dark shadow, transparent PNG, same sharp/Pango pipeline as slides.
+- apps/web/src/lib/content-factory/story-video.ts: `muxNarration` rewritten — caption chunks rendered to PNGs and composited via chained `overlay=...:enable='between(t,s,e)'` filter_complex (timestamps still divided by the atempo factor; atempo moved into filter_complex when captions present). Caption render failure degrades to uncaptioned, never throws. Also: script prompts (SCRIPT_SYSTEM_PROMPT, narration rules, fitNarrationToDuration) now ban all Ripple/app/product mentions.
+- apps/web/src/inngest/functions/carousel-story-video.ts: finalize-video now retries audio-only mux if the captioned mux throws (silent shipping cannot recur while audio exists); returns `captioned` + `error`, both passed to the email.
+- apps/web/src/lib/content-factory/email.ts: `sendStoryVideoEmail` takes `captioned` — the email only claims burned-in captions when they actually are (the 8-13/8-14 emails claimed captions on caption-less videos); mux errors surface in the failure-reason line.
+
+### Manual steps needed
+None — deploys automatically on push. Tomorrow's 12 UTC story video is the live verification.
+
+### Notes
+- ffmpeg-static's linux build ships WITHOUT drawtext/textfile (no fontconfig). It DOES have overlay, atempo, concat, scale, libx264. Never use drawtext in this repo.
+- Diagnosis technique that cracked it: compare Supabase storage artifacts per day (voiceover MP3 present + muxed MP4 absent = mux failure, not TTS failure). The 8-12 "success" predated the caption deploy by 5 minutes.
+- scale2ref remains banned in overlay filters (frameless 261-byte output on Vercel, 2026-08-11) — caption PNGs are pre-sized instead.
+
+---
+
+## [2026-08-14] — Cover engagement question moved to the bottom of the slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1a48af87
+
+### In plain English (for Keenan)
+The "Which one hit home?" question no longer sits crammed under the headline at the top of the cover — it's now anchored near the bottom of the slide, which looks cleaner and keeps the headline as the sole hook up top. It's positioned high enough that TikTok's caption and music bar won't cover it.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` subline is bottom-anchored — text bottom edge at 86% of frame height (1080x1920) instead of flowing under the accent bar
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` static baked-text instruction changed from "below the headline" to "lower quarter of the image, above the bottom 12%"
+
+### Manual steps needed
+None
+
+### Notes
+- 86% anchor chosen because TikTok's caption/music UI covers roughly the bottom 12–15% of the screen (mirrors the 15% top buffer added 2026-08-12 for the status bar/search pill)
+- Static covers rely on gpt-image-2 honoring the placement instruction, so bottom placement on static runs is best-effort; the animated overlay placement is exact
+
+## [2026-08-13] — Carousel slideshows now include every slide; comment-bait gap removed; cover asks an engagement question
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5b4de435
+
+### In plain English (for Keenan)
+Three fixes to the daily carousels. First, the animated slideshow you receive will now include EVERY slide — yesterday you got the cover and slides 2–6 but not slide 1, and a separate bug has been silently chopping the last reason off the compilation ever since we removed the CTA slide. If an animation fails to render, that slide now appears as a 4-second still image instead of vanishing. Second, the topic generator was deliberately leaving the most obvious reason off the list as comment bait ("comment MIRROR and I'll send it to you") — that's gone; every list is now complete, so a "6 ways to..." post actually shows all 6. Third, the cover now asks an engagement question like "Which one hits the hardest?" to spark comments instead — it varies per post based on the headline, and appears on both the static image and the animated video.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: `animateAll` targets are now `slides.filter(s => s.kind !== "CTA").slice(0, 8)` instead of the positional `slice(0, -1)` that dropped the final reason after CTA removal
+- apps/web/src/lib/content-factory/email.ts: compilation loop rebuilt — iterates all non-CTA `post.slides` in order, matching each to its animation by `order`; slides without an animation get a still clip from their JPEG; `videoBuffers` entries now carry `order`
+- apps/web/src/lib/content-factory/story-video.ts: new `stillImageClip(image, seconds)` helper (ffmpeg `-loop 1`, 1080x1920@30fps, guards against tiny output)
+- apps/web/src/lib/content-factory/generate-topic.ts: removed the ENGINEERED COMMENT GAP prompt section (replaced with a completeness requirement); `withheldReason` removed from output format, interface, and parsing
+- apps/web/src/lib/content-factory/caption.ts: removed `COMMENT_GAP_CTAS` and the withheld-reason note from `buildCaption`; new `coverEngagementLine(headline, slug)` with headline-family variations (signs/lies/reminders/questions/habits) plus defaults, picked deterministically via `pickBySlug`
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` accepts an optional `subline` rendered under the cover accent bar (smaller uppercase text)
+- apps/web/src/inngest/functions/carousel-daily.ts: computes the engagement line and passes it to both the static baked-text prompt (`coverSubline`) and the animated overlay; stopped writing `withheldReason` to the CarouselPost row
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` accepts `coverSubline` and instructs gpt-image-2 to bake the exact question below the headline on static covers
+- Prisma `withheldReason` column left in the schema (no db push needed); it's simply no longer written
+
+### Manual steps needed
+- [ ] After deploy: trigger a fresh animated carousel + story video so Keenan gets example emails with the new behavior (Claude Code / Keenan)
+
+### Notes
+- The missing slide 1 animation was a Higgsfield render failure that survived all retry waves — the still-clip fallback means a render failure can no longer produce a gap in the compilation
+- The missing LAST slide was a different bug: `slice(0, -1)` was written to exclude the CTA slide, but daily posts stopped generating CTA slides on 2026-08-12, so it started excluding the final reason instead
+- Engagement question uses regex families on the headline ("signs", "lies", "reminders", "questions", "habits") so the phrasing fits the content; falls back to generic variants like "Which one is you?"
+
+## [2026-08-13] — Story videos self-rescue when the voiceover fails; scenes now match the script
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 20671292
+
+### In plain English (for Keenan)
+Two fixes after yesterday's silent story video. First, when the voiceover fails, the system no longer ships a mute video and moves on — it burns the script into the video as timed on-screen captions (so the video still tells the story and the captions pace you like a teleprompter), and the email now leads with a "record this yourself" block containing the exact script, the target length in seconds, and the actual reason the voiceover failed. The subject line flags it too, so you can't miss it. Second, the video will now actually match the script: a bug was injecting a random second location (e.g. "bathroom mirror") into almost every scene's image prompt, fighting the location the script asked for — that's why scenes felt disconnected from the narration. Removed.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: removed the rotating SCENE_SETTINGS hint from `buildStoryImagePrompt` — the `includes("setting")` guard almost never matched, so a conflicting location was appended to nearly every scene prompt (root cause of script/video mismatch); new `estimateCaptionChunks(narration, durationSec)` chunks the script text (~3-4 words, sentence-break aware) and distributes the measured video duration proportionally by chunk length; `muxNarration` now accepts `audio: Buffer | null` — null burns captions only (`-an`, no audio input, factor 1)
+- apps/web/src/inngest/functions/carousel-story-video.ts: generate-voiceover step returns `{ url, error }` (failure reason captured); finalize-video always runs — with audio it uses Whisper timings as before, without audio it burns estimated script captions; explicit `{ url, voiced }` return replaces the old URL-comparison voiced check
+- apps/web/src/lib/content-factory/email.ts: `sendStoryVideoEmail` opts gain `durationSec` + `voiceoverError`; silent emails lead with a record-it-yourself block (script, target seconds, failure reason) and get a "🎙️ … RECORD VOICEOVER" subject; script block no longer duplicated when silent
+- No schema changes, no new env vars
+
+### Manual steps needed
+- [ ] Verify tomorrow's story video: scenes should match the narration; if the voiceover fails again, the email's "Failure reason" line will say exactly why — send it to a Claude session to fix the root cause (Keenan)
+
+### Notes
+- Both TTS providers failing in the same run is suspicious: ElevenLabs falls back to OpenAI, and OpenAI TTS uses the same key as the scene images (which succeeded). Prime suspects: gpt-4o-mini-tts model access on the key, or ElevenLabs key not yet active + transient OpenAI error. The new failure-reason surfacing in the email exists precisely so the next occurrence is diagnosable without Vercel log archaeology.
+- Estimated captions (no-audio path) are proportional-by-characters, not word-exact — close enough to read naturally, and intentionally usable as a recording pace guide. If Keenan records his own VO, his audio replaces nothing (video has no audio track) — he adds it in the posting app.
+- `estimateCaptionChunks` verified locally: an 80-word script over 27.4s produces 11 chunks spanning exactly 0→27.4s
+
+---
+
+## [2026-08-12] — Natural ElevenLabs voice for story videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 62781b75
+
+### In plain English (for Keenan)
+The story video voiceover sounded robotic. As soon as you add an ElevenLabs API key, every story video switches to a natural human-sounding voice (their "Rachel" voice by default — you can pick any voice from their library later). Until the key is added, videos keep working with a slightly better OpenAI voice than before.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: `elevenLabsVoiceover` (eleven_multilingual_v2, Rachel default, ELEVENLABS_VOICE_ID/ELEVENLABS_MODEL_ID overrides, tuned voice_settings for the intimate tone); `generateVoiceover` tries ElevenLabs first when ELEVENLABS_API_KEY is set, falls back to OpenAI TTS (default voice shimmer → coral)
+- No schema changes; captions burn-in is unaffected (Whisper transcribes whatever mp3 is produced)
+
+### Manual steps needed
+- [ ] Create an ElevenLabs account (elevenlabs.io), generate an API key, add `ELEVENLABS_API_KEY` to Vercel env, redeploy (Keenan). Starter plan ($5/mo, 30 min of audio) covers one 30s video/day.
+- [ ] Optional: browse their voice library, pick a favorite warm female voice, set `ELEVENLABS_VOICE_ID` (Keenan)
+
+### Notes
+- ElevenLabs failure falls back to OpenAI automatically — a bad/expired key never blocks the video
+- Voice settings (stability 0.5, style 0.35) tuned for voice-memo intimacy, not audiobook narration — adjust in code if the read is too flat/too dramatic
+
+---
+
+## [2026-08-12] — Captions burned into story videos, loop endings, caption hooks, 1+1+1 daily schedule
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 87b6e5a7 (virality batch), 7ea5cac7 (schedule)
+
+### In plain English (for Keenan)
+Story videos now come with captions burned in — the system listens to its own voiceover, figures out exactly when each word is spoken, and draws the words on screen in perfectly synced 3–4 word chunks, so people watching muted (most people) can follow from the first second. Story videos also now end in the same scene they started in, so when the video loops it feels seamless and people rewatch without realizing. The Instagram caption no longer opens by repeating the headline that's already on the cover — the first line (the only one visible before "...more") is now a second hook like "Number 4 is the one nobody says out loud," and a searchable keyword line was added so the posts show up in Instagram caption search. Finally, daily volume is now exactly what you asked for: one static carousel, one animated carousel, and one story video per day.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts: `transcribeCaptionChunks` (whisper-1, verbose_json + word timestamp_granularities, pause/length-aware chunking, hold-until-next-chunk timing); `muxNarration(video, audio, captions?)` burns per-chunk drawtext (textfile= per chunk to avoid drawtext escaping, timestamps divided by the atempo factor, y=30% height — scene images keep faces in the lower half so captions never cover them); LOOP RULE added to SCRIPT_SYSTEM_PROMPT (scene 6 mirrors scene 1's setting/framing)
+- apps/web/src/lib/content-factory/compose.ts: `ensureFontFile` exported (Poppins-Bold.ttf, /tmp cache + CDN fallback — same path the slide compositor uses)
+- apps/web/src/inngest/functions/carousel-story-video.ts: finalize-video transcribes the voiceover and passes captions to the mux; transcription failure ships the video uncaptioned (never blocks)
+- apps/web/src/lib/content-factory/caption.ts: FIRST_LINE_HOOKS pool (deterministic by slug, {n} replaced with a mid-list reason number) as line 1; SEO_LINE (IG caption-search keywords) before hashtags
+- apps/web/src/inngest/functions/carousel-daily.ts: cron "0 12,16 * * *" (was 12,16,20); animatedRun = run hour < 14 (12 UTC animated + chained story, 16 UTC static, event flag still wins)
+
+### Manual steps needed
+- [ ] None — Inngest picks up the new cron on the next sync; verify tomorrow that exactly 2 carousels + 1 story arrive (Keenan)
+
+### Notes
+- Captioned mux re-encodes the video (libx264, was stream-copy) — only when captions exist; uncaptioned path still copies
+- Whisper transcribes the ACTUAL TTS mp3, so caption timing survives any narration rewrite or TTS pacing quirk; atempo speed-up is compensated by dividing timestamps by the factor
+- drawtext textfile= per chunk sidesteps ffmpeg's text escaping entirely (apostrophes/commas/colons in narration were guaranteed breakage otherwise)
+- Captions sit at 30% height because VISUAL_DNA_NOTEXT already forces faces into the lower half and calm backgrounds up top — same reasoning as the slide headline zone
+
+---
+
+## [2026-08-12] — Story videos now invent their own viral concepts; headline quality gates
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3afa1104 (story rework), 8e2890d0 (headline gates)
+
+### In plain English (for Keenan)
+The daily story video is no longer the carousel read out loud. The AI now invents a brand-new concept every time — a confession, a specific real moment, a tribute to invisible work, a pattern she'll recognize, or a permission she's been waiting for — built for our 40–50 audience with a hook in the first two seconds. It remembers every concept it's used so it never repeats itself or rehashes a recent carousel. Separately, the headline generator now has to pass two checks before shipping: the headline must read like a real sentence a friend would text (no more broken grammar like "5 reminders for the week you have nothing left") and must name a situation she's actually living so she has to swipe to find out the reasons.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: CarouselPost gains `storyTheme String?` — the concept label persisted per post, used as the dedup avoid-list
+- apps/web/src/lib/content-factory/story-video.ts: SCRIPT_SYSTEM_PROMPT fully rewritten (standalone concept formats, virality rules, escalation, clarity rule); `generateStoryScript({ avoid })` replaces the headline/reasons signature; `StoryScript` gains `theme`; `fitNarrationToDuration` and `buildStoryImagePrompt` take `theme` instead of `headline`
+- apps/web/src/inngest/functions/carousel-story-video.ts: load-post now also queries the last 30 days of storyThemes + headlines (excluding the current post) as the avoid list; write-script persists storyTheme immediately after generation (survives downstream failures); mood plumbing removed (script picks its own)
+- apps/web/src/lib/content-factory/generate-topic.ts: SYSTEM_PROMPT gains mandatory CLARITY TEST and RELATABILITY TEST rules for headlines
+- `npx prisma db push` already run from this machine (home network) — column live in prod
+
+### Manual steps needed
+- [ ] Nothing for the schema — db push already done
+- [ ] Inngest re-sync should be automatic on deploy, but if tonight's story video doesn't arrive, re-sync the app in the Inngest dashboard (Keenan)
+
+### Notes
+- The story pipeline no longer uses the carousel's headline/reasons at all — the post only provides the art lane, storage path, and email/admin linkage
+- Theme is saved in the write-script step (not at the end) so even a run that dies mid-render still blocks tomorrow's script from reusing the concept
+- The failed headline "5 reminders for the week you have nothing left" is cited verbatim in the prompt as a counter-example — cheap and effective way to stop that exact failure mode
+
+---
+
+## [2026-08-12] — Story videos were vanishing into the void; bathtub stand-ups banned
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7395ecb9
+
+### In plain English (for Keenan)
+Two fixes. First, the reason you never got a single story video: the story-video function was never registered with Inngest (the system that runs background jobs), so every daily run and every 🎥 Story button press sent a request that no one was listening for. Verified: zero story scripts have ever been written. The deploy that ships with this entry re-registers it. Second, videos will no longer show a woman standing up out of a bathtub fully clothed — every video now pins her in exactly the position the image shows, bathroom scenes place her at the mirror or on the edge of the tub instead of in the water, and the story script writer is banned from putting her in a tub or shower at all. Note: the 🎥 Story button is already fully independent of the slideshow — it only needs the post's headline and text, generates its own six images, and doesn't wait for slide animation.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: new POSTURE_LOCK_LINE in sceneLockLines — positive-only phrasing ("holds exactly the position the image shows"), inherited by cover, slide, and story clip prompts
+- apps/web/src/lib/content-factory/brand.ts: bathroom SCENE_SETTINGS entry now "seated at the mirror or on the closed edge of the tub, fully clothed"
+- apps/web/src/lib/content-factory/story-video.ts: SCRIPT_SYSTEM_PROMPT visual rules gain fully-clothed / never-in-tub-or-shower / stable-position constraints
+- Root cause of missing story videos: carouselStoryVideoFn (registered in code at /api/inngest since 2026-08-11) was never synced to Inngest Cloud — ClaudeCallLog has zero "story-video-script" rows ever, meaning the function never executed even once despite events being sent by the daily chain and the admin button
+
+### Manual steps needed
+- [ ] After this deploy, verify "Content Factory — 30s Story Video" and "Engagement Metrics Refresh" both appear in the Inngest dashboard function list; if not, hit Sync on the app in the Inngest dashboard (Keenan)
+
+### Notes
+- Diagnosis path that worked: ClaudeCallLog is the pipeline's execution trace — zero rows for a purpose string means the function never ran, which distinguishes "not registered" from "runs but fails downstream" without Inngest dashboard access
+- Local machine CAN query prod Supabase from Keenan's home network — only the work network blocks it
+- If story videos still don't arrive after a confirmed sync, next suspects in order: Higgsfield rendering <4 of 6 clips (function gives up silently — check its run logs in Inngest), then TTS/mux failures (those fall back to a silent video, which still emails)
+
+---
+
+## [2026-08-12] — Instagram numbers now flow in automatically — paste a link once, done
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 17b89e05
+
+### In plain English (for Keenan)
+No more typing engagement numbers by hand. When you post a carousel, paste its Instagram link into the new field in the admin (next to the metrics form) and hit "Save links" — the system pulls views, likes, comments, saves, and shares from Instagram immediately, and then re-pulls every morning so the numbers stay current while the post keeps climbing. The AI's feedback loop feeds on always-fresh data with zero ongoing effort. TikTok links can be pasted too (stored for when the TikTok API is hooked up — that needs a TikTok developer app approval first). Also fixed this morning's 500 error on the carousel page: the earlier `prisma db push` ran before `git pull`, so the new columns never reached the database — I pushed them from this machine and the page recovered instantly.
+
+### Technical changes (for Jimmy)
+- Prisma schema: CarouselPost gains instagramUrl, tiktokUrl (String?) — already applied to prod via db push from Keenan's home network during this session
+- New apps/web/src/lib/content-factory/instagram-metrics.ts: Graph API v21.0; fetches the IG account's media list (paged, ~200 posts) indexed by normalized permalink, then per-media /insights for views/saved/shares (combined call with per-metric fallback for unsupported media types); like_count/comments_count read off the media object
+- New apps/web/src/inngest/functions/carousel-metrics-refresh.ts: cron 13 UTC daily (before the 16 UTC generation consumes the data) + manual event "content-factory/metrics.refresh"; refreshes POSTED carousels with an instagramUrl from the last 90 days; 300ms delay between media calls for rate limits
+- apps/web/src/app/api/inngest/route.ts: registered carouselMetricsRefreshFn
+- apps/web/src/app/api/admin/carousels/route.ts: new actions save-links (validates http(s) URLs, null on blank) and refresh-metrics (fires the Inngest event)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: IG/TikTok link inputs + Save links button in the metrics card; saving an IG link fires an immediate metrics pull; status line shows "Auto-pulls daily from IG · updated {date}"
+
+### Manual steps needed
+- [ ] Add Vercel env vars IG_ACCESS_TOKEN and IG_USER_ID (Keenan — see Notes for how to get them from the Meta app), then redeploy
+- [ ] Confirm the IG account is a Business/Creator account linked to a Facebook page (Keenan)
+- [ ] TikTok: create a TikTok developer app when ready — the schema and cron have a slot for it (Keenan, later)
+
+### Notes
+- Token guidance: in Graph API Explorer pick the app → get a User token with pages_show_list, instagram_basic, instagram_manage_insights → exchange for long-lived → GET /me/accounts to get the PAGE access token (page tokens never expire — use that as IG_ACCESS_TOKEN) → GET /{page-id}?fields=instagram_business_account for IG_USER_ID
+- The cron is a silent no-op until the env vars exist (instagramConfigured() guard) — safe to deploy before the token is ready
+- Root cause of the morning 500: `prisma db push` is a no-op if the local schema wasn't pulled first — "re-synced in 3.84s" with no column list means nothing changed. Verified fix by querying information_schema over the home network (this machine CAN reach Supabase from home — the block is only on the work network)
+- Metrics for linked posts are cron-owned: manual edits to those posts get overwritten on the next refresh (by design). Posts without links keep manual-form ownership.
+
+---
+
+## [2026-08-12] — The carousel factory now learns from what actually performs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** da1c1f01
+
+### In plain English (for Keenan)
+Each carousel in the admin now has a small form where you enter the real numbers from TikTok/Instagram — views, likes, comments, saves, shares. Once at least 4 posts have numbers, the AI is shown your best and worst performing headlines every time it writes a new topic, and is told to lean into what worked and avoid what flopped. The system stops guessing and starts learning from your account. Bonus: the 30-second story video is now saved on the post itself with an "Open MP4" link in the admin (before, it only existed in the email), and re-running a story from the admin now matches the carousel's art style instead of defaulting to realistic.
+
+### Technical changes (for Jimmy)
+- Prisma schema: CarouselPost gains 10 nullable columns — views, likes, comments, saves, shares (Int?), metricsAt (DateTime?), lane, mood, storyVideoUrl (String?), withheldReason (String? @db.Text)
+- apps/web/src/inngest/functions/carousel-daily.ts: create() persists lane/mood/withheldReason; generate-topic step pulls the 30 most recent metric-bearing posts, scores them (likes + 2×comments + 3×saves + 3×shares, per-1k-views when views entered), and passes top/bottom 5 headlines to generateTopic once ≥4 posts have metrics
+- apps/web/src/lib/content-factory/generate-topic.ts: generateTopic gains opts.performance → renders a PERFORMANCE FEEDBACK block into the user prompt (extract-the-appeal, don't-copy rules)
+- apps/web/src/inngest/functions/carousel-story-video.ts: event lane/mood fall back to the post's persisted columns (admin re-runs send only postId); new save-story-url step writes storyVideoUrl after finalize
+- apps/web/src/lib/content-factory/carousel-generate.ts: one-off pipeline persists lane
+- apps/web/src/app/api/admin/carousels/route.ts: new save-metrics action (empty fields save as null, not 0)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 5-field metrics form + save button under the caption in the detail view; story video "Open MP4" banner when present
+
+### Manual steps needed
+- [ ] `npx prisma db push` from the repo root (Keenan, home network) — run IMMEDIATELY after this deploys. Between the Vercel deploy finishing and db push completing, carousel generation AND the admin carousels page will error on the missing columns, so pull + push in one sitting and avoid deploying within ~15 min before the 16:00 or 20:00 UTC cron runs
+
+### Notes
+- All new columns are nullable, so db push is non-destructive; the breakage window is code-before-columns, not columns-before-code
+- Feedback loop needs ≥4 metric-bearing posts before it activates — silently inactive until Keenan starts entering numbers
+- withheldReason is now a real column (it also still rides in the caption's internal note — the note is what Keenan actually reads)
+- Discovered: running `npx prisma generate` locally (no DB access needed) fixes the long-standing stale-Prisma-client typecheck noise — local baseline dropped from 209 to 160 errors, and the remaining 160 are pre-existing issues in adlab/unrelated files (Vercel builds have ignoreBuildErrors: true anyway)
+
+---
+
+
+## [2026-08-12] — Posts end on the mic-drop, and every list now baits comments with a missing reason
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 50c131ea
+
+### In plain English (for Keenan)
+Two changes from the virality audit. First, the carousel no longer ends with the orange Ripple ad slide — people don't share ads, so the post now ends on the strongest emotional line. Second, every new topic is generated with a built-in trap for comments: the AI deliberately leaves the single most obvious reason OFF the list, and the caption dares viewers to comment the one that's missing. The reference caption in your email tells you what the withheld reason is (marked "internal — don't post") so you can spot it in the comments and engage.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: SYSTEM_PROMPT gains an "ENGINEERED COMMENT GAP" section; JSON output and GeneratedTopic gain withheldReason
+- apps/web/src/lib/content-factory/caption.ts: new COMMENT_GAP_CTAS pool used when a withheld reason exists; internal note appended after hashtags with the withheld reason
+- apps/web/src/inngest/functions/carousel-daily.ts: generate-cta step and CTA slide removed; buildCaption(topic, withheldReason); estimatedCostCents counts all slides now
+- apps/web/src/lib/content-factory/carousel-generate.ts: CTA slide removed from generateCarousel (one-off pipeline)
+- composeCTASlide and the CTA edit/regenerate handlers are intentionally kept — existing posts still have CTA slides and the ad slide may return later
+
+### Manual steps needed
+None — no schema changes (withheldReason lives inside the stored caption text, not a new column).
+
+### Notes
+- Keenan writes posted captions manually, so the generated caption is reference material — that's why the withheld reason rides inside it as a clearly marked internal note instead of a new DB column (avoids a prisma db push).
+- The animate function already animates "every slide except the last (CTA)" by slide count — with no CTA slide the hard cap of 7 animated slides still holds since topics are capped at 6 reasons.
+
+---
+
+## [2026-08-12] — Story videos can now be generated from the admin
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6406c6e0
+
+### In plain English (for Keenan)
+Until now the 30-second story video only existed as the email that arrived after each daily run — there was nowhere in the admin to see or trigger one. Every post's detail page now has a "🎥 Story" button that generates the story video for that post and emails it to you (takes roughly 10 minutes end to end).
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: new "generate-story" POST action sends the content-factory/story.video Inngest event with { postId }; daily summary cost now excludes legacy CTA slides
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: Story button in the post detail utility bar (next to resend-email)
+
+### Manual steps needed
+None.
+
+### Notes
+- Admin-triggered stories default to the cinematicReal illustration lane because lane/mood aren't persisted on CarouselPost — only the daily run passes the original lane through the event chain. Acceptable for now; persisting lane would need a schema change.
+- The story video URL is not stored in the DB, so the admin can't display the finished video — delivery remains email-only.
+
+---
+
+## [2026-08-12] — Story voiceover now matches the finished video's exact length
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2e369b74
+
+### In plain English (for Keenan)
+The story video's voiceover used to be recorded before the video clips existed, so if a scene failed to render the audio could run past the end of the video or get chopped off mid-sentence. Now the system builds the video first, measures exactly how long it is, rewrites the script to fit that length (dropping lines for any scenes that failed), and only then records the voiceover — so the narration always ends right when the video does. The story, hook, and Ripple mention stay the same; only the timing is fitted.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-story-video.ts: voiceover generation moved from before image generation to after clip rendering; new steps stitch-silent (stitch surviving clips with no audio, probe duration, upload story-video-silent.mp4), fit-narration (Claude rewrite to a word budget derived from measured seconds at ~2.4 words/sec, kept-scene lines only, falls back to joining them verbatim), generate-voiceover (unchanged TTS, now on fitted narration), finalize-video (mux audio onto silent video with -c:v copy, upload story-video.mp4; ships the silent URL if TTS or mux fails)
+- apps/web/src/lib/content-factory/story-video.ts: new probeMediaDuration (ffmpeg "-f null -" stderr Duration parse — ffmpeg-static bundles no ffprobe), fitNarrationToDuration (claude-sonnet-4-6, logged to ClaudeCallLog as "story-narration-fit"), muxNarration (atempo speed-up capped at 1.18× when audio runs long; -shortest only in that case so a short voiceover never trims the video); stitchStoryVideo is now silent-only (audio param removed); unused fullNarration removed from StoryScript
+- apps/web/src/lib/content-factory/email.ts: stitchStoryVideo call updated for the new signature; partial-scene warning no longer claims the voiceover may run past the last scene
+
+### Manual steps needed
+None — no schema changes, no new env vars.
+
+### Notes
+- The atempo cap of 1.18× means a wildly long voiceover would still be trimmed by -shortest, but the Claude word budget makes that unlikely; the fallback path (fit call fails) uses only the kept scenes' original lines, which are already ~5s each.
+- Cost: adds one small Claude call per story (~$0.005 as "story-narration-fit" in ClaudeCallLog).
+- Local tsc baseline moved 207 → 208; the one new error is the same stale-local-Prisma-client inference class (narration via step.run) and resolves on Vercel after prisma generate.
+
+---
+
+## [2026-08-12] — Slide text moved below TikTok's search bar and off faces
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 53057f2e
+
+### In plain English (for Keenan)
+On posted videos, the first line of the headline was hiding underneath TikTok's search bar, and long headlines were covering the woman's face. For all future generations the text now starts lower on the screen (clear of TikTok's top bar), and the artwork is generated with the woman's face in the lower half of the frame so the headline always sits on calm background instead of on her.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: renderSlideTextOverlay topStart raised from 10% to 15% of frame height (TikTok status bar + search pill cover ~13%); applies to both static JPEGs and the ffmpeg-burned video overlays since they share the same overlay PNG
+- apps/web/src/lib/content-factory/brand.ts: VISUAL_DNA_NOTEXT composition rule now pins the subject's face/head to the lower half with the top 45% kept as calm background; VISUAL_DNA (baked-text pipeline) gains a SAFE ZONES rule — no text in top 15% or bottom 12%, never over a face
+
+### Manual steps needed
+None.
+
+### Notes
+- Only affects new generations — existing rendered slides/videos in Supabase are unchanged. Use "Regenerate slide" in the admin if an old post needs the fix.
+- Prompt-level face placement is probabilistic; the hard guarantee is the overlay offset, and the lower-half face rule makes overlap very unlikely even for 5-line headlines (block ends ~40% of frame height).
+
+---
+
+## [2026-08-12] — Slide videos now arrive pre-stitched as one carousel video
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bc3c5d21
+
+### In plain English (for Keenan)
+Instead of several "Videos" emails full of individual slide clips you had to clip together yourself, each post now sends exactly two video emails: one "Carousel video" email with all the animated slides already stitched into a single ready-to-post MP4, and one "Story video" email with the 30-second voiceover video. Save each attachment and post — no editing needed.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: greedy-chunked "Videos (n/N)" follow-up emails replaced with ONE follow-up email carrying a stitched compilation (reuses `stitchStoryVideo` with null audio — slide clips are silent with text burned in); compilation uploaded to Supabase at `carousels/{date}/{slug}/slides-compilation.mp4`; attached when ≤28MB else force-download link; stitch failure degrades to one email with per-slide download links; single-video posts (cover-only animation) skip the stitch and attach directly
+- Main carousel email copy updated; per-slide download buttons kept as a backup
+
+### Manual steps needed
+None
+
+### Notes
+- The stitch runs inside sendCarouselEmail, i.e. within the animate function's email step — 7×4s clip concat is well inside the 300s Vercel step ceiling
+- Per Keenan 2026-08-12: exactly one slide-video email + one story-video email per post — don't reintroduce chunked or per-clip emails
+- No new typecheck errors (207 repo baseline unchanged); run tsc from apps/web, not the repo root (root run has no web tsconfig and floods ~16k bogus errors)
+
+## [2026-08-11] — Fully finished 30-second story video delivered with every carousel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1562eee7
+
+### In plain English (for Keenan)
+Every daily carousel now comes with a second email containing a completely finished ~30-second vertical video — no clipping needed. The AI writes a 6-scene voiceover script from the post, creates 6 brand-new illustrated scenes, animates each one, records a warm female voiceover, and stitches it all into one MP4 with sound. You just save the attached video and post it. If the voiceover fails for some reason, the video still arrives (silent) with the script included so nothing is ever lost.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/story-video.ts (new): `generateStoryScript` (claude-sonnet-4-6, 6 scenes × narration/visual/motion, 65-80 words total, logged to ClaudeCallLog as "story-video-script"), `buildStoryImagePrompt` (mirrors the text-free VISUAL_DNA_NOTEXT branch, mood expressions, lane-consistent), `generateVoiceover` (OpenAI TTS `gpt-4o-mini-tts` voice "shimmer", env-overridable via STORY_TTS_MODEL/STORY_TTS_VOICE), `stitchStoryVideo` (ffmpeg-static: normalize each clip to 1080x1920@30fps, concat, mux AAC audio with `-shortest`, silent `-an` fallback)
+- apps/web/src/inngest/functions/carousel-story-video.ts (new): step function on event `content-factory/story.video`, concurrency 1 — load post → script → voiceover (non-blocking) → 6 gpt-image-2 scene images → Higgsfield clip submits in 2 waves of ≤4 with the same 2m + 30s-poll cadence as the animate function → store clips in Supabase → stitch (requires ≥4 clips) → email. Registered in /api/inngest/route.ts
+- Trigger chain: carousel-daily.ts adds `storyVideo: true, lane, mood` to the cover.animate event; carousel-animate-cover.ts sends the story event on both exit paths AFTER its waves drain (avoids Higgsfield's ~4-concurrent-job cap contention)
+- animate-cover.ts: `submitCoverVideo` gains optional `duration` (story clips use `HIGGSFIELD_STORY_CLIP_DURATION`, default 5s; slides stay at 4s)
+- email.ts: new `sendStoryVideoEmail` — MP4 attached when ≤28MB else force-download link, includes caption + narration script + partial/silent warnings; `forceDownloadUrl` hoisted to module scope
+- No schema changes — scene images, clips, voiceover, and final video live in Supabase Storage under `carousels/{date}/{slug}/story-*`
+
+### Manual steps needed
+- [ ] Optional env vars in Vercel if defaults need changing: STORY_TTS_MODEL, STORY_TTS_VOICE, HIGGSFIELD_STORY_CLIP_DURATION (Keenan — only if desired)
+- [ ] Watch the first live run's story email and confirm voiceover pacing/voice fits the brand (Keenan)
+
+### Notes
+- Higgsfield's platform API has NO text-to-speech endpoint — verified against their complete OpenAPI spec (docs.higgsfield.ai/docs/openapi.json) on 2026-08-11; only image and image-to-video models exist. Voiceover therefore uses OpenAI TTS with the existing gpt-image-2 key. Swap via STORY_TTS_MODEL/STORY_TTS_VOICE if a Higgsfield TTS API ever ships
+- Cost per post: ~$0.01 script + ~$0.50 images (6 × gpt-image-2) + 6 × 5s Higgsfield renders + ~$0.001 TTS. At 3 posts/day this roughly doubles daily Higgsfield video spend (18 story clips on top of ~21 slide clips)
+- Timing: story video lands ~25-50 min after the main carousel email (it waits for slide animation, then needs its own image + render + stitch time)
+- Known degradations by design: <4 clips → no stitch, no email (main carousel email already went out); missing middle scenes → voiceover runs slightly past the visuals (flagged in the email); TTS failure → silent video + script in the email
+- A slow story run can overlap the NEXT cron post's slide-animation waves on Higgsfield's account-wide ~4-job cap — the waves' built-in retry attempt covers this, same as before, but watch for dropped submits if runs stack up
+- Local typecheck: new errors are all the stale-local-Prisma-client class (carouselPost/carouselSlide missing → downstream unknowns), same as the documented baseline; story-video.ts itself typechecks clean. Resolves on Vercel where prisma generate runs
+
+## [2026-08-11] — Daily video posts dialed back from 5 to 3
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 54aad09d
+
+### In plain English (for Keenan)
+The factory now makes 3 animated posts per day (7am, 11am, 3pm Central) instead of 5. Keenan clips and posts every video by hand, and 5 a day was producing more than the manual posting workflow could keep up with — 3 matches real capacity and cuts generation cost by 40%.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron `0 12,14,16,18,20 * * *` → `0 12,16,20 * * *`; header comment updated. No other logic changes
+
+### Manual steps needed
+None (Inngest picks up the new cron on next sync after deploy)
+
+### Notes
+- Volume history: 5× mixed → 2× (2026-08-10 cost cut) → 3× → 5× all-animated (2026-08-11 am) → 3× all-animated (2026-08-11 pm)
+- Context from the organic-growth audit: distribution is manual (Keenan clips + posts everything), so generation volume should track his posting capacity, not the ceiling of the pipeline
+
+## [2026-08-11] — Character emotion now matches each post's mood, with bespoke per-slide animations
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 689e8cb6
+
+### In plain English (for Keenan)
+The women in the carousels were smiling and joyous even when the post was about burnout or feeling invisible. Now the AI decides the emotional mood of every single slide (exhausted, tender, wry, frustrated, or hopeful) and writes a custom micro-gesture for each one — so the face in the artwork and the movement in the video both match what that slide is actually saying. Animation variety also jumped from 8 stock movements to 30 mood-matched ones, plus the unlimited custom-written gestures.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: Claude's system prompt + JSON output now include a post-level `mood` and per-slide `{mood, motion}` emotion directions (cover + one per reason), with strict in-place/no-verbs motion-writing rules; parsed with light validation into `GeneratedTopic.mood/coverEmotion/reasonEmotions`
+- apps/web/src/lib/content-factory/brand.ts: new `MOODS` taxonomy (heavy/tender/wry/frustrated/hopeful), `isMood()`, and `MOOD_EXPRESSIONS` (expression/body-language line per mood for image prompts)
+- apps/web/src/lib/content-factory/animate-cover.ts: `MOTION_BEATS` (8) replaced by `MOOD_MOTION_BEATS` (5 moods × 6 beats); new `SlideEmotion` type, `isSafeMotion()` banned-verb guard, and `resolveMotionBeat()` with precedence bespoke motion → curated topic emotionBeat → mood pool → flat pool; all three prompt builders accept an `emotion` option
+- apps/web/src/lib/content-factory/carousel-generate.ts: `buildImagePrompt` takes `opts.mood` and injects the matching `MOOD_EXPRESSIONS` line (both text and no-text variants)
+- apps/web/src/inngest/functions/carousel-daily.ts: passes each slide's mood into its image prompt; sends `slideEmotions[]` (indexed by slide order, 0 = cover) in the `content-factory/cover.animate` event
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: reads `slideEmotions` from event data and passes the per-slide emotion into every video prompt; removed the hardcoded cheerful fallback beat
+
+### Manual steps needed
+None (no schema change — emotion directions travel via the Inngest event payload)
+
+### Notes
+- Bespoke Claude-written motions are validated against a banned-verb regex (walk/stand/talk/window/camera moves etc. — the verbs that broke the scene lock in the live v11/v12 runs); anything unsafe silently falls back to the slide's mood pool, so a bad generation can never wreck a video
+- Emotions are deliberately NOT persisted in the DB to avoid a prisma db push; the trade-off is that an admin "re-animate" of an AI-generated post (event without slideEmotions) falls back to mood pools instead of the original bespoke gestures
+- Curated seed-bank topics (topics.ts) keep their hand-written cover emotionBeat — bespoke event emotion outranks it only when present
+- Local typecheck env is degraded (stale Prisma client, sharp missing) — verified error count in touched files is identical before/after (24 pre-existing)
+
+## [2026-08-11] — 5 animated posts/day, varied covers, varied motion, engagement-optimized hooks
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 15f74da9
+
+### In plain English (for Keenan)
+Four upgrades in one: (1) the factory now makes 5 posts per day, every 2 hours from 7am–3pm Central, and every one is fully animated — no more static posts. (2) Covers rotate through 5 different compositions (close-up face, window light, low dramatic angle, over-the-shoulder, classic medium shot) so they stop looking alike. (3) Each slide's animation gets its own gentle motion (a head tilt, a knowing smile, a deep breath...) instead of every video breathing the same way. (4) Headlines and captions are now engineered for saves, shares, and comments — every caption asks "which one is you? 👇", tells her to save it, and tells her to send it to a friend.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron `0 8,12,16` → `0 12,14,16,18,20`; animatedRun now defaults to true for all cron runs (event `animated:false` can still force static); cover sceneHint now appends a rotating COVER_TREATMENTS entry
+- apps/web/src/lib/content-factory/brand.ts: new COVER_TREATMENTS (5 cover compositions, all keep a single woman subject for the animation prompts)
+- apps/web/src/lib/content-factory/animate-cover.ts: new MOTION_BEATS (8 gentle micro-motions); buildCoverVideoPrompt/buildSlideVideoPrompt take a `seed` to rotate beats; cover prompts no longer say "seated" (covers may now stand)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: passes seed (slug length / slide order) into the prompt builders
+- apps/web/src/lib/content-factory/generate-topic.ts: system prompt rewritten around a saves/shares/comments optimization goal, stronger hook formats (save-bait "reminders for...", share-bait "things every exhausted friend needs to hear", curiosity-gap + quiet-accusation guidance), hyper-specific reason requirement
+- apps/web/src/lib/content-factory/caption.ts: captions now include a comment CTA and a save/share CTA, picked deterministically by slug from small pools
+
+### Manual steps needed
+None
+
+### Notes
+- Cost: 5 animated posts/day ≈ 35 gpt-image gens + up to 30 Higgsfield renders daily. This is the ceiling Keenan asked for; the dial-down is trimming cron hours
+- Volume history: 5× mixed → 2× (2026-08-10 cost cut) → 3× → 5× all-animated (2026-08-11)
+- Cover prompts had said "stays seated" — had to become pose-agnostic once cover treatments could put her standing
+
+## [2026-08-11] — Content factory now generates 3 posts per day instead of 2
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 30ba0551
+
+### In plain English (for Keenan)
+A third daily post now generates at 11am Central (16:00 UTC), on top of the existing 3am static post and 7am animated post. The new run is fully animated like the 7am one, so each day delivers one static slideshow and two animated posts to the inbox.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron changed from `0 8,12 * * *` to `0 8,12,16 * * *`. The existing hour check (only 8 UTC is static) makes the 16 UTC run animated with no other changes
+- Inngest resynced via PUT /api/inngest after deploy
+
+### Manual steps needed
+None
+
+### Notes
+- Cost impact: one extra animated post/day ≈ 7 gpt-image generations + up to 6 Higgsfield i2v renders + Claude topic call. If spend gets uncomfortable, the cheap dial is making 16 UTC static (add it to the hour check) rather than dropping the run
+- Daily volume history: 5× → 2× (2026-08-10, cost cut) → 3× (2026-08-11)
+
+## [2026-08-11] — Videos now arrive as email attachments you can save straight to the camera roll
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0c5d5313
+
+### In plain English (for Keenan)
+The animated slide videos now arrive attached to one or two follow-up "🎬 Videos" emails right after the main daily email. On your phone: tap and hold a video in the email → Save Video → it's in your camera roll. No browser, no download buttons, no Files app. (The buttons in the main email still work as a backup.)
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: videos are no longer squeezed into the main email's 28MB attachment budget (where most got silently dropped). All videos are fetched, greedy-chunked into ≤28MB groups, and sent as follow-up emails with the MP4s attached. Main email keeps images-only attachments and now tells the reader the videos are coming as separate emails
+- Failures on a video email are logged but don't fail the main send
+
+### Manual steps needed
+None
+
+### Notes
+- Root of the whole saga: a linked MP4 can't be saved to the camera roll from a phone's mail/browser flow reliably — only a real attachment gives tap-and-hold → Save Video. Resend's 40MB post-base64 cap (~28MB raw) forces the multi-email split for 6 videos
+- The /api/content-factory/download proxy route stays as the backup path
+
+## [2026-08-11] — Download buttons now pop the native "Download" prompt on iPhone
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1e18c11b
+
+### In plain English (for Keenan)
+Even after the first fix, tapping a video button on the phone could still just play the video in the browser with no way to save it. The buttons now go through our own website, which hands the phone the file as a download — so Safari shows its native "Do you want to download?" popup instead of playing the video.
+
+### Technical changes (for Jimmy)
+- New route: apps/web/src/app/api/content-factory/download/route.ts — streams a file from the public content-factory bucket with `Content-Disposition: attachment`; path is validated against a `carousels/...` allow-list regex so it can't be used as an open proxy
+- apps/web/src/lib/content-factory/email.ts: video links now point at `goripple.io/api/content-factory/download?path=...&name=...` instead of direct Supabase URLs
+
+### Manual steps needed
+None
+
+### Notes
+- Supabase's `?download` flag DID set `Content-Disposition: attachment` (verified with curl), but some mail apps' in-app browsers still played the MP4 inline; serving from our own domain is the reliable path to iOS Safari's native download prompt
+- Streaming ~4–17MB MP4s through a route handler is fine on the Node runtime (ReadableStream passthrough, not buffered)
+
+## [2026-08-11] — Video download buttons in the daily email now actually download
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5e9cff05
+
+### In plain English (for Keenan)
+Tapping a "Download animation" button in the daily content email on your phone was just playing the video in the browser with no way to save it. The buttons now trigger a real file download. On iPhone the MP4 lands in Files — open it there and Share → Save Video to get it into your camera roll.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: video links now append Supabase Storage's `?download=<filename>` query flag, which makes the object serve with `Content-Disposition: attachment` (verified with curl against the live bucket). The HTML `download` attribute was being ignored because it doesn't apply to cross-origin links on mobile
+- Updated the phone-instruction copy in both the HTML and plain-text email bodies
+
+### Manual steps needed
+None
+
+### Notes
+- Supabase's public object endpoint honors `?download=` natively — no proxy route needed
+- Already-sent emails keep the old inline links; today's email was force-resent via the admin `resend-email` action after deploy
+
+## [2026-08-11] — Cut visual style lanes from 7 to 5
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a2114565
+
+### In plain English (for Keenan)
+The daily posts now rotate through 5 art styles instead of 7. We dropped "still life" (no character in the scene, so the animated version had nothing to move and looked frozen) and "risograph" (its halftone dot texture shimmers badly when animated). Kept: cinematic real, 3D toon, claymation, flat graphic, and paper diorama.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/brand.ts: removed stillLife and risograph from STYLE_LANES
+- apps/web/src/lib/content-factory/generate-topic.ts: removed the two keys from STYLE_LANE_KEYS so AI topic generation can't pick them
+- apps/web/src/lib/content-factory/topics.ts: remapped the static topic bank — stillLife → paperDiorama, risograph → flatGraphic — so regeneration paths that look up CAROUSEL_TOPICS never hit a missing lane key
+
+### Manual steps needed
+None
+
+### Notes
+- Selection rationale: the animated pipeline prompts tell the video model "the character continues the activity shown" — stillLife has no character, and halftone textures are the worst-case input for image-to-video models (dot crawl)
+- Old posts whose stored imagePrompt was built from a retired lane are unaffected; regeneration prefers the stored prompt
+
+## [2026-08-11] — Text now actually burns onto the animated slide videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4a5e6ac8, 8f78f969
+
+### In plain English (for Keenan)
+The daily animated post's videos were coming out without the text on them — the words showed on the still images but not the videos. Both causes are fixed, and the six videos in the "5 things you celebrate for others but never for yourself" post were repaired in place, so they now show the text (verified frame-by-frame). Future posts will get the text burned on automatically.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: replaced the SVG-based badge circle and underline capsule with raw-pixel raster helpers (circlePng/capsulePng). sharp on Vercel Lambda cannot parse inline SVG ("glib: XML parse error") even though it works locally, which was aborting overlay generation in prod (commit 4a5e6ac8)
+- apps/web/src/lib/content-factory/video-overlay.ts: ffmpeg's scale2ref filter exits 0 on Vercel but produces zero output frames ("No filtered frames for output stream" → frameless ~261-byte MP4). burnOverlayOntoVideo now tries a fixed `scale=1080:1920` + overlay filter first, keeps scale2ref as a fallback, and rejects any output under 100KB (commit 8f78f969)
+- One-off local script (since deleted) re-burned and re-uploaded all 6 videos of post cmso0feso0000wf6h1ou7gx0q to Supabase Storage with upsert
+
+### Manual steps needed
+None
+
+### Notes
+- Both failures were Vercel-prod-only; everything passed locally. Root causes were found by live-tailing `npx vercel logs <deploy-url>` while triggering the job — the tail must be running during execution, it is not retroactive
+- Supabase CDN caches storage objects (~1hr), so a phone that already loaded the old text-free video may briefly keep showing it at the same URL
+- ffmpeg exiting 0 does not mean it encoded frames — the <100KB output guard is what surfaces this class of failure now
+
+## [2026-08-11] — Animated post fixes: catchy text overlays, varied artwork, no more broken videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9cc8b157, e7736dd2, de4ff797
+
+### In plain English (for Keenan)
+Three fixes to the animated carousel post. First, slides were coming out as full infographics with baked-in text even though we generate the words separately — the art is now genuinely text-free, so there's no double text. Second, the plain white subtitles were replaced with a bold, eye-catching treatment in the top 10% of each slide: big uppercase text, numbers in the carousel's accent color, a numbered colored badge on each reason slide, and a colored underline on the cover. Third, every slide now gets a different scene (kitchen, porch, bedroom, walk outside, etc.) instead of the same room repeated, and if a video comes out broken the system now stores a playable video without the burned text instead of a dead file.
+
+### Technical changes (for Jimmy)
+- brand.ts: new VISUAL_DNA_NOTEXT prompt (standard VISUAL_DNA demands blended typography, which made gpt-image-2 ignore "no text" instructions); per-COLOR_SCHEMES `accent` hex; SCENE_SETTINGS rotation list; variety instruction in the no-text DNA
+- carousel-generate.ts: buildImagePrompt `opts.sceneHint`; the noText branch uses a fully separate prompt that never says "slide"/"carousel"
+- compose.ts: renderSlideTextOverlay rewritten (uppercase, 64/52px, accent-colored numeric tokens via raw Pango markup, SVG accent circle badge + underline bar, blurred dark shadows, block starts at 192px = 10%)
+- carousel-daily.ts: passes colorScheme.accent + per-slide sceneHint; uploads each overlay as `slide-N-overlay.png`
+- animate-cover.ts storeSlideVideo: downloads the stored overlay PNG (pixel-identical to the static JPEG) before burning, re-renders as fallback; rejects downloaded videos <100KB
+- video-overlay.ts: throws if ffmpeg output <100KB (prod ffmpeg exited 0 with frameless 261-byte MP4s on Vercel — root cause TBD, stderr now captured at loglevel warning), so callers fall back to the un-burned playable video
+
+### Manual steps needed
+- [ ] Verify the next animated run's videos are >100KB and playable; read ffmpeg stderr in Vercel logs to diagnose the 261-byte prod burn failure (Claude/Keenan)
+
+### Notes
+- ffmpeg-static burns work locally (~2.6MB output) but produced empty 261-byte shells in prod on every slide — guard ships first, diagnosis next run
+- Overlay PNG is stored at generation time specifically so the static JPEG and the burned MP4 share exact pixels regardless of future style changes
+
+---
+
+## [2026-08-10] — Animated posts rebuilt: text is now burned on AFTER animation so it can never move or be blocked
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c99c7ddd
+
+### In plain English (for Keenan)
+The animated slides kept ruining the text because the video AI was animating an image that already had words on it — it warped them, covered them, and invented new actions (people standing up, mouths moving). Now the artwork for animated posts is generated with NO text at all, the animation runs on that clean image, and our own system stamps the exact words on top of the finished video afterward. The words are physically frozen pixels — the AI never sees them, so it can never move, block, or lip-sync them. Animation prompts were also rewritten to only allow small in-place movement with lips closed.
+
+### Technical changes (for Jimmy)
+- New: apps/web/src/lib/content-factory/video-overlay.ts — burnOverlayOntoVideo() composites the 1080x1920 overlay PNG onto the MP4 via ffmpeg-static (scale2ref + overlay, libx264 crf 20)
+- apps/web/src/lib/content-factory/compose.ts — renderSlideTextOverlay() (transparent PNG, Poppins Bold, shadow) + composeSlideWithOverlay(); composeSlide() for animated runs is resize-only
+- apps/web/src/lib/content-factory/carousel-generate.ts — buildImagePrompt() gained { noText } option instructing gpt-image-2 to render zero text and keep the top quarter simple
+- apps/web/src/inngest/functions/carousel-daily.ts — animated runs generate text-free art for cover + every reason slide, upload it as slide-N-*-notext.jpg, persist rawImageUrl, and composite the static JPEG with the overlay; added event trigger "content-factory/daily.generate" (data.animated overrides the cron-hour mode)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts — animation start frame is now rawImageUrl (text-free) when present; prompts get textFree flag
+- apps/web/src/lib/content-factory/animate-cover.ts — v12 prompts: character stays in place doing the activity already shown, lips closed, locked camera; text-free variants never mention text; storeSlideVideo() burns the overlay onto the finished MP4 (falls back to text-free video if the burn fails)
+- apps/web/src/app/api/admin/carousels/route.ts — new "generate-daily" action (CRON_SECRET or admin) fires the daily.generate event on demand
+- apps/web/next.config.js — ffmpeg-static marked external + traced into the /api/inngest lambda
+- apps/web/package.json — added ffmpeg-static
+
+### Manual steps needed
+- [ ] None — Inngest resynced via PUT /api/inngest after deploy (Claude Code)
+
+### Notes
+- Frame extraction on the v11 output proved the video model executes ANY verb in the prompt: quoting the slide text made the character stand up, walk to a window, and morph the claymation style into photoreal. Prompts must describe only the desired micro-motion, never quote slide copy.
+- Camera moves (push-in) warp baked-in text — locked camera whenever text is in frame.
+- Existing posts generated before this change have no text-free reason art, so re-animating them still uses the old baked-text frames; only freshly generated animated posts get the full pipeline.
+
+---
+
+## [2026-08-10] — Found why slides were missing videos: Higgsfield only allows ~4 renders at once
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 99e614b3
+
+### In plain English (for Keenan)
+The reason some slides kept arriving without animation: our video provider quietly ignores render requests when we send more than about 4 at the same time. The system now animates slides in batches of 4 — first batch renders, then the next — so all 7 slides of the animated daily post get their videos. Confirmed live: after resubmitting the 3 dropped slides on their own, every one rendered on the first try.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: submit loop breaks at MAX_CONCURRENT_JOBS=4 per wave; MAX_ATTEMPTS 2→3 (4+3 slides + retry margin); later waves get a 2m head start + 24×30s poll window since they render fresh jobs
+- Builds on 10c666da (retry submit failures) from the parallel session — the cap prevents the drops upfront, the retry waves catch render failures
+- Inngest resynced after deploy
+
+### Manual steps needed
+None
+
+### Notes
+- Evidence: runs shipped 5/7 then 4/7 with ZERO submit errors logged — Higgsfield returns success-shaped drops or the errors never surfaced; resubmitting the 3 missing slides alone → 3/3 success in minutes. Concurrency cap ~4-5 per account is the only consistent explanation.
+- Worst case duration is now ~3 waves ≈ 45 min before the email; fine for the 12 UTC run (email lands ~12:45 at the latest).
+
+## [2026-08-10] — Slide animations now act out the slide's text, and failed renders retry
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 28becbec
+
+### In plain English (for Keenan)
+Two fixes from the first animated-post test: the slide videos were inventing random things (birds, the person wandering around) instead of showing the message on the slide — now each slide's animation has the person acting out that exact slide's statement, with nothing new allowed into the scene, and the text always stays on top. Also, when a video render fails, the system now automatically tries that slide once more, so animated posts should arrive with every slide (except the final Ripple slide) animated instead of some staying still.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: v11 prompts — `buildSlideVideoPrompt(overlayText)` now takes the slide's text and instructs "the main subject acts out '<text>'"; new shared `SAME_SCENE_LINE` ending "nothing new enters the frame"; removed the steam/mug/candle/ambient-drift lines that seeded hallucinated elements
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: rewritten as a two-attempt loop (step names suffixed `-a1`/`-a2`); each attempt submits only target slides still lacking `videoUrl`, so attempt 2 retries exactly the slides whose submit or render failed; attempt 2 gets a shorter window (1m head start + 20×30s polls)
+- Inngest resynced after deploy
+
+### Manual steps needed
+None
+
+### Notes
+- Root cause of the birds/wandering: the v10 generic slide prompt said "the scene comes alive … soft ambient details drift" — the model treated that as license to add elements. v11 both anchors the motion to the slide's own words and locks the frame.
+- First live test (post cmsn6p53e000ceo911s678ave) animated 5/7; slides 5–6 failed with no retry — hence the second attempt pass.
+
+## [2026-08-10] — Manual trigger for the fully animated post (test hook)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 39c9a3c7
+
+### In plain English (for Keenan)
+There's now a way to run the fully animated post on demand instead of waiting for the daily noon run. We used it today to test-animate the "6 reasons you overthink everything but decide nothing" carousel — you'll get a second email with all the videos once the renders finish.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: POST now also accepts `Authorization: Bearer CRON_SECRET` (same pattern as adlab/comp routes) as an alternative to the admin session
+- New POST action `animate-all` — sends `content-factory/cover.animate` with `{ postId, sendEmail: true, animateAll: true, animationStyle: "smooth" }`, identical to what the 12 UTC cron enqueues
+- Triggered via: `curl -X POST https://goripple.io/api/admin/carousels -H "Authorization: Bearer $CRON_SECRET" -d '{"action":"animate-all","postId":"..."}'`
+
+### Manual steps needed
+None
+
+### Notes
+- INNGEST_EVENT_KEY / HIGGSFIELD keys are "sensitive" env vars in Vercel — `vercel env pull` returns literal `[SENSITIVE]`, so events can't be sent to Inngest directly from a laptop. CRON_SECRET is a plain var and pulls fine; that's why the trigger goes through this route.
+- The animate function skips slides that already have a videoUrl, so `animate-all` is safe to re-run after a partial failure.
+
+## [2026-08-10] — Post 1 is a static slideshow, post 2 is fully animated (every slide except the last)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5e9cff05
+
+### In plain English (for Keenan)
+The two daily posts now have distinct formats. The 8 UTC post is a plain picture slideshow — no animation at all, so the email arrives as soon as the images are done. The 12 UTC post is fully animated: every slide except the final CTA slide gets its own 4-second video on the current (lite) model, and its topic is capped at 6 reasons so at most 7 slides are animated. The email for the animated post includes a download button for every video (tap → Share → Save Video on your phone), and attaches as many as fit under the email size limit.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: 8 UTC run skips animation and emails directly; 12 UTC run sends cover.animate with `animateAll: true`; topic generation passes `maxReasons: 6` for the animated run. "crazy" style no longer used by the cron (still supported by the event for manual runs).
+- apps/web/src/lib/content-factory/generate-topic.ts: generateTopic(recentHeadlines, { maxReasons? }) — cap is given to Claude in the prompt (not sliced after) because the headline's number must match the reason count
+- apps/web/src/inngest/functions/carousel-animate-cover.ts: rewritten for multi-slide — submits one Higgsfield job per target slide (all but last when animateAll, else cover only; hard cap 7 videos), polls all jobs in shared steps, stores each finished video, emails on every exit path. Per-slide failures degrade that slide to static without killing the rest.
+- apps/web/src/lib/content-factory/animate-cover.ts: new buildSlideVideoPrompt() for reason slides (generic, works for lanes without a person); storeCoverVideo → storeSlideVideo with per-slide storage path slide-{order}-{kind}.mp4
+- apps/web/src/lib/content-factory/email.ts: handles any number of slide videos — one download button per video, attaches those that fit the 28MB budget, plain-text link list
+
+### Manual steps needed
+- [ ] Inngest resync after Vercel deploys: PUT https://goripple.io/api/inngest (function name/flow changed) — attempted from this session
+- [ ] Watch tomorrow's 12 UTC email: ~7 videos at once is the first real load test of Higgsfield concurrency and the 20-min poll window (Keenan)
+
+### Notes
+- Cost: the animated post submits up to 7 lite renders/day (vs 1 before across 5 posts). Still cheaper overall than 5 posts of images + 5 cover videos, and Keenan explicitly chose lite over standard for cost.
+- All 7 jobs are submitted up-front in one step; Higgsfield renders them server-side in parallel, so the 2m + 36×30s poll window should still hold. If timeouts appear, widen MAX_POLLS.
+- Slides already having videoUrl are skipped on retry, so an Inngest retry after partial success only renders the missing slides.
+
+## [2026-08-10] — Daily carousels cut from 5 to 2 per day
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5e9cff05
+
+### In plain English (for Keenan)
+The content factory now generates and emails 2 carousels per day instead of 5, cutting the daily AI image and video spend by 60%. The 8 UTC post keeps the high-energy intro animation and the 12 UTC post gets the smooth one, so you still see both styles every day. Also decided against upgrading the video model to the "standard" tier — it costs too many tokens, so we stay on the cheaper "lite" tier and rely on the improved prompts for quality.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron changed from "0 8,9,10,11,12 * * *" to "0 8,12 * * *"; comments updated (8 UTC = crazy intro, 12 UTC = smooth — unchanged logic, just fewer runs)
+- PROGRESS.md: superseded the earlier manual step suggesting a HIGGSFIELD_VIDEO_MODEL tier upgrade — staying on dop/lite per Keenan's cost call
+
+### Manual steps needed
+- [ ] Inngest resync after Vercel deploys: PUT https://goripple.io/api/inngest (cron/trigger config changed, so the schedule won't update until resync) — attempted from this session; verify tomorrow only 2 emails arrive (Keenan)
+
+### Notes
+- Trigger config changes (unlike prompt-only changes) DO require an Inngest resync — the schedule lives in Inngest's synced function config, not in our code at runtime.
+- Chose 8 and 12 UTC (the old first and last slots) to keep the crazy/smooth split and the widest spacing.
+
+## [2026-08-10] — Cover animations: clear person movement, text always readable, phone download button
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a9c7bd58
+
+### In plain English (for Keenan)
+Three fixes to the animated covers. First, the animation instructions were rewritten (v10): the woman now performs one clear, engaging movement from the very first moment instead of "a still, quiet moment" that barely moved, and the headline text stays razor-sharp and fully visible for the entire video — the text no longer fades out at the end, so viewers always know what the post is about. Second, the daily email now always has a big orange "Download animated cover (MP4)" button that works on your phone: tap it, then Share → Save Video to get it into your camera roll. Third, there's a new quality setting we can switch on in Vercel to render sharper video, and the model tier itself can be upgraded from "lite" for a bigger quality jump.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/animate-cover.ts: prompts v10 — keeps v9's short/positive-only style (no negative instructions) but leads with one full, visible gesture; drops the text fade-out; adds shared TEXT_AND_QUALITY_LINES (text fixed and sharp for the whole video, HD cinematic footage). Both smooth and crazy variants.
+- apps/web/src/lib/content-factory/animate-cover.ts: submitCoverVideo optionally sends `quality` (HIGGSFIELD_VIDEO_QUALITY) and overrides the default 4s `duration` (HIGGSFIELD_VIDEO_DURATION) — both omitted when env unset, so default behavior is unchanged
+- apps/web/src/lib/content-factory/email.ts: replaced the small video link with a prominent tappable download button + save-to-camera-roll hint (HTML and plain text); fixed stale "15MB" copy in the oversized-attachments warning
+- Rebased onto the 2026-08-07 animation rework (standard i2v, no end frame, dop/lite) — kept that architecture and the email debug logging
+
+### Manual steps needed
+- [x] ~~Upgrade HIGGSFIELD_VIDEO_MODEL to a higher tier~~ — SUPERSEDED 2026-08-10: Keenan decided the standard model costs too many tokens; staying on dop/lite
+- [ ] Optionally set HIGGSFIELD_VIDEO_QUALITY=1080p in Vercel — undocumented for this endpoint, so watch the first run: if the email arrives with a static cover, remove the var (Jimmy)
+- [ ] Review the next daily emails to judge the v10 animations and the download button (Keenan)
+
+### Notes
+- Higgsfield's platform API keys are not in the local .env (Vercel only), so the `quality` field could not be verified against the live API — that's why it's env-gated instead of hardcoded. A rejected field would make submits fail and every cover degrade to static; that's the failure mode to watch.
+- Deliberately reverted d137f161's text fade-out: Keenan's 2026-08-10 direction is that the video must never impede the text, so it now stays visible for the full 4 seconds.
+- v10 respects the v9 lesson (long prompts with negative instructions make the model act out the mentioned verbs) — all new lines are short and describe only what SHOULD happen.
 
 ## [2026-08-07] — Durable comp marker (subscriptionSource="comp") + one-line comp action
 
@@ -130,7 +1398,7 @@ We can now give someone free PRO access ("comp" them — testers, friends, App S
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 Two changes: (1) The animation was too chaotic — birds, particles, swirling leaves everywhere. The prompts now describe simple, clean motion: one clear character gesture, one or two ambient details (steam, light shift), and a gentle camera push. Think polished Instagram reel, not a movie trailer. (2) The email keeps arriving without the animated video even though the video exists in Supabase. Added detailed logging to the email function so we can see exactly WHY the video isn't being included — whether the URL is null, the fetch fails, or it's a size issue. Also removed the requirement that `useAttachments` must be true before even trying to fetch the video.
@@ -151,7 +1419,7 @@ Two changes: (1) The animation was too chaotic — birds, particles, swirling le
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 The animated covers had two problems: (1) the model was generating ugly text/numbers on screen even though the source image has no text, and (2) the character would snap into a pose and freeze rather than moving fluidly. The prompts now explicitly ban any text/number generation and describe every motion as continuous and flowing — the character drifts through her gesture over several seconds, the camera never stops moving, and every element (birds, steam, leaves, light) keeps flowing throughout the clip.
@@ -6854,7 +8122,7 @@ None — no Prisma schema changes. `campaignObjective` field already exists on A
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 5e9cff05
 
 ### In plain English (for Keenan)
 
