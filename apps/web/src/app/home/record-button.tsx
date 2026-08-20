@@ -20,6 +20,11 @@ import {
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
 import { usePendingEntries } from "@/contexts/pending-entries-context";
 
+import {
+  AudioTooLargeError,
+  uploadAudioDirect,
+} from "@/lib/direct-upload.client";
+
 type Phase =
   | "idle"
   | "recording"
@@ -164,12 +169,32 @@ export function RecordButton() {
   const upload = async (blob: Blob, duration: number, mime: string) => {
     setPhase("uploading");
 
-    const fd = new FormData();
-    fd.append("audio", blob, `recording.${extFromMime(mime)}`);
-    fd.append("durationSeconds", String(duration));
+    // Bytes go browser → Supabase via a signed URL; this request carries
+    // metadata only, so Vercel's 4.5MB body cap no longer truncates long
+    // recordings.
+    let uploaded: { storagePath: string; mimeType: string };
+    try {
+      uploaded = await uploadAudioDirect(blob, "entry");
+    } catch (err) {
+      setError(
+        err instanceof AudioTooLargeError
+          ? "That recording is too long to process. Try a shorter one."
+          : "We couldn't upload that recording. Check your connection and try again."
+      );
+      setPhase("error");
+      return;
+    }
 
     try {
-      const res = await fetch("/api/record", { method: "POST", body: fd });
+      const res = await fetch("/api/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storagePath: uploaded.storagePath,
+          mimeType: uploaded.mimeType,
+          durationSeconds: String(duration),
+        }),
+      });
 
       // Payment required — trial expired or post-trial-free. Redirect
       // to the upgrade flow with a soft-bannered context.
@@ -541,11 +566,6 @@ function bestMimeType(): string {
   return types.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
 }
 
-function extFromMime(mime: string): string {
-  if (mime.includes("mp4")) return "mp4";
-  if (mime.includes("ogg")) return "ogg";
-  return "webm";
-}
 
 function MicIcon({ size = 16 }: { size?: number }) {
   // Explicit `stroke="#FFFFFF"` belt-and-suspenders: `stroke="currentColor"`

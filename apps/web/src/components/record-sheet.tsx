@@ -9,6 +9,11 @@ import {
 
 import { usePendingEntries } from "@/contexts/pending-entries-context";
 
+import {
+  AudioTooLargeError,
+  uploadAudioDirect,
+} from "@/lib/direct-upload.client";
+
 /**
  * Universal record-about-this modal. Slides up from the bottom of the
  * screen, records audio, uploads with optional context (goalId or
@@ -244,25 +249,43 @@ export function RecordSheet({
   const upload = useCallback(
     async (blob: Blob, duration: number, mime: string) => {
       setPhase("uploading");
-      const fd = new FormData();
-      fd.append("audio", blob, `recording.${extFromMime(mime)}`);
-      fd.append("durationSeconds", String(duration));
+      // Bytes go browser → Supabase via a signed URL; this request
+      // carries metadata only, so Vercel's 4.5MB body cap no longer
+      // truncates long recordings.
+      let uploaded: { storagePath: string; mimeType: string };
+      try {
+        uploaded = await uploadAudioDirect(blob, "entry");
+      } catch (err) {
+        setError(
+          err instanceof AudioTooLargeError
+            ? "That recording is too long to process. Try a shorter one."
+            : "We couldn't upload that recording. Check your connection and try again."
+        );
+        setPhase("error");
+        return;
+      }
 
       // Route context to the server fields the /api/record endpoint
       // already understands: Entry.goalId for type="goal",
       // Entry.dimensionContext for type="dimension". Other types
       // (theme, entry-prompt, generic) upload without extra context
       // — still creates an entry, just not anchored.
+      const payload: Record<string, string> = {
+        storagePath: uploaded.storagePath,
+        mimeType: uploaded.mimeType,
+        durationSeconds: String(duration),
+      };
       if (context.type === "goal" && context.id) {
-        fd.append("goalId", context.id);
+        payload.goalId = context.id;
       } else if (context.type === "dimension" && context.id) {
-        fd.append("dimensionContext", context.id);
+        payload.dimensionContext = context.id;
       }
 
       try {
         const res = await fetch("/api/record", {
           method: "POST",
-          body: fd,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
 
         if (res.status === 402) {
@@ -481,9 +504,3 @@ function pickMime(): string {
   return candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
 }
 
-function extFromMime(mime: string): string {
-  if (mime.includes("webm")) return "webm";
-  if (mime.includes("mp4")) return "m4a";
-  if (mime.includes("ogg")) return "ogg";
-  return "webm";
-}

@@ -27,6 +27,10 @@ import {
 import { useEntryPolling } from "@/hooks/use-entry-polling";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import {
+  AudioTooLargeError,
+  uploadAudioDirect,
+} from "@/lib/direct-upload";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import { registerPushTokenAfterRecording } from "@/lib/push-token";
@@ -438,29 +442,53 @@ export default function RecordScreen() {
       const localCancel = { requested: false };
       currentUploadCancelRef.current = localCancel;
 
-      const form = new FormData();
-      // `audio/mp4` is the IANA-canonical MIME for AAC-in-MP4-container
-      // files (which is what Expo's Audio.Recording produces on iOS
-      // despite the .m4a extension). Explicitly setting it here aligns
-      // the client with the server's normalizer in apps/web/src/lib/
-      // audio.ts::normalizeAudioMimeType — even if iOS's native
-      // FormData overrides with "audio/x-m4a" on some builds, the
-      // server maps both to "audio/mp4" before Supabase ever sees it.
-      form.append("audio", {
-        uri,
-        name: "recording.m4a",
-        type: "audio/mp4",
-      } as unknown as Blob);
-      form.append("durationSeconds", String(duration));
-      if (goalId) {
-        form.append("goalId", goalId);
-      }
-      if (dimensionKey) {
-        form.append("dimensionContext", dimensionKey);
-      }
-
       let attempt = 0;
       const token = await getToken();
+
+      // ── Direct-to-storage ───────────────────────────────────────────
+      // Bytes go device → Supabase via a signed URL; this request carries
+      // metadata only. Audio never passes through a serverless function,
+      // so Vercel's non-configurable 4.5MB body cap — the cause of the
+      // production 413 on full-length recordings — no longer applies.
+      //
+      // `audio/mp4` is the IANA-canonical MIME for AAC-in-MP4-container
+      // files (what Expo's Audio.Recording produces on iOS despite the
+      // .m4a extension). The server normalizes it either way; sending
+      // the canonical form keeps the bucket's type allowlist narrow.
+      let storagePath: string;
+      try {
+        const uploaded = await uploadAudioDirect({
+          uri,
+          mimeType: "audio/mp4",
+          target: "entry",
+          authToken: token,
+        });
+        storagePath = uploaded.storagePath;
+      } catch (err) {
+        if (err instanceof AudioTooLargeError) {
+          setError(
+            "That recording is too long to process. Try a shorter one."
+          );
+          setState("error");
+          return;
+        }
+        // Network/storage failure before anything was created server-side.
+        // Nothing to clean up; let the user retry.
+        console.error("[record] Direct upload failed:", err);
+        setError(
+          "We couldn't upload that recording. Check your connection and try again."
+        );
+        setState("error");
+        return;
+      }
+
+      const requestBody = JSON.stringify({
+        storagePath,
+        mimeType: "audio/mp4",
+        durationSeconds: String(duration),
+        ...(goalId ? { goalId } : {}),
+        ...(dimensionKey ? { dimensionContext: dimensionKey } : {}),
+      });
 
       while (attempt < UPLOAD_RETRY_SCHEDULE_MS.length + 1) {
         try {
@@ -469,7 +497,9 @@ export default function RecordScreen() {
           // Play validation build — iOS + Android share this code). Prod
           // builds omit the header → server stays on the sync path until
           // the global flag flips.
-          const reqHeaders: Record<string, string> = {};
+          const reqHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
           if (token) reqHeaders.Authorization = `Bearer ${token}`;
           if (process.env.EXPO_PUBLIC_PIPELINE_ASYNC === "1") {
             reqHeaders["x-acuity-pipeline"] = "async";
@@ -477,7 +507,7 @@ export default function RecordScreen() {
           const res = await fetch(`${api.baseUrl()}/api/record`, {
             method: "POST",
             headers: reqHeaders,
-            body: form,
+            body: requestBody,
             // Intentionally no AbortController signal: the prior cut
             // aborted the read, but the server still committed the
             // entry row. We let the fetch complete and DELETE
