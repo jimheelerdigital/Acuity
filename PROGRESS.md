@@ -37,6 +37,40 @@ Five changes in one overhaul. (1) Captions are no longer assembled from template
 - Hashtag rotation is slug-hash-deterministic so a post's tags are stable across regenerations
 - Pre-existing tsc errors (carousel-daily/one-off topic missing `style`, compose.ts sharp namespace, download route Buffer) verified pre-existing via git stash — untouched
 
+## [2026-08-20] — Long recordings stopped failing, and web now allows 5 minutes like the app
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 8591deb7, 95426155, 766a6d54
+
+### In plain English (for Keenan)
+Recordings longer than about four minutes were silently failing to upload — the user got an error with no explanation, and nothing showed up in our logs to tell us why. The audio was being sent through our own servers, and our hosting provider rejects anything over 4.5MB before it even reaches our code. Recordings now go straight from the phone or browser to storage, bypassing that limit entirely. Separately, the website only allowed 2-minute recordings while the app allowed 5; both are now 5 minutes, so people get the same product either way.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/record/upload-url/route.ts` — issues Supabase signed upload URLs; server derives the object path so a client can never name another user's folder; `target` param selects `voice-entries` vs `voice-entries-try`
+- `/api/record`, `/api/try-recording`, `/api/mobile/try-recording` all dual-accept JSON metadata and legacy multipart
+- `apps/web/src/lib/audio.ts`: `verifyStoredAudio()` re-reads existence + size from the bucket — the metadata POST is a claim, not proof
+- `apps/web/src/lib/pipeline.ts`: `processEntry` takes `audioBuffer` OR `audioPath`; with a path it downloads for Whisper, skips its own upload, and persists `audioPath` so entry deletion still finds the object
+- New upload helpers: `apps/mobile/lib/direct-upload.ts` (native binary PUT), `apps/web/src/lib/direct-upload.client.ts` (Blob PUT)
+- Converted call sites: mobile record + try flows; web record-sheet, record-button, first-debrief-flow, try-debrief-flow
+- `MAX_SECONDS` 120 → 300 in debrief-shared, record-sheet, record-button, first-debrief-flow; privacy page copy updated
+- Set `voice-entries-try.file_size_limit` to 26214400, matching `voice-entries`
+- Tests: `direct-upload.test.ts` (11), `audio-bitrate.test.ts` (+3)
+
+### Manual steps needed
+- [ ] Ship a mobile build so phones use the new upload path (Jimmy) — installed builds stay on multipart until then, which still works
+- [ ] Drop the multipart branches one release after that build is live (Jimmy)
+
+### Notes
+- Root cause was Vercel's 4.5MB request-body cap, which is not configurable and rejects at the edge before any handler runs. That's why the failure had no server-side log — it never reached our code. Production evidence: the `voice-entries` bucket's largest object was 4.28MB with 112 files at 4.0-4.5MB and zero above.
+- Both endpoints keep multipart for one release on purpose. Dropping it immediately would break every phone that hasn't updated.
+- Order mattered: raising the web cap to 300s BEFORE the upload fix would have reintroduced the 413 on web (~4.8MB at a typical browser bitrate). There's now a test asserting that, so the constraint is recorded rather than remembered.
+- Added a one-extraction-per-object guard on both try endpoints. The rate limiter counts requests, not distinct recordings, so a replayed storage path could otherwise re-run Whisper + Claude repeatedly on our spend.
+- Caught during implementation: the sync pipeline only ever wrote `audioUrl`, but entry deletion reads `audioPath`. Direct-uploaded entries would have orphaned their audio in the bucket on delete.
+- I ran Prettier on files that were not Prettier-formatted, producing ~900 lines of unrelated churn. Reverted and re-applied by hand. Do not run Prettier on this repo's existing files — it is not uniformly formatted.
+
+---
+
 ## [2026-08-19] — Every post now renders in the cartoonish-realistic (toon3d) art style
 
 **Requested by:** Keenan
