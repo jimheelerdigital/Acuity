@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
@@ -15,6 +23,7 @@ import {
 } from "@/lib/onboarding-v10/branches";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
+import { submitTryDebriefText } from "@/lib/try-session";
 
 /**
  * Screen 2 — Mirror + Start (dark; the CTA is the first light element).
@@ -139,6 +148,7 @@ export default function V10Mirror() {
         {micDenied ? (
           <MicDeniedPanel
             tokens={tokens}
+            branch={branch}
             onRetry={() => {
               setMicDenied(false);
               void onDisclosureAccepted();
@@ -287,32 +297,55 @@ function AiDisclosureSheet({
 }
 
 /**
- * Mic-denied state.
+ * Mic-denied state — spec §4: "stay here, reveal typed debrief field inline.
+ * Never Settings-only."
  *
- * ⚠️ INCOMPLETE AGAINST SPEC §4, deliberately and visibly.
+ * Both halves are now honored. The typed field posts to
+ * /api/mobile/try-debrief-text, which skips Whisper (the text IS the
+ * transcript) and feeds the same extraction pipeline, so a denied microphone
+ * still completes a real debrief and reaches the same reveal.
  *
- * The spec says: "Mic denied → stay here, reveal typed debrief field inline.
- * Never Settings-only." Staying here and never sending the user to Settings
- * is honored. The TYPED FIELD is not, because there is nowhere to send it:
- * `POST /api/record` requires an audio blob (`formData.get("audio")`, 400s
- * on missing) and there is no text-entry path through transcription →
- * extraction.
- *
- * Building the field anyway would produce a dead end — the user types their
- * debrief, taps submit, and gets an error. That is worse than not offering
- * it. So this offers an honest retry instead, and the gap is reported rather
- * than papered over.
- *
- * TO COMPLETE: add a text-intake path that skips Whisper and feeds the
- * pipeline directly, then render a TextInput here posting to it.
+ * Before that endpoint existed this was a dead end — every intake path
+ * required audio — which is why the field was withheld rather than shipped
+ * as a submit button that always errored.
  */
 function MicDeniedPanel({
   tokens,
+  branch,
   onRetry,
 }: {
   tokens: ReturnType<typeof makeAcuityTokens>;
+  branch: V10Branch;
   onRetry: () => void;
 }) {
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSubmit = text.trim().length >= 10 && !submitting;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    trackV10("v10_recording_started", { input: "typed", branch });
+    try {
+      await submitTryDebriefText(text.trim());
+      trackV10("v10_recording_completed", {
+        duration_s: 0,
+        input: "typed",
+        retry_count: 0,
+        branch,
+      });
+      // Straight to the reveal — there is nothing to upload or transcribe,
+      // so the processing screen would show stages that already happened.
+      router.replace("/onboarding-new/reveal");
+    } catch {
+      setSubmitting(false);
+      setError("That didn't send. Your words are still here — try again.");
+    }
+  };
+
   return (
     <View>
       <Text
@@ -321,34 +354,84 @@ function MicDeniedPanel({
           fontSize: 16,
           lineHeight: 24,
           color: tokens.textSec,
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
-        Ripple needs the microphone to hear your debrief. Nothing is recorded
-        until you tap start, and you can stop whenever you like.
+        No microphone, no problem — type it instead. Or turn the mic on and
+        say it out loud.
       </Text>
 
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        multiline
+        editable={!submitting}
+        placeholder="What's taking up the most space in your head?"
+        placeholderTextColor={tokens.textQuiet}
+        maxLength={10_000}
+        style={{
+          minHeight: 140,
+          borderWidth: 1,
+          borderColor: tokens.line,
+          backgroundColor: tokens.bgInset,
+          borderRadius: 14,
+          padding: 14,
+          fontFamily: tokens.fontSans,
+          fontSize: 16,
+          lineHeight: 24,
+          color: tokens.text,
+          textAlignVertical: "top",
+        }}
+      />
+
+      {error && (
+        <Text
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 14,
+            color: tokens.bad,
+            marginTop: 10,
+          }}
+        >
+          {error}
+        </Text>
+      )}
+
       <Pressable
-        onPress={onRetry}
+        onPress={() => void submit()}
+        disabled={!canSubmit}
         accessibilityRole="button"
         style={({ pressed }) => ({
+          marginTop: 16,
           backgroundColor: tokens.primary,
+          opacity: canSubmit ? 1 : 0.5,
           borderRadius: 999,
           paddingVertical: 18,
           alignItems: "center",
           transform: [{ scale: pressed ? 0.99 : 1 }],
         })}
       >
+        {submitting ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text
+            style={{ fontFamily: tokens.fontDisplay, fontSize: 17, color: "#ffffff" }}
+          >
+            Send my debrief
+          </Text>
+        )}
+      </Pressable>
+
+      <Pressable onPress={onRetry} accessibilityRole="button" style={{ marginTop: 14 }}>
         <Text
           style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 17,
-            // No on-primary token in the palette; #ffffff is the CTA label
-                // convention across onboarding-new (10 call sites).
-                color: "#ffffff",
+            fontFamily: tokens.fontSans,
+            fontSize: 15,
+            color: tokens.textSec,
+            textAlign: "center",
           }}
         >
-          Try again
+          Use the microphone instead
         </Text>
       </Pressable>
     </View>

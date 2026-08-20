@@ -2542,7 +2542,16 @@ model TrySession {
   extractionData  Json
   // Supabase Storage object path (voice-entries-try/{sessionToken}.{ext}).
   // Deleted on claim (audio moves to the user's folder) or on expiry cleanup.
-  audioPath       String
+  //
+  // NULLABLE as of 2026-08-20: a typed debrief (mic-denied fallback, spec §4)
+  // has no audio at all. Null means "there was never a recording" — not
+  // "the recording is missing". Mirrors Entry.audioPath, which has been
+  // nullable for the same reason.
+  //
+  // Deliberately NOT a sentinel string like "text-entry": putting a
+  // non-path constant in a path column is how TrialEmailLog.resendId ended
+  // up failing 53x/24h against a unique index. Callers must null-check.
+  audioPath       String?
   // Whisper transcript — persisted so the claim endpoint can create an
   // Entry with transcript without re-running Whisper.
   transcript      String   @db.Text
