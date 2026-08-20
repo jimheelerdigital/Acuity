@@ -207,6 +207,10 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
         style: topicData.style as any,
         lane: topicData.lane as any,
         reasons: topicData.reasons,
+        // LLM-written personal caption lines (2026-08-20) — buildCaption
+        // falls back to its pools when these are absent.
+        captionOpen: topicData.captionOpen,
+        captionClose: topicData.captionClose,
       };
       const caption = buildCaption(topic);
 

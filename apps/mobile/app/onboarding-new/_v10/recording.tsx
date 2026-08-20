@@ -24,6 +24,7 @@ import {
 } from "@/lib/onboarding-v10/branches";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
+import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
 import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 
 /**
@@ -86,10 +87,9 @@ export default function V10Recording() {
         });
 
         const recording = new Audio.Recording();
-        await recording.prepareToRecordAsync({
-          ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-          isMeteringEnabled: true,
-        });
+        // Same 64 kbps mono spec as every other recorder in the app —
+        // speech for Whisper, not music. See lib/audio-recording-options.
+        await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
         // Same normalization the legacy recorder uses: metering is dBFS,
         // roughly -60 (silence) to 0 (peak).
         recording.setOnRecordingStatusUpdate((status) => {

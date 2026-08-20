@@ -122,6 +122,45 @@ export async function uploadAudioBytes(
   return objectPath;
 }
 
+/** Whisper's hard limit, mirrored by both audio buckets' file_size_limit. */
+export const MAX_STORED_AUDIO_BYTES = 25 * 1024 * 1024;
+
+export type StoredAudioCheck =
+  | { ok: true; sizeBytes: number }
+  | { ok: false; reason: "missing" | "too_large" | "empty"; sizeBytes?: number };
+
+/**
+ * Confirm that a client-uploaded object actually exists in the bucket
+ * before we create a row that points at it.
+ *
+ * Direct-to-storage means the bytes arrive without passing through our API,
+ * so the metadata POST is a CLAIM, not proof. Without this check a caller
+ * could post a storagePath for an object that was never uploaded (or whose
+ * upload failed halfway) and we would happily create an Entry the pipeline
+ * can only fail on — a row that looks queued forever.
+ *
+ * Size is re-read from storage rather than trusted from the request for the
+ * same reason: the bucket's own limit is the real enforcement, and a file
+ * over Whisper's 25MB ceiling can be stored but never transcribed, so we
+ * reject it here where the user still gets a real error message.
+ */
+export async function verifyStoredAudio(
+  bucket: string,
+  path: string
+): Promise<StoredAudioCheck> {
+  const { supabase } = await import("@/lib/supabase.server");
+  const { data, error } = await supabase.storage.from(bucket).info(path);
+
+  if (error || !data) return { ok: false, reason: "missing" };
+
+  const sizeBytes = typeof data.size === "number" ? data.size : 0;
+  if (sizeBytes <= 0) return { ok: false, reason: "empty", sizeBytes };
+  if (sizeBytes > MAX_STORED_AUDIO_BYTES) {
+    return { ok: false, reason: "too_large", sizeBytes };
+  }
+  return { ok: true, sizeBytes };
+}
+
 /**
  * Guess a MIME type from an audio object-path extension. Whisper + the
  * Anthropic SDK are lenient about mime advisories, but we pass a

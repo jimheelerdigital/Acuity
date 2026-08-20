@@ -44,6 +44,14 @@ export interface GeneratedTopic {
   coverEmotion?: SlideEmotion;
   /** Bespoke emotion direction per reason slide, same order as `reasons`. */
   reasonEmotions?: SlideEmotion[];
+  /**
+   * LLM-written caption opener, 1-3 short lines in the page-owner's
+   * voice (2026-08-20, per Keenan: captions must read personal, never
+   * AI-written). Shown above the numbered list in buildCaption.
+   */
+  captionOpen?: string;
+  /** LLM-written comment/share ask line, same voice — after the list. */
+  captionClose?: string;
 }
 
 const SYSTEM_PROMPT = `You are a social media content strategist for Ripple, an AI-powered voice self-reflection app. Your job is to write carousel topics that stop the scroll and make people feel deeply seen.
@@ -143,6 +151,12 @@ STRICT RULES for every "motion":
 - Movements of her face, eyes, head, shoulders, hands, and breath. Think: a jaw tightening as she sets the phone face-down, a hand pressed hard to her chest, a fed-up head shake, shoulders finally dropping in relief.
 - Under 20 words, present tense, written as a continuation of "She ..." (e.g. "lets her shoulders sink with a long exhale, eyes closing briefly").
 
+CAPTION (2026-08-20, per Keenan: captions must read personal, never AI-written):
+The post caption is written by YOU, in the voice of a real woman who runs this page — she's in the audience herself, posting to her own page. Text-message tone, lowercase-leaning, contractions always, no marketing words, no emoji (one at most), nothing that sounds like a brand or a coach.
+- "captionOpen": 1-3 SHORT lines shown above the numbered list. The FIRST line is the only one visible before "...more", so it must hook on its own — a personal aside about the list ("number 4 took me out"), a confession ("i made this list at 11pm and felt every one"), or a direct question to her. Never restate the headline word-for-word.
+- "captionClose": ONE line after the list — a comment ask or a share/save ask in the same voice ("tell me which number got you", "send this to the friend who never stops moving"). Vary it; never reuse the examples verbatim.
+- The test for both: would a real person paste this from their Notes app? If it reads like copy, rewrite it.
+
 OUTPUT FORMAT (strict JSON, no markdown):
 {
   "headline": "the carousel headline",
@@ -153,7 +167,9 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "reasonCount": 5 or 6 or 7 or 8 or 9 or 10,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
   "cover": { "mood": "...", "motion": "..." },
-  "reasonEmotions": [{ "mood": "...", "motion": "..." }, ...]
+  "reasonEmotions": [{ "mood": "...", "motion": "..." }, ...],
+  "captionOpen": "1-3 short lines in the page-owner's voice",
+  "captionClose": "one comment/share ask in the same voice"
 }
 
 "details" and "reasonEmotions" MUST each have exactly one entry per item, in the same order as "reasons". ACTIONABLE posts usually lean hopeful or tender (calm, relief, small acts of care) — the emotion must still match each slide's exact text.
@@ -292,6 +308,14 @@ Return ONLY valid JSON, no other text.`;
       mood,
       coverEmotion: parseEmotion(parsed.cover),
       reasonEmotions,
+      captionOpen:
+        typeof parsed.captionOpen === "string" && parsed.captionOpen.trim()
+          ? parsed.captionOpen.trim()
+          : undefined,
+      captionClose:
+        typeof parsed.captionClose === "string" && parsed.captionClose.trim()
+          ? parsed.captionClose.trim()
+          : undefined,
     };
   } catch (err) {
     const durationMs = Date.now() - start;

@@ -217,9 +217,9 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "photo" | "video" | "story" | "ambient"
-      // (legacy `animated` boolean still honored: true→video,
-      // false→photo; omitted→video).
+      // images). `bucket`: "photo" | "video" | "calmstory" | "ambient"
+      // (legacy "story" → calmstory; legacy `animated` boolean still
+      // honored: true→video, false→photo; omitted→video).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",
@@ -232,14 +232,14 @@ export async function POST(req: NextRequest) {
     }
 
     case "generate-story": {
-      // Queue the 30s story video. With postId: a story inside that
-      // post's theme, saved onto the post. Without: a fully standalone
-      // story (same as the daily 20 UTC bucket) that creates its own
-      // STORY post.
+      // Queue a CALM-STORY video (2026-08-20 — the old illustrated story
+      // pipeline is eliminated). Always standalone: the calm-story fn
+      // writes its own story and creates its own STORY post; a postId is
+      // ignored (kept accepted so old admin buttons don't 400).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
-        name: "content-factory/story.video",
-        data: postId ? { postId } : { standalone: true },
+        name: "content-factory/calmstory.video",
+        data: {},
       });
       return NextResponse.json({ ok: true, queued: true });
     }

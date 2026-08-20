@@ -50,7 +50,7 @@ import { generateInsightsCronFn } from "@/inngest/functions/generate-insights-cr
 import { carouselDailyCronFn } from "@/inngest/functions/carousel-daily";
 import { carouselGenerateOneOffFn } from "@/inngest/functions/carousel-one-off";
 import { carouselAnimateCoverFn } from "@/inngest/functions/carousel-animate-cover";
-import { carouselStoryVideoFn } from "@/inngest/functions/carousel-story-video";
+import { carouselCalmStoryFn } from "@/inngest/functions/carousel-calm-story";
 import { carouselAmbientVideoFn } from "@/inngest/functions/carousel-ambient-video";
 import { carouselMetricsRefreshFn } from "@/inngest/functions/carousel-metrics-refresh";
 
@@ -108,7 +108,7 @@ const handler = serve({
     carouselDailyCronFn,
     carouselGenerateOneOffFn,
     carouselAnimateCoverFn,
-    carouselStoryVideoFn,
+    carouselCalmStoryFn,
     carouselAmbientVideoFn,
     carouselMetricsRefreshFn,
   ],

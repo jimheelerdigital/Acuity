@@ -23,7 +23,11 @@ import { MAX_AUDIO_BYTES } from "@acuity/shared";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { toClientError } from "@/lib/api-errors";
-import { normalizeAudioMimeType, uploadAudioBytes } from "@/lib/audio";
+import {
+  normalizeAudioMimeType,
+  uploadAudioBytes,
+  verifyStoredAudio,
+} from "@/lib/audio";
 import { inngest } from "@/inngest/client";
 import { processEntry } from "@/lib/pipeline";
 import { requireEntitlement } from "@/lib/paywall";
@@ -97,30 +101,90 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. Parse + validate (shared between both paths) ─────────────────────
-  let formData: FormData;
-  try {
-    formData = await req.formData();
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid form data — expected multipart/form-data" },
-      { status: 400 }
-    );
+  //
+  // TWO WIRE FORMATS, deliberately, for one release:
+  //
+  //   JSON  { storagePath, mimeType, durationSeconds, ... }  ← direct-to-storage
+  //   multipart with an `audio` blob                          ← legacy
+  //
+  // The JSON form is the fix: bytes go device → Supabase via a signed URL
+  // and never traverse this function, so Vercel's non-configurable 4.5MB
+  // body cap stops applying. The multipart form stays because APP BUILDS
+  // ALREADY ON PHONES still send it — dropping it immediately would break
+  // every user who hasn't updated. Remove it one release after the
+  // direct-to-storage build is live.
+  const contentType = req.headers.get("content-type") ?? "";
+  const isJsonUpload = contentType.includes("application/json");
+
+  let formData: FormData | null = null;
+  let audioFile: Blob | null = null;
+  let storagePath: string | null = null;
+  let jsonBody: Record<string, unknown> = {};
+
+  if (isJsonUpload) {
+    try {
+      jsonBody = (await req.json()) as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const rawPath = jsonBody.storagePath;
+    storagePath =
+      typeof rawPath === "string" && rawPath.trim().length > 0
+        ? rawPath.trim()
+        : null;
+    if (!storagePath) {
+      return NextResponse.json(
+        { error: "Missing required field: storagePath" },
+        { status: 400 }
+      );
+    }
+    // The signed URL was issued for a {userId}/… path. Verifying the prefix
+    // here stops a caller referencing an object under someone else's folder
+    // — one they could never have written to, but could otherwise read
+    // through the Entry we'd create.
+    if (!storagePath.startsWith(`${userId}/`)) {
+      return NextResponse.json(
+        { error: "storagePath does not belong to this user" },
+        { status: 403 }
+      );
+    }
+  } else {
+    try {
+      formData = await req.formData();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid form data — expected multipart/form-data or JSON" },
+        { status: 400 }
+      );
+    }
+
+    const file = formData.get("audio");
+    if (!file || !(file instanceof Blob)) {
+      return NextResponse.json(
+        { error: "Missing required field: audio" },
+        { status: 400 }
+      );
+    }
+    audioFile = file;
+
+    if (audioFile.size > MAX_AUDIO_BYTES) {
+      return NextResponse.json(
+        { error: "Audio file exceeds the 25 MB limit" },
+        { status: 413 }
+      );
+    }
   }
 
-  const audioFile = formData.get("audio");
-  if (!audioFile || !(audioFile instanceof Blob)) {
-    return NextResponse.json(
-      { error: "Missing required field: audio" },
-      { status: 400 }
-    );
-  }
-
-  if (audioFile.size > MAX_AUDIO_BYTES) {
-    return NextResponse.json(
-      { error: "Audio file exceeds the 25 MB limit" },
-      { status: 413 }
-    );
-  }
+  /** Read a field from whichever wire format this request used. */
+  const field = (name: string): string | null => {
+    if (isJsonUpload) {
+      const v = jsonBody[name];
+      if (typeof v === "string") return v;
+      return typeof v === "number" ? String(v) : null;
+    }
+    const v = formData?.get(name);
+    return typeof v === "string" ? v : null;
+  };
 
   // Normalize MIME to one of the four canonical forms Supabase Storage
   // accepts (webm/mp4/wav/mpeg/ogg). Maps iOS "audio/x-m4a" and Android
@@ -128,7 +192,8 @@ export async function POST(req: NextRequest) {
   // Clients still send whatever the OS reports; canonicalization is our
   // job, not theirs. See lib/audio.ts::normalizeAudioMimeType for the
   // full alias map.
-  const rawMime = audioFile.type || "audio/webm";
+  const rawMime =
+    (isJsonUpload ? field("mimeType") : audioFile?.type) || "audio/webm";
   const mimeType = normalizeAudioMimeType(rawMime);
   if (!mimeType) {
     return NextResponse.json(
@@ -144,7 +209,7 @@ export async function POST(req: NextRequest) {
   // 60 minutes, and Whisper has its own ceiling). Anything outside the
   // range falls back to undefined so the column ends up null rather
   // than holding bogus data.
-  const rawDuration = formData.get("durationSeconds");
+  const rawDuration = field("durationSeconds");
   const durationSeconds = (() => {
     if (typeof rawDuration !== "string" || rawDuration.length === 0) {
       return undefined;
@@ -159,7 +224,7 @@ export async function POST(req: NextRequest) {
   // this user before persisting; silently dropped if it doesn't match
   // (defense in depth — a forged goalId would otherwise leak goal
   // existence via a 403/404).
-  const rawGoalId = formData.get("goalId");
+  const rawGoalId = field("goalId");
   let goalId: string | null =
     typeof rawGoalId === "string" && rawGoalId.length > 0 ? rawGoalId : null;
   if (goalId) {
@@ -175,7 +240,7 @@ export async function POST(req: NextRequest) {
   // from a dimension detail's "Record about this" button. Accepts the
   // lowercase key from DEFAULT_LIFE_AREAS; unknown values are dropped
   // rather than persisted so a forged input can't corrupt the column.
-  const rawDimensionContext = formData.get("dimensionContext");
+  const rawDimensionContext = field("dimensionContext");
   const KNOWN_DIMENSIONS = new Set([
     "career",
     "health",
@@ -190,7 +255,28 @@ export async function POST(req: NextRequest) {
       ? rawDimensionContext
       : null;
 
-  const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
+  // Direct-to-storage requests carry no bytes at all — the object is
+  // already in the bucket. Confirm it landed before creating a row that
+  // points at it; a claimed-but-absent path would produce an Entry the
+  // pipeline can only fail on.
+  let audioBuffer: Buffer | null = null;
+  if (storagePath) {
+    const check = await verifyStoredAudio("voice-entries", storagePath);
+    if (!check.ok) {
+      if (check.reason === "too_large") {
+        return NextResponse.json(
+          { error: "Audio file exceeds the 25 MB limit" },
+          { status: 413 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Uploaded audio was not found. Please try recording again." },
+        { status: 400 }
+      );
+    }
+  } else if (audioFile) {
+    audioBuffer = Buffer.from(await audioFile.arrayBuffer());
+  }
 
   // Async (Inngest) pipeline runs when the global prod flag is on OR the
   // client opts in per-request via the `x-acuity-pipeline: async` header
@@ -210,23 +296,30 @@ export async function POST(req: NextRequest) {
     });
 
     let objectPath: string;
-    try {
-      objectPath = await uploadAudioBytes(
-        audioBuffer,
-        userId,
-        entry.id,
-        mimeType
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Upload failed";
-      console.error("[record] Upload failed:", err);
-      await prisma.entry.update({
-        where: { id: entry.id },
-        data: { status: "FAILED", errorMessage: message },
-      });
-      return toClientError(err, 502, {
-        extra: { entryId: entry.id, status: "FAILED" },
-      });
+    if (storagePath) {
+      // Already in the bucket — nothing to upload. Re-uploading here would
+      // put the same bytes back through this function and reintroduce the
+      // exact 4.5MB body limit direct-to-storage exists to avoid.
+      objectPath = storagePath;
+    } else {
+      try {
+        objectPath = await uploadAudioBytes(
+          audioBuffer!,
+          userId,
+          entry.id,
+          mimeType
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        console.error("[record] Upload failed:", err);
+        await prisma.entry.update({
+          where: { id: entry.id },
+          data: { status: "FAILED", errorMessage: message },
+        });
+        return toClientError(err, 502, {
+          extra: { entryId: entry.id, status: "FAILED" },
+        });
+      }
     }
 
     await prisma.entry.update({
@@ -265,7 +358,12 @@ export async function POST(req: NextRequest) {
     const result = await processEntry({
       entryId: entry.id,
       userId,
-      audioBuffer,
+      // Exactly one of these is set. Given a path, processEntry downloads
+      // the bytes for transcription and skips its own upload — the object
+      // is already where it belongs.
+      ...(storagePath
+        ? { audioPath: storagePath }
+        : { audioBuffer: audioBuffer! }),
       mimeType,
       durationSeconds,
       goalId,

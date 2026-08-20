@@ -3,43 +3,20 @@ import { submitTryRecording } from "@/lib/try-session";
 /**
  * v10 debrief upload — deliberately isolated behind ONE function.
  *
- * ⚠️ THIS IS THE SWAP POINT FOR THE 413 FIX.
+ * Direct-to-storage since 2026-08-20. `submitTryRecording` now asks the API
+ * for a signed URL, PUTs the audio straight into `voice-entries-try`, and
+ * POSTs metadata only. Audio never traverses a serverless function, so
+ * Vercel's non-configurable 4.5MB request-body cap — which used to reject
+ * full-length debriefs at the edge with an opaque 413 — no longer applies.
  *
- * Today this posts multipart audio to /api/mobile/try-recording. That path
- * is being replaced by direct-to-storage (client → Supabase signed URL →
- * metadata-only POST) because full-length recordings exceed Vercel's 4.5MB
- * serverless body cap.
- *
- * ── State of that bug, measured 2026-08-20 ───────────────────────────
- *   MAX_AUDIO_BYTES  25MB   app-level cap (Whisper's limit)
- *   Vercel body cap  4.5MB  platform, rejects BEFORE the handler runs
- *   main recorder    300s ≈ 4.8MB AAC → over the cap
- *   v10 recording    120s ≈ 1.9MB AAC → under it
- *
- * So the app's own 25MB guard can never fire — the platform kills the
- * request first, which is why the 413 shows up as an opaque failure rather
- * than the handler's own tidy 413 at try-recording/route.ts:94.
- *
- * v10 is NOT currently exposed, because Screen 3 caps at 120s. It becomes
- * exposed the moment that cap is raised.
- *
- * ── Two things the 413 branch needs to know ──────────────────────────
- * 1. NO SIGNED-URL ENDPOINT EXISTS on this branch. Nothing matches
- *    createSignedUploadUrl / signedUploadUrl / storagePath anywhere in
- *    apps/web or apps/mobile.
- * 2. v10 does NOT use /api/record. The anonymous onboarding path is
- *    /api/mobile/try-recording, writing to a DIFFERENT bucket
- *    (`voice-entries-try`, not `voice-entries`). A 413 fix that only
- *    converts /api/record leaves this path — the north-star path, first
- *    debrief per fresh install — still on multipart.
- *
- * When the signed-URL flow lands, replace the body of `uploadDebrief` and
- * nothing else in the v10 screens changes.
+ * That the swap needed no change in the v10 screens is what the seam was
+ * for: Screens 3-5 hand a URI to this function and know nothing about how
+ * the bytes reach the server.
  */
 
 // The recording cap lives in ./limits (dependency-free so it can be
-// asserted by a test). Re-exported here because this is where the 413
-// constraint that motivates it is documented.
+// asserted by a test). Re-exported here because this is the module whose
+// upload mechanism used to constrain it.
 export { V10_MAX_RECORDING_MS } from "./limits";
 
 
@@ -59,17 +36,15 @@ export interface UploadResult {
  */
 export async function uploadDebrief(uri: string): Promise<UploadResult> {
   try {
-    // ── SWAP POINT ──────────────────────────────────────────────────
-    // Replace with: request signed URL → PUT audio directly to
-    // `voice-entries-try` → POST { storagePath, durationSeconds } metadata.
     await submitTryRecording(uri, "audio/mp4");
     return { ok: true, retryable: false };
   } catch (err) {
     const status = (err as { status?: number } | null)?.status;
     const message = err instanceof Error ? err.message : String(err);
 
-    // 413 means the audio never reached the handler. Retrying the same file
-    // cannot succeed, so don't offer a retry that is guaranteed to fail.
+    // 413 now means the recording is past Whisper's 25MB ceiling, not that
+    // it tripped a platform body limit. Either way the same file can never
+    // succeed, so don't offer a retry that is guaranteed to fail.
     if (status === 413) {
       return {
         ok: false,

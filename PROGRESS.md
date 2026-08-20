@@ -102,6 +102,36 @@ Also groundwork (not switched on) for the planned $8.99/$79.99 pricing, includin
 - Mobile flags must use static `process.env.EXPO_PUBLIC_*` reads — Metro only inlines those for static member access, so a dynamic lookup would silently pin every flag off in a release bundle.
 - Cutover order is load-bearing: `RC_SDK_PURCHASES` before `RC_SOURCE_OF_TRUTH` would charge users and grant nothing. `configureRevenueCat` warns, but the ordering is on us.
 - Full runbook + the 5 open decisions: `docs/REVENUECAT_MIGRATION.md`.
+## [2026-08-20] — Personal captions, real hashtags, calm-story replaces the story video, seamless calm loops, email caption fix
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Five changes in one overhaul. (1) Captions are no longer assembled from templates — the AI now writes each post's caption in the voice of a real woman who runs the page (texty, lowercase-leaning, personal), with template fallbacks only if it doesn't. (2) Every post gets exactly 5 hashtags: 2 huge-reach tags (#selfcare, #mentalhealth...) + 3 niche tags (#mentalload, #womenover40...), rotating per post; the branded tags are gone. (3) The caption box now sits at the TOP of every content email, so Gmail's "[Message clipped]" can never cut it off again. (4) The old illustrated story video is fully eliminated and replaced by a "calm story": the same soothing Hope voice telling a short story (a mix of she-stories, you-arcs, and parables) across several photoreal scenes — no people ever, so the same-woman problem can't come back — with clean crossfades between scenes, 15-45s, no burned captions. It runs in the story's old 8 UTC slot and its email has a 🎞️ subject. (5) Calm-video loops now dissolve over 1.4s instead of 0.6s and the scene/motion prompts demand one constant endless movement, so the repeat reads as one continuous shot.
+
+### Technical changes (for Jimmy)
+- DELETED `apps/web/src/inngest/functions/carousel-story-video.ts` (659 lines) and the story-script half of `story-video.ts` (generateStoryScript, buildStoryImagePrompt, rewriteUnsafeMotions, StoryScene/StoryScript, STORY_SCENE_COUNT); story-video.ts is now the shared video/audio toolbox only. `buildStorySceneVideoPrompt` + dead `sendStoryStep` removed from animate-cover.ts/carousel-animate-cover.ts
+- NEW `apps/web/src/lib/content-factory/calm-story.ts`: generateCalmStoryScript (Claude, rotating story shapes: third-person mini-story / second-person arc / parable; 2-6 scenes with narration+visual+motion; shared "look" line; persona caption; eleven_v3 vocalScript), buildCalmStorySceneImagePrompt, buildCalmStorySceneVideoPrompt, calmStorySceneWindows (word-weighted per-scene windows accounting for crossfade overlap)
+- NEW `apps/web/src/inngest/functions/carousel-calm-story.ts` (event "content-factory/calmstory.video"): per-scene images → Higgsfield animation in waves of ≤3 → single continuous Hope TTS (reuses ambientVoiceoverOptions/ambientTtsText) → per-scene loop+trim to word-weighted windows → crossfade stitch (0.8s, noEdgeFades, maxrate 5M) → mux → format STORY, storyVideoUrl/storyVoiced → sendStoryVideoEmail({calmStory:true}). Fallbacks: failed scene → still clip; failed TTS → silent + teleprompter captions. Zero schema changes (reuses STORY format + SCENE slide kind)
+- `carousel-daily.ts`: bucket "story" → "calmstory" (8 UTC), enqueues calmstory.video; legacy "story" event value maps to calmstory; buildCaption now receives captionOpen/captionClose (also in carousel-one-off.ts)
+- `caption.ts` (rewritten): buildCaption uses LLM captionOpen/captionClose with personal fallback pools; buildAmbientCaption takes full LLM `caption`; buildStoryCaption deleted; `pickHashtags(slug)` = 2 of 8 MEGA + 3 of 12 NICHE tags, slug-deterministic; brand hashtags removed
+- `generate-topic.ts`: CAPTION block in prompt + captionOpen/captionClose in GeneratedTopic + parser; `topics.ts`: same fields on CarouselTopic
+- `ambient-video.ts`: AmbientScript.caption; VISUAL/MOTION rules rewritten for bold-variance + constant-loop scenes; loopClipToDuration XFADE 0.6→1.4s; `carousel-ambient-video.ts` passes script.caption through
+- `email.ts`: caption block moved to the top of all three emails (Gmail clipping fix), plus `calmStory` option on sendStoryVideoEmail (🎞️ subject/labels)
+- `api/inngest/route.ts`: carouselStoryVideoFn → carouselCalmStoryFn; admin route "generate-story" now sends calmstory.video (postId ignored); admin button retitled "🎞️ Calm story"
+
+### Manual steps needed
+- [ ] After deploy: hit `curl -X PUT https://goripple.io/api/inngest` to resync Inngest functions (registers carousel-calm-story, drops carousel-story-video) (Keenan)
+- [ ] Optional: trigger a paid test run of the calm-story before tonight's 8 UTC cron via the admin "🎞️ Calm story" button (Keenan)
+
+### Notes
+- Calm-story audio/scene sync is word-weighted, not sample-exact: narration is ONE continuous TTS read; each scene's window = its share of the words (+1s tail), crossfade overlap added back into the window sum. Good enough by design — burned captions are off anyway (Keenan adds captions when posting)
+- No-people rule in calm-story is load-bearing: it's what makes multi-scene stories viable after the old format died on character consistency
+- Hashtag rotation is slug-hash-deterministic so a post's tags are stable across regenerations
+- Pre-existing tsc errors (carousel-daily/one-off topic missing `style`, compose.ts sharp namespace, download route Buffer) verified pre-existing via git stash — untouched
+
 ## [2026-08-19] — Every post now renders in the cartoonish-realistic (toon3d) art style
 
 **Requested by:** Keenan

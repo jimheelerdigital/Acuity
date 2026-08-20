@@ -172,20 +172,24 @@ export async function sendCarouselEmail(
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:500px;margin:0 auto;padding:20px;">
-    ${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="Cover" style="width:100%;border-radius:12px;margin-bottom:16px;" />` : ""}
-
     <h1 style="font-size:20px;color:#FBFAF6;margin:0 0 4px;">${escapeHtml(post.headline)}</h1>
     <p style="font-size:12px;color:#888;margin:0 0 16px;">
       ${escapeHtml(lane)} · ${escapeHtml(dateStr)} · ${post.slides.length} slides
     </p>
 
-    ${videoNote}
-    ${attachNote}
-
-    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
+    <!-- Caption FIRST (2026-08-20, per Keenan): Gmail's mobile app clips
+         long messages ("[Message clipped]") and the caption at the bottom
+         was getting cut off — the caption is the one thing that must
+         always be visible and copyable. -->
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:0 0 16px;">
       <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
+
+    ${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="Cover" style="width:100%;border-radius:12px;margin-bottom:16px;" />` : ""}
+
+    ${videoNote}
+    ${attachNote}
 
     <div style="margin:16px 0;">
       <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Slide texts</p>
@@ -209,6 +213,9 @@ export async function sendCarouselEmail(
   const text = [
     post.headline,
     `${lane} · ${dateStr} · ${post.slides.length} slides`,
+    "",
+    "── Caption ──",
+    post.caption,
     ...(videoSlides.length > 0
       ? [
           "",
@@ -219,9 +226,6 @@ export async function sendCarouselEmail(
           "Links download the MP4 directly. On iPhone: open in Files, then Share → Save Video.",
         ]
       : []),
-    "",
-    "── Caption ──",
-    post.caption,
     "",
     "── Slide texts ──",
     ...post.slides.map((s, i) => `${i + 1}. ${s.overlayText}`),
@@ -349,6 +353,11 @@ export async function sendCarouselEmail(
   <div style="max-width:500px;margin:0 auto;padding:20px;">
     <h1 style="font-size:18px;color:#FBFAF6;margin:0 0 8px;">🎬 Carousel video, ready to post</h1>
     <p style="font-size:13px;color:#AAA;margin:0 0 12px;">${escapeHtml(post.headline)}</p>
+    <!-- Caption FIRST (2026-08-20): Gmail mobile clips long messages. -->
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:0 0 16px;">
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
+      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
+    </div>
     <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0 0 16px;">
       ${
         attachment
@@ -357,15 +366,15 @@ export async function sendCarouselEmail(
       }
     </p>
     <div style="text-align:center;margin:16px 0;">${linkList}</div>
-    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
-      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
-      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
-    </div>
   </div>
 </body>
 </html>`.trim(),
         text: [
           `Carousel video — ${post.headline}`,
+          "",
+          "── Caption ──",
+          post.caption,
+          "",
           attachment
             ? attachIt
               ? "One stitched MP4 attached. Tap and hold → Save Video. No clipping needed."
@@ -374,9 +383,6 @@ export async function sendCarouselEmail(
           ...(compilationLink
             ? [compilationLink]
             : videoSlides.map((s) => forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))),
-          "",
-          "── Caption ──",
-          post.caption,
         ].join("\n"),
       };
       if (attachIt && attachment) {
@@ -453,6 +459,12 @@ export async function sendStoryVideoEmail(
      * invisible). Calm videos get their own 🌙 subject and heading.
      */
     calm?: boolean;
+    /**
+     * CALM-STORY video (2026-08-20 — the multi-scene narrated calm video
+     * that replaced the eliminated story format). Gets its own 🎞️
+     * subject so it's distinguishable from the single-scene 🌙 calm one.
+     */
+    calmStory?: boolean;
   }
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
@@ -461,8 +473,10 @@ export async function sendStoryVideoEmail(
     select: { headline: true, caption: true, generatedFor: true },
   });
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
-  const kind = opts.calm ? "calm video" : "story video";
-  const filename = `${opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
+  const kind = opts.calmStory ? "calm story" : opts.calm ? "calm video" : "story video";
+  const emoji = opts.calmStory ? "🎞️" : opts.calm ? "🌙" : "🎥";
+  const label = opts.calmStory ? "Calm story" : opts.calm ? "Calm video" : "Story video";
+  const filename = `${opts.calmStory ? "calm-story" : opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
   const downloadUrl = forceDownloadUrl(videoUrl, filename);
 
   // Attach when it fits under the Resend cap; always include the button.
@@ -506,25 +520,26 @@ export async function sendStoryVideoEmail(
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:500px;margin:0 auto;padding:20px;">
-    <h1 style="font-size:20px;color:#FBFAF6;margin:0 0 4px;">${opts.calm ? "🌙 Calm video ready to post" : "🎥 Story video ready to post"}</h1>
+    <h1 style="font-size:20px;color:#FBFAF6;margin:0 0 4px;">${emoji} ${label} ready to post</h1>
     <p style="font-size:13px;color:#AAA;margin:0 0 16px;">${escapeHtml(post.headline)} · ${escapeHtml(dateStr)}</p>
 
     ${partialNote}
     ${silentNote}
 
+    <!-- Caption FIRST (2026-08-20): Gmail mobile clips long messages. -->
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:0 0 16px;">
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
+      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
+    </div>
+
     <p style="font-size:14px;color:#DDD;line-height:1.6;">
-      ${opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
+      ${opts.calmStory ? "Multi-scene calm story video" : opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
     </p>
 
     <div style="text-align:center;margin:20px 0;">
       <a href="${escapeHtml(downloadUrl)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">
-        ${opts.calm ? "🌙 Download calm video (MP4)" : "🎬 Download story video (MP4)"}
+        ${emoji} Download ${kind} (MP4)
       </a>
-    </div>
-
-    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
-      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
-      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
 
     ${opts.silent ? "" : `<div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
@@ -540,7 +555,11 @@ export async function sendStoryVideoEmail(
 </html>`.trim();
 
   const text = [
-    `${opts.calm ? "Calm" : "Story"} video ready to post — ${post.headline} (${dateStr})`,
+    `${label} ready to post — ${post.headline} (${dateStr})`,
+    "",
+    "── Caption ──",
+    post.caption,
+    "",
     opts.sceneCount < opts.totalScenes
       ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; each remaining scene keeps its own narration line.`
       : "",
@@ -549,9 +568,6 @@ export async function sendStoryVideoEmail(
       : "",
     "",
     `Download: ${downloadUrl}`,
-    "",
-    "── Caption ──",
-    post.caption,
     "",
     opts.silent ? "── RECORD THIS SCRIPT ──" : "── Voiceover script ──",
     opts.narration,
@@ -565,7 +581,7 @@ export async function sendStoryVideoEmail(
     // it can't be posted by accident (2026-08-16).
     subject: opts.silent
       ? `[Ripple Content] ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
-      : `[Ripple Content] ${opts.calm ? "🌙 Calm video" : "🎥 Story video"} — ${post.headline}`,
+      : `[Ripple Content] ${emoji} ${label} — ${post.headline}`,
     html,
     text,
   };

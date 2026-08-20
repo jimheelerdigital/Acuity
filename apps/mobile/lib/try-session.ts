@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 
+import { uploadAudioDirect } from "@/lib/direct-upload";
+
 /**
  * Mobile anonymous Try Session — onboarding-v2 slice 1 (2026-05-25).
  *
@@ -8,7 +10,7 @@ import Constants from "expo-constants";
  *
  *   - acuity.anon_session_id : a stable device UUID generated once on
  *     first launch. Survives sign-out / sign-in cycles. Sent to
- *     /api/mobile/try-recording in the multipart body as anonDeviceId,
+ *     /api/mobile/try-recording in the request body as anonDeviceId,
  *     persisted on the TrySession row for funnel analytics + any
  *     future per-device rate limiting.
  *
@@ -174,23 +176,24 @@ export async function submitTryRecording(
 ): Promise<TryRecordingResponse> {
   const anonDeviceId = await getOrCreateAnonDeviceId();
 
-  const form = new FormData();
-  // React Native fetch's FormData accepts the { uri, name, type } shape
-  // for file uploads. Casting to never bypasses the DOM FormData type
-  // mismatch; this is the standard RN idiom.
-  form.append(
-    "audio",
-    {
-      uri: audioUri,
-      name: `try.${extensionForMime(mimeType)}`,
-      type: mimeType,
-    } as never
-  );
-  form.append("anonDeviceId", anonDeviceId);
+  // Direct-to-storage: the audio goes device → Supabase via a signed URL
+  // and this request carries metadata only. Posting the bytes here meant
+  // hitting Vercel's non-configurable 4.5MB body cap, which killed
+  // full-length recordings at the edge with an opaque 413.
+  const { storagePath, mimeType: canonicalMime } = await uploadAudioDirect({
+    uri: audioUri,
+    mimeType,
+    target: "try",
+  });
 
   const res = await fetch(`${apiBaseUrl()}/api/mobile/try-recording`, {
     method: "POST",
-    body: form,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      storagePath,
+      mimeType: canonicalMime,
+      anonDeviceId,
+    }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -235,15 +238,6 @@ export async function submitTryDebriefText(
   await setStoredTryExtraction(body.extraction);
   return body;
 }
-
-function extensionForMime(mime: string): string {
-  if (mime.includes("mp4") || mime.includes("m4a")) return "m4a";
-  if (mime.includes("webm")) return "webm";
-  if (mime.includes("wav")) return "wav";
-  if (mime.includes("mpeg") || mime.includes("mp3")) return "mp3";
-  return "m4a";
-}
-
 // ─── RFC 4122 v4 UUID (Math.random-backed) ─────────────────────────
 // Cryptographic randomness isn't required here — the value is a
 // stable analytics key, not a security boundary. Inline implementation

@@ -91,6 +91,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
       const caption = buildAmbientCaption({
         slug,
         title: script.title,
+        caption: script.caption,
         captionHook: script.captionHook,
         commentPrompt: script.commentPrompt,
       });
