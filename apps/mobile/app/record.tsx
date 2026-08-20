@@ -30,6 +30,7 @@ import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import { registerPushTokenAfterRecording } from "@/lib/push-token";
+import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
 
 /**
  * Recording modal. One screen, one state machine. Consolidates the
@@ -308,10 +309,10 @@ export default function RecordScreen() {
 
     try {
       const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync({
-        ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-        isMeteringEnabled: true,
-      });
+      // 64 kbps MONO, not HIGH_QUALITY's 128 kbps stereo — see
+      // lib/audio-recording-options.ts. A 5-min entry was ~4.8MB and hit
+      // Vercel's non-configurable 4.5MB body cap; this brings it to ~2.4MB.
+      await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
       // expo-av's default metering cadence is 500ms (2 Hz). Bumping
       // to 1000ms (1 Hz) halves the JS-thread setLevels churn with
       // zero visible impact on the level-bar animation — each status

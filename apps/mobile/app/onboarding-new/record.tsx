@@ -24,6 +24,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { submitTryRecording } from "@/lib/try-session";
+import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
 
 /**
  * Screen 10 — Recording. Slice 8 (2026-05-26) onboarding-v2.
@@ -167,8 +168,7 @@ export default function RecordScreen() {
     try {
       const recording = new Audio.Recording();
       await recording.prepareToRecordAsync({
-        ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-        isMeteringEnabled: true,
+        ...SPEECH_RECORDING_OPTIONS,
       });
       recording.setProgressUpdateInterval(1000);
       recording.setOnRecordingStatusUpdate((status) => {

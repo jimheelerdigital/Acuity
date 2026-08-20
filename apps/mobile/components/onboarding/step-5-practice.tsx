@@ -6,6 +6,7 @@ import { Alert, Pressable, Text, View } from "react-native";
 import { useTheme } from "@/contexts/theme-context";
 
 import { useOnboarding } from "./context";
+import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
 
 /**
  * Step 5 — Practice recording. A throwaway 10-second sample. The audio
@@ -84,7 +85,7 @@ export function Step5Practice() {
       });
 
       const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await rec.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
       await rec.startAsync();
       recRef.current = rec;
 
