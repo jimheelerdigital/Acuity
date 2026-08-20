@@ -62,7 +62,30 @@ npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json
 npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json --limit 1 --apply
 npx tsx apps/web/scripts/rc-import-receipts.ts --file ~/rc-mapping.json --apply
 ```
-1.4. Turn on `EXPO_PUBLIC_RC_OBSERVER` in a **preview** EAS build only. Confirm RC records a sandbox purchase.
+1.4. Build the `observer` EAS profile (added 2026-08-19 — `extends: production`, channel `rc-observer`, sets `EXPO_PUBLIC_RC_OBSERVER=1`). Confirm RC records a sandbox purchase.
+
+   > **The RC SDK keys must be in EAS env vars, not eas.json.** `EXPO_PUBLIC_RC_IOS_KEY` / `EXPO_PUBLIC_RC_ANDROID_KEY` are deliberately NOT committed in the profile. Verify with `eas env:list --environment production` before building — if they're absent, `rcApiKeyFor()` returns null, `configureRevenueCat()` returns `"no-key"`, and the build is a silent no-op that *looks* like observer mode is running while recording nothing.
+
+### Apple import — answered + fixed (2026-08-19)
+
+**Q: does RC's `POST /v1/receipts` accept a StoreKit 2 JWS as `fetch_token`?**
+**A: YES.** Per [RC's API reference](https://www.revenuecat.com/docs/api-v1#tag/Basic/operation/receipts), `fetch_token` is *"For iOS, the base64 encoded receipt file (or JWSTransaction for StoreKit2), for Android the receipt token, … for Stripe the subscription ID or the Stripe Checkout Session ID"*. `X-Platform: ios` for Apple, `stripe` for Stripe.
+
+**The problem it exposed:** we stored neither form. `appleOriginalTransactionId` is an id, and `appleLatestReceiptInfo` is the **decoded** payload with Apple's signature stripped — so it cannot prove a purchase to anyone. `fetchTransactionInfo` (`lib/apple-iap.ts`) fetched the signed JWS from Apple and then discarded it during decode.
+
+**Fixed:** `AppleTransactionInfo.signedTransactionInfo` now carries the signed original, and verify-receipt persists it to `User.appleSignedTransactionJws` (marked sensitive — a bearer proof of purchase; never log or return it).
+
+**Applies to future verifications only.** The 4 existing Apple subscribers have no stored JWS, and per Jim's 2026-08-19 call we are NOT blocking rollout on backfilling them: they will be picked up automatically by observer mode when they open the SDK-enabled build. Backfill remains possible later via Apple's `/inApps/v1/transactions/{id}` (needs `APPLE_IAP_*` credentials wherever the script runs).
+
+### ⚠️ Recurring drift — it has now cost us a table
+
+On 2026-08-19 `migrate diff` showed `RevenueCatEvent` needing creation again. Verified against the live DB: **the table created on 2026-08-16 no longer exists.** The same check found new prod columns `CarouselPost.format` (populated on all 120 rows) + `.storyVoiced`, a new `CarouselFormat` enum, and `SlideKind` gaining `SCENE`.
+
+Diagnosis: someone ran `prisma db push` from a branch whose `schema.prisma` contains the carousel work but not `RevenueCatEvent`. It applied that branch's schema and dropped what the branch didn't know about. Exactly the hazard documented in Phase 0.4 — realized.
+
+`schema.prisma` has now been reconciled with prod **twice in three days**. Until out-of-band SQL changes are back-declared as a rule, this recurs, and the next casualty is whatever the pushing branch happens not to contain.
+
+Re-apply via `prisma/manual/2026-08-19-rc-event-and-apple-jws.sql` (idempotent, additive: re-creates the table and adds the JWS column).
 1.5. Let it run. Watch `revenuecat.webhook.observed` logs — specifically the `agrees` field, which compares RC's would-be decision against the current DB value.
 
 ### Phase 2 — verify (the gate)

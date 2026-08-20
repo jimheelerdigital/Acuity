@@ -1,0 +1,63 @@
+name: Schema destructive-diff guard
+
+# Fails the PR if prisma/schema.prisma, applied to the live database,
+# would DROP a table/column/enum value or rewrite a column type.
+#
+# Background — this failure mode has fired twice in three days:
+#   2026-08-16  a `db push` from a stale branch would have dropped 13
+#               CarouselPost columns incl. 5 populated storyVideoUrl values.
+#               Caught manually, before running.
+#   2026-08-19  a push from a branch predating RevenueCatEvent DID drop that
+#               table. Caught only by noticing it had vanished.
+#
+# Root cause both times: schema.prisma lagged production because a column /
+# table / enum was added with raw SQL and never back-declared. `db push`
+# reconciles the DB *to* the schema, so anything the branch doesn't know
+# about gets removed.
+#
+# Unlike rls-check.yml this NEEDS a database connection, so it depends on
+# the DIRECT_URL secret. If that secret isn't configured the job reports and
+# passes rather than blocking every PR — the local `npm run db:push` guard
+# is the hard block; this is defence in depth.
+
+on:
+  pull_request:
+    paths:
+      - "prisma/schema.prisma"
+      - "scripts/check-destructive-diff.ts"
+      - ".github/workflows/schema-destructive-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "prisma/schema.prisma"
+
+jobs:
+  destructive-diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check DIRECT_URL secret is configured
+        id: secret
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::DIRECT_URL secret is not configured — the destructive-diff guard cannot compare against the live database. Add it in repo Settings → Secrets to enable this check."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run destructive-diff guard
+        if: steps.secret.outputs.configured == 'true'
+        env:
+          # Prisma reads both; the diff uses the direct (non-pooled) URL.
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+        run: npx --yes tsx scripts/check-destructive-diff.ts --require-db

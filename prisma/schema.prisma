@@ -140,6 +140,17 @@ model User {
   // StoreKit versions; replay-debugging benefits from keeping the
   // raw structure rather than projecting it column-by-column.
   appleLatestReceiptInfo        Json?
+  /// The Apple-signed JWS (StoreKit 2 JWSTransaction) the receipt info was
+  /// decoded from. Retained 2026-08-19: appleLatestReceiptInfo is the
+  /// DECODED payload with Apple's signature stripped, so it cannot prove a
+  /// purchase to a third party. This can — RevenueCat's POST /v1/receipts
+  /// accepts a StoreKit 2 JWSTransaction as fetch_token, and without it our
+  /// existing Apple subscribers are not importable into RC.
+  ///
+  /// Sensitive: a bearer proof of purchase. Never log or return it in an
+  /// API response; it is written by verify-receipt and read only by
+  /// server-side reconciliation/import.
+  appleSignedTransactionJws     String?
 
   // ─── Google Play Billing (Android IAP parity, 2026-06-11) ────
   // Mirrors the apple* fields above. Verified via the Google Play
@@ -1424,6 +1435,14 @@ model CarouselPost {
   mood           String?
   withheldReason String?           // Set when a post was held back from publishing
 
+  // ── Second reconciliation, 2026-08-19 ───────────────────────────────
+  // Added to prod out-of-band AFTER the 2026-08-16 reconciliation, by the
+  // same carousel work. Caught because `migrate diff` wanted to drop them.
+  // `format` is populated on all 120 rows, so dropping it was live data
+  // loss for a second time. See docs/REVENUECAT_MIGRATION.md.
+  format         CarouselFormat @default(PHOTO)
+  storyVoiced    Boolean?
+
   @@unique([topicSlug, generatedFor])
   @@index([status, generatedFor(sort: Desc)])
 }
@@ -1455,6 +1474,19 @@ enum SlideKind {
   COVER
   REASON
   CTA
+  // Reconciled from prod 2026-08-19 (added out-of-band by the carousel work).
+  SCENE
+}
+
+/// Reconciled from prod 2026-08-19. Added directly to the database by the
+/// carousel/content-factory work rather than through Prisma, so it was
+/// missing here — which made `prisma db push` from this branch want to
+/// DROP TYPE it along with CarouselPost.format (120/120 rows populated).
+enum CarouselFormat {
+  PHOTO
+  VIDEO
+  STORY
+  AMBIENT
 }
 
 // ─── Auto-Blog System ───────────────────────────────────────────────────────

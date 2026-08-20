@@ -281,7 +281,10 @@ export async function scanRcParity(batch = 5): Promise<RcParityResult> {
     "@/lib/revenuecat/client"
   );
 
-  const inert = rcCredentials().secretKey === null;
+  // Inert when we lack the key the READ path actually uses. That's the
+  // PUBLIC app key, not the secret — GET /v1/subscribers rejects secrets
+  // with code 7243 (see lib/revenuecat/flags.ts publicReadKey).
+  const inert = rcCredentials().publicReadKey === null;
 
   const rows = await prisma.user.findMany({
     where: { subscriptionStatus: { in: ["PRO", "PAST_DUE", "TRIAL"] } },
