@@ -24,6 +24,8 @@ import { useTheme } from "@/contexts/theme-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { submitTryRecording } from "@/lib/try-session";
+import V10Recording from "./_v10/recording";
+import { V10Switch } from "./_v10/route-switch";
 
 /**
  * Screen 10 — Recording. Slice 8 (2026-05-26) onboarding-v2.
@@ -77,7 +79,7 @@ type RecordingState =
   | "uploading"
   | "error";
 
-export default function RecordScreen() {
+function RecordScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -566,4 +568,15 @@ export default function RecordScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. ONBOARDING_V10 decides which flow renders here.
+ *
+ * Flag OFF renders RecordScreen exactly as before — same component, same
+ * behaviour, one boolean read added. Flag ON renders the v10 screen at this
+ * same route, so the live Meta-ad deep links keep working either way.
+ */
+export default function RecordRoute() {
+  return <V10Switch v10={<V10Recording />} legacy={<RecordScreen />} />;
 }

@@ -29,6 +29,7 @@ import {
   getStoredTryExtraction,
   getStoredTrySessionToken,
 } from "@/lib/try-session";
+import { isOnboardingV10Enabled } from "@/lib/feature-flags";
 
 /**
  * Screen 13 — Account creation. Slice 11 (2026-05-26).
@@ -154,16 +155,19 @@ export default function AccountScreen() {
     // slice 14 wires /api/onboarding-events. The metadata bundle
     // gives slice 14 everything it needs to write UserOnboarding
     // columns or OnboardingEvent rows.
+    // v10 never collects q1-q5, so sending them would ship five nulls. The
+    // server ignores these fields regardless — /api/onboarding-events reads
+    // only { event, value, sessionToken } and has no q1-q5 handling — so on
+    // the v10 path they are dropped rather than transmitted as dead weight.
+    // (The in-file comment above claiming this call is "a no-op stub" is
+    // stale: trackOnboardingEvent does POST today. The PAYLOAD is what goes
+    // nowhere, not the request.)
+    //
+    // Legacy path unchanged: flag OFF still sends the full vector.
     void trackOnboardingEvent("funnel_signup_completed", {
-      metadata: {
-        method,
-        isFirst100,
-        q1,
-        q2,
-        q3,
-        q4,
-        q5,
-      },
+      metadata: isOnboardingV10Enabled()
+        ? { method, isFirst100 }
+        : { method, isFirst100, q1, q2, q3, q4, q5 },
     });
 
     // Pull updated user state from server so AuthGate sees the
