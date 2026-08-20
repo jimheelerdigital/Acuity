@@ -194,7 +194,11 @@ export async function DELETE(
 
   try {
     const { canonicalizeEmail } = await import("@/lib/bootstrap-user");
-    const normalizedEmail = canonicalizeEmail(target.email);
+    const { hashDeletedUserEmail } = await import("@/lib/deleted-user-hash");
+    // Canonicalize FIRST, then HMAC — same contract as the self-serve delete
+    // path in api/user/delete. Both write sites must hash identically or a
+    // tombstone written by one is invisible to the lookup.
+    const normalizedEmail = hashDeletedUserEmail(canonicalizeEmail(target.email));
     await prisma.$transaction(async (tx) => {
       await tx.deletedUser.upsert({
         where: { email: normalizedEmail },

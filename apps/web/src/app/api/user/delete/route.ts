@@ -156,7 +156,13 @@ export async function POST(req: NextRequest) {
   let stage = "init";
   try {
     const { canonicalizeEmail } = await import("@/lib/bootstrap-user");
-    const normalizedEmail = canonicalizeEmail(user.email);
+    const { hashDeletedUserEmail } = await import("@/lib/deleted-user-hash");
+    // Canonicalize FIRST, then HMAC. The tombstone stores a one-way digest,
+    // never the address — the privacy policy promises a hash is retained,
+    // not the email. See lib/deleted-user-hash.ts for why HMAC rather than
+    // a bare sha256 (an email is low-entropy and a plain hash is reversible
+    // by enumeration) and why the key must never rotate.
+    const normalizedEmail = hashDeletedUserEmail(canonicalizeEmail(user.email));
     await prisma.$transaction(async (tx) => {
       stage = "tombstone";
       await tx.deletedUser.upsert({

@@ -365,8 +365,22 @@ export async function trialDaysForEmail(
   const literal = email.toLowerCase().trim();
   const candidates =
     canonical === literal ? [canonical] : [canonical, literal];
+
+  // DeletedUser.email stores an HMAC digest, never the address. Hash each
+  // candidate and look up by digest — this preserves the dual-candidate
+  // behaviour exactly (same two probes, same legacy-row catch), just over
+  // digests. See lib/deleted-user-hash.ts.
+  //
+  // If the HMAC key is missing we must NOT fall through to a plaintext
+  // lookup: it would match nothing, silently hand a full trial to every
+  // returning deleted account, and quietly disable the trial-farming guard
+  // this function exists to enforce. Failing loudly is the correct posture —
+  // a missing key is a deploy error, not a runtime condition.
+  const { hashEmailCandidates } = await import("@/lib/deleted-user-hash");
+  const hashedCandidates = hashEmailCandidates(candidates);
+
   const deleted = await prisma.deletedUser.findFirst({
-    where: { email: { in: candidates } },
+    where: { email: { in: hashedCandidates } },
     orderBy: { deletedAt: "desc" },
   });
   if (!deleted) return STANDARD_TRIAL_DAYS;
