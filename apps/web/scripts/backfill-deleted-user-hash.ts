@@ -22,23 +22,53 @@
 
 import "./load-env";
 
-import {
-  hashDeletedUserEmail,
-  hasDeletedUserHmacKey,
-  looksHashed,
-} from "../src/lib/deleted-user-hash";
+/**
+ * `lib/deleted-user-hash` starts with `import "server-only"`, which throws
+ * outside a Next.js server context — including here, under tsx.
+ *
+ * We neutralize it by priming the module cache with empty exports BEFORE the
+ * import, rather than deleting the guard from the module. That guard is worth
+ * keeping: this file handles the HMAC pepper, and `server-only` is what stops
+ * it being pulled into a client bundle where the secret would ship to
+ * browsers. Same trick as vitest.config.ts, which aliases it to a shim.
+ *
+ * The alternative — reimplementing the HMAC here — is exactly the divergence
+ * risk that would silently produce digests the app can't match.
+ */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { createRequire } = require("node:module") as typeof import("node:module");
+const cliRequire = createRequire(__filename);
+cliRequire.cache[cliRequire.resolve("server-only")] = {
+  id: "server-only",
+  filename: "server-only",
+  loaded: true,
+  exports: {},
+} as unknown as NodeModule;
+
+// NOTE: imported dynamically inside main(), NOT as a static import. tsx
+// hoists ES imports above the cache-priming code above, so a static import
+// would resolve `server-only` before it is stubbed — the same hoisting trap
+// documented in scripts/load-env.ts.
+type HashModule = typeof import("../src/lib/deleted-user-hash");
 
 const APPLY = process.argv.includes("--apply");
 
-/** Mask so the log proves which rows moved without reprinting addresses. */
-function mask(email: string): string {
-  if (looksHashed(email)) return `${email.slice(0, 8)}…(already hashed)`;
+/**
+ * Mask so the log proves which rows moved without reprinting addresses.
+ * `isHashed` is injected because the hash module is imported dynamically
+ * inside main() (see the hoisting note above).
+ */
+function mask(email: string, isHashed: (v: string) => boolean): string {
+  if (isHashed(email)) return `${email.slice(0, 8)}…(already hashed)`;
   const at = email.indexOf("@");
   if (at <= 0) return "***";
   return `${email.slice(0, 2)}***${email.slice(at)}`;
 }
 
 async function main(): Promise<void> {
+  const { hashDeletedUserEmail, hasDeletedUserHmacKey, looksHashed }: HashModule =
+    await import("../src/lib/deleted-user-hash");
+
   console.log("\nDeletedUser email → HMAC backfill");
   console.log(`  mode : ${APPLY ? "APPLY (writes)" : "DRY RUN (no writes)"}`);
 
@@ -80,7 +110,7 @@ async function main(): Promise<void> {
     const digests = new Map<string, string[]>();
     for (const r of toHash) {
       const d = hashDeletedUserEmail(r.email);
-      digests.set(d, [...(digests.get(d) ?? []), mask(r.email)]);
+      digests.set(d, [...(digests.get(d) ?? []), mask(r.email, looksHashed)]);
     }
     const collisions = [...digests.entries()].filter(([, rows]) => rows.length > 1);
     if (collisions.length > 0) {
@@ -108,9 +138,9 @@ async function main(): Promise<void> {
           data: { email: digest },
         });
         done++;
-        console.log(`  ✓ ${mask(r.email)} → ${digest.slice(0, 12)}…`);
+        console.log(`  ✓ ${mask(r.email, looksHashed)} → ${digest.slice(0, 12)}…`);
       } else {
-        console.log(`  · [dry-run] ${mask(r.email)} → ${digest.slice(0, 12)}…`);
+        console.log(`  · [dry-run] ${mask(r.email, looksHashed)} → ${digest.slice(0, 12)}…`);
       }
     }
 
