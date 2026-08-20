@@ -27,7 +27,10 @@ import {
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-const MAX_SECONDS = 120;
+// Recording cap, in seconds. Matches the mobile recorder (app/record.tsx)
+// so the same recording is possible on both surfaces. Raised from 120s once
+// audio stopped passing through the API — see lib/direct-upload.client.ts.
+const MAX_SECONDS = 300;
 const MIN_SECONDS = 15;
 const NUDGE_SECONDS = 30;
 

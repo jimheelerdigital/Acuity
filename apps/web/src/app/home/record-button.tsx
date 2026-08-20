@@ -34,7 +34,10 @@ type Phase =
   | "error"
   | "timeout";
 
-const MAX_SECONDS = 120;
+// Recording cap, in seconds. Matches the mobile recorder (app/record.tsx)
+// so the same recording is possible on both surfaces. Raised from 120s once
+// audio stopped passing through the API — see lib/direct-upload.client.ts.
+const MAX_SECONDS = 300;
 
 export function RecordButton() {
   const router = useRouter();

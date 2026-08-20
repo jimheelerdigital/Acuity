@@ -15,7 +15,10 @@ export const SUGGESTED_PROMPTS = [
   "What do you want to get done this week?",
 ];
 
-export const MAX_SECONDS = 120;
+// Recording cap, in seconds. Matches the mobile recorder (app/record.tsx)
+// so the same recording is possible on both surfaces. Raised from 120s once
+// audio stopped passing through the API — see lib/direct-upload.client.ts.
+export const MAX_SECONDS = 300;
 export const MIN_SECONDS = 15;
 export const NUDGE_SECONDS = 30;
 
