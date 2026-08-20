@@ -1,46 +1,39 @@
 /**
  * Content Factory — caption builder.
  *
- * Builds the carousel caption from headline + numbered reasons +
- * a fixed Ripple closing line + 5 hashtags.
+ * PERSONA (2026-08-20, per Keenan: templated captions read "brutally
+ * bad and clearly AI written"): every caption reads like a real woman
+ * who runs the page wrote it herself — text-message tone, lowercase-
+ * leaning, no marketing copy, minimal emojis. Captions are written by
+ * the LLM per post (topic.captionOpen / script.caption); the template
+ * lines below are FALLBACKS only, for when the model omits the field.
  */
 
 import type { CarouselTopic } from "./topics";
 
-// Link-in-bio pointer added 2026-08-16: captions previously named the app
-// with no path to it. The bio link should point at goripple.io/go/tiktok
-// (or /go/instagram etc.) so social traffic is UTM-attributed.
+// Link-in-bio plug — carousels only (calm/calm-story posts are plug-free).
+// Rewritten 2026-08-20 in the page-owner's voice, not brand copy.
 const CLOSING_LINE =
-  "Ripple — debrief daily. See your life clearly. Start your free week — link in bio. 🌊";
+  "ripple is where i debrief all of this out loud — it's in my bio if you want your free week 🌊";
 
-// First caption line (2026-08-12, per Keenan): only this line shows in
-// the feed before "...more", so it must be a SECOND hook — never a
-// restatement of the headline the cover already shows. {n} is replaced
-// with a deterministic reason number so the tease is specific.
+// FALLBACK first line (only when the LLM caption is missing). Only this
+// line shows in the feed before "...more" — it must be a second hook.
 const FIRST_LINE_HOOKS = [
-  "Number {n} is the one nobody says out loud.",
-  "You'll want to argue with number {n}. That's the point.",
-  "Be honest with yourself about number {n}.",
-  "The last one is the one you'll send her.",
-  "If nobody's said it to you today — this is for you.",
-  "Read number {n} twice.",
+  "number {n} is the one i didn't want to admit",
+  "i almost didn't post number {n}",
+  "be honest about number {n}",
+  "the last one is the one you'll send her",
+  "if nobody's said this to you today, here",
+  "read number {n} twice",
 ];
 
-// Natural-language keyword line for Instagram caption search (captions
-// are indexed now) — free discovery for the exact phrases our audience
-// actually types.
-const SEO_LINE =
-  "For women in their 40s carrying the mental load — burnout, invisible labor, overthinking, and finally hearing yourself again.";
-
-// Engagement CTAs — every caption asks for a comment, a save, and a
-// share. These three signals outrank likes in the algorithm. One line
-// is picked per pool, deterministically by slug, so captions vary
-// across posts but stay stable per post.
+// FALLBACK comment ask — one is picked per pool, deterministically by
+// slug, so captions vary across posts but stay stable per post.
 const COMMENT_CTAS = [
-  "Which one is you? Drop the number 👇",
-  "Which one hit hardest? Tell me the number 👇",
-  "Be honest — which number called you out? 👇",
-  "If you made it to the last one, tell me which was yours 👇",
+  "which one is you? i'm 3, every time",
+  "tell me which number got you",
+  "which one called you out? be honest",
+  "if you made it to the last one, tell me which was yours",
 ];
 
 // NOTE (2026-08-13, per Keenan): the "engineered comment gap" (a
@@ -116,11 +109,12 @@ export function coverEngagementLine(headline: string, slug: string): string {
   return pickBySlug(slug, family ? family.lines : ENGAGEMENT_LINES_DEFAULT, 3);
 }
 
+// FALLBACK share/save ask, in her voice.
 const SAVE_SHARE_CTAS = [
-  "Save this for the week you need the reminder. Send it to the friend who needs it today. 🤍",
-  "Save this — you'll want it again. And send it to her. You know who. 🤍",
-  "Keep this one. Share it with the friend who never puts herself first. 🤍",
-  "Save it for your next hard day — and pass it to the one carrying too much. 🤍",
+  "save this for the week you need it. and send it to her — you know who",
+  "sending this to the friend who never stops moving",
+  "save it. you'll want it on a hard day",
+  "if this found you at the right time, pass it on",
 ];
 
 function pickBySlug(slug: string, pool: string[], offset = 0): string {
@@ -129,166 +123,132 @@ function pickBySlug(slug: string, pool: string[], offset = 0): string {
   return pool[(Math.abs(hash) + offset) % pool.length];
 }
 
-const HASHTAG_POOL = [
+// ── Hashtags (2026-08-20, per Keenan: "GOOD hashtags that are popular
+// that can drive traffic, 5 max, on every post") ─────────────────────
+// Every post gets exactly 5: 2 MEGA tags (10M+ posts — raw reach) +
+// 3 NICHE tags (where this audience actually browses). The mix rotates
+// deterministically by slug so posts vary but each post is stable.
+// Zero-search-volume brand tags (#rippleapp, #voicejournal) are GONE —
+// they drove no discovery.
+const MEGA_HASHTAGS = [
+  "#selfcare",
+  "#selflove",
+  "#mentalhealth",
+  "#mindfulness",
+  "#healing",
+  "#motivation",
+  "#personalgrowth",
+  "#wellness",
+];
+const NICHE_HASHTAGS = [
   "#mentalload",
-  "#selfawareness",
-  "#voicejournal",
-  "#selfreflection",
-  "#rippleapp",
-  "#knowyourself",
-  "#dailydebrief",
-  "#womenintheirmidlife",
   "#momlife",
-  "#patternbreaker",
-  "#emotionalintelligence",
-  "#innerwork",
-  "#mindfulmoments",
-  "#midlifeshift",
-  "#burnoutrecovery",
-  "#overthinkersclub",
-  "#mentalhealthmatters",
-  "#journaling",
-  "#carouselpost",
+  "#womenover40",
+  "#midlife",
+  "#innerpeace",
+  "#burnout",
+  "#dailyreminder",
+  "#emotionalhealth",
+  "#overthinking",
+  "#anxietyrelief",
+  "#mentalhealthawareness",
+  "#selfcarereminder",
 ];
 
-// Hashtag count is 5 across ALL posts (2026-08-19, per Keenan).
-const HASHTAG_COUNT = 5;
-
-/**
- * Pick 5 hashtags: always include #rippleapp and #voicejournal,
- * then fill with topic-relevant ones from the pool.
- */
-function pickHashtags(topic: { slug: string }): string[] {
-  const must = ["#rippleapp", "#voicejournal"];
-  const pool = HASHTAG_POOL.filter((h) => !must.includes(h));
-
-  // Simple deterministic selection based on slug hash so the same topic
-  // always gets the same hashtags (no randomness in generation).
+/** 5 hashtags per post: 2 mega-reach + 3 niche, rotated by slug. */
+export function pickHashtags(slug: string): string[] {
   let hash = 0;
-  for (const c of topic.slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+  for (const c of slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+  const h = Math.abs(hash);
 
-  const selected = new Set(must);
-  let i = Math.abs(hash);
-  while (selected.size < HASHTAG_COUNT) {
-    selected.add(pool[i % pool.length]);
+  const mega = new Set<string>();
+  let i = h;
+  while (mega.size < 2) {
+    mega.add(MEGA_HASHTAGS[i % MEGA_HASHTAGS.length]);
     i++;
   }
-
-  return [...selected];
+  const niche = new Set<string>();
+  let j = h >> 3;
+  while (niche.size < 3) {
+    niche.add(NICHE_HASHTAGS[j % NICHE_HASHTAGS.length]);
+    j++;
+  }
+  return [...mega, ...niche];
 }
 
 export function buildCaption(topic: CarouselTopic): string {
   const lines: string[] = [];
 
-  // First line = second hook (the only line visible before "...more").
-  // {n} points at a deterministic mid-list reason so the tease is real.
-  const teaseN = Math.min(
-    topic.reasons.length,
-    2 + (Math.abs(topic.slug.length * 7) % Math.max(1, topic.reasons.length - 1))
-  );
-  lines.push(
-    pickBySlug(topic.slug, FIRST_LINE_HOOKS, 2).replace("{n}", String(teaseN))
-  );
+  // Opening: the LLM-written personal open (2026-08-20) — or the
+  // fallback second-hook tease when the model omitted it.
+  const open = topic.captionOpen?.trim();
+  if (open) {
+    lines.push(open);
+  } else {
+    const teaseN = Math.min(
+      topic.reasons.length,
+      2 + (Math.abs(topic.slug.length * 7) % Math.max(1, topic.reasons.length - 1))
+    );
+    lines.push(
+      pickBySlug(topic.slug, FIRST_LINE_HOOKS, 2).replace("{n}", String(teaseN))
+    );
+    lines.push("");
+    lines.push(topic.headline);
+  }
   lines.push("");
 
-  // Headline
-  lines.push(topic.headline);
-  lines.push("");
-
-  // Numbered reasons
+  // Numbered reasons — the list stays: it's what gets saved and it's
+  // what Instagram caption search indexes.
   topic.reasons.forEach((reason, i) => {
     lines.push(`${i + 1}. ${reason}`);
   });
 
   lines.push("");
-  lines.push(pickBySlug(topic.slug, COMMENT_CTAS));
-  lines.push("");
-  lines.push(pickBySlug(topic.slug, SAVE_SHARE_CTAS, 1));
-  lines.push("");
-  lines.push(CLOSING_LINE);
-  lines.push("");
-  lines.push(SEO_LINE);
-  lines.push("");
-
-  // Hashtags
-  const tags = pickHashtags(topic);
-  lines.push(tags.join(" "));
-
-  return lines.join("\n");
-}
-
-/**
- * Caption for standalone STORY posts (2026-08-16). Stories are narrative,
- * not listicles — so the caption is a hook + a share-your-version question
- * instead of a numbered list + comment-gap bait.
- */
-export function buildStoryCaption(opts: {
-  slug: string;
-  title: string;
-  captionHook?: string;
-  commentPrompt?: string;
-}): string {
-  const lines: string[] = [];
-  lines.push(opts.captionHook?.trim() || opts.title);
-  lines.push("");
-  if (opts.commentPrompt) {
-    const q = opts.commentPrompt.trim().replace(/\s*👇?\s*$/, "");
-    lines.push(`${q} Tell me in the comments 👇`);
+  const close = topic.captionClose?.trim();
+  if (close) {
+    lines.push(close);
+  } else {
+    lines.push(pickBySlug(topic.slug, COMMENT_CTAS));
     lines.push("");
+    lines.push(pickBySlug(topic.slug, SAVE_SHARE_CTAS, 1));
   }
-  lines.push(pickBySlug(opts.slug, SAVE_SHARE_CTAS, 1));
   lines.push("");
   lines.push(CLOSING_LINE);
   lines.push("");
-  lines.push(pickHashtags({ slug: opts.slug }).join(" "));
+  lines.push(pickHashtags(topic.slug).join(" "));
+
   return lines.join("\n");
 }
 
-// Reach-only hashtags for plug-free posts: no brand or product-category
-// tags — these captions compete on relatability, not conversion.
-const REACH_HASHTAGS = [
-  "#mentalload",
-  "#womenintheirmidlife",
-  "#momlife",
-  "#selfreflection",
-  "#selfawareness",
-  "#knowyourself",
-  "#emotionalintelligence",
-  "#innerwork",
-  "#mindfulmoments",
-  "#midlifeshift",
-  "#burnoutrecovery",
-  "#overthinkersclub",
-  "#mentalhealthmatters",
-  "#patternbreaker",
-];
-
-// Plain share lines for ambient captions (2026-08-19, per Keenan: the
-// caption must lead with a QUESTION, read like a person wrote it, and
-// keep emojis minimal). No "tell me in the comments 👇" boilerplate —
-// the question itself does that work.
+// FALLBACK share lines for calm captions, in her voice.
 const AMBIENT_SHARE_LINES = [
-  "Save this for the day you need it.",
-  "Send this to someone who's carrying a lot right now.",
-  "If this found you at the right time, pass it on.",
-  "Save it. You'll want it again.",
+  "save this for the day you need it",
+  "sending this to everyone who's carrying a lot right now",
+  "if this found you at the right time, pass it on",
+  "save it. you'll want it again",
 ];
 
 /**
- * Caption for AMBIENT calm posts (2026-08-19, per Keenan: "this video is
- * NOT a plug for acuity — the goal is to build a following of our target
- * market"). No Ripple closing line, no branded hashtags. Structure:
- * question first (it's the only line visible in the feed), then the
- * hook line, then a plain share ask, then reach hashtags.
+ * Caption for AMBIENT calm posts and CALM-STORY posts (both plug-free —
+ * 2026-08-19, per Keenan: these build a following, they don't sell).
+ * The LLM writes the whole caption body per post (`caption`) in the
+ * page-owner's voice; code only appends the 5 hashtags. The
+ * question/hook/share-line assembly is the fallback.
  */
 export function buildAmbientCaption(opts: {
   slug: string;
   title: string;
+  /** Full LLM-written caption body (everything above the hashtags). */
+  caption?: string;
   captionHook?: string;
   commentPrompt?: string;
 }): string {
-  const lines: string[] = [];
+  const body = opts.caption?.trim();
+  if (body) {
+    return `${body}\n\n${pickHashtags(opts.slug).join(" ")}`;
+  }
 
+  const lines: string[] = [];
   // Lead with the question — it invites a comment without asking for one.
   const question = opts.commentPrompt?.trim().replace(/\s*👇\s*$/, "");
   const hook = opts.captionHook?.trim();
@@ -305,15 +265,6 @@ export function buildAmbientCaption(opts: {
   }
   lines.push(pickBySlug(opts.slug, AMBIENT_SHARE_LINES));
   lines.push("");
-
-  let hash = 0;
-  for (const c of opts.slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
-  const selected = new Set<string>();
-  let i = Math.abs(hash);
-  while (selected.size < HASHTAG_COUNT) {
-    selected.add(REACH_HASHTAGS[i % REACH_HASHTAGS.length]);
-    i++;
-  }
-  lines.push([...selected].join(" "));
+  lines.push(pickHashtags(opts.slug).join(" "));
   return lines.join("\n");
 }

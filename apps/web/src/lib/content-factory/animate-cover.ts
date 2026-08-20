@@ -262,29 +262,6 @@ export function buildSlideVideoPrompt(opts?: {
 }
 
 /**
- * Prompt for STORY scene clips (2026-08-16, per Keenan: the animation
- * MUST line up with what's happening in the story). Unlike carousel
- * slides, each story scene has a bespoke script-written motion that acts
- * out that scene's narration line — so the bespoke motion is the star,
- * and the fallback pool is only used when the script's motion trips the
- * safety check. Text-free, so the clip also gets the cinematic push-in
- * and living environment.
- */
-export function buildStorySceneVideoPrompt(opts: {
-  scene: { motion?: string; mood?: string };
-  seed: number;
-}): string {
-  const beat = isSafeMotion(opts.scene.motion)
-    ? opts.scene.motion.trim()
-    : resolveMotionBeat({ mood: opts.scene.mood }, opts.seed);
-  return [
-    "One moment in an emotional story. She continues exactly what the image shows, staying in the same spot, lips closed.",
-    `She ${beat} — the movement is clearly visible and emotionally true to this moment of the story.`,
-    ...sceneLockLines(true),
-  ].join(" ");
-}
-
-/**
  * "Crazy intro" variant — one post per day. Bolder gesture and a faster
  * camera land, same short-prompt approach and same text protection.
  */

@@ -262,34 +262,8 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       // When nothing is left it returns skipped and the loop exits.
     }
 
-    // Kick off the 30s story video AFTER the slide waves have drained so
-    // its Higgsfield jobs don't fight the animation for the ~4-concurrent
-    // cap. Runs even when animation partially failed — the story pipeline
-    // only needs the post row (it generates its own images). Own step so
-    // a send failure never blocks the email below.
-    const sendStoryStep = async () => {
-      if (!event.data.storyVideo) return;
-      await step.run("enqueue-story-video", async () => {
-        try {
-          await inngest.send({
-            name: "content-factory/story.video",
-            data: {
-              postId,
-              lane: event.data.lane,
-              mood: event.data.mood,
-            },
-          });
-        } catch (err) {
-          logger.error(
-            `[animate-cover] Failed to enqueue story video for post ${postId}: ${err instanceof Error ? err.message : err}`
-          );
-        }
-      });
-    };
-
     if (firstAttemptSkip) {
       await sendEmailStep();
-      await sendStoryStep();
       return { animated: 0, reason: firstAttemptSkip };
     }
 
@@ -297,7 +271,6 @@ export const carouselAnimateCoverFn = inngest.createFunction(
       `[animate-cover] Post ${postId}: ${totalStored}/${totalSubmitted} submitted job(s) animated across attempts`
     );
     await sendEmailStep(totalStored > 0);
-    await sendStoryStep();
     return { animated: totalStored, submitted: totalSubmitted };
   }
 );

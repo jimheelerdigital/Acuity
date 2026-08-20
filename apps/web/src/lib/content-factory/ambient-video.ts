@@ -61,6 +61,11 @@ export interface AmbientScript {
   captionHook?: string;
   /** One question inviting viewers to share their version. */
   commentPrompt?: string;
+  /**
+   * Full LLM-written post caption body (2026-08-20, per Keenan: captions
+   * must read personal, never AI). Everything above the hashtags.
+   */
+  caption?: string;
 }
 
 const AMBIENT_SYSTEM_PROMPT = `You are a scriptwriter for calm, contemplative short-form vertical videos for Ripple, an AI-powered voice self-reflection app. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover telling a short story or offering a gentle lesson, with the words appearing as captions.
@@ -92,26 +97,30 @@ SCRIPT RULES:
 - No hashtags, no emojis, no CTA, no advice-verbs ("try", "start", "practice", "remember to").
 
 VISUAL RULES ("visual" — the single image the whole video lives on):
-- A breathtaking, SOOTHING natural scene with strong visual pull: e.g. towering clouds at golden hour, moonlit ocean, rain on a window at dusk, fog over a still lake, sun rays through a forest, city lights blurring at night, a candle by a dark window.
+- A breathtaking, SOOTHING natural scene with strong visual pull, catchy enough to stop a scroll on the first frame. VARY the scene type boldly across posts — be creative, we are testing what works (2026-08-20, per Keenan). Rotate among (and invent beyond): storm clouds rolling at golden hour, rain running down a window at dusk, ocean waves rolling in under moonlight, a near-still scene where only the light changes (a candle, a sunbeam crossing a room, city lights at night), fog moving over a lake, snow falling past a streetlight.
+- The scene must be built around ONE repeatable motion (the same clip plays the whole video) — pick scenes whose movement is naturally cyclical or constant.
 - NO people, NO animals in focus, NO text or typography of any kind.
 - Composed for a vertical 9:16 frame with calm space in the middle third (captions sit there).
 - One sentence, concrete and specific about light, color, and weather.
 
-MOTION RULES ("motion" — how the scene moves for a few seconds):
-- Only ambient, continuous, slow movement that can loop: clouds drifting, light shifting, water rippling, rain sliding, fog rolling, flame swaying.
-- Nothing enters or leaves the frame. No people appear. No camera cuts or fast moves.
+MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole video, so this MUST read as one continuous shot, 2026-08-20, per Keenan):
+- ONE constant, even, endless movement: clouds rolling steadily by, rain sliding down the glass, waves rolling in, light breathing slowly, fog drifting at a constant pace.
+- The movement must have no beginning, middle, or end — the same rate and direction the entire time, so any moment looks like any other moment.
+- The lighting, colors, and framing stay IDENTICAL from first frame to last. Nothing enters or leaves the frame. No people appear. No camera movement at all.
 - Under 20 words, present tense.
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
-- "commentPrompt": one short question a real woman would ask a friend. It becomes the FIRST line of the post caption, so it must stop the scroll on its own. Plain words, no emoji, no "comment below" / "drop it in the comments" phrasing — the question itself is the invitation.
-- "captionHook": 1-2 plain lines that follow the question in the caption. Simple and human, like a text message — not marketing copy. No emoji. Never repeats the script's first line or the question.
+- "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. Structure: line 1 is a question to her that stops the scroll on its own (it's the only line visible before "...more"); then 1-2 short personal lines ("this one got me today", "been thinking about this all week"); then one share/save ask in her voice ("send this to the friend who never stops moving"). 3-5 short lines total, blank line between each. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever.
+- "commentPrompt": the same first-line question on its own (fallback field).
+- "captionHook": 1-2 of the personal lines on their own (fallback field).
 - "vocalScript": the EXACT same script text with 2-4 ElevenLabs v3 audio performance tags inserted in square brackets where the narrator's delivery should shift. Allowed tags ONLY: [softly], [whispers], [sighs], [exhales]. Start it with [softly]. Tags direct delivery — they never replace or change the words. Place them where a real person's voice would actually drop, catch, or breathe.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
   "theme": "5-10 word label for this concept (used to avoid future repeats)",
   "title": "...",
+  "caption": "the full post caption, in her voice, no hashtags",
   "captionHook": "...",
   "commentPrompt": "...",
   "script": "the full 40-80 word narration",
@@ -215,6 +224,10 @@ Return ONLY valid JSON.`;
         typeof parsed.captionHook === "string" ? parsed.captionHook.trim() : undefined,
       commentPrompt:
         typeof parsed.commentPrompt === "string" ? parsed.commentPrompt.trim() : undefined,
+      caption:
+        typeof parsed.caption === "string" && parsed.caption.trim()
+          ? parsed.caption.trim()
+          : undefined,
     };
   } catch (err) {
     await prisma.claudeCallLog.create({
@@ -256,8 +269,9 @@ export function buildAmbientImagePrompt(script: Pick<AmbientScript, "visual">): 
 export function buildAmbientVideoPrompt(script: Pick<AmbientScript, "motion">): string {
   return [
     `The scene breathes in slow motion: ${script.motion}.`,
-    "Everything moves gently, continuously, and evenly — the movement at the last frame matches the first frame so the clip can loop seamlessly.",
-    "Fixed, locked camera. Same scene, same colors, same framing from first frame to last.",
+    "One single continuous movement at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
+    "The movement at the last frame matches the first frame exactly.",
+    "Fixed, locked camera. The lighting, colors, framing, and every object stay identical from first frame to last.",
     "Crisp, sharp, high-definition cinematic footage with steady soft lighting and clean detail throughout.",
   ].join(" ");
 }
@@ -284,7 +298,10 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
   const clipSec = await probeMediaDuration(clip, "mp4");
   if (clipSec <= 0.5) throw new Error(`Ambient clip is only ${clipSec.toFixed(2)}s`);
 
-  const XFADE_SEC = 0.6;
+  // 1.4s dissolve at each loop point (2026-08-20, per Keenan: the repeat
+  // was reading as a visible pulse/reset — a longer dissolve makes each
+  // loop read as one continuous shot; a little break is OK, cohesion wins).
+  const XFADE_SEC = 1.4;
   // Each additional copy adds (clipSec - xfade) of runtime.
   const copies = Math.max(
     1,

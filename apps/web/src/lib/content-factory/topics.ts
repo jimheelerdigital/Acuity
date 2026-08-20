@@ -27,6 +27,14 @@ export interface CarouselTopic {
    * pipeline falls back to a default beat.
    */
   emotionBeat?: string;
+  /**
+   * LLM-written caption opening (2026-08-20, per Keenan: captions must
+   * read personal, not AI). 1-3 short lines in the page-owner's voice,
+   * shown above the numbered list. Falls back to templates when absent.
+   */
+  captionOpen?: string;
+  /** LLM-written caption closing — comment/share ask in the same voice. */
+  captionClose?: string;
 }
 
 export const CAROUSEL_TOPICS: CarouselTopic[] = [
