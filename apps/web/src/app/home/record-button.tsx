@@ -25,6 +25,8 @@ import {
   uploadAudioDirect,
 } from "@/lib/direct-upload.client";
 
+import { formatRemaining } from "@/lib/format-duration";
+
 type Phase =
   | "idle"
   | "recording"
@@ -311,7 +313,7 @@ export function RecordButton() {
               {formatTime(elapsed)}
             </p>
             <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-              Tap to stop · {MAX_SECONDS - elapsed}s remaining
+              Tap to stop · {formatRemaining(MAX_SECONDS - elapsed)} remaining
             </p>
           </div>
         ) : phase === "uploading" ? (

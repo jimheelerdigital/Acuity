@@ -91,3 +91,22 @@ describe("unified 5-minute recording cap", () => {
     );
   });
 });
+
+describe("recording countdown label", () => {
+  it("reads as a duration, not raw seconds, at the 5-minute cap", async () => {
+    const { formatRemaining } = await import("@/lib/format-duration");
+    // The whole reason this exists: "299s remaining" is unreadable.
+    expect(formatRemaining(299)).toBe("4:59");
+    expect(formatRemaining(288)).toBe("4:48");
+    expect(formatRemaining(60)).toBe("1:00");
+    expect(formatRemaining(9)).toBe("0:09");
+  });
+
+  it("never renders a negative countdown", () => {
+    // The timer and the auto-stop are independent; a tick landing after the
+    // stop would otherwise print "-1:59".
+    return import("@/lib/format-duration").then(({ formatRemaining }) => {
+      expect(formatRemaining(-5)).toBe("0:00");
+    });
+  });
+});
