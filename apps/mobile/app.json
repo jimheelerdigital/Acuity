@@ -159,7 +159,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#15131D"
+        "backgroundColor": "#ED9672"
       },
       "package": "com.heelerdigital.acuity",
       "versionCode": 1,
