@@ -6,7 +6,10 @@ import { router } from "expo-router";
 import { useTheme } from "@/contexts/theme-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
-import { getV10Branch } from "@/lib/onboarding-v10/state";
+import {
+  getV10Branch,
+  setV10PlanDecision,
+} from "@/lib/onboarding-v10/state";
 import {
   ANCHOR_OPTION,
   COMPARISON_ROWS,
@@ -118,11 +121,13 @@ export default function V10Paywall() {
     // never charged for and produce a purchase event with no receipt behind
     // it, which is worse than an honest "not ready".
     trackV10("v10_plan_decision", { decision: plan });
+    void setV10PlanDecision(plan);
     router.push("/onboarding-new/account");
   }, [plan]);
 
   const onContinueFree = useCallback(() => {
     trackV10("v10_plan_decision", { decision: "free" });
+    void setV10PlanDecision("free");
     router.push("/onboarding-new/account");
   }, []);
 

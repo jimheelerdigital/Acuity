@@ -24,6 +24,7 @@ import { isV10Branch, type V10Branch } from "./branches";
 
 const BRANCH_KEY = "ripple.v10.branch";
 const STARTED_AT_KEY = "ripple.v10.started_at";
+const PLAN_DECISION_KEY = "ripple.v10.plan_decision";
 
 /**
  * Persist the branch chosen on Screen 1. Fire-and-forget by design — a
@@ -80,9 +81,43 @@ export async function getV10StartedAt(): Promise<number | null> {
  * Clear v10 flow state. Called when the flow completes or the user signs
  * out, so a second install-less run doesn't inherit a stale branch.
  */
+/**
+ * What the user chose on Screen 6.
+ *
+ * Screen 7's copy branches on this ("Your Ripple has started" vs "Keep your
+ * first insight"), and Screen 7 can be reached after a cold start, so the
+ * decision cannot live in React state or a route param. Showing the paid
+ * line to someone who chose Free reads as a system that wasn't listening.
+ *
+ * NOT an entitlement check and never to be used as one — this records an
+ * intent, not a receipt. Whether the user actually has access is
+ * RevenueCat's answer, not this key's.
+ */
+export type V10PlanDecision = "annual" | "monthly" | "free";
+
+export async function setV10PlanDecision(
+  decision: V10PlanDecision
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PLAN_DECISION_KEY, decision);
+  } catch {
+    // Non-fatal: Screen 7 falls back to the free copy, which is the safe
+    // direction to be wrong in — it under-claims rather than over-claims.
+  }
+}
+
+export async function getV10PlanDecision(): Promise<V10PlanDecision | null> {
+  try {
+    const v = await AsyncStorage.getItem(PLAN_DECISION_KEY);
+    return v === "annual" || v === "monthly" || v === "free" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function clearV10State(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([BRANCH_KEY, STARTED_AT_KEY]);
+    await AsyncStorage.multiRemove([BRANCH_KEY, STARTED_AT_KEY, PLAN_DECISION_KEY]);
   } catch {
     /* non-fatal */
   }

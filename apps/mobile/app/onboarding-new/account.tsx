@@ -30,6 +30,8 @@ import {
   getStoredTrySessionToken,
 } from "@/lib/try-session";
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
+import V10Save from "./_v10/save";
+import { V10Switch } from "./_v10/route-switch";
 
 /**
  * Screen 13 — Account creation. Slice 11 (2026-05-26).
@@ -76,7 +78,7 @@ const PURPLE = "#7C5CFC";
 
 type SignupMethod = "apple" | "google" | "email";
 
-export default function AccountScreen() {
+function AccountScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -674,4 +676,12 @@ function friendlyErrorFor(reason: string | undefined): string {
     default:
       return "Sign-in didn't go through. Try again.";
   }
+}
+
+/**
+ * Route entry. Flag ON renders v10 Screen 7 (Save / account); flag OFF
+ * renders the legacy account screen byte-for-byte unchanged.
+ */
+export default function AccountRoute() {
+  return <V10Switch v10={<V10Save />} legacy={<AccountScreen />} />;
 }
