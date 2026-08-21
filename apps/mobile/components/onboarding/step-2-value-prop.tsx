@@ -75,7 +75,7 @@ export function Step2ValueProp() {
         className="text-base mb-8"
         style={{ color: tokens.textSec }}
       >
-        Three things Acuity does differently.
+        Three things Ripple does differently.
       </Text>
       <View className="gap-3">
         {CARDS.map((c) => {

@@ -53,7 +53,7 @@ const EASE_CUBIC_OUT = Easing.bezier(0.215, 0.61, 0.355, 1);
 
 const TESTIMONIAL = {
   quote:
-    "I used to let tasks pile up in my head until 2 AM. Now I debrief into Acuity and actually sleep.",
+    "I used to let tasks pile up in my head until 2 AM. Now I debrief into Ripple and actually sleep.",
   name: "Sarah K.",
 };
 
@@ -161,7 +161,7 @@ export default function BridgeScreen() {
                 color: tokens.text,
               }}
             >
-              Written journaling asks for discipline. Acuity just asks for
+              Written journaling asks for discipline. Ripple just asks for
               one minute.
             </Text>
           </Animated.View>

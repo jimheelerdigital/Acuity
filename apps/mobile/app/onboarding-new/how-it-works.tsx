@@ -86,7 +86,7 @@ const BRANCH_CONTENT: Record<MechBranch, BranchContent> = {
       { text: "Foggy \u2192 Aware", icon: "\u25CF" },
       { text: "You described 3 days as 'fine' but couldn't name a single highlight", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity shows you where your days actually go \u2014 not where you think they go. Patterns across weeks and months that explain the fog.",
+    step3Sub: "Over time, Ripple shows you where your days actually go \u2014 not where you think they go. Patterns across weeks and months that explain the fog.",
     insight: "Your 'fine' days had zero unstructured time. Your best day had 2 hours of nothing planned.",
   },
   patterns: {
@@ -96,7 +96,7 @@ const BRANCH_CONTENT: Record<MechBranch, BranchContent> = {
       { text: "Frustrated \u2192 Aware", icon: "\u25CF" },
       { text: "The tension started 2 days before the argument \u2014 every time", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity maps the cycle \u2014 what triggers it, when it starts, and why it keeps repeating. The pattern becomes visible.",
+    step3Sub: "Over time, Ripple maps the cycle \u2014 what triggers it, when it starts, and why it keeps repeating. The pattern becomes visible.",
     insight: "The argument happened Tuesday. The tension started Sunday. Same pattern, 3 weeks in a row.",
   },
   rumination: {
@@ -106,17 +106,17 @@ const BRANCH_CONTENT: Record<MechBranch, BranchContent> = {
       { text: "Racing \u2192 Settled", icon: "\u25CF" },
       { text: "Your 11pm spiral starts with something that happened at 2pm", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity catches what your brain is processing before it reaches your pillow. The backlog shrinks because it finally has somewhere to go.",
+    step3Sub: "Over time, Ripple catches what your brain is processing before it reaches your pillow. The backlog shrinks because it finally has somewhere to go.",
     insight: "You slept best on Wednesday \u2014 the only day you processed out loud before 6pm.",
   },
   graveyard: {
     cards: [
-      { text: "Try Acuity for 7 days instead of what hasn't worked", icon: "\u25A1" },
+      { text: "Try Ripple for 7 days instead of what hasn't worked", icon: "\u25A1" },
       { text: "Stick with one thing for 30 days \u2014 0% this week", icon: "\u25B2" },
       { text: "Skeptical \u2192 Curious", icon: "\u25CF" },
       { text: "You've quit every tool on Day 4. There's a reason for that.", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity becomes the record you've never been able to keep. Not because you're more disciplined \u2014 because 60 seconds is all it asks.",
+    step3Sub: "Over time, Ripple becomes the record you've never been able to keep. Not because you're more disciplined \u2014 because 60 seconds is all it asks.",
     insight: "Day 4 is when you almost quit. Every tool. Every time. Now you know when to push through.",
   },
   mask: {
@@ -126,7 +126,7 @@ const BRANCH_CONTENT: Record<MechBranch, BranchContent> = {
       { text: "Performing \u2192 Honest", icon: "\u25CF" },
       { text: "You said 'I'm fine' on your lowest days. Every time.", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity sees what nobody else does \u2014 the gap between how you perform and how you actually feel. Tracked daily, visible weekly.",
+    step3Sub: "Over time, Ripple sees what nobody else does \u2014 the gap between how you perform and how you actually feel. Tracked daily, visible weekly.",
     insight: "Your energy for everyone else averaged 8/10. For yourself: 3/10. Every single day.",
   },
   drift: {
@@ -136,7 +136,7 @@ const BRANCH_CONTENT: Record<MechBranch, BranchContent> = {
       { text: "Numb \u2192 Present", icon: "\u25CF" },
       { text: "You talked about who you used to be twice. Who you want to become \u2014 zero times.", icon: "\u25C6" },
     ],
-    step3Sub: "Over time, Acuity tracks who you're becoming \u2014 so you notice before another year disappears without you choosing it.",
+    step3Sub: "Over time, Ripple tracks who you're becoming \u2014 so you notice before another year disappears without you choosing it.",
     insight: "Your highest energy was Sunday morning. By Monday evening, gone. The reset happens every week.",
   },
 };
@@ -443,7 +443,7 @@ export default function HowItWorksScreen() {
               fontWeight: "700", color: tokens.text, textAlign: "center",
               fontStyle: "italic", marginBottom: 24,
             }}>
-              You already think about your life every day. Acuity just makes sure it counts.
+              You already think about your life every day. Ripple just makes sure it counts.
             </Text>
           </FadeSlideIn>
 

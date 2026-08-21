@@ -174,7 +174,7 @@ export function Step6MoodSlider() {
         className="mt-10 text-xs"
         style={{ color: tokens.textQuiet }}
       >
-        No right answer. Acuity uses this to frame your first
+        No right answer. Ripple uses this to frame your first
         week&rsquo;s entries against your own baseline.
       </Text>
     </View>

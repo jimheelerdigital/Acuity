@@ -30,7 +30,7 @@ import {
  * is therefore not a true loading state — it's a journey-
  * storytelling teaser that bridges the user from "I just recorded"
  * to "here's what came out of it", giving them five slides of
- * what their 30-day arc on Acuity looks like.
+ * what their 30-day arc on Ripple looks like.
  *
  * Web's PROCESSING_SLIDES double as a real loading state because
  * web's pipeline can take 15-25s; mobile's is already done. The

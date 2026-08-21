@@ -178,7 +178,7 @@ export default function PeopleDirectoryScreen() {
                 ? "Couldn't load people. Try again in a moment."
                 : query.trim()
                 ? "No matches."
-                : "Acuity hasn't surfaced anyone yet. People show up here once you've mentioned them across a few entries."}
+                : "Ripple hasn't surfaced anyone yet. People show up here once you've mentioned them across a few entries."}
             </Text>
           </View>
         ) : (
