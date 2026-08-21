@@ -26,6 +26,8 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
+import V10Paywall from "./_v10/paywall";
+import { V10Switch } from "./_v10/route-switch";
 
 /**
  * Screen 14 — Paywall. Slice 12 (2026-05-26).
@@ -141,7 +143,7 @@ const CARDS: TimelineCard[] = [
   },
 ];
 
-export default function PaywallScreen() {
+function PaywallScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -623,4 +625,13 @@ function computeTrialDaysRemaining(
   const end = new Date(trialEndsAt).getTime();
   if (!Number.isFinite(end)) return null;
   return Math.max(0, Math.round((end - Date.now()) / 86400_000));
+}
+
+/**
+ * Route entry. Flag ON renders v10 Screen 6; flag OFF renders the legacy
+ * slice-12 paywall byte-for-byte unchanged (spec §9: "Remote flag OFF
+ * restores previous flow without data loss").
+ */
+export default function PaywallRoute() {
+  return <V10Switch v10={<V10Paywall />} legacy={<PaywallScreen />} />;
 }

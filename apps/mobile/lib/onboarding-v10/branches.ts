@@ -51,6 +51,17 @@ export interface V10BranchConfig {
    * no-fabricated-patterns rule.
    */
   observationFallback: string;
+  /**
+   * Screen 6 italic line under the paywall header (spec §4 Z1
+   * "Observation sentence italic beneath").
+   *
+   * Same constraint as observationFallback and for the same reason: it
+   * speaks to the branch the user CHOSE, never to what the transcript
+   * contained. Anything that reads as an insight drawn from their words
+   * would be fabricated — the paywall has no access to the extraction's
+   * confidence, so it must not imply one.
+   */
+  paywallObservation: string;
 }
 
 /** Screen 1 headline. */
@@ -97,6 +108,8 @@ export const V10_BRANCHES: Record<V10Branch, V10BranchConfig> = {
     support: "Everyone's list lives in my head.",
     mirror: "You carry the list for everyone. It never really leaves your head.",
     observationFallback: "{n} things off your head. Nothing lost.",
+    paywallObservation:
+      "Carrying the list is work. Ripple can hold it between debriefs.",
   },
   patterns: {
     key: "patterns",
@@ -104,6 +117,8 @@ export const V10_BRANCHES: Record<V10Branch, V10BranchConfig> = {
     support: "Same problems. Same week. Again.",
     mirror: "You already know how this week goes. You've lived it before.",
     observationFallback: "First entry down. Patterns need a few more.",
+    paywallObservation:
+      "One week looks like a week. Several starts looking like a pattern.",
   },
   rumination: {
     key: "rumination",
@@ -111,6 +126,8 @@ export const V10_BRANCHES: Record<V10Branch, V10BranchConfig> = {
     support: "I keep replaying it.",
     mirror: "You replay it. Then you replay the replay.",
     observationFallback: "It's out of your head and on the screen.",
+    paywallObservation:
+      "Saying it once is different from replaying it. Ripple keeps the once.",
   },
   stuck: {
     key: "stuck",
@@ -118,6 +135,8 @@ export const V10_BRANCHES: Record<V10Branch, V10BranchConfig> = {
     support: "Busy all day. Nothing moves.",
     mirror: "Every day is full. None of it feels like progress.",
     observationFallback: "Here's what actually happened today, in writing.",
+    paywallObservation:
+      "Full days and no movement are hard to see from inside them.",
   },
   mask: {
     key: "mask",
@@ -125,6 +144,8 @@ export const V10_BRANCHES: Record<V10Branch, V10BranchConfig> = {
     support: "Holding it together for everyone else.",
     mirror: "Everyone thinks you've got it. Nobody asks if you do.",
     observationFallback: "This one's just for you.",
+    paywallObservation:
+      "Somewhere that isn't performance takes more than one visit.",
   },
   open: {
     key: "open",
@@ -132,6 +153,8 @@ export const V10_BRANCHES: Record<V10Branch, V10BranchConfig> = {
     support: "I don't need a category.",
     mirror: "Whatever's there. No category needed.",
     observationFallback: "Said once. Kept.",
+    paywallObservation:
+      "No category needed. Ripple just keeps what you said.",
   },
 };
 

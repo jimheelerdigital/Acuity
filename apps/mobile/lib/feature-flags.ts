@@ -34,3 +34,24 @@
 export function isOnboardingV10Enabled(): boolean {
   return process.env.EXPO_PUBLIC_ONBOARDING_V10 === "true";
 }
+
+/**
+ * New ($8.99 / $79.99) pricing.
+ *
+ * OFF (default) → every surface quotes and charges LEGACY ($4.99 / $39.99),
+ * i.e. today's behaviour for today's 17 subscribers, unchanged.
+ *
+ * Separate from the v10 flag on purpose: the onboarding rewrite and the
+ * price rise are independent decisions. v10 can ship at current prices, and
+ * prices can rise without v10. One flag for both would make either rollback
+ * impossible without the other.
+ *
+ * ⚠️ Flipping this is NOT sufficient to charge the new price — the V2
+ * products must exist in App Store Connect / Play Console / Stripe first.
+ * See packages/shared/src/pricing-plans.ts::PLACEHOLDER_V2_PRODUCT_IDS.
+ *
+ * Static member access required — see isOnboardingV10Enabled above.
+ */
+export function isNewPricingEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_NEW_PRICING === "true";
+}
