@@ -4,21 +4,26 @@ import { inngest } from "@/inngest/client";
  * CALM-STORY video — event "content-factory/calmstory.video" (2026-08-20,
  * per Keenan). Replaces the eliminated illustrated STORY format: the same
  * soothing Hope voiceover as the ambient calm videos, but the narration
- * is a small story told across several photoreal scenes (no people ever)
- * that dissolve into each other with clean crossfades, each scene's
- * animation matching the beat of the story.
+ * is a small story told across several ANIMATED soft-3D scenes (no
+ * people ever; 2026-08-21, per Keenan: "make it animated and not
+ * hyperrealistic") that dissolve into each other with clean crossfades,
+ * each scene's animation matching the beat of the story.
  *
  * Pipeline: Claude writes a 15-45s story split into 2-6 scenes with one
- * shared "look" → gpt-image-2 renders one photoreal 9:16 image per scene
- * → Higgsfield animates each (waves of ≤3 jobs, constant loopable
- * motion) → ElevenLabs (Hope, eleven_v3) voices the WHOLE narration as
- * one continuous read → each scene's clip is looped/trimmed to a window
- * weighted by its share of the narration words → crossfade stitch → mux
- * → storyVideoUrl/storyVoiced persisted → 🎞️ email.
+ * shared "look" → gpt-image-2 renders one animated-film 9:16 image per
+ * scene → Higgsfield animates each (waves of ≤3 jobs, constant loopable
+ * motion) → ElevenLabs (Hope, eleven_v3) voices EACH SCENE separately
+ * (2026-08-21, per Keenan: "break it down to perfectly match the
+ * script") → each scene's clip is looped/trimmed to EXACTLY its
+ * narration's measured duration + fixed margins → crossfade stitch →
+ * per-scene audio joined with matching silent gaps → mux →
+ * storyVideoUrl/storyVoiced persisted → 🎞️ email. Sync is exact by
+ * construction: crossfades land inside the audio gaps.
  *
  * Fallbacks: a scene whose animation fails ships as a still clip of its
- * image (the story never loses a beat). If TTS fails, the video ships
- * silent with script captions burned in as a teleprompter.
+ * image (the story never loses a beat). If any scene's TTS fails, the
+ * video ships silent with script captions burned in as a teleprompter
+ * (windows fall back to word-count estimates).
  */
 export const carouselCalmStoryFn = inngest.createFunction(
   {
@@ -162,6 +167,13 @@ export const carouselCalmStoryFn = inngest.createFunction(
       return { calmStory: false, postId, reason: "no scene images" };
     }
 
+    // Scenes whose image failed are dropped from the timeline entirely
+    // (2026-08-21): windows, audio segments, and clips must stay
+    // index-aligned or every later scene's narration would drift.
+    const presentIdx = imageUrls
+      .map((u, i) => (u ? i : -1))
+      .filter((i) => i >= 0);
+
     // ── Step 5: animate scenes in waves of ≤3 Higgsfield jobs ─────────
     const clipUrls: (string | null)[] = new Array(sceneCount).fill(null);
     const WAVE_SIZE = 3;
@@ -260,55 +272,93 @@ export const carouselCalmStoryFn = inngest.createFunction(
       `[calm-story] Post ${postId}: ${animatedCount}/${sceneCount} scenes animated (rest ship as stills)`
     );
 
-    // ── Step 6: voice the whole story in one continuous calm read ─────
+    // ── Step 6: voice EACH SCENE separately (exact sync, 2026-08-21) ──
     // Same Hope/eleven_v3 setup as the ambient format (2026-08-20, per
     // Keenan: "use the elevenlabs voice we've been using for all of our
-    // other calm videos. this is the best we've made").
-    const tts = await step.run("tts-script", async () => {
-      try {
-        const { generateVoiceover, probeMediaDuration } = await import(
-          "@/lib/content-factory/story-video"
-        );
-        const { ambientVoiceoverOptions, ambientTtsText } = await import(
-          "@/lib/content-factory/ambient-video"
-        );
-        const { uploadImage } = await import(
-          "@/lib/content-factory/carousel-generate"
-        );
-        const { audio, engine } = await generateVoiceover(
-          ambientTtsText({ script: script.script, vocalScript: script.vocalScript }),
-          undefined,
-          ambientVoiceoverOptions()
-        );
-        const durationSec = await probeMediaDuration(audio, "mp3");
-        const url = await uploadImage(
-          audio,
-          `${basePath}/story-voiceover.mp3`,
-          "audio/mpeg"
-        );
-        return { url, durationSec, engine, error: null as string | null };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[calm-story] TTS failed: ${msg}`);
-        return { url: null, durationSec: 0, engine: null, error: msg };
-      }
+    // other calm videos. this is the best we've made"). The voice is
+    // pinned ONCE so every scene uses the same one, and each read gets
+    // previous/next-text context so the prosody flows across scenes.
+    const voiceOpts = await step.run("pick-voice", async () => {
+      const { ambientVoiceoverOptions } = await import(
+        "@/lib/content-factory/ambient-video"
+      );
+      return ambientVoiceoverOptions();
     });
 
-    // ── Step 7: per-scene windows + loop/trim each scene to its window ─
-    // The narration is ONE continuous read — each scene's on-screen time
-    // is its share of the narration words, so the words and the scenes
-    // stay together. Silent fallback: estimate the read from word count.
-    const TAIL_SEC = 1.0;
-    const totalWords = script.script.split(/\s+/).filter(Boolean).length;
-    const targetSec = tts.url
-      ? tts.durationSec + TAIL_SEC
-      : Math.min(45, Math.max(15, totalWords / 2.2));
+    const sceneTts: {
+      url: string | null;
+      durationSec: number;
+      engine: string | null;
+      error: string | null;
+    }[] = [];
+    for (let i = 0; i < sceneCount; i++) {
+      if (!imageUrls[i]) {
+        // Scene dropped (image failed) — no read for it either.
+        sceneTts.push({ url: null, durationSec: 0, engine: null, error: null });
+        continue;
+      }
+      const t = await step.run(`tts-scene-${i}`, async () => {
+        try {
+          const { generateVoiceover, probeMediaDuration } = await import(
+            "@/lib/content-factory/story-video"
+          );
+          const { calmStorySceneTtsText } = await import(
+            "@/lib/content-factory/calm-story"
+          );
+          const { uploadImage } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          const { audio, engine } = await generateVoiceover(
+            calmStorySceneTtsText(script.scenes[i]),
+            {
+              previousText: i > 0 ? script.scenes[i - 1].narration : undefined,
+              nextText:
+                i < sceneCount - 1 ? script.scenes[i + 1].narration : undefined,
+            },
+            voiceOpts
+          );
+          const durationSec = await probeMediaDuration(audio, "mp3");
+          const url = await uploadImage(
+            audio,
+            `${basePath}/scene-${i}-vo.mp3`,
+            "audio/mpeg"
+          );
+          return { url, durationSec, engine, error: null as string | null };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[calm-story] Scene ${i} TTS failed: ${msg}`);
+          return { url: null, durationSec: 0, engine: null, error: msg };
+        }
+      });
+      sceneTts.push(t);
+    }
+    // EVERY kept scene must voice for the synced cut — a missing segment
+    // would shift every later scene, so any failure drops to silent.
+    const voiced = presentIdx.every((i) => sceneTts[i].url);
+    const ttsEngine = sceneTts.find((t) => t.engine)?.engine ?? null;
+    const ttsError = sceneTts.find((t) => t.error)?.error ?? null;
 
+    // ── Step 7: exact per-scene windows + loop/trim each clip to fit ──
+    // window_i = measured narration_i + fixed margins (+ crossfade
+    // allowance), so each scene is on screen exactly while its lines
+    // play. Silent fallback estimates the read from word count. Windows
+    // are computed over the KEPT scenes only (junction counts must match
+    // the clips that actually get stitched), then mapped back to full
+    // scene indices for the fit loop.
     const { windows } = await step.run("compute-windows", async () => {
-      const { calmStorySceneWindows } = await import(
+      const { calmStorySceneWindows, estimateNarrationSecs } = await import(
         "@/lib/content-factory/calm-story"
       );
-      return { windows: calmStorySceneWindows(script.scenes, targetSec) };
+      const estimates = estimateNarrationSecs(script.scenes);
+      const secs = presentIdx.map((i) =>
+        voiced ? sceneTts[i].durationSec : estimates[i]
+      );
+      const kept = calmStorySceneWindows(secs);
+      const byScene: (number | null)[] = new Array(sceneCount).fill(null);
+      presentIdx.forEach((sceneI, k) => {
+        byScene[sceneI] = kept[k];
+      });
+      return { windows: byScene };
     });
 
     const fittedUrls: (string | null)[] = [];
@@ -319,6 +369,7 @@ export const carouselCalmStoryFn = inngest.createFunction(
             "@/lib/content-factory/carousel-generate"
           );
           const win = windows[i];
+          if (win == null) return null; // scene dropped from the timeline
           let buf: Buffer;
           if (clipUrls[i]) {
             const { loopClipToDuration } = await import(
@@ -402,7 +453,45 @@ export const carouselCalmStoryFn = inngest.createFunction(
       return { url, durationSec };
     });
 
-    // ── Step 9: mux the narration on top ──────────────────────────────
+    // ── Step 9: join the scene reads with matching gaps ───────────────
+    // The audio gap (CALM_STORY_GAP_SEC = xfade + 2·margin) mirrors the
+    // window math exactly, so narration i plays only while scene i is
+    // fully visible and every crossfade happens in silence.
+    const audioUrl = !voiced
+      ? null
+      : await step.run("concat-audio", async () => {
+          try {
+            const { concatAudioWithGaps } = await import(
+              "@/lib/content-factory/story-video"
+            );
+            const { CALM_STORY_GAP_SEC } = await import(
+              "@/lib/content-factory/calm-story"
+            );
+            const { uploadImage } = await import(
+              "@/lib/content-factory/carousel-generate"
+            );
+            const bufs: Buffer[] = [];
+            for (const i of presentIdx) {
+              const res = await fetch(sceneTts[i].url!);
+              if (!res.ok) throw new Error(`scene audio re-download failed (${res.status})`);
+              bufs.push(Buffer.from(await res.arrayBuffer()));
+            }
+            const joined = await concatAudioWithGaps(bufs, CALM_STORY_GAP_SEC);
+            return await uploadImage(
+              joined,
+              `${basePath}/story-voiceover.mp3`,
+              "audio/mpeg"
+            );
+          } catch (err) {
+            console.error(
+              `[calm-story] Audio concat failed: ${err instanceof Error ? err.message : err}`
+            );
+            return null;
+          }
+        });
+    const hasAudio = Boolean(audioUrl);
+
+    // ── Step 10: mux the narration on top ─────────────────────────────
     const finalized = await step.run("mux-video", async () => {
       const { muxNarration, estimateCaptionChunks } = await import(
         "@/lib/content-factory/story-video"
@@ -417,15 +506,15 @@ export const carouselCalmStoryFn = inngest.createFunction(
       const stitchedBuf = Buffer.from(await stitchedRes.arrayBuffer());
 
       let audioBuf: Buffer | null = null;
-      if (tts.url) {
-        const audioRes = await fetch(tts.url);
+      if (audioUrl) {
+        const audioRes = await fetch(audioUrl);
         if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
         audioBuf = Buffer.from(await audioRes.arrayBuffer());
       }
       // NO burned captions on voiced videos (2026-08-20, per Keenan:
       // "No captions, I add them"). Silent fallback keeps script captions
       // as a teleprompter for a self-recorded read.
-      const captions = tts.url
+      const captions = audioBuf
         ? []
         : estimateCaptionChunks(script.script, stitched.durationSec);
 
@@ -447,15 +536,16 @@ export const carouselCalmStoryFn = inngest.createFunction(
       return { url, captioned, durationSec: stitched.durationSec, error: muxError };
     });
 
-    const voiced = Boolean(tts.url);
+    // What actually shipped: voiced only if the joined audio made it in.
+    const shippedVoiced = hasAudio;
 
-    // ── Step 10: persist ──────────────────────────────────────────────
+    // ── Step 11: persist ──────────────────────────────────────────────
     await step.run("persist-result", async () => {
       try {
         const { prisma } = await import("@/lib/prisma");
         await prisma.carouselPost.update({
           where: { id: postId },
-          data: { storyVideoUrl: finalized.url, storyVoiced: voiced },
+          data: { storyVideoUrl: finalized.url, storyVoiced: shippedVoiced },
         });
       } catch (err) {
         console.error(
@@ -464,7 +554,7 @@ export const carouselCalmStoryFn = inngest.createFunction(
       }
     });
 
-    // ── Step 11: email the finished video ─────────────────────────────
+    // ── Step 12: email the finished video ─────────────────────────────
     await step.run("email-calm-story", async () => {
       try {
         const { sendStoryVideoEmail } = await import("@/lib/content-factory/email");
@@ -472,13 +562,13 @@ export const carouselCalmStoryFn = inngest.createFunction(
           sceneCount: usable.length,
           totalScenes: sceneCount,
           narration: script.script,
-          silent: !voiced,
+          silent: !shippedVoiced,
           captioned: finalized.captioned,
-          captionsByHand: voiced, // voiced calm-story ships caption-free by design
+          captionsByHand: shippedVoiced, // voiced calm-story ships caption-free by design
           calmStory: true, // 🎞️ subject
           durationSec: finalized.durationSec,
-          voiceoverError: tts.error ?? finalized.error,
-          voiceEngine: tts.engine,
+          voiceoverError: ttsError ?? finalized.error,
+          voiceEngine: ttsEngine,
         });
       } catch (err) {
         logger.error(
@@ -488,7 +578,7 @@ export const carouselCalmStoryFn = inngest.createFunction(
     });
 
     logger.info(
-      `[calm-story] Post ${postId}: ${script.shape} story complete (${finalized.durationSec.toFixed(1)}s, ${usable.length}/${sceneCount} scenes, ${animatedCount} animated${voiced ? `, voiced via ${tts.engine}` : ", silent"})`
+      `[calm-story] Post ${postId}: ${script.shape} story complete (${finalized.durationSec.toFixed(1)}s, ${usable.length}/${sceneCount} scenes, ${animatedCount} animated${shippedVoiced ? `, voiced via ${ttsEngine}` : ", silent"})`
     );
     return {
       calmStory: true,
@@ -496,7 +586,7 @@ export const carouselCalmStoryFn = inngest.createFunction(
       shape: script.shape,
       durationSec: finalized.durationSec,
       videoUrl: finalized.url,
-      voiced,
+      voiced: shippedVoiced,
       scenes: usable.length,
       animated: animatedCount,
     };

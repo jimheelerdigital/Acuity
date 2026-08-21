@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-21] — Calm story goes animated with exact word-to-scene sync
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The calm story is no longer photorealistic — every scene is now rendered like a still from a high-end soft-3D animated film (the same warm Pixar-ish style that's winning on the carousels), and it can never drift into looking like a real photo or live-action footage. The narration is also now recorded scene by scene and the video timeline is built around those exact recordings, so each scene stays on screen for precisely as long as its own lines take to speak — the words you hear always match the scene you're looking at, with a small breathing margin on each side of every crossfade.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/calm-story.ts`: script prompt rewritten for animated soft-3D scenes (bans photorealism/live-action) and per-scene voicing — the LLM now returns a per-scene `vocal` field (narration + 0-2 ElevenLabs audio tags) instead of one whole-script vocalScript; image/video prompts force "still frame from a high-end soft 3D animated film"; new constants CALM_STORY_MARGIN_SEC (0.3), CALM_STORY_GAP_SEC (xfade + 2×margin = 1.4), CALM_STORY_TAIL_SEC (= gap); calmStorySceneWindows() rebuilt to derive each scene's window from its measured narration duration + margins + crossfade shares; new estimateNarrationSecs() and calmStorySceneTtsText() helpers
+- `apps/web/src/inngest/functions/carousel-calm-story.ts`: TTS is now one `pick-voice` step (voice pinned once per run) + a `tts-scene-${i}` step per scene, each voiced with previous/next-scene context; per-scene audio is concatenated with concatAudioWithGaps(gap=1.4) into one track whose length equals the video by construction (no atempo warp in mux); scenes whose image generation fails are dropped from the whole timeline (presentIdx) so audio/video indexes stay aligned; if any TTS or the concat fails, windows fall back to word-count estimates and captions are burned instead
+- Timing math: window_i = narration_i + leading margin + trailing margin/tail + xfade share per junction; video total = Σnarration + gap×(n−1) + tail = audio total exactly
+
+### Manual steps needed
+None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
+
+### Notes
+- Keenan's verbatim 2026-08-21 ask: "the calm story still sucks. make it animated and not hyperrealistic. also break it down to perfectly match the script. clip down the videos if needed to match."
+- tail = gap is deliberate: concatAudioWithGaps pads every segment (including the last) by the gap, so setting the video tail equal makes audio and video identical in length — muxNarration's time-warp branch can never fire.
+- The animated style deliberately mirrors the toon3d ("Soft 3D illustrated graphic… Pixar-inspired") carousel lane so the page has one visual brand.
+
 ## [2026-08-21] — Captions cut way down: no more repeating the post inside the caption
 
 **Requested by:** Keenan
