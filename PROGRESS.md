@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-21] — Calm voice reverted to the original first-post configuration
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The calm and calm-story narration voice is back to exactly what the very first calm post used. Since that post, the voice had been retuned four times (a different voice, a more "expressive" AI model set to its most unpredictable mode, slowed-down playback, and hidden delivery tags inside the script) — each change stacked on the last, which is why it got progressively worse. All of that is stripped out: it's the original warm narrator voice, the original stable model and settings, normal speed, reading the plain script. A comment in the code now marks it as locked so it doesn't drift again.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/ambient-video.ts`: ambientVoiceoverOptions() reverted to the d88699dc first-post config — Matilda (default voice), eleven_multilingual_v2 (no modelId override), stability 0.65 / similarity 0.8 / style 0.2 / speaker boost, no speed override; AMBIENT_VOICES (Hope) removed; ambientTtsText() now returns the clean script with no [softly]/[sighs] tags
+- `apps/web/src/lib/content-factory/calm-story.ts`: calmStorySceneTtsText() returns the clean per-scene narration (vocal field still parsed/stored but not spoken)
+- `apps/web/src/inngest/functions/carousel-ambient-video.ts`: stale comment updated
+- AMBIENT_ELEVENLABS_VOICE_ID env override still works if a different voice is ever wanted
+
+### Manual steps needed
+None (auto-deploy; a fresh calm-story AND a fresh regular calm post were triggered post-deploy for review).
+
+### Notes
+- Keenan 2026-08-21: "the voice has gotten progressively worse over time... it's horrible now. fix the voice and get it back to the very first calm post quality and keep it there." The degradation stack since 08-18: Vanessa/Hope swap → speed 0.85 → eleven_v3 → stability 0.0 "Creative" (highly erratic between takes) → LLM-placed audio tags. Each was an attempted improvement; together they wrecked it.
+- Do NOT retune the calm voice again without an explicit ask. The full first-post config is documented in ambientVoiceoverOptions()'s comment.
+- Per-scene voicing for calm-story (the exact-sync work) is unaffected — same voice config, per-scene reads with previous/next context on v2.
+
 ## [2026-08-21] — Viral script style guide for story/calm videos + calm-story visual variety
 
 **Requested by:** Keenan
