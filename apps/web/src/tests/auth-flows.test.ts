@@ -1,5 +1,20 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
+import { TRIAL_DAYS } from "@acuity/shared";
+
+/**
+ * The reduced trial handed to someone who deleted an account recently
+ * (pentest T-07 trial-farming guard). Mirrors REDUCED_TRIAL_DAYS in
+ * lib/bootstrap-user.ts.
+ *
+ * These four cases previously hardcoded 14 and 3. The trial was shortened
+ * to 7 days and the literals were never updated, so they had been red ever
+ * since — a real product change showing up as a permanently broken suite,
+ * which is how people learn to ignore red. Reading TRIAL_DAYS from the
+ * shared constant means the next change cannot re-stale them.
+ */
+const REDUCED_TRIAL_DAYS = 2;
+
 /**
  * Auth-flow tests. Full end-to-end route tests (signup → verification
  * email → token → signin → reset → etc.) need a test-DB harness that
@@ -87,7 +102,7 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
     vi.resetModules();
   });
 
-  it("returns 14 days for a never-seen email (null prisma lookup)", async () => {
+  it("returns the standard trial for a never-seen email (null prisma lookup)", async () => {
     // bootstrap-user.ts:245 calls `findFirst` (orderBy
     // deletedAt desc) — mocks must match the method
     // actually invoked or the call resolves to undefined
@@ -100,10 +115,10 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
       },
     }));
     const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
-    expect(await trialDaysForEmail("new@example.com")).toBe(14);
+    expect(await trialDaysForEmail("new@example.com")).toBe(TRIAL_DAYS);
   });
 
-  it("returns 3 days for an email deleted 10 days ago", async () => {
+  it("returns the reduced trial for an email deleted 10 days ago", async () => {
     const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
@@ -118,10 +133,10 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
       },
     }));
     const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
-    expect(await trialDaysForEmail("returned@example.com")).toBe(3);
+    expect(await trialDaysForEmail("returned@example.com")).toBe(REDUCED_TRIAL_DAYS);
   });
 
-  it("returns 14 days for an email deleted >90 days ago", async () => {
+  it("returns the standard trial for an email deleted >90 days ago", async () => {
     const hundredDaysAgo = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000);
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
@@ -136,10 +151,10 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
       },
     }));
     const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
-    expect(await trialDaysForEmail("longago@example.com")).toBe(14);
+    expect(await trialDaysForEmail("longago@example.com")).toBe(TRIAL_DAYS);
   });
 
-  it("returns 14 days for a null email (defensive)", async () => {
+  it("returns the standard trial for a null email (defensive)", async () => {
     vi.doMock("@/lib/prisma", () => ({
       prisma: {
         deletedUser: {
@@ -150,7 +165,7 @@ describe("trialDaysForEmail — reduced-trial logic (pentest T-07 fix)", () => {
       },
     }));
     const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
-    expect(await trialDaysForEmail(null)).toBe(14);
+    expect(await trialDaysForEmail(null)).toBe(TRIAL_DAYS);
   });
 
   it("normalizes email casing before lookup", async () => {
