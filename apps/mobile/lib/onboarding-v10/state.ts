@@ -28,6 +28,7 @@ const PLAN_DECISION_KEY = "ripple.v10.plan_decision";
 const GUEST_KEY = "ripple.v10.guest";
 const OFFERED_KEY = "ripple.v10.offered";
 const DISMISSED_KEY = "ripple.v10.dismissed";
+const SAVE_WALL_HITS_KEY = "ripple.v10.save_wall_hits";
 
 /**
  * Persist the branch chosen on Screen 1. Fire-and-forget by design — a
@@ -195,6 +196,33 @@ export async function wasV10Dismissed(): Promise<boolean> {
   }
 }
 
+/**
+ * How many times this guest has hit the save wall.
+ *
+ * Durable so the escalation survives a relaunch — otherwise force-quitting
+ * resets a guest to the soft wall forever and they can keep tapping past it
+ * indefinitely.
+ */
+export async function getSaveWallHits(): Promise<number> {
+  try {
+    const v = await AsyncStorage.getItem(SAVE_WALL_HITS_KEY);
+    const n = v === null ? 0 : Number.parseInt(v, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function bumpSaveWallHits(): Promise<number> {
+  const next = (await getSaveWallHits()) + 1;
+  try {
+    await AsyncStorage.setItem(SAVE_WALL_HITS_KEY, String(next));
+  } catch {
+    /* best-effort — worst case they see the soft wall twice */
+  }
+  return next;
+}
+
 export async function clearV10State(): Promise<void> {
   try {
     await AsyncStorage.multiRemove([
@@ -204,6 +232,7 @@ export async function clearV10State(): Promise<void> {
       GUEST_KEY,
       OFFERED_KEY,
       DISMISSED_KEY,
+      SAVE_WALL_HITS_KEY,
     ]);
   } catch {
     /* non-fatal */

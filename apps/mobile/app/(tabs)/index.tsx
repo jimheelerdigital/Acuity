@@ -42,6 +42,7 @@ import { TourTarget } from "@/components/tour/TourTarget";
 import { useTourTrigger } from "@/hooks/use-tour-trigger";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { api } from "@/lib/api";
 import { cachedGet, getCached, isStale } from "@/lib/cache";
@@ -252,9 +253,15 @@ export default function DashboardTab() {
     [router]
   );
 
+  const { interceptRecord } = useSaveWall();
   const handleRecordPress = useCallback(
-    () => router.push("/record"),
-    [router]
+    () => {
+      // Guests get the save wall instead of the recorder — their debrief
+      // is unclaimed and a second one would be unreconcilable.
+      if (interceptRecord()) return;
+      router.push("/record");
+    },
+    [router, interceptRecord]
   );
 
   const handleWeeklyInsightPress = useCallback(

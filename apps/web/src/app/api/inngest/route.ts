@@ -29,6 +29,7 @@ import { calendarSyncCronFn } from "@/inngest/functions/calendar-sync-cron";
 import { peopleBackfillFn } from "@/inngest/functions/people-backfill";
 import { trialCountdownEmailsCronFn } from "@/inngest/functions/trial-countdown-emails-cron";
 import { trialCountdownPushCronFn } from "@/inngest/functions/trial-countdown-push-cron";
+import { v10Day2PushCronFn } from "@/inngest/functions/v10-day2-push-cron";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
 import { trialExpirationCronFn } from "@/inngest/functions/trial-expiration-cron";
 import { weeklyDigestFn } from "@/inngest/functions/weekly-digest";
@@ -91,6 +92,9 @@ const handler = serve({
     entitlementReconcileNightlyFn,
     trialCountdownEmailsCronFn,
     trialCountdownPushCronFn,
+    // Flag-gated on ENABLE_V10_DAY2_PUSH; registered always so Inngest
+    // sees a stable function list, but a no-op until the flag is "1".
+    v10Day2PushCronFn,
     calendarSyncCronFn,
     peopleBackfillFn,
     autoBlogGenerateFn,

@@ -3,6 +3,7 @@ import "../global.css";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 
+import { SaveWallProvider } from "@/components/onboarding/v10-save-wall";
 import { decideColdStartRoute } from "@/lib/onboarding-v10/entry-routing";
 import { markV10Offered } from "@/lib/onboarding-v10/state";
 import { useColdStartFacts } from "@/lib/onboarding-v10/use-cold-start-facts";
@@ -270,9 +271,16 @@ function RootLayout() {
                   sees every CopilotStep registered across tab screens.
                   Above ThemedApp = above <Stack/>. Below LockProvider so
                   a locked app's overlay covers any in-flight tour. */}
-              <TourProvider>
-                <ThemedApp />
-              </TourProvider>
+              {/* SaveWallProvider needs Auth (to know a guest is signed
+                  out) and Theme (tokens), and must sit above <Stack/> so
+                  its modal covers whichever screen the mic was tapped
+                  from. Below LockProvider for the same reason TourProvider
+                  is: a locked app's overlay wins. */}
+              <SaveWallProvider>
+                <TourProvider>
+                  <ThemedApp />
+                </TourProvider>
+              </SaveWallProvider>
             </LockProvider>
           </AuthProvider>
         </ThemeProvider>

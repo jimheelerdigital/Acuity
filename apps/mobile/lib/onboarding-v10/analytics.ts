@@ -48,7 +48,12 @@ export type V10Event =
   // Returning user took the escape hatch on Screen 1 rather than
   // signing up. Worth measuring: a high rate means cold-start routing
   // is catching people it should not.
-  | "v10_signin_from_funnel";
+  | "v10_signin_from_funnel"
+  // Guest save wall (spec §9). `attempt` distinguishes the soft first
+  // showing from the hard ones after it.
+  | "v10_save_wall_shown"
+  | "v10_save_wall_accepted"
+  | "v10_save_wall_dismissed";
 
 /**
  * Experiment assignment. "baseline" until §8 test #1 actually starts —

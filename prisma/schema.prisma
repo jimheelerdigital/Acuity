@@ -97,15 +97,19 @@ model User {
   // fire. Cron looks for users in the right time window AND
   // matching SentAt IS NULL; then sends + stamps. Idempotent. Slice
   // 3 + 9 (2026-05-25).
-  trialT7EmailSentAt       DateTime?
-  trialT3EmailSentAt       DateTime?
-  trialT1EmailSentAt       DateTime?
-  trialEndedEmailSentAt    DateTime?
-  trialT3PostEmailSentAt   DateTime?
-  trialT3PushSentAt        DateTime?
-  trialEndedPushSentAt     DateTime?
+  trialT7EmailSentAt     DateTime?
+  trialT3EmailSentAt     DateTime?
+  trialT1EmailSentAt     DateTime?
+  trialEndedEmailSentAt  DateTime?
+  trialT3PostEmailSentAt DateTime?
+  trialT3PushSentAt      DateTime?
+  trialEndedPushSentAt   DateTime?
+  // v10 spec §9 Day-2 nudge. One per user, ever. Idempotency lives in a
+  // dedicated column rather than being inferred from entry counts or
+  // createdAt, so a cron retry or two concurrent runs cannot double-send.
+  v10Day2PushSentAt      DateTime?
   // Download reminder email — sent 1hr after account creation if no app download
-  downloadReminderSentAt   DateTime?
+  downloadReminderSentAt DateTime?
 
   // ─── Dual-source subscription model (Phase 4, 2026-05-03) ────
   // Apple rejected v1.0 twice under §3.1.1 despite our 3.1.3(b)
@@ -132,14 +136,14 @@ model User {
   // has exactly one originalTransactionId; preventing two User
   // rows from claiming the same sub is the cleanest race-defense.
   // Receipt verification (Phase 2) reads + writes this column.
-  appleOriginalTransactionId    String?              @unique
-  appleProductId                String? // e.g. "com.heelerdigital.acuity.pro.monthly"
-  appleEnvironment              String? // "sandbox" | "production"
+  appleOriginalTransactionId String? @unique
+  appleProductId             String? // e.g. "com.heelerdigital.acuity.pro.monthly"
+  appleEnvironment           String? // "sandbox" | "production"
   // appleLatestReceiptInfo: last verified receipt payload. JSON
   // because Apple's payload shape is large + drifts across
   // StoreKit versions; replay-debugging benefits from keeping the
   // raw structure rather than projecting it column-by-column.
-  appleLatestReceiptInfo        Json?
+  appleLatestReceiptInfo     Json?
   /// The Apple-signed JWS (StoreKit 2 JWSTransaction) the receipt info was
   /// decoded from. Retained 2026-08-19: appleLatestReceiptInfo is the
   /// DECODED payload with Apple's signature stripped, so it cannot prove a
@@ -150,7 +154,7 @@ model User {
   /// Sensitive: a bearer proof of purchase. Never log or return it in an
   /// API response; it is written by verify-receipt and read only by
   /// server-side reconciliation/import.
-  appleSignedTransactionJws     String?
+  appleSignedTransactionJws  String?
 
   // ─── Google Play Billing (Android IAP parity, 2026-06-11) ────
   // Mirrors the apple* fields above. Verified via the Google Play
@@ -159,10 +163,10 @@ model User {
   // = "google_play" for these rows. @unique on the purchase token is the
   // idempotency / race-defense gate — same role appleOriginalTransactionId
   // plays for Apple.
-  googlePurchaseToken           String?              @unique
-  googleProductId               String? // e.g. "acuity_pro_monthly"
-  googleLatestReceiptInfo       Json?
-  timezone                      String               @default("America/Chicago")
+  googlePurchaseToken        String?   @unique
+  googleProductId            String? // e.g. "acuity_pro_monthly"
+  googleLatestReceiptInfo    Json?
+  timezone                   String    @default("America/Chicago")
   // Slice v1.3.x (2026-06-03) — biometric auto-lock threshold.
   // Encoding: 0 = lock immediately on background, 1/2/5/15 = minutes
   // of background time before re-lock, -1 = never (only cold-launch
@@ -173,7 +177,7 @@ model User {
   // the lock-context AppState handler. Server column is the source
   // of truth for cross-device sync (a setting toggled on iPhone
   // should land on iPad after the next /api/user/me fetch).
-  autoLockMinutes               Int                  @default(2)
+  autoLockMinutes            Int       @default(2)
   // Slice v1.3.x (2026-06-03) — first-login product tour.
   // NULL = user has not completed (or has reset) the tour, so it
   // fires on next home mount (subject to additional gates). Set to
@@ -183,69 +187,69 @@ model User {
   // Mirrored client-side via AsyncStorage so the trigger evaluator
   // can run synchronously on home mount; server column is authoritative
   // for cross-device + replay-tour.
-  tourCompletedAt               DateTime?
+  tourCompletedAt            DateTime?
   // DEPRECATED: superseded by notificationTime + notificationDays +
   // notificationsEnabled (added 2026-04-20 alongside the onboarding
   // notifications step). Left in place because a fresh schema diff
   // without it would drop column data from any env where it was set
   // manually; read paths should prefer `notificationTime`.
-  reminderTime                  String               @default("21:00")
-  pushToken                     String?
+  reminderTime               String    @default("21:00")
+  pushToken                  String?
   // Slice 9b (2026-05-25) — additional push metadata. Stamped by the
   // mobile push-token registration call after the user grants permission
   // (post-second-recording). Re-stamped on every cold launch so a
   // rotated Expo token doesn't go stale silently.
-  pushTokenPlatform             String?              // "ios" | "android"
-  pushTokenUpdatedAt            DateTime?
+  pushTokenPlatform          String? // "ios" | "android"
+  pushTokenUpdatedAt         DateTime?
   // Calendar Integration (P1 v1.2, 2026-05-25). The refresh token is
   // stored encrypted (AES-256-GCM, key derived from NEXTAUTH_SECRET).
   // See apps/web/src/lib/calendar/encryption.ts. Connection is
   // separate from NextAuth sign-in — users explicitly opt in via
   // /account → Connect Calendar so a scope-expansion can't break
   // existing Google sign-in for users who never wanted calendar.
-  googleCalendarRefreshToken    String?
-  googleCalendarEmail           String?              // shown in /account
-  googleCalendarConnectedAt     DateTime?
-  googleCalendarLastSyncedAt    DateTime?
+  googleCalendarRefreshToken String?
+  googleCalendarEmail        String? // shown in /account
+  googleCalendarConnectedAt  DateTime?
+  googleCalendarLastSyncedAt DateTime?
   // HH:MM in the user's timezone. Combined with `notificationDays`
   // to schedule the local reminder (mobile via expo-notifications)
   // or the daily email (web, future).
-  notificationTime              String               @default("21:00")
+  notificationTime           String    @default("21:00")
   // 0=Sunday..6=Saturday. Days the reminder fires. Empty array = no
   // days active (same effect as notificationsEnabled=false, but
   // preserves the preference the user last picked).
-  notificationDays              Int[]                @default([0, 1, 2, 3, 4, 5, 6])
-  notificationsEnabled          Boolean              @default(false)
+  notificationDays           Int[]     @default([0, 1, 2, 3, 4, 5, 6])
+  notificationsEnabled       Boolean   @default(false)
   // Granted manually via direct DB update (UPDATE "User" SET "isAdmin" = true WHERE email = '...').
   // Not self-service. Gates /admin/dashboard + /api/admin/*.
-  isAdmin                       Boolean              @default(false)
+  isAdmin                    Boolean   @default(false)
   // Color-scheme preference. Null (default) → follow system / localStorage
   // whatever next-themes picks up. Set to "light" or "dark" when the
   // user explicitly picks via the toggle; we persist to the DB so the
   // preference survives across devices without relying on localStorage.
-  theme                         String?
+  theme                      String?
   // Accent palette pick (Slice Q2, 2026-05-19, visual refresh v2).
   // Values: "coral" | "sunset" | "citrus" | "cobalt". Default coral
   // matches the build-42 implicit default (no palette concept) so a
   // brand-new build-45 mobile boot reads "coral" without DB writes.
   // Local on iOS via AsyncStorage `acuity.palette`; this column is
   // the cross-device source of truth.
-  themePalette                  String               @default("coral")
+  themePalette               String    @default("coral")
   // Streak tracking — incremented by the Inngest process-entry pipeline
   // after a successful recording persists. Day boundaries evaluated in
   // the user's `timezone` via date-fns-tz (same-day = no change,
   // next-calendar-day = +1, gap of 2+ days = reset to 1). Full rules in
   // apps/web/src/lib/streak.ts.
-  currentStreak                 Int                  @default(0)
-  longestStreak                 Int                  @default(0)
-  lastSessionDate               DateTime?
+  currentStreak              Int       @default(0)
+  longestStreak              Int       @default(0)
+  lastSessionDate            DateTime?
   // Highest milestone we've celebrated for this user (3, 7, 14, 30, 60,
   // 100, 365). NULL means no milestone fired yet. Set once and
   // monotonically increases — a user who drops from 100 back to 0 and
   // climbs again gets a new milestone toast only if they exceed
   // lastMilestone. (Originally 7/30/100; Phase 2 Run 2 2026-04-23
   // expanded to the full 3/7/14/30/60/100/365 ladder.)
-  lastStreakMilestone           Int?
+  lastStreakMilestone        Int?
   // Baseline currentStreak at the time milestone celebrations shipped
   // (Phase 2 Run 2 deploy). Default 0 for new users. Prevents the
   // retroactive dump where an existing user at streak 35 suddenly
@@ -253,13 +257,13 @@ model User {
   // Milestone fires only if threshold > milestoneBaselineStreak
   // (AND > lastStreakMilestone per the existing rule). Static after
   // the backfill migration; never updated by app code.
-  milestoneBaselineStreak       Int                  @default(0)
+  milestoneBaselineStreak    Int       @default(0)
   // Cookie/analytics consent record — stored as JSON so we can evolve
   // the categories without a migration. Shape: { version:1, acceptedAt,
   // analytics:boolean, marketing:boolean }. Null = user has never seen
   // the banner or logged-in-from-another-device. Mirror of the
   // localStorage record on the client.
-  cookieConsent                 Json?
+  cookieConsent              Json?
   // Product-analytics opt-out (v1.4 GDPR slice). Controls whether
   // POST-AUTH product/funnel events are logged for this user. Default
   // true: existing users stay measured (they accepted the prior policy);
@@ -267,62 +271,62 @@ model User {
   // Enforced server-side in /api/onboarding-events. Anonymous pre-signup
   // funnel events have no userId and are NOT gated by this (legitimate
   // interest, ad attribution).
-  productAnalyticsEnabled       Boolean              @default(true)
+  productAnalyticsEnabled    Boolean   @default(true)
   // Last-computed UserProgression snapshot, used to diff `recentlyUnlocked`
   // across sessions (see packages/shared/src/userProgression.ts). Shape is
   // the full UserProgression JSON. Null on users who've never hit the
   // /api/user/progression endpoint. Regenerated every time that endpoint
   // runs; stale snapshots are fine — they only seed the "what unlocked
   // since last check" diff.
-  progressionSnapshot           Json?
+  progressionSnapshot        Json?
   // First 100 signups are Founding Members — locked-in pricing, badge,
   // and sequential number 1-100. After 100 the fields stay false/null.
   // All users get a 14-day trial regardless of founding status.
-  isFoundingMember              Boolean              @default(false)
-  foundingMemberNumber          Int?
+  isFoundingMember           Boolean   @default(false)
+  foundingMemberNumber       Int?
   // Apple's stable per-user identifier (`sub` claim from the Apple ID
   // token). Set when a user signs in with Apple. Unique so the same
   // Apple ID maps to exactly one User row even when Apple's relayed
   // email rotates or the user opts out of email sharing on a later
   // sign-in. Null on users who've never signed in with Apple.
-  appleSubject                  String?              @unique
+  appleSubject               String?   @unique
   // Goal-setting cadence captured during onboarding step 8. One of
   // "daily" | "most_days" | "few_times_week". Doesn't change app
   // behavior or limit functionality — it's a self-reported intent
   // that downstream nudge / reminder / streak copy can reference.
   // Default "daily" reflects the recommended cadence for getting
   // value from Acuity (more entries → better extraction).
-  targetCadence                 String?              @default("daily")
-  createdAt                     DateTime             @default(now())
+  targetCadence              String?   @default("daily")
+  createdAt                  DateTime  @default(now())
   // Last time the user loaded a page / opened the app. Updated
   // opportunistically from /api/user/me; not strongly durable.
   // Drives the onboarding smart-skip ("abandoned 30+ days ago →
   // silently mark complete") and future engagement signals.
-  lastSeenAt                    DateTime?
+  lastSeenAt                 DateTime?
   // ─── Mobile device tracking (2026-05-20) ────────────────────
   // Captured from X-Platform / X-App-Version headers sent by the
   // mobile client. Updated on every /api/user/me hit from a mobile
   // bearer session. appFirstOpenedAt is write-once (first mobile
   // request), devicePlatform + appVersion reflect the LATEST request.
-  devicePlatform                String?   // "ios" | "android"
-  appVersion                    String?   // e.g. "1.0.0"
-  appFirstOpenedAt              DateTime? // set once on first mobile request
+  devicePlatform             String? // "ios" | "android"
+  appVersion                 String? // e.g. "1.0.0"
+  appFirstOpenedAt           DateTime? // set once on first mobile request
 
   // Unique short code (8 char, no ambiguous chars) the user shares
   // via their /?ref= link. Generated lazily on first /account view
   // or at signup — see lib/referrals.ts::generateReferralCode.
-  referralCode                  String?              @unique
+  referralCode                  String?                      @unique
   // ID of the user who referred them (if they signed up via a ?ref=
   // link). Null for self-directed signups. SetNull on referrer
   // delete so we don't lose the downstream graph.
   referredById                  String?
-  referredBy                    User?                @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals                     User[]               @relation("Referrals")
+  referredBy                    User?                        @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals                     User[]                       @relation("Referrals")
   // Subscription email toggles (W2). Default both on; unsubscribe
   // link in any digest footer flips the relevant boolean via a
   // token-based endpoint.
-  weeklyEmailEnabled            Boolean              @default(true)
-  monthlyEmailEnabled           Boolean              @default(true)
+  weeklyEmailEnabled            Boolean                      @default(true)
+  monthlyEmailEnabled           Boolean                      @default(true)
   // Dedup keys for the weekly/monthly digest Inngest crons. Scan
   // window uses (now - last*At < threshold) so a retried cron or
   // overlap doesn't double-send. Null = never sent.
@@ -342,8 +346,8 @@ model User {
   demographics                  UserDemographics?
   userInsights                  UserInsight[]
   themes                        Theme[]
-  referralConversionsAsReferrer ReferralConversion[] @relation("ReferrerConversions")
-  referralConversionsAsReferred ReferralConversion[] @relation("ReferredConversions")
+  referralConversionsAsReferrer ReferralConversion[]         @relation("ReferrerConversions")
+  referralConversionsAsReferred ReferralConversion[]         @relation("ReferredConversions")
   dataExports                   DataExport[]
   healthSnapshots               HealthSnapshot[]
   // Cascade-gap FK fix (2026-06-23): these were scalar-userId tables
@@ -387,7 +391,7 @@ model User {
   // handler. For TRIAL referrers we extend `trialEndsAt` directly
   // and this column stays at 0. Capped indirectly via
   // REFERRAL_ANNUAL_CAP in lib/referrals.ts.
-  referralRewardDays            Int                  @default(0)
+  referralRewardDays            Int                          @default(0)
 
   // Trial email sequence fields (2026-04-24). Drives the
   // trial-email-orchestrator Inngest function. firstRecordingAt /
@@ -414,7 +418,7 @@ model User {
   signupUtmTerm     String?
   signupReferrer    String?
   signupLandingPath String?
-  signupMethod      String?   // "email" | "google" | "apple" | "mobile-email" | "mobile-google" | "mobile-apple" | "magic-link"
+  signupMethod      String? // "email" | "google" | "apple" | "mobile-email" | "mobile-google" | "mobile-apple" | "magic-link"
 
   // ── Calendar integration (v1.1 slice C3) ─────────────────────────
   // See docs/v1-1/calendar-integration-scoping.md §8 + the locked
@@ -486,10 +490,10 @@ model User {
   freeRecordingsThisMonth Int?      @default(0)
   freeRecordingsResetAt   DateTime?
 
-  trySessions                   TrySession[]
-  onboardingEvents              OnboardingEvent[]
-  userAchievements              UserAchievement[]
-  consentRecords                ConsentRecord[]
+  trySessions      TrySession[]
+  onboardingEvents OnboardingEvent[]
+  userAchievements UserAchievement[]
+  consentRecords   ConsentRecord[]
 
   updatedAt DateTime @default(now()) @updatedAt
 
@@ -543,10 +547,10 @@ model TrialEmailLog {
 // No FK to User (the point is that the User is gone). Email is the
 // only stable identifier.
 model DeletedUser {
-  email                String    @id
-  deletedAt            DateTime  @default(now())
-  originalCreatedAt    DateTime
-  originalTrialEndedAt DateTime?
+  email                    String    @id
+  deletedAt                DateTime  @default(now())
+  originalCreatedAt        DateTime
+  originalTrialEndedAt     DateTime?
   // Incident 2026-06-13 (orphan subscriptions after deletion) audit trail —
   // preserve what plan the user had at deletion + whether we cancelled their
   // Stripe subscription, so orphaned post-deletion billing can be reconciled.
@@ -567,51 +571,51 @@ model DeletedUser {
 // defined in @acuity/shared (packages/shared/src/notifications.ts) so web +
 // iOS + Android stay in lockstep. See docs/specs/smart-notifications-spec.md.
 model UserNotificationPreferences {
-  id                String    @id @default(cuid())
-  userId            String    @unique
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Channels. v1 is email-only — pushEnabled stays false until the mobile
   // push-token registration slice ships (deferred PR).
-  pushEnabled       Boolean   @default(false)
-  emailEnabled      Boolean   @default(true)
+  pushEnabled  Boolean @default(false)
+  emailEnabled Boolean @default(true)
 
   // Per-category opt in/out. Seeded with the default-ON set
   // (DEFAULT_ENABLED_CATEGORIES) on first create; keys validated against
   // @acuity/shared isNotificationCategory().
-  enabledCategories String[]  @default([])
+  enabledCategories String[] @default([])
 
   // Copy voice — "caring" | "direct". Never advice; mirror, not coach.
-  tone              String    @default("caring")
+  tone String @default("caring")
 
   // Quiet hours in the user's local time ("HH:MM"). No sends inside the
   // window. Wraps midnight when end < start (e.g. 21:00 → 09:00).
-  quietHoursStart   String    @default("21:00")
-  quietHoursEnd     String    @default("09:00")
+  quietHoursStart String  @default("21:00")
+  quietHoursEnd   String  @default("09:00")
   // IANA tz (e.g. "America/New_York"). Null → fall back to a sensible
   // default at send time.
-  timezone          String?
+  timezone        String?
 
   // Frequency caps. The scheduler enforces by plan: free → maxPerWeek,
   // Pro → maxPerDay. Stored per-user so a future per-user override is
   // possible without a migration.
-  maxPerDay         Int       @default(1)
-  maxPerWeek        Int       @default(1)
+  maxPerDay  Int @default(1)
+  maxPerWeek Int @default(1)
 
   // Snooze-all. Notifications are suppressed until this instant.
-  pausedUntil       DateTime?
+  pausedUntil DateTime?
 
   // Last time ANY engagement notification fired — drives the
   // NOTIFICATION_MIN_GAP_HOURS (18h) hard floor between sends.
-  lastNotifiedAt    DateTime?
+  lastNotifiedAt DateTime?
 
   // EU behavioral-profiling consent. ConsentRecord
   // (kind="behavioral_notifications") is the legal source of truth; this
   // is a denormalized mirror for fast scheduler reads.
-  behavioralConsent Boolean   @default(false)
+  behavioralConsent Boolean @default(false)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([pausedUntil])
 }
@@ -709,9 +713,9 @@ model UserReminder {
 }
 
 model Entry {
-  id                    String         @id @default(cuid())
+  id                    String            @id @default(cuid())
   userId                String
-  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   // DEPRECATED: use audioPath. Will remove in Inngest PR 4 once the sync
   // path is retired. Sync path writes a signed URL here; async path leaves
   // this null and writes the object path to audioPath instead.
@@ -755,7 +759,7 @@ model Entry {
   // when the summary mentions an event title, and editable manually
   // via slice 6's link/unlink UI. Default empty so nothing leaks if
   // a user disconnects calendar mid-pipeline.
-  linkedEventIds        String[]             @default([])
+  linkedEventIds        String[]          @default([])
   // Valid status values (enforced by app code, not schema — we keep this a
   // String for flexibility across Postgres versions):
   //   QUEUED       — Inngest event dispatched, not yet running (async path)
@@ -767,7 +771,7 @@ model Entry {
   //   FAILED       — unrecoverable; errorMessage populated
   //   PENDING      — LEGACY: used by sync path until it's retired (Inngest PR 4)
   //   PROCESSING   — LEGACY: sync path intermediate state, same retirement
-  status                String         @default("QUEUED")
+  status                String            @default("QUEUED")
   // User-safe error copy surfaced by onFailure handler when status=FAILED.
   errorMessage          String?
   // Slice C cancellation marker (2026-05-16). Set by the cancel
@@ -799,16 +803,16 @@ model Entry {
   // Pre-2026-04-23 entries are backfilled to createdAt by the migration
   // so legacy entries don't get an unwanted review banner.
   extractionCommittedAt DateTime?
-  entryDate             DateTime       @default(now())
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  entryDate             DateTime          @default(now())
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
   // Optional goal this entry is specifically "about" — set when the user
   // taps "Record about this goal" from a goal card/detail. When present,
   // the extraction pipeline splices the goal's title + description into
   // the Claude prompt so the AI treats the entry as goal-contextualized.
   // Null for standard recordings.
   goalId                String?
-  goal                  Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  goal                  Goal?             @relation(fields: [goalId], references: [id], onDelete: SetNull)
   // Optional life-dimension context. Set when the user opened the
   // recorder from a dimension detail screen via "Record about this".
   // Stored as the lowercase dimension key from DEFAULT_LIFE_AREAS
@@ -1152,21 +1156,21 @@ model UserMemory {
   // verification; UserMemory writes go to canonical 10-axis columns
   // above. Data-migration SQL copies HEALTH→physicalHealth,
   // RELATIONSHIPS→family, FINANCES→money, PERSONAL→growth.
-  healthSummary        String?
-  relationshipsSummary String?
-  financesSummary      String?
-  personalSummary      String?
-  otherSummary         String?
-  healthMentions        Int @default(0)
-  relationshipsMentions Int @default(0)
-  financesMentions      Int @default(0)
-  personalMentions      Int @default(0)
-  otherMentions         Int @default(0)
-  healthBaseline        Int @default(50)
-  relationshipsBaseline Int @default(50)
-  financesBaseline      Int @default(50)
-  personalBaseline      Int @default(50)
-  otherBaseline         Int @default(50)
+  healthSummary         String?
+  relationshipsSummary  String?
+  financesSummary       String?
+  personalSummary       String?
+  otherSummary          String?
+  healthMentions        Int     @default(0)
+  relationshipsMentions Int     @default(0)
+  financesMentions      Int     @default(0)
+  personalMentions      Int     @default(0)
+  otherMentions         Int     @default(0)
+  healthBaseline        Int     @default(50)
+  relationshipsBaseline Int     @default(50)
+  financesBaseline      Int     @default(50)
+  personalBaseline      Int     @default(50)
+  otherBaseline         Int     @default(50)
 
   // Recurring patterns detected across all time
   recurringThemes Json[] // { area, theme, firstSeen, count, lastSeen }
@@ -1317,10 +1321,10 @@ model ClaudeCallLog {
 // control the active window. Admin UI allows inline editing.
 model InfrastructureCost {
   id          String    @id @default(cuid())
-  category    String    // "vercel" | "supabase" | "resend" | "domain" | "apple_dev" | "heygen" | "other"
-  label       String    // Human-readable, e.g. "Vercel Pro Plan"
-  amountCents Int       // Monthly cost in cents
-  effectiveAt DateTime  // When this cost starts applying
+  category    String // "vercel" | "supabase" | "resend" | "domain" | "apple_dev" | "heygen" | "other"
+  label       String // Human-readable, e.g. "Vercel Pro Plan"
+  amountCents Int // Monthly cost in cents
+  effectiveAt DateTime // When this cost starts applying
   expiresAt   DateTime? // Null = still active
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1379,59 +1383,59 @@ enum JobStatus {
 // 5 carousels/day as DRAFT; admin reviews via /admin/content-factory queue.
 
 model CarouselPost {
-  id           String              @id @default(cuid())
-  topicSlug    String
-  headline     String
-  status       CarouselPostStatus  @default(DRAFT)
+  id             String             @id @default(cuid())
+  topicSlug      String
+  headline       String
+  status         CarouselPostStatus @default(DRAFT)
   // Which of the 3 daily buckets this post is (2026-08-16): PHOTO = static
   // picture carousel, VIDEO = animated carousel video, STORY = standalone
   // 30s story video with voiceover.
-  format       CarouselFormat      @default(PHOTO)
-  caption      String              @db.Text
-  hashtags     String[]
-  musicNote    String?
-  generatedFor DateTime            // The date this carousel was generated for (idempotency key with topicSlug)
-  emailedAt    DateTime?           // When the carousel email was sent (null = not yet emailed)
-  emailId      String?             // Resend message ID for tracking
-  lane         String?             // Topic lane (e.g. "mental-load") — persisted for the feedback loop
-  mood         String?             // Visual mood of the post (e.g. "cozy-evening")
-  withheldReason  String?  @db.Text // Engineered comment gap: the obvious reason deliberately left off the slides
-  storyVideoUrl   String?           // 30s narrated story video MP4 (Supabase Storage URL)
-  storyVoiced     Boolean?          // Whether the voiceover actually muxed (false = video shipped SILENT)
-  storyTheme      String?           // Short label of the standalone story concept (dedup for future scripts)
+  format         CarouselFormat     @default(PHOTO)
+  caption        String             @db.Text
+  hashtags       String[]
+  musicNote      String?
+  generatedFor   DateTime // The date this carousel was generated for (idempotency key with topicSlug)
+  emailedAt      DateTime? // When the carousel email was sent (null = not yet emailed)
+  emailId        String? // Resend message ID for tracking
+  lane           String? // Topic lane (e.g. "mental-load") — persisted for the feedback loop
+  mood           String? // Visual mood of the post (e.g. "cozy-evening")
+  withheldReason String?            @db.Text // Engineered comment gap: the obvious reason deliberately left off the slides
+  storyVideoUrl  String? // 30s narrated story video MP4 (Supabase Storage URL)
+  storyVoiced    Boolean? // Whether the voiceover actually muxed (false = video shipped SILENT)
+  storyTheme     String? // Short label of the standalone story concept (dedup for future scripts)
   // Where Keenan posted this carousel (pasted once in the admin). The
   // daily metrics-refresh cron pulls engagement from the platform APIs
   // for any POSTED carousel with a link.
-  instagramUrl String?
-  tiktokUrl    String?
+  instagramUrl   String?
+  tiktokUrl      String?
   // Engagement metrics — auto-pulled by the cron when links exist,
   // manually entered via the admin form otherwise. Feed the topic loop.
-  views        Int?
-  likes        Int?
-  comments     Int?
-  saves        Int?
-  shares       Int?
-  metricsAt    DateTime?           // When metrics were last entered/refreshed
-  slides       CarouselSlide[]
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  views          Int?
+  likes          Int?
+  comments       Int?
+  saves          Int?
+  shares         Int?
+  metricsAt      DateTime? // When metrics were last entered/refreshed
+  slides         CarouselSlide[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@unique([topicSlug, generatedFor])
   @@index([status, generatedFor(sort: Desc)])
 }
 
 model CarouselSlide {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   carouselPostId String
-  carouselPost   CarouselPost  @relation(fields: [carouselPostId], references: [id], onDelete: Cascade)
+  carouselPost   CarouselPost @relation(fields: [carouselPostId], references: [id], onDelete: Cascade)
   order          Int
   kind           SlideKind
   overlayText    String
-  imagePrompt    String        @db.Text
-  imageUrl       String        // Supabase Storage public URL (composed JPEG with text overlay)
-  rawImageUrl    String?       // COVER only: pre-compose image without text (video start frame)
-  videoUrl       String?       // COVER only: Higgsfield animated cover MP4 (Supabase Storage URL)
-  createdAt      DateTime      @default(now())
+  imagePrompt    String       @db.Text
+  imageUrl       String // Supabase Storage public URL (composed JPEG with text overlay)
+  rawImageUrl    String? // COVER only: pre-compose image without text (video start frame)
+  videoUrl       String? // COVER only: Higgsfield animated cover MP4 (Supabase Storage URL)
+  createdAt      DateTime     @default(now())
 
   @@index([carouselPostId, order])
 }
@@ -1451,9 +1455,9 @@ enum SlideKind {
 }
 
 enum CarouselFormat {
-  PHOTO   // static picture carousel
-  VIDEO   // fully animated carousel video
-  STORY   // standalone 30s story video + voiceover
+  PHOTO // static picture carousel
+  VIDEO // fully animated carousel video
+  STORY // standalone 30s story video + voiceover
   AMBIENT // calm single-scene looped video + soothing lesson voiceover (2026-08-18)
 }
 
@@ -1507,20 +1511,20 @@ model PruneLog {
 }
 
 model BlogPrunerRun {
-  id                String   @id @default(cuid())
-  runDate           DateTime @default(now())
+  id                String    @id @default(cuid())
+  runDate           DateTime  @default(now())
   postId            String
   postUrl           String?
   postSlug          String?
   daysSincePublish  Int
   coverageState     String?
-  impressions       Int      @default(0)
-  clicks            Int      @default(0)
+  impressions       Int       @default(0)
+  clicks            Int       @default(0)
   recommendedAction String
   wouldTrimAt       DateTime?
   actualActionTaken String?
-  isDryRun          Boolean  @default(true)
-  runStatus         String   @default("evaluated")
+  isDryRun          Boolean   @default(true)
+  runStatus         String    @default("evaluated")
 
   @@index([runDate])
   @@index([recommendedAction])
@@ -1626,7 +1630,7 @@ model UserInsight {
   /// NOT the same as low confidence, and is never treated as high. Only
   /// meaningful alongside evidence; see lib/evidence/confidence.ts, where a
   /// high value with zero evidence is explicitly refused a promotion.
-  confidence      Float?
+  confidence Float?
 
   /// User correction state: "ACCURATE" | "INCOMPLETE" | "WRONG" | null.
   /// Plain String rather than an enum, matching this schema's existing
@@ -1636,7 +1640,7 @@ model UserInsight {
   correctionNote  String?   @db.Text
   correctedAt     DateTime?
 
-  evidence        InsightEvidence[]
+  evidence InsightEvidence[]
 
   @@index([userId, createdAt])
   @@index([userId, dismissedAt])
@@ -1657,20 +1661,20 @@ model UserInsight {
 /// receipt. The offsets are kept so the excerpt can still be highlighted
 /// in-place when the transcript is unchanged.
 model InsightEvidence {
-  id         String      @id @default(cuid())
-  insightId  String
-  insight    UserInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
-  entryId    String
-  entry      Entry       @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  insightId String
+  insight   UserInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  entryId   String
+  entry     Entry       @relation(fields: [entryId], references: [id], onDelete: Cascade)
 
   /// The quoted words backing the insight. Verbatim from the transcript
   /// (or summary when no transcript exists) — never paraphrased.
-  excerpt    String      @db.Text
+  excerpt    String   @db.Text
   /// Character offsets into Entry.transcript. Null when the excerpt came
   /// from the summary, or when the source text was unavailable.
   startIndex Int?
   endIndex   Int?
-  createdAt  DateTime    @default(now())
+  createdAt  DateTime @default(now())
 
   /// One excerpt per (insight, entry). Makes re-running generation
   /// idempotent, and keeps a single insight from citing the same entry
@@ -2010,13 +2014,13 @@ model UserLifeDimension {
 // idempotent. (userId, startTime) is the hot-read index for entry
 // pipeline lookups in slice 3.
 model CalendarEvent {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Google's event id from the events.list response.
   externalEventId String
   summary         String?
-  description     String?  @db.Text
+  description     String?   @db.Text
   startTime       DateTime
   endTime         DateTime?
   // Array of { email, displayName?, responseStatus? } from Google.
@@ -2024,8 +2028,8 @@ model CalendarEvent {
   // differ; we normalize at read time).
   attendees       Json?
   location        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@unique([userId, externalEventId])
   @@index([userId, startTime])
@@ -2321,60 +2325,60 @@ enum AdLabDecisionType {
 }
 
 model AdLabProject {
-  id                        String             @id @default(cuid())
-  name                      String
-  slug                      String             @unique
-  brandVoiceGuide           String             @db.Text
-  targetAudience            Json
-  usps                      Json
-  bannedPhrases             String[]           @default([])
-  imageStylePrompt          String             @db.Text
-  logoUrl                   String?
-  targetCplCents            Int
+  id                         String            @id @default(cuid())
+  name                       String
+  slug                       String            @unique
+  brandVoiceGuide            String            @db.Text
+  targetAudience             Json
+  usps                       Json
+  bannedPhrases              String[]          @default([])
+  imageStylePrompt           String            @db.Text
+  logoUrl                    String?
+  targetCplCents             Int
   dailyBudgetCentsPerVariant Int
-  testDurationDays          Int                @default(14)
-  metaAdAccountId           String?
-  metaPixelId               String?
-  metaPageId                String?
-  conversionEvent           String?
-  conversionObjective       String             @default("OUTCOME_LEADS")
-  learnedPatterns           Json               @default("[]")
-  landingPageUrl            String?
-  metaAppId                 String?
-  targetInterests           Json?
-  imageEnabled              Boolean            @default(true)
-  createdAt                 DateTime           @default(now())
-  experiments               AdLabExperiment[]
+  testDurationDays           Int               @default(14)
+  metaAdAccountId            String?
+  metaPixelId                String?
+  metaPageId                 String?
+  conversionEvent            String?
+  conversionObjective        String            @default("OUTCOME_LEADS")
+  learnedPatterns            Json              @default("[]")
+  landingPageUrl             String?
+  metaAppId                  String?
+  targetInterests            Json?
+  imageEnabled               Boolean           @default(true)
+  createdAt                  DateTime          @default(now())
+  experiments                AdLabExperiment[]
 
   @@map("adlab_projects")
 }
 
 model AdLabExperiment {
-  id                    String                  @id @default(cuid())
+  id                    String                @id @default(cuid())
   projectId             String
-  project               AdLabProject            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  topicBrief            String                  @db.Text
-  status                AdLabExperimentStatus   @default(draft)
+  project               AdLabProject          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  topicBrief            String                @db.Text
+  status                AdLabExperimentStatus @default(draft)
   metaCampaignId        String?
   campaignName          String?
   campaignObjective     String?
-  campaignType          String                  @default("website")
+  campaignType          String                @default("website")
   // "landing_page" = send to generated /for/* page, "direct_funnel" = send directly to /start
-  destination           String                  @default("direct_funnel")
-  specialAdCategories   String[]                @default([])
-  campaignTags          String[]                @default([])
+  destination           String                @default("direct_funnel")
+  specialAdCategories   String[]              @default([])
+  campaignTags          String[]              @default([])
   adSetDailyBudgetCents Int?
   optimizationEvent     String?
   placementType         String?
   launchedAt            DateTime?
   concludedAt           DateTime?
-  conclusionSummary     String?                 @db.Text
+  conclusionSummary     String?               @db.Text
   // Pain-specific funnel copy — customizes /start screens based on this experiment's angle
-  customPainHook        String?                 @db.Text  // Screen 1 headline + subtext JSON
-  customBridge          String?                 @db.Text  // Screen 8 copy
-  customPromise         String?                 @db.Text  // Screen 9 copy
-  customPaywallHook     String?                 @db.Text  // Screen 14 top section
-  createdAt             DateTime                @default(now())
+  customPainHook        String?               @db.Text // Screen 1 headline + subtext JSON
+  customBridge          String?               @db.Text // Screen 8 copy
+  customPromise         String?               @db.Text // Screen 9 copy
+  customPaywallHook     String?               @db.Text // Screen 14 top section
+  createdAt             DateTime              @default(now())
   angles                AdLabAngle[]
   referenceImages       AdLabReferenceImage[]
   landingPage           AdLabLandingPage?
@@ -2384,23 +2388,23 @@ model AdLabExperiment {
 }
 
 model AdLabLandingPage {
-  id                  String          @id @default(cuid())
-  experimentId        String          @unique
-  experiment          AdLabExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  slug                String          @unique
-  heroHeadline        String
-  heroSubheadline     String          @db.Text
-  painPoints          String[]
-  valuePropHeadline   String
-  valueProps          String[]
-  testimonialQuote    String?         @db.Text
-  testimonialName     String?
-  ctaText             String          @default("Start Free Trial")
-  metaTitle           String
-  closingHeadline     String?
-  metaDescription     String          @db.Text
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  id                String          @id @default(cuid())
+  experimentId      String          @unique
+  experiment        AdLabExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  slug              String          @unique
+  heroHeadline      String
+  heroSubheadline   String          @db.Text
+  painPoints        String[]
+  valuePropHeadline String
+  valueProps        String[]
+  testimonialQuote  String?         @db.Text
+  testimonialName   String?
+  ctaText           String          @default("Start Free Trial")
+  metaTitle         String
+  closingHeadline   String?
+  metaDescription   String          @db.Text
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@map("adlab_landing_pages")
 }
@@ -2418,37 +2422,37 @@ model AdLabReferenceImage {
 }
 
 model AdLabAngle {
-  id               String            @id @default(cuid())
-  experimentId     String
-  experiment       AdLabExperiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  hypothesis       String            @db.Text
-  targetPersona    String
-  valueSurface     AdLabValueSurface
-  researchNotes    String            @db.Text
-  score            Int               @default(0)
-  advanced         Boolean           @default(false)
-  creatives        AdLabCreative[]
+  id            String            @id @default(cuid())
+  experimentId  String
+  experiment    AdLabExperiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  hypothesis    String            @db.Text
+  targetPersona String
+  valueSurface  AdLabValueSurface
+  researchNotes String            @db.Text
+  score         Int               @default(0)
+  advanced      Boolean           @default(false)
+  creatives     AdLabCreative[]
 
   @@index([experimentId])
   @@map("adlab_angles")
 }
 
 model AdLabCreative {
-  id               String                  @id @default(cuid())
+  id               String                @id @default(cuid())
   angleId          String
-  angle            AdLabAngle              @relation(fields: [angleId], references: [id], onDelete: Cascade)
-  creativeType     AdLabCreativeType       @default(image)
+  angle            AdLabAngle            @relation(fields: [angleId], references: [id], onDelete: Cascade)
+  creativeType     AdLabCreativeType     @default(image)
   headline         String
-  primaryText      String                  @db.Text
+  primaryText      String                @db.Text
   description      String
   cta              String
   imageUrl         String?
-  generationPrompt String?                 @db.Text
-  complianceStatus AdLabComplianceStatus   @default(pending)
-  complianceNotes  String?                 @db.Text
-  approved         Boolean                 @default(false)
-  batchNumber      Int                     @default(0)
-  createdAt        DateTime                @default(now())
+  generationPrompt String?               @db.Text
+  complianceStatus AdLabComplianceStatus @default(pending)
+  complianceNotes  String?               @db.Text
+  approved         Boolean               @default(false)
+  batchNumber      Int                   @default(0)
+  createdAt        DateTime              @default(now())
   ads              AdLabAd[]
 
   @@index([angleId])
@@ -2456,18 +2460,18 @@ model AdLabCreative {
 }
 
 model AdLabAd {
-  id              String          @id @default(cuid())
-  creativeId      String
-  creative        AdLabCreative   @relation(fields: [creativeId], references: [id], onDelete: Cascade)
-  metaCampaignId  String?
-  metaAdsetId     String?
-  metaAdId        String?
-  status          AdLabAdStatus   @default(live)
-  launchedAt      DateTime?
+  id               String             @id @default(cuid())
+  creativeId       String
+  creative         AdLabCreative      @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  metaCampaignId   String?
+  metaAdsetId      String?
+  metaAdId         String?
+  status           AdLabAdStatus      @default(live)
+  launchedAt       DateTime?
   dailyBudgetCents Int?
-  decisionReason  String?         @db.Text
-  metrics         AdLabDailyMetric[]
-  decisions       AdLabDecision[]
+  decisionReason   String?            @db.Text
+  metrics          AdLabDailyMetric[]
+  decisions        AdLabDecision[]
 
   @@index([creativeId])
   @@index([status])
@@ -2494,12 +2498,12 @@ model AdLabDailyMetric {
 }
 
 model AdLabDecision {
-  id               String              @id @default(cuid())
+  id               String            @id @default(cuid())
   adId             String
-  ad               AdLabAd             @relation(fields: [adId], references: [id], onDelete: Cascade)
+  ad               AdLabAd           @relation(fields: [adId], references: [id], onDelete: Cascade)
   decisionType     AdLabDecisionType
-  rationale        String              @db.Text
-  executedAt       DateTime            @default(now())
+  rationale        String            @db.Text
+  executedAt       DateTime          @default(now())
   priorBudgetCents Int?
   newBudgetCents   Int?
 
@@ -2602,9 +2606,9 @@ model OnboardingEvent {
   utmSource    String?
   utmMedium    String?
   utmCampaign  String?
-  utmContent   String?  // Maps to AdLab creative ID
+  utmContent   String? // Maps to AdLab creative ID
   utmTerm      String?
-  fbclid       String?  // Meta click ID
+  fbclid       String? // Meta click ID
   // Browser environment — user agent string logged on signup-related events
   // so we can identify in-app browsers (Facebook WebView, Instagram, etc.)
   browser      String?
@@ -2678,19 +2682,19 @@ model ConsentRecord {
 // across users — "Erin" in one user's reflections is a different
 // record from "Erin" in another's.
 model Person {
-  id                String          @id @default(cuid())
-  userId            String
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  canonicalName     String
-  displayName       String
-  aliases           String[]        @default([])
-  firstMentionedAt  DateTime        @default(now())
-  mentionCount      Int             @default(0)
-  archived          Boolean         @default(false)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  canonicalName    String
+  displayName      String
+  aliases          String[] @default([])
+  firstMentionedAt DateTime @default(now())
+  mentionCount     Int      @default(0)
+  archived         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  mentions          EntityMention[]
+  mentions EntityMention[]
 
   @@unique([userId, canonicalName])
   @@index([userId, mentionCount])
@@ -2701,16 +2705,16 @@ model Person {
 // ~50-char window around the mention so the UI can show the user
 // what was said without re-fetching the whole transcript.
 model EntityMention {
-  id            String   @id @default(cuid())
-  entryId       String
-  entry         Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  personId      String
-  person        Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
-  mentionText   String
-  startIndex    Int
-  endIndex      Int
-  context       String   @db.Text
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  entryId     String
+  entry       Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  personId    String
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  mentionText String
+  startIndex  Int
+  endIndex    Int
+  context     String   @db.Text
+  createdAt   DateTime @default(now())
 
   @@index([entryId])
   @@index([personId])
@@ -2728,21 +2732,21 @@ model EntityMention {
 // so future re-tuning of points doesn't retroactively change history.
 
 model Achievement {
-  id           String   @id
-  slug         String   @unique
-  title        String
-  description  String
-  category     String   // CONSISTENCY | REFLECTION | MOMENT
-  tier         Int      // 1-5 (bronze..diamond)
-  emblem       String
-  points       Int
-  iconKey      String
-  triggerType  String
+  id            String   @id
+  slug          String   @unique
+  title         String
+  description   String
+  category      String // CONSISTENCY | REFLECTION | MOMENT
+  tier          Int // 1-5 (bronze..diamond)
+  emblem        String
+  points        Int
+  iconKey       String
+  triggerType   String
   triggerConfig Json
-  isActive     Boolean  @default(true)
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   userAchievements UserAchievement[]
 
@@ -2751,16 +2755,16 @@ model Achievement {
 }
 
 model UserAchievement {
-  id              String      @id @default(cuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  achievementId   String
-  achievement     Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
-  earnedAt        DateTime    @default(now())
-  shownToUser     Boolean     @default(false)
-  shownAt         DateTime?
-  pointsAwarded   Int
-  createdAt       DateTime    @default(now())
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  earnedAt      DateTime    @default(now())
+  shownToUser   Boolean     @default(false)
+  shownAt       DateTime?
+  pointsAwarded Int
+  createdAt     DateTime    @default(now())
 
   @@unique([userId, achievementId])
   @@index([userId, shownToUser])

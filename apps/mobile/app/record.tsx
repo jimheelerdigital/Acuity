@@ -31,6 +31,7 @@ import {
   AudioTooLargeError,
   uploadAudioDirect,
 } from "@/lib/direct-upload";
+import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import { registerPushTokenAfterRecording } from "@/lib/push-token";
@@ -121,6 +122,15 @@ export default function RecordScreen() {
     typeof params.dimensionKey === "string" && params.dimensionKey.length > 0
       ? params.dimensionKey
       : null;
+  // Third and last mic entry point. Home and the tab bar intercept before
+  // navigating, but this route is reachable directly — a deep link, a
+  // notification, or a future caller that forgets to check. Guarding here
+  // means the wall cannot be routed around.
+  const { interceptRecord } = useSaveWall();
+  useEffect(() => {
+    if (interceptRecord()) router.back();
+  }, [interceptRecord]);
+
   const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [levels, setLevels] = useState<number[]>(Array(18).fill(0.05));
