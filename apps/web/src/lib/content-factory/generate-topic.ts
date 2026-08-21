@@ -9,6 +9,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { FORCED_STYLE_LANE, isMood, type Mood, type StyleLane } from "./brand";
 import type { SlideEmotion } from "./animate-cover";
+import { fetchGrowthosResearch, growthosResearchBlock } from "./growthos-research";
 
 const anthropic = new Anthropic();
 
@@ -219,7 +220,19 @@ export async function generateTopic(
         `Study what separates the two groups — the emotional angle, the specificity, the format — and write a topic that leans into what works. Do NOT copy or lightly rephrase a top headline (the avoid list still applies); extract the underlying appeal and apply it to a fresh angle.`
       : "";
 
-  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${performanceBlock}
+  // growthos research feed (2026-08-21) — best-effort: empty string when
+  // the link is unconfigured, growthos is unseeded, or the fetch fails.
+  let researchBlock = "";
+  try {
+    researchBlock = growthosResearchBlock(await fetchGrowthosResearch());
+  } catch (err) {
+    console.warn(
+      "[generate-topic] growthos research unavailable:",
+      err instanceof Error ? err.message : err
+    );
+  }
+
+  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${performanceBlock}${researchBlock}
 
 Return ONLY valid JSON, no other text.`;
 

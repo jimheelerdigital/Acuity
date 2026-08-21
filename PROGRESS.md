@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-08-21] — Carousel topics now read Jim's growthos research engine
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The daily carousel's topic brain is now linked to Jim's social research engine (growthos). When growthos has research in it, every carousel topic is generated with that intelligence in front of it: what our posted content's data says works, verified truths about the audience, open content angles the engine surfaced, and which competitor videos are breaking out right now. The AI is told to use it directionally — pick resonant angles, never copy. Right now growthos's database is completely empty (the engine is built but has never been run), so nothing changes in the posts yet; the moment Jim seeds it and the connection keys are added, the research starts flowing in automatically. If growthos is ever empty, slow, or down, carousel generation continues exactly as before — this link can never break a daily post.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/growthos-research.ts`: best-effort reader for growthos's Supabase REST API (env: GROWTHOS_SUPABASE_URL, GROWTHOS_SUPABASE_SERVICE_KEY, optional GROWTHOS_WORKSPACE_ID; feature is off until set). Fetches, via Promise.allSettled with 8s timeouts: learning_insights (signal/summary/recommendation), verified canonical_claims, canonical_opportunities, and competitor_videos ordered by breakout_score. Returns null when unconfigured/empty/failing; `growthosResearchBlock()` formats results as a prompt block.
+- `apps/web/src/lib/content-factory/generate-topic.ts`: generateTopic() appends the researchBlock to the user prompt (same pattern as the existing performanceBlock), wrapped in try/catch so research failures can't fail topic generation.
+- canonical_payload jsonb shape is unknown until Jim confirms — payloadText() tries likely keys (claim/statement/summary/text/title/headline/description/angle) and falls back to truncated JSON.
+- Verified live against growthos prod Supabase: empty DB → returns null, generation unaffected. Found during testing: `learning_insights` has SELECT revoked from service_role (REST 403, PG 42501) — connector skips it gracefully.
+
+### Manual steps needed
+- [ ] Jim: seed growthos with a Ripple workspace + niche (women 40–50, mental load) and run the research pipeline — the DB is 100% empty today, every table 0 rows (Jim)
+- [ ] Jim: `GRANT SELECT ON public.learning_insights TO service_role;` in growthos Supabase, or the learnings feed stays invisible to the connector (Jim)
+- [ ] Add GROWTHOS_SUPABASE_URL + GROWTHOS_SUPABASE_SERVICE_KEY to Acuity's Vercel env (values = growthos-staging's SUPABASE_URL and service role key) + redeploy — Claude can run this via CLI on Keenan's go-ahead (Keenan)
+- [ ] Jimmy review flag: this puts growthos's service-role key (full read/write on Jim's DB) into Acuity's env. Safer long-term: Jim creates a read-only Postgres role/key for cross-project access (Jimmy/Jim)
+- [ ] Jim: add `keypicksem` as read collaborator on jimheelerdigital/growthos so future integration work can read the code (currently 404s) (Jim)
+
+### Notes
+- growthos audit (2026-08-21): 234 Supabase tables (canonical_* research/claims/evidence/opportunities, niches, competitor_channels/videos [YouTube-centric], wp13 carousel slides, wp14 video production, wp15 distribution, wp16 learning loop); deployed at heelerdigital/growthos-staging behind Vercel SSO; local commit 264c651 matches GitHub. Audited via Vercel team env access + Supabase REST OpenAPI since the repo itself is inaccessible.
+- Read-only by design for now. Phase 2 (agreed with Jim first): write Acuity's publish results/engagement back into growthos's wp16 learning loop so its recommendations improve from our actual posts.
+- growthos's competitor tracking is YouTube-shaped (youtube_video_id etc.) while our carousels are IG/TikTok — breakout titles/topics still transfer as directional signal, but flag to Jim that IG/TikTok source coverage would fit our funnel better.
+
 ## [2026-08-21] — New calm voice (Aria) with a fully performance-directed script
 
 **Requested by:** Keenan
