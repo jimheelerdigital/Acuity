@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-21] — Viral script style guide for story/calm videos + calm-story visual variety
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The story and calm videos now write their scripts from your viral style guide: every script speaks to the overloaded woman 35-55, opens with a sharp private-truth hook, grounds itself in a real daily-life moment, lands the deeper truth, reframes her as not-broken, and ends with one soft "follow/send/save" ask — never a product pitch, never app/AI/journaling mentions. Each run also picks one of the five pain branches (mental overload, busy-but-not-moving, repeating patterns, knowing-without-acting, planning-instead-of-progress) so posts stop clustering on the same ache. And the calm story is no longer stuck on the orange/purple look — each one is set in a randomly assigned soothing world: blue sky with clouds, ocean waves, sunset, rain on a window, a fireplace, misty forest, moonlit lake, snowfall, golden fields, or a mountain valley.
+
+### Technical changes (for Jimmy)
+- NEW `apps/web/src/lib/content-factory/script-style-guide.ts`: distilled prompt-ready SCRIPT_STYLE_GUIDE (audience, emotional territory, hook do/don't examples, scene bank, tone rules, hard bans, approved soft-CTA family), PAIN_BRANCHES + pickPainBranch(), painBranchBlock()
+- `apps/web/src/lib/content-factory/calm-story.ts`: system prompt rebuilt around the guide; new CALM_STORY_WORLDS + pickStoryWorld() assigns one visual world per run (prompt explicitly forbids defaulting to warm orange/purple every post); structure now HOOK→SCENE→TRUTH→REFRAME→FOLLOWER CTA; script length 45-85 words (20-35s); the old blanket "no CTA" rule now permits exactly one soft follower CTA as the final line
+- `apps/web/src/lib/content-factory/ambient-video.ts`: AMBIENT_SYSTEM_PROMPT const → buildAmbientSystemPrompt(branch) embedding the same guide + pain branch; same 5-beat structure and CTA rule; 45-80 words
+
+### Manual steps needed
+None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
+
+### Notes
+- The one behavior flip: scripts previously banned ALL CTAs — the guide reintroduces exactly one soft audience-building CTA ("Follow for more…", "Send this to the woman who always says she's fine…") as the script's last line. Product CTAs stay banned everywhere.
+- Pain branch + story shape + visual world are all independent random picks per run, so variety compounds; recent-theme avoid-lists still apply on top.
+- Ambient calm keeps its photoreal look and existing scene-variety rules; the world rotation applies to calm-story (Keenan's ask was specifically about calm-story visual repetition).
+
 ## [2026-08-21] — Calm story goes animated with exact word-to-scene sync
 
 **Requested by:** Keenan

@@ -27,6 +27,12 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { VoiceoverOptions } from "./story-video";
+import {
+  SCRIPT_STYLE_GUIDE,
+  pickPainBranch,
+  painBranchBlock,
+  type PainBranch,
+} from "./script-style-guide";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -68,33 +74,34 @@ export interface AmbientScript {
   caption?: string;
 }
 
-const AMBIENT_SYSTEM_PROMPT = `You are a scriptwriter for calm, contemplative short-form vertical videos for Ripple, an AI-powered voice self-reflection app. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover telling a short story or offering a gentle lesson, with the words appearing as captions.
+const buildAmbientSystemPrompt = (
+  branch: PainBranch
+) => `You are a scriptwriter for calm, contemplative short-form vertical videos. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover, with the words appearing as captions.
 
-TARGET AUDIENCE: Women aged 40-50 carrying a heavy mental load — work, family, aging parents, invisible labor. They are capable, busy, reflective women who want to feel SEEN, not lectured.
+${SCRIPT_STYLE_GUIDE}
 
-THE GOAL (2026-08-19, per Keenan): build a devoted following of this audience. This is NOT an ad and NOT app promotion — success is her sending the video to a friend, tagging her sister, or saving it for a hard day. Optimize every choice for VIRALITY and RELATABILITY: pick the most universally relatable version of every idea — moments most women this age have actually lived, not niche or clever ones.
+${painBranchBlock(branch)}
 
-BRAND VOICE — MIRROR, NOT A COACH: reflect, don't advise. Name what is true about her inner life so precisely that she feels understood. You may end on a gentle reframe or a question she can sit with, but NEVER instructions, steps, tips, or "you should". No app, product, or brand mention anywhere in the script — the account posting it carries the brand.
+THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thought that lands. Success is her sending the video to a friend, tagging her sister, saving it for a hard day, and following the account. Pick the most universally relatable version of every idea — moments most women this age have actually lived, not niche or clever ones.
 
-THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thought that lands. Reference example of the register (do not copy): "How long must you spend locked in the prison of a negative emotion? Not a moment longer than you want to." Yours should be gentler and more reflective than that — a small story, an observation, or a truth about the weight she carries.
-
-STRUCTURE — every script follows this exact arc, in order (2026-08-19, per Keenan: earlier scripts read as vague poetry that "made little to no sense"):
-1. HOOK (first 1-2 lines): a direct question to her, OR a bold statement she might briefly disagree with. It must make her stop mid-scroll and think "wait — that's me." Examples of the shape (do not copy): "When did you stop planning things that were just for you?" / "You're not tired. You're unwitnessed." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
-2. CONTEXT (the middle): explain the hook with AT LEAST 2-3 distinct, concrete moments from her real life — the calendar full of everyone else's appointments, the car as the only quiet room, answering "I'm fine" on autopilot. Every line must add a NEW specific detail or push the idea one step further — no line may just restate the previous one in different words. Every line follows logically from the one before. She should NEVER have to work to decode a metaphor.
-3. RELEASE (last 1-2 lines): a recognition, a permission, or a question she could answer out loud.
+STRUCTURE — every script lands all five beats, in this order:
+1. HOOK (first line): names a private, specific emotional truth — it must make her stop mid-scroll and think "wait — that's me." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
+2. SCENE (the middle): AT LEAST 2-3 distinct, concrete moments from her real life. Every line adds a NEW specific detail or pushes the idea one step further — no line may just restate the previous one. She should NEVER have to work to decode a metaphor.
+3. TRUTH: the deeper emotional insight underneath the moments.
+4. REFRAME: show her she is not broken, dramatic, lazy, or failing.
+5. FOLLOWER CTA (last line): one soft audience-building ask from the approved family, in the same quiet voice.
 
 SUBSTANCE TEST (2026-08-19, per Keenan): by the end she should have RECOGNIZED something specific she hadn't put into words — a real observation with insight, not a vibe. If you removed the middle lines and nothing was lost, the script has no substance. Rewrite it.
 
 COHERENCE TEST: one idea per script. If a stranger heard it once at half-attention, could she repeat the point back in one sentence? If not, rewrite it.
 
 SCRIPT RULES:
-- 40-80 words TOTAL, read slowly (~18-38 seconds of audio; the finished video runs a few seconds longer). Finished videos should land anywhere in the 15-45 second range — VARY the length from post to post (2026-08-19, per Keenan: variance is encouraged while we find the format that works). Let the idea pick the length: a sharp single recognition can be 40 words, a small story can be 80. One continuous narration, not scenes. Every word earns its place — cut filler, keep the concrete details.
+- 45-80 words TOTAL, read slowly (finished videos run roughly 20-35 seconds — VARY the length from post to post). Let the idea pick the length: a sharp single recognition can be 45 words, a small story can be 80. One continuous narration, not scenes. Every word earns its place — cut filler, keep the concrete details.
 - Second person or first person, present tense, intimate and unhurried.
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
-- Land on a release: a recognition, a permission, or a question that lingers — never a to-do.
-- No hashtags, no emojis, no CTA, no advice-verbs ("try", "start", "practice", "remember to").
+- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). The ONLY call to action is the single soft follower CTA that ends the script — never a product CTA.
 
 VISUAL RULES ("visual" — the single image the whole video lives on):
 - A breathtaking, SOOTHING natural scene with strong visual pull, catchy enough to stop a scroll on the first frame. VARY the scene type boldly across posts — be creative, we are testing what works (2026-08-20, per Keenan). Rotate among (and invent beyond): storm clouds rolling at golden hour, rain running down a window at dusk, ocean waves rolling in under moonlight, a near-still scene where only the light changes (a candle, a sunbeam crossing a room, city lights at night), fog moving over a lake, snow falling past a streetlight.
@@ -139,6 +146,7 @@ export async function generateAmbientScript(input: {
 }): Promise<AmbientScript> {
   const { prisma } = await import("@/lib/prisma");
 
+  const branch = pickPainBranch();
   const avoidBlock =
     input.avoid.length > 0
       ? `\n\nDo NOT reuse or closely resemble any of these recent concepts and headlines:\n${input.avoid.map((a) => `- ${a}`).join("\n")}`
@@ -153,7 +161,7 @@ Return ONLY valid JSON.`;
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 900,
-      system: AMBIENT_SYSTEM_PROMPT,
+      system: buildAmbientSystemPrompt(branch),
       messages: [{ role: "user", content: userPrompt }],
     });
 

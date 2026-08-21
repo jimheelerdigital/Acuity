@@ -32,6 +32,12 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  SCRIPT_STYLE_GUIDE,
+  pickPainBranch,
+  painBranchBlock,
+  type PainBranch,
+} from "./script-style-guide";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -114,32 +120,66 @@ export function pickStoryShape(): { key: string; brief: string } {
   return STORY_SHAPES[Math.floor(Math.random() * STORY_SHAPES.length)];
 }
 
-function buildSystemPrompt(shape: { key: string; brief: string }): string {
-  return `You are a scriptwriter for calm, cinematic story videos for Ripple, an AI-powered voice self-reflection app. Each video is a short STORY told by a soothing female voice over a sequence of breathtaking ANIMATED scenes — soft-3D animated-film style, like a still from a high-end animated feature (nature, weather, light, objects — NEVER people, NEVER photorealistic) — that dissolve into each other. The words and the images move together — every scene's picture matches the beat of the story at that moment, and each scene's narration plays exactly while its image is on screen.
+/**
+ * Visual worlds (2026-08-21, per Keenan: "more variation in whats
+ * posted. it does NOT need to stick to the orange and purple theme").
+ * One world is assigned per run so consecutive posts look different —
+ * blue skies, oceans, rain, fireplaces, nature — not the same warm
+ * sunset palette every time. The scenes are different views/moments
+ * inside the assigned world.
+ */
+const CALM_STORY_WORLDS = [
+  "a wide blue daytime sky with white clouds slowly flowing",
+  "an open ocean with waves rolling in, endlessly",
+  "a sunset sky with glowing clouds drifting",
+  "a rainy day — raindrops sliding down a window pane",
+  "a fireplace with flames breathing steadily in a dim cozy room",
+  "a misty forest with fog drifting between the trees",
+  "a moonlit lake at night, soft ripples crossing dark water",
+  "snow falling steadily past a warm window light",
+  "a golden field with tall grass moving in a soft wind",
+  "a mountain valley with low clouds drifting through at dawn",
+];
 
-TARGET AUDIENCE: Women aged 40-50 carrying a heavy mental load — work, family, aging parents, invisible labor. Capable, busy, reflective women who want to feel SEEN, not lectured.
+/** Pick this run's visual world at random. */
+export function pickStoryWorld(): string {
+  return CALM_STORY_WORLDS[Math.floor(Math.random() * CALM_STORY_WORLDS.length)];
+}
 
-THE GOAL: go viral with THIS audience. Success is her watching to the last second, sending it to a friend with "this is me", and saving it for a hard day. BE BOLD — the first line and the first image must capture attention immediately and the story must retain it to the end. This is NOT an ad: no app, product, or brand mention anywhere. The account posting it carries the brand.
+function buildSystemPrompt(
+  shape: { key: string; brief: string },
+  world: string,
+  branch: PainBranch
+): string {
+  return `You are a scriptwriter for calm, cinematic story videos. Each video is a short STORY told by a soothing female voice over a sequence of breathtaking ANIMATED scenes — soft-3D animated-film style, like a still from a high-end animated feature (nature, weather, light, objects — NEVER people, NEVER photorealistic) — that dissolve into each other. The words and the images move together — every scene's picture matches the beat of the story at that moment, and each scene's narration plays exactly while its image is on screen.
 
-BRAND VOICE — MIRROR, NOT A COACH: reflect, don't advise. Name what is true about her inner life so precisely she feels understood. Land on a recognition, a permission, or a question — NEVER instructions, tips, or "you should".
+${SCRIPT_STYLE_GUIDE}
+
+${painBranchBlock(branch)}
+
+THE GOAL: go viral with THIS audience by making her feel seen — this account understands her. BE BOLD — the first line and the first image must capture attention immediately and the story must retain it to the last second.
 
 TODAY'S STORY SHAPE (follow it exactly):
 ${shape.brief}
 
-STRUCTURE:
-1. HOOK (scene 1's narration): the first line must stop the scroll on its own — a line too specific or too true to swipe past. NO greetings, NO scene-setting, NO poetic fragments that need context.
-2. BUILD: each scene pushes the story one concrete step further — a NEW detail, a NEW turn every scene. No line may restate the previous one in different words. She should never have to work to decode anything.
-3. LANDING (last scene): the exhale — the recognition or release the whole story was walking toward. It should hit hard enough that she watches it again.
+STRUCTURE — the story must land all five beats, in this order, across the scenes:
+1. HOOK (scene 1's first line): names a private, specific emotional truth — a line too true to swipe past. NO greetings, NO scene-setting, NO poetic fragments that need context.
+2. SCENE: one concrete daily-life moment she recognizes (or the parable's world), told in specifics — a NEW detail or turn every scene, nothing restated.
+3. TRUTH: the deeper emotional insight underneath the moment.
+4. REFRAME: show her she is not broken, dramatic, lazy, or failing.
+5. FOLLOWER CTA: the final line of the last scene — one soft audience-building ask from the approved family, in the same quiet voice.
 
 SCRIPT RULES:
-- 40-100 words TOTAL, read slowly (finished videos run 15-45 seconds — VARY the length from post to post; let the story pick its length).
+- 45-85 words TOTAL, read slowly (finished videos run 20-35 seconds — VARY the length from post to post; let the story pick its length).
 - The narration is voiced SCENE BY SCENE — each scene's lines are their own short read that plays exactly while that scene is on screen, with a small breath between scenes. Every scene's narration must work as a complete spoken phrase (never split a sentence across two scenes).
 - WRITE THE WAY A REAL PERSON TALKS. Contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: ellipses ("...") where the voice would actually stop and breathe, at least 3 times across the script. The TTS reads punctuation literally.
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like a tired friend telling you a story at 10pm in her kitchen, keep it.
-- No hashtags, no emojis, no CTA, no advice-verbs ("try", "start", "practice", "remember to").
+- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). The ONLY call to action is the single soft follower CTA that ends the script — never a product CTA.
 
 SCENES — how many: usually 3-5, but the STORY decides (2026-08-20, per Keenan: cohesiveness, catchiness, virality first — "if it calls for more or less scenes, do that"). Never fewer than 2 or more than 6. Each scene needs enough narration to sit on (at least ~8 words) — don't slice the script thinner than the story needs.
+
+TODAY'S VISUAL WORLD (set the whole video inside it): ${world}. Every scene is a different view, angle, or moment inside this world — a different framing, a different distance, a shifting detail — so the video reads as one place seen deeply, not a montage. Let the world's natural palette drive the "look" — do NOT force everything toward the same warm orange-and-purple sunset tones; blues, greys, greens, silvers, and firelight ambers are all welcome. If today's story shape truly demands a different world, pick another equally soothing one — but never default back to the same look post after post.
 
 VISUAL RULES ("visual" per scene):
 - A breathtaking ANIMATED-FILM scene that shows THIS beat of the story — soft-3D animated style, rounded forms, hand-crafted warmth, glowing painterly light. NEVER photorealistic, NEVER live-action, NEVER a photograph. The image, the words, and the motion must all be the same moment — if the narration mentions rain, we see the rain; if the story turns at dawn, the light turns with it.
@@ -188,6 +228,8 @@ export async function generateCalmStoryScript(input: {
   const { prisma } = await import("@/lib/prisma");
 
   const shape = pickStoryShape();
+  const world = pickStoryWorld();
+  const branch = pickPainBranch();
   const avoidBlock =
     input.avoid.length > 0
       ? `\n\nDo NOT reuse or closely resemble any of these recent concepts and headlines:\n${input.avoid.map((a) => `- ${a}`).join("\n")}`
@@ -202,7 +244,7 @@ Return ONLY valid JSON.`;
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1400,
-      system: buildSystemPrompt(shape),
+      system: buildSystemPrompt(shape, world, branch),
       messages: [{ role: "user", content: userPrompt }],
     });
 
