@@ -10,7 +10,10 @@ import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
 import { signUpWithPassword, useGoogleSignIn } from "@/lib/auth";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { claimAnonymousDebrief } from "@/lib/onboarding-v10/claim";
-import { getV10PlanDecision } from "@/lib/onboarding-v10/state";
+import {
+  getV10PlanDecision,
+  setV10Guest,
+} from "@/lib/onboarding-v10/state";
 
 /**
  * Screen 7 — Save / account (light).
@@ -102,6 +105,11 @@ export default function V10Save() {
         console.warn("[v10.save] Claim failed, continuing:", outcome.error);
       }
 
+      // No longer a guest — they have an account. Cleared BEFORE routing
+      // so a cold launch during the transition can't read stale guest
+      // state and skip the signed-in branch.
+      await setV10Guest(false);
+
       await refresh();
       trackV10("v10_account_completed", { method, paid_state: paidState });
       router.replace("/onboarding-new/reminders" as never);
@@ -176,10 +184,16 @@ export default function V10Save() {
     }
   }, [email, password, finishSignup]);
 
-  const onLater = useCallback(() => {
+  const onLater = useCallback(async () => {
     // Guest mode. The debrief stays on-device under its anonymous token —
     // NOT discarded — so a later signup can still claim it.
+    //
+    // The flag must be written BEFORE navigating: AuthGate reads it to
+    // decide whether a signed-out user at /(tabs) is a guest or someone to
+    // bounce to sign-in. Navigating first is a race the user loses by
+    // landing back on sign-in, which reads as "Later does nothing".
     trackV10("v10_save_later", { paid_state: paidState });
+    await setV10Guest(true);
     router.replace("/(tabs)");
   }, [paidState]);
 

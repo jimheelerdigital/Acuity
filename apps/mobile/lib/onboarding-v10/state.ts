@@ -25,6 +25,9 @@ import { isV10Branch, type V10Branch } from "./branches";
 const BRANCH_KEY = "ripple.v10.branch";
 const STARTED_AT_KEY = "ripple.v10.started_at";
 const PLAN_DECISION_KEY = "ripple.v10.plan_decision";
+const GUEST_KEY = "ripple.v10.guest";
+const OFFERED_KEY = "ripple.v10.offered";
+const DISMISSED_KEY = "ripple.v10.dismissed";
 
 /**
  * Persist the branch chosen on Screen 1. Fire-and-forget by design — a
@@ -115,9 +118,93 @@ export async function getV10PlanDecision(): Promise<V10PlanDecision | null> {
   }
 }
 
+/**
+ * Guest mode — chose "Later" on Screen 7, holds an unclaimed debrief.
+ *
+ * Durable because AuthGate consults it on every cold launch: a guest is
+ * signed OUT, and without this flag the signed-out redirect sends them to
+ * sign-in the instant "Later" navigates to the tabs.
+ *
+ * Cleared when they create an account (they are no longer a guest) and on
+ * sign-out (the next person on this device is not their guest).
+ */
+export async function setV10Guest(isGuest: boolean): Promise<void> {
+  try {
+    if (isGuest) await AsyncStorage.setItem(GUEST_KEY, "true");
+    else await AsyncStorage.removeItem(GUEST_KEY);
+  } catch {
+    // Best-effort. Failing to SET means they get bounced to sign-in, which
+    // is recoverable; failing to CLEAR is handled by the signed-in branch
+    // taking precedence over guest state in decideColdStartRoute.
+  }
+}
+
+export async function isV10Guest(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(GUEST_KEY)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Set the moment we route an install into v10 — NOT when the user
+ * interacts.
+ *
+ * Marking on interaction would mean someone who force-quits on Screen 1 is
+ * treated as brand new on every launch, while someone who reaches Screen 4
+ * has written enough cached data to look like a returning user and get
+ * diverted to sign-in mid-funnel.
+ */
+export async function markV10Offered(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(OFFERED_KEY, "true");
+  } catch {
+    /* best-effort */
+  }
+}
+
+export async function wasV10Offered(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(OFFERED_KEY)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The user explicitly chose "Sign in" from the funnel.
+ *
+ * Sticky across launches on purpose: a returning subscriber who reinstalled
+ * and found the escape hatch must not be dropped back into the funnel every
+ * cold start.
+ */
+export async function dismissV10(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(DISMISSED_KEY, "true");
+  } catch {
+    /* best-effort */
+  }
+}
+
+export async function wasV10Dismissed(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(DISMISSED_KEY)) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export async function clearV10State(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([BRANCH_KEY, STARTED_AT_KEY, PLAN_DECISION_KEY]);
+    await AsyncStorage.multiRemove([
+      BRANCH_KEY,
+      STARTED_AT_KEY,
+      PLAN_DECISION_KEY,
+      GUEST_KEY,
+      OFFERED_KEY,
+      DISMISSED_KEY,
+    ]);
   } catch {
     /* non-fatal */
   }

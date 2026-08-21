@@ -44,7 +44,11 @@ export type V10Event =
   | "v10_account_completed"
   | "v10_reminder_viewed"
   | "v10_reminder_selected"
-  | "v10_os_push_prompt";
+  | "v10_os_push_prompt"
+  // Returning user took the escape hatch on Screen 1 rather than
+  // signing up. Worth measuring: a high rate means cold-start routing
+  // is catching people it should not.
+  | "v10_signin_from_funnel";
 
 /**
  * Experiment assignment. "baseline" until §8 test #1 actually starts —

@@ -356,6 +356,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.multiRemove([
       "acuity.tour.completed",
       "acuity.tour.forceReplay",
+      // v10 guest state, same shared-device reasoning: whoever uses this
+      // device next is not the previous person's guest. Leaving it set
+      // would let a signed-out stranger stay inside the tabs holding
+      // someone else's unclaimed debrief.
+      "ripple.v10.guest",
+      // Funnel-attempt markers. A deliberate sign-out means the next cold
+      // launch should offer sign-in, not resume a half-finished funnel —
+      // and `dismissed` must go too, or v10 could never be offered again
+      // on this device.
+      "ripple.v10.offered",
+      "ripple.v10.dismissed",
     ]).catch(() => {});
     // Reset IAP recovery debounce so a subsequent sign-in (possibly
     // by a different user on the same device) gets a fresh recovery
