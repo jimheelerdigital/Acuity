@@ -30,7 +30,10 @@ import {
   isLockEnabled,
 } from "@/lib/app-lock";
 import { TOUR_FORCE_REPLAY_KEY } from "@/hooks/use-tour-trigger";
-import { isObsidianExportEnabled } from "@/lib/feature-flags";
+import {
+  isHabitsEnabled,
+  isObsidianExportEnabled,
+} from "@/lib/feature-flags";
 import { isIapEnabled } from "@/lib/iap-config";
 import { exportAll } from "@/lib/obsidian/export";
 import { openSubscriptionPortal } from "@/lib/subscription";
@@ -435,6 +438,14 @@ export default function ProfileTab() {
             sublabel="Send tasks to your iOS calendar"
             onPress={() => router.push("/integrations")}
           />
+          {isHabitsEnabled() ? (
+            <MenuItem
+              icon="checkmark-circle-outline"
+              label="Habits"
+              sublabel="Small things you want to keep doing"
+              onPress={() => router.push("/habits" as never)}
+            />
+          ) : null}
           {/* Export — manual Markdown/Obsidian export. Sits in the Data
               group next to Privacy because it IS a data-portability
               control: it is the user's route to a copy of their debriefs

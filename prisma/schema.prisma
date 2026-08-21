@@ -366,6 +366,8 @@ model User {
   // After the next ~2 mobile-build cycles, the legacy fields can be
   // dropped in a follow-up cleanup slice.
   reminders                     UserReminder[]
+  habits                        Habit[]
+  habitChecks                   HabitCheck[]
   // Smart-notifications engagement prefs (1:1). Lazily created with
   // default-ON categories on first read; see
   // docs/specs/smart-notifications-spec.md.
@@ -706,10 +708,74 @@ model UserReminder {
   // time-of-day, which would shuffle "morning standup" and "evening
   // reflection" awkwardly.
   sortOrder  Int      @default(0)
+  // What this reminder is FOR. Added 2026-08-21 for habits.
+  //
+  // "debrief" (default) is every row that existed before, so the meaning
+  // of existing data is unchanged and the 5-per-user cap keeps applying to
+  // exactly the same set. Habit nudges carry "habit" and are counted,
+  // capped and worded separately — a habit nudge is not a debrief reminder
+  // and making them contend for the same five slots would mean adding a
+  // habit could silently evict someone's evening reflection.
+  kind       String   @default("debrief")
+  // Set only when kind = "habit". Nullable rather than a relation with a
+  // cascade so deleting a habit cannot cascade-delete a reminder row the
+  // scheduler is mid-read on; the API clears it explicitly.
+  habitId    String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, kind])
+}
+
+// ─── Habits (v1, manual) ────────────────────────────────────────────
+//
+// Deliberately NOT derived from debriefs in v1. The extraction pipeline
+// could plausibly suggest habits, but a habit the user did not choose,
+// appearing on their Home with a streak attached, is an obligation the
+// product invented for them. Future hook: extraction proposes, the user
+// confirms, and only then does a Habit row exist.
+model Habit {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  // 0=Sunday..6=Saturday. Which days this habit is expected. Defaults to
+  // every day; an empty array means "no expected days", which is how a
+  // habit is paused without losing its history.
+  daysActive Int[]     @default([0, 1, 2, 3, 4, 5, 6])
+  // Soft delete. Archiving keeps the check history — a streak the user
+  // built is theirs, and hard-deleting it to tidy a list is destructive.
+  archivedAt DateTime?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  checks HabitCheck[]
+
+  @@index([userId])
+  @@index([userId, archivedAt])
+}
+
+model HabitCheck {
+  id        String   @id @default(cuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // The LOCAL calendar date the check belongs to, as YYYY-MM-DD.
+  //
+  // A string, not a DateTime, on purpose: "did I do this today" is a
+  // question about the user's own calendar day, and storing an instant
+  // means a 11pm check in Sydney lands on a different UTC date than the
+  // one the user is looking at. The client sends its local date.
+  localDate String
+  createdAt DateTime @default(now())
+
+  // One check per habit per local day. Makes check-off idempotent at the
+  // database level rather than relying on the client not double-tapping.
+  @@unique([habitId, localDate])
+  @@index([userId, localDate])
 }
 
 model Entry {

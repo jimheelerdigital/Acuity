@@ -42,6 +42,7 @@ import { TourTarget } from "@/components/tour/TourTarget";
 import { useTourTrigger } from "@/hooks/use-tour-trigger";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import { TodayHabits } from "@/components/home/today-habits";
 import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { api } from "@/lib/api";
@@ -303,6 +304,10 @@ export default function DashboardTab() {
             page length would make the card reappear for anyone whose list
             happened to be short. */}
         <V10PinnedCard entryCount={user?.totalRecordings ?? 0} />
+
+        {/* Today's habits. Renders null when the flag is off or nothing is
+            due, so Home is unchanged for everyone not using habits. */}
+        <TodayHabits />
 
         <TrialBanner />
 

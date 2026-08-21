@@ -67,3 +67,17 @@ export function isNewPricingEnabled(): boolean {
 export function isObsidianExportEnabled(): boolean {
   return process.env.EXPO_PUBLIC_OBSIDIAN_EXPORT === "true";
 }
+
+/**
+ * Habit tracker v1 (manual).
+ *
+ * Independent of every other flag. The server side is gated separately on
+ * ENABLE_HABITS, so the API can be dark while a build carrying the UI is in
+ * review — with the flag on and the API off the surface simply renders
+ * nothing, rather than erroring.
+ *
+ * Static member access required — see isOnboardingV10Enabled above.
+ */
+export function isHabitsEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_HABITS === "true";
+}

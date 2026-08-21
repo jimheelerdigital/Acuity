@@ -376,6 +376,7 @@ function ThemedApp() {
             presentation: "modal",
           }}
         />
+        <Stack.Screen name="habits" options={{ headerShown: false }} />
         <Stack.Screen
           name="insights/theme/[themeId]"
           options={{ headerShown: false }}
