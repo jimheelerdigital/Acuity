@@ -453,11 +453,8 @@ export function estimateNarrationSecs(
   });
 }
 
-/**
- * TTS text for one scene — the CLEAN narration since the 2026-08-21
- * voice revert (first-calm-post config: multilingual_v2, no audio tags).
- * The vocal field is still parsed/stored but not spoken.
- */
+/** TTS text for one scene: its tagged vocal, always opening [softly]. */
 export function calmStorySceneTtsText(scene: CalmStoryScene): string {
-  return scene.narration;
+  const raw = scene.vocal || scene.narration;
+  return /^\s*\[/.test(raw) ? raw : `[softly] ${raw}`;
 }

@@ -7,28 +7,27 @@
 
 ---
 
-## [2026-08-21] — Calm voice reverted to the original first-post configuration
+## [2026-08-21] — Calm voice restored to the verified good-post config (Hope on v3)
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
-The calm and calm-story narration voice is back to exactly what the very first calm post used. Since that post, the voice had been retuned four times (a different voice, a more "expressive" AI model set to its most unpredictable mode, slowed-down playback, and hidden delivery tags inside the script) — each change stacked on the last, which is why it got progressively worse. All of that is stripped out: it's the original warm narrator voice, the original stable model and settings, normal speed, reading the plain script. A comment in the code now marks it as locked so it doesn't drift again.
+Earlier today the voice was mistakenly "fixed" by reverting to the very first calm post's setup (a different voice, Matilda, on the older model). You then identified the actual best-sounding post — the Aug 19 "whatever's easiest" video — and its email pinned down the real gold-standard config: Hope on the expressive v3 model with the slow, tagged delivery. That turned out to be the exact setup that was already running, so the mistaken revert is undone and the good config is restored and now marked as locked in the code, with the reference post named so nobody (including future Claude sessions) second-guesses it again. If a post still sounds off with this config, the culprit is take-to-take randomness in the expressive model or the calm-story's scene-by-scene reads — not the settings.
 
 ### Technical changes (for Jimmy)
-- `apps/web/src/lib/content-factory/ambient-video.ts`: ambientVoiceoverOptions() reverted to the d88699dc first-post config — Matilda (default voice), eleven_multilingual_v2 (no modelId override), stability 0.65 / similarity 0.8 / style 0.2 / speaker boost, no speed override; AMBIENT_VOICES (Hope) removed; ambientTtsText() now returns the clean script with no [softly]/[sighs] tags
-- `apps/web/src/lib/content-factory/calm-story.ts`: calmStorySceneTtsText() returns the clean per-scene narration (vocal field still parsed/stored but not spoken)
-- `apps/web/src/inngest/functions/carousel-ambient-video.ts`: stale comment updated
-- AMBIENT_ELEVENLABS_VOICE_ID env override still works if a different voice is ever wanted
+- Reverted commit 01842f11 (the Matilda/multilingual_v2 voice revert) via git revert: restores ambientVoiceoverOptions() to Hope (WAhoMTNdLdMoq1j3wf3I) + eleven_v3 + stability 0.0 / similarity 0.8 / style 0.5 / speaker boost / speed 0.85, and restores tagged TTS text (ambientTtsText → vocalScript with [softly] lead; calmStorySceneTtsText → per-scene vocal with [softly] lead)
+- `apps/web/src/lib/content-factory/ambient-video.ts`: ambientVoiceoverOptions() comment now documents the LOCK and the reference post (2026-08-19 16:21 UTC calm video "You changed your answer before you finished saying it", verified via the content email)
+- Evidence trail: that post generated ~11:15 CDT on 08-19, after 9081f0f3 (Hope-only max-expressive v3) deployed at 10:35 — and no voice-path change shipped between then and today's mistaken revert
 
 ### Manual steps needed
-None (auto-deploy; a fresh calm-story AND a fresh regular calm post were triggered post-deploy for review).
+None (auto-deploy; a fresh calm-story and a fresh regular calm post were triggered post-deploy with the restored voice).
 
 ### Notes
-- Keenan 2026-08-21: "the voice has gotten progressively worse over time... it's horrible now. fix the voice and get it back to the very first calm post quality and keep it there." The degradation stack since 08-18: Vanessa/Hope swap → speed 0.85 → eleven_v3 → stability 0.0 "Creative" (highly erratic between takes) → LLM-placed audio tags. Each was an attempted improvement; together they wrecked it.
-- Do NOT retune the calm voice again without an explicit ask. The full first-post config is documented in ambientVoiceoverOptions()'s comment.
-- Per-scene voicing for calm-story (the exact-sync work) is unaffected — same voice config, per-scene reads with previous/next context on v2.
+- Lesson recorded: "get it back to the very first calm post quality" pointed at the wrong commit — the emails are the ground truth for which config produced which post (each content email carries the script; ttsEngine is also persisted). Always locate the actual reference post before reverting voice settings.
+- The two posts triggered at ~09:53 EDT today went out with the wrong (Matilda/v2) voice — disregard those two emails.
+- Remaining open question if quality still varies: eleven_v3 at stability 0.0 is intentionally non-deterministic between takes, and calm-story voices each scene separately (with previous/next-text continuity). If Keenan flags the calm-story voice specifically again, the next lever is voicing the whole story in one take and splitting on silences — NOT touching the settings.
 
 ## [2026-08-21] — Viral script style guide for story/calm videos + calm-story visual variety
 

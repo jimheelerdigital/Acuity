@@ -331,26 +331,43 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
 }
 
 /**
- * Voice settings for the calm read — REVERTED 2026-08-21 to the exact
- * configuration of the VERY FIRST calm post (per Keenan: "the voice has
- * gotten progressively worse over time... get it back to the very first
- * calm post quality and keep it there"). The degradation stack was every
- * retune since 08-18: Hope on eleven_v3 at stability 0.0 ("Creative" —
- * erratic between takes), speed 0.85 (draggy), and LLM-placed audio tags.
- * First-post config: Matilda (the elevenLabsVoiceover default) on
- * eleven_multilingual_v2, stability 0.65 / style 0.2, normal speed, no
- * tags. AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
- * DO NOT retune this again without Keenan explicitly asking.
+ * Keenan's calm voice (2026-08-19): Hope only. Vanessa (8DzKSPdgEQPaK5vKG0Rs)
+ * was dropped after he heard her on the 08-19 video and called the voice
+ * "meh". AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
+ */
+const AMBIENT_VOICES = [
+  "WAhoMTNdLdMoq1j3wf3I", // Hope - Smooth, Engaging and Kind
+];
+
+/**
+ * Voice settings for the calm read — LOCKED (2026-08-21, per Keenan).
+ * This exact configuration produced the reference post he named as the
+ * quality bar: the 2026-08-19 calm video "You changed your answer
+ * before you finished saying it" ("this script was the best... best
+ * inflection and tone"). Hope + eleven_v3 + stability 0.0 Creative +
+ * style 0.5 + speed 0.85, reading the tagged vocalScript in one
+ * continuous take. A 2026-08-21 revert to the older Matilda/v2 config
+ * was WRONG and was undone the same day — git-blame this comment before
+ * ever touching these settings, and don't retune without an explicit
+ * ask. elevenLabsVoiceover falls back to eleven_multilingual_v2 if a
+ * v3 call fails.
  */
 export function ambientVoiceoverOptions(): VoiceoverOptions {
   return {
-    voiceId: process.env.AMBIENT_ELEVENLABS_VOICE_ID || undefined, // → Matilda
-    // No modelId → eleven_multilingual_v2, the first post's model.
+    voiceId:
+      process.env.AMBIENT_ELEVENLABS_VOICE_ID ||
+      AMBIENT_VOICES[Math.floor(Math.random() * AMBIENT_VOICES.length)],
+    modelId: "eleven_v3",
     voiceSettings: {
-      stability: 0.65,
+      // v3 stability is effectively discrete: 0.0 Creative / 0.5 Natural /
+      // 1.0 Robust. 0.5 still sounded flat to Keenan (2026-08-19, "meh")
+      // — 0.0 Creative is the most emotional, expressive delivery.
+      // Verified live on Hope with inline tags (HTTP 200).
+      stability: 0.0,
       similarity_boost: 0.8,
-      style: 0.2,
+      style: 0.5,
       use_speaker_boost: true,
+      speed: 0.85,
     },
     openaiInstructions:
       "You are a warm, unhurried female narrator guiding a quiet moment of reflection. Speak slowly and evenly, voice low and soft, with long natural pauses at punctuation. Calm, grounded, soothing — like a meditation guide who never performs. Never chipper, never announcer-like, never rushed.",
@@ -358,13 +375,20 @@ export function ambientVoiceoverOptions(): VoiceoverOptions {
 }
 
 /**
- * The text actually sent to TTS. Since the 2026-08-21 voice revert this
- * is the CLEAN script — no audio tags. vocalScript is still generated
- * and stored, but multilingual_v2 doesn't honor tags (they'd be stripped
- * as words), and the tag experiment is part of what degraded the voice.
+ * The text actually sent to TTS (2026-08-19): the scriptwriter's
+ * vocalScript carries eleven_v3 audio tags ([softly], [sighs]...) placed
+ * where the delivery should shift; without one, a leading [softly] still
+ * sets the register. The stored script stays clean — email, captions,
+ * and the admin UI never see tags. If TTS falls back to
+ * eleven_multilingual_v2 the tags are stripped there, not spoken.
  */
 export function ambientTtsText(
   script: Pick<AmbientScript, "script" | "vocalScript">
 ): string {
-  return script.script;
+  if (script.vocalScript) {
+    return /^\s*\[/.test(script.vocalScript)
+      ? script.vocalScript
+      : `[softly] ${script.vocalScript}`;
+  }
+  return `[softly] ${script.script}`;
 }
