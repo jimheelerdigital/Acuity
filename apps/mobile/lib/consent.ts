@@ -21,14 +21,14 @@ export const ART9_WORDING_VERSION = "art9-v1";
 export const ART9_CONSENT_TEXT =
   "I understand my voice entries may contain special-category " +
   "information (such as health, religious or political beliefs, or " +
-  "sexuality), and I explicitly consent to Acuity transcribing and " +
+  "sexuality), and I explicitly consent to Ripple transcribing and " +
   "analysing that content to provide the service. I can withdraw this " +
   "consent at any time by deleting entries or my account.";
 
 // ── 14-day withdrawal acknowledgement (checkout / IAP) ────────────────
 export const WITHDRAWAL_WORDING_VERSION = "withdrawal-v1";
 export const WITHDRAWAL_CONSENT_TEXT =
-  "I want my paid Acuity features to start now, and I understand that " +
+  "I want my paid Ripple features to start now, and I understand that " +
   "by starting immediately I lose my 14-day right to cancel for any " +
   "content fully delivered, and that if I cancel within 14 days I'll be " +
   "refunded less a proportionate amount for the service already provided.";

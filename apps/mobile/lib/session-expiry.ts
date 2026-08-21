@@ -3,8 +3,8 @@
  *
  * iOS Keychain entries (where we store the session JWT via expo-
  * secure-store) persist across app uninstall by default. For a
- * privacy-sensitive app like Acuity, this means: someone uninstalls,
- * gives the phone to a friend, the friend reinstalls Acuity from the
+ * privacy-sensitive app like Ripple, this means: someone uninstalls,
+ * gives the phone to a friend, the friend reinstalls Ripple from the
  * App Store, and they're signed in as the original user. Real
  * privacy issue.
  *

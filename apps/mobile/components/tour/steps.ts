@@ -46,7 +46,7 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
   },
   {
     title: "Tasks",
-    text: "Acuity extracts to-dos from what you say — they land here.",
+    text: "Ripple extracts to-dos from what you say — they land here.",
   },
   {
     title: "Insights",
@@ -54,7 +54,7 @@ export const TOUR_STEP_CONTENT: TourStepContent[] = [
   },
   {
     title: "Goals",
-    text: "Set what you're working toward; Acuity nudges you when entries touch it.",
+    text: "Set what you're working toward; Ripple nudges you when entries touch it.",
   },
   {
     title: "Settings",

@@ -70,7 +70,7 @@ export function ProgressionChecklist({
             className="text-xs font-semibold uppercase tracking-widest"
             style={{ color: tokens.textTer }}
           >
-            Getting to know Acuity
+            Getting to know Ripple
           </Text>
           <Text
             className="mt-1 text-xs"

@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/auth-context";
  *
  * Flow:
  *   User taps https://goripple.io/api/auth/verify-email?token=X
- *   → iOS Universal Links: intercepted by Acuity app (when installed)
+ *   → iOS Universal Links: intercepted by Ripple app (when installed)
  *   → Linking event fires here with the URL
  *   → Extract token
  *   → POST /api/auth/verify-email with { token }
@@ -47,7 +47,7 @@ async function handleUrl(
   } catch {
     return;
   }
-  // /open — "Open Acuity" deep link from re-engagement emails.
+  // /open — "Open Ripple" deep link from re-engagement emails.
   // Just routes to the main app screen (or sign-in if logged out).
   if (parsed.pathname === OPEN_APP_PATH) {
     if (signedIn) {

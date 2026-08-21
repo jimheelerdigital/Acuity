@@ -114,7 +114,7 @@ Notifications.setNotificationHandler({
 // (no-op there). Idempotent — safe to call at module load.
 if (Platform.OS === "android") {
   void Notifications.setNotificationChannelAsync("default", {
-    name: "Acuity",
+    name: "Ripple",
     importance: Notifications.AndroidImportance.DEFAULT,
     lightColor: "#7C3AED",
   });
@@ -236,7 +236,7 @@ export async function applyReminderSchedule({
       Notifications.scheduleNotificationAsync({
         identifier: `${ID_PREFIX}${weekday}`,
         content: {
-          title: "Acuity",
+          title: "Ripple",
           // `hour` already parsed above from `time`. Pass through so
           // pickBody can pick the right (morning/midday/evening) pool.
           body: pickBody(weekday, weekOfYear, hour),
@@ -333,7 +333,7 @@ export async function applyMultiReminderSchedule({
         return Notifications.scheduleNotificationAsync({
           identifier: `${ID_PREFIX}${reminder.id}:${weekday}`,
           content: {
-            title: "Acuity",
+            title: "Ripple",
             // Per-reminder `hour` parsed above. Each reminder in a
             // multi-reminder set picks copy independently — a 7am
             // reminder gets MORNING_BODIES, an 8pm gets EVENING_BODIES.
@@ -617,7 +617,7 @@ async function fillMissingRandoms(
     await Notifications.scheduleNotificationAsync({
       identifier: `${RANDOM_ID_PREFIX}${dateKey}`,
       content: {
-        title: "Acuity",
+        title: "Ripple",
         body,
         sound: "default",
         data: { deepLink: "acuity://", random: true },

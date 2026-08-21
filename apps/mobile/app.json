@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Acuity",
+    "name": "Ripple",
     "slug": "acuity",
     "version": "1.4.0",
     "orientation": "portrait",
@@ -22,8 +22,8 @@
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:getacuity.io"],
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
-        "NSFaceIDUsageDescription": "Acuity uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",
+        "NSMicrophoneUsageDescription": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
+        "NSFaceIDUsageDescription": "Ripple uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleURLTypes": [
           {
@@ -196,7 +196,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
+          "microphonePermission": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
         }
       ],
       [

@@ -100,7 +100,7 @@ export function LockedState({ count }: { count: number }) {
         className="text-zinc-500 dark:text-zinc-400"
       >
         Record {remaining} more session{remaining === 1 ? "" : "s"} and
-        Acuity will surface the patterns hiding in your words.
+        Ripple will surface the patterns hiding in your words.
       </Text>
 
       {/* Progress card */}

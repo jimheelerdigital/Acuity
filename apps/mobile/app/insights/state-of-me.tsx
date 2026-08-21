@@ -61,7 +61,7 @@ export default function StateOfMeScreen() {
           }}
         >
           Your quarterly State of Me report — coming soon to mobile.
-          Every 90 days, Acuity writes a long-form read across the
+          Every 90 days, Ripple writes a long-form read across the
           quarter: themes, mood arc, patterns worth noticing.
           Available on the web today.
         </Text>

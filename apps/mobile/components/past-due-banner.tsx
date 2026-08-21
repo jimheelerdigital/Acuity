@@ -92,7 +92,7 @@ export function PastDueBanner() {
             marginTop: 2,
           }}
         >
-          Update your payment method to get Acuity Pro back.
+          Update your payment method to get Ripple Pro back.
         </Text>
       </View>
       <Pressable

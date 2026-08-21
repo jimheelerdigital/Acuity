@@ -264,7 +264,7 @@ export interface AuthenticateResult {
  *   - iPads with the same matrix
  */
 export async function authenticate(
-  promptMessage = "Unlock Acuity"
+  promptMessage = "Unlock Ripple"
 ): Promise<AuthenticateResult> {
   try {
     const res = await LocalAuthentication.authenticateAsync({

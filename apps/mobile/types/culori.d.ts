@@ -41,7 +41,7 @@ declare module "culori/fn" {
     mode: string;
   }
 
-  /** Built-in mode definitions used by Acuity. */
+  /** Built-in mode definitions used by Ripple. */
   export const modeRgb: ModeDefinition;
   export const modeOklch: ModeDefinition;
 

@@ -271,7 +271,7 @@ async function finishCachedTransaction(
 
 export interface IapProduct {
   productId: string;
-  /** Localized title from Apple (e.g. "Acuity Pro"). */
+  /** Localized title from Apple (e.g. "Ripple Pro"). */
   title: string;
   /** Localized description from Apple. */
   description: string;
@@ -327,7 +327,7 @@ export async function getProducts(): Promise<{
         ) ?? null;
       byId.set(id, {
         productId: id,
-        title: stringField(p.title) ?? "Acuity Pro",
+        title: stringField(p.title) ?? "Ripple Pro",
         description: stringField(p.description) ?? "",
         // v15 uses `displayPrice` instead of `localizedPrice`.
         localizedPrice: stringField(p.displayPrice) ?? "",
@@ -628,7 +628,7 @@ export async function verifyAndFinish(input: {
 
   // ─── __DEV__ sim-test bypass (NOT shipped to production) ──────
   // When running locally against an Xcode StoreKit Configuration
-  // file (apps/mobile/storekit-test/Acuity.storekit), purchase
+  // file (apps/mobile/storekit-test/Ripple.storekit), purchase
   // transactionIds are synthetic and Apple's real Production +
   // Sandbox endpoints can't verify them. Two failure modes
   // observed during sim testing 2026-05-09 to 2026-05-10:
