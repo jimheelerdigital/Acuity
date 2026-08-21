@@ -20,13 +20,26 @@ export const SOCIAL_PROOF = {
   secondsPerEntry: "60s",
 } as const;
 
+/** One item in the landing page's stats ticker. */
+export type StatStripItem = {
+  value: number;
+  label: string;
+  suffix?: string;
+  prefix?: string;
+};
+
 /**
  * Stats strip items for the landing page ticker.
- * Each item is { value, suffix?, prefix?, label }.
+ *
+ * Typed rather than `as const` on purpose: with `as const` each element got
+ * its own literal type, so `prefix` existed on only the one entry that
+ * happened to declare it and reading `stat.prefix` in a map was a type
+ * error. Declaring the element type makes both optional fields readable on
+ * every item.
  */
-export const STATS_STRIP = [
+export const STATS_STRIP: readonly StatStripItem[] = [
   { value: 127, suffix: "+", label: "Early users" },
-  { value: 1400, suffix: "+", label: "Debriefs recorded", prefix: "" },
+  { value: 1400, suffix: "+", label: "Debriefs recorded" },
   { value: 94, suffix: "%", label: "Still journaling after week one" },
   { value: 60, suffix: "s", label: "Per entry" },
-] as const;
+];

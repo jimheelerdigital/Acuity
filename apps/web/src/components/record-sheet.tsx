@@ -14,6 +14,8 @@ import {
   uploadAudioDirect,
 } from "@/lib/direct-upload.client";
 
+import { formatRemaining } from "@/lib/format-duration";
+
 /**
  * Universal record-about-this modal. Slides up from the bottom of the
  * screen, records audio, uploads with optional context (goalId or
@@ -49,7 +51,10 @@ type Props = {
   onRecordComplete: (entryId: string) => void;
 };
 
-const MAX_SECONDS = 120;
+// Recording cap, in seconds. Matches the mobile recorder (app/record.tsx)
+// so the same recording is possible on both surfaces. Raised from 120s once
+// audio stopped passing through the API — see lib/direct-upload.client.ts.
+const MAX_SECONDS = 300;
 
 type Phase =
   | "idle"
@@ -413,7 +418,8 @@ export function RecordSheet({
             </p>
             <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
               {phase === "idle" && "Tap to record"}
-              {phase === "recording" && `${MAX_SECONDS - elapsed}s remaining`}
+              {phase === "recording" &&
+                `${formatRemaining(MAX_SECONDS - elapsed)} remaining`}
               {phase === "uploading" && "Uploading…"}
               {phase === "processing" && "Processing…"}
               {phase === "error" && "Something went wrong"}

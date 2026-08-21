@@ -60,3 +60,53 @@ describe("recording bitrate vs Vercel's body cap", () => {
     expect(Math.round(secondsUntilCap / 60)).toBe(10);
   });
 });
+
+describe("unified 5-minute recording cap", () => {
+  const CAP_SECONDS = 300; // MAX_SECONDS on web; MAX_SECONDS in app/record.tsx
+  const WHISPER_LIMIT_BYTES = 25 * 1024 * 1024;
+
+  it("a full mobile recording fits Whisper's 25MB limit with room to spare", () => {
+    expect(bytesFor(NEW_BITRATE, CAP_SECONDS)).toBeLessThan(
+      WHISPER_LIMIT_BYTES * 0.2
+    );
+  });
+
+  it("a full web recording fits even at a pessimistic browser bitrate", () => {
+    // Browsers pick their own MediaRecorder bitrate; we don't pin one.
+    // 192 kbps is well above what Chrome or Safari actually produce for
+    // mono speech, so this is a deliberately unkind upper bound.
+    const PESSIMISTIC_BROWSER_BITRATE = 192_000;
+    expect(bytesFor(PESSIMISTIC_BROWSER_BITRATE, CAP_SECONDS)).toBeLessThan(
+      WHISPER_LIMIT_BYTES
+    );
+  });
+
+  it("documents why this cap REQUIRED direct-to-storage first", () => {
+    // At 300s a browser recording is ~4.8MB at 128 kbps — over Vercel's
+    // 4.5MB body cap. Raising the cap before the upload path changed would
+    // have reintroduced the 413 on web, which is why the order mattered.
+    const TYPICAL_BROWSER_BITRATE = 128_000;
+    expect(bytesFor(TYPICAL_BROWSER_BITRATE, CAP_SECONDS)).toBeGreaterThan(
+      VERCEL_BODY_LIMIT_BYTES
+    );
+  });
+});
+
+describe("recording countdown label", () => {
+  it("reads as a duration, not raw seconds, at the 5-minute cap", async () => {
+    const { formatRemaining } = await import("@/lib/format-duration");
+    // The whole reason this exists: "299s remaining" is unreadable.
+    expect(formatRemaining(299)).toBe("4:59");
+    expect(formatRemaining(288)).toBe("4:48");
+    expect(formatRemaining(60)).toBe("1:00");
+    expect(formatRemaining(9)).toBe("0:09");
+  });
+
+  it("never renders a negative countdown", () => {
+    // The timer and the auto-stop are independent; a tick landing after the
+    // stop would otherwise print "-1:59".
+    return import("@/lib/format-duration").then(({ formatRemaining }) => {
+      expect(formatRemaining(-5)).toBe("0:00");
+    });
+  });
+});

@@ -91,8 +91,8 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong className="text-acuity-text">Voice recordings.</strong>{" "}
-                The audio you record in the app, up to 120 seconds per
-                session. Stored encrypted at rest until transcription
+                The audio you record in the app, up to 5 minutes per
+                recording. Stored encrypted at rest until transcription
                 completes, then deleted from our servers within minutes.
               </li>
               <li>

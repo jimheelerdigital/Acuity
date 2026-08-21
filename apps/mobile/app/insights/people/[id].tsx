@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/acuity";
+import { StickyBackButton } from "@/components/back-button";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 
@@ -132,6 +133,9 @@ export default function PersonDetailScreen() {
         style={{ flex: 1, backgroundColor: tokens.bg }}
         edges={["top"]}
       >
+        {/* Also on the failure path: an API error left the user on a dead
+            "Couldn't load." screen with no way out at all. */}
+        <StickyBackButton onPress={() => router.back()} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           {error ? (
             <Text
@@ -192,7 +196,20 @@ export default function PersonDetailScreen() {
       style={{ flex: 1, backgroundColor: tokens.bg }}
       edges={["top"]}
     >
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      {/* This screen is pushed from Home's "mentioned this week" row and the
+          root Stack sets headerShown:false, so there was no system back
+          control and no in-screen one either — the only exit was the OS
+          swipe gesture, which is invisible and unavailable on Android.
+          Matches the affordance on insights/theme/[themeId]. */}
+      <StickyBackButton onPress={() => router.back()} />
+      <ScrollView
+        contentContainerStyle={{
+          padding: 20,
+          // Clears the sticky button so it never overlaps the avatar row.
+          paddingTop: 56,
+          paddingBottom: 40,
+        }}
+      >
         <View
           style={{
             flexDirection: "row",

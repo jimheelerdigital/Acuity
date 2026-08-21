@@ -25,6 +25,8 @@ import {
   uploadAudioDirect,
 } from "@/lib/direct-upload.client";
 
+import { formatRemaining } from "@/lib/format-duration";
+
 type Phase =
   | "idle"
   | "recording"
@@ -34,7 +36,10 @@ type Phase =
   | "error"
   | "timeout";
 
-const MAX_SECONDS = 120;
+// Recording cap, in seconds. Matches the mobile recorder (app/record.tsx)
+// so the same recording is possible on both surfaces. Raised from 120s once
+// audio stopped passing through the API — see lib/direct-upload.client.ts.
+const MAX_SECONDS = 300;
 
 export function RecordButton() {
   const router = useRouter();
@@ -308,7 +313,7 @@ export function RecordButton() {
               {formatTime(elapsed)}
             </p>
             <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-              Tap to stop · {MAX_SECONDS - elapsed}s remaining
+              Tap to stop · {formatRemaining(MAX_SECONDS - elapsed)} remaining
             </p>
           </div>
         ) : phase === "uploading" ? (
