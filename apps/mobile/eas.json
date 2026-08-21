@@ -50,6 +50,17 @@
         "buildType": "app-bundle"
       }
     },
+    "v10": {
+      "extends": "production",
+      "channel": "v10-validation",
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://goripple.io",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://c29c3ab6b17807b427a677cd5c518d1c@o4511258398818304.ingest.us.sentry.io/4511258441547776",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_ONBOARDING_V10": "true"
+      }
+    },
     "observer-internal": {
       "extends": "preview",
       "channel": "rc-observer",
