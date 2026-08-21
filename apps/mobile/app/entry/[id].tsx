@@ -32,6 +32,9 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { getCached, invalidate, isStale, setCached } from "@/lib/cache";
 
+import { isObsidianExportEnabled } from "@/lib/feature-flags";
+import { exportEntry } from "@/lib/obsidian/export";
+
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
 type EntryDetailResponse = { entry: EntryDetail };
 
@@ -109,6 +112,45 @@ export default function EntryDetailScreen() {
   );
   const [loading, setLoading] = useState(() => !initialCached);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (!entry) return;
+    const res = await exportEntry(
+      {
+        id: entry.id,
+        createdAt: entry.createdAt,
+        transcript: entry.transcript ?? "",
+        summary: entry.summary ?? null,
+        mood: entry.mood ?? null,
+        moodScore: entry.moodScore ?? null,
+        energy: entry.energy ?? null,
+        themes: entry.themes ?? [],
+        wins: entry.wins ?? [],
+        blockers: entry.blockers ?? [],
+        insights: entry.insights ?? [],
+      },
+      (entry.tasks ?? []).map((t) => ({
+        title: t.title,
+        status: t.status,
+        dueDate: t.dueDate ?? null,
+      })),
+      // No observation on this screen — the reveal's hedged line is not
+      // persisted on the entry, and inventing one here would assert an
+      // insight the pipeline declined to make.
+      null
+    );
+
+    if (res.ok) return; // Share sheet already gave the user feedback.
+    if (res.reason === "cancelled") return; // Their choice, not an error.
+    if (res.reason === "unsupported") {
+      Alert.alert(
+        "Not available yet",
+        "Markdown export is iOS-only for now."
+      );
+      return;
+    }
+    Alert.alert("Export failed", res.message ?? "Please try again.");
+  }, [entry]);
 
   const requestDelete = useCallback(() => {
     if (!id) return;
@@ -685,6 +727,42 @@ export default function EntryDetailScreen() {
               elevation: 6,
             }}
           >
+            {isObsidianExportEnabled() ? (
+              <Pressable
+                onPress={() => {
+                  closeMenu();
+                  // Same one-frame yield as Delete below: the share sheet
+                  // is another overlay, and presenting it while the menu
+                  // Modal is still animating out collides visually.
+                  requestAnimationFrame(() => void handleExport());
+                }}
+                accessibilityRole="menuitem"
+                accessibilityLabel="Export as Markdown"
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                  paddingHorizontal: 20,
+                  paddingVertical: 16,
+                  backgroundColor: pressed ? `${tokens.text}14` : "transparent",
+                })}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={18}
+                  color={tokens.text}
+                />
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 16,
+                    color: tokens.text,
+                  }}
+                >
+                  Export as Markdown
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() => {
                 closeMenu();

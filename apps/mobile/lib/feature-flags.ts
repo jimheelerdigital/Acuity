@@ -55,3 +55,15 @@ export function isOnboardingV10Enabled(): boolean {
 export function isNewPricingEnabled(): boolean {
   return process.env.EXPO_PUBLIC_NEW_PRICING === "true";
 }
+
+/**
+ * Obsidian / Markdown export (manual, no sync).
+ *
+ * Independent of every other flag: export touches no onboarding, no
+ * billing, and no pipeline, so it can ship or roll back on its own.
+ *
+ * Static member access required — see isOnboardingV10Enabled above.
+ */
+export function isObsidianExportEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_OBSIDIAN_EXPORT === "true";
+}
