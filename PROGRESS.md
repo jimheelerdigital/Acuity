@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-21] — Captions cut way down: no more repeating the post inside the caption
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Captions across every content type are now short. Carousel captions no longer paste the whole numbered list into the caption — the slides carry the content, so the caption is just one hook line, one comment/share ask, the bio plug, and the 5 hashtags. Calm and calm-story captions are now exactly two lines (a hook + a share ask) and the AI is banned from retelling or summarizing what the video already says. Hashtags stay as-is (they're working).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/caption.ts`: buildCaption drops the numbered-reasons block and the second fallback CTA (SAVE_SHARE_CTAS deleted); buildAmbientCaption fallback trimmed to one lead line + one share line + hashtags
+- `apps/web/src/lib/content-factory/generate-topic.ts`: captionOpen spec tightened to ONE line under 12 words; prompt now forbids restating the headline or listing/summarizing the slides
+- `apps/web/src/lib/content-factory/ambient-video.ts` + `calm-story.ts`: LLM caption spec changed from 3-5 lines to exactly 2 lines (hook under 12 words + share/save ask); explicit ban on retelling/quoting/summarizing the script
+
+### Manual steps needed
+None (deploy is automatic on push; prompts take effect on the next generation).
+
+### Notes
+- Keenan's 2026-08-21 feedback after the first overnight batch: "the captions still suck… reduce the caption length across the board. we don't need to reiterate the captions in the post." Hashtags were called out as better — left untouched.
+- The numbered list in carousel captions was the old "caption search indexing" play — dropped deliberately; the reiteration read as AI spam.
+
 ## [2026-08-20] — Personal captions, real hashtags, calm-story replaces the story video, seamless calm loops, email caption fix
 
 **Requested by:** Keenan
