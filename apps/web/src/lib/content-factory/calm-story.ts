@@ -3,7 +3,7 @@
  *
  * Replaces the eliminated illustrated STORY format ("we can't get it to
  * work properly, it looks terrible"). This is the second branch of the
- * calm-video family: the SAME soothing Hope voiceover as the ambient
+ * calm-video family: the SAME calm female voiceover as the ambient
  * format, but the narration is a small STORY told across several
  * ANIMATED nature/object scenes (2026-08-21, per Keenan: "make it
  * animated and not hyperrealistic" — soft-3D animated-film style, the
@@ -19,7 +19,7 @@
  * 2. gpt-image-2 renders one animated-film 9:16 image per scene (no
  *    text, no people)
  * 3. Higgsfield animates each image (constant loopable motion)
- * 4. ElevenLabs (Hope, eleven_v3) voices EACH SCENE separately
+ * 4. ElevenLabs (shared ambient voice, eleven_v3) voices EACH SCENE separately
  *    (2026-08-21, per Keenan: "break it down to perfectly match the
  *    script") with previous/next-text context for prosody continuity
  * 5. Each scene's clip is looped/trimmed to EXACTLY its narration's
@@ -200,7 +200,7 @@ ALSO OUTPUT:
 - "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. KEEP IT SHORT: exactly 2 lines, blank line between them. Line 1 hooks on its own, under 12 words (it's the only line visible before "...more") — a personal aside or a question to her. Line 2 is one share/save ask in her voice ("send this to the friend who never stops moving"). NEVER retell, quote, or summarize the story — the video tells it; the caption doesn't repeat it. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever. No app plug.
 - "commentPrompt": one question inviting viewers to share their version (fallback field).
 - "captionHook": 1-2 of the personal lines on their own (fallback field).
-- "vocal" (per scene): the scene's narration with 0-2 ElevenLabs v3 audio performance tags inserted where the delivery should shift. Allowed tags ONLY: [softly], [whispers], [sighs], [exhales]. Scene 1's vocal starts with [softly]. Tags direct delivery — the WORDS must stay identical to "narration".
+- "vocal" (per scene): the scene's narration turned into a directed vocal PERFORMANCE with ElevenLabs v3 audio tags — this is where the read becomes hyper-realistic. 1-3 tags per scene, placed where the delivery should shift. Allowed tags: [softly], [warmly], [gently], [quietly], [whispers], [sighs], [exhales], [tired], [tender], [hesitates], [pause], [long pause]. Scene 1's vocal starts with [softly] or [warmly]; the register should move across the story — [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the CTA. Add [pause] (or extra "...") where a real person would actually stop, and [sighs]/[exhales] only where a tired woman would audibly breathe. Tags direct delivery — the WORDS must stay identical to "narration". Never all-caps, never exclamation marks.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -211,7 +211,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "commentPrompt": "...",
   "look": "one shared style sentence for every scene",
   "scenes": [
-    { "narration": "...", "vocal": "same words with [softly]/[whispers]/[sighs]/[exhales] tags", "visual": "...", "motion": "..." },
+    { "narration": "...", "vocal": "same words fully performance-directed with v3 audio tags and pause marks", "visual": "...", "motion": "..." },
     ... 2-6 scenes, however many the story needs ...
   ]
 }`;
@@ -279,7 +279,10 @@ Return ONLY valid JSON.`;
       }[];
     };
 
-    const wordCount = (s: string) => s.split(/\s+/).filter(Boolean).length;
+    // Punctuation-only tokens don't count (standalone "..." pause marks
+    // are allowed in the vocal performance).
+    const wordCount = (s: string) =>
+      s.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
     const rawScenes = Array.isArray(parsed.scenes) ? parsed.scenes : [];
     const scenes: CalmStoryScene[] = rawScenes
       .filter(

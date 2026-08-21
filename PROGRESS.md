@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-21] — New calm voice (Aria) with a fully performance-directed script
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The calm and calm-story voice moves off Hope entirely — even the restored "good post" config still sounded bad to you. The new voice is Aria, an expressive middle-aged American female that fits the audience, still on the most emotional v3 mode. The bigger change is that the realism now comes from the script itself: the scriptwriter turns every narration into a marked-up vocal performance — where the voice softens, where it whispers, where it sounds tired, where it pauses, where a real woman would audibly exhale — instead of dropping in a couple of generic "softly" tags. If Aria still isn't right, the voice can be swapped instantly with an env var, no code change needed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/ambient-video.ts`: AMBIENT_VOICES → Aria (9BWtsMINqrJLrRacOk9x); LOCKED comment replaced with a voice-history comment (Vanessa → Hope → Aria, per Keenan's calls); vocalScript prompt rewritten — 5-10 v3 audio tags from an expanded palette ([softly] [warmly] [gently] [quietly] [whispers] [sighs] [exhales] [tired] [tender] [hesitates] [pause] [long pause]), moving emotional register across the beats, extra "..." pause marks allowed, no all-caps/exclamations
+- `apps/web/src/lib/content-factory/calm-story.ts`: per-scene "vocal" prompt gets the same expanded palette (1-3 tags per scene, register moves across the story); stale Hope references in the header comment updated
+- Both divergence validators (vocalScript/vocal vs clean script) now ignore punctuation-only tokens so standalone "..." pause marks don't get a good performance discarded
+- Model settings unchanged: eleven_v3, stability 0.0 Creative, similarity 0.8, style 0.5, speaker boost, speed 0.85; AMBIENT_ELEVENLABS_VOICE_ID still overrides the voice
+
+### Manual steps needed
+- [ ] Keenan: judge the two fresh test posts (calm-story + regular calm) triggered after this deploy; if Aria's timbre is wrong, say so and either name a voice or set AMBIENT_ELEVENLABS_VOICE_ID in Vercel to try alternatives without a deploy
+
+### Notes
+- Aria was chosen blind: the prod ElevenLabs API key is marked sensitive in Vercel (pulls as [SENSITIVE]), so the account's voice list couldn't be queried locally. Aria is an ElevenLabs premade voice (available to every account) documented as expressive/husky/middle-aged American female — the best on-paper match for the 40-50 audience and for v3 tag responsiveness. Runner-up candidates if she misses: Rachel (21m00Tcm4TlvDq8ikWAM, calm classic narrator), Sarah (EXAVITQu4vr4xnSDxMaL, soft).
+- The "LOCKED" status on the Hope config is dead — Keenan overrode it explicitly ("go with a different v3 voice... hyper realistic"). The strategy shift this entry encodes: settings stay fixed, delivery quality is the scriptwriter's job via tags.
+
 ## [2026-08-21] — Calm voice restored to the verified good-post config (Hope on v3)
 
 **Requested by:** Keenan

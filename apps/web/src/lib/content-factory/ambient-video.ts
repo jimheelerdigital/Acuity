@@ -121,7 +121,12 @@ ALSO OUTPUT:
 - "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. KEEP IT SHORT: exactly 2 lines, blank line between them. Line 1 is a question or personal aside that stops the scroll on its own, under 12 words (it's the only line visible before "...more"). Line 2 is one share/save ask in her voice ("send this to the friend who never stops moving"). NEVER retell, quote, or summarize the video's script — the video says it; the caption doesn't repeat it. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever.
 - "commentPrompt": the same first-line question on its own (fallback field).
 - "captionHook": 1-2 of the personal lines on their own (fallback field).
-- "vocalScript": the EXACT same script text with 2-4 ElevenLabs v3 audio performance tags inserted in square brackets where the narrator's delivery should shift. Allowed tags ONLY: [softly], [whispers], [sighs], [exhales]. Start it with [softly]. Tags direct delivery — they never replace or change the words. Place them where a real person's voice would actually drop, catch, or breathe.
+- "vocalScript": the EXACT same script text turned into a fully directed vocal PERFORMANCE using ElevenLabs v3 audio tags. This is where the read becomes hyper-realistic — direct it like a voice actor's marked-up script:
+  • Use 5-10 tags across the read, one wherever the delivery should shift. Allowed tags: [softly], [warmly], [gently], [quietly], [whispers], [sighs], [exhales], [tired], [tender], [hesitates], [pause], [long pause].
+  • Start with [softly] or [warmly]. Change the emotional register as the script moves — e.g. [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the CTA.
+  • Add [pause] or [long pause] where a real person would actually stop — before the truth lands, after the hardest line. You may also add extra "..." beyond the clean script's for micro-hesitations.
+  • Put [sighs] or [exhales] where a tired woman would audibly breathe — at most twice, where it's earned.
+  • Tags and ellipses direct delivery only — the WORDS must stay identical to "script". Never all-caps, never exclamation marks.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -131,7 +136,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "captionHook": "...",
   "commentPrompt": "...",
   "script": "the full 40-80 word narration",
-  "vocalScript": "the same narration with [softly]/[whispers]/[sighs]/[exhales] tags placed for delivery",
+  "vocalScript": "the same narration fully performance-directed with v3 audio tags and pause marks",
   "visual": "...",
   "motion": "..."
 }`;
@@ -202,7 +207,10 @@ Return ONLY valid JSON.`;
       typeof parsed.vocalScript === "string" ? parsed.vocalScript.trim() : undefined;
     if (vocalScript) {
       const stripped = vocalScript.replace(/\[[a-z][a-z ]*\]\s*/gi, "");
-      const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+      // Ignore punctuation-only tokens (standalone "..." pause marks are
+      // allowed in the vocal performance and must not count as words).
+      const words = (s: string) =>
+        s.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
       if (Math.abs(words(stripped) - words(script)) > 5) {
         console.warn(
           "[ambient-video] vocalScript diverged from script — using untagged script"
@@ -331,26 +339,26 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
 }
 
 /**
- * Keenan's calm voice (2026-08-19): Hope only. Vanessa (8DzKSPdgEQPaK5vKG0Rs)
- * was dropped after he heard her on the 08-19 video and called the voice
- * "meh". AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
+ * Voice history (per Keenan):
+ * - 2026-08-19: Vanessa (8DzKSPdgEQPaK5vKG0Rs) dropped ("meh"), Hope
+ *   (WAhoMTNdLdMoq1j3wf3I) chosen.
+ * - 2026-08-21: Hope rejected too ("still sounds like absolute shit")
+ *   even on the restored good-post config → switched to Aria, an
+ *   expressive middle-aged American female premade voice, with the
+ *   script carrying much heavier v3 performance tags (hyper-realistic
+ *   delivery lives in the script, not the settings).
+ * AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
  */
 const AMBIENT_VOICES = [
-  "WAhoMTNdLdMoq1j3wf3I", // Hope - Smooth, Engaging and Kind
+  "9BWtsMINqrJLrRacOk9x", // Aria - expressive, husky, middle-aged American female
 ];
 
 /**
- * Voice settings for the calm read — LOCKED (2026-08-21, per Keenan).
- * This exact configuration produced the reference post he named as the
- * quality bar: the 2026-08-19 calm video "You changed your answer
- * before you finished saying it" ("this script was the best... best
- * inflection and tone"). Hope + eleven_v3 + stability 0.0 Creative +
- * style 0.5 + speed 0.85, reading the tagged vocalScript in one
- * continuous take. A 2026-08-21 revert to the older Matilda/v2 config
- * was WRONG and was undone the same day — git-blame this comment before
- * ever touching these settings, and don't retune without an explicit
- * ask. elevenLabsVoiceover falls back to eleven_multilingual_v2 if a
- * v3 call fails.
+ * Voice settings for the calm read (2026-08-21): eleven_v3 at stability
+ * 0.0 Creative — the most expressive, tag-responsive mode — because the
+ * realism now comes from the scriptwriter's inline audio tags and
+ * written-in pauses, not from the settings. elevenLabsVoiceover falls
+ * back to eleven_multilingual_v2 (tags stripped) if a v3 call fails.
  */
 export function ambientVoiceoverOptions(): VoiceoverOptions {
   return {
