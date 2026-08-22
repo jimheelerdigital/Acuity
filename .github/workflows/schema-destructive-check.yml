@@ -3,15 +3,20 @@ name: Schema destructive-diff guard
 # Fails the PR if prisma/schema.prisma, applied to the live database,
 # would DROP a table/column/enum value or rewrite a column type.
 #
-# Background — this failure mode has fired twice in three days:
+# Background — this failure mode has fired three times:
 #   2026-08-16  a `db push` from a stale branch would have dropped 13
 #               CarouselPost columns incl. 5 populated storyVideoUrl values.
 #               Caught manually, before running.
 #   2026-08-19  a push from a branch predating RevenueCatEvent DID drop that
 #               table. Caught only by noticing it had vanished.
+#   2026-08-21  a push FROM MAIN would have dropped Habit, HabitCheck and
+#               InsightEvidence. Different cause: no raw SQL at all — schema
+#               was pushed from feature branches and main never declared it.
 #
-# Root cause both times: schema.prisma lagged production because a column /
-# table / enum was added with raw SQL and never back-declared. `db push`
+# Root cause of the first two: schema.prisma lagged production because a
+# column / table / enum was added with raw SQL and never back-declared. The
+# third had the same SHAPE (schema behind prod) with a different cause —
+# branch pushes. Hence the schedule trigger below. `db push`
 # reconciles the DB *to* the schema, so anything the branch doesn't know
 # about gets removed.
 #
@@ -31,6 +36,20 @@ on:
       - main
     paths:
       - "prisma/schema.prisma"
+  # Scheduled run against main, path-independent.
+  #
+  # Added after 2026-08-21, when a `db push` from main would have dropped
+  # three tables. That drift was INVISIBLE to every check above: it was not
+  # introduced by any PR, and no schema file changed on main. It appeared
+  # because schema was pushed to prod FROM FEATURE BRANCHES, so main fell
+  # behind production while each branch stayed internally consistent.
+  #
+  # A trigger that only fires on change cannot see a gap that nothing
+  # changed. This one runs regardless, so main-vs-prod divergence surfaces
+  # within a day instead of at the next push.
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
 
 jobs:
   destructive-diff:
