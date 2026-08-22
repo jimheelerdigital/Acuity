@@ -5,8 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import {
-  ANNUAL_PRICE_DOLLARS,
-  MONTHLY_PRICE_DOLLARS,
+  annualPriceDollars,
+  monthlyPriceDollars,
   planValueDollars,
 } from "@/lib/pricing";
 
@@ -142,7 +142,7 @@ export function TrackCompleteRegistration() {
         const fbqReady = await waitForFbq();
         if (fbqReady) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, data.eventId);
-          fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+          fireFbq("StartTrial", { value: monthlyPriceDollars(), currency: "USD", predicted_ltv: annualPriceDollars() });
         } else {
           console.warn("[meta-pixel] fbq not available after 5s (no marketing consent?), CAPI-only for this signup");
         }

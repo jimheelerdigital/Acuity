@@ -66,6 +66,27 @@ export function displayMonthly(): string {
 export function displayAnnual(): string {
   return formatDollars(displayTier().annualCents);
 }
+
+/** Prospect-facing annual price expressed per month, e.g. "$3.33". */
+export function displayAnnualAsMonthly(): string {
+  return formatDollars(Math.round(displayTier().annualCents / 12));
+}
+
+/**
+ * Whole-percent saving of annual vs paying monthly for twelve months, from
+ * the ACTIVE display tier.
+ *
+ * Computed rather than written down. The badge previously read a hardcoded
+ * "save 33%", which is correct only for $4.99/$39.99 — at $9.99/$89.99 the
+ * true figure is 25%. A wrong savings claim on a paywall is a pricing
+ * misrepresentation, not a rounding nit, so it must move with the tier.
+ */
+export function displaySavingsPct(): number {
+  const tier = displayTier();
+  const runRate = tier.monthlyCents * 12;
+  if (runRate <= 0) return 0;
+  return Math.round(((runRate - tier.annualCents) / runRate) * 100);
+}
 export const ANNUAL_AS_MONTHLY_CENTS = Math.round(ANNUAL_PRICE_CENTS / 12);
 
 const monthlyRunRate = MONTHLY_PRICE_CENTS * 12;

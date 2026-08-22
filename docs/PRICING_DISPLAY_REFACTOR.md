@@ -21,6 +21,8 @@ Two new display layers, one per app, both reading the same
 | `displayAnnual()` | `"$39.99"` → `"$89.99"` | any prospect-facing annual price |
 | `displayAnnualAsMonthly()` | `"$3.33"` → `"$7.50"` | "just $X/month, billed annually" |
 | `legacyPriceDisplay()` | `"$4.99"`, always | copy *about* grandfathered subscribers |
+| `displaySavingsPct()` *(mobile)* | `33` → `25` | annual savings badge |
+| `monthlyPriceDollars()` / `annualPriceDollars()` | `4.99` → `9.99` | Meta Pixel `value` / `predicted_ltv` |
 
 `displayTier()` calls `pricingTierFor({ paidSince: null })` — "a new customer
 signing up right now". That is the correct question for a marketing surface:
@@ -47,7 +49,7 @@ price change there needs a new build — it cannot ship OTA.
 
 ---
 
-## Files changed (24)
+## Files changed (24 in #41, +7 in the pre-flip cleanup)
 
 **Display layer**
 - `apps/web/src/lib/pricing.ts` — `displayTier`, `displayMonthly`,
@@ -74,7 +76,7 @@ price change there needs a new build — it cannot ship OTA.
 - `apps/web/src/lib/content-factory/generate.ts`
 
 **Proof**
-- `apps/web/src/lib/evidence/price-display-tier.test.ts` — 8 tests
+- `apps/web/src/lib/evidence/price-display-tier.test.ts` — 11 tests
 
 ---
 
@@ -83,15 +85,17 @@ price change there needs a new build — it cannot ship OTA.
 Every remaining `4.99` / `39.99` in non-test source falls into one of these.
 None is a live price display.
 
-### 1. A real person's testimonial — `app/for/therapy/page.tsx:295`
-> "At $4.99/month it's the most affordable mental health tool I've ever used."
+### 1. ~~The therapy testimonial~~ — RESOLVED
+Owner confirmed the Jamie L. quote is placeholder copy, so the price clause
+was **dropped** rather than rewritten:
 
-**Left as-is.** This is a quotation. Rewriting it to say a price the speaker
-never said would be fabricating a testimonial, which the positioning doc
-bans outright. When pricing changes, this quote should be **retired or
-re-sourced**, not edited.
+> "It's the most affordable mental health tool I've ever used. And the most
+> consistent."
 
-*Action at cutover:* ask Keenan for a replacement quote, or drop the line.
+No dollar figure, so it can never go stale. (Had it been a real quote, the
+right move would still have been to retire or re-source it — editing a
+person's words to cite a price they never said is fabricating a
+testimonial.)
 
 ### 2. Historical / explanatory comments (not rendered)
 - `lib/pricing.ts` — rollback reference (`$12.99 / $99 → $4.99 / $39.99`),
@@ -103,8 +107,9 @@ re-sourced**, not edited.
   is the same class of bug this refactor prevents. Worth keeping.
 - `apps/web/src/components/marketing/Pricing.tsx:3` — header comment
 - `apps/mobile/app/onboarding-new/paywall.tsx:41` — spec reference
-- `apps/mobile/app/subscribe.tsx:608-609` — a TODO about the "save 33%"
-  framing (see open question below)
+- `apps/mobile/lib/pricing.ts` / `apps/web/src/lib/pricing.ts` — the
+  doc comments on the display helpers, which name the legacy values to
+  explain what "behaviour-neutral today" means
 
 ### 3. SVG path coordinate data — false positives
 - `components/landing.tsx:865`
@@ -117,28 +122,17 @@ Not prices.
 
 ## Open questions — not guessed, flagged for a decision
 
-### `subscribe.tsx` "save 33%" is still a hardcoded framing
-`apps/mobile/app/subscribe.tsx:608` carries a static "save 33%" label with a
-pre-existing `TODO(jim)`. 33% is correct for $4.99/$39.99; at $9.99/$89.99
-the real figure is **25%**.
+### ~~`subscribe.tsx` "save 33%"~~ — RESOLVED
+Both figures are now tier-derived via `displayAnnualAsMonthly()` and a new
+`displaySavingsPct()`. Flag off → "≈ $3.33/mo — save 33%"; flag on →
+"≈ $7.50/mo — save 25%".
 
-Not changed here because it is a copy/design decision (the badge text and its
-placement), not a price substitution. **It will be wrong at cutover** unless
-it is either computed or rewritten.
+### ~~Analytics values on LEGACY~~ — RESOLVED
+`planValueDollars()`, `monthlyPriceDollars()` and `annualPriceDollars()` now
+resolve the active tier. Converted from consts to FUNCTIONS: a module-level
+const is evaluated once at import and would capture the flag at whatever
+moment the module first loaded.
 
-### Analytics values were left on LEGACY
-`planValueDollars()`, `MONTHLY_PRICE_DOLLARS` and `ANNUAL_PRICE_DOLLARS` feed
-Meta Pixel / CAPI `value` and `predicted_ltv`. They still resolve LEGACY.
-
-Deliberate: this refactor's scope is *display*. But these should arguably
-report what the user was actually charged, and after cutover a new subscriber
-would be reported at the old value — which then optimises ad delivery against
-wrong numbers. **Worth a follow-up before the flag flips.**
-
-### `terms/page.tsx` now quotes the prospect price
-Terms says "we will charge you $X per month". It now resolves the display
-tier, i.e. the price a *new* subscriber pays. That seems right — terms
-describe the current offering — but a grandfathered subscriber reading it
-will see a figure that is not what they are billed. Flagging rather than
-deciding: this may want an explicit "existing subscribers continue at their
-original price" sentence, which is a legal-copy call.
+### ~~`terms/page.tsx` grandfathering~~ — RESOLVED
+Decision: grandfathering is PERMANENT. Terms now reads "Existing subscribers
+keep their current rate." — plain, no date.
