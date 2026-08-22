@@ -26,11 +26,79 @@
 // by comment ("Web is canonical. Any price change there MUST be mirrored
 // here"). Raising prices later is a config change (newPricingEnabled), not
 // an edit to every surface. See docs/REVENUECAT_MIGRATION.md.
-import { LEGACY_TIER, V2_TIER } from "@acuity/shared";
+import {
+  DEFAULT_PRICING_CONFIG,
+  LEGACY_TIER,
+  V2_TIER,
+  pricingTierFor,
+  type PricingTier,
+} from "@acuity/shared";
 
 export const MONTHLY_PRICE_CENTS = LEGACY_TIER.monthlyCents;
 export const ANNUAL_PRICE_CENTS = LEGACY_TIER.annualCents;
 export const ANNUAL_AS_MONTHLY_CENTS = Math.round(ANNUAL_PRICE_CENTS / 12);
+
+// ── Display tier — what a PROSPECT would be charged ──────────────────
+//
+// Every user-facing price (paywall, marketing, landers, emails, blog
+// prompts) must come from here, not a literal. The failure this prevents:
+// `newPricingEnabled` flips, checkout starts charging the V2 price, and a
+// page still advertises the old one. A page that quotes a different number
+// than the card is charged is the worst outcome available in the whole
+// pricing change — worse than any styling bug, and invisible to a
+// typecheck.
+//
+// Resolves through pricingTierFor() with NO paidSince, i.e. "a new
+// customer signing up right now". That is the correct question for a
+// marketing surface: an anonymous visitor has no grandfathering to inherit.
+// Surfaces speaking to an EXISTING subscriber must not use this — see
+// legacyPriceDisplay() below.
+//
+// Behaviour today: newPricingEnabled is false, so pricingTierFor returns
+// LEGACY_TIER and every display resolves $4.99 / $39.99, exactly as before.
+// Wiring a surface to this function is behaviour-neutral until the flag
+// moves, which is the whole point of doing it before the flip rather than
+// during it.
+
+/** Fail-closed, matching the RC flag convention in @acuity/shared. */
+function newPricingEnabled(): boolean {
+  const raw = process.env.NEW_PRICING_ENABLED ?? process.env.NEXT_PUBLIC_NEW_PRICING_ENABLED;
+  if (typeof raw !== "string") return false;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on" || v === "yes";
+}
+
+/** The tier a brand-new customer would be charged at this moment. */
+export function displayTier(): PricingTier {
+  return pricingTierFor(
+    { paidSince: null, legacyUnknownStart: false },
+    { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: newPricingEnabled() }
+  );
+}
+
+/** Prospect-facing monthly price, e.g. "$4.99". */
+export function displayMonthly(): string {
+  return formatDollars(displayTier().monthlyCents);
+}
+
+/** Prospect-facing annual price, e.g. "$39.99". */
+export function displayAnnual(): string {
+  return formatDollars(displayTier().annualCents);
+}
+
+/** Prospect-facing annual price expressed per month, e.g. "$3.33". */
+export function displayAnnualAsMonthly(): string {
+  return formatDollars(Math.round(displayTier().annualCents / 12));
+}
+
+/**
+ * The LEGACY price, for copy that deliberately speaks about grandfathered
+ * subscribers ("existing subscribers keep $4.99"). Named so that using it
+ * is a visible decision rather than an accident.
+ */
+export function legacyPriceDisplay(): string {
+  return formatDollars(LEGACY_TIER.monthlyCents);
+}
 
 /**
  * The not-yet-active V2 tier, re-exported so surfaces that need to *quote*

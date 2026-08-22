@@ -12,6 +12,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { displayMonthly } from "@/lib/pricing";
 
 // ─── Personas for internal linking ──────────────────────────────────────────
 
@@ -1244,7 +1245,7 @@ PRODUCT CONTEXT:
 - Weekly report every Sunday: 400-word narrative of the user's week
 - Life Matrix: 6 life domains tracked over time
 - Monthly memoir PDF
-- Pricing: $4.99/month after 7-day free trial, no card required
+- Pricing: ${displayMonthly()}/month after 7-day free trial, no card required
 - First 100 users are Founding Members (${spotsLeft} spots left)
 
 VOICE RULES:

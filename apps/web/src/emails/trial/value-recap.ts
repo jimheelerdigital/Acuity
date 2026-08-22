@@ -1,9 +1,9 @@
 import { escapeHtml } from "@/lib/escape-html";
-import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
+import { displayMonthly } from "@/lib/pricing";
 import { trialButton, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-const PRICE = formatDollars(MONTHLY_PRICE_CENTS);
+const PRICE = displayMonthly();
 
 function statRow(label: string, value: string): string {
   return `<tr>

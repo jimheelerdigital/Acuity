@@ -10,6 +10,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
+import { displayMonthly } from "@/lib/pricing";
 
 function layout(content: string): string {
   return `<!DOCTYPE html>
@@ -327,7 +328,7 @@ function email4(rawName: string): string {
                     </p>
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
                       ${bullet("7-day free trial — no credit card required to start")}
-                      ${bullet("Lock in $4.99/month — the lowest price Ripple will ever be")}
+                      ${bullet(`Lock in ${displayMonthly()}/month — the lowest price Ripple will ever be`)}
                       ${bullet("This price goes up after the first 100 members. Your rate stays forever.")}
                       ${bullet("Founding Member status — permanently on your account")}
                     </table>
@@ -344,7 +345,7 @@ function email4(rawName: string): string {
                 <tr>
                   <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #8E6FE6;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
-                      <span style="font-size:32px;font-weight:800;">$4.99</span><span style="color:#A0A0B8;">/month</span>
+                      <span style="font-size:32px;font-weight:800;">${displayMonthly()}</span><span style="color:#A0A0B8;">/month</span>
                       <br/>
                       <span style="font-size:14px;color:#A0A0B8;">Founding member pricing — locked in forever. Goes up after the first 100.</span>
                     </p>
@@ -423,7 +424,7 @@ function email5(rawName: string): string {
                 <tr>
                   <td style="background-color:#13131F;border-radius:12px;padding:24px;border-left:4px solid #8E6FE6;">
                     <p style="margin:0;font-size:16px;color:#FFFFFF;line-height:1.7;">
-                      As a founding member, you get a 7-day free trial and lock in $4.99/month — the lowest price Ripple will ever be.
+                      As a founding member, you get a 7-day free trial and lock in ${displayMonthly()}/month — the lowest price Ripple will ever be.
                     </p>
                   </td>
                 </tr>

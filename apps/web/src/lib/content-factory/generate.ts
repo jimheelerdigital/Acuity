@@ -1,6 +1,7 @@
 import type { ContentBriefing, ContentPiece } from "@prisma/client";
 
 import { callClaude } from "./claude-client";
+import { displayMonthly } from "@/lib/pricing";
 
 // ─── Shared brand system prompt ──────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ NEVER use these words/phrases:
 
 Always include specific numbers, specific examples, specific experiences — never vague benefits.
 
-Pricing: $4.99/month after 7-day free trial, no card required.`;
+Pricing: ${displayMonthly()}/month after 7-day free trial, no card required.`;
 
 // ─── Few-shot loader ─────────────────────────────────────────────────────────
 
