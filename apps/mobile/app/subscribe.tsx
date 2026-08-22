@@ -39,7 +39,7 @@ import {
   isIapEnabled,
 } from "@/lib/iap-config";
 import type { AcuityTokens } from "@/lib/theme/tokens";
-import { displayAnnual, displayMonthly } from "@/lib/pricing";
+import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsPct } from "@/lib/pricing";
 
 type Tier = "monthly" | "annual";
 
@@ -605,12 +605,19 @@ function TierCard({
   const isAnnual = tier === "annual";
   const periodLabel = isAnnual ? "year" : "month";
   const autoRenewLabel = isAnnual ? "Auto-renews yearly" : "Auto-renews monthly";
-  // Static "save 33%" framing matches the placeholder $39.99/year vs
-  // $4.99/month × 12 = $59.88 default. TODO(jim): once ASC has real
-  // prices configured, compute the badge dynamically from
-  // products.monthly.price * 12 vs products.annual.price (requires
-  // adding `price: number` to IapProduct in lib/iap.ts).
-  const annualEquivLabel = isAnnual ? "≈ $3.33/mo — save 33%" : null;
+  // Both figures come from the ACTIVE display tier — no literals.
+  //
+  // This previously read a hardcoded "≈ $3.33/mo — save 33%", correct only
+  // for $4.99/$39.99. At $9.99/$89.99 the true saving is 25%, so the badge
+  // would have overstated it by 8 points the moment newPricingEnabled
+  // flipped. A wrong savings claim on a paywall is a pricing
+  // misrepresentation, not a rounding nit.
+  //
+  // Behaviour today is unchanged: the flag is off, so this resolves
+  // "≈ $3.33/mo — save 33%" exactly as before.
+  const annualEquivLabel = isAnnual
+    ? `≈ ${displayAnnualAsMonthly()}/mo — save ${displaySavingsPct()}%`
+    : null;
   return (
     <Pressable
       onPress={onSelect}

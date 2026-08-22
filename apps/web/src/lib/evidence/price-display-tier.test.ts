@@ -90,3 +90,38 @@ describe("legacy copy stays legacy on purpose", () => {
     vi.unstubAllEnvs();
   });
 });
+
+describe("analytics values follow the active tier", () => {
+  it("reports LEGACY dollars while the flag is off", async () => {
+    // Behaviour-neutral: byte-identical to the previous constants.
+    vi.stubEnv("NEW_PRICING_ENABLED", "");
+    const p = await fresh();
+    expect(p.monthlyPriceDollars()).toBe(4.99);
+    expect(p.annualPriceDollars()).toBe(39.99);
+    expect(p.planValueDollars("monthly")).toBe(4.99);
+    expect(p.planValueDollars("yearly")).toBe(39.99);
+    vi.unstubAllEnvs();
+  });
+
+  it("reports the NEW price once flipped", async () => {
+    // Otherwise every post-cutover subscriber is reported to Meta at the
+    // old value, and ad delivery optimises against revenue that never
+    // happened — silent budget misspend, nothing errors.
+    vi.stubEnv("NEW_PRICING_ENABLED", "true");
+    const p = await fresh();
+    expect(p.monthlyPriceDollars()).toBe(9.99);
+    expect(p.annualPriceDollars()).toBe(89.99);
+    expect(p.planValueDollars("yearly")).toBe(89.99);
+    vi.unstubAllEnvs();
+  });
+
+  it("treats every yearly alias the same", async () => {
+    vi.stubEnv("NEW_PRICING_ENABLED", "");
+    const p = await fresh();
+    for (const alias of ["yearly", "annual", "year"]) {
+      expect(p.planValueDollars(alias)).toBe(39.99);
+    }
+    expect(p.planValueDollars(null)).toBe(4.99);
+    vi.unstubAllEnvs();
+  });
+});

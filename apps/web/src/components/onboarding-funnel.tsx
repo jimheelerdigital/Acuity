@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { ANNUAL_PRICE_CENTS, ANNUAL_PRICE_DOLLARS, MONTHLY_PRICE_DOLLARS, PRICING, displayAnnual, displayMonthly, formatDollars, planValueDollars } from "@/lib/pricing";
+import {
+  ANNUAL_PRICE_CENTS,
+  PRICING,
+  annualPriceDollars,
+  displayAnnual,
+  displayMonthly,
+  formatDollars,
+  monthlyPriceDollars,
+  planValueDollars,
+} from "@/lib/pricing";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
@@ -361,7 +370,7 @@ export function OnboardingFunnel() {
         clearOAuthPending();
       }
       track("funnel_account_created", { value: `method:oauth|${envDiag}` });
-      fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+      fireFbq("StartTrial", { value: monthlyPriceDollars(), currency: "USD", predicted_ltv: annualPriceDollars() });
       if (typeof window !== "undefined" && "gtag" in window) {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
       }
@@ -837,7 +846,7 @@ export function OnboardingFunnel() {
           track={track}
           onAccountCreated={() => {
             track("funnel_account_created", { value: `method:email|${getSignupEnvDiag()}` });
-            fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+            fireFbq("StartTrial", { value: monthlyPriceDollars(), currency: "USD", predicted_ltv: annualPriceDollars() });
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
             }
@@ -1998,7 +2007,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       waitForFbq().then((ready) => {
         if (ready) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
-          fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+          fireFbq("StartTrial", { value: monthlyPriceDollars(), currency: "USD", predicted_ltv: annualPriceDollars() });
         }
       });
       // Guard so TrackCompleteRegistration on the savings step doesn't double-fire

@@ -292,7 +292,7 @@ export default function TherapyPage() {
           },
           {
             quote:
-              "At $4.99/month it's the most affordable mental health tool I've ever used. And the most consistent.",
+              "It's the most affordable mental health tool I've ever used. And the most consistent.",
             name: "Jamie L.",
             role: "Teacher",
           },

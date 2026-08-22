@@ -19,7 +19,10 @@ import { signIn } from "next-auth/react";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { SOCIAL_PROOF } from "@/lib/social-proof";
-import { ANNUAL_PRICE_DOLLARS, MONTHLY_PRICE_DOLLARS } from "@/lib/pricing";
+import {
+  monthlyPriceDollars,
+  annualPriceDollars,
+} from "@/lib/pricing";
 
 const PASSWORD_MIN = 8;
 const REFERRAL_KEY = "acuity_ref_code";
@@ -206,7 +209,7 @@ function SignUpForm() {
           value: 0,
         }, pixelOpts);
         console.log("[meta-pixel] Firing StartTrial — email signup success");
-        window.fbq("track", "StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+        window.fbq("track", "StartTrial", { value: monthlyPriceDollars(), currency: "USD", predicted_ltv: annualPriceDollars() });
         // Guard so TrackCompleteRegistration on the success page doesn't double-fire
         try { sessionStorage.setItem("acuity_reg_pixel_fired", "1"); } catch {}
       }
