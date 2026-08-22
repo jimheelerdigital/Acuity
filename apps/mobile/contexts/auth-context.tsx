@@ -20,6 +20,11 @@ import {
 } from "@/lib/auth";
 import { recoverPurchasesIfNeeded, resetRecoveryDebounce } from "@/lib/iap";
 import {
+  configureRevenueCat,
+  identifyRevenueCatUser,
+  logOutRevenueCatUser,
+} from "@/lib/revenuecat";
+import {
   IDLE_EXPIRY_MS,
   decideSessionGate,
   getLastActiveMs,
@@ -283,6 +288,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user, refresh]);
 
+  // RevenueCat identity aliasing. Fires whenever we have a signed-in
+  // user id, and is idempotent (RC's logIn is a no-op when the current
+  // app user id already matches).
+  //
+  // This is the call that makes two flows work once RC is live:
+  //   1. "Pay before account, claim later" — a purchase made while RC
+  //      only had an anonymous id gets ALIASED to the real User.id, so
+  //      the entitlement transfers instead of being stranded.
+  //   2. The returning multi-provider user (Tessa-class bug) — the
+  //      entitlement follows the app-level id across auth providers and
+  //      devices, rather than being keyed to appleOriginalTransactionId
+  //      or stripeCustomerId.
+  //
+  // Completely inert today: configureRevenueCat() returns "disabled"
+  // with the flags off, so identifyRevenueCatUser short-circuits before
+  // the native module is even imported. Deliberately does NOT call
+  // refresh() — while RC_SOURCE_OF_TRUTH is off, RC's opinion is
+  // observation only and must not drive app state.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const mode = await configureRevenueCat(user.id);
+      if (cancelled || mode === "disabled") return;
+      await identifyRevenueCatUser(user.id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   // Foreground-refresh pattern (docs/APPLE_IAP_DECISION.md §5):
   // when the user returns from Safari-based upgrade checkout, the
   // server's subscriptionStatus may have changed. Re-fetch on any
@@ -326,6 +362,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // pass. Without this, the same-session sign-out → sign-in cycle
     // would skip recovery because the prior user already ran it.
     resetRecoveryDebounce();
+    // Return RevenueCat to an anonymous id for the same shared-device
+    // reason: without this the NEXT user to sign in would inherit the
+    // previous user's RC identity — and therefore their entitlement —
+    // until their own logIn landed. No-op while the flags are off.
+    await logOutRevenueCatUser();
   }, []);
 
   /**
