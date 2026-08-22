@@ -82,7 +82,7 @@ The daily carousel's topic brain is now linked to Jim's social research engine (
 ### Manual steps needed
 - [ ] Jim: seed growthos with a Ripple workspace + niche (women 40–50, mental load) and run the research pipeline — the DB is 100% empty today, every table 0 rows (Jim)
 - [ ] Jim: `GRANT SELECT ON public.learning_insights TO service_role;` in growthos Supabase, or the learnings feed stays invisible to the connector (Jim)
-- [ ] Add GROWTHOS_SUPABASE_URL + GROWTHOS_SUPABASE_SERVICE_KEY to Acuity's Vercel env (values = growthos-staging's SUPABASE_URL and service role key) + redeploy — Claude can run this via CLI on Keenan's go-ahead (Keenan)
+- [x] Add GROWTHOS_SUPABASE_URL + GROWTHOS_SUPABASE_SERVICE_KEY to Acuity's Vercel env + redeploy — DONE 2026-08-22 (Keenan go-ahead; added via CLI as sensitive prod vars, redeployed + aliased to goripple.io). The link is live and dormant until Jim seeds growthos.
 - [ ] Jimmy review flag: this puts growthos's service-role key (full read/write on Jim's DB) into Acuity's env. Safer long-term: Jim creates a read-only Postgres role/key for cross-project access (Jimmy/Jim)
 - [ ] Jim: add `keypicksem` as read collaborator on jimheelerdigital/growthos so future integration work can read the code (currently 404s) (Jim)
 
