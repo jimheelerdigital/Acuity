@@ -2,6 +2,7 @@ import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
 import { MarketingHome } from "@/components/marketing/MarketingHome";
+import { displayMonthly } from "@/lib/pricing";
 
 // Life Matrix FAQ copy derived from the canonical DEFAULT_LIFE_AREAS so it
 // can't drift from the live app. Was stale at "6 key areas — Health,
@@ -31,7 +32,7 @@ const jsonLd = {
       operatingSystem: "Web, iOS, Android",
       offers: {
         "@type": "Offer",
-        price: "4.99",
+        price: displayMonthly().replace("$", ""),
         priceCurrency: "USD",
         name: "Pro",
         description: "7-day free trial. Unlimited voice entries, AI analysis, weekly reports, and Life Matrix.",
@@ -73,7 +74,7 @@ const jsonLd = {
           name: "How much does Ripple cost?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Ripple costs $4.99/month with a 7-day free trial. No card required. Quick setup.",
+            text: `Ripple costs ${displayMonthly()}/month with a 7-day free trial. No card required. Quick setup.`,
           },
         },
         {

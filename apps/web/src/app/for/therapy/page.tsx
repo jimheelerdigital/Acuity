@@ -20,6 +20,7 @@ import {
   FAQSection,
   StickyCTA,
 } from "@/components/landing-shared";
+import { displayMonthly } from "@/lib/pricing";
 
 const UTM = "therapy";
 const WAITLIST = `/start?utm_campaign=${UTM}`;
@@ -155,7 +156,7 @@ export default function TherapyPage() {
           <ComparisonTable
             headers={["Therapy", "Ripple"]}
             rows={[
-              { feature: "Cost", values: ["$150/session", "$4.99/month"] },
+              { feature: "Cost", values: ["$150/session", `${displayMonthly()}/month`] },
               { feature: "Frequency", values: ["Once a week", "Every single day"] },
               {
                 feature: "Memory",

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { displayMonthly } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Voice Journaling: The Complete Guide to Journaling by Talking",
@@ -112,7 +113,7 @@ const jsonLd = {
           name: "What is the best voice journaling app?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 7-day free trial.",
+            text: `Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs ${displayMonthly()}/month with a 7-day free trial.`,
           },
         },
       ],
@@ -448,7 +449,7 @@ export default function VoiceJournalingPage() {
             What is the best voice journaling app?
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs $4.99/month with a 7-day free trial.
+            Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs {displayMonthly()}/month with a 7-day free trial.
           </p>
 
           {/* ──── Bottom CTA ──── */}

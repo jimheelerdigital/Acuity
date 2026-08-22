@@ -15,10 +15,57 @@
  * SFSafariView, where the canonical Price IDs are env-var-driven.
  */
 
-import { LEGACY_TIER } from "@acuity/shared";
+import {
+  DEFAULT_PRICING_CONFIG,
+  LEGACY_TIER,
+  pricingTierFor,
+  type PricingTier,
+} from "@acuity/shared";
 
 export const MONTHLY_PRICE_CENTS = LEGACY_TIER.monthlyCents;
 export const ANNUAL_PRICE_CENTS = LEGACY_TIER.annualCents;
+
+// ── Display tier — what a PROSPECT would be charged ──────────────────
+//
+// Mirrors apps/web/src/lib/pricing.ts. Every user-visible price must come
+// from here so a page can never quote a different number than the store
+// charges once newPricingEnabled flips.
+//
+// On mobile the StoreKit/Play `localizedPrice` is still preferred wherever
+// a real product has loaded — it is the only value guaranteed to match the
+// user's store account and currency. These helpers are the FALLBACK, and
+// the fallback is exactly where a stale literal does the most damage: it
+// renders precisely when the store lookup failed, so nobody notices it is
+// wrong until someone is charged.
+//
+// Behaviour today: newPricingEnabled is false, so this resolves LEGACY_TIER
+// and every display stays $4.99 / $39.99.
+
+function newPricingEnabled(): boolean {
+  // Static member access — Metro only inlines EXPO_PUBLIC_* that way.
+  const raw = process.env.EXPO_PUBLIC_NEW_PRICING;
+  if (typeof raw !== "string") return false;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on" || v === "yes";
+}
+
+/** The tier a brand-new customer would be charged at this moment. */
+export function displayTier(): PricingTier {
+  return pricingTierFor(
+    { paidSince: null, legacyUnknownStart: false },
+    { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: newPricingEnabled() }
+  );
+}
+
+/** Prospect-facing monthly price, e.g. "$4.99". */
+export function displayMonthly(): string {
+  return formatDollars(displayTier().monthlyCents);
+}
+
+/** Prospect-facing annual price, e.g. "$39.99". */
+export function displayAnnual(): string {
+  return formatDollars(displayTier().annualCents);
+}
 export const ANNUAL_AS_MONTHLY_CENTS = Math.round(ANNUAL_PRICE_CENTS / 12);
 
 const monthlyRunRate = MONTHLY_PRICE_CENTS * 12;

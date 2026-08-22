@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
+import { displayMonthly } from "@/lib/pricing";
 import { SOCIAL_PROOF, STATS_STRIP } from "@/lib/social-proof";
 import { APP_STORE_URL, PLAY_STORE_URL, AppStoreBadge, GooglePlayBadge, useCtaHref } from "@/components/landing-shared";
 import { TestimonialCarousel, STATIC_CAROUSEL_TESTIMONIALS } from "@/components/testimonial-carousel";
@@ -1614,7 +1614,7 @@ export function LandingPage() {
                 </p>
                 <p className="mt-4 flex items-baseline gap-1">
                   <span className="text-5xl font-extrabold">
-                    {formatDollars(MONTHLY_PRICE_CENTS)}
+                    {displayMonthly()}
                   </span>
                   <span className="text-[#A0A0B8]">/month</span>
                 </p>
@@ -1688,7 +1688,7 @@ export function LandingPage() {
                 { q: "What if I don't know what to say?", a: "That's the point. Just talk. Say whatever is on your mind. The messier, the better — Ripple pulls the signal out of the noise. There are no prompts to answer and no format to follow." },
                 { q: "Is this just a journaling app?", a: "No. You don\u2019t write anything. You just open the app and talk, and within minutes your tasks are extracted, your mood is scored, and your goals are tracked. A journal records what you write down. Ripple catches what you\u2019d otherwise forget." },
                 { q: "How is Ripple different from voice notes or other recording apps?", a: "Voice notes store audio. Ripple processes it. Within minutes, your recording becomes a task list, a mood score, a goal-tracking update, and a data point that feeds into your weekly report. The recording is the input, not the output." },
-                { q: "How much does Ripple cost?", a: "$4.99/month after a 7-day free trial. No credit card required to start. Cancel anytime with one tap." },
+                { q: "How much does Ripple cost?", a: `${displayMonthly()}/month after a 7-day free trial. No credit card required to start. Cancel anytime with one tap.` },
                 { q: "What AI does Ripple use?", a: "OpenAI Whisper for speech-to-text (accurate even when you mumble). Anthropic Claude for extraction, scoring, and report writing. We name the stack because you should know what's running under the hood." },
                 { q: "Can I use Ripple on my phone?", a: "Yes. Ripple works on iPhone and Android. You can also use it on the web at goripple.io. Your data syncs across devices." },
                 { q: "What is the weekly report?", a: "Every Sunday morning, Ripple writes you a 400-word narrative of your week. It covers what you worked on, what kept coming up, how your mood shifted, and what patterns are forming. People tell us it's the most useful part of the app." },
@@ -1745,7 +1745,7 @@ export function LandingPage() {
                   </span>
                 </a>
                 <span className="text-sm text-[#A0A0B8]">
-                  Then $4.99/month · cancel anytime
+                  Then {displayMonthly()}/month · cancel anytime
                 </span>
               </div>
             </div>
