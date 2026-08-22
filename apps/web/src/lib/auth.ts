@@ -149,8 +149,28 @@ export function getAuthOptions(): NextAuthOptions {
                 identifier: email,
                 url,
               }) => {
+                // Scanner-safe magic link. NextAuth's default `url` is the
+                // direct callback (`/api/auth/callback/email?token=…`), which
+                // CONSUMES the single-use token on GET — so an email-security
+                // scanner that prefetches the link burns it and the user's
+                // real click fails. Instead we email a link to a non-consuming
+                // interstitial (`/auth/confirm`); the token is only consumed
+                // when the user submits its form (POST → /api/auth/magic-confirm
+                // → the real callback). Mirrors the mobile /auth/mobile-complete
+                // flow. A prefetch just renders the confirm page and burns
+                // nothing.
+                const original = new URL(url);
+                const confirm = new URL("/auth/confirm", original.origin);
+                confirm.searchParams.set(
+                  "token",
+                  original.searchParams.get("token") ?? ""
+                );
+                confirm.searchParams.set("email", email);
+                const cb = original.searchParams.get("callbackUrl");
+                if (cb) confirm.searchParams.set("callbackUrl", cb);
+
                 const { getResendClient } = await import("@/lib/resend");
-                const { subject, html } = magicLinkEmail(url);
+                const { subject, html } = magicLinkEmail(confirm.toString());
                 await getResendClient().emails.send({
                   from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
                   to: email,

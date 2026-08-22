@@ -550,7 +550,11 @@ export async function POST(req: NextRequest) {
       // Fire Meta CAPI Purchase event (best-effort, non-blocking)
       try {
         const interval = session.metadata?.interval ?? "monthly";
-        const purchaseValue = interval === "yearly" ? 39.99 : 4.99;
+        // Routed through the pricing config — a hardcoded literal here would
+        // silently report stale revenue to Meta after any price change, and
+        // Meta optimizes ad delivery against that number.
+        const { planValueDollars } = await import("@/lib/pricing");
+        const purchaseValue = planValueDollars(interval);
         const capiEventId = generateEventId("Purchase");
         sendConversionEvent({
           eventName: "Purchase",

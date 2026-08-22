@@ -222,6 +222,209 @@ export async function resolveProviderActive(user: {
   }
 }
 
+// ─── RC-parity mode (RevenueCat migration) ────────────────────────────
+//
+// Same read-only comparison, but the "provider" is RevenueCat instead of the
+// per-store APIs. This is the instrument that has to go green BEFORE
+// RC_SOURCE_OF_TRUTH is flipped: if RC and the DB agree for every paid user,
+// the cutover is a no-op from the user's perspective. If they disagree, the
+// disagreement is a bug in the mapping, not something to discover in prod.
+//
+// Wired but INERT: `fetchRcSubscriber` short-circuits without RC_SECRET_KEY,
+// so every row comes back unreadable until Jim provisions the key. That is
+// the correct posture — an unreadable provider is never a demotion signal.
+
+export interface RcParityFinding {
+  userId: string;
+  email: string | null;
+  dbStatus: string;
+  dbSource: string | null;
+  rcStatus: string | null;
+  rcSource: string | null;
+  rcHasPro: boolean;
+  /** True when DB and RC agree on entitled-vs-not. */
+  agrees: boolean;
+  kind:
+    | "rc_missing_entitlement" // DB says PRO, RC says nothing  → cutover would REVOKE
+    | "rc_extra_entitlement" // RC says pro, DB says not      → cutover would GRANT
+    | "status_mismatch"; // both entitled, different status (e.g. TRIAL vs PRO)
+  severity: DriftSeverity;
+}
+
+export interface RcParityResult {
+  total: number;
+  checked: number;
+  unreadable: number;
+  agreeing: number;
+  findings: RcParityFinding[];
+  unreadableDetails: UnreadableUser[];
+  /** True when RC credentials are absent — the whole scan is inert. */
+  inert: boolean;
+}
+
+/**
+ * READ-ONLY: compare RevenueCat's view of each paid user against the DB.
+ *
+ * Scope mirrors `scanEntitlementDrift`: PRO/PAST_DUE rows, minus internal and
+ * sandbox accounts. Comps are INCLUDED here but never treated as a finding
+ * when RC lacks them — RC legitimately has no record of a comp, and flagging
+ * all of them would bury the real signal. That is also why the expected
+ * post-cutover parity is "DB PRO count minus the 2 comps".
+ *
+ * Never writes. There is deliberately no RC reconciler: correcting the DB
+ * from RC before RC is authoritative would defeat the point of observing.
+ */
+export async function scanRcParity(batch = 5): Promise<RcParityResult> {
+  const { prisma } = await import("@/lib/prisma");
+  const { rcCredentials } = await import("@/lib/revenuecat/flags");
+  const { fetchRcSubscriber, mapRcSubscriberToState } = await import(
+    "@/lib/revenuecat/client"
+  );
+
+  // Inert when we lack the key the READ path actually uses. That's the
+  // PUBLIC app key, not the secret — GET /v1/subscribers rejects secrets
+  // with code 7243 (see lib/revenuecat/flags.ts publicReadKey).
+  const inert = rcCredentials().publicReadKey === null;
+
+  const rows = await prisma.user.findMany({
+    where: { subscriptionStatus: { in: ["PRO", "PAST_DUE", "TRIAL"] } },
+    select: {
+      id: true,
+      email: true,
+      subscriptionStatus: true,
+      subscriptionSource: true,
+      appleEnvironment: true,
+    },
+  });
+
+  // Same in-code filtering + same SQL-NULL rationale as scanEntitlementDrift.
+  const users = rows.filter((u) => {
+    const email = u.email ?? "";
+    return (
+      !email.endsWith("@heelerdigital.com") &&
+      !email.endsWith("@example.com") &&
+      u.appleEnvironment !== "sandbox"
+    );
+  });
+
+  const findings: RcParityFinding[] = [];
+  const unreadableDetails: UnreadableUser[] = [];
+  let checked = 0;
+  let unreadable = 0;
+  let agreeing = 0;
+
+  for (let i = 0; i < users.length; i += batch) {
+    const slice = users.slice(i, i + batch);
+    const results = await Promise.all(
+      slice.map(async (u) => ({ u, rc: await fetchRcSubscriber(u.id) }))
+    );
+
+    for (const { u, rc } of results) {
+      if (!rc.ok) {
+        unreadable++;
+        unreadableDetails.push({
+          userId: u.id,
+          email: u.email,
+          source: u.subscriptionSource,
+          detail: `rc:${rc.code} ${rc.detail}`,
+        });
+        continue;
+      }
+
+      checked++;
+      const rcState = mapRcSubscriberToState(rc.subscriber);
+      const rcHasPro = rcState.subscriptionStatus !== "FREE";
+      const dbEntitled =
+        u.subscriptionStatus === "PRO" || u.subscriptionStatus === "TRIAL";
+      const isComp = u.subscriptionSource === "comp";
+
+      // A comp that RC doesn't know about is expected, not drift.
+      if (isComp && !rcHasPro) {
+        agreeing++;
+        continue;
+      }
+
+      if (dbEntitled === rcHasPro) {
+        if (rcState.subscriptionStatus === u.subscriptionStatus) {
+          agreeing++;
+          continue;
+        }
+        // Both agree the user is entitled but disagree on which state —
+        // matters because TRIAL vs PRO drives the countdown UI and emails.
+        findings.push({
+          userId: u.id,
+          email: u.email,
+          dbStatus: u.subscriptionStatus,
+          dbSource: u.subscriptionSource,
+          rcStatus: rcState.subscriptionStatus,
+          rcSource: rcState.subscriptionSource,
+          rcHasPro,
+          agrees: true,
+          kind: "status_mismatch",
+          severity: "SEV3",
+        });
+        continue;
+      }
+
+      findings.push({
+        userId: u.id,
+        email: u.email,
+        dbStatus: u.subscriptionStatus,
+        dbSource: u.subscriptionSource,
+        rcStatus: rcState.subscriptionStatus,
+        rcSource: rcState.subscriptionSource,
+        rcHasPro,
+        agrees: false,
+        // DB entitled + RC not = flipping the flag would REVOKE a paying
+        // user's access. That is the SEV1 blocker for cutover.
+        kind: dbEntitled ? "rc_missing_entitlement" : "rc_extra_entitlement",
+        severity: dbEntitled ? "SEV1" : "SEV2",
+      });
+    }
+  }
+
+  findings.sort((a, b) => a.severity.localeCompare(b.severity));
+
+  return {
+    total: users.length,
+    checked,
+    unreadable,
+    agreeing,
+    findings,
+    unreadableDetails,
+    inert,
+  };
+}
+
+/**
+ * Is RC parity good enough to flip RC_SOURCE_OF_TRUTH?
+ *
+ * Pure so it is unit-testable and so the answer is a stated rule rather than
+ * a judgment call made under pressure on cutover night. Requires:
+ *   - RC credentials present (not inert),
+ *   - at least one user actually checked,
+ *   - ZERO SEV1 (nobody loses access),
+ *   - no unreadable rows (an unverified user is an unknown, not a pass).
+ */
+export function rcParityReadyForCutover(result: RcParityResult): {
+  ready: boolean;
+  reasons: string[];
+} {
+  const reasons: string[] = [];
+  if (result.inert) reasons.push("RC credentials absent — scan is inert");
+  if (result.checked === 0) reasons.push("no users were successfully checked");
+  const sev1 = result.findings.filter((f) => f.severity === "SEV1");
+  if (sev1.length > 0) {
+    reasons.push(
+      `${sev1.length} user(s) would LOSE access at cutover (rc_missing_entitlement)`
+    );
+  }
+  if (result.unreadable > 0) {
+    reasons.push(`${result.unreadable} user(s) unreadable in RC — unverified`);
+  }
+  return { ready: reasons.length === 0, reasons };
+}
+
 // ─── Reconciler (correction) ──────────────────────────────────────────
 //
 // The reconciler turns drift findings into DB corrections, behind a flag.

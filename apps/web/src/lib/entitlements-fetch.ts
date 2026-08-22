@@ -1,6 +1,7 @@
 import "server-only";
 
-import { entitlementsFor, type Entitlement } from "@/lib/entitlements";
+import { type Entitlement } from "@/lib/entitlements";
+import { resolveEntitlement } from "@/lib/entitlements/resolve";
 
 /**
  * SSR helper — fetch the User row + compute the entitlement for use
@@ -13,20 +14,16 @@ import { entitlementsFor, type Entitlement } from "@/lib/entitlements";
  * entitlement" — which the entitlementsFor partition treats the
  * same as FREE post-trial. Keeps server-component code thin: one
  * helper to import, no Prisma plumbing in every page.
+ *
+ * 2026-08-15: the Prisma read moved into lib/entitlements/resolve.ts so
+ * there is exactly one place that decides WHERE subscription state comes
+ * from (DB today, RevenueCat after cutover). Behavior is unchanged — the
+ * resolver's default source performs the same select and calls the same
+ * `entitlementsFor`.
  */
 export async function getUserEntitlement(
   userId: string | null | undefined
 ): Promise<Entitlement | null> {
-  if (!userId) return null;
-  const { prisma } = await import("@/lib/prisma");
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      subscriptionStatus: true,
-      trialEndsAt: true,
-      stripeFirstFailureAt: true,
-    },
-  });
-  if (!user) return null;
-  return entitlementsFor(user);
+  const resolved = await resolveEntitlement(userId);
+  return resolved?.entitlement ?? null;
 }

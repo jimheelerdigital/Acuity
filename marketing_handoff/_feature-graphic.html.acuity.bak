@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1024, initial-scale=1" />
+  <title>Acuity feature-graphic harness</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; padding: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    *, *::before, *::after { box-sizing: border-box; }
+    @keyframes acuity-orbit-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes acuity-orbit-rev  { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+    @keyframes acuity-pulse-soft { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
+    @keyframes acuity-wave { 0% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } 100% { transform: scaleY(0.25); } }
+    @keyframes acuity-shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="badge-system.js"></script>
+  <script type="text/babel" src="acuity-tokens.jsx"></script>
+  <script type="text/babel" src="acuity-chrome.jsx"></script>
+  <script type="text/babel" src="screen-entry.jsx"></script>
+  <script type="text/babel" src="screen-home.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    const t = makeAcuityTokens({ dark: true, accent: "coral" });
+
+    function Banner() {
+      return (
+        <div style={{
+          width: 1024, height: 500, position: "relative", overflow: "hidden",
+          background: t.heroGrad, fontFamily: t.sans,
+        }}>
+          {/* ambient glow behind the device */}
+          <div style={{
+            position: "absolute", right: -60, top: -80, width: 620, height: 660, borderRadius: "50%",
+            background: `radial-gradient(circle, ${t.primary}33 0%, ${t.secondary}22 40%, transparent 70%)`,
+            filter: "blur(36px)", zIndex: 0,
+          }} />
+
+          {/* left: brand lockup + approved copy */}
+          <div style={{ position: "absolute", left: 76, top: 92, width: 560, zIndex: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 38 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 17, background: t.gradPrimary, boxShadow: t.glowSoft }} />
+              <span style={{ fontFamily: t.display, fontWeight: 800, fontSize: 42, letterSpacing: -1, color: t.text }}>Acuity</span>
+            </div>
+            <div style={{
+              fontFamily: t.mono, fontSize: 13, fontWeight: 600, letterSpacing: 2.6,
+              textTransform: "uppercase", color: t.primary, marginBottom: 20,
+            }}>Your life, in focus</div>
+            <div style={{
+              fontFamily: t.display, fontWeight: 800, fontSize: 52, lineHeight: 1.12,
+              letterSpacing: -1.2, color: t.text,
+            }}>
+              See yourself<br />clearly.
+            </div>
+          </div>
+
+          {/* right: Home screen rising in from the bottom-right */}
+          <div style={{ position: "absolute", right: 40, top: 86, transform: "scale(0.74)", transformOrigin: "top right", zIndex: 1 }}>
+            <HomeDashboard t={t} />
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<Banner />);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => document.body.setAttribute("data-ready", "1"))
+    );
+  </script>
+</body>
+</html>

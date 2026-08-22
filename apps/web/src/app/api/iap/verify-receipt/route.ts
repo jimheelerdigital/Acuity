@@ -220,6 +220,10 @@ export async function POST(req: NextRequest) {
       // mirror the existing pattern from process-entry.ts persist
       // (`rawAnalysis: extraction as unknown as object`).
       appleLatestReceiptInfo: apple.info.rawPayload as unknown as object,
+      // The signed original, kept so this subscription can later be proved
+      // to a third party (RevenueCat import takes a StoreKit 2 JWSTransaction
+      // as fetch_token; the decoded payload above is not a valid token).
+      appleSignedTransactionJws: apple.info.signedTransactionInfo,
       // Apple sub bypasses the trial clock — user paid, we honor it.
       trialEndsAt: null,
       stripeCurrentPeriodEnd: null,

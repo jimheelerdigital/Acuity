@@ -4,9 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import {
   ANNUAL_PRICE_CENTS,
+  ANNUAL_PRICE_DOLLARS,
   MONTHLY_PRICE_CENTS,
+  MONTHLY_PRICE_DOLLARS,
   PRICING,
   formatDollars,
+  planValueDollars,
 } from "@/lib/pricing";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
@@ -340,7 +343,7 @@ export function OnboardingFunnel() {
               setPaymentConfirmed(true);
               setStep("download");
               track("funnel_savings_locked_in", { value: selectedPlan });
-              fireFbq("Purchase", { value: selectedPlan === "yearly" ? 39.99 : 4.99, currency: "USD", content_name: "Ripple Pro Subscription" });
+              fireFbq("Purchase", { value: planValueDollars(selectedPlan), currency: "USD", content_name: "Ripple Pro Subscription" });
             } else {
               setStep("savings");
               setApiError("Payment incomplete. Try again or continue with your free trial.");
@@ -366,7 +369,7 @@ export function OnboardingFunnel() {
         clearOAuthPending();
       }
       track("funnel_account_created", { value: `method:oauth|${envDiag}` });
-      fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+      fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
       if (typeof window !== "undefined" && "gtag" in window) {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
       }
@@ -570,7 +573,7 @@ export function OnboardingFunnel() {
       const data = await res.json();
       if (data.url) {
         track("funnel_checkout_started", { value: selectedPlan });
-        fireFbq("InitiateCheckout", { content_name: "Start Free Trial", currency: "USD", value: selectedPlan === "yearly" ? 39.99 : 4.99 });
+        fireFbq("InitiateCheckout", { content_name: "Start Free Trial", currency: "USD", value: planValueDollars(selectedPlan) });
         window.location.href = data.url;
       } else {
         setApiError(data.error || `Checkout failed (${res.status})`);
@@ -842,7 +845,7 @@ export function OnboardingFunnel() {
           track={track}
           onAccountCreated={() => {
             track("funnel_account_created", { value: `method:email|${getSignupEnvDiag()}` });
-            fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+            fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
             }
@@ -2003,7 +2006,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       waitForFbq().then((ready) => {
         if (ready) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
-          fireFbq("StartTrial", { value: 4.99, currency: "USD", predicted_ltv: 39.99 });
+          fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
         }
       });
       // Guard so TrackCompleteRegistration on the savings step doesn't double-fire
