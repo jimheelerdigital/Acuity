@@ -116,7 +116,7 @@ export const RC_ENTITLEMENT_PRO = "pro";
  * compiles and runs before the real offerings exist in the dashboard.
  */
 export const RC_OFFERINGS = {
-  /** Current default offering — new pricing ($8.99 / $79.99). */
+  /** Current default offering — new pricing ($9.99 / $89.99). */
   default: "default",
   /** Legacy pricing offering for grandfathered subscribers ($4.99 / $39.99). */
   grandfathered: "grandfathered",
