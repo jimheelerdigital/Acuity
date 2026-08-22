@@ -60,6 +60,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+
+      # Without this the guard step's `npx` resolves packages from the
+      # registry rather than node_modules, pulling Prisma 6 — which requires
+      # Node 22 and crashes on this job's Node 20. Installing first makes CI
+      # use the repo-pinned Prisma 5.22, exactly like `npm run db:guard`.
+      - name: Install dependencies
+        run: npm ci
 
       - name: Check DIRECT_URL secret is configured
         id: secret
@@ -79,4 +87,4 @@ jobs:
           # Prisma reads both; the diff uses the direct (non-pooled) URL.
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
           DATABASE_URL: ${{ secrets.DIRECT_URL }}
-        run: npx --yes tsx scripts/check-destructive-diff.ts --require-db
+        run: npx tsx scripts/check-destructive-diff.ts --require-db

@@ -114,10 +114,16 @@ function main(): void {
     sql = computeDiff();
   } catch (err) {
     console.error("  ✗ Could not compute the diff:");
-    console.error(
-      "   ",
-      err instanceof Error ? err.message.split("\n").slice(0, 4).join("\n    ") : String(err)
-    );
+    // Print the FULL captured stderr, not a truncated message.
+    //
+    // This previously showed only the first 4 lines, which in CI were npm
+    // warnings — so a real failure (Prisma 6 requiring Node 22, resolved
+    // because `npx` went to the registry instead of node_modules) was
+    // invisible behind noise. A guard whose failures cannot be read is not
+    // a guard.
+    const e = err as { stderr?: Buffer | string; message?: string };
+    const detail = (e.stderr ? e.stderr.toString() : e.message) ?? String(err);
+    console.error(detail.trim());
     process.exit(requireDb ? 2 : 0);
   }
 
