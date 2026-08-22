@@ -64,6 +64,25 @@ Finally, we found that our database schema description had fallen behind the rea
 
 ---
 
+## [2026-08-22] — Calm voice swapped again: Aria out, Rachel in
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Aria came out with a southern drawl ("someone from the bayou"), so the calm and calm-story videos now speak with Rachel — the most widely used calm, neutral-American female narrator in ElevenLabs' library. Everything else about the read stays: the expressive v3 model and the script's full performance direction (tags for softening, whispering, tiredness, pauses, breaths).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/ambient-video.ts`: AMBIENT_VOICES → Rachel (21m00Tcm4TlvDq8ikWAM); voice-history comment extended (Vanessa → Hope → Aria → Rachel)
+- No settings or prompt changes; AMBIENT_ELEVENLABS_VOICE_ID env override still available
+
+### Manual steps needed
+- [ ] Keenan: judge the fresh test posts (calm-story + regular calm) triggered after this deploy; remaining premade candidate if Rachel misses: Sarah (EXAVITQu4vr4xnSDxMaL, soft) — or pick a voice by ear in the ElevenLabs voice library and give Claude the ID (Keenan)
+
+### Notes
+- Voice picks are still blind: the prod ElevenLabs API key is Vercel-sensitive, so the account's voice list can't be browsed from here. If Rachel also misses, the fastest correct path is Keenan previewing voices in the ElevenLabs UI and handing over a voice ID — one env var or one-line change from there.
+
 ## [2026-08-21] — Carousel topics now read Jim's growthos research engine
 
 **Requested by:** Keenan

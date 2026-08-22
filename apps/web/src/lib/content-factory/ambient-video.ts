@@ -343,14 +343,16 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
  * - 2026-08-19: Vanessa (8DzKSPdgEQPaK5vKG0Rs) dropped ("meh"), Hope
  *   (WAhoMTNdLdMoq1j3wf3I) chosen.
  * - 2026-08-21: Hope rejected too ("still sounds like absolute shit")
- *   even on the restored good-post config → switched to Aria, an
- *   expressive middle-aged American female premade voice, with the
+ *   even on the restored good-post config → switched to Aria with the
  *   script carrying much heavier v3 performance tags (hyper-realistic
  *   delivery lives in the script, not the settings).
+ * - 2026-08-22: Aria rejected ("sounds like someone from the bayou")
+ *   → Rachel, the neutral-American calm narrator premade — no drawl.
+ *   The heavy script-tag direction stays.
  * AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
  */
 const AMBIENT_VOICES = [
-  "9BWtsMINqrJLrRacOk9x", // Aria - expressive, husky, middle-aged American female
+  "21m00Tcm4TlvDq8ikWAM", // Rachel - calm, neutral American female narrator
 ];
 
 /**
