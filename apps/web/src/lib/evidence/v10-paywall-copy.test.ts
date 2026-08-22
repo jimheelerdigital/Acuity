@@ -19,14 +19,14 @@ import { LEGACY_TIER, V2_TIER } from "@acuity/shared";
 describe("v10 paywall copy", () => {
   it("quotes the V2 prices the spec asks for", () => {
     const c = buildPaywallCopy(V2_TIER, "B");
-    expect(c.annual.price).toBe("$79.99/yr");
-    expect(c.monthly.price).toBe("$8.99/mo");
-    expect(c.annual.subPrice).toBe("$6.67/mo");
+    expect(c.annual.price).toBe("$89.99/yr");
+    expect(c.monthly.price).toBe("$9.99/mo");
+    expect(c.annual.subPrice).toBe("$7.50/mo");
   });
 
-  it("computes the annual saving rather than hardcoding 26%", () => {
-    // $8.99 x 12 = $107.88 vs $79.99 → 25.8%, rounds to 26.
-    expect(buildPaywallCopy(V2_TIER, "B").annual.note).toBe("Save 26%");
+  it("computes the annual saving rather than hardcoding it", () => {
+    // $9.99 x 12 = $119.88 vs $89.99 → 24.9%, rounds to 25.
+    expect(buildPaywallCopy(V2_TIER, "B").annual.note).toBe("Save 25%");
   });
 
   it("still renders correctly on the legacy tier", () => {
@@ -73,7 +73,7 @@ describe("v10 paywall copy", () => {
   it("states the real charge in the annual fine print", () => {
     const { finePrint } = buildPaywallCopy(V2_TIER, "B").cta("annual");
     expect(finePrint).toContain("$0 today");
-    expect(finePrint).toContain("$79.99/yr");
+    expect(finePrint).toContain("$89.99/yr");
     expect(finePrint).toContain("unless you cancel");
   });
 

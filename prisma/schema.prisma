@@ -104,10 +104,6 @@ model User {
   trialT3PostEmailSentAt DateTime?
   trialT3PushSentAt      DateTime?
   trialEndedPushSentAt   DateTime?
-  // v10 spec §9 Day-2 nudge. One per user, ever. Idempotency lives in a
-  // dedicated column rather than being inferred from entry counts or
-  // createdAt, so a cron retry or two concurrent runs cannot double-send.
-  v10Day2PushSentAt      DateTime?
   // Download reminder email — sent 1hr after account creation if no app download
   downloadReminderSentAt DateTime?
 
@@ -144,17 +140,6 @@ model User {
   // StoreKit versions; replay-debugging benefits from keeping the
   // raw structure rather than projecting it column-by-column.
   appleLatestReceiptInfo     Json?
-  /// The Apple-signed JWS (StoreKit 2 JWSTransaction) the receipt info was
-  /// decoded from. Retained 2026-08-19: appleLatestReceiptInfo is the
-  /// DECODED payload with Apple's signature stripped, so it cannot prove a
-  /// purchase to a third party. This can — RevenueCat's POST /v1/receipts
-  /// accepts a StoreKit 2 JWSTransaction as fetch_token, and without it our
-  /// existing Apple subscribers are not importable into RC.
-  ///
-  /// Sensitive: a bearer proof of purchase. Never log or return it in an
-  /// API response; it is written by verify-receipt and read only by
-  /// server-side reconciliation/import.
-  appleSignedTransactionJws  String?
 
   // ─── Google Play Billing (Android IAP parity, 2026-06-11) ────
   // Mirrors the apple* fields above. Verified via the Google Play
@@ -366,8 +351,8 @@ model User {
   // After the next ~2 mobile-build cycles, the legacy fields can be
   // dropped in a follow-up cleanup slice.
   reminders                     UserReminder[]
-  habits                        Habit[]
   habitChecks                   HabitCheck[]
+  habits                        Habit[]
   // Smart-notifications engagement prefs (1:1). Lazily created with
   // default-ON categories on first read; see
   // docs/specs/smart-notifications-spec.md.
@@ -497,7 +482,22 @@ model User {
   userAchievements UserAchievement[]
   consentRecords   ConsentRecord[]
 
-  updatedAt DateTime @default(now()) @updatedAt
+  updatedAt                 DateTime  @default(now()) @updatedAt
+  // v10 spec §9 Day-2 nudge. One per user, ever. Idempotency lives in a
+  // dedicated column rather than being inferred from entry counts or
+  // createdAt, so a cron retry or two concurrent runs cannot double-send.
+  v10Day2PushSentAt         DateTime?
+  /// The Apple-signed JWS (StoreKit 2 JWSTransaction) the receipt info was
+  /// decoded from. Retained 2026-08-19: appleLatestReceiptInfo is the
+  /// DECODED payload with Apple's signature stripped, so it cannot prove a
+  /// purchase to a third party. This can — RevenueCat's POST /v1/receipts
+  /// accepts a StoreKit 2 JWSTransaction as fetch_token, and without it our
+  /// existing Apple subscribers are not importable into RC.
+  ///
+  /// Sensitive: a bearer proof of purchase. Never log or return it in an
+  /// API response; it is written by verify-receipt and read only by
+  /// server-side reconciliation/import.
+  appleSignedTransactionJws String?
 
   @@index([createdAt])
 }
@@ -728,60 +728,10 @@ model UserReminder {
   @@index([userId, kind])
 }
 
-// ─── Habits (v1, manual) ────────────────────────────────────────────
-//
-// Deliberately NOT derived from debriefs in v1. The extraction pipeline
-// could plausibly suggest habits, but a habit the user did not choose,
-// appearing on their Home with a streak attached, is an obligation the
-// product invented for them. Future hook: extraction proposes, the user
-// confirms, and only then does a Habit row exist.
-model Habit {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  // 0=Sunday..6=Saturday. Which days this habit is expected. Defaults to
-  // every day; an empty array means "no expected days", which is how a
-  // habit is paused without losing its history.
-  daysActive Int[]     @default([0, 1, 2, 3, 4, 5, 6])
-  // Soft delete. Archiving keeps the check history — a streak the user
-  // built is theirs, and hard-deleting it to tidy a list is destructive.
-  archivedAt DateTime?
-  sortOrder  Int       @default(0)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  checks HabitCheck[]
-
-  @@index([userId])
-  @@index([userId, archivedAt])
-}
-
-model HabitCheck {
-  id        String   @id @default(cuid())
-  habitId   String
-  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  // The LOCAL calendar date the check belongs to, as YYYY-MM-DD.
-  //
-  // A string, not a DateTime, on purpose: "did I do this today" is a
-  // question about the user's own calendar day, and storing an instant
-  // means a 11pm check in Sydney lands on a different UTC date than the
-  // one the user is looking at. The client sends its local date.
-  localDate String
-  createdAt DateTime @default(now())
-
-  // One check per habit per local day. Makes check-off idempotent at the
-  // database level rather than relying on the client not double-tapping.
-  @@unique([habitId, localDate])
-  @@index([userId, localDate])
-}
-
 model Entry {
-  id                    String            @id @default(cuid())
+  id                    String          @id @default(cuid())
   userId                String
-  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   // DEPRECATED: use audioPath. Will remove in Inngest PR 4 once the sync
   // path is retired. Sync path writes a signed URL here; async path leaves
   // this null and writes the object path to audioPath instead.
@@ -825,7 +775,7 @@ model Entry {
   // when the summary mentions an event title, and editable manually
   // via slice 6's link/unlink UI. Default empty so nothing leaks if
   // a user disconnects calendar mid-pipeline.
-  linkedEventIds        String[]          @default([])
+  linkedEventIds        String[]        @default([])
   // Valid status values (enforced by app code, not schema — we keep this a
   // String for flexibility across Postgres versions):
   //   QUEUED       — Inngest event dispatched, not yet running (async path)
@@ -837,7 +787,7 @@ model Entry {
   //   FAILED       — unrecoverable; errorMessage populated
   //   PENDING      — LEGACY: used by sync path until it's retired (Inngest PR 4)
   //   PROCESSING   — LEGACY: sync path intermediate state, same retirement
-  status                String            @default("QUEUED")
+  status                String          @default("QUEUED")
   // User-safe error copy surfaced by onFailure handler when status=FAILED.
   errorMessage          String?
   // Slice C cancellation marker (2026-05-16). Set by the cancel
@@ -869,16 +819,16 @@ model Entry {
   // Pre-2026-04-23 entries are backfilled to createdAt by the migration
   // so legacy entries don't get an unwanted review banner.
   extractionCommittedAt DateTime?
-  entryDate             DateTime          @default(now())
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  entryDate             DateTime        @default(now())
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
   // Optional goal this entry is specifically "about" — set when the user
   // taps "Record about this goal" from a goal card/detail. When present,
   // the extraction pipeline splices the goal's title + description into
   // the Claude prompt so the AI treats the entry as goal-contextualized.
   // Null for standard recordings.
   goalId                String?
-  goal                  Goal?             @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  goal                  Goal?           @relation(fields: [goalId], references: [id], onDelete: SetNull)
   // Optional life-dimension context. Set when the user opened the
   // recorder from a dimension detail screen via "Record about this".
   // Stored as the lowercase dimension key from DEFAULT_LIFE_AREAS
@@ -889,10 +839,6 @@ model Entry {
   tasks                 Task[]
   themeMentions         ThemeMention[]
   entityMentions        EntityMention[]
-  // Insights citing this entry as evidence. Cascade-deletes with the entry,
-  // so deleting a recording also retracts every receipt that quoted it —
-  // an insight must never outlive the proof it rests on.
-  insightEvidence       InsightEvidence[]
   // Anchor People slice 2 (2026-05-25) — stamped by the NER step in
   // process-entry. Drives idempotency on backfill + replay. Null on
   // legacy entries (the slice 7 backfill cron stamps them).
@@ -923,6 +869,8 @@ model Entry {
   // Read by `apps/web/scripts/theme-distribution.ts` for cohort
   // comparison reports.
   themePromptVersion String?
+  InsightEvidence    InsightEvidence[]
+  insightEvidence       InsightEvidence[]
 
   @@index([userId, createdAt])
   // Backfill scanner hot path — find all FREE-tier-only entries
@@ -1663,9 +1611,9 @@ model LifeMapAreaHistory {
 // Auto-flagged observations — surfaces 1–3 at the top of Insights.
 // Generated by the weekly Inngest cron `compute-user-insights`.
 model UserInsight {
-  id              String    @id @default(cuid())
+  id              String            @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Short user-facing copy, e.g. "Your Health score dropped 2 points
   // this week" or "You mentioned stress 3x more than last week".
   observationText String
@@ -1680,74 +1628,27 @@ model UserInsight {
   // deterministic pre-Claude output, "claude-opus-4-7" or similar
   // for the Claude-generated flagship path. Lets us eval model
   // quality against dismissal rates later.
-  generationModel String    @default("heuristic")
+  generationModel String            @default("heuristic")
   dismissedAt     DateTime?
-  createdAt       DateTime  @default(now())
-
-  // ── Evidence / receipts (2026-08-16, flag: EVIDENCE_RECEIPTS) ────────
-  //
-  // All additive and nullable. A row written before this change — or by
-  // the generator with the flag OFF — has confidence=null and zero
-  // InsightEvidence rows, which the confidence rule classifies as
-  // UNSOURCED. That is the correct reading: we genuinely cannot evidence
-  // those, so they must never be surfaced as confirmed patterns.
-
+  createdAt       DateTime          @default(now())
   /// Model-reported confidence, 0..1. NULL means "not reported" — which is
   /// NOT the same as low confidence, and is never treated as high. Only
   /// meaningful alongside evidence; see lib/evidence/confidence.ts, where a
   /// high value with zero evidence is explicitly refused a promotion.
-  confidence Float?
-
+  confidence      Float?
+  correctedAt     DateTime?
+  correctionNote  String?           @db.Text
   /// User correction state: "ACCURATE" | "INCOMPLETE" | "WRONG" | null.
   /// Plain String rather than an enum, matching this schema's existing
   /// convention (Entry.status, UserInsight.severity) for cross-Postgres
   /// compatibility and to avoid a migration on every added value.
   correctionState String?
-  correctionNote  String?   @db.Text
-  correctedAt     DateTime?
-
+  InsightEvidence InsightEvidence[]
   evidence InsightEvidence[]
 
   @@index([userId, createdAt])
-  @@index([userId, dismissedAt])
   @@index([userId, correctionState])
-}
-
-/// Provenance for a generated insight: which entries it was derived from,
-/// and the specific excerpt within each.
-///
-/// Deliberately mirrors EntityMention (entryId + startIndex/endIndex +
-/// stored text) — that model already proved the shape for "point at the
-/// exact words in a transcript", and reusing it keeps the receipts UI able
-/// to render person-mentions and insight-evidence the same way.
-///
-/// The excerpt is STORED rather than resolved from the transcript at read
-/// time, on purpose: transcripts can be edited or an entry deleted, and a
-/// receipt that silently changes out from under a claim is worse than no
-/// receipt. The offsets are kept so the excerpt can still be highlighted
-/// in-place when the transcript is unchanged.
-model InsightEvidence {
-  id        String      @id @default(cuid())
-  insightId String
-  insight   UserInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
-  entryId   String
-  entry     Entry       @relation(fields: [entryId], references: [id], onDelete: Cascade)
-
-  /// The quoted words backing the insight. Verbatim from the transcript
-  /// (or summary when no transcript exists) — never paraphrased.
-  excerpt    String   @db.Text
-  /// Character offsets into Entry.transcript. Null when the excerpt came
-  /// from the summary, or when the source text was unavailable.
-  startIndex Int?
-  endIndex   Int?
-  createdAt  DateTime @default(now())
-
-  /// One excerpt per (insight, entry). Makes re-running generation
-  /// idempotent, and keeps a single insight from citing the same entry
-  /// repeatedly to look better-evidenced than it is.
-  @@unique([insightId, entryId])
-  @@index([insightId])
-  @@index([entryId])
+  @@index([userId, dismissedAt])
 }
 
 // ─── Theme Evolution Map ─────────────────────────────────────────────────────
@@ -2612,15 +2513,6 @@ model TrySession {
   extractionData  Json
   // Supabase Storage object path (voice-entries-try/{sessionToken}.{ext}).
   // Deleted on claim (audio moves to the user's folder) or on expiry cleanup.
-  //
-  // NULLABLE as of 2026-08-20: a typed debrief (mic-denied fallback, spec §4)
-  // has no audio at all. Null means "there was never a recording" — not
-  // "the recording is missing". Mirrors Entry.audioPath, which has been
-  // nullable for the same reason.
-  //
-  // Deliberately NOT a sentinel string like "text-entry": putting a
-  // non-path constant in a path column is how TrialEmailLog.resendId ended
-  // up failing 53x/24h against a unique index. Callers must null-check.
   audioPath       String?
   // Whisper transcript — persisted so the claim endpoint can create an
   // Entry with transcript without re-running Whisper.
@@ -2860,4 +2752,91 @@ model AdminInsight {
   generatedBy  String?
 
   @@index([generatedAt(sort: Desc)])
+}
+
+// ─── Habits (v1, manual) ────────────────────────────────────────────
+//
+// Deliberately NOT derived from debriefs in v1. The extraction pipeline
+// could plausibly suggest habits, but a habit the user did not choose,
+// appearing on their Home with a streak attached, is an obligation the
+// product invented for them. Future hook: extraction proposes, the user
+// confirms, and only then does a Habit row exist.
+model Habit {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  // 0=Sunday..6=Saturday. Which days this habit is expected. Defaults to
+  // every day; an empty array means "no expected days", which is how a
+  // habit is paused without losing its history.
+  daysActive Int[]     @default([0, 1, 2, 3, 4, 5, 6])
+  // Soft delete. Archiving keeps the check history — a streak the user
+  // built is theirs, and hard-deleting it to tidy a list is destructive.
+  archivedAt DateTime?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  checks HabitCheck[]
+
+  @@index([userId])
+  @@index([userId, archivedAt])
+}
+
+model HabitCheck {
+  id        String   @id @default(cuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // The LOCAL calendar date the check belongs to, as YYYY-MM-DD.
+  //
+  // A string, not a DateTime, on purpose: "did I do this today" is a
+  // question about the user's own calendar day, and storing an instant
+  // means a 11pm check in Sydney lands on a different UTC date than the
+  // one the user is looking at. The client sends its local date.
+  localDate String
+  createdAt DateTime @default(now())
+
+  // One check per habit per local day. Makes check-off idempotent at the
+  // database level rather than relying on the client not double-tapping.
+  @@unique([habitId, localDate])
+  @@index([userId, localDate])
+}
+
+/// Provenance for a generated insight: which entries it was derived from,
+/// and the specific excerpt within each.
+///
+/// Deliberately mirrors EntityMention (entryId + startIndex/endIndex +
+/// stored text) — that model already proved the shape for "point at the
+/// exact words in a transcript", and reusing it keeps the receipts UI able
+/// to render person-mentions and insight-evidence the same way.
+///
+/// The excerpt is STORED rather than resolved from the transcript at read
+/// time, on purpose: transcripts can be edited or an entry deleted, and a
+/// receipt that silently changes out from under a claim is worse than no
+/// receipt. The offsets are kept so the excerpt can still be highlighted
+/// in-place when the transcript is unchanged.
+model InsightEvidence {
+  id        String      @id @default(cuid())
+  insightId String
+  insight   UserInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  entryId   String
+  entry     Entry       @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  /// The quoted words backing the insight. Verbatim from the transcript
+  /// (or summary when no transcript exists) — never paraphrased.
+  excerpt    String   @db.Text
+  /// Character offsets into Entry.transcript. Null when the excerpt came
+  /// from the summary, or when the source text was unavailable.
+  startIndex Int?
+  endIndex   Int?
+  createdAt  DateTime @default(now())
+
+  /// One excerpt per (insight, entry). Makes re-running generation
+  /// idempotent, and keeps a single insight from citing the same entry
+  /// repeatedly to look better-evidenced than it is.
+  @@unique([insightId, entryId])
+  @@index([insightId])
+  @@index([entryId])
 }

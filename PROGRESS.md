@@ -56,52 +56,142 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 - Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
 
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+## [2026-08-21] — Carousel topics now read Jim's growthos research engine
 
-**Requested by:** Jimmy
+**Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 8edcbf70 (+ 7 prior on feat/revenuecat-migration)
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
-We're moving to RevenueCat as the one system that decides who has a paid subscription, instead of tracking it separately for Apple, Google, and the website. Tonight the whole thing got built, but **none of it is switched on** — every new piece is behind an off switch, and Stripe/Apple/Google are still fully in charge of billing exactly as before. Nobody's subscription changed and no prices changed.
-
-The approach is "watch first, then trust." RevenueCat will sit alongside our current system and just observe, and we compare its answers to ours. Only once it agrees with us on all 26 accounts (17 paying, 2 comped, 7 on trial) do we let it take over. If it ever misbehaves after that, flipping one switch puts us straight back to today's setup with no data cleanup.
-
-Two real problems got caught while building. First, the 7 people currently on free trials would have **lost access** the moment we switched over — RevenueCat has no way to know about our trials, because our trial doesn't ask for a card. That's fixed. Second, we found that people who cancel would have lost the rest of the time they'd already paid for; also fixed.
-
-Also groundwork (not switched on) for the planned $8.99/$79.99 pricing, including the rule that the 17 current subscribers keep their current price forever. One thing needs your call: our drip emails currently promise "$4.99 — the lowest price Ripple will ever be," which new pricing would break.
+The daily carousel's topic brain is now linked to Jim's social research engine (growthos). When growthos has research in it, every carousel topic is generated with that intelligence in front of it: what our posted content's data says works, verified truths about the audience, open content angles the engine surfaced, and which competitor videos are breaking out right now. The AI is told to use it directionally — pick resonant angles, never copy. Right now growthos's database is completely empty (the engine is built but has never been run), so nothing changes in the posts yet; the moment Jim seeds it and the connection keys are added, the research starts flowing in automatically. If growthos is ever empty, slow, or down, carousel generation continues exactly as before — this link can never break a daily post.
 
 ### Technical changes (for Jimmy)
-- **Audit:** `docs/REVENUECAT_ENTITLEMENT_AUDIT.md` — every entitlement decision + write site with file/line refs, plus the 8 invariants each tied to its originating incident.
-- **Resolver:** new `apps/web/src/lib/entitlements/resolve.ts` — single source-selection point; `activeSourceName()` is the one-line cutover swap. `entitlements-fetch.ts` + `paywall.ts` now read through it (signatures unchanged). `entitlementsFor` untouched. Dual-read fallback: RC null/throw → DB, `fellBack: true`.
-- **Trial overlay (bug fix):** RC reports trialing users FREE (no transaction to observe, since our trial is card-free). Resolver now unions RC-paid with app-managed trial; only queries DB on the not-entitled path. Would have revoked all 7 trials at cutover.
-- **Webhook:** `apps/web/src/app/api/revenuecat/webhook/route.ts` behind `RC_SOURCE_OF_TRUTH`. Timing-safe auth compare (RC gives a raw shared secret, no SDK does this for us), event-id idempotency via new `RevenueCatEvent` model, SQL-layer comp guard. Mapping extracted to pure `lib/revenuecat/webhook-events.ts` (13 event types). CANCELLATION does NOT revoke while the paid period runs. BILLING_ISSUE → FREE + anchor, preserving our no-grace spec rather than RC's keep-through-grace model.
-- **Mobile:** `react-native-purchases` + `-ui` @10.7.1, `expo-dev-client` pinned ~6.0.21 (dev profile set `developmentClient: true` with the package absent). `apps/mobile/lib/revenuecat/` — lazy native import so flags-off means the module never loads. `auth-context.tsx` aliases RC identity to `User.id` on sign-in, resets on sign-out (the logIn alias is what fixes the Tessa-class cross-provider login bug).
-- **Import script:** `apps/web/scripts/rc-import-receipts.ts` — dry-run default, `RC_SECRET_KEY` from env only (never argv), local ledger written after every success so reruns resume, `--only/--limit/--concurrency`. Exercised against synthetic fixtures.
-- **Drift monitor:** `scanRcParity()` + pure `rcParityReadyForCutover()` in `entitlement-drift.ts`; exposed as `?mode=rc-parity`. SEV1 (DB entitled, RC not) blocks cutover; SEV2 (RC entitled, DB not) does not. No RC reconciler by design.
-- **Pricing:** `packages/shared/src/pricing-plans.ts` is now the single catalog; web + mobile derive from it (kills the documented mirror-by-comment drift risk). `planValueDollars()` replaces `interval === "yearly" ? 39.99 : 4.99` in 7 analytics call sites. Verified at runtime: still $4.99/$39.99, badge still 33%, Stripe Price ID unchanged.
-- **Flags:** `packages/shared/src/revenuecat.ts` — `RC_OBSERVER` / `RC_SOURCE_OF_TRUTH` / `RC_SDK_PURCHASES`, strict fail-closed parsing (only 1/true/on/yes). Verified all three resolve false and no RC var is set in any env file or eas.json.
-- **Tests:** +150 new, all passing. Suite 568/574; the 6 failures are pre-existing stale tests on `main` (paywall PAST_DUE-grace vs the 2026-06-12 no-grace change; auth-flows asserting 14-day trials vs the current 7). `next build` compiles successfully.
+- New `apps/web/src/lib/content-factory/growthos-research.ts`: best-effort reader for growthos's Supabase REST API (env: GROWTHOS_SUPABASE_URL, GROWTHOS_SUPABASE_SERVICE_KEY, optional GROWTHOS_WORKSPACE_ID; feature is off until set). Fetches, via Promise.allSettled with 8s timeouts: learning_insights (signal/summary/recommendation), verified canonical_claims, canonical_opportunities, and competitor_videos ordered by breakout_score. Returns null when unconfigured/empty/failing; `growthosResearchBlock()` formats results as a prompt block.
+- `apps/web/src/lib/content-factory/generate-topic.ts`: generateTopic() appends the researchBlock to the user prompt (same pattern as the existing performanceBlock), wrapped in try/catch so research failures can't fail topic generation.
+- canonical_payload jsonb shape is unknown until Jim confirms — payloadText() tries likely keys (claim/statement/summary/text/title/headline/description/angle) and falls back to truncated JSON.
+- Verified live against growthos prod Supabase: empty DB → returns null, generation unaffected. Found during testing: `learning_insights` has SELECT revoked from service_role (REST 403, PG 42501) — connector skips it gracefully.
 
 ### Manual steps needed
-- [ ] Apply `prisma/manual/2026-08-16-revenuecat-event.sql` to create `RevenueCatEvent` — **do NOT use `prisma db push`**, it would drop 13 live `CarouselPost` columns incl. 5 real `storyVideoUrl` values (verified 2026-08-16). Required before `RC_SOURCE_OF_TRUTH` (Jimmy)
-- [ ] Reconcile `schema.prisma` with prod (prod is ahead on `CarouselPost`) so `db push` is safe again repo-wide (Jimmy)
-- [ ] RC dashboard: create project, entitlement id exactly `pro`, offerings `default` + `grandfathered`, connect App Store / Play / Stripe (Jimmy)
-- [ ] Vercel env: `RC_SECRET_KEY`, `RC_WEBHOOK_AUTH` (we choose), `RC_PROJECT_ID` (Jimmy)
-- [ ] EAS secrets: `EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY` (Jimmy)
-- [ ] Cowork: id→receipt mapping keyed on our `User.id`, kept outside the repo (Cowork)
-- [ ] Verify `react-native-iap@15`'s StoreKit version matches the RC observer-mode `storeKitVersion` before enabling observer in prod (Jimmy)
-- [ ] Decide: route `feature-flags.ts:tierMatches` through the resolver? It gates PRO flags on `status === "PRO"`, so TRIAL users fail PRO flags today (Jimmy)
-- [ ] Decide: drip-email "lowest price Ripple will ever be" promise vs new pricing (Keenan)
-- [ ] NOT PUSHED — branch `feat/revenuecat-migration` is local only, per instruction (Jimmy)
+- [ ] Jim: seed growthos with a Ripple workspace + niche (women 40–50, mental load) and run the research pipeline — the DB is 100% empty today, every table 0 rows (Jim)
+- [ ] Jim: `GRANT SELECT ON public.learning_insights TO service_role;` in growthos Supabase, or the learnings feed stays invisible to the connector (Jim)
+- [ ] Add GROWTHOS_SUPABASE_URL + GROWTHOS_SUPABASE_SERVICE_KEY to Acuity's Vercel env (values = growthos-staging's SUPABASE_URL and service role key) + redeploy — Claude can run this via CLI on Keenan's go-ahead (Keenan)
+- [ ] Jimmy review flag: this puts growthos's service-role key (full read/write on Jim's DB) into Acuity's env. Safer long-term: Jim creates a read-only Postgres role/key for cross-project access (Jimmy/Jim)
+- [ ] Jim: add `keypicksem` as read collaborator on jimheelerdigital/growthos so future integration work can read the code (currently 404s) (Jim)
 
 ### Notes
-- Nothing was pushed and no flag was flipped, per the run's hard rules. Old billing handlers are marked, not removed, and stay authoritative until cutover.
-- `sharp` was declared in `apps/web/package.json` but missing from `node_modules`, so `next build` was already broken before this work. `npm install` repaired it. Worth knowing if a Vercel build ever fails on it.
-- Adding `RevenueCatEvent` as a new MODEL is safe pre-`db push` — unlike a new User column it can't widen an existing projection into a P2022 (the trap documented in `feature-flags.ts`).
-- Trials must stay app-managed: store-managed intro offers require a card, and "No card required" appears in landing copy, the FAQ, and every `/for/*` lander. Consequence: the trial-expiration cron stays live after cutover and is NOT retired in phase 4.
-- Mobile flags must use static `process.env.EXPO_PUBLIC_*` reads — Metro only inlines those for static member access, so a dynamic lookup would silently pin every flag off in a release bundle.
-- Cutover order is load-bearing: `RC_SDK_PURCHASES` before `RC_SOURCE_OF_TRUTH` would charge users and grant nothing. `configureRevenueCat` warns, but the ordering is on us.
-- Full runbook + the 5 open decisions: `docs/REVENUECAT_MIGRATION.md`.
+- growthos audit (2026-08-21): 234 Supabase tables (canonical_* research/claims/evidence/opportunities, niches, competitor_channels/videos [YouTube-centric], wp13 carousel slides, wp14 video production, wp15 distribution, wp16 learning loop); deployed at heelerdigital/growthos-staging behind Vercel SSO; local commit 264c651 matches GitHub. Audited via Vercel team env access + Supabase REST OpenAPI since the repo itself is inaccessible.
+- Read-only by design for now. Phase 2 (agreed with Jim first): write Acuity's publish results/engagement back into growthos's wp16 learning loop so its recommendations improve from our actual posts.
+- growthos's competitor tracking is YouTube-shaped (youtube_video_id etc.) while our carousels are IG/TikTok — breakout titles/topics still transfer as directional signal, but flag to Jim that IG/TikTok source coverage would fit our funnel better.
+
+## [2026-08-21] — New calm voice (Aria) with a fully performance-directed script
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The calm and calm-story voice moves off Hope entirely — even the restored "good post" config still sounded bad to you. The new voice is Aria, an expressive middle-aged American female that fits the audience, still on the most emotional v3 mode. The bigger change is that the realism now comes from the script itself: the scriptwriter turns every narration into a marked-up vocal performance — where the voice softens, where it whispers, where it sounds tired, where it pauses, where a real woman would audibly exhale — instead of dropping in a couple of generic "softly" tags. If Aria still isn't right, the voice can be swapped instantly with an env var, no code change needed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/ambient-video.ts`: AMBIENT_VOICES → Aria (9BWtsMINqrJLrRacOk9x); LOCKED comment replaced with a voice-history comment (Vanessa → Hope → Aria, per Keenan's calls); vocalScript prompt rewritten — 5-10 v3 audio tags from an expanded palette ([softly] [warmly] [gently] [quietly] [whispers] [sighs] [exhales] [tired] [tender] [hesitates] [pause] [long pause]), moving emotional register across the beats, extra "..." pause marks allowed, no all-caps/exclamations
+- `apps/web/src/lib/content-factory/calm-story.ts`: per-scene "vocal" prompt gets the same expanded palette (1-3 tags per scene, register moves across the story); stale Hope references in the header comment updated
+- Both divergence validators (vocalScript/vocal vs clean script) now ignore punctuation-only tokens so standalone "..." pause marks don't get a good performance discarded
+- Model settings unchanged: eleven_v3, stability 0.0 Creative, similarity 0.8, style 0.5, speaker boost, speed 0.85; AMBIENT_ELEVENLABS_VOICE_ID still overrides the voice
+
+### Manual steps needed
+- [ ] Keenan: judge the two fresh test posts (calm-story + regular calm) triggered after this deploy; if Aria's timbre is wrong, say so and either name a voice or set AMBIENT_ELEVENLABS_VOICE_ID in Vercel to try alternatives without a deploy
+
+### Notes
+- Aria was chosen blind: the prod ElevenLabs API key is marked sensitive in Vercel (pulls as [SENSITIVE]), so the account's voice list couldn't be queried locally. Aria is an ElevenLabs premade voice (available to every account) documented as expressive/husky/middle-aged American female — the best on-paper match for the 40-50 audience and for v3 tag responsiveness. Runner-up candidates if she misses: Rachel (21m00Tcm4TlvDq8ikWAM, calm classic narrator), Sarah (EXAVITQu4vr4xnSDxMaL, soft).
+- The "LOCKED" status on the Hope config is dead — Keenan overrode it explicitly ("go with a different v3 voice... hyper realistic"). The strategy shift this entry encodes: settings stay fixed, delivery quality is the scriptwriter's job via tags.
+
+## [2026-08-21] — Calm voice restored to the verified good-post config (Hope on v3)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Earlier today the voice was mistakenly "fixed" by reverting to the very first calm post's setup (a different voice, Matilda, on the older model). You then identified the actual best-sounding post — the Aug 19 "whatever's easiest" video — and its email pinned down the real gold-standard config: Hope on the expressive v3 model with the slow, tagged delivery. That turned out to be the exact setup that was already running, so the mistaken revert is undone and the good config is restored and now marked as locked in the code, with the reference post named so nobody (including future Claude sessions) second-guesses it again. If a post still sounds off with this config, the culprit is take-to-take randomness in the expressive model or the calm-story's scene-by-scene reads — not the settings.
+
+### Technical changes (for Jimmy)
+- Reverted commit 01842f11 (the Matilda/multilingual_v2 voice revert) via git revert: restores ambientVoiceoverOptions() to Hope (WAhoMTNdLdMoq1j3wf3I) + eleven_v3 + stability 0.0 / similarity 0.8 / style 0.5 / speaker boost / speed 0.85, and restores tagged TTS text (ambientTtsText → vocalScript with [softly] lead; calmStorySceneTtsText → per-scene vocal with [softly] lead)
+- `apps/web/src/lib/content-factory/ambient-video.ts`: ambientVoiceoverOptions() comment now documents the LOCK and the reference post (2026-08-19 16:21 UTC calm video "You changed your answer before you finished saying it", verified via the content email)
+- Evidence trail: that post generated ~11:15 CDT on 08-19, after 9081f0f3 (Hope-only max-expressive v3) deployed at 10:35 — and no voice-path change shipped between then and today's mistaken revert
+
+### Manual steps needed
+None (auto-deploy; a fresh calm-story and a fresh regular calm post were triggered post-deploy with the restored voice).
+
+### Notes
+- Lesson recorded: "get it back to the very first calm post quality" pointed at the wrong commit — the emails are the ground truth for which config produced which post (each content email carries the script; ttsEngine is also persisted). Always locate the actual reference post before reverting voice settings.
+- The two posts triggered at ~09:53 EDT today went out with the wrong (Matilda/v2) voice — disregard those two emails.
+- Remaining open question if quality still varies: eleven_v3 at stability 0.0 is intentionally non-deterministic between takes, and calm-story voices each scene separately (with previous/next-text continuity). If Keenan flags the calm-story voice specifically again, the next lever is voicing the whole story in one take and splitting on silences — NOT touching the settings.
+
+## [2026-08-21] — Viral script style guide for story/calm videos + calm-story visual variety
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The story and calm videos now write their scripts from your viral style guide: every script speaks to the overloaded woman 35-55, opens with a sharp private-truth hook, grounds itself in a real daily-life moment, lands the deeper truth, reframes her as not-broken, and ends with one soft "follow/send/save" ask — never a product pitch, never app/AI/journaling mentions. Each run also picks one of the five pain branches (mental overload, busy-but-not-moving, repeating patterns, knowing-without-acting, planning-instead-of-progress) so posts stop clustering on the same ache. And the calm story is no longer stuck on the orange/purple look — each one is set in a randomly assigned soothing world: blue sky with clouds, ocean waves, sunset, rain on a window, a fireplace, misty forest, moonlit lake, snowfall, golden fields, or a mountain valley.
+
+### Technical changes (for Jimmy)
+- NEW `apps/web/src/lib/content-factory/script-style-guide.ts`: distilled prompt-ready SCRIPT_STYLE_GUIDE (audience, emotional territory, hook do/don't examples, scene bank, tone rules, hard bans, approved soft-CTA family), PAIN_BRANCHES + pickPainBranch(), painBranchBlock()
+- `apps/web/src/lib/content-factory/calm-story.ts`: system prompt rebuilt around the guide; new CALM_STORY_WORLDS + pickStoryWorld() assigns one visual world per run (prompt explicitly forbids defaulting to warm orange/purple every post); structure now HOOK→SCENE→TRUTH→REFRAME→FOLLOWER CTA; script length 45-85 words (20-35s); the old blanket "no CTA" rule now permits exactly one soft follower CTA as the final line
+- `apps/web/src/lib/content-factory/ambient-video.ts`: AMBIENT_SYSTEM_PROMPT const → buildAmbientSystemPrompt(branch) embedding the same guide + pain branch; same 5-beat structure and CTA rule; 45-80 words
+
+### Manual steps needed
+None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
+
+### Notes
+- The one behavior flip: scripts previously banned ALL CTAs — the guide reintroduces exactly one soft audience-building CTA ("Follow for more…", "Send this to the woman who always says she's fine…") as the script's last line. Product CTAs stay banned everywhere.
+- Pain branch + story shape + visual world are all independent random picks per run, so variety compounds; recent-theme avoid-lists still apply on top.
+- Ambient calm keeps its photoreal look and existing scene-variety rules; the world rotation applies to calm-story (Keenan's ask was specifically about calm-story visual repetition).
+
+## [2026-08-21] — Calm story goes animated with exact word-to-scene sync
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The calm story is no longer photorealistic — every scene is now rendered like a still from a high-end soft-3D animated film (the same warm Pixar-ish style that's winning on the carousels), and it can never drift into looking like a real photo or live-action footage. The narration is also now recorded scene by scene and the video timeline is built around those exact recordings, so each scene stays on screen for precisely as long as its own lines take to speak — the words you hear always match the scene you're looking at, with a small breathing margin on each side of every crossfade.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/calm-story.ts`: script prompt rewritten for animated soft-3D scenes (bans photorealism/live-action) and per-scene voicing — the LLM now returns a per-scene `vocal` field (narration + 0-2 ElevenLabs audio tags) instead of one whole-script vocalScript; image/video prompts force "still frame from a high-end soft 3D animated film"; new constants CALM_STORY_MARGIN_SEC (0.3), CALM_STORY_GAP_SEC (xfade + 2×margin = 1.4), CALM_STORY_TAIL_SEC (= gap); calmStorySceneWindows() rebuilt to derive each scene's window from its measured narration duration + margins + crossfade shares; new estimateNarrationSecs() and calmStorySceneTtsText() helpers
+- `apps/web/src/inngest/functions/carousel-calm-story.ts`: TTS is now one `pick-voice` step (voice pinned once per run) + a `tts-scene-${i}` step per scene, each voiced with previous/next-scene context; per-scene audio is concatenated with concatAudioWithGaps(gap=1.4) into one track whose length equals the video by construction (no atempo warp in mux); scenes whose image generation fails are dropped from the whole timeline (presentIdx) so audio/video indexes stay aligned; if any TTS or the concat fails, windows fall back to word-count estimates and captions are burned instead
+- Timing math: window_i = narration_i + leading margin + trailing margin/tail + xfade share per junction; video total = Σnarration + gap×(n−1) + tail = audio total exactly
+
+### Manual steps needed
+None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
+
+### Notes
+- Keenan's verbatim 2026-08-21 ask: "the calm story still sucks. make it animated and not hyperrealistic. also break it down to perfectly match the script. clip down the videos if needed to match."
+- tail = gap is deliberate: concatAudioWithGaps pads every segment (including the last) by the gap, so setting the video tail equal makes audio and video identical in length — muxNarration's time-warp branch can never fire.
+- The animated style deliberately mirrors the toon3d ("Soft 3D illustrated graphic… Pixar-inspired") carousel lane so the page has one visual brand.
+
+## [2026-08-21] — Captions cut way down: no more repeating the post inside the caption
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Captions across every content type are now short. Carousel captions no longer paste the whole numbered list into the caption — the slides carry the content, so the caption is just one hook line, one comment/share ask, the bio plug, and the 5 hashtags. Calm and calm-story captions are now exactly two lines (a hook + a share ask) and the AI is banned from retelling or summarizing what the video already says. Hashtags stay as-is (they're working).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/caption.ts`: buildCaption drops the numbered-reasons block and the second fallback CTA (SAVE_SHARE_CTAS deleted); buildAmbientCaption fallback trimmed to one lead line + one share line + hashtags
+- `apps/web/src/lib/content-factory/generate-topic.ts`: captionOpen spec tightened to ONE line under 12 words; prompt now forbids restating the headline or listing/summarizing the slides
+- `apps/web/src/lib/content-factory/ambient-video.ts` + `calm-story.ts`: LLM caption spec changed from 3-5 lines to exactly 2 lines (hook under 12 words + share/save ask); explicit ban on retelling/quoting/summarizing the script
+
+### Manual steps needed
+None (deploy is automatic on push; prompts take effect on the next generation).
+
+### Notes
+- Keenan's 2026-08-21 feedback after the first overnight batch: "the captions still suck… reduce the caption length across the board. we don't need to reiterate the captions in the post." Hashtags were called out as better — left untouched.
+- The numbered list in carousel captions was the old "caption search indexing" play — dropped deliberately; the reiteration read as AI spam.
+
 ## [2026-08-20] — Personal captions, real hashtags, calm-story replaces the story video, seamless calm loops, email caption fix
 
 **Requested by:** Keenan
@@ -1434,6 +1524,53 @@ Three fixes to the animated covers. First, the animation instructions were rewri
 - Higgsfield's platform API keys are not in the local .env (Vercel only), so the `quality` field could not be verified against the live API — that's why it's env-gated instead of hardcoded. A rejected field would make submits fail and every cover degrade to static; that's the failure mode to watch.
 - Deliberately reverted d137f161's text fade-out: Keenan's 2026-08-10 direction is that the video must never impede the text, so it now stays visible for the full 4 seconds.
 - v10 respects the v9 lesson (long prompts with negative instructions make the model act out the mentioned verbs) — all new lines are short and describe only what SHOULD happen.
+## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 8edcbf70 (+ 7 prior on feat/revenuecat-migration)
+
+### In plain English (for Keenan)
+We're moving to RevenueCat as the one system that decides who has a paid subscription, instead of tracking it separately for Apple, Google, and the website. Tonight the whole thing got built, but **none of it is switched on** — every new piece is behind an off switch, and Stripe/Apple/Google are still fully in charge of billing exactly as before. Nobody's subscription changed and no prices changed.
+
+The approach is "watch first, then trust." RevenueCat will sit alongside our current system and just observe, and we compare its answers to ours. Only once it agrees with us on all 26 accounts (17 paying, 2 comped, 7 on trial) do we let it take over. If it ever misbehaves after that, flipping one switch puts us straight back to today's setup with no data cleanup.
+
+Two real problems got caught while building. First, the 7 people currently on free trials would have **lost access** the moment we switched over — RevenueCat has no way to know about our trials, because our trial doesn't ask for a card. That's fixed. Second, we found that people who cancel would have lost the rest of the time they'd already paid for; also fixed.
+
+Also groundwork (not switched on) for the planned $8.99/$79.99 pricing, including the rule that the 17 current subscribers keep their current price forever. One thing needs your call: our drip emails currently promise "$4.99 — the lowest price Ripple will ever be," which new pricing would break.
+
+### Technical changes (for Jimmy)
+- **Audit:** `docs/REVENUECAT_ENTITLEMENT_AUDIT.md` — every entitlement decision + write site with file/line refs, plus the 8 invariants each tied to its originating incident.
+- **Resolver:** new `apps/web/src/lib/entitlements/resolve.ts` — single source-selection point; `activeSourceName()` is the one-line cutover swap. `entitlements-fetch.ts` + `paywall.ts` now read through it (signatures unchanged). `entitlementsFor` untouched. Dual-read fallback: RC null/throw → DB, `fellBack: true`.
+- **Trial overlay (bug fix):** RC reports trialing users FREE (no transaction to observe, since our trial is card-free). Resolver now unions RC-paid with app-managed trial; only queries DB on the not-entitled path. Would have revoked all 7 trials at cutover.
+- **Webhook:** `apps/web/src/app/api/revenuecat/webhook/route.ts` behind `RC_SOURCE_OF_TRUTH`. Timing-safe auth compare (RC gives a raw shared secret, no SDK does this for us), event-id idempotency via new `RevenueCatEvent` model, SQL-layer comp guard. Mapping extracted to pure `lib/revenuecat/webhook-events.ts` (13 event types). CANCELLATION does NOT revoke while the paid period runs. BILLING_ISSUE → FREE + anchor, preserving our no-grace spec rather than RC's keep-through-grace model.
+- **Mobile:** `react-native-purchases` + `-ui` @10.7.1, `expo-dev-client` pinned ~6.0.21 (dev profile set `developmentClient: true` with the package absent). `apps/mobile/lib/revenuecat/` — lazy native import so flags-off means the module never loads. `auth-context.tsx` aliases RC identity to `User.id` on sign-in, resets on sign-out (the logIn alias is what fixes the Tessa-class cross-provider login bug).
+- **Import script:** `apps/web/scripts/rc-import-receipts.ts` — dry-run default, `RC_SECRET_KEY` from env only (never argv), local ledger written after every success so reruns resume, `--only/--limit/--concurrency`. Exercised against synthetic fixtures.
+- **Drift monitor:** `scanRcParity()` + pure `rcParityReadyForCutover()` in `entitlement-drift.ts`; exposed as `?mode=rc-parity`. SEV1 (DB entitled, RC not) blocks cutover; SEV2 (RC entitled, DB not) does not. No RC reconciler by design.
+- **Pricing:** `packages/shared/src/pricing-plans.ts` is now the single catalog; web + mobile derive from it (kills the documented mirror-by-comment drift risk). `planValueDollars()` replaces `interval === "yearly" ? 39.99 : 4.99` in 7 analytics call sites. Verified at runtime: still $4.99/$39.99, badge still 33%, Stripe Price ID unchanged.
+- **Flags:** `packages/shared/src/revenuecat.ts` — `RC_OBSERVER` / `RC_SOURCE_OF_TRUTH` / `RC_SDK_PURCHASES`, strict fail-closed parsing (only 1/true/on/yes). Verified all three resolve false and no RC var is set in any env file or eas.json.
+- **Tests:** +150 new, all passing. Suite 568/574; the 6 failures are pre-existing stale tests on `main` (paywall PAST_DUE-grace vs the 2026-06-12 no-grace change; auth-flows asserting 14-day trials vs the current 7). `next build` compiles successfully.
+
+### Manual steps needed
+- [ ] Apply `prisma/manual/2026-08-16-revenuecat-event.sql` to create `RevenueCatEvent` — **do NOT use `prisma db push`**, it would drop 13 live `CarouselPost` columns incl. 5 real `storyVideoUrl` values (verified 2026-08-16). Required before `RC_SOURCE_OF_TRUTH` (Jimmy)
+- [ ] Reconcile `schema.prisma` with prod (prod is ahead on `CarouselPost`) so `db push` is safe again repo-wide (Jimmy)
+- [ ] RC dashboard: create project, entitlement id exactly `pro`, offerings `default` + `grandfathered`, connect App Store / Play / Stripe (Jimmy)
+- [ ] Vercel env: `RC_SECRET_KEY`, `RC_WEBHOOK_AUTH` (we choose), `RC_PROJECT_ID` (Jimmy)
+- [ ] EAS secrets: `EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY` (Jimmy)
+- [ ] Cowork: id→receipt mapping keyed on our `User.id`, kept outside the repo (Cowork)
+- [ ] Verify `react-native-iap@15`'s StoreKit version matches the RC observer-mode `storeKitVersion` before enabling observer in prod (Jimmy)
+- [ ] Decide: route `feature-flags.ts:tierMatches` through the resolver? It gates PRO flags on `status === "PRO"`, so TRIAL users fail PRO flags today (Jimmy)
+- [ ] Decide: drip-email "lowest price Ripple will ever be" promise vs new pricing (Keenan)
+- [ ] NOT PUSHED — branch `feat/revenuecat-migration` is local only, per instruction (Jimmy)
+
+### Notes
+- Nothing was pushed and no flag was flipped, per the run's hard rules. Old billing handlers are marked, not removed, and stay authoritative until cutover.
+- `sharp` was declared in `apps/web/package.json` but missing from `node_modules`, so `next build` was already broken before this work. `npm install` repaired it. Worth knowing if a Vercel build ever fails on it.
+- Adding `RevenueCatEvent` as a new MODEL is safe pre-`db push` — unlike a new User column it can't widen an existing projection into a P2022 (the trap documented in `feature-flags.ts`).
+- Trials must stay app-managed: store-managed intro offers require a card, and "No card required" appears in landing copy, the FAQ, and every `/for/*` lander. Consequence: the trial-expiration cron stays live after cutover and is NOT retired in phase 4.
+- Mobile flags must use static `process.env.EXPO_PUBLIC_*` reads — Metro only inlines those for static member access, so a dynamic lookup would silently pin every flag off in a release bundle.
+- Cutover order is load-bearing: `RC_SDK_PURCHASES` before `RC_SOURCE_OF_TRUTH` would charge users and grant nothing. `configureRevenueCat` warns, but the ordering is on us.
+- Full runbook + the 5 open decisions: `docs/REVENUECAT_MIGRATION.md`.
 
 ## [2026-08-07] — Durable comp marker (subscriptionSource="comp") + one-line comp action
 
@@ -2350,6 +2487,70 @@ None
 - App Store listing URLs still reference "acuity-daily" — Apple/Google control those slugs.
 
 ---
+## [2026-07-26] — Mobile app renamed to Ripple so notifications stop saying "Acuity"
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** d2783585
+
+### In plain English (for Keenan)
+A PRO user (Vince) reported that the old "Acuity" name and purple diamond icon still show up on his phone's notifications. That happens because a phone always puts the app's own name and icon on every notification — and while the website already became Ripple, the phone app was still 100% "Acuity" under the hood. This change renames the phone app to Ripple, gives it the new coral raindrop icon, and switches every place the old name appeared on notifications, the Face ID unlock screen, and the microphone/tracking permission pop-ups. **Important:** this only fixes it once we ship a brand-new version to the App Store — it can't be pushed silently to phones already installed. It's ready to build on this branch; nothing is live yet, and nothing goes out until Jimmy gives the go.
+
+### Technical changes (for Jimmy)
+On branch `fix/mobile-ripple-rebrand` (PR open, **not merged, no EAS build triggered**):
+- `apps/mobile/app.json`: `expo.name` Acuity→Ripple (this is `CFBundleDisplayName` = the name iOS shows on notifications + home screen); `version` 1.3.4→**1.4.0**; iOS `buildNumber` 45→**46**; `expo-notifications` tint `#7C3AED`→`#ED9672` (coral, sampled from the Ripple icon); mic + Face ID + tracking permission strings Acuity→Ripple. Left `slug`, `bundleIdentifier` (`com.heelerdigital.acuity`), `scheme` (`acuity`), and `associatedDomains`/`apiUrl` (getacuity.io) UNCHANGED on purpose — changing bundle id/slug creates a new app and orphans installs.
+- `apps/mobile/app.config.ts`: Facebook SDK `displayName` + tracking-permission string Acuity→Ripple.
+- `apps/mobile/lib/notifications.ts`: the local-notification `title` (3 sites) and Android channel `name` were hardcoded `"Acuity"` — this is the bold line *inside* the notification, i.e. the second place Vince's "Acuity" appears. Now read `APP_NAME` from `@acuity/shared` (already = "Ripple"). Channel `lightColor`→coral.
+- `apps/mobile/lib/app-lock.ts`: Face ID unlock `promptMessage` default now reads `APP_NAME`.
+- `apps/mobile/assets/{icon,adaptive-icon}.png`: replaced old purple-diamond with the coral raindrop, upscaled 512→1024 from `docs/play-store-listing/ripple/ripple-app-icon-512.png`. `splash.png`: white Ripple mark centered on the existing dark `#15131D` (provisional — see Notes).
+- `apps/mobile/lib/notifications.ts` + `app-lock.ts` typecheck clean; the pre-existing tsc baseline errors (RN style overloads, `app.config.ts entryPoint`) are unchanged by this branch.
+
+### Manual steps needed
+- [ ] Jimmy: review + merge PR `fix/mobile-ripple-rebrand`, then trigger an EAS build (build 46) and submit to App Store — this is the ONLY thing that makes Vince's fix real; OTA can't change the app name/icon.
+- [ ] Jimmy: device-test on a real phone — notification header + title both read "Ripple", new coral icon renders, Face ID prompt says "Unlock Ripple". (Mobile-only visual change — I can't demo it.)
+- [ ] Both: rename the **App Store Connect listing** (app name + subtitle) to Ripple to match, and coordinate with the web rebrand flip so store, web, and app all say Ripple together.
+- [ ] Jimmy/design: confirm/replace the two provisional assets before the real build — the 1024 icon is upscaled from 512 (slightly soft) and the splash is built from a low-res (206px) white mark. A crisp 1024 icon + a design-final splash are ideal.
+- [ ] Jimmy: decide on the ~20 remaining in-app "Acuity" copy strings NOT touched here (milestone cards, tour, onboarding, subscribe "Acuity Pro", legal consent.ts) — deliberately left out; see Notes.
+
+### Notes
+- **Why this can't be OTA-pushed:** `CFBundleDisplayName` and the app icon are baked into the native binary. Only a new App Store build fixes what users see on notifications. Everyone stays on "Acuity" until they install build 46+.
+- **Two "Acuity"s on a notification:** the app name (top, from `expo.name`) AND the notification `title` (bold first line, from `notifications.ts`). Both are now Ripple. Note the title being the literal app name is redundant with the header — a future copy pass may want to drop the title or make it warmer; left as-is to avoid changing behavior.
+- **Version bump quirk:** app.json said `1.3.4` but the store shipped `1.3.5 (45)` (Vince's build). Set to `1.4.0` (rebrand milestone) and bumped buildNumber to 46 so App Store Connect won't reject a duplicate. Confirm these are the numbers you want before building. `runtimeVersion.policy` is `appVersion`, so 1.4.0 also becomes the new OTA runtime line.
+- **Scope was intentionally held to notification/system-name surfaces + core config.** The broader in-app copy sweep was left out because it carries real decisions: "Acuity Pro" (iap.ts, subscribe.tsx) is tied to the actual StoreKit product display name — changing the copy without the store product name creates a mismatch; and `consent.ts` is legal wording that shouldn't be edited casually. Flagged above as a separate pass.
+- Android `versionCode` left at 1 (Play Store not shipped yet); adaptive icon uses the full-bleed coral raindrop as an opaque foreground — fine for a masked launcher icon, but a proper transparent-foreground/coral-background split is the correct long-term asset.
+
+## [2026-07-17] — Billing sync incident: locked-out payer, dunning-recovery bug, and orphaned-subscription-after-deletion
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** aa6a8a7b
+
+### In plain English (for Keenan)
+A paying customer (Kai) was locked out of most of the app — shown "read only" and a subscription page — even though her payment had gone through. We found the cause: when a card payment fails and then succeeds a day later, our system was failing to switch the person back to paid, so they stayed stuck on the free tier forever. Kai was fixed by hand. We then found six more customers one card-fix away from the same trap and quietly repaired their records so they'll unlock automatically the moment their next payment clears. Separately, we discovered that when a customer with a failing payment deletes their account, we were NOT cancelling their subscription — so a deleted person could keep getting charged with nothing to show for it (one real case, carmenaroberts; her subscription has been cancelled and the pending charge voided). Fixes for all of this are written and in review, not yet live.
+
+### Technical changes (for Jimmy)
+Three PRs opened, all **pending review, not merged, not deployed**:
+- **PR #35** (`fix/stripe-dunning-anchor-recovery`) — Stripe webhook `applySubscriptionState`: a `customer.subscription.updated(past_due)` downgrade wrote `FREE` without stamping `stripeFirstFailureAt`, leaving the row indistinguishable from a clean cancel, so `proRecoveryWhere` refused to restore PRO on the later paid event. Fix stamps the dunning anchor on that path (anchor-before-FREE order), mirroring `invoice.payment_failed`. 22/22 webhook tests pass.
+- **PR #36** (`feat/stripe-nightly-reconciliation`, stacked on #35) — new Inngest nightly `stripe-reconcile-nightly` + `lib/stripe-reconcile.ts` + shared `lib/stripe-subscription-status.ts` (extracted the webhook status mapping so both import one copy). Pages all Stripe subs, classifies drift (SEV1 access-denied-but-paid, revenue-leak, period drift, orphans), dry-run by default, observe-only until `STRIPE_RECON_APPLY=true`, hard-fails on excess SEV1/revenue-leak drift, alerts founders. Prod dry-run: 0 SEV1, 3 period drifts, 8 orphans.
+- **PR #37** (`fix/cancel-subscription-on-delete`) — rewrote `lib/cancel-subscription-on-delete.ts`: removed the `BILLABLE_STATUS.has(subscriptionStatus)` gate that returned `not_applicable` (and never queried Stripe) for a FREE-in-DB user with a live sub. Now always resolves the customer in Stripe (sub→customer→email), cancels every live sub AND voids open invoices, and returns real outcomes (`cancelled`/`already_cancelled`/`none_found`/`iap_user_warned`/`failed`). Both delete routes alert founders on `failed`; delete-account warning ungated from PRO on web + mobile with store-settings links; PRO modal block gated to Stripe subs to avoid a self-contradiction; strings routed through `@acuity/shared` `APP_NAME`. 8/8 helper tests incl. the incident case.
+
+**Live production data changes made this session (outside the PRs, so recorded here — AdminAuditLog has NO rows for these):**
+1. **kaiberworks@gmail.com** — `subscriptionStatus` FREE→PRO, `stripeCurrentPeriodEnd`→2026-08-15, to match Stripe (active, paid). **Mechanism: manual SQL by Jimmy** (bypassed Prisma + audit log). Reason: unblock a paying customer who was stranded by the dunning bug.
+2. **Six users** (b.montoya48@icloud.com, bselesnew@gmail.com, queenie6910@gmail.com, susiewilliams531@gmail.com, alluraora@gmail.com, raelynnlipovsik@gmail.com) — `stripeFirstFailureAt` backfilled to each user's real first-failed-charge time from Stripe. **Mechanism: `scripts/backfill-dunning-anchor.ts --apply`** (Prisma `user.update`, NO AdminAuditLog write). Reason: they sat FREE+null-anchor and no webhook event can ever stamp them (all stamp paths are guarded `subscriptionStatus != "FREE"`); backfill makes them recoverable so they unlock on next successful charge. Status left FREE (unchanged); they are genuinely past_due in Stripe.
+3. **carmenaroberts1207@gmail.com** — `sub_1Tp5SZD9XJakJqj5miwVpbDD` cancelled and invoice `in_1TrcncD9XJakJqj5EBQGWBWu` voided at **2026-07-17 13:01:32 UTC**. **Mechanism: manual by Jimmy** (Stripe dashboard/API). Reason: she deleted her account 2026-07-15 while her Stripe sub was live+past_due; deletion never cancelled it, so Stripe was about to bill a deleted account.
+
+### Manual steps needed
+- [ ] Jimmy: review + merge PR #35, then #36 (stacked), then #37, in that order.
+- [ ] Jimmy: run PR #35 through a Stripe test-clock (past_due → active recovery) before shipping the billing path.
+- [ ] Jimmy: after #36 deploys, decide whether to flip `STRIPE_RECON_APPLY=true` (starts observe-only).
+- [ ] Jimmy: device/TestFlight test of PR #37's mobile delete-modal (always-on warning renders for a non-PRO account; "Manage subscriptions in Settings" deep link opens the store).
+- [ ] Both: `APP_NAME` in `@acuity/shared` is hardcoded "Ripple" and ~79 web files render it; the live app/store is still Acuity. The whole web app already reads "Ripple," so the rebrand flip is a global gate, not specific to #37.
+- [ ] Follow-up (not in these PRs): decide whether `scripts/backfill-dunning-anchor.ts` and future manual remediation should write AdminAuditLog rows (today's prod writes are invisible to it).
+
+### Notes
+- The three live data changes above are currently recorded ONLY here — no AdminAuditLog rows exist for 2026-07-17. That gap is the reason this entry lists exact IDs, timestamps, and mechanisms.
+- PR #35 fixes NEW dunning-strandings; it cannot rescue already-stuck rows (the stamp is guarded on `!= FREE`), which is why the six needed a separate backfill.
+- Reconciler treats PAST_DUE and FREE as access-equivalent (entitlements.ts:171-173) and does not flag the label; a TODO notes the webhook (`unpaid`→FREE) and admin stripe-sync route (`unpaid`→PAST_DUE) disagree, to unify later.
 
 ## [2026-07-16] — Fix: Ripple logo now actually shows on the live homepage nav + footer
 

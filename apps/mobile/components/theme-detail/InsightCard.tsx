@@ -2,7 +2,7 @@ import { Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 /**
- * "What Acuity notices" card — soft purple gradient background,
+ * "What Ripple notices" card — soft purple gradient background,
  * uppercase accent label, readable body copy. Mirrors the web
  * violet-50/violet-950 treatment but tuned for dark mode only on
  * mobile.
@@ -42,7 +42,7 @@ export function InsightCard({ text }: { text: string }) {
             marginBottom: 10,
           }}
         >
-          What Acuity notices
+          What Ripple notices
         </Text>
         <Text
           style={{

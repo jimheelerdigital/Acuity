@@ -140,12 +140,14 @@ describe("requireEntitlement — canExtractEntries (PRO + TRIAL allow)", () => {
     expect(gate.ok).toBe(true);
   });
 
-  // 2026-06-12 no-grace spec: a failed payment drops to FREE-tier access
-  // IMMEDIATELY. There is no PAST_DUE grace window any more — the
-  // *FirstFailureAt timestamps are audit-only and drive the recovery
-  // banner's 30-day window, they no longer gate access.
-  // (This test previously asserted the opposite, under the old
-  // "Stripe grace" behavior, and had been failing since that change.)
+  // 2026-06-13 (eb97f33f) reversed the 21-day PAST_DUE grace: a failed
+  // payment drops to FREE-tier access IMMEDIATELY, across Stripe, Apple and
+  // Google. The *FirstFailureAt timestamps became audit-only — they drive
+  // the recovery banner's 30-day window and no longer gate access.
+  //
+  // That commit updated entitlements.test.ts but not this file, so these two
+  // cases asserted the superseded policy and had been failing ever since.
+  // The code was right the whole time.
   it("PAST_DUE denies canExtractEntries (no grace)", async () => {
     findUniqueMock.mockResolvedValue({
       subscriptionStatus: "PAST_DUE",
@@ -156,6 +158,9 @@ describe("requireEntitlement — canExtractEntries (PRO + TRIAL allow)", () => {
   });
 
   it("PAST_DUE still allows canRecord — recording is the FREE loop", async () => {
+    // The half of the rule worth pinning: losing extraction is not losing
+    // the app. Someone whose card failed keeps recording and keeps their
+    // history; a regression that took THAT away would be the serious one.
     findUniqueMock.mockResolvedValue({
       subscriptionStatus: "PAST_DUE",
       trialEndsAt: null,
@@ -184,7 +189,7 @@ describe("requireEntitlement — canSyncCalendar (PRO + TRIAL allow, v1.1 slice 
     expect(gate.ok).toBe(true);
   });
 
-  // See the no-grace note above — same change, same reason.
+  // Same no-grace rule as canExtractEntries above.
   it("PAST_DUE denies canSyncCalendar (no grace)", async () => {
     findUniqueMock.mockResolvedValue({
       subscriptionStatus: "PAST_DUE",

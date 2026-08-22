@@ -14,7 +14,7 @@ import { type TourStepContent } from "./steps";
 let tooltipRenderLogged = false;
 
 /**
- * Tooltip card rendered above the spotlight cutout. Matches Acuity's
+ * Tooltip card rendered above the spotlight cutout. Matches Ripple's
  * design language (tokens.cardBg, 14pt radius, GeistMono counter,
  * Manrope title/body, coral primary CTA, ghost Skip/Back).
  *

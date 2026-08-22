@@ -12,7 +12,7 @@ import { useOnboarding } from "./context";
  * expectations on the trial (7 days, Day 7 audit, post-trial free
  * tier) and captures a target cadence on the User row.
  *
- * The target cadence is goal-setting only — Acuity doesn't gate any
+ * The target cadence is goal-setting only — Ripple doesn't gate any
  * feature on it. Default selection is "daily" because more entries
  * = better extraction; the lower options are still respectful of
  * user autonomy without offering opt-outs ("Not sure" / "Weekly"
@@ -101,7 +101,7 @@ export function Step8Trial() {
         className="mt-1 text-sm leading-relaxed"
         style={{ color: tokens.textTer }}
       >
-        Acuity gets better with daily reflection. Pick a starting
+        Ripple gets better with daily reflection. Pick a starting
         cadence — you can change it anytime.
       </Text>
       <View className="mt-3 gap-2">

@@ -109,14 +109,6 @@ export function coverEngagementLine(headline: string, slug: string): string {
   return pickBySlug(slug, family ? family.lines : ENGAGEMENT_LINES_DEFAULT, 3);
 }
 
-// FALLBACK share/save ask, in her voice.
-const SAVE_SHARE_CTAS = [
-  "save this for the week you need it. and send it to her — you know who",
-  "sending this to the friend who never stops moving",
-  "save it. you'll want it on a hard day",
-  "if this found you at the right time, pass it on",
-];
-
 function pickBySlug(slug: string, pool: string[], offset = 0): string {
   let hash = 0;
   for (const c of slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
@@ -176,6 +168,9 @@ export function pickHashtags(slug: string): string[] {
   return [...mega, ...niche];
 }
 
+// SHORT captions (2026-08-21, per Keenan): the numbered list is GONE
+// from the caption — it just reiterated the slides. A caption is now
+// hook + one ask + plug + hashtags, nothing else.
 export function buildCaption(topic: CarouselTopic): string {
   const lines: string[] = [];
 
@@ -192,26 +187,11 @@ export function buildCaption(topic: CarouselTopic): string {
     lines.push(
       pickBySlug(topic.slug, FIRST_LINE_HOOKS, 2).replace("{n}", String(teaseN))
     );
-    lines.push("");
-    lines.push(topic.headline);
   }
-  lines.push("");
-
-  // Numbered reasons — the list stays: it's what gets saved and it's
-  // what Instagram caption search indexes.
-  topic.reasons.forEach((reason, i) => {
-    lines.push(`${i + 1}. ${reason}`);
-  });
 
   lines.push("");
   const close = topic.captionClose?.trim();
-  if (close) {
-    lines.push(close);
-  } else {
-    lines.push(pickBySlug(topic.slug, COMMENT_CTAS));
-    lines.push("");
-    lines.push(pickBySlug(topic.slug, SAVE_SHARE_CTAS, 1));
-  }
+  lines.push(close || pickBySlug(topic.slug, COMMENT_CTAS));
   lines.push("");
   lines.push(CLOSING_LINE);
   lines.push("");
@@ -248,23 +228,15 @@ export function buildAmbientCaption(opts: {
     return `${body}\n\n${pickHashtags(opts.slug).join(" ")}`;
   }
 
-  const lines: string[] = [];
-  // Lead with the question — it invites a comment without asking for one.
+  // SHORT fallback (2026-08-21, per Keenan): one lead line + one share
+  // ask + hashtags. Never both the question and the hook.
   const question = opts.commentPrompt?.trim().replace(/\s*👇\s*$/, "");
-  const hook = opts.captionHook?.trim();
-  if (question) {
-    lines.push(question);
-    lines.push("");
-    if (hook && hook !== question) {
-      lines.push(hook);
-      lines.push("");
-    }
-  } else {
-    lines.push(hook || opts.title);
-    lines.push("");
-  }
-  lines.push(pickBySlug(opts.slug, AMBIENT_SHARE_LINES));
-  lines.push("");
-  lines.push(pickHashtags(opts.slug).join(" "));
-  return lines.join("\n");
+  const lead = question || opts.captionHook?.trim() || opts.title;
+  return [
+    lead,
+    "",
+    pickBySlug(opts.slug, AMBIENT_SHARE_LINES),
+    "",
+    pickHashtags(opts.slug).join(" "),
+  ].join("\n");
 }

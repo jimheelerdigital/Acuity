@@ -13,7 +13,7 @@ import type { ConfigContext, ExpoConfig } from "@expo/config";
  * and fill in the values. Expo / Metro reads .env automatically.
  *
  * For EAS Build: set both as EAS Secrets via the Expo dashboard
- * (https://expo.dev → Acuity project → Configuration → Secrets) so
+ * (https://expo.dev → Ripple project → Configuration → Secrets) so
  * EAS interpolates them into the cloud build environment. Without
  * them set, the Meta SDK plugin block is omitted from the resolved
  * config and the runtime SDK init no-ops (lib/meta-sdk.ts swallows
@@ -28,7 +28,7 @@ const FB_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
 const FB_CLIENT_TOKEN = process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN;
 
 const FB_TRACKING_PERMISSION =
-  "Acuity uses this only to help us see which Facebook or Instagram " +
+  "Ripple uses this only to help us see which Facebook or Instagram " +
   "ads led you here, so we can keep showing the ones that actually " +
   "helped. You can decline — nothing in the app changes.";
 
@@ -54,7 +54,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       {
         appID: FB_APP_ID,
         clientToken: FB_CLIENT_TOKEN,
-        displayName: "Acuity",
+        displayName: "Ripple",
         scheme: `fb${FB_APP_ID}`,
         advertiserIDCollectionEnabled: false,
         autoLogAppEventsEnabled: true,

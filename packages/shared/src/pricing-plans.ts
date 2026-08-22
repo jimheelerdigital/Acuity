@@ -4,8 +4,8 @@
  * ⚠️ THIS FILE DOES NOT CHANGE ANY LIVE PRICE.
  *
  * `LEGACY` is what every user is charged today ($4.99 / $39.99) and is the
- * ACTIVE tier until `NEW_PRICING_ENABLED` is turned on. `V2` ($8.99 /
- * $79.99) is defined here so the RevenueCat offerings, the paywall copy,
+ * ACTIVE tier until `NEW_PRICING_ENABLED` is turned on. `V2` ($9.99 /
+ * $89.99) is defined here so the RevenueCat offerings, the paywall copy,
  * and the import script can all be built and typechecked before the
  * products exist in App Store Connect / Play Console / Stripe.
  *
@@ -81,19 +81,19 @@ export const PLACEHOLDER_V2_PRODUCT_IDS = true as const;
 
 export const V2_TIER: PricingTier = {
   id: "v2",
-  label: "V2 ($8.99 / $79.99)",
-  monthlyCents: 899,
-  annualCents: 7999,
+  label: "V2 ($9.99 / $89.99)",
+  monthlyCents: 999,
+  annualCents: 8999,
   products: {
     monthly: {
       apple: "com.heelerdigital.acuity.pro.monthly.v2",
       google: "acuity_pro_monthly_v2",
-      stripe: null, // TODO(jim): create the $8.99 Stripe Price, set STRIPE_PRICE_MONTHLY_V2
+      stripe: null, // TODO(jim): create the $9.99 Stripe Price, set STRIPE_PRICE_MONTHLY_V2
     },
     annual: {
       apple: "com.heelerdigital.acuity.pro.annual.v2",
       google: "acuity_pro_annual_v2",
-      stripe: null, // TODO(jim): create the $79.99 Stripe Price, set STRIPE_PRICE_YEARLY_V2
+      stripe: null, // TODO(jim): create the $89.99 Stripe Price, set STRIPE_PRICE_YEARLY_V2
     },
   },
 };

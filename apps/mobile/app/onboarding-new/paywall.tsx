@@ -378,9 +378,10 @@ function PaywallScreen() {
           >
             {/* Omitted on the v10 path: the duration is invented (see above),
                 and "the pattern in 7 days" is a time-based threshold the
-                product does not actually gate on. Legacy copy unchanged. */}
+                product does not actually gate on. Legacy copy unchanged
+                except for the Ripple rename, which main applied. */}
             {duration
-              ? `You\u2019ve been carrying this for ${duration}. Acuity shows you the pattern in 7 days.`
+              ? `You\u2019ve been carrying this for ${duration}. Ripple shows you the pattern in 7 days.`
               : COST_SUBLINE_V10}
           </Text>
 

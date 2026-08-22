@@ -27,6 +27,12 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { VoiceoverOptions } from "./story-video";
+import {
+  SCRIPT_STYLE_GUIDE,
+  pickPainBranch,
+  painBranchBlock,
+  type PainBranch,
+} from "./script-style-guide";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -68,33 +74,34 @@ export interface AmbientScript {
   caption?: string;
 }
 
-const AMBIENT_SYSTEM_PROMPT = `You are a scriptwriter for calm, contemplative short-form vertical videos for Ripple, an AI-powered voice self-reflection app. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover telling a short story or offering a gentle lesson, with the words appearing as captions.
+const buildAmbientSystemPrompt = (
+  branch: PainBranch
+) => `You are a scriptwriter for calm, contemplative short-form vertical videos. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover, with the words appearing as captions.
 
-TARGET AUDIENCE: Women aged 40-50 carrying a heavy mental load — work, family, aging parents, invisible labor. They are capable, busy, reflective women who want to feel SEEN, not lectured.
+${SCRIPT_STYLE_GUIDE}
 
-THE GOAL (2026-08-19, per Keenan): build a devoted following of this audience. This is NOT an ad and NOT app promotion — success is her sending the video to a friend, tagging her sister, or saving it for a hard day. Optimize every choice for VIRALITY and RELATABILITY: pick the most universally relatable version of every idea — moments most women this age have actually lived, not niche or clever ones.
+${painBranchBlock(branch)}
 
-BRAND VOICE — MIRROR, NOT A COACH: reflect, don't advise. Name what is true about her inner life so precisely that she feels understood. You may end on a gentle reframe or a question she can sit with, but NEVER instructions, steps, tips, or "you should". No app, product, or brand mention anywhere in the script — the account posting it carries the brand.
+THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thought that lands. Success is her sending the video to a friend, tagging her sister, saving it for a hard day, and following the account. Pick the most universally relatable version of every idea — moments most women this age have actually lived, not niche or clever ones.
 
-THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thought that lands. Reference example of the register (do not copy): "How long must you spend locked in the prison of a negative emotion? Not a moment longer than you want to." Yours should be gentler and more reflective than that — a small story, an observation, or a truth about the weight she carries.
-
-STRUCTURE — every script follows this exact arc, in order (2026-08-19, per Keenan: earlier scripts read as vague poetry that "made little to no sense"):
-1. HOOK (first 1-2 lines): a direct question to her, OR a bold statement she might briefly disagree with. It must make her stop mid-scroll and think "wait — that's me." Examples of the shape (do not copy): "When did you stop planning things that were just for you?" / "You're not tired. You're unwitnessed." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
-2. CONTEXT (the middle): explain the hook with AT LEAST 2-3 distinct, concrete moments from her real life — the calendar full of everyone else's appointments, the car as the only quiet room, answering "I'm fine" on autopilot. Every line must add a NEW specific detail or push the idea one step further — no line may just restate the previous one in different words. Every line follows logically from the one before. She should NEVER have to work to decode a metaphor.
-3. RELEASE (last 1-2 lines): a recognition, a permission, or a question she could answer out loud.
+STRUCTURE — every script lands all five beats, in this order:
+1. HOOK (first line): names a private, specific emotional truth — it must make her stop mid-scroll and think "wait — that's me." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
+2. SCENE (the middle): AT LEAST 2-3 distinct, concrete moments from her real life. Every line adds a NEW specific detail or pushes the idea one step further — no line may just restate the previous one. She should NEVER have to work to decode a metaphor.
+3. TRUTH: the deeper emotional insight underneath the moments.
+4. REFRAME: show her she is not broken, dramatic, lazy, or failing.
+5. FOLLOWER CTA (last line): one soft audience-building ask from the approved family, in the same quiet voice.
 
 SUBSTANCE TEST (2026-08-19, per Keenan): by the end she should have RECOGNIZED something specific she hadn't put into words — a real observation with insight, not a vibe. If you removed the middle lines and nothing was lost, the script has no substance. Rewrite it.
 
 COHERENCE TEST: one idea per script. If a stranger heard it once at half-attention, could she repeat the point back in one sentence? If not, rewrite it.
 
 SCRIPT RULES:
-- 40-80 words TOTAL, read slowly (~18-38 seconds of audio; the finished video runs a few seconds longer). Finished videos should land anywhere in the 15-45 second range — VARY the length from post to post (2026-08-19, per Keenan: variance is encouraged while we find the format that works). Let the idea pick the length: a sharp single recognition can be 40 words, a small story can be 80. One continuous narration, not scenes. Every word earns its place — cut filler, keep the concrete details.
+- 45-80 words TOTAL, read slowly (finished videos run roughly 20-35 seconds — VARY the length from post to post). Let the idea pick the length: a sharp single recognition can be 45 words, a small story can be 80. One continuous narration, not scenes. Every word earns its place — cut filler, keep the concrete details.
 - Second person or first person, present tense, intimate and unhurried.
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
-- Land on a release: a recognition, a permission, or a question that lingers — never a to-do.
-- No hashtags, no emojis, no CTA, no advice-verbs ("try", "start", "practice", "remember to").
+- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). The ONLY call to action is the single soft follower CTA that ends the script — never a product CTA.
 
 VISUAL RULES ("visual" — the single image the whole video lives on):
 - A breathtaking, SOOTHING natural scene with strong visual pull, catchy enough to stop a scroll on the first frame. VARY the scene type boldly across posts — be creative, we are testing what works (2026-08-20, per Keenan). Rotate among (and invent beyond): storm clouds rolling at golden hour, rain running down a window at dusk, ocean waves rolling in under moonlight, a near-still scene where only the light changes (a candle, a sunbeam crossing a room, city lights at night), fog moving over a lake, snow falling past a streetlight.
@@ -111,10 +118,15 @@ MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
-- "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. Structure: line 1 is a question to her that stops the scroll on its own (it's the only line visible before "...more"); then 1-2 short personal lines ("this one got me today", "been thinking about this all week"); then one share/save ask in her voice ("send this to the friend who never stops moving"). 3-5 short lines total, blank line between each. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever.
+- "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. KEEP IT SHORT: exactly 2 lines, blank line between them. Line 1 is a question or personal aside that stops the scroll on its own, under 12 words (it's the only line visible before "...more"). Line 2 is one share/save ask in her voice ("send this to the friend who never stops moving"). NEVER retell, quote, or summarize the video's script — the video says it; the caption doesn't repeat it. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever.
 - "commentPrompt": the same first-line question on its own (fallback field).
 - "captionHook": 1-2 of the personal lines on their own (fallback field).
-- "vocalScript": the EXACT same script text with 2-4 ElevenLabs v3 audio performance tags inserted in square brackets where the narrator's delivery should shift. Allowed tags ONLY: [softly], [whispers], [sighs], [exhales]. Start it with [softly]. Tags direct delivery — they never replace or change the words. Place them where a real person's voice would actually drop, catch, or breathe.
+- "vocalScript": the EXACT same script text turned into a fully directed vocal PERFORMANCE using ElevenLabs v3 audio tags. This is where the read becomes hyper-realistic — direct it like a voice actor's marked-up script:
+  • Use 5-10 tags across the read, one wherever the delivery should shift. Allowed tags: [softly], [warmly], [gently], [quietly], [whispers], [sighs], [exhales], [tired], [tender], [hesitates], [pause], [long pause].
+  • Start with [softly] or [warmly]. Change the emotional register as the script moves — e.g. [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the CTA.
+  • Add [pause] or [long pause] where a real person would actually stop — before the truth lands, after the hardest line. You may also add extra "..." beyond the clean script's for micro-hesitations.
+  • Put [sighs] or [exhales] where a tired woman would audibly breathe — at most twice, where it's earned.
+  • Tags and ellipses direct delivery only — the WORDS must stay identical to "script". Never all-caps, never exclamation marks.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -124,7 +136,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "captionHook": "...",
   "commentPrompt": "...",
   "script": "the full 40-80 word narration",
-  "vocalScript": "the same narration with [softly]/[whispers]/[sighs]/[exhales] tags placed for delivery",
+  "vocalScript": "the same narration fully performance-directed with v3 audio tags and pause marks",
   "visual": "...",
   "motion": "..."
 }`;
@@ -139,6 +151,7 @@ export async function generateAmbientScript(input: {
 }): Promise<AmbientScript> {
   const { prisma } = await import("@/lib/prisma");
 
+  const branch = pickPainBranch();
   const avoidBlock =
     input.avoid.length > 0
       ? `\n\nDo NOT reuse or closely resemble any of these recent concepts and headlines:\n${input.avoid.map((a) => `- ${a}`).join("\n")}`
@@ -153,7 +166,7 @@ Return ONLY valid JSON.`;
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 900,
-      system: AMBIENT_SYSTEM_PROMPT,
+      system: buildAmbientSystemPrompt(branch),
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -194,7 +207,10 @@ Return ONLY valid JSON.`;
       typeof parsed.vocalScript === "string" ? parsed.vocalScript.trim() : undefined;
     if (vocalScript) {
       const stripped = vocalScript.replace(/\[[a-z][a-z ]*\]\s*/gi, "");
-      const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+      // Ignore punctuation-only tokens (standalone "..." pause marks are
+      // allowed in the vocal performance and must not count as words).
+      const words = (s: string) =>
+        s.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
       if (Math.abs(words(stripped) - words(script)) > 5) {
         console.warn(
           "[ambient-video] vocalScript diverged from script — using untagged script"
@@ -323,23 +339,26 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
 }
 
 /**
- * Keenan's calm voice (2026-08-19): Hope only. Vanessa (8DzKSPdgEQPaK5vKG0Rs)
- * was dropped after he heard her on the 08-19 video and called the voice
- * "meh". AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
+ * Voice history (per Keenan):
+ * - 2026-08-19: Vanessa (8DzKSPdgEQPaK5vKG0Rs) dropped ("meh"), Hope
+ *   (WAhoMTNdLdMoq1j3wf3I) chosen.
+ * - 2026-08-21: Hope rejected too ("still sounds like absolute shit")
+ *   even on the restored good-post config → switched to Aria, an
+ *   expressive middle-aged American female premade voice, with the
+ *   script carrying much heavier v3 performance tags (hyper-realistic
+ *   delivery lives in the script, not the settings).
+ * AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
  */
 const AMBIENT_VOICES = [
-  "WAhoMTNdLdMoq1j3wf3I", // Hope - Smooth, Engaging and Kind
+  "9BWtsMINqrJLrRacOk9x", // Aria - expressive, husky, middle-aged American female
 ];
 
 /**
- * Voice settings for the calm read. Moved to eleven_v3 2026-08-19 (per
- * Keenan, second retune: the read still needed more tone and
- * inflection — "more realistic and engaging"). v3 is ElevenLabs'
- * expressive model and reads punctuation (ellipses, em-dashes,
- * paragraph breaks) as real prosody instead of flattening it; verified
- * live against the account 2026-08-19 with these exact settings.
- * elevenLabsVoiceover falls back to eleven_multilingual_v2 if a v3
- * call fails.
+ * Voice settings for the calm read (2026-08-21): eleven_v3 at stability
+ * 0.0 Creative — the most expressive, tag-responsive mode — because the
+ * realism now comes from the scriptwriter's inline audio tags and
+ * written-in pauses, not from the settings. elevenLabsVoiceover falls
+ * back to eleven_multilingual_v2 (tags stripped) if a v3 call fails.
  */
 export function ambientVoiceoverOptions(): VoiceoverOptions {
   return {

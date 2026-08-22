@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Acuity",
+    "name": "Ripple",
     "slug": "acuity",
-    "version": "1.3.9",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0E0C1E"
+      "backgroundColor": "#181722"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -22,8 +22,8 @@
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:getacuity.io"],
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
-        "NSFaceIDUsageDescription": "Acuity uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",
+        "NSMicrophoneUsageDescription": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said.",
+        "NSFaceIDUsageDescription": "Ripple uses Face ID to keep your journal entries private when you've enabled the app lock in Profile.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleURLTypes": [
           {
@@ -159,7 +159,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#15131D"
+        "backgroundColor": "#ED9672"
       },
       "package": "com.heelerdigital.acuity",
       "versionCode": 1,
@@ -196,13 +196,13 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Acuity uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
+          "microphonePermission": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
         }
       ],
       [
         "expo-notifications",
         {
-          "color": "#7C3AED"
+          "color": "#ED9672"
         }
       ],
       [

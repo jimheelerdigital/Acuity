@@ -157,7 +157,7 @@ export default function SubscribeScreen() {
       if (outcome.kind === "restored") {
         await refresh();
         Alert.alert(
-          "Welcome back to Acuity Pro",
+          "Welcome back to Ripple Pro",
           "Your existing subscription was restored. New entries will get the full debrief.",
           [{ text: "OK", onPress: () => router.back() }]
         );
@@ -221,7 +221,7 @@ export default function SubscribeScreen() {
         setErrorMsg(null);
         await refresh();
         Alert.alert(
-          "Welcome to Acuity Pro",
+          "Welcome to Ripple Pro",
           "Your subscription is active. New entries will get the full debrief.",
           [
             {
@@ -256,7 +256,7 @@ export default function SubscribeScreen() {
                 text: "Contact support",
                 onPress: () => {
                   void WebBrowser.openBrowserAsync(
-                    "mailto:jim@heelerdigital.com?subject=Acuity%20IAP%20transfer"
+                    "mailto:jim@heelerdigital.com?subject=Ripple%20IAP%20transfer"
                   );
                 },
               },
@@ -323,7 +323,7 @@ export default function SubscribeScreen() {
           className="text-3xl font-bold leading-tight"
           style={{ color: tokens.text }}
         >
-          Acuity Pro
+          Ripple Pro
         </Text>
 
         <Text
@@ -360,7 +360,7 @@ export default function SubscribeScreen() {
               }}
             >
               <Text className="text-sm" style={{ color: tokens.text }}>
-                Couldn&apos;t load Acuity Pro. The App Store may be
+                Couldn&apos;t load Ripple Pro. The App Store may be
                 temporarily unreachable.
               </Text>
               <Pressable
@@ -463,7 +463,7 @@ export default function SubscribeScreen() {
               className="flex-1 text-xs leading-relaxed"
               style={{ color: tokens.textSec }}
             >
-              I want my paid Acuity features to start now, and I
+              I want my paid Ripple features to start now, and I
               understand that by starting immediately I lose my 14-day
               right to cancel for any content fully delivered, and that
               if I cancel within 14 days I&rsquo;ll be refunded less a
@@ -582,7 +582,7 @@ export default function SubscribeScreen() {
             className="text-[10px] text-center mt-4 leading-snug"
             style={{ color: tokens.textTer }}
           >
-            Your existing entries stay free. Acuity Pro unlocks the
+            Your existing entries stay free. Ripple Pro unlocks the
             AI debrief layer on every new recording. Cross-platform —
             sign in on the web with the same account to use Pro
             there too.
@@ -741,7 +741,7 @@ function UnavailableScreen({
           className="text-2xl font-bold"
           style={{ color: tokens.text }}
         >
-          Acuity Pro
+          Ripple Pro
         </Text>
         <Text
           className="mt-3 text-base leading-relaxed"

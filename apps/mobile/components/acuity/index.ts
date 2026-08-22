@@ -1,5 +1,5 @@
 /**
- * Acuity design-system primitives (Slice Q3, 2026-05-19).
+ * Ripple design-system primitives (Slice Q3, 2026-05-19).
  *
  * Reference: _design/design_handoff_acuity_v2/acuity-chrome.jsx
  * Tokens: lib/theme/tokens.ts → makeAcuityTokens()

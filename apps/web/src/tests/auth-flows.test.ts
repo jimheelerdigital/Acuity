@@ -3,11 +3,15 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { TRIAL_DAYS } from "@acuity/shared";
 
 /**
- * Asserted against the shared TRIAL_DAYS constant rather than a literal.
- * These tests previously hardcoded 14 (and 3 for the reduced case) and had
- * been failing since the trial was shortened to 7 days — a stale literal
- * turns a real product change into a red suite, which trains people to
- * ignore it. Reading the constant means the next change can't re-stale them.
+ * The reduced trial handed to someone who deleted an account recently
+ * (pentest T-07 trial-farming guard). Mirrors REDUCED_TRIAL_DAYS in
+ * lib/bootstrap-user.ts.
+ *
+ * These four cases previously hardcoded 14 and 3. The trial was shortened
+ * to 7 days and the literals were never updated, so they had been red ever
+ * since — a real product change showing up as a permanently broken suite,
+ * which is how people learn to ignore red. Reading TRIAL_DAYS from the
+ * shared constant means the next change cannot re-stale them.
  */
 const REDUCED_TRIAL_DAYS = 2;
 

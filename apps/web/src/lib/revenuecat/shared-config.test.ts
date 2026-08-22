@@ -107,9 +107,9 @@ describe("pricing catalog", () => {
     expect(LEGACY_TIER.annualCents).toBe(3999);
   });
 
-  it("defines V2 at $8.99 / $79.99", () => {
-    expect(V2_TIER.monthlyCents).toBe(899);
-    expect(V2_TIER.annualCents).toBe(7999);
+  it("defines V2 at $9.99 / $89.99", () => {
+    expect(V2_TIER.monthlyCents).toBe(999);
+    expect(V2_TIER.annualCents).toBe(8999);
   });
 
   it("defaults new pricing to OFF and grandfathering to ON", () => {
@@ -131,8 +131,8 @@ describe("pricing catalog", () => {
   it("computes the annual savings badge instead of hardcoding it", () => {
     // $4.99*12 = $59.88 vs $39.99 → 33%
     expect(annualSavingsPct(LEGACY_TIER)).toBe(33);
-    // $8.99*12 = $107.88 vs $79.99 → 26%
-    expect(annualSavingsPct(V2_TIER)).toBe(26);
+    // $9.99*12 = $119.88 vs $89.99 → 25%
+    expect(annualSavingsPct(V2_TIER)).toBe(25);
   });
 
   it("enumerates all product ids across both tiers", () => {

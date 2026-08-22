@@ -143,7 +143,7 @@ export function Step3AboutYou() {
         className="mt-3 text-base leading-relaxed"
         style={{ color: tokens.textSec }}
       >
-        Three quick details so Acuity can tailor insights to people
+        Three quick details so Ripple can tailor insights to people
         like you. Skip anything you&rsquo;d rather not share.
       </Text>
 
@@ -303,11 +303,11 @@ export function Step3Context() {
         className="mt-3 text-base leading-relaxed"
         style={{ color: tokens.textSec }}
       >
-        Two more, just to know what kind of weeks Acuity should help
+        Two more, just to know what kind of weeks Ripple should help
         you make sense of.
       </Text>
 
-      <Section label="Why Acuity?" sub="Pick any that fit.">
+      <Section label="Why Ripple?" sub="Pick any that fit.">
         {REASONS.map((r) => (
           <Chip
             key={r}
@@ -322,7 +322,7 @@ export function Step3Context() {
           value={primaryReasonsCustom}
           onChangeText={setPrimaryReasonsCustom}
           maxLength={200}
-          placeholder="Tell Acuity more — what brings you here?"
+          placeholder="Tell Ripple more — what brings you here?"
           placeholderTextColor={tokens.textTer}
           className="mt-3 w-full rounded-xl border px-4 py-3 text-sm"
           style={{

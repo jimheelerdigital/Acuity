@@ -41,7 +41,7 @@ export function RestorePurchasesButton({
       if (outcome.kind === "none") {
         Alert.alert(
           "No purchases to restore",
-          "We didn't find any Acuity Pro subscriptions on this Apple ID."
+          "We didn't find any Ripple Pro subscriptions on this Apple ID."
         );
         return;
       }
@@ -50,7 +50,7 @@ export function RestorePurchasesButton({
           outcome.count === 1
             ? "Subscription restored"
             : `${outcome.count} subscriptions restored`,
-          "Your Acuity Pro access is active.",
+          "Your Ripple Pro access is active.",
           [
             {
               text: "OK",

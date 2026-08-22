@@ -32,6 +32,7 @@ import {
   uploadAudioDirect,
 } from "@/lib/direct-upload";
 import { useSaveWall } from "@/components/onboarding/v10-save-wall";
+import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import { registerPushTokenAfterRecording } from "@/lib/push-token";
@@ -113,6 +114,17 @@ export default function RecordScreen() {
   const params = useLocalSearchParams<{
     goalId?: string;
     dimensionKey?: string;
+    /**
+     * `acuity://record?autostart=1` — begin recording on open instead of
+     * waiting for a tap. Set by the Shortcuts action (and therefore by the
+     * Action Button, Back Tap, and any automation built on it).
+     *
+     * Deliberately opt-in via a param rather than the default for the
+     * route: /record is also reached by an in-app tap, and auto-arming the
+     * mic for someone who tapped through to look at the screen would be
+     * recording without a clear act of consent.
+     */
+    autostart?: string;
   }>();
   const goalId =
     typeof params.goalId === "string" && params.goalId.length > 0
@@ -133,6 +145,10 @@ export default function RecordScreen() {
 
   const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
+  // Guards the autostart against React StrictMode's double-invoke and any
+  // re-render — arming the mic twice would leave an orphaned Recording
+  // object holding the audio session.
+  const autostartFiredRef = useRef(false);
   const [levels, setLevels] = useState<number[]>(Array(18).fill(0.05));
   const [error, setError] = useState<string | null>(null);
   const [polledEntryId, setPolledEntryId] = useState<string | null>(null);
@@ -314,7 +330,7 @@ export default function RecordScreen() {
       if (!req.granted) {
         Alert.alert(
           "Microphone access required",
-          "Enable Acuity's mic access in Settings → Acuity → Microphone, then tap record again.",
+          "Enable Ripple's mic access in Settings → Ripple → Microphone, then tap record again.",
           [{ text: "OK", onPress: () => router.back() }]
         );
         return;
@@ -395,7 +411,7 @@ export default function RecordScreen() {
       if (fresh && !fresh.granted) {
         Alert.alert(
           "Microphone access required",
-          "Enable in Settings → Acuity → Microphone, then try again.",
+          "Enable in Settings → Ripple → Microphone, then try again.",
           [{ text: "OK", onPress: () => router.back() }]
         );
         return;
@@ -689,6 +705,27 @@ export default function RecordScreen() {
       }
     })();
   }, []);
+
+  /**
+   * Deep-link autostart.
+   *
+   * Runs once, only from the idle state, and only when the param is
+   * present. startRecording() already handles the permission prompt, so a
+   * user whose first ever launch is via Shortcuts gets the mic dialog
+   * rather than a silent no-op.
+   */
+  useEffect(() => {
+    if (autostartFiredRef.current) return;
+    if (!shouldAutostartRecording(params.autostart)) return;
+    if (state !== "idle") return;
+    autostartFiredRef.current = true;
+    void startRecording();
+    // `state` is intentionally not a dependency: this must fire on mount,
+    // not re-fire every time the recorder transitions back through idle
+    // (which happens after an error, and would re-arm the mic under
+    // someone who just dismissed a failure).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.autostart]);
 
   const handlePress = () => {
     if (state === "idle") startRecording();

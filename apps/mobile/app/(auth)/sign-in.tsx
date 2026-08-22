@@ -102,7 +102,7 @@ export default function SignInScreen() {
           : result.reason === "NoIdentityToken"
             ? "Apple didn't return a sign-in token. Try again."
             : result.reason === "NetworkError"
-              ? "Can't reach Acuity. Check your connection and try again."
+              ? "Can't reach Ripple. Check your connection and try again."
               : "Please try again or use email."
       );
       return;
@@ -185,7 +185,7 @@ export default function SignInScreen() {
           className="text-sm text-center leading-relaxed mb-6"
           style={{ color: tokens.textSec }}
         >
-          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Acuity automatically.
+          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Ripple automatically.
         </Text>
         <Pressable
           onPress={() => {
@@ -233,7 +233,7 @@ export default function SignInScreen() {
           className="text-2xl font-bold mb-1 text-center"
           style={{ color: tokens.text }}
         >
-          Sign in to Acuity
+          Sign in to Ripple
         </Text>
         <Text
           className="text-sm mb-8 text-center"

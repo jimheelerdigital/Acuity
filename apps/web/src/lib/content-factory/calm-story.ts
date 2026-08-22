@@ -3,30 +3,41 @@
  *
  * Replaces the eliminated illustrated STORY format ("we can't get it to
  * work properly, it looks terrible"). This is the second branch of the
- * calm-video family: the SAME soothing Hope voiceover as the ambient
+ * calm-video family: the SAME calm female voiceover as the ambient
  * format, but the narration is a small STORY told across several
- * photoreal nature/object scenes — each scene's animation matches the
- * beat of the story being told, and scenes dissolve into each other with
- * clean crossfades. NO people ever appear (that rule is what killed the
- * old story format — character consistency across scenes was unwinnable).
+ * ANIMATED nature/object scenes (2026-08-21, per Keenan: "make it
+ * animated and not hyperrealistic" — soft-3D animated-film style, the
+ * same family as the toon3d look winning on carousels) — each scene's
+ * animation matches the beat of the story being told, and scenes
+ * dissolve into each other with clean crossfades. NO people ever appear
+ * (that rule is what killed the old story format — character consistency
+ * across scenes was unwinnable).
  *
  * Pipeline (see carousel-calm-story.ts):
  * 1. Claude writes a 15-45s story script split into scenes, plus one
  *    shared "look" line so every scene reads as the same film
- * 2. gpt-image-2 renders one photoreal 9:16 image per scene (no text,
- *    no people)
+ * 2. gpt-image-2 renders one animated-film 9:16 image per scene (no
+ *    text, no people)
  * 3. Higgsfield animates each image (constant loopable motion)
- * 4. ElevenLabs (Hope, eleven_v3) voices the WHOLE narration as one
- *    continuous read — same voice/settings as the ambient format
- * 5. Each scene's clip is looped/trimmed to a window weighted by that
- *    scene's share of the narration words, then all scenes are stitched
- *    with crossfades and the audio is muxed on top
+ * 4. ElevenLabs (shared ambient voice, eleven_v3) voices EACH SCENE separately
+ *    (2026-08-21, per Keenan: "break it down to perfectly match the
+ *    script") with previous/next-text context for prosody continuity
+ * 5. Each scene's clip is looped/trimmed to EXACTLY its narration's
+ *    measured duration (+ fixed margins), the scenes are stitched with
+ *    crossfades, and the per-scene audio (joined with matching gaps) is
+ *    muxed on top — sync is exact by construction
  *
  * Reuses the STORY CarouselFormat + storyVideoUrl/storyVoiced fields —
  * zero schema changes.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  SCRIPT_STYLE_GUIDE,
+  pickPainBranch,
+  painBranchBlock,
+  type PainBranch,
+} from "./script-style-guide";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -42,10 +53,26 @@ export function calmStoryClipDuration(): number {
 /** Crossfade between scene clips ("a clean fade in to the next clip"). */
 export const CALM_STORY_XFADE_SEC = 0.8;
 
+/**
+ * Timing constants for exact per-scene sync (2026-08-21). A scene's
+ * narration plays only while that scene is fully visible: each narration
+ * gets MARGIN seconds of air on either side of it, crossfades happen
+ * inside the silent gaps, and the audio gap between narrations is
+ * exactly crossfade + 2·margin so words never straddle a transition.
+ * TAIL equals GAP because concatAudioWithGaps pads the final segment by
+ * the gap too — audio and video end together, so mux never time-warps.
+ */
+export const CALM_STORY_MARGIN_SEC = 0.3;
+export const CALM_STORY_GAP_SEC =
+  CALM_STORY_XFADE_SEC + 2 * CALM_STORY_MARGIN_SEC; // 1.4
+export const CALM_STORY_TAIL_SEC = CALM_STORY_GAP_SEC;
+
 export interface CalmStoryScene {
-  /** This scene's slice of the continuous narration. */
+  /** This scene's slice of the narration (voiced as its own read). */
   narration: string;
-  /** What the photoreal image shows — no people, no text. */
+  /** Narration with eleven_v3 audio tags ([softly]...) — TTS only. */
+  vocal?: string;
+  /** What the animated-film image shows — no people, no text. */
   visual: string;
   /** ONE constant loopable environmental movement for the i2v prompt. */
   motion: string;
@@ -61,10 +88,8 @@ export interface CalmStoryScript {
   /** ONE shared style sentence appended to every scene's image prompt. */
   look: string;
   scenes: CalmStoryScene[];
-  /** Full narration = scene narrations joined (one continuous read). */
+  /** Full narration = scene narrations joined (email/captions/admin). */
   script: string;
-  /** Same narration with eleven_v3 audio tags — TTS only. */
-  vocalScript?: string;
   /** Full LLM-written post caption body (persona voice, no hashtags). */
   caption?: string;
   captionHook?: string;
@@ -95,41 +120,75 @@ export function pickStoryShape(): { key: string; brief: string } {
   return STORY_SHAPES[Math.floor(Math.random() * STORY_SHAPES.length)];
 }
 
-function buildSystemPrompt(shape: { key: string; brief: string }): string {
-  return `You are a scriptwriter for calm, cinematic story videos for Ripple, an AI-powered voice self-reflection app. Each video is a short STORY told by a soothing female voice over a sequence of breathtaking photoreal scenes (nature, weather, light, objects — NEVER people) that dissolve into each other. The words and the images move together — every scene's picture matches the beat of the story at that moment.
+/**
+ * Visual worlds (2026-08-21, per Keenan: "more variation in whats
+ * posted. it does NOT need to stick to the orange and purple theme").
+ * One world is assigned per run so consecutive posts look different —
+ * blue skies, oceans, rain, fireplaces, nature — not the same warm
+ * sunset palette every time. The scenes are different views/moments
+ * inside the assigned world.
+ */
+const CALM_STORY_WORLDS = [
+  "a wide blue daytime sky with white clouds slowly flowing",
+  "an open ocean with waves rolling in, endlessly",
+  "a sunset sky with glowing clouds drifting",
+  "a rainy day — raindrops sliding down a window pane",
+  "a fireplace with flames breathing steadily in a dim cozy room",
+  "a misty forest with fog drifting between the trees",
+  "a moonlit lake at night, soft ripples crossing dark water",
+  "snow falling steadily past a warm window light",
+  "a golden field with tall grass moving in a soft wind",
+  "a mountain valley with low clouds drifting through at dawn",
+];
 
-TARGET AUDIENCE: Women aged 40-50 carrying a heavy mental load — work, family, aging parents, invisible labor. Capable, busy, reflective women who want to feel SEEN, not lectured.
+/** Pick this run's visual world at random. */
+export function pickStoryWorld(): string {
+  return CALM_STORY_WORLDS[Math.floor(Math.random() * CALM_STORY_WORLDS.length)];
+}
 
-THE GOAL: go viral with THIS audience. Success is her watching to the last second, sending it to a friend with "this is me", and saving it for a hard day. BE BOLD — the first line and the first image must capture attention immediately and the story must retain it to the end. This is NOT an ad: no app, product, or brand mention anywhere. The account posting it carries the brand.
+function buildSystemPrompt(
+  shape: { key: string; brief: string },
+  world: string,
+  branch: PainBranch
+): string {
+  return `You are a scriptwriter for calm, cinematic story videos. Each video is a short STORY told by a soothing female voice over a sequence of breathtaking ANIMATED scenes — soft-3D animated-film style, like a still from a high-end animated feature (nature, weather, light, objects — NEVER people, NEVER photorealistic) — that dissolve into each other. The words and the images move together — every scene's picture matches the beat of the story at that moment, and each scene's narration plays exactly while its image is on screen.
 
-BRAND VOICE — MIRROR, NOT A COACH: reflect, don't advise. Name what is true about her inner life so precisely she feels understood. Land on a recognition, a permission, or a question — NEVER instructions, tips, or "you should".
+${SCRIPT_STYLE_GUIDE}
+
+${painBranchBlock(branch)}
+
+THE GOAL: go viral with THIS audience by making her feel seen — this account understands her. BE BOLD — the first line and the first image must capture attention immediately and the story must retain it to the last second.
 
 TODAY'S STORY SHAPE (follow it exactly):
 ${shape.brief}
 
-STRUCTURE:
-1. HOOK (scene 1's narration): the first line must stop the scroll on its own — a line too specific or too true to swipe past. NO greetings, NO scene-setting, NO poetic fragments that need context.
-2. BUILD: each scene pushes the story one concrete step further — a NEW detail, a NEW turn every scene. No line may restate the previous one in different words. She should never have to work to decode anything.
-3. LANDING (last scene): the exhale — the recognition or release the whole story was walking toward. It should hit hard enough that she watches it again.
+STRUCTURE — the story must land all five beats, in this order, across the scenes:
+1. HOOK (scene 1's first line): names a private, specific emotional truth — a line too true to swipe past. NO greetings, NO scene-setting, NO poetic fragments that need context.
+2. SCENE: one concrete daily-life moment she recognizes (or the parable's world), told in specifics — a NEW detail or turn every scene, nothing restated.
+3. TRUTH: the deeper emotional insight underneath the moment.
+4. REFRAME: show her she is not broken, dramatic, lazy, or failing.
+5. FOLLOWER CTA: the final line of the last scene — one soft audience-building ask from the approved family, in the same quiet voice.
 
 SCRIPT RULES:
-- 40-100 words TOTAL, read slowly (finished videos run 15-45 seconds — VARY the length from post to post; let the story pick its length).
-- One continuous narration — it will be read as ONE take, not per-scene. Scene boundaries just mark which image is on screen for which lines.
+- 45-85 words TOTAL, read slowly (finished videos run 20-35 seconds — VARY the length from post to post; let the story pick its length).
+- The narration is voiced SCENE BY SCENE — each scene's lines are their own short read that plays exactly while that scene is on screen, with a small breath between scenes. Every scene's narration must work as a complete spoken phrase (never split a sentence across two scenes).
 - WRITE THE WAY A REAL PERSON TALKS. Contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: ellipses ("...") where the voice would actually stop and breathe, at least 3 times across the script. The TTS reads punctuation literally.
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like a tired friend telling you a story at 10pm in her kitchen, keep it.
-- No hashtags, no emojis, no CTA, no advice-verbs ("try", "start", "practice", "remember to").
+- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). The ONLY call to action is the single soft follower CTA that ends the script — never a product CTA.
 
 SCENES — how many: usually 3-5, but the STORY decides (2026-08-20, per Keenan: cohesiveness, catchiness, virality first — "if it calls for more or less scenes, do that"). Never fewer than 2 or more than 6. Each scene needs enough narration to sit on (at least ~8 words) — don't slice the script thinner than the story needs.
 
+TODAY'S VISUAL WORLD (set the whole video inside it): ${world}. Every scene is a different view, angle, or moment inside this world — a different framing, a different distance, a shifting detail — so the video reads as one place seen deeply, not a montage. Let the world's natural palette drive the "look" — do NOT force everything toward the same warm orange-and-purple sunset tones; blues, greys, greens, silvers, and firelight ambers are all welcome. If today's story shape truly demands a different world, pick another equally soothing one — but never default back to the same look post after post.
+
 VISUAL RULES ("visual" per scene):
-- A breathtaking photoreal scene that shows THIS beat of the story. The image, the words, and the motion must all be the same moment — if the narration mentions rain, we see the rain; if the story turns at dawn, the light turns with it.
+- A breathtaking ANIMATED-FILM scene that shows THIS beat of the story — soft-3D animated style, rounded forms, hand-crafted warmth, glowing painterly light. NEVER photorealistic, NEVER live-action, NEVER a photograph. The image, the words, and the motion must all be the same moment — if the narration mentions rain, we see the rain; if the story turns at dawn, the light turns with it.
 - ABSOLUTELY NO people, NO human figures, NO silhouettes, NO hands, NO faces — not even in the distance. No animals in focus. No text or typography of any kind.
 - Scene 1's image must be a scroll-stopper in its own right — bold, cinematic, immediate.
 - Composed for a vertical 9:16 frame. One sentence, concrete and specific about light, color, and weather.
 - Every scene visually DIFFERENT from the others, but all clearly the same world (see "look").
 
-"look" — ALSO OUTPUT one shared style sentence (color palette, light quality, weather, time of day, lens feel) that applies to EVERY scene, so the video reads as one continuous film instead of stock clips ("Moody blue-hour light, rain-washed colors, soft cinematic haze, everything slightly wet and glowing").
+"look" — ALSO OUTPUT one shared style sentence (color palette, light quality, weather, time of day, rendering feel) that applies to EVERY scene, so the video reads as one continuous animated film instead of stock clips ("Moody blue-hour palette, rain-washed colors, soft glowing haze, everything gently rounded and softly lit").
 
 MOTION RULES ("motion" per scene — the clip may loop, so it must read as one continuous shot):
 - ONE constant, even, endless environmental movement: rain sliding down the glass, waves rolling in, clouds drifting steadily, a candle flame breathing, fog moving at a constant pace.
@@ -138,10 +197,10 @@ MOTION RULES ("motion" per scene — the clip may loop, so it must read as one c
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
-- "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. Structure: line 1 hooks on its own (it's the only line visible before "...more"); then 1-2 short personal lines ("this one got me today"); then one share/save ask in her voice ("send this to the friend who never stops moving"). 3-5 short lines total, blank line between each. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever. No app plug.
+- "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. KEEP IT SHORT: exactly 2 lines, blank line between them. Line 1 hooks on its own, under 12 words (it's the only line visible before "...more") — a personal aside or a question to her. Line 2 is one share/save ask in her voice ("send this to the friend who never stops moving"). NEVER retell, quote, or summarize the story — the video tells it; the caption doesn't repeat it. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever. No app plug.
 - "commentPrompt": one question inviting viewers to share their version (fallback field).
 - "captionHook": 1-2 of the personal lines on their own (fallback field).
-- "vocalScript": the EXACT full narration with 2-4 ElevenLabs v3 audio performance tags inserted where the delivery should shift. Allowed tags ONLY: [softly], [whispers], [sighs], [exhales]. Start it with [softly]. Tags direct delivery — they never replace or change the words.
+- "vocal" (per scene): the scene's narration turned into a directed vocal PERFORMANCE with ElevenLabs v3 audio tags — this is where the read becomes hyper-realistic. 1-3 tags per scene, placed where the delivery should shift. Allowed tags: [softly], [warmly], [gently], [quietly], [whispers], [sighs], [exhales], [tired], [tender], [hesitates], [pause], [long pause]. Scene 1's vocal starts with [softly] or [warmly]; the register should move across the story — [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the CTA. Add [pause] (or extra "...") where a real person would actually stop, and [sighs]/[exhales] only where a tired woman would audibly breathe. Tags direct delivery — the WORDS must stay identical to "narration". Never all-caps, never exclamation marks.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -151,9 +210,8 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "captionHook": "...",
   "commentPrompt": "...",
   "look": "one shared style sentence for every scene",
-  "vocalScript": "the full narration with [softly]/[whispers]/[sighs]/[exhales] tags",
   "scenes": [
-    { "narration": "...", "visual": "...", "motion": "..." },
+    { "narration": "...", "vocal": "same words fully performance-directed with v3 audio tags and pause marks", "visual": "...", "motion": "..." },
     ... 2-6 scenes, however many the story needs ...
   ]
 }`;
@@ -170,6 +228,8 @@ export async function generateCalmStoryScript(input: {
   const { prisma } = await import("@/lib/prisma");
 
   const shape = pickStoryShape();
+  const world = pickStoryWorld();
+  const branch = pickPainBranch();
   const avoidBlock =
     input.avoid.length > 0
       ? `\n\nDo NOT reuse or closely resemble any of these recent concepts and headlines:\n${input.avoid.map((a) => `- ${a}`).join("\n")}`
@@ -184,7 +244,7 @@ Return ONLY valid JSON.`;
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1400,
-      system: buildSystemPrompt(shape),
+      system: buildSystemPrompt(shape, world, branch),
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -211,9 +271,18 @@ Return ONLY valid JSON.`;
       .join("");
     const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsed = JSON.parse(jsonStr) as Record<string, unknown> & {
-      scenes?: { narration?: unknown; visual?: unknown; motion?: unknown }[];
+      scenes?: {
+        narration?: unknown;
+        vocal?: unknown;
+        visual?: unknown;
+        motion?: unknown;
+      }[];
     };
 
+    // Punctuation-only tokens don't count (standalone "..." pause marks
+    // are allowed in the vocal performance).
+    const wordCount = (s: string) =>
+      s.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
     const rawScenes = Array.isArray(parsed.scenes) ? parsed.scenes : [];
     const scenes: CalmStoryScene[] = rawScenes
       .filter(
@@ -224,37 +293,36 @@ Return ONLY valid JSON.`;
           (s.visual as string).trim()
       )
       .slice(0, 6)
-      .map((s) => ({
-        narration: (s.narration as string).trim(),
-        visual: (s.visual as string).trim(),
-        motion:
-          typeof s.motion === "string" && s.motion.trim()
-            ? s.motion.trim()
-            : "the light shifts slowly and evenly across the scene",
-      }));
+      .map((s) => {
+        const narration = (s.narration as string).trim();
+        // Per-scene vocal must be the same words (tags aside) — if the
+        // model paraphrased, TTS falls back to the clean narration.
+        let vocal =
+          typeof s.vocal === "string" && s.vocal.trim() ? s.vocal.trim() : undefined;
+        if (vocal) {
+          const stripped = vocal.replace(/\[[a-z][a-z ]*\]\s*/gi, "");
+          if (Math.abs(wordCount(stripped) - wordCount(narration)) > 2) {
+            vocal = undefined;
+          }
+        }
+        return {
+          narration,
+          vocal,
+          visual: (s.visual as string).trim(),
+          motion:
+            typeof s.motion === "string" && s.motion.trim()
+              ? s.motion.trim()
+              : "the light shifts slowly and evenly across the scene",
+        };
+      });
     if (scenes.length < 2) {
       throw new Error(`Calm-story script returned ${scenes.length} usable scenes`);
     }
 
     const script = scenes.map((s) => s.narration).join(" ");
-    const totalWords = script.split(/\s+/).filter(Boolean).length;
+    const totalWords = wordCount(script);
     if (totalWords < 30) {
       throw new Error(`Calm-story narration is only ${totalWords} words`);
-    }
-
-    // vocalScript must be the same words (tags aside) — if the model
-    // paraphrased, fall back to the clean script.
-    let vocalScript =
-      typeof parsed.vocalScript === "string" ? parsed.vocalScript.trim() : undefined;
-    if (vocalScript) {
-      const stripped = vocalScript.replace(/\[[a-z][a-z ]*\]\s*/gi, "");
-      const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
-      if (Math.abs(words(stripped) - totalWords) > 6) {
-        console.warn(
-          "[calm-story] vocalScript diverged from scenes — using untagged script"
-        );
-        vocalScript = undefined;
-      }
     }
 
     const title =
@@ -271,10 +339,9 @@ Return ONLY valid JSON.`;
       look:
         typeof parsed.look === "string" && parsed.look.trim()
           ? parsed.look.trim()
-          : "Moody cinematic natural light, rich muted colors, soft atmospheric haze",
+          : "Soft moody light, rich muted colors, gently rounded forms, warm glowing haze",
       scenes,
       script,
-      vocalScript,
       caption:
         typeof parsed.caption === "string" && parsed.caption.trim()
           ? parsed.caption.trim()
@@ -304,18 +371,21 @@ Return ONLY valid JSON.`;
 }
 
 /**
- * Image prompt for one calm-story scene — same photoreal DNA as the
- * ambient format, plus the script's shared "look" line so every scene
- * reads as one continuous film.
+ * Image prompt for one calm-story scene — ANIMATED, not photoreal
+ * (2026-08-21, per Keenan: "make it animated and not hyperrealistic").
+ * Soft-3D animated-film style — the same family as the toon3d look
+ * that's outperforming everything on carousels — plus the script's
+ * shared "look" line so every scene reads as one continuous film.
  */
 export function buildCalmStorySceneImagePrompt(opts: {
   look: string;
   scene: Pick<CalmStoryScene, "visual">;
 }): string {
   return [
-    `Breathtaking photorealistic cinematic photograph: ${opts.scene.visual}`,
-    `Consistent film look across a series of scenes — ${opts.look}`,
-    "Shot on a full-frame camera, rich natural color grading, soft gradients, immense depth and atmosphere. Serene, cinematic, awe-inspiring.",
+    `Breathtaking still frame from a high-end soft 3D animated film: ${opts.scene.visual}`,
+    `Consistent animated-film look across a series of scenes — ${opts.look}`,
+    "Soft 3D animation style, Pixar-inspired environments: rounded organic shapes, hand-crafted warmth, painterly glowing light, rich color grading, gentle gradients, immense depth and atmosphere. Serene, cinematic, awe-inspiring.",
+    "NOT photorealistic, NOT live-action, NOT a photograph — a beautiful animated scene.",
     "Vertical 9:16 composition.",
     "ABSOLUTELY NO people, NO human figures, NO silhouettes, NO hands, NO faces anywhere. NO animals in focus.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
@@ -335,42 +405,59 @@ export function buildCalmStorySceneVideoPrompt(
     "One single continuous movement at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
     "The movement at the last frame matches the first frame exactly.",
     "Fixed, locked camera. The lighting, colors, framing, and every object stay identical from first frame to last. No people appear.",
-    "Crisp, sharp, high-definition cinematic footage with steady soft lighting and clean detail throughout.",
+    "Crisp, sharp, high-definition animated footage — the soft 3D animated-film rendering style of the source image is preserved exactly, never drifting toward live-action realism.",
   ].join(" ");
 }
 
 /**
- * Split the video's runtime into per-scene windows weighted by each
- * scene's share of the narration words (the narration is ONE continuous
- * read — word share is what keeps each scene on screen while its lines
- * are being spoken). Crossfades consume `xfadeSec` per join, so the
- * windows sum to target + xfade*(n-1). Every window is at least
- * `minSec` so the crossfade math never starves a scene.
+ * Per-scene video windows from MEASURED narration durations (2026-08-21,
+ * per Keenan: "break it down to perfectly match the script. clip down
+ * the videos if needed to match"). Each scene is voiced separately, so
+ * its window is exactly its narration length plus fixed margins, and the
+ * crossfades land inside the silent gaps between narrations:
+ *
+ *   window_i = narration_i
+ *            + margin on each interior side (air before/after the words)
+ *            + xfade per junction the scene participates in
+ *            + tail on the last scene (audio's trailing pad)
+ *
+ * With the audio segments joined by CALM_STORY_GAP_SEC of silence
+ * (= xfade + 2*margin), narration i starts exactly `margin` seconds
+ * after scene i becomes fully visible and ends `margin` seconds before
+ * its outgoing crossfade begins — words never straddle a transition,
+ * and the summed video length equals the audio length exactly.
  */
 export function calmStorySceneWindows(
-  scenes: Pick<CalmStoryScene, "narration">[],
-  targetSec: number,
+  narrationSecs: number[],
   xfadeSec: number = CALM_STORY_XFADE_SEC,
-  minSec: number = 2.5
+  marginSec: number = CALM_STORY_MARGIN_SEC,
+  tailSec: number = CALM_STORY_TAIL_SEC
 ): number[] {
-  const counts = scenes.map(
-    (s) => s.narration.split(/\s+/).filter(Boolean).length || 1
-  );
-  const totalWords = counts.reduce((a, b) => a + b, 0);
-  const totalSec = targetSec + xfadeSec * (scenes.length - 1);
-  const floor = Math.max(minSec, xfadeSec * 2 + 0.2);
-  let windows = counts.map((c) => (c / totalWords) * totalSec);
-  // Enforce the floor, taking the deficit from the largest windows.
-  windows = windows.map((w) => Math.max(floor, w));
-  const excess = windows.reduce((a, b) => a + b, 0) - totalSec;
-  if (excess > 0.05) {
-    const shrinkable = windows.map((w) => Math.max(0, w - floor));
-    const shrinkTotal = shrinkable.reduce((a, b) => a + b, 0);
-    if (shrinkTotal > 0) {
-      windows = windows.map(
-        (w, i) => w - (shrinkable[i] / shrinkTotal) * Math.min(excess, shrinkTotal)
-      );
-    }
-  }
-  return windows.map((w) => Math.round(w * 100) / 100);
+  const n = narrationSecs.length;
+  return narrationSecs.map((a, i) => {
+    const junctions = n === 1 ? 0 : i === 0 || i === n - 1 ? 1 : 2;
+    const leading = i === 0 ? 0 : marginSec;
+    const trailing = i === n - 1 ? tailSec : marginSec;
+    const w = a + leading + trailing + xfadeSec * junctions;
+    return Math.round(w * 100) / 100;
+  });
+}
+
+/**
+ * Fallback narration-length estimate for the silent path (TTS failed):
+ * the calm read paces ~2.2 words/sec; every scene gets at least 2s.
+ */
+export function estimateNarrationSecs(
+  scenes: Pick<CalmStoryScene, "narration">[]
+): number[] {
+  return scenes.map((s) => {
+    const words = s.narration.split(/\s+/).filter(Boolean).length || 1;
+    return Math.max(2, Math.round((words / 2.2) * 100) / 100);
+  });
+}
+
+/** TTS text for one scene: its tagged vocal, always opening [softly]. */
+export function calmStorySceneTtsText(scene: CalmStoryScene): string {
+  const raw = scene.vocal || scene.narration;
+  return /^\s*\[/.test(raw) ? raw : `[softly] ${raw}`;
 }

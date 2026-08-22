@@ -79,7 +79,7 @@ function DisclosureScreen() {
               lineHeight: 36,
             }}
           >
-            How Acuity processes your voice
+            How Ripple processes your voice
           </Text>
 
           <Text

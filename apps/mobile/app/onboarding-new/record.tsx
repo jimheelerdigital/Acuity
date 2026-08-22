@@ -294,7 +294,7 @@ function RecordScreen() {
                 marginBottom: 32,
               }}
             >
-              Acuity records your voice locally and sends it for one-
+              Ripple records your voice locally and sends it for one-
               time analysis. Enable mic access in Settings to keep going.
             </Text>
             <Pressable
