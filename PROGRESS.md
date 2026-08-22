@@ -7,6 +7,63 @@
 
 ---
 
+## [2026-08-21] — Long recordings stopped failing, app renamed to Ripple, and a schema landmine defused
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three things shipped and one disaster was caught.
+
+Recordings longer than about four minutes were silently failing to upload — the user got an error with no explanation and nothing appeared in our logs. Audio was being sent through our own servers, and our hosting provider rejects anything over 4.5MB before it ever reaches our code. Recordings now go straight from the phone to storage, so that ceiling is gone entirely. While we were there, the website's 2-minute limit was raised to 5 minutes to match the app.
+
+The app is now called Ripple everywhere a user can see — the name under the icon, the notification titles, the permission pop-ups, and the app icon itself.
+
+The icon is its own story. The Ripple icon had existed since July on a branch nobody merged, so the app kept shipping the old purple Acuity diamond. Version 1.4.0 went to TestFlight with a Ripple splash screen behind an Acuity icon before we caught it.
+
+Finally, we found that our database schema description had fallen behind the real database. If anyone had run a routine schema update, it would have silently deleted three tables of live customer data. Nothing was lost — the safety check caught it — and the gap is now closed.
+
+### Technical changes (for Jimmy)
+**413 upload fix (direct-to-storage)**
+- New `apps/web/src/app/api/record/upload-url/route.ts` — issues Supabase signed upload URLs; server derives the object path so a client can never name another user's folder
+- `/api/record`, `/api/try-recording`, `/api/mobile/try-recording` all dual-accept JSON metadata and legacy multipart for one release
+- `lib/audio.ts::verifyStoredAudio()` — the metadata POST is a claim, not proof; existence and size are re-read from the bucket
+- `lib/pipeline.ts`: `processEntry` takes `audioBuffer` OR `audioPath`, and persists `audioPath` so entry deletion still finds the object
+- Mobile + web upload helpers; converted every recorder call site
+- Bitrate stopgap first: 64 kbps mono (`lib/audio-recording-options.ts`)
+
+**5-minute cap**
+- `MAX_SECONDS` 120 → 300 in debrief-shared, record-sheet, record-button, first-debrief-flow
+- Privacy page copy updated to match; `?all=1` added to `/api/entries` (capped at 2000, reports truncation) so "Export all" cannot silently mean "export 30"
+
+**Ripple rename**
+- Display name, all three notification titles, iOS permission strings, 123 lines of in-app copy
+- `rename-denylist.test.ts` — 9 cases guarding bundle id, product ids, `acuity://` scheme, session token, `acuity.*` storage keys, buckets, `@acuity/shared`
+
+**Icon recovery**
+- `icon.png` / `adaptive-icon.png` recovered from `d2783585` on `fix/mobile-ripple-rebrand`
+- Also found: `expo-notifications` accent was still `#7C3AED` (Acuity purple); favicon was the diamond and the branch had never fixed it either; `adaptiveIcon.backgroundColor` was an Acuity dark
+
+**Schema reconciliation**
+- Back-declared from `feat/onboarding-v10`: `Habit`, `HabitCheck`, `InsightEvidence`, `RevenueCatEvent`, `User.v10Day2PushSentAt`, `User.appleSignedTransactionJws`, `UserReminder.kind`/`habitId`, four `UserInsight` correction columns, `TrySession.audioPath` → nullable, two indexes
+- Guard went from **10 destructive statements** to "Schema and database agree — nothing to apply"
+
+### Manual steps needed
+- [ ] Jimmy: submit 1.4.0 build 98 for App Store review (needs App Store Connect; no API key is configured, so it cannot be done from code)
+- [ ] Jimmy: merge `chore/db-push-guardrail` and `docs/progress-1-4-0`
+- [ ] Jimmy: `DIRECT_URL` must be set as a GitHub repo secret for the new scheduled schema check to actually run
+- [ ] Jimmy: RevenueCat Stage 2 when ready — see `docs/REVENUECAT_STAGE2_RUNBOOK.md`
+
+### Notes
+- **The 413 was invisible for a reason.** Vercel rejects oversized bodies at the edge, before any handler runs, so there was no server-side log to find. Production evidence was in the bucket: largest object 4.28MB, 112 files at 4.0–4.5MB, zero above.
+- **Three bugs were caught by tests I wrote while building, not by review.** "Export all" exported 30; `yamlScalar` didn't quote double quotes; task due dates shifted a day for anyone behind UTC because a calendar date was run through local-time conversion.
+- **The splash needed fixing twice.** The first attempt matched `backgroundColor` to a pixel sampled from the artwork — but the asset still had its own baked background, so on any non-1242×2436 device that field painted 89.2% of the screen in the wrong shade. The real fix was a transparent canvas: no image background means no seam is possible.
+- **Branch drift caused two separate incidents today** — the stranded icon and the schema gap. Both looked like different problems and had one cause: work that lived only on an unmerged branch while main moved on. The `db:push`-from-main-only rule closes the schema half; the icon half was only caught because Jimmy looked at his phone.
+- **Six tests were permanently red on main** and had been for months, asserting a PAST_DUE grace window removed in June and a 14-day trial that is now 7. Both were deliberate product changes never carried into the tests. A permanently red suite trains everyone to ignore it, which is how a real failure gets missed.
+
+---
+
 ## [2026-08-21] — Carousel topics now read Jim's growthos research engine
 
 **Requested by:** Keenan
