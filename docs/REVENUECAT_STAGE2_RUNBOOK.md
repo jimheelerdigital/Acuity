@@ -28,7 +28,13 @@ credentials that deliberately do not live in code.
 ## 1. Create products — $9.99 / $89.99
 
 The tier is already defined in `packages/shared/src/pricing-plans.ts` as
-`V2_TIER`. Product **ids** there are placeholders until these exist.
+`V2_TIER`.
+
+> **Done 2026-08-23.** All four store products and both Stripe Prices now
+> exist and are imported into RevenueCat, and `pricing-plans.ts` holds the
+> real ids (`PLACEHOLDER_V2_PRODUCT_IDS` is `false`). The tables below are
+> now a record of what was created, not a to-do. **Creating the products
+> charges nobody** — §3 is still what changes a price.
 
 ### Apple — App Store Connect
 Create **new** auto-renewable subscriptions in the existing group. Do **not**
@@ -51,21 +57,25 @@ are annual-only (spec §4 Screen 6).
 ### Google — Play Console
 | Product ID | Base plan | Price |
 |---|---|---|
-| `acuity_pro_monthly_v2` | monthly autorenewing | $9.99 |
-| `acuity_pro_annual_v2` | annual autorenewing | $89.99 |
+| `acuity_pro_monthly_v2` | `monthly-autorenew` | $9.99 |
+| `acuity_pro_annual_v2` | `annual-yearly` | $89.99 |
+
+Play prices a **base plan**, not the product, so both ids matter to
+RevenueCat. They are recorded on `V2_TIER.products.*.googleBasePlan`.
 
 ### Stripe
 Create two **Prices** on the existing Product (do not create a new Product,
 or reporting splits):
 
-| Price | Interval |
-|---|---|
-| $9.99 | month |
-| $89.99 | year |
+| Price | Interval | Price ID |
+|---|---|---|
+| $9.99 | month | `price_1U7bBOD9XJakJqj51IdGWDVN` |
+| $89.99 | year | `price_1U7bBRD9XJakJqj5uhZY4rgc` |
 
-Record both `price_...` ids — they become `STRIPE_PRICE_MONTHLY_V2` /
-`STRIPE_PRICE_YEARLY_V2`, and fill the `stripe: null` TODOs in
-`pricing-plans.ts`.
+Both ids are now in `pricing-plans.ts` (the local-dev / documentation
+fallback) and still need setting as `STRIPE_PRICE_MONTHLY_V2` /
+`STRIPE_PRICE_YEARLY_V2` in Vercel — env wins over the catalog. Nothing
+reads either value while `newPricingEnabled` is off.
 
 > Existing subscriptions reference their own Price object and are never
 > re-read from config, so pointing new checkouts at a new Price cannot touch
@@ -105,7 +115,7 @@ one).
 > cutover, on live traffic. The code already uses `publicReadKey`; these two
 > variables are what make that work.
 
-Also set, when the Stripe prices exist:
+Also set (the Prices now exist — ids in §1):
 `STRIPE_PRICE_MONTHLY_V2`, `STRIPE_PRICE_YEARLY_V2`.
 
 Point the RC dashboard webhook at `POST /api/revenuecat/webhook` with the

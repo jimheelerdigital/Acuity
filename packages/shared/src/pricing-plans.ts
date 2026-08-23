@@ -6,8 +6,10 @@
  * `LEGACY` is what every user is charged today ($4.99 / $39.99) and is the
  * ACTIVE tier until `NEW_PRICING_ENABLED` is turned on. `V2` ($9.99 /
  * $89.99) is defined here so the RevenueCat offerings, the paywall copy,
- * and the import script can all be built and typechecked before the
- * products exist in App Store Connect / Play Console / Stripe.
+ * and the import script could all be built and typechecked before the
+ * products existed in App Store Connect / Play Console / Stripe. They now
+ * do exist, and the ids below are the real ones — which still charges
+ * nobody anything, because the tier is selected by flag, not by SKU.
  *
  * Why a catalog instead of two constants: at cutover we must serve TWO
  * prices simultaneously — the 17 existing subscribers keep LEGACY forever
@@ -17,10 +19,10 @@
  * for an auto-renewable IAP, an Apple-side price-consent prompt that can
  * silently cancel their subscription if they don't accept.
  *
- * Product IDs for V2 are PLACEHOLDERS pending the real SKUs — see
- * PLACEHOLDER_V2_PRODUCT_IDS below. They are structurally correct
- * (reverse-DNS on Apple, flat lowercase on Google) so nothing has to be
- * refactored when the real ones land; only the string values change.
+ * V2 product IDs are now the REAL SKUs — the products exist in App Store
+ * Connect, Play Console, Stripe and RevenueCat (see
+ * PLACEHOLDER_V2_PRODUCT_IDS below, now false). That changes nothing for
+ * users: V2 stays inert until `newPricingEnabled` flips.
  */
 
 export type PricingTierId = "legacy" | "v2";
@@ -32,9 +34,20 @@ export interface PlanProducts {
   /** Google Play product identifier (flat lowercase). */
   google: string;
   /**
-   * Stripe Price ID. Null on V2 until the Price is created in Stripe.
-   * Production always prefers the env var (STRIPE_PRICE_*) over this —
-   * these are the local-dev / documentation fallbacks.
+   * Google Play base plan id within `google`. Play prices a base plan, not
+   * the product, so RevenueCat and Play Console both need this to resolve
+   * a purchase — but nothing in this codebase reads it today (the client
+   * buys by product id and the server verifies with subscriptionsv2).
+   * Recorded here so the value lives with the SKU it belongs to instead of
+   * only in a runbook. Optional: LEGACY's base plans predate this field
+   * and are not transcribed rather than guessed.
+   */
+  googleBasePlan?: string;
+  /**
+   * Stripe Price ID. Nullable for a tier whose Price does not exist yet;
+   * both tiers now have real Prices. Production always prefers the env var
+   * (STRIPE_PRICE_*) over this — these are the local-dev / documentation
+   * fallbacks.
    */
   stripe: string | null;
 }
@@ -71,13 +84,18 @@ export const LEGACY_TIER: PricingTier = {
 // ─── New pricing — DEFINED, NOT ACTIVE ──────────────────────────────
 
 /**
- * V2 product IDs are placeholders. Replace with the real SKUs once the
- * products are created; keep the `.v2` / `_v2` suffix convention unless
- * the store forces otherwise. Apple product IDs are immutable once
- * created, so a new price = a new product, which is why these can't just
- * reuse the LEGACY ids with a different price.
+ * False since 2026-08-23: the V2 SKUs below are the real ones, created in
+ * App Store Connect, Play Console and Stripe, and imported into
+ * RevenueCat. Apple product IDs are immutable once created, so a new price
+ * = a new product — which is why V2 could never just reuse the LEGACY ids
+ * with a different price, and why the ids stopped being provisional the
+ * moment the products were made.
+ *
+ * This is DOCUMENTATION, not a switch. Nothing reads it: it does not gate
+ * a code path, and flipping it cannot change behaviour. The switch is
+ * `newPricingEnabled`, which is untouched and still false.
  */
-export const PLACEHOLDER_V2_PRODUCT_IDS = true as const;
+export const PLACEHOLDER_V2_PRODUCT_IDS = false as const;
 
 export const V2_TIER: PricingTier = {
   id: "v2",
@@ -88,12 +106,16 @@ export const V2_TIER: PricingTier = {
     monthly: {
       apple: "com.heelerdigital.acuity.pro.monthly.v2",
       google: "acuity_pro_monthly_v2",
-      stripe: null, // TODO(jim): create the $9.99 Stripe Price, set STRIPE_PRICE_MONTHLY_V2
+      googleBasePlan: "monthly-autorenew",
+      // $9.99/mo. Also set as STRIPE_PRICE_MONTHLY_V2 in Vercel; env wins.
+      stripe: "price_1U7bBOD9XJakJqj51IdGWDVN",
     },
     annual: {
       apple: "com.heelerdigital.acuity.pro.annual.v2",
       google: "acuity_pro_annual_v2",
-      stripe: null, // TODO(jim): create the $89.99 Stripe Price, set STRIPE_PRICE_YEARLY_V2
+      googleBasePlan: "annual-yearly",
+      // $89.99/yr. Also set as STRIPE_PRICE_YEARLY_V2 in Vercel; env wins.
+      stripe: "price_1U7bBRD9XJakJqj5uhZY4rgc",
     },
   },
 };

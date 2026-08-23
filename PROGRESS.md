@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-08-23] — The new $9.99/$89.99 products are wired in (still switched off)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 28b702f7
+
+### In plain English (for Keenan)
+The higher-priced subscription products now exist for real in Apple, Google, Stripe and RevenueCat, and the app finally knows their exact ids. Nothing changed for any customer: the price switch is still off, so every page still says $4.99 / $39.99 and every card is still charged $4.99 / $39.99. This was the last piece of setup that had to happen *before* we can raise prices — it does not raise them. Flipping the actual switch is a separate, deliberate decision, and the existing 17 subscribers stay at the old price permanently when we do.
+
+### Technical changes (for Jimmy)
+- `packages/shared/src/pricing-plans.ts`:
+  - `PLACEHOLDER_V2_PRODUCT_IDS` `true` → `false`
+  - V2 Stripe Price ids filled in: monthly `price_1U7bBOD9XJakJqj51IdGWDVN` ($9.99/mo), annual `price_1U7bBRD9XJakJqj5uhZY4rgc` ($89.99/yr) — both were `null` with a TODO
+  - New optional `PlanProducts.googleBasePlan`; set on V2 only (`monthly-autorenew`, `annual-yearly`). Nothing reads it — Play prices a base plan, not a product, and RC needs the value, so it now lives with the SKU instead of only in a runbook. Left off LEGACY rather than guessing its base plan ids.
+  - Apple + Google product ids needed no change: the "placeholder" strings were already the exact ids the products were created with
+- New `apps/web/src/lib/evidence/v2-product-ids.test.ts` (14 tests) — pins the real ids AND the behaviour-neutrality: tier resolution, paywall copy, checkout Price ids, and a source scan proving `PLACEHOLDER_V2_PRODUCT_IDS` has no consumer
+- `docs/REVENUECAT_STAGE2_RUNBOOK.md` §1/§2: product tables are now a record of what exists, with the real Stripe Price ids and Play base plan ids
+- `docs/REVENUECAT_MIGRATION.md` §6.4: the "V2 ids are placeholders" open decision is marked resolved
+- Untouched on purpose: `newPricingEnabled`, `RC_SOURCE_OF_TRUTH`, `RC_OBSERVER`, both IAP receipt allow-lists
+
+### Manual steps needed
+- [ ] Jimmy: set `STRIPE_PRICE_MONTHLY_V2` / `STRIPE_PRICE_YEARLY_V2` in Vercel Production (ids above) + redeploy. Not urgent — nothing reads them until `newPricingEnabled` flips — but env should win over the catalog before that day, not on it.
+- [ ] Jimmy: confirm the RevenueCat `default` offering is attached to the v2 products and `grandfathered` to the legacy ones (runbook §1), since the products now exist to attach
+
+### Notes
+- **Why flipping `PLACEHOLDER_V2_PRODUCT_IDS` is safe:** it has no consumers. A repo-wide scan of `apps/web/src`, `apps/mobile` and `packages/shared/src` finds the identifier only in its own declaration. It is a comment with a type, not a gate. The new evidence test asserts that scan comes back empty, so if anyone ever gates a code path on it, the flip stops being free and the test says so.
+- **The one real risk of this commit was reachability**, not correctness: a live $9.99 Price id entering the catalog and becoming something a checkout session could be created with. It cannot — `PRICING.monthly/annual.stripeId` is pinned to `LEGACY_TIER` (env `STRIPE_PRICE_MONTHLY`/`_YEARLY` wins), and both checkout routes read only that. Asserted in the test.
+- **Both Stripe Prices were verified live against the Acuity account**, not taken on trust: `price_1U7bBO…` = 999/month, `price_1U7bBR…` = 8999/year, both active and both on `prod_UOdmMmo6Qxesni` — the *same* Product as the legacy $4.99/$39.99 Prices, which is what keeps Stripe reporting from splitting across two products.
+- **The receipt allow-lists (`apple-iap.ts`, `google-iap.ts`) were deliberately NOT widened** to the v2 SKUs. Opening a verification gate is a separate decision from cataloguing an id — widening it now would honour a v2 receipt before the products are meant to be purchasable. A test pins them closed so the omission reads as intent, not oversight.
+- Baselines held: web tsc 153 errors, mobile tsc 19 (both pre-existing and unchanged), 656/656 tests green across 40 files.
+
 ## [2026-08-21] — Long recordings stopped failing, app renamed to Ripple, and a schema landmine defused
 
 **Requested by:** Jimmy
