@@ -15,6 +15,7 @@
 import { escapeHtml } from "@/lib/escape-html";
 import { keenanSignature, primaryButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
+import { displayMonthly } from "@/lib/pricing";
 
 
 export const trialEnding: TrialEmailTemplate = {
@@ -38,7 +39,7 @@ export const trialEnding: TrialEmailTemplate = {
       ${para(greeting)}
       ${para(`Quick heads-up: your free trial ends in two days.`)}
       ${para(`You\u2019ve already started building something here \u2014 a few debriefs in, Ripple is beginning to see the patterns in how your weeks actually go. That picture only gets sharper the longer you keep at it.`)}
-      ${para(`If you\u2019d like to keep it going, you can set up your subscription anytime before the trial ends \u2014 $4.99/month, and you stay exactly where you left off. If now\u2019s not the right time, no pressure, and nothing happens automatically.`)}
+      ${para(`If you\u2019d like to keep it going, you can set up your subscription anytime before the trial ends \u2014 ${displayMonthly()}/month, and you stay exactly where you left off. If now\u2019s not the right time, no pressure, and nothing happens automatically.`)}
       ${para(`Either way, the debriefs you\u2019ve recorded are yours.`)}
       <tr>
         <td style="padding-bottom:28px;">

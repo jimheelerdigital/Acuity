@@ -3,13 +3,7 @@
 import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 
-import {
-  ANNUAL_AS_MONTHLY_CENTS,
-  ANNUAL_PRICE_CENTS,
-  MONTHLY_PRICE_CENTS,
-  PRICING,
-  formatDollars,
-} from "@/lib/pricing";
+import { ANNUAL_PRICE_CENTS, MONTHLY_PRICE_CENTS, PRICING, displayAnnual, displayAnnualAsMonthly, displayMonthly, formatDollars } from "@/lib/pricing";
 
 type Interval = "monthly" | "yearly";
 
@@ -163,7 +157,7 @@ export function UpgradePlanPicker() {
         {interval === "monthly" ? (
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-              {formatDollars(MONTHLY_PRICE_CENTS)}
+              {displayMonthly()}
             </span>
             <span className="text-sm text-zinc-400 dark:text-zinc-500">
               /month
@@ -173,14 +167,14 @@ export function UpgradePlanPicker() {
           <>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                {formatDollars(ANNUAL_PRICE_CENTS)}
+                {displayAnnual()}
               </span>
               <span className="text-sm text-zinc-400 dark:text-zinc-500">
                 /year
               </span>
             </div>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Just {formatDollars(ANNUAL_AS_MONTHLY_CENTS)}/month, billed
+              Just {displayAnnualAsMonthly()}/month, billed
               annually. Save {YEARLY_SAVINGS_DOLLARS_ROUNDED} vs monthly.
             </p>
           </>
