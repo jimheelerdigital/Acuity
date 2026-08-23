@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** 28b702f7
 
 ### In plain English (for Keenan)
 The higher-priced subscription products now exist for real in Apple, Google, Stripe and RevenueCat, and the app finally knows their exact ids. Nothing changed for any customer: the price switch is still off, so every page still says $4.99 / $39.99 and every card is still charged $4.99 / $39.99. This was the last piece of setup that had to happen *before* we can raise prices — it does not raise them. Flipping the actual switch is a separate, deliberate decision, and the existing 17 subscribers stay at the old price permanently when we do.
