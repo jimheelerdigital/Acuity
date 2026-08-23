@@ -142,7 +142,8 @@ export default function TermsPage() {
                 {displayAnnual()} per year, depending
                 on the plan you select. The subscription renews
                 automatically at the end of each billing period until
-                you cancel.
+                you cancel. Existing subscribers keep their current
+                rate.
               </li>
               <li>
                 <strong className="text-acuity-text">In-app purchase (iOS).</strong>{" "}

@@ -162,6 +162,31 @@ New checkouts resolve V2 ($9.99 / $89.99). Existing subscribers resolve
 > shows $4.99 while Stripe charges $9.99. That is the single worst failure
 > available in this whole sequence.
 
+### ⚠️ Flip day — set BOTH web variables, then redeploy
+
+`NEW_PRICING_ENABLED` **and** `NEXT_PUBLIC_NEW_PRICING_ENABLED` must both be
+set in Vercel Production.
+
+`components/landing.tsx` is a **client** component. Client bundles cannot
+read a non-public env var — Next inlines only `NEXT_PUBLIC_*`, at build
+time. Set just the server variable and the landing page keeps advertising
+the old price while every server-rendered page shows the new one. That is
+precisely the "page quotes a different number than the card is charged"
+failure this whole prerequisite exists to prevent, except self-inflicted on
+flip day.
+
+Inlining happens at **build**, so setting the variables is not enough on its
+own — **redeploy**. Mobile is the same shape: `EXPO_PUBLIC_NEW_PRICING` is
+baked in by Metro, so mobile needs a NEW BUILD and cannot be flipped OTA.
+Plan for web and mobile to change price at different times, and prefer web
+first — an app quoting a stale price in the store is harder to fix quickly.
+
+**Pre-flip display work is DONE** (PRs #41 and the pre-flip cleanup). Every
+user-facing price, the annual savings badge, and the Meta Pixel
+`value`/`predicted_ltv` all resolve from the active tier. The therapy
+testimonial's price clause is removed, and terms carries "Existing
+subscribers keep their current rate." Nothing on that list remains.
+
 **`cutoverAt` needs a real value.** `pricingTierFor()` grandfathers on
 `paidSince < cutoverAt`. It is currently `null`, which grandfathers every
 prior payer — safe, but someone subscribing *during* the flip has no

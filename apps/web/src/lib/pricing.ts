@@ -175,13 +175,35 @@ export function planValueDollars(
   interval: string | null | undefined
 ): number {
   const yearly = interval === "yearly" || interval === "annual" || interval === "year";
-  return (yearly ? ANNUAL_PRICE_CENTS : MONTHLY_PRICE_CENTS) / 100;
+  const tier = displayTier();
+  return (yearly ? tier.annualCents : tier.monthlyCents) / 100;
 }
 
+// ── Analytics values follow the ACTIVE tier ──────────────────────────
+//
+// These feed Meta Pixel / CAPI `value` and `predicted_ltv`. They report
+// what the purchaser is actually charged, so they must move with the tier —
+// otherwise, post-cutover, every new subscriber is reported at the old
+// price and Meta optimises ad delivery against revenue that never happened.
+// That misspends budget silently: nothing errors, the numbers just drift.
+//
+// FUNCTIONS, not consts. A module-level const is evaluated once at import,
+// which would capture the flag at whatever moment the module first loaded.
+// Reading at call time keeps them consistent with displayMonthly() and
+// makes them testable.
+//
+// Behaviour today: the flag is off, so both resolve LEGACY — 4.99 / 39.99,
+// byte-identical to the previous constants.
+
 /** Monthly price in dollars — the `predicted_ltv` / StartTrial value. */
-export const MONTHLY_PRICE_DOLLARS = MONTHLY_PRICE_CENTS / 100;
+export function monthlyPriceDollars(): number {
+  return displayTier().monthlyCents / 100;
+}
+
 /** Annual price in dollars. */
-export const ANNUAL_PRICE_DOLLARS = ANNUAL_PRICE_CENTS / 100;
+export function annualPriceDollars(): number {
+  return displayTier().annualCents / 100;
+}
 
 export function formatDollars(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
