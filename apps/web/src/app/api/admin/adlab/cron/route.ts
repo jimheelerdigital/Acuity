@@ -516,7 +516,7 @@ export async function GET(req: NextRequest) {
     sections.push(`\n---\nTotal: ${kills.length} kills, ${scales.length} scales, ${flags.length} flagged, ${concluded.length} experiments concluded`);
 
     await resend.emails.send({
-      from: process.env.EMAIL_FROM || "AdLab <noreply@getacuity.io>",
+      from: process.env.EMAIL_FROM || "AdLab <noreply@goripple.io>",
       to: "keenan@heelerdigital.com",
       subject: `AdLab Daily: ${kills.length} kills, ${scales.length} scales${flags.length > 0 ? `, ${flags.length} flagged` : ""}${experimentFlags.some((e) => e.type === "winning") ? " 🏆 WINNER" : ""}`,
       text: sections.join("\n"),

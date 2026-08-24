@@ -24,7 +24,12 @@ import { safeLog } from "@/lib/safe-log";
  */
 
 const FOUNDER_RECIPIENTS = ["keenan@heelerdigital.com", "jim@heelerdigital.com"];
-const EMAIL_FROM = "hello@getacuity.io";
+// goripple.io is DKIM-signed for Resend and its DMARC (p=quarantine,
+// aspf=r) aligns on DKIM alone, so this sends clean. Safe here because
+// this alert only ever goes to the founders' @heelerdigital.com inboxes
+// and nobody replies to it — goripple.io has NO MX, so a reply would
+// bounce. Reply-capable senders stay on getacuity.io until MX exists.
+const EMAIL_FROM = "hello@goripple.io";
 
 export const entitlementReconcileNightlyFn = inngest.createFunction(
   {
