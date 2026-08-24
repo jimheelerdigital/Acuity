@@ -7,6 +7,44 @@
 
 ---
 
+## [2026-08-24] — The daily "Stripe is broken" emails were false alarms; they now only fire when Stripe says so
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** cc9f101c
+
+### In plain English (for Keenan)
+The alert emails warning that "the Stripe webhook is DOWN" were wrong — payments have been flowing fine the whole time. The alert was set up to shout whenever a whole day passed with no Stripe activity, which made sense for a busy app but not for ours: with around fifteen subscribers, going a day or two with nobody signing up, renewing or cancelling is completely normal. It had cried wolf roughly 28 times in the last three months, and zero of those were real. Now the alert asks Stripe directly whether anything actually failed, and only emails when Stripe confirms it. A quiet week is treated as a quiet week.
+
+Separately, we checked whether some renewals were quietly failing to collect. They are not. Nine unpaid $4.99 invoices are sitting in Stripe as unfinished drafts, but every one belongs to a customer whose card already failed months ago and who Stripe has already given up on — we were never going to collect that money, and the app has correctly had all of them on the free plan the whole time. No customer is getting paid access they haven't paid for, and no money is being left on the table.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/stripe-webhook-health.ts` — the judgement, split out of the cron the way `lib/entitlement-drift.ts` is:
+  - `assessWebhookHealth()` — pure, deterministic (`now` injected)
+  - `collectWebhookHealthSignals()` — live reads: `stripe.webhookEndpoints.list()`, `stripe.events.list()` (all + `delivery_success:false`), and a `StripeEvent` id lookup
+  - Finding kinds: `endpoint_missing` | `endpoint_disabled` | `endpoint_url_mismatch` | `delivery_failure` | `ingestion_gap` | `quiet_with_stripe_activity`
+  - Constants: `LOOKBACK_MS` 72h, `DELIVERY_GRACE_MS` 60m, `QUIET_THRESHOLD_MS` 72h
+- New `apps/web/src/lib/stripe-webhook-health.test.ts` — 17 tests, incl. a regression test reproducing the exact live state (35.8h quiet, endpoint enabled, Stripe idle) that the old rule would have emailed on
+- `apps/web/src/inngest/functions/stripe-webhook-health.ts` reduced to transport: assess → log → alert only when `healthy === false`. Same cron (`0 */6 * * *`), same Slack + Resend recipients, no new env. Alert copy now names the specific finding instead of "no events in >24h"; findings are HTML-escaped into the email
+- `docs/incidents/2026-06-12-stripe-webhook-down.md` — Prevention §1 rewritten; new "Follow-up: the monitor was crying wolf (2026-08-24)" section with the measured evidence
+- No schema change. No new env var. Nothing in the live payment path was touched
+
+### Manual steps needed
+- [ ] Jimmy: after merge, watch the first `stripe-webhook-health-check` run in the Inngest dashboard — it should return `ok: true` with a `Healthy — …` summary rather than emailing
+- [ ] Jimmy (optional, Stripe dashboard, no code): 12 subscriptions sit in `unpaid` and are never cancelled, so each accrues a new draft invoice every cycle forever. Switching the Billing → Retries end-behaviour from "leave unpaid / mark uncollectible" to "cancel subscription" stops the accrual. Reporting hygiene only — zero revenue impact, and it does not affect any paying customer
+- [ ] Nobody: the draft invoices themselves need no action and were deliberately not modified
+
+### Notes
+- **Why the old check was wrong, measured not guessed.** Over the 90 days to 2026-08-24 the `StripeEvent` ledger had **13 quiet gaps longer than 24h, longest 53.5h**, which the 6h cron would have turned into **~28 alert emails**, all false. At the time of the fix the ledger's last event was 35.8h old — i.e. it was mid-false-alarm — while the endpoint was `enabled` at the apex URL and the latest renewal was PAID. **Gaps longer than 72h: zero.** That is where the retained fallback threshold came from.
+- **The real cost was not the noise.** An alert wrong 28/28 times gets filtered, and then the next genuine outage is as invisible as the 2026-04-24 one that ran 7 weeks. Fixing the monitor restores detection we had lost.
+- **`delivery_success` is account-wide, not per-endpoint.** An event Stripe reports undelivered that IS in our ledger is excluded from the finding — that failure would belong to some other destination. Irrelevant with one endpoint; correct if a second is ever added.
+- **Subscribed event types are read from the live endpoint's `enabled_events`**, not a hard-coded list, so adding a type in the Stripe dashboard cannot leave the gap check blind to it. The constant is a fallback only.
+- **`delivery_success` is absent from the newest Stripe API versions** but supported by the `apiVersion: "2024-06-20"` pinned in `lib/stripe.ts`. Re-verify that parameter before bumping the pin. All three live calls (`webhookEndpoints.list`, both `events.list` forms, `autoPagingToArray`) were smoke-tested against a real Stripe account before commit.
+- **A Stripe *read* failure does not email.** It logs via `safeLog` → Sentry. Inferring an outage from an unreadable Stripe is the same mistake the old check made; an unreadable Stripe is an ops problem, not a billing incident.
+- **Draft-invoice investigation (no code change).** All 9 drafts are `subscription_cycle`, `auto_advance:false`, `attempted:false`, and every one belongs to a subscription in Stripe status **`unpaid`** — not `active`. That is documented Stripe behaviour: once dunning is exhausted and the subscription goes `unpaid`, Stripe stops auto-finalising new cycle invoices. It is not the "draft for ~1h then auto-finalise" window; the oldest has sat in draft since 2026-07-25, **30 days**. `auto_advance` appears nowhere in this repo and we make no `stripe.invoices.*` calls at all, so nothing of ours set it.
+- **No entitlement leak from those subs.** All 12 `unpaid` subscriptions map to users who are `FREE` in our DB. The one exception, emily101infante@gmail.com, is `PRO` via `subscriptionSource: apple` — she resubscribed through the App Store after her Stripe card failed; the stale `stripeSubscriptionId` is a leftover, not a grant. The webhook is demonstrably doing its job here: each user's `updatedAt` lands within seconds of the cycle-rollover event that keeps them FREE.
+- **Uncollected total is $44.91** across the 9 drafts — money that was never collectible, from customers whose cards had already failed up to 9 times each.
+
 ## [2026-08-23] — The new $9.99/$89.99 products are wired in (still switched off)
 
 **Requested by:** Jimmy

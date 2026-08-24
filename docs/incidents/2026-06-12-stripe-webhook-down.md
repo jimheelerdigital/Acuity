@@ -78,9 +78,11 @@ surfacing it).
 ## Prevention
 
 1. **Monitoring cron** (`stripe-webhook-health-check`, every 6h):
-   `apps/web/src/inngest/functions/stripe-webhook-health.ts` alerts the
-   cofounders (Slack + email) if no `StripeEvent` has been processed in >24h.
-   A quiet webhook now surfaces within hours, not weeks.
+   `apps/web/src/inngest/functions/stripe-webhook-health.ts`, with the
+   judgement in `apps/web/src/lib/stripe-webhook-health.ts`. It alerts the
+   cofounders (Slack + email) only when **Stripe itself confirms a failure**.
+   See the follow-up below — the original 24h-quiet rule was replaced on
+   2026-08-24 after it proved to be a pure false-alarm generator.
 2. **URL hygiene:** all third-party webhook/callback URLs must use the **apex**
    (`getacuity.io`), never `www` — the `www → apex` redirect breaks any
    integration that doesn't follow redirects (Stripe, Google Pub/Sub, etc.).
@@ -96,3 +98,70 @@ surfacing it).
   (genuine NSF, **not** an SCA/3DS failure); cards GB, charged USD.
 - `curl -X POST https://www.getacuity.io/api/stripe/webhook` → HTTP 308;
   apex → HTTP 400 (route healthy, rejecting unsigned test).
+
+---
+
+## Follow-up: the monitor was crying wolf (2026-08-24)
+
+**The prevention added on 2026-06-12 was itself a bug.** It alerted whenever
+no `StripeEvent` had been processed in 24h, treating silence as evidence of a
+broken pipe. That inference only holds for an app with daily subscription
+activity. Ripple has ~15 Stripe subscribers, so multi-day silence is the
+normal, healthy state.
+
+### Evidence (live account `acct_1TPqQjD9XJakJqj5`, 90 days to 2026-08-24)
+
+| Measure | Value |
+|---|---|
+| `StripeEvent` quiet gaps > 24h | **13** |
+| Quiet gaps > 48h | 2 |
+| Quiet gaps > 72h | **0** |
+| Longest quiet gap | **53.5h** (2026-08-13 04:56 → 2026-08-15 10:23) |
+| Approx. alert emails the 24h rule would have sent | **~28** (×2 recipients) |
+
+At the moment of the fix the ledger's last event was 2026-08-23 01:00Z —
+**35.8h earlier** — so the cron was mid-false-alarm while the pipe was
+demonstrably up: endpoint `we_1TPqdBD9XJakJqj5dgHvjrbX` `enabled` at
+`https://goripple.io/api/stripe/webhook`, recent invoices carrying
+`webhooks_delivered_at`, and the latest renewal PAID.
+
+An alert that is wrong 28 times out of 28 gets filtered, and then the next
+real outage is as invisible as the 2026-04-24 one was. This was a live
+regression in our ability to detect the very incident above.
+
+### What the check does now
+
+Quiet is no longer evidence of anything. Every alert requires Stripe-side
+confirmation:
+
+1. **Endpoint config** — `webhookEndpoints.list()`: missing, not `enabled`,
+   or pointing anywhere other than the apex URL. This is the exact
+   2026-06-12 failure and it is directly observable.
+2. **Delivery failure** — `events.list({ delivery_success: false })`: events
+   Stripe has failed to deliver or is still retrying past a 60-minute grace
+   window. `delivery_success` is account-wide, so an event already in our
+   ledger is excluded — that failure belongs to another destination.
+3. **Ingestion gap** — events Stripe recorded that never reached
+   `StripeEvent`. Catches what a delivery-side check cannot: signature
+   mismatch, a handler that 200s after crashing, a failed ledger write.
+4. **Quiet + confirmed activity** (retained time-based fallback) — nothing
+   ingested in **>72h** AND Stripe reports events in that window. 72h sits
+   above the 53.5h observed maximum; over the same 90-day sample it would
+   have fired **zero** times.
+
+**Quiet with Stripe also reporting nothing is a HEALTHY result.**
+
+A Stripe *read* failure (revoked key, API outage) is logged via `safeLog` →
+Sentry and does **not** email. Inferring an outage from an unreadable Stripe
+is the same mistake in a new costume; an unreadable Stripe is an ops problem,
+not a billing incident.
+
+### Gotchas worth keeping
+
+- The subscribed event types are read from the live endpoint's
+  `enabled_events`, not a hard-coded list, so adding a type in the dashboard
+  cannot leave the gap check blind to it. The constant is a fallback only.
+- `events.list` retains 30 days; the check only looks back 72h, well inside.
+- `delivery_success` is absent from the newest API versions but is supported
+  by the pinned `apiVersion: "2024-06-20"` in `lib/stripe.ts`. If that pin is
+  ever bumped, re-verify this parameter first.
