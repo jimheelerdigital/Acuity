@@ -7,6 +7,57 @@
 
 ---
 
+## [2026-08-24] — A second animated carousel every day, this one positive and actionable
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 70a39d7a
+
+### In plain English (for Keenan)
+You now get two animated carousels every night instead of one, and they're a deliberate pair: the existing 1am Central one is always the negative "that's me" recognition post ("7 reasons you're stuck in a rut"), and a new 3am Central one is always the positive, practical post ("7 ways to break out of a slump") where every item is something she could actually do today. Everything else about the positive post is identical — same audience, same look, same captions and hashtags, same stitched video in your email. There's also a new ✨ button on the admin carousels page to generate a positive one on demand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cron restored to `0 4,6,8,10 * * *`; new `"positive"` bucket at 8 UTC (the slot the calm-story removal freed) reusing the full VIDEO pipeline (format VIDEO, 6-reason cap, animate-all, same email path); `generateTopic` now receives `archetype: "resonance"` for the 6 UTC video bucket and `"actionable"` for the 8 UTC positive bucket
+- `apps/web/src/lib/content-factory/generate-topic.ts`: new `archetype` option on `generateTopic` injects a mandatory prompt block overriding the model's random RESONANCE/ACTIONABLE alternation; the actionable block requires every item to be tangible ("a concrete thing she could actually do today"), never preachy
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: `generateBucket` accepts `"positive"`; new ✨ top-bar button
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily docblock mentions the positive bucket
+- No schema change — positive posts are `format: VIDEO` rows, indistinguishable from the negative animated posts in the DB
+
+### Manual steps needed
+- [ ] None — Inngest picks up the new cron slot on the next auto-sync after deploy (flag if 8 UTC doesn't fire tomorrow; a manual resync at /api/inngest fixes it) (Keenan to watch email)
+
+### Notes
+- The two runs share the 30-day headline de-dupe list, and the 8 UTC run's avoid-list already includes the post generated at 6 UTC the same night, so the pair can't collide on topic
+- The archetypes were already defined in the topic prompt (RESONANCE vs ACTIONABLE, alternating randomly) — this change just makes the choice deterministic per bucket rather than adding a new content system
+- Photo bucket (4 UTC) keeps the model's own alternation, so it still varies day to day
+
+## [2026-08-24] — Calm story videos are gone; the daily calm post is now silent, with a script for Keenan to voice
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 925c89ff
+
+### In plain English (for Keenan)
+The multi-scene calm story video (the 3am Central one) never worked properly and was costing money every night, so it's gone completely. The regular calm post stays, but it no longer has an AI voiceover or burned-in captions — it arrives as a clean silent loop, and the email now leads with the script so you can record it in your own voice when you post. The scripts still follow the locked style guide: viral, audience-building, and never about Ripple, journaling, or downloading anything.
+
+### Technical changes (for Jimmy)
+- Deleted `apps/web/src/inngest/functions/carousel-calm-story.ts` and `apps/web/src/lib/content-factory/calm-story.ts`; unregistered from `/api/inngest`
+- `carousel-daily.ts`: calmstory bucket removed (its 8 UTC slot was re-used by the positive carousel in the follow-up commit)
+- `carousel-ambient-video.ts` + `lib/content-factory/ambient-video.ts`: ElevenLabs TTS and ffmpeg mux steps removed; the clip now loops to the script's estimated slow-read length (`estimateAmbientReadSeconds`: ~2 words/sec, 20s floor, +3s tail); `vocalScript` field and ambient voice config deleted; post persists `storyVoiced: false`
+- `lib/content-factory/email.ts`: `calmStory` flag removed; new `selfVoice` option renders a script-first "🎙️ Your voiceover script" block and a calm subject line (no more ⚠️ SILENT warning subject for these)
+- `lib/content-factory/costs.ts`: AMBIENT estimate no longer counts TTS
+- Admin: `generate-story` action and both calm-story buttons removed
+- No schema change; STORY/format enums untouched (historical posts still render in admin)
+
+### Manual steps needed
+- [ ] None — the 8 UTC calm-story cron disappears on the next Inngest sync after deploy
+
+### Notes
+- The script ban on journaling/app/product mentions needed no new code — `script-style-guide.ts` HARD BANS already enforce it and were verified intact
+- No burned captions on the silent calm video was deliberate (locked rule: Keenan adds captions himself when posting; burned text would fight his self-recorded voiceover)
+- `story-video.ts` TTS/mux helpers are now unused by the calm path but kept — they're shared toolbox code
+- AMBIENT cost estimates for posts generated before this change will undercount (they did include TTS) — noted in `costs.ts`
+
 ## [2026-08-24] — The daily "Stripe is broken" emails were false alarms; they now only fire when Stripe says so
 
 **Requested by:** Jimmy
