@@ -226,13 +226,17 @@ export const carouselDailyCronFn = inngest.createFunction(
           coverListItems: topicData.animatedRun
             ? undefined
             : topicData.reasons,
-          // Rotate scene settings per slide (offset by slug so different
-          // carousels don't all start in the same room), plus a rotating
-          // cover composition so covers stop looking identical.
+          // Animated runs (2026-08-24, per Keenan): the topic model writes
+          // a bespoke scene per slide (woman-in-a-moment OR object scene)
+          // so the artwork acts out the text instead of defaulting to the
+          // same woman-in-a-room. Rotating room settings + cover
+          // treatments remain the fallback when the model omits it.
           sceneHint:
-            SCENE_SETTINGS[slug.length % SCENE_SETTINGS.length] +
-            " " +
-            COVER_TREATMENTS[slug.length % COVER_TREATMENTS.length],
+            topicData.animatedRun && topicData.coverEmotion?.scene
+              ? `Scene direction (follow exactly): ${topicData.coverEmotion.scene}`
+              : SCENE_SETTINGS[slug.length % SCENE_SETTINGS.length] +
+                " " +
+                COVER_TREATMENTS[slug.length % COVER_TREATMENTS.length],
           // Her expression must match the post's emotional weight, not
           // default to joyful (2026-08-11).
           mood: topicData.coverEmotion?.mood ?? topicData.mood,
@@ -334,8 +338,12 @@ export const carouselDailyCronFn = inngest.createFunction(
           slideLabel,
           {
             noText: topicData.animatedRun,
+            // Bespoke per-slide scene from the topic model (2026-08-24);
+            // rotating room settings are the fallback.
             sceneHint:
-              SCENE_SETTINGS[(slug.length + i + 1) % SCENE_SETTINGS.length],
+              topicData.animatedRun && topicData.reasonEmotions?.[i]?.scene
+                ? `Scene direction (follow exactly): ${topicData.reasonEmotions[i].scene}`
+                : SCENE_SETTINGS[(slug.length + i + 1) % SCENE_SETTINGS.length],
             mood: topicData.reasonEmotions?.[i]?.mood ?? topicData.mood,
             // Photo bucket: gpt-image-2 bakes the detail line into the art.
             // Video bucket uses noText art — detail goes on the overlay below.

@@ -34,10 +34,17 @@ export const VISUAL_DNA = [
  * the image must contain ZERO text. The standard VISUAL_DNA cannot be used
  * because it actively instructs the model to render blended typography.
  */
+// 2026-08-24, per Keenan: the old NOTEXT DNA forced "one woman mid-activity"
+// on every animated slide, so every clip became a push-in on a woman while
+// the static pipeline got rich scene storytelling. This version carries the
+// static VISUAL_DNA's detail richness and lets the per-slide scene direction
+// (written by the topic model) decide the subject — woman OR object scene.
 export const VISUAL_DNA_NOTEXT = [
   "This is a premium editorial illustration for a wellness brand — polished, high-class, magazine quality. A single scene, NOT an infographic, NOT a layout, NOT a poster.",
-  "ILLUSTRATION: Rendered strictly in the STYLE LOCK art style stated above — never any other style. One diverse woman ~35-50, natural expression, mid-activity. Muted warm tones. The scene, setting, activity, camera angle, and supporting props must all be DIFFERENT from any other illustration in the series — make this scene distinctly its own.",
-  "COMPOSITION: The woman's face and head sit in the LOWER HALF of the frame — never in the top 45%. The entire top 45% stays visually calm and uncluttered — soft background only (a large multi-line text headline will be overlaid there later, and it must never cover her face).",
+  "ILLUSTRATION: Rendered strictly in the STYLE LOCK art style stated above — never any other style. Rich, intentional details that tell this scene's story — plants, candles, mugs, books, blank sticky notes, phones, blankets, keys, everyday domestic objects — whatever THIS scene calls for. Muted warm tones.",
+  "SUBJECT: Follow the scene direction above exactly. When it centers a woman, she is diverse, ~35-50, natural expression, caught mid-moment. When it centers objects or a symbolic still life, there is NO person in the frame — the objects carry the feeling. Never substitute a generic woman-in-a-room when the scene direction says otherwise.",
+  "VARIETY: The scene, setting, subject, camera angle, and supporting props must all be DIFFERENT from any other illustration in the series — make this scene distinctly its own.",
+  "COMPOSITION: The visual center of interest — any face, and anything important — sits in the LOWER HALF of the frame, never in the top 45%. The entire top 45% stays visually calm and uncluttered — soft background only (a large multi-line text headline will be overlaid there later, and it must never cover the subject).",
   "QUALITY: Like a full-page illustration from a premium wellness magazine. Clean, intentional, sophisticated. Not cluttered, not cheap, not templated.",
   "9:16 portrait format.",
   "IMPORTANT: This image contains absolutely NO text of any kind. No words, no letters, no numbers, no typography, no captions, no labels, no lists, no logos, no watermarks, no writing on any object. Pure illustration only.",

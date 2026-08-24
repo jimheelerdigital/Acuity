@@ -139,18 +139,23 @@ CONTENT THEMES TO DRAW FROM:
 - Boundaries, people-pleasing, shutting down
 - Sunday scaries, burnout, decision fatigue
 
-EMOTION DIRECTION (these posts are animated — the character's face and motion MUST match the text):
-Every post has a dominant mood and EVERY slide (cover + each reason) gets its own emotion direction matched to the emotional weight of its exact text. Available moods: "heavy" (exhausted, drained), "tender" (vulnerable, quietly sad), "wry" (knowing, self-aware, "ouch, that's me"), "frustrated" (fed up, tense), "hopeful" (relief, release, healing).
-- Never default to happy or joyous. If a slide's text is draining, an accusation, or an "ouch" truth, the woman must read tired, tender, or fed up — not smiling.
+VISUAL DIRECTION (these posts are ANIMATED — every slide becomes a 4-second video clip, and YOU direct both the artwork and its motion):
+Every post has a dominant mood and EVERY slide (cover + each reason) gets its own "mood", "scene", and "motion" matched to the emotional weight of its exact text. Available moods: "heavy" (exhausted, drained), "tender" (vulnerable, quietly sad), "wry" (knowing, self-aware, "ouch, that's me"), "frustrated" (fed up, tense), "hopeful" (relief, release, healing).
+- Never default to happy or joyous. If a slide's text is draining, an accusation, or an "ouch" truth, the visual must read tired, tender, or fed up — not smiling.
 - The mood can shift across the arc (e.g. heavy → heavy → frustrated → tender → hopeful when the last reason lands as release). The cover carries the post's dominant mood.
-- For each slide also write a "motion": ONE physical micro-gesture the woman performs in a 4-second video, embodying that slide's feeling.
+
+For each slide write a "scene" — the illustrated artwork, ONE concrete visual that embodies that slide's exact text. VARY THE SUBJECT across the post; never let every slide be a woman in a room:
+- Some slides: a woman (35-50) caught in a real, recognizable moment that acts out the slide's text — sitting in the parked car in the driveway, staring at a glowing phone at 2am, a mug going cold beside an open laptop.
+- Some slides: NO person at all — a symbolic object scene that carries the feeling: an overflowing mug, a phone buried under blank sticky notes, a tangle of chargers, one lit candle in a dark kitchen, an unmade bed in morning light, a kettle steaming with nobody there.
+- Each scene must be DIFFERENT from every other slide's — different setting, different subject, different angle. Under 30 words, concrete nouns only, no abstractions.
+
+For each slide also write a "motion" — what visibly MOVES in the 4-second clip of that scene, acting out the slide's meaning so the animation IS the message. One or two connected movements, a complete present-tense sentence, under 25 words (e.g. "Steam drifts off the mug as her shoulders finally drop", "The phone screen flares again and again, light pulsing across the dark room").
 
 STRICT RULES for every "motion":
-- The gesture must ACT OUT that slide's exact text — visible and emotionally unmistakable, never a generic idle (2026-08-16, per Keenan: subtle-only clips read as boring).
-- She stays in the same spot and pose. Lips closed — no talking, no mouthing words.
-- No walking, no standing up, no sitting down, no turning around, no leaving, no camera directions, no NEW props appearing (she may interact with objects already in the scene).
-- Movements of her face, eyes, head, shoulders, hands, and breath. Think: a jaw tightening as she sets the phone face-down, a hand pressed hard to her chest, a fed-up head shake, shoulders finally dropping in relief.
-- Under 20 words, present tense, written as a continuation of "She ..." (e.g. "lets her shoulders sink with a long exhale, eyes closing briefly").
+- It must ACT OUT that slide's exact text — visible and emotionally unmistakable, never a generic idle (2026-08-16, per Keenan: subtle-only clips read as boring).
+- Only things ALREADY IN YOUR SCENE move. Nothing new appears; nobody and nothing enters or leaves the frame.
+- If the scene has a woman: she stays in the same spot and pose, lips closed — no talking, no walking, no standing up, no sitting down, no turning around. Her face, eyes, head, shoulders, hands, and breath carry the emotion.
+- No camera directions.
 
 CAPTION (2026-08-20, per Keenan: captions must read personal, never AI-written. 2026-08-21: SHORT — the slides carry the content, the caption never repeats them):
 The post caption is written by YOU, in the voice of a real woman who runs this page — she's in the audience herself, posting to her own page. Text-message tone, lowercase-leaning, contractions always, no marketing words, no emoji (one at most), nothing that sounds like a brand or a coach.
@@ -167,8 +172,8 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "details": ["supporting sentence for item 1", "supporting sentence for item 2", ...],
   "reasonCount": 5 or 6 or 7 or 8 or 9 or 10,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
-  "cover": { "mood": "...", "motion": "..." },
-  "reasonEmotions": [{ "mood": "...", "motion": "..." }, ...],
+  "cover": { "mood": "...", "scene": "...", "motion": "..." },
+  "reasonEmotions": [{ "mood": "...", "scene": "...", "motion": "..." }, ...],
   "captionOpen": "one short hook line in the page-owner's voice",
   "captionClose": "one comment/share ask in the same voice"
 }
@@ -254,7 +259,9 @@ Return ONLY valid JSON, no other text.`;
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1000,
+      // 2026-08-24: raised from 1000 — per-slide "scene" directions added
+      // ~500 output tokens and were getting the JSON truncated mid-array.
+      max_tokens: 2500,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
     });
@@ -305,9 +312,13 @@ Return ONLY valid JSON, no other text.`;
     // taxonomy); motion safety is enforced at video-prompt build time.
     const mood: Mood | undefined = isMood(parsed.mood) ? parsed.mood : undefined;
     const parseEmotion = (raw: unknown): SlideEmotion => {
-      const e = (raw ?? {}) as { mood?: unknown; motion?: unknown };
+      const e = (raw ?? {}) as { mood?: unknown; scene?: unknown; motion?: unknown };
       return {
         mood: isMood(e.mood) ? e.mood : mood,
+        scene:
+          typeof e.scene === "string" && e.scene.trim()
+            ? e.scene.trim()
+            : undefined,
         motion: typeof e.motion === "string" ? e.motion : undefined,
       };
     };
