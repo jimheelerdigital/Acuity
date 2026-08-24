@@ -194,6 +194,13 @@ export async function generateTopic(
   opts?: {
     maxReasons?: number;
     performance?: { top: string[]; bottom: string[] };
+    /**
+     * Force the content archetype (2026-08-24, per Keenan: the two daily
+     * animated carousels are a deliberate pair — one negative recognition
+     * post, one positive actionable post — so the archetype can't be left
+     * to the random alternation).
+     */
+    archetype?: "resonance" | "actionable";
   }
 ): Promise<GeneratedTopic> {
   const { prisma } = await import("@/lib/prisma");
@@ -206,6 +213,13 @@ export async function generateTopic(
   const reasonCap = maxReasons
     ? `\n\nIMPORTANT: Generate at most ${maxReasons} reasons for this topic (5-${maxReasons}). The number in the headline must match the reason count.`
     : "";
+
+  const archetypeBlock =
+    opts?.archetype === "resonance"
+      ? `\n\nTODAY'S ARCHETYPE (mandatory, overrides the alternation rule): RESONANCE. Write a "that's me" recognition list — the negative, uncomfortably accurate framing (reasons you're exhausted, signs you're burnt out, quiet ways you abandon yourself). Do NOT write an actionable how-to list today.`
+      : opts?.archetype === "actionable"
+        ? `\n\nTODAY'S ARCHETYPE (mandatory, overrides the alternation rule): ACTIONABLE. Write a positive, improvement-forward list — ways to fix, break out, or get a piece of yourself back ("7 ways to break out of a slump"). Every item must be TANGIBLE: a concrete thing she could actually do today, with the detail saying how or why it works. Hopeful and forward-moving, never preachy. Do NOT write a signs/reasons recognition list today.`
+        : "";
 
   const perf = opts?.performance;
   const performanceBlock =
@@ -232,7 +246,7 @@ export async function generateTopic(
     );
   }
 
-  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${performanceBlock}${researchBlock}
+  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${archetypeBlock}${performanceBlock}${researchBlock}
 
 Return ONLY valid JSON, no other text.`;
 

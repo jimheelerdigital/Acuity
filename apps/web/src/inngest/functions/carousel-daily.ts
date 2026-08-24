@@ -1,37 +1,42 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 3× daily via cron, each run an EXPLICIT
+ * Carousel generation — runs 4× daily via cron, each run an EXPLICIT
  * bucket. 2026-08-18 per Keenan: ALL buckets moved overnight so every
  * post is waiting when he wakes up (times below are CDT; they shift
  * one hour later in winter CST):
  *
  * -  4 UTC (11pm Central): PHOTO — static picture carousel
- * -  6 UTC (1am Central):  VIDEO — fully animated carousel video
+ * -  6 UTC (1am Central):  VIDEO — fully animated carousel video, always
+ *                          the NEGATIVE "that's me" recognition archetype
  *                          (topic capped at 6 reasons → 7 clips max)
+ * -  8 UTC (3am Central):  POSITIVE — fully animated carousel video,
+ *                          always the POSITIVE actionable archetype
+ *                          ("7 ways to break out of a slump"); identical
+ *                          treatment to VIDEO otherwise (2026-08-24 per
+ *                          Keenan: one negative + one positive animated
+ *                          carousel daily). Took over the slot freed by
+ *                          the calm-story removal (same day) — the
+ *                          multi-scene calm-story videos never worked
+ *                          properly and were wasting money.
  * - 10 UTC (5am Central):  AMBIENT — single-scene calm video (handled by
  *                          carouselAmbientVideoFn)
  *
- * The 8 UTC CALM-STORY bucket was removed 2026-08-24 per Keenan: the
- * multi-scene calm-story videos never worked properly and were wasting
- * money. (Its predecessor, the illustrated STORY format, was eliminated
- * 2026-08-20.)
- *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
- * with data.bucket = "photo" | "video" | "ambient" (legacy
+ * with data.bucket = "photo" | "video" | "positive" | "ambient" (legacy
  * data.animated boolean → true→video, false→photo).
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
  */
-type DailyBucket = "photo" | "video" | "ambient";
+type DailyBucket = "photo" | "video" | "positive" | "ambient";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 4,6,10 * * *" },
+      { cron: "0 4,6,8,10 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
@@ -42,13 +47,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     // ── Resolve the bucket ─────────────────────────────────────────
     // Event trigger: explicit bucket wins; legacy `animated` maps to
     // video/photo. Cron: keyed off the trigger hour (event.ts is stable
-    // across retries) — 4→photo, 6→video, 10→ambient.
+    // across retries) — 4→photo, 6→video, 8→positive, 10→ambient.
     let bucket: DailyBucket;
     if (event?.name === "content-factory/daily.generate") {
       const b = event.data?.bucket as string | undefined;
       const legacyAnimated = event.data?.animated as boolean | undefined;
       bucket =
-        b === "photo" || b === "video" || b === "ambient"
+        b === "photo" || b === "video" || b === "positive" || b === "ambient"
           ? b
           : typeof legacyAnimated === "boolean"
             ? legacyAnimated
@@ -58,7 +63,8 @@ export const carouselDailyCronFn = inngest.createFunction(
     } else {
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
-      bucket = hour < 5 ? "photo" : hour < 7 ? "video" : "ambient";
+      bucket =
+        hour < 5 ? "photo" : hour < 7 ? "video" : hour < 9 ? "positive" : "ambient";
     }
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
 
@@ -73,7 +79,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     }
 
     // ── Step 1: Generate a fresh topic via Claude ──────────────────
-    // The VIDEO bucket's topic is capped at 6 reasons so at most
+    // The animated buckets' topics are capped at 6 reasons so at most
     // 7 slides (cover + 6 reasons) get videos.
     const topicData = await step.run("generate-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
@@ -81,7 +87,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         "@/lib/content-factory/generate-topic"
       );
 
-      const animatedRun = bucket === "video";
+      const animatedRun = bucket === "video" || bucket === "positive";
 
       const thirtyDaysAgo = new Date(
         Date.now() - 30 * 86_400_000
@@ -130,8 +136,17 @@ export const carouselDailyCronFn = inngest.createFunction(
         };
       }
 
+      // The two animated runs are a deliberate daily pair (2026-08-24,
+      // per Keenan): 6 UTC is always the negative recognition post,
+      // 8 UTC always the positive actionable one. Photo keeps the
+      // model's own alternation.
       const topic = await generateTopic(recentHeadlines, {
         ...(animatedRun ? { maxReasons: 6 } : {}),
+        ...(bucket === "video"
+          ? { archetype: "resonance" as const }
+          : bucket === "positive"
+            ? { archetype: "actionable" as const }
+            : {}),
         performance,
       });
       return { ...topic, animatedRun };
