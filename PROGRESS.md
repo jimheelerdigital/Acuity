@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** cc9f101c
 
 ### In plain English (for Keenan)
 The alert emails warning that "the Stripe webhook is DOWN" were wrong — payments have been flowing fine the whole time. The alert was set up to shout whenever a whole day passed with no Stripe activity, which made sense for a busy app but not for ours: with around fifteen subscribers, going a day or two with nobody signing up, renewing or cancelling is completely normal. It had cried wolf roughly 28 times in the last three months, and zero of those were real. Now the alert asks Stripe directly whether anything actually failed, and only emails when Stripe confirms it. A quiet week is treated as a quiet week.
