@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-08-24] — Half the old-domain cleanup shipped; the other half is blocked on a missing DNS record
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The app used to be called Acuity and lived at getacuity.io. It's Ripple at goripple.io now, but the old address was still wired into a few places that actually do things — not just old notes. We moved the ones that are safe to move today.
+
+We also found and fixed a real bug: when someone signs up on the website and taps the "verify your email" link on their phone, that link was supposed to open the Ripple app directly. It wasn't, because the app was still only listening for the old getacuity.io address. It now listens for both. This needs a new app build before customers see the fix.
+
+The rest is stuck on something outside the code. goripple.io can *send* email but cannot *receive* any — there's no mailbox behind it. So every "contact us" link, every support address, and every email from Keenan that invites a reply has to keep using the old getacuity.io address for now, or replies would bounce into nowhere. That's one DNS change away from being fixable, and it's on Jimmy's list below. The old domain is paid up until April 2027, so nothing is about to break.
+
+### Technical changes (for Jimmy)
+**Migrated (a — live/functional, verified safe):**
+- `apps/web/src/lib/content-factory/compose.ts`: font CDN fetch + `ripple-lockup-cream.png` fetch → `goripple.io` (both confirmed HTTP 200 on the new host before changing)
+- `apps/web/src/lib/calendar/oauth.ts`: last-resort `redirectUri()` base → `https://goripple.io`; doc comment now lists both registered URIs
+- Internal founder-alert senders → `hello@goripple.io` / `noreply@goripple.io`: `rls-audit.ts`, `entitlement-reconcile-nightly.ts`, `entitlement-drift-monitor.ts`, `stripe-webhook-health.ts`, `lib/founder-notifications.ts`, `api/admin/adlab/cron/route.ts`, `inngest/functions/auto-blog.ts` (2 × `from` only)
+- `apps/mobile/app.json` + `ios/Acuity/Acuity.entitlements` + `android/app/src/main/AndroidManifest.xml`: **added** `goripple.io` applinks/intent-filters alongside `getacuity.io`
+
+**Deliberately NOT migrated (see Notes):** all `mailto:`, all `replyTo:`, Keenan's conversational senders, `auto-blog.ts:1133` `to:`, `sc-domain:getacuity.io`, and every historical doc.
+
+### Manual steps needed
+- [ ] Jimmy: **add MX records to goripple.io** — it currently has none. This is the single blocker for migrating the remaining ~37 reply-capable/inbound addresses. Until then they must stay on getacuity.io
+- [ ] Jimmy: add an **SPF TXT record** to goripple.io (`v=spf1 include:amazonses.com ~all` or Resend's current value). DKIM + DMARC are present; SPF is missing. Not blocking — DMARC is `aspf=r` so DKIM alignment alone passes — but it weakens deliverability
+- [ ] Jimmy: **App Store Connect → App Store Server Notifications URL** is `https://getacuity.io/api/iap/notifications` → change to `https://goripple.io/api/iap/notifications`. Cannot be changed from code
+- [ ] Jimmy: **mobile rebuild required** for the deep-link fix to reach users — config changes alone do nothing to installed binaries
+- [ ] Jimmy: **Google Search Console** — decide whether to create a `sc-domain:goripple.io` property and add the service account. Until it exists, leaving the code on `sc-domain:getacuity.io` is correct
+- [ ] Jimmy: check **Stripe / RevenueCat / Vercel** dashboards for any remaining getacuity.io callback URLs (Stripe webhook was already confirmed on goripple.io)
+
+### Notes
+- **The decisive fact was DNS, not the code.** `dig MX goripple.io` returns nothing. `dig MX getacuity.io` returns `smtp.google.com`. So goripple.io can send but cannot receive. That splits "email addresses" into two risk classes the original sweep brief treated as one: a `from:` on a no-reply alert is safe to move, a `replyTo:` or a `mailto:` a user is invited to click is not — it would bounce.
+- **goripple.io IS already set up in Resend**: `resend._domainkey` DKIM record present and `send.goripple.io` has the `feedback-smtp.us-east-1.amazonses.com` MX. Its DMARC is `p=quarantine; aspf=r`, so DKIM alignment alone satisfies DMARC even without SPF. That is why the founder-alert senders were safe to flip.
+- **getacuity.io is not lapsing.** Registry expiry `2027-04-10`, and it currently serves the same Vercel app (HTTP 200, not a redirect). This is hygiene with runway, which is why the risky half was left rather than forced.
+- **The deep-link gap was a real live bug, not just staleness.** Verify links are built with `publicOrigin(req)`, so a goripple.io signup produced a goripple.io link while the app claimed only `applinks:getacuity.io`. Both domains serve an identical AASA listing `ZNF9ZJ4NVX.com.heelerdigital.acuity`, so claiming both is safe. Domains were **added, not swapped** — associated domains are baked into the installed binary, so removing the old one would strand links already sitting in inboxes.
+- **`waitlist-reactivation.ts` was deliberately left** even though it looks like the other `EMAIL_FROM` constants: it sends to `w.email` / `current.email` (real users), not to founders. Same reason as the other reply-capable senders.
+- **`auto-blog.ts` `to: keenan@getacuity.io` was left** while its two `from:` lines moved — the recipient has to be a mailbox that exists.
+- Baselines held: web tsc 153, mobile tsc 19 (both pre-existing and unchanged), 673/673 tests green across 41 files.
+
 ## [2026-08-24] — The daily "Stripe is broken" emails were false alarms; they now only fire when Stripe says so
 
 **Requested by:** Jimmy
