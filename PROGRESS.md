@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** e6bc1e77
 
 ### In plain English (for Keenan)
 The app used to be called Acuity and lived at getacuity.io. It's Ripple at goripple.io now, but the old address was still wired into a few places that actually do things — not just old notes. We moved the ones that are safe to move today.
