@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/admin/carousels — actions: regenerate-slide, edit-text,
- * animate-cover, animate-all, generate-daily, generate-story,
+ * animate-cover, animate-all, generate-daily,
  * save-metrics, save-links, refresh-metrics, resend-email,
  * generate-topic, generate-one-off.
  */
@@ -217,9 +217,9 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "photo" | "video" | "calmstory" | "ambient"
-      // (legacy "story" → calmstory; legacy `animated` boolean still
-      // honored: true→video, false→photo; omitted→video).
+      // images). `bucket`: "photo" | "video" | "ambient" (legacy
+      // `animated` boolean still honored: true→video, false→photo;
+      // omitted→video).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",
@@ -227,19 +227,6 @@ export async function POST(req: NextRequest) {
           bucket: (body as { bucket?: string }).bucket,
           animated: (body as { animated?: boolean }).animated,
         },
-      });
-      return NextResponse.json({ ok: true, queued: true });
-    }
-
-    case "generate-story": {
-      // Queue a CALM-STORY video (2026-08-20 — the old illustrated story
-      // pipeline is eliminated). Always standalone: the calm-story fn
-      // writes its own story and creates its own STORY post; a postId is
-      // ignored (kept accepted so old admin buttons don't 400).
-      const { inngest } = await import("@/inngest/client");
-      await inngest.send({
-        name: "content-factory/calmstory.video",
-        data: {},
       });
       return NextResponse.json({ ok: true, queued: true });
     }

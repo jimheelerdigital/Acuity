@@ -1,32 +1,28 @@
 /**
  * Content Factory — AMBIENT calm video pipeline (2026-08-18, per Keenan).
  *
- * The 4th daily post format, modeled on the wakingupapp pattern that
- * performs well: ONE catchy, soothing image (sky, clouds, water, light —
- * no people) turned into a low-movement looping video, with a soothing
- * voiceover telling a short story or lesson and script-true captions
- * burned over the video.
+ * The daily calm post, modeled on the wakingupapp pattern that performs
+ * well: ONE catchy, soothing image (sky, clouds, water, light — no
+ * people) turned into a low-movement looping video.
+ *
+ * NO TTS voiceover as of 2026-08-24, per Keenan: he records the
+ * voiceover himself. The pipeline ships a clean silent video (no audio,
+ * no burned captions) and the email leads with the script for him to
+ * read. All ElevenLabs machinery was removed with that change.
  *
  * Pipeline (see carousel-ambient-video.ts):
- * 1. Claude writes a calm 15-45s lesson/story script + the scene concept
+ * 1. Claude writes a calm 45-80 word script + the scene concept
  * 2. gpt-image-2 renders one photoreal soothing 9:16 image (no text)
  * 3. Higgsfield animates it (5s, ambient drift only)
- * 4. The clip is looped with crossfades to the voiceover's length
- * 5. ElevenLabs voices the whole script in one continuous calm read
- *    (random pick between Vanessa and Hope, Keenan's chosen calm voices;
- *    AMBIENT_ELEVENLABS_VOICE_ID forces one — Higgsfield's platform API
- *    has no TTS endpoint, so a Higgsfield-app voice can't be called here)
- * 6. Captions come straight from the script text (estimateCaptionChunks)
- *    and are muxed in as timed PNG overlays
+ * 4. The clip is looped with crossfades to the script's estimated slow
+ *    read length — that IS the final video
+ * 5. The email delivers the video + the script framed "record this"
  *
  * Env knobs:
- * - AMBIENT_ELEVENLABS_VOICE_ID — force a single calm voice (optional;
- *   default alternates Vanessa/Hope)
  * - HIGGSFIELD_AMBIENT_CLIP_DURATION — seconds per source clip (default 5)
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { VoiceoverOptions } from "./story-video";
 import {
   SCRIPT_STYLE_GUIDE,
   pickPainBranch,
@@ -52,13 +48,6 @@ export interface AmbientScript {
   title: string;
   /** The full voiceover text, read as ONE continuous calm narration. */
   script: string;
-  /**
-   * The same script with ElevenLabs v3 audio tags ([softly], [sighs]...)
-   * placed by the scriptwriter for delivery (2026-08-19, per Keenan: the
-   * read needed more tone and inflection). TTS-only — email/captions/admin
-   * always show the clean `script`.
-   */
-  vocalScript?: string;
   /** What the single image shows — a serene scene, no people, no text. */
   visual: string;
   /** The ambient movement for the i2v prompt (clouds drift, light shifts...). */
@@ -76,7 +65,7 @@ export interface AmbientScript {
 
 const buildAmbientSystemPrompt = (
   branch: PainBranch
-) => `You are a scriptwriter for calm, contemplative short-form vertical videos. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover, with the words appearing as captions.
+) => `You are a scriptwriter for calm, contemplative short-form vertical videos. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing voiceover. The account owner records the voiceover himself from your script — write words that a real person can read aloud slowly and land.
 
 ${SCRIPT_STYLE_GUIDE}
 
@@ -99,7 +88,7 @@ SCRIPT RULES:
 - 45-80 words TOTAL, read slowly (finished videos run roughly 20-35 seconds — VARY the length from post to post). Let the idea pick the length: a sharp single recognition can be 45 words, a small story can be 80. One continuous narration, not scenes. Every word earns its place — cut filler, keep the concrete details.
 - Second person or first person, present tense, intimate and unhurried.
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
-- BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
+- BUILD IN THE PAUSES: use ellipses ("...") where the reader would actually stop and breathe mid-thought, at least 3-4 times across the script. The script is read aloud by a real person — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
 - No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). The ONLY call to action is the single soft follower CTA that ends the script — never a product CTA.
 
@@ -121,12 +110,6 @@ ALSO OUTPUT:
 - "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. KEEP IT SHORT: exactly 2 lines, blank line between them. Line 1 is a question or personal aside that stops the scroll on its own, under 12 words (it's the only line visible before "...more"). Line 2 is one share/save ask in her voice ("send this to the friend who never stops moving"). NEVER retell, quote, or summarize the video's script — the video says it; the caption doesn't repeat it. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever.
 - "commentPrompt": the same first-line question on its own (fallback field).
 - "captionHook": 1-2 of the personal lines on their own (fallback field).
-- "vocalScript": the EXACT same script text turned into a fully directed vocal PERFORMANCE using ElevenLabs v3 audio tags. This is where the read becomes hyper-realistic — direct it like a voice actor's marked-up script:
-  • Use 5-10 tags across the read, one wherever the delivery should shift. Allowed tags: [softly], [warmly], [gently], [quietly], [whispers], [sighs], [exhales], [tired], [tender], [hesitates], [pause], [long pause].
-  • Start with [softly] or [warmly]. Change the emotional register as the script moves — e.g. [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the CTA.
-  • Add [pause] or [long pause] where a real person would actually stop — before the truth lands, after the hardest line. You may also add extra "..." beyond the clean script's for micro-hesitations.
-  • Put [sighs] or [exhales] where a tired woman would audibly breathe — at most twice, where it's earned.
-  • Tags and ellipses direct delivery only — the WORDS must stay identical to "script". Never all-caps, never exclamation marks.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -136,7 +119,6 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "captionHook": "...",
   "commentPrompt": "...",
   "script": "the full 40-80 word narration",
-  "vocalScript": "the same narration fully performance-directed with v3 audio tags and pause marks",
   "visual": "...",
   "motion": "..."
 }`;
@@ -200,25 +182,6 @@ Return ONLY valid JSON.`;
       throw new Error("Ambient script returned an unusable script/visual");
     }
 
-    // vocalScript must be the same words (tags aside) — if the model
-    // paraphrased, fall back to the clean script rather than letting the
-    // spoken words drift from the emailed/captioned ones.
-    let vocalScript =
-      typeof parsed.vocalScript === "string" ? parsed.vocalScript.trim() : undefined;
-    if (vocalScript) {
-      const stripped = vocalScript.replace(/\[[a-z][a-z ]*\]\s*/gi, "");
-      // Ignore punctuation-only tokens (standalone "..." pause marks are
-      // allowed in the vocal performance and must not count as words).
-      const words = (s: string) =>
-        s.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
-      if (Math.abs(words(stripped) - words(script)) > 5) {
-        console.warn(
-          "[ambient-video] vocalScript diverged from script — using untagged script"
-        );
-        vocalScript = undefined;
-      }
-    }
-
     const title =
       typeof parsed.title === "string" && parsed.title.trim()
         ? parsed.title.trim().slice(0, 80)
@@ -230,7 +193,6 @@ Return ONLY valid JSON.`;
           : title,
       title,
       script,
-      vocalScript,
       visual,
       motion:
         typeof parsed.motion === "string" && parsed.motion.trim()
@@ -339,66 +301,13 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
 }
 
 /**
- * Voice history (per Keenan):
- * - 2026-08-19: Vanessa (8DzKSPdgEQPaK5vKG0Rs) dropped ("meh"), Hope
- *   (WAhoMTNdLdMoq1j3wf3I) chosen.
- * - 2026-08-21: Hope rejected too ("still sounds like absolute shit")
- *   even on the restored good-post config → switched to Aria with the
- *   script carrying much heavier v3 performance tags (hyper-realistic
- *   delivery lives in the script, not the settings).
- * - 2026-08-22: Aria rejected ("sounds like someone from the bayou")
- *   → Rachel, the neutral-American calm narrator premade — no drawl.
- *   The heavy script-tag direction stays.
- * AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
+ * How long the looped video should run for Keenan's self-recorded read
+ * (2026-08-24 — TTS removed; he voices calm posts himself). A slow calm
+ * read paces ~2 words/sec with the written-in pauses, so 45-80 words →
+ * roughly 22-40s. Floor of 20s so a short script still gets a postable
+ * video; +3s of breathing room at the tail.
  */
-const AMBIENT_VOICES = [
-  "21m00Tcm4TlvDq8ikWAM", // Rachel - calm, neutral American female narrator
-];
-
-/**
- * Voice settings for the calm read (2026-08-21): eleven_v3 at stability
- * 0.0 Creative — the most expressive, tag-responsive mode — because the
- * realism now comes from the scriptwriter's inline audio tags and
- * written-in pauses, not from the settings. elevenLabsVoiceover falls
- * back to eleven_multilingual_v2 (tags stripped) if a v3 call fails.
- */
-export function ambientVoiceoverOptions(): VoiceoverOptions {
-  return {
-    voiceId:
-      process.env.AMBIENT_ELEVENLABS_VOICE_ID ||
-      AMBIENT_VOICES[Math.floor(Math.random() * AMBIENT_VOICES.length)],
-    modelId: "eleven_v3",
-    voiceSettings: {
-      // v3 stability is effectively discrete: 0.0 Creative / 0.5 Natural /
-      // 1.0 Robust. 0.5 still sounded flat to Keenan (2026-08-19, "meh")
-      // — 0.0 Creative is the most emotional, expressive delivery.
-      // Verified live on Hope with inline tags (HTTP 200).
-      stability: 0.0,
-      similarity_boost: 0.8,
-      style: 0.5,
-      use_speaker_boost: true,
-      speed: 0.85,
-    },
-    openaiInstructions:
-      "You are a warm, unhurried female narrator guiding a quiet moment of reflection. Speak slowly and evenly, voice low and soft, with long natural pauses at punctuation. Calm, grounded, soothing — like a meditation guide who never performs. Never chipper, never announcer-like, never rushed.",
-  };
-}
-
-/**
- * The text actually sent to TTS (2026-08-19): the scriptwriter's
- * vocalScript carries eleven_v3 audio tags ([softly], [sighs]...) placed
- * where the delivery should shift; without one, a leading [softly] still
- * sets the register. The stored script stays clean — email, captions,
- * and the admin UI never see tags. If TTS falls back to
- * eleven_multilingual_v2 the tags are stripped there, not spoken.
- */
-export function ambientTtsText(
-  script: Pick<AmbientScript, "script" | "vocalScript">
-): string {
-  if (script.vocalScript) {
-    return /^\s*\[/.test(script.vocalScript)
-      ? script.vocalScript
-      : `[softly] ${script.vocalScript}`;
-  }
-  return `[softly] ${script.script}`;
+export function estimateAmbientReadSeconds(script: string): number {
+  const words = script.split(/\s+/).filter(Boolean).length || 1;
+  return Math.max(20, Math.round((words / 2.0) * 10) / 10) + 3;
 }

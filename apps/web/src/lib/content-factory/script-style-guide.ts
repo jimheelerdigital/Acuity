@@ -9,8 +9,8 @@
  * soft FOLLOWER CTA, rotate across five core pain branches, and aim to
  * sound uncomfortably accurate rather than beautiful.
  *
- * Both calm-story.ts and ambient-video.ts embed SCRIPT_STYLE_GUIDE in
- * their system prompts and pick one PAIN_BRANCH per run for variety.
+ * ambient-video.ts embeds SCRIPT_STYLE_GUIDE in its system prompt and
+ * picks one PAIN_BRANCH per run for variety.
  */
 
 export interface PainBranch {

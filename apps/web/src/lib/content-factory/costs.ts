@@ -37,8 +37,10 @@ export type CostFormat = "PHOTO" | "VIDEO" | "STORY" | "AMBIENT";
  *
  * - PHOTO:   images only
  * - VIDEO:   every slide is also animated (one clip per slide)
- * - STORY:   every scene slide is animated + one voiceover
- * - AMBIENT: one image, one clip, one voiceover
+ * - STORY:   every scene slide is animated + one voiceover (format dead
+ *            since 2026-08-24 — kept for historical posts)
+ * - AMBIENT: one image, one clip. No TTS since 2026-08-24 (Keenan voices
+ *            calm posts himself) — slightly undercounts pre-change posts.
  */
 export function estimatePostCostCents(post: {
   format: string;
@@ -54,7 +56,7 @@ export function estimatePostCostCents(post: {
         images + generated * clipCostCents() + ttsCostCents() + CLAUDE_CALL_COST_CENTS
       );
     case "AMBIENT":
-      return images + clipCostCents() + ttsCostCents() + CLAUDE_CALL_COST_CENTS;
+      return images + clipCostCents() + CLAUDE_CALL_COST_CENTS;
     case "PHOTO":
     default:
       return images + CLAUDE_CALL_COST_CENTS;

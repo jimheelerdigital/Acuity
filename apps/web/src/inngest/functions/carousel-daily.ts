@@ -1,7 +1,7 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 4× daily via cron, each run an EXPLICIT
+ * Carousel generation — runs 3× daily via cron, each run an EXPLICIT
  * bucket. 2026-08-18 per Keenan: ALL buckets moved overnight so every
  * post is waiting when he wakes up (times below are CDT; they shift
  * one hour later in winter CST):
@@ -9,29 +9,29 @@ import { inngest } from "@/inngest/client";
  * -  4 UTC (11pm Central): PHOTO — static picture carousel
  * -  6 UTC (1am Central):  VIDEO — fully animated carousel video
  *                          (topic capped at 6 reasons → 7 clips max)
- * -  8 UTC (3am Central):  CALM-STORY — multi-scene narrated calm video
- *                          (was STORY until 2026-08-20; the story format
- *                          was eliminated per Keenan — replaced by the
- *                          calm-story branch, carouselCalmStoryFn)
  * - 10 UTC (5am Central):  AMBIENT — single-scene calm video (handled by
  *                          carouselAmbientVideoFn)
  *
+ * The 8 UTC CALM-STORY bucket was removed 2026-08-24 per Keenan: the
+ * multi-scene calm-story videos never worked properly and were wasting
+ * money. (Its predecessor, the illustrated STORY format, was eliminated
+ * 2026-08-20.)
+ *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
- * with data.bucket = "photo" | "video" | "calmstory" | "ambient" (legacy
- * values "story" → calmstory, data.animated boolean → true→video,
- * false→photo).
+ * with data.bucket = "photo" | "video" | "ambient" (legacy
+ * data.animated boolean → true→video, false→photo).
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
  */
-type DailyBucket = "photo" | "video" | "calmstory" | "ambient";
+type DailyBucket = "photo" | "video" | "ambient";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 4,6,8,10 * * *" },
+      { cron: "0 4,6,10 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
@@ -41,40 +41,26 @@ export const carouselDailyCronFn = inngest.createFunction(
   async ({ event, step, logger }) => {
     // ── Resolve the bucket ─────────────────────────────────────────
     // Event trigger: explicit bucket wins; legacy `animated` maps to
-    // video/photo, legacy "story" maps to calmstory. Cron: keyed off the
-    // trigger hour (event.ts is stable across retries) — 4→photo,
-    // 6→video, 8→calmstory, 10→ambient.
+    // video/photo. Cron: keyed off the trigger hour (event.ts is stable
+    // across retries) — 4→photo, 6→video, 10→ambient.
     let bucket: DailyBucket;
     if (event?.name === "content-factory/daily.generate") {
       const b = event.data?.bucket as string | undefined;
       const legacyAnimated = event.data?.animated as boolean | undefined;
       bucket =
-        b === "photo" || b === "video" || b === "calmstory" || b === "ambient"
+        b === "photo" || b === "video" || b === "ambient"
           ? b
-          : b === "story"
-            ? "calmstory"
-            : typeof legacyAnimated === "boolean"
-              ? legacyAnimated
-                ? "video"
-                : "photo"
-              : "video";
+          : typeof legacyAnimated === "boolean"
+            ? legacyAnimated
+              ? "video"
+              : "photo"
+            : "video";
     } else {
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
-      bucket =
-        hour < 5 ? "photo" : hour < 7 ? "video" : hour < 9 ? "calmstory" : "ambient";
+      bucket = hour < 5 ? "photo" : hour < 7 ? "video" : "ambient";
     }
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
-
-    // ── CALM-STORY bucket: hand off to the calm-story pipeline ─────
-    // No postId — the calm-story function writes its own story, creates
-    // its own CarouselPost (format=STORY), and emails the result.
-    if (bucket === "calmstory") {
-      await step.run("enqueue-calm-story", async () => {
-        await inngest.send({ name: "content-factory/calmstory.video", data: {} });
-      });
-      return { generated: 0, bucket, delegated: "calmstory.video" };
-    }
 
     // ── AMBIENT bucket: hand off to the calm-video pipeline ────────
     // The ambient function generates its own concept, creates its own
