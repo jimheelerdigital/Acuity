@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-24] — Animated carousels stop being "slow zoom on a woman" — scenes and motion now act out each slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1e4a753f
+
+### In plain English (for Keenan)
+Every animated slide used to be the same video: a woman in a room, camera slowly pushing in while she does a small facial gesture. That's because the animated pipeline forced "one woman mid-activity" into every image and "push in toward her" into every video, while the static photo posts got much richer scene instructions. Now the AI directs a specific scene for each slide — sometimes a woman caught in a real moment (sitting in the parked car, phone glowing at 2am), sometimes no person at all (an overflowing mug, a phone buried under sticky notes, one candle in a dark kitchen) — and writes the motion to match what that slide is actually saying, so the animation IS the message. The camera also varies now (push in, pull back, side drift, rise, near-still) instead of always zooming in. The animated posts get the same rich image scripting the static posts already had.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: topic JSON gains a per-slide `scene` (cover + each reason) with subject-variety rules (woman-in-moment OR object scene, all scenes distinct); `motion` is now a standalone present-tense sentence animating that scene; `max_tokens` 1000 → 2500 (the added fields were going to truncate the JSON)
+- `apps/web/src/lib/content-factory/brand.ts`: `VISUAL_DNA_NOTEXT` rebuilt — carries the static `VISUAL_DNA`'s rich-detail language, subject follows the scene direction ("never substitute a generic woman-in-a-room"), top-45% overlay safe zone kept
+- `apps/web/src/lib/content-factory/animate-cover.ts`: new `buildSceneVideoPrompt` for text-free clips (bespoke motion leads; posture/lips-closed pin applied only when the scene has a person; 5 rotating camera moves seeded by slide order); `SlideEmotion.scene` added; `door`/`window` removed from `UNSAFE_MOTION_PATTERN` (scenes legitimately contain them now; locomotion/speech bans stay); pool-fallback grammar fix ("She her jaw sets…")
+- `apps/web/src/inngest/functions/carousel-daily.ts`: animated runs pass the model's scene as `sceneHint` ("Scene direction (follow exactly): …"); rotating `SCENE_SETTINGS`/`COVER_TREATMENTS` remain the fallback
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: in the noText branch, the character mood-expression line is skipped when the scene has no person (it was inviting gpt-image-2 to add a woman)
+- Photo bucket and baked-text animation paths (admin animate on photo posts) unchanged; no schema change
+
+### Manual steps needed
+- [ ] Keenan: eyeball the next 6 UTC and 8 UTC posts — if object-only scenes render badly in toon3d or motion drifts, say so and we tighten the scene rules
+
+### Notes
+- The core insight: the video model executes whatever subject the image gives it. Fixing variance had to start at image generation (scene direction), not at the video prompt
+- The lessons baked into v9–v15 (model executes any verb/noun; positive-only phrasing) are preserved: motions may only move what's already in the scene, nothing enters/leaves, no camera directions from the LLM
+- Fallback chain if the model omits scene/motion: old rotating room settings for the image, mood pool or a noun-free ambient line for the video — so legacy posts and admin re-animates behave exactly as before
+
 ## [2026-08-24] — A second animated carousel every day, this one positive and actionable
 
 **Requested by:** Keenan
