@@ -220,7 +220,7 @@ export default function CarouselReviewPage() {
   };
 
   const generateBucket = async (
-    bucket: "photo" | "video" | "positive" | "ambient"
+    bucket: "photo" | "video" | "positive" | "ambient" | "selfie"
   ) => {
     setGenerating(true);
     setGenerateMsg(null);
@@ -232,7 +232,11 @@ export default function CarouselReviewPage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const eta =
-        bucket === "photo" ? "~3 min" : bucket === "ambient" ? "~8 min" : "~10-15 min";
+        bucket === "photo" || bucket === "selfie"
+          ? "~3-5 min"
+          : bucket === "ambient"
+            ? "~8 min"
+            : "~10-15 min";
       setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ${eta}`);
       setTimeout(() => setGenerateMsg(null), 10000);
     } catch (err) {
@@ -595,6 +599,14 @@ export default function CarouselReviewPage() {
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🌙"}
+          </button>
+          <button
+            onClick={() => generateBucket("selfie")}
+            disabled={generating}
+            title="Generate a realistic selfie slideshow now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🤳"}
           </button>
           <button
             onClick={() => fetchPosts()}

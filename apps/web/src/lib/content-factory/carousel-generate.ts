@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import { buildCaption } from "./caption";
@@ -299,6 +299,45 @@ function buildCoverTeaser(items: string[]): string {
     `The remaining ${n - teaserCount} answers stay completely hidden — do not show, hint at, or leave blank spots for them. It's fine to imply there's more inside (e.g. a trailing "..." or a partially visible next note), but NO readable text beyond the ${teaserCount} item${teaserCount === 1 ? "" : "s"} above.`,
     `Each teased item in smaller text than the headline, all fully inside the safe zone.`,
   ].join("\n");
+}
+
+/**
+ * Build the image prompt for one SELFIE-slideshow slide (2026-08-25,
+ * per Keenan: realistic mirror-selfie avatar + hyper-realistic
+ * aesthetic shots). Text is never baked — captions are burned on by
+ * renderSelfieCaptionOverlay.
+ */
+export function buildSelfieImagePrompt(opts: {
+  shot: "mirror" | "aesthetic";
+  /** Scene direction from the topic model. */
+  scene: string;
+  /** The slide's burned-on line — the photo quietly acts it out. */
+  slideText: string;
+  headline: string;
+  /** True when a reference photo of the avatar is passed to the edit endpoint. */
+  hasReference?: boolean;
+}): string {
+  const context = `Context (convey through the photo only — subtly, shown not told): this photo belongs to a personal slideshow titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`;
+
+  if (opts.shot === "aesthetic") {
+    return [
+      `Scene (follow exactly): ${opts.scene}`,
+      context,
+      SELFIE_AESTHETIC_DNA,
+    ].join("\n");
+  }
+
+  return [
+    opts.hasReference
+      ? "Use the woman in the reference image: the EXACT same person — identical face, hair, skin tone, and build — photographed again in the new scene below. Do not change her identity in any way."
+      : "",
+    SELFIE_PERSONA,
+    `Scene (follow exactly): ${opts.scene}`,
+    context,
+    SELFIE_VISUAL_DNA,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function generateImage(prompt: string): Promise<Buffer> {

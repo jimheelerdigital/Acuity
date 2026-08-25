@@ -50,6 +50,55 @@ export const VISUAL_DNA_NOTEXT = [
   "IMPORTANT: This image contains absolutely NO text of any kind. No words, no letters, no numbers, no typography, no captions, no labels, no lists, no logos, no watermarks, no writing on any object. Pure illustration only.",
 ].join("\n");
 
+// ─── Selfie slideshow (2026-08-25, per Keenan) ────────────────────────────────
+// A realistic first-person "this is how i ..." photo slideshow: one
+// consistent, believable woman taking mirror selfies. The whole point is
+// that it does NOT look AI-generated or branded — it must read like a
+// real person's photo dump. Captions are burned on afterwards by
+// compose.ts (renderSelfieCaptionOverlay), so images stay text-free.
+
+/**
+ * The fixed persona for the selfie avatar. Kept in code (not the topic
+ * model) so every post features the same recognizable woman. Slide 1 of
+ * the previous selfie post is also passed as an image reference at
+ * generation time, which does the heavy lifting for identity — this
+ * text is the fallback description and the guardrail.
+ */
+export const SELFIE_PERSONA =
+  "The SAME woman appears in every photo of this series: mid-40s, warm approachable face, shoulder-length brown hair with natural greying strands, light natural makeup or none, soft laugh lines, average realistic body. She wears normal everyday clothes (soft sweatshirts, tees, leggings, jeans — nothing styled or aspirational). She holds her phone up taking a mirror selfie, the phone partially covering or beside her face, casual relaxed posture.";
+
+/**
+ * Realism DNA for the selfie slideshow. Everything here fights
+ * gpt-image-2's default polish — the output must look like an amateur
+ * phone photo, not a portrait session.
+ */
+export const SELFIE_VISUAL_DNA = [
+  "This is a REAL amateur smartphone mirror selfie — an ordinary photo a real woman took of herself in a mirror and posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
+  "PHOTOGRAPHY: shot on a phone front-or-rear camera into a mirror. Natural imperfect framing, slightly off-center, honest angles. Natural indoor lighting only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
+  "SETTING: a lived-in real home or everyday place — slightly cluttered counters, a towel on a hook, cables, door frames, normal furniture. Authentic and unglamorous, never staged or magazine-styled.",
+  "The mirror, her phone, and her reflection are part of the shot the way real mirror selfies work. Fingerprints or smudges on the mirror are fine.",
+  "9:16 vertical portrait, exactly like a phone photo.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, phone-screen UI, logos, or watermarks. The phone screen faces away or is dark.",
+].join("\n");
+
+/**
+ * DNA for the AESTHETIC slides mixed into the selfie slideshow
+ * (2026-08-25, per Keenan: "hyper realistic aesthetic images in there
+ * as well… super pleasing to the eye"). Still a believable phone photo
+ * — but the beautiful kind a real woman would proudly post: golden
+ * light, cozy textures, satisfying composition. NO people (the avatar
+ * only ever appears in the mirror-selfie slides, so her identity
+ * never drifts).
+ */
+export const SELFIE_AESTHETIC_DNA = [
+  "This is a hyper-realistic, beautiful phone photo — the kind of aesthetic shot a real woman posts in a photo dump. Genuinely pleasing to the eye: warm natural light, soft golden tones, cozy real textures, satisfying composition.",
+  "PHOTOGRAPHY: shot on a modern phone camera. True-to-life detail and realistic depth — crisp subject, naturally soft background. Golden-hour window light, warm lamplight, or soft morning light. Real materials: steam, linen, wood grain, ceramic, condensation, page texture. It must still read as a photograph, never as a render or illustration.",
+  "SUBJECT: first-person / POV or still-life only — her coffee, her journal, her walk, her window, her candle, her unmade bed in morning light. NO people, NO faces, NO mirrors — at most her own hand holding something, photographed from her point of view.",
+  "SETTING: her real, lived-in world — same warm home and everyday life as the rest of the series. Beautiful but honest, never staged like a magazine or hotel.",
+  "9:16 vertical portrait, exactly like a phone photo.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
+].join("\n");
+
 /**
  * Rotating scene settings for the text-free (animated) pipeline. One is
  * assigned per slide so a 7-slide carousel never repeats the same room —

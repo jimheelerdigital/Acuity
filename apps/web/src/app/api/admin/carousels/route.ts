@@ -217,9 +217,9 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "photo" | "video" | "positive" | "ambient" (legacy
-      // `animated` boolean still honored: true→video, false→photo;
-      // omitted→video).
+      // images). `bucket`: "photo" | "video" | "positive" | "ambient" |
+      // "selfie" (legacy `animated` boolean still honored: true→video,
+      // false→photo; omitted→video).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",

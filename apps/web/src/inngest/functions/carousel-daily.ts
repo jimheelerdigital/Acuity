@@ -21,22 +21,31 @@ import { inngest } from "@/inngest/client";
  *                          properly and were wasting money.
  * - 10 UTC (5am Central):  AMBIENT — single-scene calm video (handled by
  *                          carouselAmbientVideoFn)
+ * - 12 UTC (7am Central):  SELFIE — realistic first-person "this is how
+ *                          i ..." photo slideshow (2026-08-25 per
+ *                          Keenan): a consistent, hyper-realistic woman
+ *                          taking mirror selfies, mixed with aesthetic
+ *                          POV shots, captions burned onto every image
+ *                          in TikTok sticker style. Same avatar across
+ *                          posts — each run anchors identity on the
+ *                          previous selfie post's cover via the
+ *                          gpt-image-2 edit (reference) endpoint.
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
- * with data.bucket = "photo" | "video" | "positive" | "ambient" (legacy
- * data.animated boolean → true→video, false→photo).
+ * with data.bucket = "photo" | "video" | "positive" | "ambient" |
+ * "selfie" (legacy data.animated boolean → true→video, false→photo).
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
  */
-type DailyBucket = "photo" | "video" | "positive" | "ambient";
+type DailyBucket = "photo" | "video" | "positive" | "ambient" | "selfie";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 4,6,8,10 * * *" },
+      { cron: "0 4,6,8,10,12 * * *" },
       // Manual/test trigger (admin "generate-animated" action). Event data
       // may carry `animated: boolean` to force the mode.
       { event: "content-factory/daily.generate" },
@@ -53,7 +62,11 @@ export const carouselDailyCronFn = inngest.createFunction(
       const b = event.data?.bucket as string | undefined;
       const legacyAnimated = event.data?.animated as boolean | undefined;
       bucket =
-        b === "photo" || b === "video" || b === "positive" || b === "ambient"
+        b === "photo" ||
+        b === "video" ||
+        b === "positive" ||
+        b === "ambient" ||
+        b === "selfie"
           ? b
           : typeof legacyAnimated === "boolean"
             ? legacyAnimated
@@ -64,7 +77,15 @@ export const carouselDailyCronFn = inngest.createFunction(
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
       bucket =
-        hour < 5 ? "photo" : hour < 7 ? "video" : hour < 9 ? "positive" : "ambient";
+        hour < 5
+          ? "photo"
+          : hour < 7
+            ? "video"
+            : hour < 9
+              ? "positive"
+              : hour < 11
+                ? "ambient"
+                : "selfie";
     }
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
 
@@ -76,6 +97,269 @@ export const carouselDailyCronFn = inngest.createFunction(
         await inngest.send({ name: "content-factory/ambient.video", data: {} });
       });
       return { generated: 0, bucket, delegated: "ambient.video" };
+    }
+
+    // ── SELFIE bucket: realistic first-person photo slideshow ──────
+    // 2026-08-25, per Keenan. Fully static (no animation): cover mirror
+    // selfie + 4-6 step slides mixing mirror selfies (same avatar,
+    // identity anchored on a reference image) and hyper-realistic
+    // aesthetic POV shots. Captions burned onto every image in TikTok
+    // sticker style. Emails immediately like the photo bucket.
+    if (bucket === "selfie") {
+      // Step 1: topic + persona anchor (previous selfie post's raw cover).
+      const selfie = await step.run("generate-selfie-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateSelfieTopic } = await import(
+          "@/lib/content-factory/generate-topic"
+        );
+
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: thirtyDaysAgo } },
+          select: { headline: true },
+        });
+        const topic = await generateSelfieTopic(recent.map((p) => p.headline));
+
+        // Same avatar across posts: the newest selfie post's text-free
+        // cover becomes the identity reference for this post's cover.
+        const prev = await prisma.carouselSlide.findFirst({
+          where: {
+            order: 0,
+            rawImageUrl: { not: null },
+            carouselPost: { lane: "selfie" },
+          },
+          orderBy: { carouselPost: { generatedFor: "desc" } },
+          select: { rawImageUrl: true },
+        });
+        return { ...topic, anchorUrl: prev?.rawImageUrl ?? null };
+      });
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const dateStr = today.toISOString().slice(0, 10);
+      const slug = selfie.slug;
+      logger.info(
+        `[carousel-cron] Selfie topic: "${selfie.headline}" (${selfie.steps.length} steps)`
+      );
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        await ensureBucket();
+      });
+
+      // Sticker text color — deterministic per post so re-renders match.
+      const stickerColor = await step.run("pick-sticker-color", async () => {
+        const { SELFIE_TEXT_COLORS } = await import(
+          "@/lib/content-factory/compose"
+        );
+        let hash = 0;
+        for (const c of slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+        return SELFIE_TEXT_COLORS[Math.abs(hash) % SELFIE_TEXT_COLORS.length];
+      });
+
+      // Step 2: cover — mirror selfie, identity-anchored when possible.
+      const cover = await step.run("generate-selfie-cover", async () => {
+        const {
+          buildSelfieImagePrompt,
+          generateImage,
+          generateImageWithReference,
+          uploadImage,
+        } = await import("@/lib/content-factory/carousel-generate");
+        const { composeSlide, composeSlideWithOverlay, renderSelfieCaptionOverlay } =
+          await import("@/lib/content-factory/compose");
+
+        const prompt = buildSelfieImagePrompt({
+          shot: "mirror",
+          scene: selfie.coverScene,
+          slideText: selfie.headline,
+          headline: selfie.headline,
+          hasReference: !!selfie.anchorUrl,
+        });
+
+        let rawBuffer: Buffer;
+        if (selfie.anchorUrl) {
+          const res = await fetch(selfie.anchorUrl);
+          if (!res.ok) throw new Error(`Anchor fetch failed: HTTP ${res.status}`);
+          rawBuffer = await generateImageWithReference(
+            prompt,
+            Buffer.from(await res.arrayBuffer())
+          );
+        } else {
+          rawBuffer = await generateImage(prompt);
+        }
+
+        // Text-free raw at final 1080x1920 — this is BOTH the identity
+        // reference for this post's mirror slides AND the anchor for
+        // future selfie posts.
+        const textFree = await composeSlide(rawBuffer, "", "COVER");
+        const rawImageUrl = await uploadImage(
+          textFree,
+          `carousels/${dateStr}/${slug}/slide-0-cover-raw.jpg`
+        );
+        const overlay = await renderSelfieCaptionOverlay(selfie.headline, {
+          kind: "COVER",
+          color: stickerColor,
+          placement: "lower", // cover is always a mirror selfie — keep off the face
+        });
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
+        );
+        return {
+          imageUrl,
+          rawImageUrl,
+          overlayText: selfie.headline,
+          imagePrompt: prompt,
+        };
+      });
+
+      // Steps 3..N: one slide per step. Mirror shots reference the cover
+      // raw so it's the same woman on every slide; aesthetic shots are
+      // person-free and generate fresh.
+      const stepSlides: {
+        imageUrl: string;
+        rawImageUrl: string;
+        overlayText: string;
+        imagePrompt: string;
+      }[] = [];
+      for (let i = 0; i < selfie.steps.length; i++) {
+        const slide = await step.run(`generate-selfie-step-${i}`, async () => {
+          const {
+            buildSelfieImagePrompt,
+            generateImage,
+            generateImageWithReference,
+            uploadImage,
+          } = await import("@/lib/content-factory/carousel-generate");
+          const { composeSlideWithOverlay, renderSelfieCaptionOverlay } =
+            await import("@/lib/content-factory/compose");
+
+          const shot = selfie.stepShots[i];
+          const prompt = buildSelfieImagePrompt({
+            shot: shot.type,
+            scene: shot.scene,
+            slideText: selfie.steps[i],
+            headline: selfie.headline,
+            hasReference: shot.type === "mirror",
+          });
+
+          let rawBuffer: Buffer;
+          if (shot.type === "mirror") {
+            const res = await fetch(cover.rawImageUrl);
+            if (!res.ok)
+              throw new Error(`Cover reference fetch failed: HTTP ${res.status}`);
+            rawBuffer = await generateImageWithReference(
+              prompt,
+              Buffer.from(await res.arrayBuffer())
+            );
+          } else {
+            rawBuffer = await generateImage(prompt);
+          }
+
+          // Keep the text-free raw so captions can be re-rendered later
+          // without paying for image regeneration (lesson from the
+          // 2026-08-25 example run, where a text fix required new images).
+          const { composeSlide } = await import("@/lib/content-factory/compose");
+          const textFree = await composeSlide(rawBuffer, "", "REASON");
+          const rawImageUrl = await uploadImage(
+            textFree,
+            `carousels/${dateStr}/${slug}/slide-${i + 1}-step-raw.jpg`
+          );
+          const overlay = await renderSelfieCaptionOverlay(selfie.steps[i], {
+            kind: "REASON",
+            detail: selfie.details[i] || undefined,
+            color: stickerColor,
+            // Mirror = her in frame → torso-level text, off the face.
+            // Aesthetic = no people → upper-middle keeps the subject clear.
+            placement: shot.type === "mirror" ? "lower" : "upper",
+          });
+          const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+          const imageUrl = await uploadImage(
+            composed,
+            `carousels/${dateStr}/${slug}/slide-${i + 1}-step.jpg`
+          );
+          return {
+            imageUrl,
+            rawImageUrl,
+            overlayText: selfie.steps[i],
+            imagePrompt: prompt,
+          };
+        });
+        stepSlides.push(slide);
+      }
+
+      // Save + email (static — same delivery as the photo bucket).
+      const selfieResult = await step.run("save-and-email-selfie", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildCaption } = await import("@/lib/content-factory/caption");
+        const { extractHashtags } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+
+        const caption = buildCaption({
+          slug,
+          headline: selfie.headline,
+          style: "hook",
+          lane: "cinematicReal",
+          reasons: selfie.steps,
+          captionOpen: selfie.captionOpen,
+          captionClose: selfie.captionClose,
+        });
+
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: slug,
+            headline: selfie.headline,
+            status: "DRAFT",
+            // PHOTO format (it IS a static picture slideshow); the
+            // "selfie" lane marks the sub-format — no schema change, so
+            // this ships without waiting on the pending db push.
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: "selfie",
+            mood: selfie.mood ?? null,
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: cover.overlayText,
+                  imagePrompt: cover.imagePrompt,
+                  imageUrl: cover.imageUrl,
+                  rawImageUrl: cover.rawImageUrl,
+                },
+                ...stepSlides.map((s, i) => ({
+                  order: i + 1,
+                  kind: "REASON" as const,
+                  overlayText: s.overlayText,
+                  imagePrompt: s.imagePrompt,
+                  imageUrl: s.imageUrl,
+                  rawImageUrl: s.rawImageUrl,
+                })),
+              ],
+            },
+          },
+        });
+
+        const { sendCarouselEmail } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendCarouselEmail(post.id);
+        return {
+          postId: post.id,
+          slideCount: stepSlides.length + 1,
+          estimatedCostCents: (stepSlides.length + 1) * 8 + 2,
+        };
+      });
+
+      logger.info(
+        `[carousel-cron] Generated selfie slideshow "${selfie.headline}": ${selfieResult.slideCount} slides`
+      );
+      return { generated: 1, bucket, ...selfieResult };
     }
 
     // ── Step 1: Generate a fresh topic via Claude ──────────────────

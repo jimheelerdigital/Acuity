@@ -182,6 +182,189 @@ OUTPUT FORMAT (strict JSON, no markdown):
 
 Generate 5-10 items per topic. Vary the count each time.`;
 
+// ─── Selfie slideshow topics (2026-08-25, per Keenan) ────────────────────────
+
+export interface GeneratedSelfieTopic {
+  slug: string;
+  /** First-person cover line, e.g. "this is how i stopped running on empty". */
+  headline: string;
+  /** First-person step lines, e.g. "i started saying no without a speech". */
+  steps: string[];
+  /** One supporting sentence per step, same order. */
+  details: string[];
+  mood?: Mood;
+  /** Mirror-selfie scene direction for the cover (always a mirror shot). */
+  coverScene: string;
+  /** Per-step shot: mirror selfie of the avatar OR aesthetic POV/still-life. */
+  stepShots: { type: "mirror" | "aesthetic"; scene: string }[];
+  captionOpen?: string;
+  captionClose?: string;
+}
+
+const SELFIE_SYSTEM_PROMPT = `You are writing a first-person photo slideshow for the woman who runs a self-reflection Instagram/TikTok page. She is 40-something, carries a heavy mental load (work, family, aging parents, invisible labor), and posts like a real person — this is HER photo dump, not brand content.
+
+FORMAT: a swipeable image slideshow. Slide 1 (cover) is a mirror selfie of her with the hook text burned on. Each following slide is one thing she actually did to fix ONE specific, relatable problem.
+
+AUDIENCE: women ~40-50 exactly like her. They should feel "she's me, and she figured something out" — never lectured.
+
+THE PROBLEM: pick ONE concrete, deeply relatable problem per post (running on empty, doom-scrolling at midnight, snapping at everyone, losing herself in the roles, saying yes to everything, the 3am spiral, never having a minute alone). Specific beats general.
+
+HEADLINE (cover text): first person, lowercase-leaning, starts with "this is how i" — e.g. "this is how i stopped running on empty" or "this is how i got my evenings back". Under 55 characters. It must create the itch to swipe. No numbers required, no emojis.
+
+STEPS (one per slide, 4-6 total):
+- Each step is a short first-person line, 3-8 words, lowercase-leaning: "i started leaving my phone in the kitchen", "i stopped apologizing for resting".
+- Real, doable, honest — things an exhausted woman could actually do. No 5am clubs, no expensive wellness, no preachy affirmations.
+- Each step gets ONE supporting "detail" sentence, under 90 characters, plain human voice — how it felt or why it worked ("the first week i reached for it like a phantom limb").
+- The last step should land emotionally — the quiet payoff.
+- No emojis anywhere in headline, steps, or details (the text is burned onto photos in sticker type).
+
+SHOTS (one per step, plus the cover):
+- "cover": ALWAYS a mirror selfie of her. Write the scene: which mirror, what she wears, the light, her posture. e.g. "full-length bedroom mirror, oversized grey sweatshirt and leggings, hair clipped up, warm lamp light, phone up covering half her face".
+- Each step's shot is either:
+  • "mirror" — another mirror selfie of THE SAME woman, different mirror/outfit/time of day, subtly acting out the step (gym bag on shoulder, coffee in the other hand, pajamas at night)
+  • "aesthetic" — a genuinely beautiful first-person phone photo with NO person in it: her steaming coffee by the window, the journal and pen in morning sun, her shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed. It should be the satisfying, pleasing-to-the-eye kind of shot people save.
+- MIX the two — a real photo dump alternates. Use at least 2 of each across the post. Every scene distinct: different room, light, angle. Under 30 words each, concrete nouns only.
+- Each scene must visually echo its step's meaning (the step about the phone shows the phone face-down; the step about walking shows the sneakers or the morning street).
+
+CAPTION: written by her, text-message tone, lowercase-leaning, contractions.
+- "captionOpen": ONE line under 12 words — personal aside or confession ("posting this because i needed the reminder"). Never restate the headline. At most one emoji.
+- "captionClose": ONE line — a soft ask ("tell me which one you'd actually try", "save this for the week you need it").
+
+TONE TEST: read every line as a tired real woman at 9pm. If anything sounds like a brand, a coach, or AI, rewrite it. US English spelling.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "headline": "this is how i ...",
+  "problem": "the one problem in a few words",
+  "steps": ["i ...", ...],
+  "details": ["one sentence", ...],
+  "stepCount": 4 | 5 | 6,
+  "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
+  "cover": { "scene": "mirror selfie scene" },
+  "stepShots": [{ "type": "mirror" | "aesthetic", "scene": "..." }, ...],
+  "captionOpen": "...",
+  "captionClose": "..."
+}
+"details" and "stepShots" MUST each have exactly one entry per step, in order.`;
+
+/**
+ * Generate a first-person "this is how i ..." selfie-slideshow topic
+ * (2026-08-25, per Keenan: realistic mirror-selfie avatar slideshow —
+ * same list mechanics as the "7 ways" posts but told as HER story,
+ * with steps that fix the problem).
+ */
+export async function generateSelfieTopic(
+  recentHeadlines: string[]
+): Promise<GeneratedSelfieTopic> {
+  const { prisma } = await import("@/lib/prisma");
+
+  const avoidList =
+    recentHeadlines.length > 0
+      ? `\n\nDO NOT pick a problem or headline that repeats or closely resembles any of these recent posts:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}`
+      : "";
+
+  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}\n\nReturn ONLY valid JSON, no other text.`;
+
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      system: SELFIE_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const durationMs = Date.now() - start;
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    const costCents = Math.ceil(
+      (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+    );
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "selfie-topic-generation",
+        model: MODEL,
+        tokensIn,
+        tokensOut,
+        costCents,
+        durationMs,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr);
+
+    const steps = (parsed.steps as string[]).filter(
+      (s) => typeof s === "string" && s.trim()
+    );
+    if (steps.length === 0) throw new Error("Selfie topic returned no steps");
+
+    const rawDetails = Array.isArray(parsed.details) ? parsed.details : [];
+    const details = steps.map((_, i) =>
+      typeof rawDetails[i] === "string" ? (rawDetails[i] as string).trim() : ""
+    );
+
+    const rawShots = Array.isArray(parsed.stepShots) ? parsed.stepShots : [];
+    const stepShots = steps.map((_, i) => {
+      const s = (rawShots[i] ?? {}) as { type?: unknown; scene?: unknown };
+      return {
+        type: s.type === "aesthetic" ? ("aesthetic" as const) : ("mirror" as const),
+        scene:
+          typeof s.scene === "string" && s.scene.trim()
+            ? s.scene.trim()
+            : "another mirror selfie, different room and outfit, natural light",
+      };
+    });
+
+    const slug = (parsed.headline as string)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    return {
+      slug,
+      headline: parsed.headline,
+      steps,
+      details,
+      mood: isMood(parsed.mood) ? parsed.mood : undefined,
+      coverScene:
+        typeof parsed.cover?.scene === "string" && parsed.cover.scene.trim()
+          ? parsed.cover.scene.trim()
+          : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone up by her face",
+      stepShots,
+      captionOpen:
+        typeof parsed.captionOpen === "string" && parsed.captionOpen.trim()
+          ? parsed.captionOpen.trim()
+          : undefined,
+      captionClose:
+        typeof parsed.captionClose === "string" && parsed.captionClose.trim()
+          ? parsed.captionClose.trim()
+          : undefined,
+    };
+  } catch (err) {
+    const durationMs = Date.now() - start;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "selfie-topic-generation",
+        model: MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
+
 /**
  * Generate a fresh carousel topic using Claude, avoiding recent headlines.
  *

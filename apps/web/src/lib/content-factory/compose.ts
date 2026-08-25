@@ -407,6 +407,159 @@ export async function renderSlideTextOverlay(
     .toBuffer();
 }
 
+/** Selfie sticker-text fill colors (per Keenan's 2026-08-25 reference:
+ * viral mirror-selfie slideshows use pink/pastel TikTok sticker text
+ * with a white outline). Rotated deterministically per post. */
+export const SELFIE_TEXT_COLORS = [
+  "#FF6FA5", // hot pink (the classic)
+  "#FF8FB8", // soft pink
+  "#B784F5", // lilac
+  "#5EC8F2", // sky blue
+] as const;
+
+/** Strip emoji/symbols the Lambda Pango stack can't render (they'd
+ * come out as tofu boxes on the burned caption). */
+function stripUnrenderable(s: string): string {
+  return s
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
+ * Render the burned-on caption for a SELFIE slideshow slide as a
+ * transparent 1080x1920 PNG (2026-08-25, per Keenan).
+ *
+ * Deliberately NOT the branded overlay (uppercase Poppins + accent
+ * badges) — a realistic mirror-selfie post must read like text a real
+ * person typed over her own photo. Style mimics the viral reference
+ * posts: sentence-case colored sticker text with a thick white outline.
+ *
+ * Placement (per Keenan's 2026-08-25 review of the first example):
+ * NEVER over the face. Mirror shots put the block at chest/torso level
+ * ("lower"); aesthetic shots have no faces so the upper-middle position
+ * stays ("upper").
+ */
+export async function renderSelfieCaptionOverlay(
+  text: string,
+  opts?: {
+    /** COVER gets bigger type than the step slides. */
+    kind?: "COVER" | "REASON";
+    /** Smaller supporting line burned below the main text. */
+    detail?: string;
+    /** Sticker text fill color (defaults to hot pink). */
+    color?: string;
+    /** "lower" = chest/torso level for mirror selfies (keeps text off
+     * the face); "upper" = upper-middle for person-free aesthetic
+     * shots. Defaults to "lower" — face-safe is the safe default. */
+    placement?: "upper" | "lower";
+  }
+): Promise<Buffer> {
+  const kind = opts?.kind ?? "REASON";
+  const fontPath = await ensureFontFile("Bold");
+  const color = opts?.color ?? SELFIE_TEXT_COLORS[0];
+  const placement = opts?.placement ?? "lower";
+
+  // TikTok-sticker treatment: colored fill with a thick white outline.
+  // Pango has no stroke, so the outline is the same text composited at
+  // 8 offsets underneath the colored fill (same trick as the shadow
+  // layers elsewhere in this file — no SVG, Lambda-safe).
+  // Phase 1: render each block and measure it; positions come later so
+  // the whole stack can be anchored as one unit.
+  type StickerBlock = {
+    shadow: Buffer;
+    outline: Buffer;
+    main: Buffer;
+    width: number;
+    height: number;
+    strokeW: number;
+  };
+  const renderStickerBlock = async (
+    lines: string[],
+    fontSize: number,
+    fill: string,
+    outlineColor = "#FFFFFF"
+  ): Promise<StickerBlock> => {
+    const body = lines.map((l) => escapePango(l)).join("\n");
+    const strokeW = Math.max(3, Math.round(fontSize / 14));
+    const pad = strokeW + 6;
+    const maxTextW = OUTPUT_W - PADDING_X * 2;
+    const outlineMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${outlineColor}">${body}</span>`;
+    const fillMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${fill}">${body}</span>`;
+    const outline = await renderMarkup(outlineMarkup, fontPath, maxTextW, 10, pad);
+    const main = await renderMarkup(fillMarkup, fontPath, maxTextW, 10, pad);
+    // Soft drop shadow so the sticker reads on bright mirrors too.
+    const shadowMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="#333333">${body}</span>`;
+    const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, 10, pad);
+    const blurredShadow = await sharp(shadow.buffer).blur(7).png().toBuffer();
+    return {
+      shadow: blurredShadow,
+      outline: outline.buffer,
+      main: main.buffer,
+      width: main.width,
+      height: main.height,
+      strokeW,
+    };
+  };
+
+  const blocks: StickerBlock[] = [];
+  const mainText = stripUnrenderable(text);
+  const mainSize = kind === "COVER" ? 58 : 48;
+  blocks.push(
+    await renderStickerBlock(wordWrap(mainText, kind === "COVER" ? 18 : 22), mainSize, color)
+  );
+
+  const detail = opts?.detail ? stripUnrenderable(opts.detail) : "";
+  if (detail) {
+    // White fill needs a DARK outline — a white-on-white outline smears
+    // the small type into an illegible blob (seen on the 2026-08-25
+    // example run). Dark outline keeps it crisp at this size.
+    blocks.push(await renderStickerBlock(wordWrap(detail, 28), 34, "#FFFFFF", "#2A2A2A"));
+  }
+
+  // Phase 2: anchor the whole stack. "upper" sits below the top 15%
+  // platform chrome; "lower" centers around 58% of frame height —
+  // chest/torso on a mirror selfie, clear of the face (upper ~40%) and
+  // the bottom 15% caption/music chrome.
+  const GAP = 18;
+  const totalH = blocks.reduce((s, b) => s + b.height, 0) + GAP * (blocks.length - 1);
+  let cursorY: number;
+  if (placement === "upper") {
+    cursorY = Math.round(OUTPUT_H * (kind === "COVER" ? 0.2 : 0.22));
+  } else {
+    cursorY = Math.round(OUTPUT_H * 0.58 - totalH / 2);
+    // Clamp: never above 42% (face territory), never past 82% (chrome).
+    cursorY = Math.max(Math.round(OUTPUT_H * 0.42), cursorY);
+    cursorY = Math.min(Math.round(OUTPUT_H * 0.82) - totalH, cursorY);
+  }
+
+  const composites: import("sharp").OverlayOptions[] = [];
+  for (const b of blocks) {
+    const left = Math.round((OUTPUT_W - b.width) / 2);
+    composites.push({ input: b.shadow, top: cursorY + 6, left: left + 4 });
+    for (const [dx, dy] of [
+      [-b.strokeW, 0], [b.strokeW, 0], [0, -b.strokeW], [0, b.strokeW],
+      [-b.strokeW, -b.strokeW], [b.strokeW, -b.strokeW], [-b.strokeW, b.strokeW], [b.strokeW, b.strokeW],
+    ]) {
+      composites.push({ input: b.outline, top: cursorY + dy, left: left + dx });
+    }
+    composites.push({ input: b.main, top: cursorY, left });
+    cursorY += b.height + GAP;
+  }
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: OUTPUT_H,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer();
+}
+
 /**
  * Compose a text-free raw image + pre-rendered text overlay into the
  * final static slide JPEG (animated-post pipeline).
