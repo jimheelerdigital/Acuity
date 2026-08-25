@@ -49,7 +49,7 @@ export async function ensureFontFile(
 
   // Download from CDN (Vercel serves public/ files via CDN)
   try {
-    const url = `https://getacuity.io/fonts/${filename}`;
+    const url = `https://goripple.io/fonts/${filename}`;
     console.log(`[compose] Downloading font ${filename} from CDN…`);
     const res = await fetch(url);
     if (res.ok) {
@@ -568,7 +568,7 @@ export async function composeCTASlide(
     try {
       const tmpLockup = "/tmp/ripple-lockup-cream.png";
       if (!fs.existsSync(tmpLockup)) {
-        const res = await fetch("https://getacuity.io/ripple-lockup-cream.png");
+        const res = await fetch("https://goripple.io/ripple-lockup-cream.png");
         if (res.ok) {
           fs.writeFileSync(tmpLockup, Buffer.from(await res.arrayBuffer()));
         }
