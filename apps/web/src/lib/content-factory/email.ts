@@ -460,11 +460,11 @@ export async function sendStoryVideoEmail(
      */
     calm?: boolean;
     /**
-     * CALM-STORY video (2026-08-20 — the multi-scene narrated calm video
-     * that replaced the eliminated story format). Gets its own 🎞️
-     * subject so it's distinguishable from the single-scene 🌙 calm one.
+     * The video is silent BY DESIGN (2026-08-24, per Keenan: he records
+     * calm voiceovers himself now). Leads with the script framed as
+     * "record this" — no ⚠️ failure framing, no scary subject.
      */
-    calmStory?: boolean;
+    selfVoice?: boolean;
   }
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
@@ -473,10 +473,10 @@ export async function sendStoryVideoEmail(
     select: { headline: true, caption: true, generatedFor: true },
   });
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
-  const kind = opts.calmStory ? "calm story" : opts.calm ? "calm video" : "story video";
-  const emoji = opts.calmStory ? "🎞️" : opts.calm ? "🌙" : "🎥";
-  const label = opts.calmStory ? "Calm story" : opts.calm ? "Calm video" : "Story video";
-  const filename = `${opts.calmStory ? "calm-story" : opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
+  const kind = opts.calm ? "calm video" : "story video";
+  const emoji = opts.calm ? "🌙" : "🎥";
+  const label = opts.calm ? "Calm video" : "Story video";
+  const filename = `${opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
   const downloadUrl = forceDownloadUrl(videoUrl, filename);
 
   // Attach when it fits under the Resend cap; always include the button.
@@ -504,7 +504,17 @@ export async function sendStoryVideoEmail(
     ? `${Math.round(opts.durationSec)} seconds`
     : "~30 seconds";
   const captioned = opts.captioned ?? false;
-  const silentNote = opts.silent
+  // Silent BY DESIGN (2026-08-24): the script IS the deliverable — Keenan
+  // records the voiceover himself. Lead with it, no failure framing.
+  const selfVoiceNote = opts.selfVoice
+    ? `
+    <div style="background:#12201A;border:1px solid #4EAE7E;border-radius:12px;padding:16px;margin:0 0 16px;">
+      <p style="font-size:13px;font-weight:600;color:#4EAE7E;margin:0 0 8px;">🎙️ Your voiceover script</p>
+      <p style="font-size:12px;color:#DDD;margin:0 0 10px;line-height:1.5;">The video is silent on purpose — record this script in your own voice and add it as the audio when you post. The video runs <strong>${durationLabel}</strong>; read slowly and let the pauses breathe. No captions are burned in — add them when you post.</p>
+      <pre style="white-space:pre-wrap;font-size:15px;color:#FBFAF6;font-family:-apple-system,sans-serif;margin:0;line-height:1.7;background:#1A1A1A;border-radius:8px;padding:12px;">${escapeHtml(opts.narration)}</pre>
+    </div>`
+    : "";
+  const silentNote = opts.silent && !opts.selfVoice
     ? `
     <div style="background:#2A1A12;border:1px solid #F97E4E;border-radius:12px;padding:16px;margin:0 0 16px;">
       <p style="font-size:13px;font-weight:600;color:#F97E4E;margin:0 0 8px;">🎙️ Voiceover failed — record this yourself</p>
@@ -524,6 +534,7 @@ export async function sendStoryVideoEmail(
     <p style="font-size:13px;color:#AAA;margin:0 0 16px;">${escapeHtml(post.headline)} · ${escapeHtml(dateStr)}</p>
 
     ${partialNote}
+    ${selfVoiceNote}
     ${silentNote}
 
     <!-- Caption FIRST (2026-08-20): Gmail mobile clips long messages. -->
@@ -533,7 +544,7 @@ export async function sendStoryVideoEmail(
     </div>
 
     <p style="font-size:14px;color:#DDD;line-height:1.6;">
-      ${opts.calmStory ? "Multi-scene calm story video" : opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
+      ${opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.selfVoice ? " — clean visual, ready for your voiceover" : opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
     </p>
 
     <div style="text-align:center;margin:20px 0;">
@@ -563,13 +574,15 @@ export async function sendStoryVideoEmail(
     opts.sceneCount < opts.totalScenes
       ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; each remaining scene keeps its own narration line.`
       : "",
-    opts.silent
-      ? `NOTE: voiceover failed — the video has NO audio${captioned ? ", but the script is burned in as captions" : " and NO captions"}. Record the script below (aim for ${durationLabel}) and add it as audio when you post.${opts.voiceoverError ? ` Failure reason: ${opts.voiceoverError.slice(0, 200)}` : ""}`
-      : "",
+    opts.selfVoice
+      ? `The video is silent on purpose — record the script below in your own voice (it runs ${durationLabel}) and add it as the audio when you post. No captions burned in.`
+      : opts.silent
+        ? `NOTE: voiceover failed — the video has NO audio${captioned ? ", but the script is burned in as captions" : " and NO captions"}. Record the script below (aim for ${durationLabel}) and add it as audio when you post.${opts.voiceoverError ? ` Failure reason: ${opts.voiceoverError.slice(0, 200)}` : ""}`
+        : "",
     "",
     `Download: ${downloadUrl}`,
     "",
-    opts.silent ? "── RECORD THIS SCRIPT ──" : "── Voiceover script ──",
+    opts.selfVoice ? "── YOUR VOICEOVER SCRIPT ──" : opts.silent ? "── RECORD THIS SCRIPT ──" : "── Voiceover script ──",
     opts.narration,
   ].filter(Boolean).join("\n");
 
@@ -577,11 +590,14 @@ export async function sendStoryVideoEmail(
   const payload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    // A silent story is a broken deliverable — say so in the subject so
-    // it can't be posted by accident (2026-08-16).
-    subject: opts.silent
-      ? `[Ripple Content] ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
-      : `[Ripple Content] ${emoji} ${label} — ${post.headline}`,
+    // A silent-by-accident story is a broken deliverable — say so in the
+    // subject so it can't be posted by accident (2026-08-16). Silent
+    // BY DESIGN (selfVoice) gets a calm 🎙️ subject instead.
+    subject: opts.selfVoice
+      ? `[Ripple Content] ${emoji}🎙️ ${label} + your script — ${post.headline}`
+      : opts.silent
+        ? `[Ripple Content] ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
+        : `[Ripple Content] ${emoji} ${label} — ${post.headline}`,
     html,
     text,
   };

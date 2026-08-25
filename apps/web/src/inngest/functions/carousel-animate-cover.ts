@@ -48,7 +48,7 @@ export const carouselAnimateCoverFn = inngest.createFunction(
     // builders then fall back to curated topic beats / mood pools.
     const slideEmotions = (
       Array.isArray(event.data.slideEmotions) ? event.data.slideEmotions : []
-    ) as { mood?: string; motion?: string }[];
+    ) as { mood?: string; scene?: string; motion?: string }[];
 
     // Email sender used at every exit path. Its own step so a Resend
     // hiccup gets Inngest's retry, and it never throws past logging.

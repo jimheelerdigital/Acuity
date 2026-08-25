@@ -7,25 +7,30 @@ import { inngest } from "@/inngest/client";
  * one hour later in winter CST):
  *
  * -  4 UTC (11pm Central): PHOTO — static picture carousel
- * -  6 UTC (1am Central):  VIDEO — fully animated carousel video
+ * -  6 UTC (1am Central):  VIDEO — fully animated carousel video, always
+ *                          the NEGATIVE "that's me" recognition archetype
  *                          (topic capped at 6 reasons → 7 clips max)
- * -  8 UTC (3am Central):  CALM-STORY — multi-scene narrated calm video
- *                          (was STORY until 2026-08-20; the story format
- *                          was eliminated per Keenan — replaced by the
- *                          calm-story branch, carouselCalmStoryFn)
+ * -  8 UTC (3am Central):  POSITIVE — fully animated carousel video,
+ *                          always the POSITIVE actionable archetype
+ *                          ("7 ways to break out of a slump"); identical
+ *                          treatment to VIDEO otherwise (2026-08-24 per
+ *                          Keenan: one negative + one positive animated
+ *                          carousel daily). Took over the slot freed by
+ *                          the calm-story removal (same day) — the
+ *                          multi-scene calm-story videos never worked
+ *                          properly and were wasting money.
  * - 10 UTC (5am Central):  AMBIENT — single-scene calm video (handled by
  *                          carouselAmbientVideoFn)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
- * with data.bucket = "photo" | "video" | "calmstory" | "ambient" (legacy
- * values "story" → calmstory, data.animated boolean → true→video,
- * false→photo).
+ * with data.bucket = "photo" | "video" | "positive" | "ambient" (legacy
+ * data.animated boolean → true→video, false→photo).
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
  */
-type DailyBucket = "photo" | "video" | "calmstory" | "ambient";
+type DailyBucket = "photo" | "video" | "positive" | "ambient";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
@@ -41,40 +46,27 @@ export const carouselDailyCronFn = inngest.createFunction(
   async ({ event, step, logger }) => {
     // ── Resolve the bucket ─────────────────────────────────────────
     // Event trigger: explicit bucket wins; legacy `animated` maps to
-    // video/photo, legacy "story" maps to calmstory. Cron: keyed off the
-    // trigger hour (event.ts is stable across retries) — 4→photo,
-    // 6→video, 8→calmstory, 10→ambient.
+    // video/photo. Cron: keyed off the trigger hour (event.ts is stable
+    // across retries) — 4→photo, 6→video, 8→positive, 10→ambient.
     let bucket: DailyBucket;
     if (event?.name === "content-factory/daily.generate") {
       const b = event.data?.bucket as string | undefined;
       const legacyAnimated = event.data?.animated as boolean | undefined;
       bucket =
-        b === "photo" || b === "video" || b === "calmstory" || b === "ambient"
+        b === "photo" || b === "video" || b === "positive" || b === "ambient"
           ? b
-          : b === "story"
-            ? "calmstory"
-            : typeof legacyAnimated === "boolean"
-              ? legacyAnimated
-                ? "video"
-                : "photo"
-              : "video";
+          : typeof legacyAnimated === "boolean"
+            ? legacyAnimated
+              ? "video"
+              : "photo"
+            : "video";
     } else {
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
       bucket =
-        hour < 5 ? "photo" : hour < 7 ? "video" : hour < 9 ? "calmstory" : "ambient";
+        hour < 5 ? "photo" : hour < 7 ? "video" : hour < 9 ? "positive" : "ambient";
     }
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
-
-    // ── CALM-STORY bucket: hand off to the calm-story pipeline ─────
-    // No postId — the calm-story function writes its own story, creates
-    // its own CarouselPost (format=STORY), and emails the result.
-    if (bucket === "calmstory") {
-      await step.run("enqueue-calm-story", async () => {
-        await inngest.send({ name: "content-factory/calmstory.video", data: {} });
-      });
-      return { generated: 0, bucket, delegated: "calmstory.video" };
-    }
 
     // ── AMBIENT bucket: hand off to the calm-video pipeline ────────
     // The ambient function generates its own concept, creates its own
@@ -87,7 +79,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     }
 
     // ── Step 1: Generate a fresh topic via Claude ──────────────────
-    // The VIDEO bucket's topic is capped at 6 reasons so at most
+    // The animated buckets' topics are capped at 6 reasons so at most
     // 7 slides (cover + 6 reasons) get videos.
     const topicData = await step.run("generate-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
@@ -95,7 +87,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         "@/lib/content-factory/generate-topic"
       );
 
-      const animatedRun = bucket === "video";
+      const animatedRun = bucket === "video" || bucket === "positive";
 
       const thirtyDaysAgo = new Date(
         Date.now() - 30 * 86_400_000
@@ -144,9 +136,43 @@ export const carouselDailyCronFn = inngest.createFunction(
         };
       }
 
+      // Niche Lab feedback (2026-08-24): breakout posts from tracked
+      // accounts in the niche (scraped nightly at 2 UTC, before this
+      // run). Only clear overperformers (≥1.5x the account's own
+      // average) with a real caption make the prompt.
+      const nichePosts = await prisma.nichePost.findMany({
+        where: {
+          engagementRatio: { gte: 1.5 },
+          caption: { not: null },
+          postedAt: { gte: thirtyDaysAgo },
+        },
+        orderBy: { engagementRatio: "desc" },
+        take: 8,
+        select: {
+          caption: true,
+          engagementRatio: true,
+          account: { select: { handle: true } },
+        },
+      });
+      const nicheInspiration = nichePosts.map((p) => ({
+        handle: p.account.handle,
+        caption: p.caption!,
+        ratio: p.engagementRatio!,
+      }));
+
+      // The two animated runs are a deliberate daily pair (2026-08-24,
+      // per Keenan): 6 UTC is always the negative recognition post,
+      // 8 UTC always the positive actionable one. Photo keeps the
+      // model's own alternation.
       const topic = await generateTopic(recentHeadlines, {
         ...(animatedRun ? { maxReasons: 6 } : {}),
+        ...(bucket === "video"
+          ? { archetype: "resonance" as const }
+          : bucket === "positive"
+            ? { archetype: "actionable" as const }
+            : {}),
         performance,
+        ...(nicheInspiration.length > 0 ? { nicheInspiration } : {}),
       });
       return { ...topic, animatedRun };
     });
@@ -225,13 +251,17 @@ export const carouselDailyCronFn = inngest.createFunction(
           coverListItems: topicData.animatedRun
             ? undefined
             : topicData.reasons,
-          // Rotate scene settings per slide (offset by slug so different
-          // carousels don't all start in the same room), plus a rotating
-          // cover composition so covers stop looking identical.
+          // Animated runs (2026-08-24, per Keenan): the topic model writes
+          // a bespoke scene per slide (woman-in-a-moment OR object scene)
+          // so the artwork acts out the text instead of defaulting to the
+          // same woman-in-a-room. Rotating room settings + cover
+          // treatments remain the fallback when the model omits it.
           sceneHint:
-            SCENE_SETTINGS[slug.length % SCENE_SETTINGS.length] +
-            " " +
-            COVER_TREATMENTS[slug.length % COVER_TREATMENTS.length],
+            topicData.animatedRun && topicData.coverEmotion?.scene
+              ? `Scene direction (follow exactly): ${topicData.coverEmotion.scene}`
+              : SCENE_SETTINGS[slug.length % SCENE_SETTINGS.length] +
+                " " +
+                COVER_TREATMENTS[slug.length % COVER_TREATMENTS.length],
           // Her expression must match the post's emotional weight, not
           // default to joyful (2026-08-11).
           mood: topicData.coverEmotion?.mood ?? topicData.mood,
@@ -333,8 +363,12 @@ export const carouselDailyCronFn = inngest.createFunction(
           slideLabel,
           {
             noText: topicData.animatedRun,
+            // Bespoke per-slide scene from the topic model (2026-08-24);
+            // rotating room settings are the fallback.
             sceneHint:
-              SCENE_SETTINGS[(slug.length + i + 1) % SCENE_SETTINGS.length],
+              topicData.animatedRun && topicData.reasonEmotions?.[i]?.scene
+                ? `Scene direction (follow exactly): ${topicData.reasonEmotions[i].scene}`
+                : SCENE_SETTINGS[(slug.length + i + 1) % SCENE_SETTINGS.length],
             mood: topicData.reasonEmotions?.[i]?.mood ?? topicData.mood,
             // Photo bucket: gpt-image-2 bakes the detail line into the art.
             // Video bucket uses noText art — detail goes on the overlay below.

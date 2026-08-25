@@ -219,7 +219,9 @@ export default function CarouselReviewPage() {
     }
   };
 
-  const generateBucket = async (bucket: "photo" | "video" | "story" | "ambient") => {
+  const generateBucket = async (
+    bucket: "photo" | "video" | "positive" | "ambient"
+  ) => {
     setGenerating(true);
     setGenerateMsg(null);
     try {
@@ -493,14 +495,6 @@ export default function CarouselReviewPage() {
             {/* Right: utilities */}
             <div className="flex gap-2">
               <button
-                onClick={() => doAction("generate-story", { postId: selectedPost.id })}
-                disabled={busy === `generate-story-${selectedPost.id}`}
-                title="Generate a calm-story video (standalone — arrives by email in ~15 min)"
-                className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
-              >
-                {busy === `generate-story-${selectedPost.id}` ? "…" : "🎞️ Calm story"}
-              </button>
-              <button
                 onClick={() => doAction("resend-email", { postId: selectedPost.id })}
                 disabled={busy === `resend-email-${selectedPost.id}`}
                 className="flex min-h-[44px] items-center rounded-acuity-pill border border-acuity-line px-3 text-sm text-acuity-text-sec active:bg-acuity-bg-sub disabled:opacity-50"
@@ -587,12 +581,12 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "🎬"}
           </button>
           <button
-            onClick={() => generateBucket("story")}
+            onClick={() => generateBucket("positive")}
             disabled={generating}
-            title="Generate a standalone story video now"
+            title="Generate a positive animated carousel now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🎥"}
+            {generating ? "…" : "✨"}
           </button>
           <button
             onClick={() => generateBucket("ambient")}

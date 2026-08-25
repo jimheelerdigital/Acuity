@@ -3,13 +3,16 @@
  *
  * Voiceover (ElevenLabs with OpenAI TTS fallback), ffmpeg utilities
  * (probe, still clips, fit/loop, concat, crossfade stitch, narration
- * mux) and caption chunk estimation — used by the calm (ambient) and
- * calm-story pipelines and by the carousel compilation email.
+ * mux) and caption chunk estimation — used by the calm (ambient)
+ * pipeline and by the carousel compilation email.
  *
  * HISTORY: this file originally held the 30s illustrated STORY pipeline's
  * script generation too. The story format was eliminated 2026-08-20 (per
  * Keenan: "we can't get it to work properly, it looks terrible") and
- * replaced by the calm-story branch (see calm-story.ts).
+ * replaced by the calm-story branch — which was itself removed 2026-08-24
+ * (never worked properly, wasted money). The TTS/mux helpers are unused
+ * since then (calm videos are self-voiced by Keenan) but kept as the
+ * shared toolbox.
  *
  * VOICEOVER NOTE: the Higgsfield *platform* API has no text-to-speech
  * endpoint (verified against their full OpenAPI spec 2026-08-11 — only

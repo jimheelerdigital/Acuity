@@ -241,12 +241,18 @@ export function buildImagePrompt(
   // live 2026-08-11) — so the noText prompt swaps in VISUAL_DNA_NOTEXT
   // and never uses the words "slide" or "carousel".
   if (opts?.noText) {
+    // 2026-08-24: sceneHint may now be a bespoke object scene with no
+    // person — the character-expression mood line would make gpt-image-2
+    // add a woman anyway, so it only applies when the scene has one.
+    // (No sceneHint = legacy rotating room settings, which always do.)
+    const personInScene =
+      !opts.sceneHint || /\b(she|her|hers|herself|woman)\b/i.test(opts.sceneHint);
     return [
       styleLock,
       colorPrompt ?? "",
       `An illustrated scene that visually represents: ${sceneText}`,
       opts.sceneHint ?? "",
-      moodLine,
+      personInScene ? moodLine : "",
       `Mood context: ${topic.headline} — self-reflection and mental load, for women.`,
       VISUAL_DNA_NOTEXT,
     ].filter(Boolean).join("\n");

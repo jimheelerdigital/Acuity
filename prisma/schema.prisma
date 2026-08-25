@@ -2838,3 +2838,87 @@ model InsightEvidence {
   @@index([insightId])
   @@index([entryId])
 }
+
+// ─── Niche Research Lab (2026-08-24) ────────────────────────────────────────
+// Competitor/inspiration research for the Content Factory. Tracked accounts
+// in the niche are scraped nightly (Apify), overperforming posts feed the
+// carousel topic generator, and a weekly Claude memo suggests strategy.
+
+enum NichePlatform {
+  INSTAGRAM
+  TIKTOK
+}
+
+model NicheAccount {
+  id            String        @id @default(cuid())
+  platform      NichePlatform @default(INSTAGRAM)
+  handle        String        // without @
+  displayName   String?
+  notes         String?       @db.Text // why we track them / what to emulate
+  followers     Int?
+  active        Boolean       @default(true)  // inactive accounts are kept but not scraped
+  discovered    Boolean       @default(false) // true = surfaced by the discovery crawl, false = added by Keenan
+  addedAt       DateTime      @default(now())
+  lastScrapedAt DateTime?
+  posts         NichePost[]
+
+  @@unique([platform, handle])
+}
+
+model NichePost {
+  id              String        @id @default(cuid())
+  accountId       String
+  account         NicheAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  platform        NichePlatform
+  externalId      String        // IG shortcode / TikTok video id
+  url             String
+  caption         String?       @db.Text
+  hashtags        String[]
+  mediaType       String?       // Image | Video | Sidecar (carousel)
+  thumbnailUrl    String?
+  views           Int?
+  likes           Int?
+  comments        Int?
+  postedAt        DateTime
+  scrapedAt       DateTime      @default(now())
+  // Overperformance vs the account's own recent baseline (1.0 = average).
+  // Computed at ingest; the topic generator and engagement queue rank by it.
+  engagementRatio Float?
+  // Engagement queue (manual — never auto-posted): Claude-drafted comment
+  // in Keenan's voice, and when Keenan marked it engaged from the admin.
+  suggestedComment String?      @db.Text
+  engagedAt        DateTime?
+
+  @@unique([platform, externalId])
+  @@index([postedAt(sort: Desc)])
+  @@index([engagementRatio(sort: Desc)])
+}
+
+// Hashtag performance research: median reach of recent top posts per tag,
+// refreshed by the discovery crawl. Suggested sets are ranked by score.
+model NicheHashtag {
+  id            String        @id @default(cuid())
+  platform      NichePlatform @default(INSTAGRAM)
+  tag           String        // without #
+  postCount     Int?          // how many posts use the tag (size of the pool)
+  medianViews   Int?          // median plays/views of recent top posts sampled
+  medianLikes   Int?
+  score         Float?        // computed rank score for suggestion ordering
+  lastCheckedAt DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@unique([platform, tag])
+  @@index([score(sort: Desc)])
+}
+
+// Weekly Claude strategy memo: what's overperforming in the niche, suggested
+// new post types/formats, and what to double down on. Shown in the admin.
+model NicheMemo {
+  id        String   @id @default(cuid())
+  weekOf    DateTime // Monday of the analyzed week (unique per week)
+  content   String   @db.Text // markdown memo
+  createdAt DateTime @default(now())
+
+  @@unique([weekOf])
+  @@index([createdAt(sort: Desc)])
+}

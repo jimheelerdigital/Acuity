@@ -45,6 +45,111 @@ The rest is stuck on something outside the code. goripple.io can *send* email bu
 - **`waitlist-reactivation.ts` was deliberately left** even though it looks like the other `EMAIL_FROM` constants: it sends to `w.email` / `current.email` (real users), not to founders. Same reason as the other reply-capable senders.
 - **`auto-blog.ts` `to: keenan@getacuity.io` was left** while its two `from:` lines moved — the recipient has to be a mailbox that exists.
 - Baselines held: web tsc 153, mobile tsc 19 (both pre-existing and unchanged), 673/673 tests green across 41 files.
+## [2026-08-24] — Niche Lab: competitor research that feeds the content factory
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b0fff0b
+
+### In plain English (for Keenan)
+There's a new "Niche lab" page in the admin. You add Instagram accounts in your niche, and every night the system pulls their recent posts and figures out which ones broke out (did way better than that account normally does). Those breakout posts now quietly inspire your daily carousel topics. Every Monday morning you get an emailed strategy memo — what's working in the niche, what to double down on, what to test this week. Every Sunday it also discovers NEW accounts worth tracking and ranks the best hashtags by real engagement. There's also an engagement queue: it drafts a thoughtful comment for each breakout post, but YOU copy and post it yourself — nothing is ever auto-liked or auto-commented, so there's no ban risk.
+
+### Technical changes (for Jimmy)
+- Prisma (root schema): new `NichePlatform` enum (INSTAGRAM/TIKTOK) + models `NicheAccount` (unique platform+handle, active/discovered flags), `NichePost` (unique platform+externalId, hashtags[], engagementRatio, suggestedComment, engagedAt), `NicheHashtag` (unique platform+tag, medians + score), `NicheMemo` (weekOf unique)
+- New `apps/web/src/lib/content-factory/niche-research.ts`: Apify wrappers — `scrapeInstagramProfiles` (`apify~instagram-profile-scraper`, overridable via `APIFY_IG_ACTOR`) and `scrapeHashtagPosts` (`apify~instagram-hashtag-scraper`, `APIFY_IG_HASHTAG_ACTOR`), both via run-sync-get-dataset-items; `computeEngagementRatios` = (likes+comments) vs the account's own median (needs ≥3 posts)
+- New Inngest fns (registered in `api/inngest/route.ts`): `niche-research-nightly` (cron 2 UTC + event `content-factory/niche.scrape`; scrapes in batches of 10, upserts posts without clobbering suggestedComment/engagedAt, recomputes ratios over last 60d, drafts comments for ratio ≥1.3 posts in one `callClaude` call); `niche-strategy-memo` (Mon 11 UTC + `niche.memo`; compares our 30d metrics vs top 25 niche posts, Claude memo → NicheMemo upsert → Resend email); `niche-discovery` (Sun 2 UTC + `niche.discover`; top 10 niche hashtags weighted by ratio → hashtag sampling → NicheHashtag scores + creators appearing ≥2× become `discovered: true, active: false` accounts)
+- New `apps/web/src/app/api/admin/niche/route.ts`: GET (accounts, top posts w/ ?days filter, memo, engagement queue, hashtags, apifyConfigured) + POST actions add-account / toggle-active / update-notes / delete-account / mark-engaged / scrape-now / memo-now / discover-now
+- New `apps/web/src/app/admin/content-factory/niche/page.tsx` + "Niche lab" link in admin-dashboard.tsx
+- `generate-topic.ts`: new optional `nicheInspiration` input rendered as a NICHE INTELLIGENCE prompt block (extract the appeal, never copy); `carousel-daily.ts` feeds it the top 8 posts with ratio ≥1.5 from the last 30d
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home network — covers BOTH the new Niche models AND the still-pending AMBIENT enum from 2026-08-18 (Keenan)
+- [ ] Create an Apify account, get a token, add `APIFY_TOKEN` to Vercel env vars + redeploy (~$5–30/mo depending on account count) (Keenan)
+- [ ] After deploy: add 5–15 tracked accounts at /admin/content-factory/niche and hit "Scrape now" (Keenan)
+
+### Notes
+- Auto-like/auto-comment was explicitly cut per Keenan (IG ToS/ban risk). The engagement queue is copy-paste only by design — keep it that way
+- Apify actor response field names (`latestPosts`, `queryTag`, `likesCount`, etc.) are best-effort against Apify docs; watch the first real nightly run and adjust the mappers in niche-research.ts if the shapes differ
+- Engagement ratio is normalized per-account (vs that account's own median) so a small account's viral post outranks a big account's average one — that's the "what should WE emulate" signal
+- Cron order matters: scrape 2 UTC → metrics refresh 3 UTC → generation 4/6/8/10 UTC, so topic generation always sees fresh niche data
+- Pre-existing type errors in carousel-daily.ts (CarouselTopic at lines 240/355) are NOT from this change — verified identical on clean main via git stash
+- GrowthOS (Jimmy's repo) was reviewed as architectural reference only; its research layer is YouTube-specific, so nothing was ported directly
+
+## [2026-08-24] — Animated carousels stop being "slow zoom on a woman" — scenes and motion now act out each slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1e4a753f
+
+### In plain English (for Keenan)
+Every animated slide used to be the same video: a woman in a room, camera slowly pushing in while she does a small facial gesture. That's because the animated pipeline forced "one woman mid-activity" into every image and "push in toward her" into every video, while the static photo posts got much richer scene instructions. Now the AI directs a specific scene for each slide — sometimes a woman caught in a real moment (sitting in the parked car, phone glowing at 2am), sometimes no person at all (an overflowing mug, a phone buried under sticky notes, one candle in a dark kitchen) — and writes the motion to match what that slide is actually saying, so the animation IS the message. The camera also varies now (push in, pull back, side drift, rise, near-still) instead of always zooming in. The animated posts get the same rich image scripting the static posts already had.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: topic JSON gains a per-slide `scene` (cover + each reason) with subject-variety rules (woman-in-moment OR object scene, all scenes distinct); `motion` is now a standalone present-tense sentence animating that scene; `max_tokens` 1000 → 2500 (the added fields were going to truncate the JSON)
+- `apps/web/src/lib/content-factory/brand.ts`: `VISUAL_DNA_NOTEXT` rebuilt — carries the static `VISUAL_DNA`'s rich-detail language, subject follows the scene direction ("never substitute a generic woman-in-a-room"), top-45% overlay safe zone kept
+- `apps/web/src/lib/content-factory/animate-cover.ts`: new `buildSceneVideoPrompt` for text-free clips (bespoke motion leads; posture/lips-closed pin applied only when the scene has a person; 5 rotating camera moves seeded by slide order); `SlideEmotion.scene` added; `door`/`window` removed from `UNSAFE_MOTION_PATTERN` (scenes legitimately contain them now; locomotion/speech bans stay); pool-fallback grammar fix ("She her jaw sets…")
+- `apps/web/src/inngest/functions/carousel-daily.ts`: animated runs pass the model's scene as `sceneHint` ("Scene direction (follow exactly): …"); rotating `SCENE_SETTINGS`/`COVER_TREATMENTS` remain the fallback
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: in the noText branch, the character mood-expression line is skipped when the scene has no person (it was inviting gpt-image-2 to add a woman)
+- Photo bucket and baked-text animation paths (admin animate on photo posts) unchanged; no schema change
+
+### Manual steps needed
+- [ ] Keenan: eyeball the next 6 UTC and 8 UTC posts — if object-only scenes render badly in toon3d or motion drifts, say so and we tighten the scene rules
+
+### Notes
+- The core insight: the video model executes whatever subject the image gives it. Fixing variance had to start at image generation (scene direction), not at the video prompt
+- The lessons baked into v9–v15 (model executes any verb/noun; positive-only phrasing) are preserved: motions may only move what's already in the scene, nothing enters/leaves, no camera directions from the LLM
+- Fallback chain if the model omits scene/motion: old rotating room settings for the image, mood pool or a noun-free ambient line for the video — so legacy posts and admin re-animates behave exactly as before
+
+## [2026-08-24] — A second animated carousel every day, this one positive and actionable
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 70a39d7a
+
+### In plain English (for Keenan)
+You now get two animated carousels every night instead of one, and they're a deliberate pair: the existing 1am Central one is always the negative "that's me" recognition post ("7 reasons you're stuck in a rut"), and a new 3am Central one is always the positive, practical post ("7 ways to break out of a slump") where every item is something she could actually do today. Everything else about the positive post is identical — same audience, same look, same captions and hashtags, same stitched video in your email. There's also a new ✨ button on the admin carousels page to generate a positive one on demand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cron restored to `0 4,6,8,10 * * *`; new `"positive"` bucket at 8 UTC (the slot the calm-story removal freed) reusing the full VIDEO pipeline (format VIDEO, 6-reason cap, animate-all, same email path); `generateTopic` now receives `archetype: "resonance"` for the 6 UTC video bucket and `"actionable"` for the 8 UTC positive bucket
+- `apps/web/src/lib/content-factory/generate-topic.ts`: new `archetype` option on `generateTopic` injects a mandatory prompt block overriding the model's random RESONANCE/ACTIONABLE alternation; the actionable block requires every item to be tangible ("a concrete thing she could actually do today"), never preachy
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: `generateBucket` accepts `"positive"`; new ✨ top-bar button
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily docblock mentions the positive bucket
+- No schema change — positive posts are `format: VIDEO` rows, indistinguishable from the negative animated posts in the DB
+
+### Manual steps needed
+- [ ] None — Inngest picks up the new cron slot on the next auto-sync after deploy (flag if 8 UTC doesn't fire tomorrow; a manual resync at /api/inngest fixes it) (Keenan to watch email)
+
+### Notes
+- The two runs share the 30-day headline de-dupe list, and the 8 UTC run's avoid-list already includes the post generated at 6 UTC the same night, so the pair can't collide on topic
+- The archetypes were already defined in the topic prompt (RESONANCE vs ACTIONABLE, alternating randomly) — this change just makes the choice deterministic per bucket rather than adding a new content system
+- Photo bucket (4 UTC) keeps the model's own alternation, so it still varies day to day
+
+## [2026-08-24] — Calm story videos are gone; the daily calm post is now silent, with a script for Keenan to voice
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 925c89ff
+
+### In plain English (for Keenan)
+The multi-scene calm story video (the 3am Central one) never worked properly and was costing money every night, so it's gone completely. The regular calm post stays, but it no longer has an AI voiceover or burned-in captions — it arrives as a clean silent loop, and the email now leads with the script so you can record it in your own voice when you post. The scripts still follow the locked style guide: viral, audience-building, and never about Ripple, journaling, or downloading anything.
+
+### Technical changes (for Jimmy)
+- Deleted `apps/web/src/inngest/functions/carousel-calm-story.ts` and `apps/web/src/lib/content-factory/calm-story.ts`; unregistered from `/api/inngest`
+- `carousel-daily.ts`: calmstory bucket removed (its 8 UTC slot was re-used by the positive carousel in the follow-up commit)
+- `carousel-ambient-video.ts` + `lib/content-factory/ambient-video.ts`: ElevenLabs TTS and ffmpeg mux steps removed; the clip now loops to the script's estimated slow-read length (`estimateAmbientReadSeconds`: ~2 words/sec, 20s floor, +3s tail); `vocalScript` field and ambient voice config deleted; post persists `storyVoiced: false`
+- `lib/content-factory/email.ts`: `calmStory` flag removed; new `selfVoice` option renders a script-first "🎙️ Your voiceover script" block and a calm subject line (no more ⚠️ SILENT warning subject for these)
+- `lib/content-factory/costs.ts`: AMBIENT estimate no longer counts TTS
+- Admin: `generate-story` action and both calm-story buttons removed
+- No schema change; STORY/format enums untouched (historical posts still render in admin)
+
+### Manual steps needed
+- [ ] None — the 8 UTC calm-story cron disappears on the next Inngest sync after deploy
+
+### Notes
+- The script ban on journaling/app/product mentions needed no new code — `script-style-guide.ts` HARD BANS already enforce it and were verified intact
+- No burned captions on the silent calm video was deliberate (locked rule: Keenan adds captions himself when posting; burned text would fight his self-recorded voiceover)
+- `story-video.ts` TTS/mux helpers are now unused by the calm path but kept — they're shared toolbox code
+- AMBIENT cost estimates for posts generated before this change will undercount (they did include TTS) — noted in `costs.ts`
 
 ## [2026-08-24] — The daily "Stripe is broken" emails were false alarms; they now only fire when Stripe says so
 

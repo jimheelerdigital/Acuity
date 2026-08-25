@@ -11,7 +11,7 @@
 
 import type { CarouselTopic } from "./topics";
 
-// Link-in-bio plug — carousels only (calm/calm-story posts are plug-free).
+// Link-in-bio plug — carousels only (calm posts are plug-free).
 // Rewritten 2026-08-20 in the page-owner's voice, not brand copy.
 const CLOSING_LINE =
   "ripple is where i debrief all of this out loud — it's in my bio if you want your free week 🌊";
@@ -209,7 +209,7 @@ const AMBIENT_SHARE_LINES = [
 ];
 
 /**
- * Caption for AMBIENT calm posts and CALM-STORY posts (both plug-free —
+ * Caption for AMBIENT calm posts (plug-free —
  * 2026-08-19, per Keenan: these build a following, they don't sell).
  * The LLM writes the whole caption body per post (`caption`) in the
  * page-owner's voice; code only appends the 5 hashtags. The
