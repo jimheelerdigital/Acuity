@@ -52,6 +52,9 @@ import { carouselGenerateOneOffFn } from "@/inngest/functions/carousel-one-off";
 import { carouselAnimateCoverFn } from "@/inngest/functions/carousel-animate-cover";
 import { carouselAmbientVideoFn } from "@/inngest/functions/carousel-ambient-video";
 import { carouselMetricsRefreshFn } from "@/inngest/functions/carousel-metrics-refresh";
+import { nicheResearchNightlyFn } from "@/inngest/functions/niche-research-nightly";
+import { nicheStrategyMemoFn } from "@/inngest/functions/niche-strategy-memo";
+import { nicheDiscoveryFn } from "@/inngest/functions/niche-discovery";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -109,6 +112,9 @@ const handler = serve({
     carouselAnimateCoverFn,
     carouselAmbientVideoFn,
     carouselMetricsRefreshFn,
+    nicheResearchNightlyFn,
+    nicheStrategyMemoFn,
+    nicheDiscoveryFn,
   ],
 });
 

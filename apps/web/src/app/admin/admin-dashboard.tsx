@@ -90,6 +90,7 @@ const NAV_GROUPS: NavGroup[] = [
 const TOOL_LINKS: { href: string; label: string }[] = [
   { href: "/admin/adlab", label: "AdLab" },
   { href: "/admin/content-factory/carousels", label: "Carousel queue" },
+  { href: "/admin/content-factory/niche", label: "Niche lab" },
   { href: "/admin/blog-pruner-log", label: "Blog pruner log" },
 ];
 

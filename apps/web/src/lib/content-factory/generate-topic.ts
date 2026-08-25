@@ -193,6 +193,11 @@ Generate 5-10 items per topic. Vary the count each time.`;
  * `performance` (2026-08-12) feeds real engagement data back into the
  * prompt: headlines that performed best/worst on the account, entered
  * manually by Keenan via the admin metrics form.
+ *
+ * `nicheInspiration` (2026-08-24) feeds the Niche Lab's scraped data in:
+ * captions from OTHER accounts in the niche whose posts massively
+ * overperformed their own baseline. Claude extracts the underlying angle
+ * — it never copies the caption.
  */
 export async function generateTopic(
   recentHeadlines: string[],
@@ -206,6 +211,7 @@ export async function generateTopic(
      * to the random alternation).
      */
     archetype?: "resonance" | "actionable";
+    nicheInspiration?: { handle: string; caption: string; ratio: number }[];
   }
 ): Promise<GeneratedTopic> {
   const { prisma } = await import("@/lib/prisma");
@@ -251,7 +257,20 @@ export async function generateTopic(
     );
   }
 
-  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${archetypeBlock}${performanceBlock}${researchBlock}
+  const niche = opts?.nicheInspiration;
+  const nicheBlock =
+    niche && niche.length > 0
+      ? `\n\nNICHE INTELLIGENCE — recent posts from OTHER accounts in this exact niche that overperformed their account's own average (the multiplier shows by how much):\n` +
+        niche
+          .map(
+            (p) =>
+              `- [${p.ratio.toFixed(1)}x, @${p.handle}] ${p.caption.replace(/\s+/g, " ").slice(0, 220)}`
+          )
+          .join("\n") +
+        `\nStudy WHY these landed — the emotional angle, the hook structure, the specificity — and let that inform your topic. NEVER copy, translate, or lightly rephrase any of them: extract the underlying appeal and express it in Ripple's own voice on a fresh angle.`
+      : "";
+
+  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${archetypeBlock}${performanceBlock}${researchBlock}${nicheBlock}
 
 Return ONLY valid JSON, no other text.`;
 

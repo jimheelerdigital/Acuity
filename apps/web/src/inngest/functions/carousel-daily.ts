@@ -136,6 +136,30 @@ export const carouselDailyCronFn = inngest.createFunction(
         };
       }
 
+      // Niche Lab feedback (2026-08-24): breakout posts from tracked
+      // accounts in the niche (scraped nightly at 2 UTC, before this
+      // run). Only clear overperformers (≥1.5x the account's own
+      // average) with a real caption make the prompt.
+      const nichePosts = await prisma.nichePost.findMany({
+        where: {
+          engagementRatio: { gte: 1.5 },
+          caption: { not: null },
+          postedAt: { gte: thirtyDaysAgo },
+        },
+        orderBy: { engagementRatio: "desc" },
+        take: 8,
+        select: {
+          caption: true,
+          engagementRatio: true,
+          account: { select: { handle: true } },
+        },
+      });
+      const nicheInspiration = nichePosts.map((p) => ({
+        handle: p.account.handle,
+        caption: p.caption!,
+        ratio: p.engagementRatio!,
+      }));
+
       // The two animated runs are a deliberate daily pair (2026-08-24,
       // per Keenan): 6 UTC is always the negative recognition post,
       // 8 UTC always the positive actionable one. Photo keeps the
@@ -148,6 +172,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             ? { archetype: "actionable" as const }
             : {}),
         performance,
+        ...(nicheInspiration.length > 0 ? { nicheInspiration } : {}),
       });
       return { ...topic, animatedRun };
     });
