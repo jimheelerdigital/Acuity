@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-25] — One carousel email: stitched video + caption only
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** aac65fb2
+
+### In plain English (for Keenan)
+Animated carousels now arrive as a single email containing just the finished, fully clipped video (tap and hold → Save Video) and the caption to copy. No more second email, no more per-slide download buttons or slide images cluttering the inbox. Static image carousels are unchanged — one email with the slides attached.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: `sendCarouselEmail` now short-circuits to a new `sendStitchedVideoEmail(post, dateStr, videoSlides, videoBuffers)` when any slide has a `videoUrl`; the old main-email video buttons/links and the entire follow-up "Carousel video" email are removed
+- Stitch logic is unchanged and just relocated: every non-CTA slide in order, 4s still clips for slides whose animation failed, crossfade stitch with 0.4s fade-to-black fallback, uploaded as `slides-compilation.mp4`, attached when ≤28MB else force-download link
+- Per-slide clip links now appear ONLY if the stitch itself fails (degraded fallback)
+- Also tightened a pre-existing loose Resend payload cast that tripped tsc
+
+### Manual steps needed
+None
+
+### Notes
+- The one-off pipeline (cover-only animation) also flows through this: cover clip + still clips of the reason slides get stitched into the single MP4, so even those posts send one email now.
+- If every video fetch fails, the code falls through to the static image email so the post is never silently undelivered.
+
 ## [2026-08-25] — Niche Lab reworked: zero setup, daily viral feed, suggestions only
 
 **Requested by:** Keenan
