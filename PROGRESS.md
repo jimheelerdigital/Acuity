@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-08-24] — Niche Lab: competitor research that feeds the content factory
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b0fff0b
+
+### In plain English (for Keenan)
+There's a new "Niche lab" page in the admin. You add Instagram accounts in your niche, and every night the system pulls their recent posts and figures out which ones broke out (did way better than that account normally does). Those breakout posts now quietly inspire your daily carousel topics. Every Monday morning you get an emailed strategy memo — what's working in the niche, what to double down on, what to test this week. Every Sunday it also discovers NEW accounts worth tracking and ranks the best hashtags by real engagement. There's also an engagement queue: it drafts a thoughtful comment for each breakout post, but YOU copy and post it yourself — nothing is ever auto-liked or auto-commented, so there's no ban risk.
+
+### Technical changes (for Jimmy)
+- Prisma (root schema): new `NichePlatform` enum (INSTAGRAM/TIKTOK) + models `NicheAccount` (unique platform+handle, active/discovered flags), `NichePost` (unique platform+externalId, hashtags[], engagementRatio, suggestedComment, engagedAt), `NicheHashtag` (unique platform+tag, medians + score), `NicheMemo` (weekOf unique)
+- New `apps/web/src/lib/content-factory/niche-research.ts`: Apify wrappers — `scrapeInstagramProfiles` (`apify~instagram-profile-scraper`, overridable via `APIFY_IG_ACTOR`) and `scrapeHashtagPosts` (`apify~instagram-hashtag-scraper`, `APIFY_IG_HASHTAG_ACTOR`), both via run-sync-get-dataset-items; `computeEngagementRatios` = (likes+comments) vs the account's own median (needs ≥3 posts)
+- New Inngest fns (registered in `api/inngest/route.ts`): `niche-research-nightly` (cron 2 UTC + event `content-factory/niche.scrape`; scrapes in batches of 10, upserts posts without clobbering suggestedComment/engagedAt, recomputes ratios over last 60d, drafts comments for ratio ≥1.3 posts in one `callClaude` call); `niche-strategy-memo` (Mon 11 UTC + `niche.memo`; compares our 30d metrics vs top 25 niche posts, Claude memo → NicheMemo upsert → Resend email); `niche-discovery` (Sun 2 UTC + `niche.discover`; top 10 niche hashtags weighted by ratio → hashtag sampling → NicheHashtag scores + creators appearing ≥2× become `discovered: true, active: false` accounts)
+- New `apps/web/src/app/api/admin/niche/route.ts`: GET (accounts, top posts w/ ?days filter, memo, engagement queue, hashtags, apifyConfigured) + POST actions add-account / toggle-active / update-notes / delete-account / mark-engaged / scrape-now / memo-now / discover-now
+- New `apps/web/src/app/admin/content-factory/niche/page.tsx` + "Niche lab" link in admin-dashboard.tsx
+- `generate-topic.ts`: new optional `nicheInspiration` input rendered as a NICHE INTELLIGENCE prompt block (extract the appeal, never copy); `carousel-daily.ts` feeds it the top 8 posts with ratio ≥1.5 from the last 30d
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home network — covers BOTH the new Niche models AND the still-pending AMBIENT enum from 2026-08-18 (Keenan)
+- [ ] Create an Apify account, get a token, add `APIFY_TOKEN` to Vercel env vars + redeploy (~$5–30/mo depending on account count) (Keenan)
+- [ ] After deploy: add 5–15 tracked accounts at /admin/content-factory/niche and hit "Scrape now" (Keenan)
+
+### Notes
+- Auto-like/auto-comment was explicitly cut per Keenan (IG ToS/ban risk). The engagement queue is copy-paste only by design — keep it that way
+- Apify actor response field names (`latestPosts`, `queryTag`, `likesCount`, etc.) are best-effort against Apify docs; watch the first real nightly run and adjust the mappers in niche-research.ts if the shapes differ
+- Engagement ratio is normalized per-account (vs that account's own median) so a small account's viral post outranks a big account's average one — that's the "what should WE emulate" signal
+- Cron order matters: scrape 2 UTC → metrics refresh 3 UTC → generation 4/6/8/10 UTC, so topic generation always sees fresh niche data
+- Pre-existing type errors in carousel-daily.ts (CarouselTopic at lines 240/355) are NOT from this change — verified identical on clean main via git stash
+- GrowthOS (Jimmy's repo) was reviewed as architectural reference only; its research layer is YouTube-specific, so nothing was ported directly
+
 ## [2026-08-24] — Animated carousels stop being "slow zoom on a woman" — scenes and motion now act out each slide
 
 **Requested by:** Keenan
