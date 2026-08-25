@@ -194,10 +194,10 @@ Generate 5-10 items per topic. Vary the count each time.`;
  * prompt: headlines that performed best/worst on the account, entered
  * manually by Keenan via the admin metrics form.
  *
- * `nicheInspiration` (2026-08-24) feeds the Niche Lab's scraped data in:
- * captions from OTHER accounts in the niche whose posts massively
- * overperformed their own baseline. Claude extracts the underlying angle
- * — it never copies the caption.
+ * `mandate` (2026-08-25) forces a specific topic: used when Keenan
+ * presses Generate on a Niche Lab topic suggestion. The model writes THAT
+ * headline/angle instead of inventing its own. Niche data otherwise never
+ * touches automatic generation.
  */
 export async function generateTopic(
   recentHeadlines: string[],
@@ -211,7 +211,8 @@ export async function generateTopic(
      * to the random alternation).
      */
     archetype?: "resonance" | "actionable";
-    nicheInspiration?: { handle: string; caption: string; ratio: number }[];
+    /** Mandated topic (headline + angle) — the model writes THIS topic. */
+    mandate?: { headline: string; angle?: string };
   }
 ): Promise<GeneratedTopic> {
   const { prisma } = await import("@/lib/prisma");
@@ -257,20 +258,11 @@ export async function generateTopic(
     );
   }
 
-  const niche = opts?.nicheInspiration;
-  const nicheBlock =
-    niche && niche.length > 0
-      ? `\n\nNICHE INTELLIGENCE — recent posts from OTHER accounts in this exact niche that overperformed their account's own average (the multiplier shows by how much):\n` +
-        niche
-          .map(
-            (p) =>
-              `- [${p.ratio.toFixed(1)}x, @${p.handle}] ${p.caption.replace(/\s+/g, " ").slice(0, 220)}`
-          )
-          .join("\n") +
-        `\nStudy WHY these landed — the emotional angle, the hook structure, the specificity — and let that inform your topic. NEVER copy, translate, or lightly rephrase any of them: extract the underlying appeal and express it in Ripple's own voice on a fresh angle.`
-      : "";
+  const mandateBlock = opts?.mandate
+    ? `\n\nMANDATED TOPIC (overrides everything else, including the avoid list): write THIS exact topic — headline: "${opts.mandate.headline}"${opts.mandate.angle ? `\nAngle to lean into: ${opts.mandate.angle}` : ""}\nYou may lightly polish the headline's wording (and adjust its number to match your reason count), but the subject and angle must stay exactly this.`
+    : "";
 
-  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${archetypeBlock}${performanceBlock}${researchBlock}${nicheBlock}
+  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${archetypeBlock}${performanceBlock}${researchBlock}${mandateBlock}
 
 Return ONLY valid JSON, no other text.`;
 

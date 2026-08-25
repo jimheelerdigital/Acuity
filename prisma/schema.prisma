@@ -2839,14 +2839,28 @@ model InsightEvidence {
   @@index([entryId])
 }
 
-// ─── Niche Research Lab (2026-08-24) ────────────────────────────────────────
-// Competitor/inspiration research for the Content Factory. Tracked accounts
-// in the niche are scraped nightly (Apify), overperforming posts feed the
-// carousel topic generator, and a weekly Claude memo suggests strategy.
+// ─── Niche Research Lab (2026-08-24, reworked 2026-08-25) ───────────────────
+// Fully-automatic niche research for the Content Factory. Claude infers the
+// niche from our own posted carousels (NicheProfile), Apify scrapes those
+// hashtags on Instagram AND TikTok nightly, and the admin surfaces: today's
+// viral posts (with drafted comments — manual engagement only), suggested
+// accounts to track, suggested carousel topics (generated ONLY on demand),
+// ranked hashtags, and a weekly strategy memo. Nothing feeds auto-generation.
 
 enum NichePlatform {
   INSTAGRAM
   TIKTOK
+}
+
+// Singleton (one row). Auto-inferred weekly by Claude from our own posted
+// carousel headlines/captions — Keenan never has to define the niche.
+model NicheProfile {
+  id             String   @id @default("singleton")
+  description    String   @db.Text // plain-English niche summary
+  igHashtags     String[] // search tags for Instagram, without #
+  tiktokHashtags String[] // search tags for TikTok, without #
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
 }
 
 model NicheAccount {
@@ -2867,8 +2881,11 @@ model NicheAccount {
 
 model NichePost {
   id              String        @id @default(cuid())
-  accountId       String
-  account         NicheAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  // Optional: hashtag-discovered posts have no tracked account, only an
+  // authorHandle. Tracked-account scrapes fill accountId.
+  accountId       String?
+  account         NicheAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  authorHandle    String?       // without @; set for hashtag-discovered posts
   platform        NichePlatform
   externalId      String        // IG shortcode / TikTok video id
   url             String
@@ -2882,8 +2899,11 @@ model NichePost {
   postedAt        DateTime
   scrapedAt       DateTime      @default(now())
   // Overperformance vs the account's own recent baseline (1.0 = average).
-  // Computed at ingest; the topic generator and engagement queue rank by it.
+  // Only computable for tracked accounts.
   engagementRatio Float?
+  // Virality vs the median of the hashtag sample it was scraped with
+  // (1.0 = typical). Powers the daily "viral in your niche" feed.
+  viralScore      Float?
   // Engagement queue (manual — never auto-posted): Claude-drafted comment
   // in Keenan's voice, and when Keenan marked it engaged from the admin.
   suggestedComment String?      @db.Text
@@ -2892,6 +2912,28 @@ model NichePost {
   @@unique([platform, externalId])
   @@index([postedAt(sort: Desc)])
   @@index([engagementRatio(sort: Desc)])
+  @@index([viralScore(sort: Desc)])
+}
+
+enum NicheSuggestionStatus {
+  SUGGESTED
+  GENERATED
+  DISMISSED
+}
+
+// Carousel topic suggestions drafted nightly from that day's viral posts.
+// NEVER auto-generated: Keenan reviews them in the admin and presses
+// Generate, which fires the one-off pipeline with this topic mandated.
+model NicheTopicSuggestion {
+  id              String                @id @default(cuid())
+  headline        String
+  angle           String                @db.Text // why this should land, per the viral evidence
+  sourceSummary   String?               @db.Text // which viral posts inspired it
+  status          NicheSuggestionStatus @default(SUGGESTED)
+  carouselPostId  String?               // set once generated
+  createdAt       DateTime              @default(now())
+
+  @@index([status, createdAt(sort: Desc)])
 }
 
 // Hashtag performance research: median reach of recent top posts per tag,

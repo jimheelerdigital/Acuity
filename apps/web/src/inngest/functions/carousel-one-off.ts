@@ -5,6 +5,11 @@ import { inngest } from "@/inngest/client";
  *
  * Generates a fresh AI-written topic (via Claude) then creates images
  * with gpt-image-2. Uses Inngest steps for timeout safety.
+ *
+ * Niche Lab suggestions (2026-08-25): when event.data carries
+ * { suggestionId, headline, angle }, the topic is MANDATED — the model
+ * writes that suggested topic instead of inventing one, and the
+ * suggestion row is marked GENERATED with the resulting post id.
  */
 export const carouselGenerateOneOffFn = inngest.createFunction(
   {
@@ -29,7 +34,21 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
       });
       const recentHeadlines = recentPosts.map((p) => p.headline);
 
-      const topic = await generateTopic(recentHeadlines);
+      const mandate =
+        typeof event.data?.headline === "string" && event.data.headline
+          ? {
+              headline: String(event.data.headline),
+              angle:
+                typeof event.data?.angle === "string"
+                  ? String(event.data.angle)
+                  : undefined,
+            }
+          : undefined;
+
+      const topic = await generateTopic(
+        recentHeadlines,
+        mandate ? { mandate } : undefined
+      );
       return topic;
     });
 
@@ -241,6 +260,20 @@ export const carouselGenerateOneOffFn = inngest.createFunction(
         estimatedCostCents: (allSlides.length - 1) * 8 + 2,
       };
     });
+
+    // ── Mark the Niche Lab suggestion as generated, if this run came
+    // from one (best-effort — the carousel itself already exists).
+    if (typeof event.data?.suggestionId === "string" && event.data.suggestionId) {
+      await step.run("mark-suggestion-generated", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.nicheTopicSuggestion
+          .update({
+            where: { id: String(event.data.suggestionId) },
+            data: { status: "GENERATED", carouselPostId: result.postId },
+          })
+          .catch(() => undefined);
+      });
+    }
 
     // ── Step N+3: fan out cover animation, which sends the email ─
     // Pipeline order: carousel gen → cover animation → Resend email.

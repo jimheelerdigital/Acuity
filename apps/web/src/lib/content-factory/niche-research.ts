@@ -126,6 +126,7 @@ export type HashtagPost = {
   comments: number | null;
   views: number | null;
   postedAt: Date | null;
+  webUrl: string | null;
 };
 
 type ApifyHashtagItem = {
@@ -133,6 +134,7 @@ type ApifyHashtagItem = {
   ownerUsername?: string;
   shortCode?: string;
   caption?: string;
+  url?: string;
   likesCount?: number;
   commentsCount?: number;
   videoViewCount?: number;
@@ -184,7 +186,149 @@ export async function scrapeHashtagPosts(
       comments: num(it.commentsCount),
       views: num(it.videoViewCount),
       postedAt: it.timestamp ? new Date(it.timestamp) : null,
+      webUrl:
+        it.url ||
+        (it.shortCode ? `https://www.instagram.com/p/${it.shortCode}/` : null),
     }));
+}
+
+/** Actor for TikTok hashtag scraping. Swappable via env. */
+const TIKTOK_ACTOR =
+  process.env.APIFY_TIKTOK_ACTOR || "clockworks~tiktok-scraper";
+
+type ApifyTikTokItem = {
+  id?: string;
+  text?: string;
+  createTimeISO?: string;
+  webVideoUrl?: string;
+  diggCount?: number;
+  shareCount?: number;
+  playCount?: number;
+  commentCount?: number;
+  authorMeta?: { name?: string; fans?: number };
+  hashtags?: { name?: string }[];
+  searchHashtag?: { name?: string };
+  error?: string;
+};
+
+/**
+ * Sample recent posts for a set of TikTok hashtags. Same HashtagPost shape
+ * as scrapeHashtagPosts so the viral-feed scorer treats both platforms
+ * alike. TikTok items carry the video id in `shortCode` and the play count
+ * in `views`.
+ */
+export async function scrapeTikTokHashtags(
+  tags: string[],
+  limitPerTag = 20
+): Promise<HashtagPost[]> {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) throw new Error("APIFY_TOKEN is not set");
+  if (tags.length === 0) return [];
+
+  const res = await fetch(
+    `${APIFY_BASE}/acts/${TIKTOK_ACTOR}/run-sync-get-dataset-items?token=${token}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hashtags: tags.map((t) => t.replace(/^#/, "")),
+        resultsPerPage: limitPerTag,
+      }),
+    }
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `Apify ${TIKTOK_ACTOR} failed (${res.status}): ${body.slice(0, 300)}`
+    );
+  }
+  const items = (await res.json()) as ApifyTikTokItem[];
+
+  return items
+    .filter((it) => !it.error && it.id)
+    .map((it) => ({
+      tag: (it.searchHashtag?.name || it.hashtags?.[0]?.name || "")
+        .replace(/^#/, "")
+        .toLowerCase(),
+      ownerUsername: it.authorMeta?.name?.toLowerCase() || null,
+      shortCode: it.id || null,
+      caption: it.text || null,
+      likes: num(it.diggCount),
+      comments: num(it.commentCount),
+      views: num(it.playCount),
+      postedAt: it.createTimeISO ? new Date(it.createTimeISO) : null,
+      webUrl: it.webVideoUrl || null,
+    }));
+}
+
+export type InferredNiche = {
+  description: string;
+  igHashtags: string[];
+  tiktokHashtags: string[];
+};
+
+/**
+ * Infer the niche automatically from our OWN posted carousels — Keenan
+ * never defines it by hand. Claude reads recent headlines/captions and
+ * returns a niche summary plus search hashtags for each platform.
+ * Refreshed weekly by the nightly cron. Returns null when we have no
+ * posts yet or the JSON comes back malformed (retries next night).
+ */
+export async function inferNiche(): Promise<InferredNiche | null> {
+  const { prisma } = await import("@/lib/prisma");
+  const { callClaude } = await import("./claude-client");
+
+  const posts = await prisma.carouselPost.findMany({
+    orderBy: { generatedFor: "desc" },
+    take: 40,
+    select: { headline: true, caption: true },
+  });
+  if (posts.length === 0) return null;
+
+  const raw = await callClaude({
+    purpose: "niche-inference",
+    systemPrompt:
+      "You are a social media strategist. You respond ONLY with valid JSON, no markdown fences, no commentary.",
+    userPrompt: `Below are recent Instagram/TikTok post headlines and captions from ONE account. Infer the account's niche and produce search hashtags for finding OTHER creators and viral posts in that exact niche.
+
+${posts
+  .map(
+    (p) =>
+      `- ${p.headline}${p.caption ? ` — ${p.caption.replace(/\s+/g, " ").slice(0, 140)}` : ""}`
+  )
+  .join("\n")}
+
+Return JSON exactly:
+{
+  "description": "2-3 sentence plain-English description of the niche and audience",
+  "igHashtags": ["10-14 Instagram hashtags, no #, mix of large and mid-size tags"],
+  "tiktokHashtags": ["10-14 TikTok hashtags, no #, phrased the way TikTok users actually tag"]
+}`,
+    maxTokens: 1000,
+  });
+
+  try {
+    const parsed = JSON.parse(raw.trim()) as InferredNiche;
+    if (
+      typeof parsed.description !== "string" ||
+      !Array.isArray(parsed.igHashtags) ||
+      !Array.isArray(parsed.tiktokHashtags)
+    ) {
+      return null;
+    }
+    const clean = (tags: string[]) =>
+      tags
+        .map((t) => String(t).replace(/^#/, "").trim().toLowerCase())
+        .filter((t) => /^[a-z0-9_]{2,40}$/.test(t))
+        .slice(0, 14);
+    return {
+      description: parsed.description.trim(),
+      igHashtags: clean(parsed.igHashtags),
+      tiktokHashtags: clean(parsed.tiktokHashtags),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function median(values: number[]): number | null {

@@ -43,9 +43,12 @@ export const nicheStrategyMemoFn = inngest.createFunction(
         prisma.nichePost.findMany({
           where: {
             postedAt: { gte: thirtyDaysAgo },
-            engagementRatio: { not: null },
+            OR: [
+              { engagementRatio: { not: null } },
+              { viralScore: { not: null } },
+            ],
           },
-          orderBy: { engagementRatio: "desc" },
+          orderBy: [{ viralScore: "desc" }, { engagementRatio: "desc" }],
           take: 25,
           select: {
             caption: true,
@@ -55,6 +58,8 @@ export const nicheStrategyMemoFn = inngest.createFunction(
             comments: true,
             views: true,
             engagementRatio: true,
+            viralScore: true,
+            authorHandle: true,
             account: { select: { handle: true, followers: true } },
           },
         }),
@@ -84,10 +89,13 @@ export const nicheStrategyMemoFn = inngest.createFunction(
         .join("\n");
 
       const nicheBlock = data.nichePosts
-        .map(
-          (p) =>
-            `- [${p.engagementRatio!.toFixed(1)}x their avg, @${p.account.handle}, ${p.account.followers ?? "?"} followers, ${p.mediaType ?? "?"}] ${(p.caption ?? "").replace(/\s+/g, " ").slice(0, 200)}`
-        )
+        .map((p) => {
+          const ratio = p.viralScore ?? p.engagementRatio ?? 0;
+          const label = p.viralScore != null ? "x the niche median" : "x their avg";
+          const handle = p.account?.handle ?? p.authorHandle ?? "unknown";
+          const followers = p.account?.followers ?? "?";
+          return `- [${ratio.toFixed(1)}${label}, @${handle}, ${followers} followers, ${p.mediaType ?? "?"}] ${(p.caption ?? "").replace(/\s+/g, " ").slice(0, 200)}`;
+        })
         .join("\n");
 
       return callClaude({
@@ -110,7 +118,7 @@ Ground every claim in the data provided. When you cite a niche post, name the ac
 OUR POSTS (last 30 days, with real engagement where entered):
 ${ourBlock || "(none)"}
 
-NICHE BREAKOUT POSTS (last 30 days, from tracked accounts, ranked by how much they beat their own account's average):
+NICHE BREAKOUT POSTS (last 30 days, from tracked accounts and hashtag discovery across Instagram + TikTok, ranked by how much they outperform their baseline):
 ${nicheBlock}
 
 Write this week's strategy memo.`,

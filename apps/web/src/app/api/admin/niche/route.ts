@@ -6,16 +6,20 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 /**
- * Admin API for the Niche Research Lab (2026-08-24).
+ * Admin API for the Niche Research Lab (2026-08-24, reworked 2026-08-25).
  *
- * GET  /api/admin/niche — tracked accounts + ranked overperforming posts
- *   Query params: days (post window, default 30), limit (default 50)
+ * GET  /api/admin/niche — profile, today's viral feed (IG + TikTok),
+ *   topic suggestions, suggested + tracked accounts, hashtags, memo
  * POST /api/admin/niche — actions:
- *   { action: "add-account", handle, notes? }
- *   { action: "toggle-active", accountId }
- *   { action: "update-notes", accountId, notes }
- *   { action: "delete-account", accountId }
- *   { action: "scrape-now" }  → fires the nightly Inngest scrape manually
+ *   { action: "approve-account", accountId }    → start tracking a suggestion
+ *   { action: "ignore-account", accountId }     → delete a suggestion
+ *   { action: "add-account", handle, notes? }   → manually track an account
+ *   { action: "toggle-active" | "update-notes" | "delete-account", accountId }
+ *   { action: "mark-engaged", postId }
+ *   { action: "generate-suggestion", suggestionId } → fire one-off generation
+ *   { action: "dismiss-suggestion", suggestionId }
+ *   { action: "refresh-niche" }                 → re-infer the niche profile
+ *   { action: "scrape-now" | "memo-now" | "discover-now" }
  */
 
 async function requireAdmin() {
@@ -38,22 +42,47 @@ export async function GET(req: NextRequest) {
   if (denied) return denied;
 
   const url = new URL(req.url);
-  const days = Math.min(Number(url.searchParams.get("days")) || 30, 365);
-  const limit = Math.min(Number(url.searchParams.get("limit")) || 50, 200);
+  const days = Math.min(Number(url.searchParams.get("days")) || 2, 30);
   const since = new Date(Date.now() - days * 86_400_000);
 
-  const [accounts, topPosts, latestMemo, hashtags] = await Promise.all([
-    prisma.nicheAccount.findMany({
-      orderBy: [{ active: "desc" }, { addedAt: "desc" }],
-      include: { _count: { select: { posts: true } } },
-    }),
+  const [
+    profile,
+    viralFeed,
+    suggestions,
+    suggestedAccounts,
+    trackedAccounts,
+    latestMemo,
+    hashtags,
+  ] = await Promise.all([
+    prisma.nicheProfile.findUnique({ where: { id: "singleton" } }),
+    // Today's viral posts across both platforms, drafted comment included.
     prisma.nichePost.findMany({
-      where: { postedAt: { gte: since }, engagementRatio: { not: null } },
-      orderBy: { engagementRatio: "desc" },
-      take: limit,
+      where: {
+        postedAt: { gte: since },
+        OR: [{ viralScore: { gte: 1.5 } }, { engagementRatio: { gte: 1.3 } }],
+      },
+      orderBy: [{ viralScore: "desc" }, { engagementRatio: "desc" }],
+      take: 40,
       include: {
         account: { select: { handle: true, displayName: true, followers: true } },
       },
+    }),
+    prisma.nicheTopicSuggestion.findMany({
+      where: { status: "SUGGESTED" },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    }),
+    // Accounts the discovery crawl found — awaiting Keenan's approve/ignore.
+    prisma.nicheAccount.findMany({
+      where: { discovered: true, active: false },
+      orderBy: { addedAt: "desc" },
+      take: 20,
+      include: { _count: { select: { posts: true } } },
+    }),
+    prisma.nicheAccount.findMany({
+      where: { OR: [{ discovered: false }, { active: true }] },
+      orderBy: [{ active: "desc" }, { addedAt: "desc" }],
+      include: { _count: { select: { posts: true } } },
     }),
     prisma.nicheMemo.findFirst({ orderBy: { weekOf: "desc" } }),
     prisma.nicheHashtag.findMany({
@@ -63,25 +92,14 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  // Engagement queue: recent breakout posts with a drafted comment that
-  // Keenan hasn't engaged with yet. Manual by design — never auto-posted.
-  const engagementQueue = await prisma.nichePost.findMany({
-    where: {
-      suggestedComment: { not: null },
-      engagedAt: null,
-      postedAt: { gte: new Date(Date.now() - 14 * 86_400_000) },
-    },
-    orderBy: { engagementRatio: "desc" },
-    take: 15,
-    include: { account: { select: { handle: true, displayName: true, followers: true } } },
-  });
-
   return NextResponse.json({
     apifyConfigured: Boolean(process.env.APIFY_TOKEN),
-    accounts,
-    topPosts,
+    profile,
+    viralFeed,
+    suggestions,
+    suggestedAccounts,
+    trackedAccounts,
     latestMemo,
-    engagementQueue,
     hashtags,
   });
 }
@@ -113,9 +131,25 @@ export async function POST(req: NextRequest) {
           handle,
           notes: body.notes ? String(body.notes) : null,
         },
-        update: { active: true },
+        update: { active: true, discovered: false },
       });
       return NextResponse.json({ ok: true, account });
+    }
+
+    case "approve-account": {
+      const account = await prisma.nicheAccount.update({
+        where: { id: String(body.accountId) },
+        data: { active: true },
+      });
+      return NextResponse.json({ ok: true, account });
+    }
+
+    case "ignore-account": {
+      // Only ever deletes an unapproved discovery suggestion.
+      await prisma.nicheAccount.deleteMany({
+        where: { id: String(body.accountId), discovered: true, active: false },
+      });
+      return NextResponse.json({ ok: true });
     }
 
     case "toggle-active": {
@@ -146,18 +180,64 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    case "scrape-now": {
-      const { inngest } = await import("@/inngest/client");
-      await inngest.send({ name: "content-factory/niche.scrape", data: {} });
-      return NextResponse.json({ ok: true, triggered: true });
-    }
-
     case "mark-engaged": {
       await prisma.nichePost.update({
         where: { id: String(body.postId) },
         data: { engagedAt: new Date() },
       });
       return NextResponse.json({ ok: true });
+    }
+
+    case "generate-suggestion": {
+      const suggestion = await prisma.nicheTopicSuggestion.findUnique({
+        where: { id: String(body.suggestionId) },
+      });
+      if (!suggestion || suggestion.status !== "SUGGESTED") {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "carousel/generate.one-off",
+        data: {
+          suggestionId: suggestion.id,
+          headline: suggestion.headline,
+          angle: suggestion.angle,
+        },
+      });
+      return NextResponse.json({ ok: true, triggered: true });
+    }
+
+    case "dismiss-suggestion": {
+      await prisma.nicheTopicSuggestion.update({
+        where: { id: String(body.suggestionId) },
+        data: { status: "DISMISSED" },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "refresh-niche": {
+      const { inferNiche } = await import(
+        "@/lib/content-factory/niche-research"
+      );
+      const inferred = await inferNiche();
+      if (!inferred) {
+        return NextResponse.json(
+          { error: "Could not infer the niche — post some carousels first" },
+          { status: 422 }
+        );
+      }
+      const profile = await prisma.nicheProfile.upsert({
+        where: { id: "singleton" },
+        create: { id: "singleton", ...inferred },
+        update: inferred,
+      });
+      return NextResponse.json({ ok: true, profile });
+    }
+
+    case "scrape-now": {
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({ name: "content-factory/niche.scrape", data: {} });
+      return NextResponse.json({ ok: true, triggered: true });
     }
 
     case "memo-now": {
