@@ -58,6 +58,37 @@ The Niche Lab now runs itself. It figures out your niche automatically from the 
 - viralScore (vs the hashtag sample's median) exists because hashtag-discovered posts have no account baseline; engagementRatio still applies to tracked accounts. Feed orders by viralScore desc, then engagementRatio desc.
 - Daily posts deliberately ignore niche data (Keenan's call, 2026-08-25) — suggestions are the only bridge, via the existing one-off pipeline with a `mandate` on generateTopic.
 - Pre-existing CarouselTopic type errors in carousel-daily.ts and carousel-one-off.ts (missing `style` in a literal) are on origin/main too — not introduced here.
+## [2026-08-25] — A fifth daily content type: a realistic "mirror selfie" slideshow from one consistent woman
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c0e8e9cf
+
+### In plain English (for Keenan)
+The content factory now makes a fifth post every day: a swipeable photo slideshow that looks like a real woman in her 40s posted it herself. The cover is her taking a mirror selfie with a hook like "this is how i stopped running on empty," and each following slide is one thing she did about it — some slides are her again (same woman, different room and outfit), others are beautiful aesthetic shots like her coffee on a windowsill. The text is burned onto the images in the pink/pastel sticker style from the viral posts you sent, it never covers her face, and the small supporting lines are now crisp and readable. It runs automatically at 7am Central each day and emails you the finished post, same as the others. You already have the corrected example in your inbox.
+
+### Technical changes (for Jimmy)
+- New daily bucket "selfie" in `apps/web/src/inngest/functions/carousel-daily.ts` — cron widened to `0 4,6,8,10,12 * * *` (12 UTC = selfie). Cover + 4-6 step slides; mirror steps are generated with gpt-image-2's edit endpoint using the cover's text-free raw as an identity reference, and each new post's cover references the *previous* selfie post's cover, so the same woman persists across posts indefinitely
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_PERSONA` (fixed character description), `SELFIE_VISUAL_DNA` (amateur phone mirror-selfie realism, no text in image), `SELFIE_AESTHETIC_DNA` (person-free hyper-real POV shots)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: `generateSelfieTopic()` — first-person Claude prompt returning steps, per-step shot plan (mirror vs aesthetic), and scene direction
+- `apps/web/src/lib/content-factory/compose.ts`: `renderSelfieCaptionOverlay()` — TikTok sticker text (colored fill + white outline via 8-offset Pango composites, no SVG so Lambda-safe), `SELFIE_TEXT_COLORS` rotated per slug, emoji stripping. Placement is two-phase (measure, then anchor): mirror slides put the block at chest level ("lower"), aesthetic slides upper-middle
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `buildSelfieImagePrompt()`
+- Admin: 🤳 manual trigger on `admin/content-factory/carousels` page + route docblock
+- `apps/web/scripts/run-selfie-example.ts`: local end-to-end runner (server-only shim + env loader pattern); deletes any same-slug/same-day post before re-creating to dodge the `(topicSlug, generatedFor)` unique constraint on re-runs
+- **No schema change.** Posts save as `format: "PHOTO"` + `lane: "selfie"` because the prod db push is still pending — a new `CarouselFormat` enum value would fail at the DB level until that lands
+- Step slides now upload their text-free raws (`rawImageUrl`) so caption fixes can be re-rendered without paying for image regeneration
+
+### Manual steps needed
+- [ ] Update `ANTHROPIC_API_KEY` in the repo-root `.env` AND `apps/web/.env.local` — the key on disk returns 401 (invalid/revoked). Vercel's key works fine, so prod topic generation is unaffected; this only blocks local scripts (Keenan or Jimmy)
+- [ ] Watch the first automatic selfie run (12:00 UTC / 7am Central tomorrow) land in email — it will chain identity off today's example post (Keenan)
+
+### Notes
+- The local Anthropic key being dead meant today's emailed example used a hand-written fallback topic inside the runner script; the Claude topic path is exercised in prod only. The fallback lives in the script, not the pipeline
+- First example run surfaced two visual bugs Keenan flagged: (1) the small white detail line was rendered with a *white* outline — 8 white-on-white offsets smear into an illegible blob; it now uses a dark `#2A2A2A` outline. (2) Text at 20-22% frame height sat on her face; mirror slides now anchor at ~58% (chest), clamped to 42%-82% to clear the bottom platform chrome
+- Identity chaining verified working: run 2 pulled run 1's cover as reference and produced the same woman in a different hallway/outfit
+- Storage paths are slug-scoped, so re-running the same topic on the same day overwrites images in place — that's how the emailed example got corrected without regenerating the DB row
+- `sendCarouselEmail` is idempotent via `emailedAt`; pass `{ force: true }` to re-send
+- Baselines held: tsc errors all pre-existing (compose.ts `sharp` namespace ×2, carousel-daily CarouselTopic ×2), 673/673 tests green
 
 ## [2026-08-24] — Half the old-domain cleanup shipped; the other half is blocked on a missing DNS record
 
