@@ -1,8 +1,10 @@
 /**
  * Content Factory — carousel email delivery via Resend.
  *
- * Sends one email per carousel with composited slides attached (or linked
- * if total size > 15MB) and the caption in the body.
+ * Animated carousels (any slide has a videoUrl): exactly ONE email with
+ * the fully stitched ready-to-post MP4 + the caption, nothing else
+ * (2026-08-25, per Keenan). Static carousels: one email with the slide
+ * images attached (or linked if oversized) and the caption.
  */
 
 import { getResendClient } from "@/lib/resend";
@@ -73,7 +75,34 @@ export async function sendCarouselEmail(
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
   const lane = post.topicSlug;
 
-  // ── Fetch slide images ──────────────────────────────────────────
+  // ── Animated slide videos (fully animated posts have several) ───
+  const videoSlides = post.slides.filter((s) => s.videoUrl);
+
+  // Animated carousel → ONE email: the fully stitched ready-to-post MP4
+  // plus the caption, nothing else (2026-08-25, per Keenan: "stop sending
+  // two separate carousel videos. only send the fully clipped animated
+  // carousel video plus the captions only"). The old main email with
+  // slide images + per-slide clip buttons is gone for animated posts.
+  const videoBuffers: { filename: string; buf: Buffer; order: number }[] = [];
+  for (const slide of videoSlides) {
+    try {
+      const res = await fetch(slide.videoUrl!);
+      console.log(`[carousel-email] Video fetch (slide ${slide.order}): status=${res.status}, size=${res.headers.get("content-length") ?? "unknown"}`);
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        const num = String(slide.order + 1).padStart(2, "0");
+        videoBuffers.push({ filename: `${num}-${slide.kind.toLowerCase()}-animated.mp4`, buf, order: slide.order });
+      }
+    } catch (err) {
+      console.warn(`[carousel-email] Failed to fetch video for slide ${slide.order}: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  if (videoBuffers.length > 0) {
+    return sendStitchedVideoEmail(post, dateStr, videoSlides, videoBuffers);
+  }
+
+  // ── Static carousel (no videos) — image email ───────────────────
   const slideBuffers: { filename: string; buf: Buffer; url: string }[] = [];
   let totalBytes = 0;
 
@@ -96,35 +125,6 @@ export async function sendCarouselEmail(
 
   const useAttachments = totalBytes <= MAX_ATTACHMENT_BYTES;
 
-  // ── Animated slide videos (fully animated posts have several) ───
-  const videoSlides = post.slides.filter((s) => s.videoUrl);
-
-  console.log(
-    `[carousel-email] Video check for ${carouselPostId}: ${videoSlides.length} slide(s) with video, ` +
-    `imageBytes=${totalBytes}, useAttachments=${totalBytes <= MAX_ATTACHMENT_BYTES}`
-  );
-
-  // Fetch every video. They are NOT attached to the main email — all six
-  // won't fit under Resend's per-message cap alongside the images. Instead
-  // they are stitched into ONE compilation MP4 (2026-08-12 per Keenan:
-  // one slide-video email, pre-assembled — replaces his manual clipping)
-  // and sent in a single follow-up email as a real attachment: tap and
-  // hold → Save Video, straight from the email.
-  const videoBuffers: { filename: string; buf: Buffer; order: number }[] = [];
-  for (const slide of videoSlides) {
-    try {
-      const res = await fetch(slide.videoUrl!);
-      console.log(`[carousel-email] Video fetch (slide ${slide.order}): status=${res.status}, size=${res.headers.get("content-length") ?? "unknown"}`);
-      if (res.ok) {
-        const buf = Buffer.from(await res.arrayBuffer());
-        const num = String(slide.order + 1).padStart(2, "0");
-        videoBuffers.push({ filename: `${num}-${slide.kind.toLowerCase()}-animated.mp4`, buf, order: slide.order });
-      }
-    } catch (err) {
-      console.warn(`[carousel-email] Failed to fetch video for slide ${slide.order}: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-
   // ── Build HTML ──────────────────────────────────────────────────
   const slideList = post.slides
     .map((s, i) => `<li style="margin-bottom:4px;color:#999;">${i + 1}. ${escapeHtml(s.overlayText)}</li>`)
@@ -132,32 +132,6 @@ export async function sendCarouselEmail(
 
   const coverUrl = post.slides[0]?.imageUrl ?? "";
   const reviewUrl = `${REVIEW_BASE_URL}/admin/content-factory/carousels`;
-
-  // Always give big, thumb-friendly download buttons when videos exist —
-  // attachments are awkward to save to the camera roll on a phone, the
-  // hosted links are not. Shown whether or not the MP4s are also attached.
-  const videoButtons = videoSlides
-    .map((s) => {
-      const label =
-        s.kind === "COVER"
-          ? "🎬 Download animated cover (MP4)"
-          : `🎬 Download slide ${s.order + 1} animation (MP4)`;
-      return `
-      <a href="${escapeHtml(forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;margin-bottom:8px;">
-        ${label}
-      </a>`;
-    })
-    .join("\n");
-  const videoNote =
-    videoSlides.length > 0
-      ? `
-    <div style="text-align:center;margin:20px 0;">
-      ${videoButtons}
-      <p style="font-size:11px;color:#888;margin:8px 0 0;">
-        📥 A "Carousel video" email follows this one with every animated slide stitched into a single ready-to-post MP4 — tap and hold it there, then Save&nbsp;Video. Buttons above download individual slide clips as a backup.
-      </p>
-    </div>`
-      : "";
 
   const attachNote = useAttachments
     ? `<p style="font-size:13px;color:#888;">📎 ${slideBuffers.length} slides attached — save to Photos and post.</p>`
@@ -188,7 +162,6 @@ export async function sendCarouselEmail(
 
     ${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="Cover" style="width:100%;border-radius:12px;margin-bottom:16px;" />` : ""}
 
-    ${videoNote}
     ${attachNote}
 
     <div style="margin:16px 0;">
@@ -216,16 +189,6 @@ export async function sendCarouselEmail(
     "",
     "── Caption ──",
     post.caption,
-    ...(videoSlides.length > 0
-      ? [
-          "",
-          "── Animated slides (MP4) ──",
-          ...videoSlides.map((s) =>
-            `${s.kind === "COVER" ? "Cover" : `Slide ${s.order + 1}`}: ${forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`)}`
-          ),
-          "Links download the MP4 directly. On iPhone: open in Files, then Share → Save Video.",
-        ]
-      : []),
     "",
     "── Slide texts ──",
     ...post.slides.map((s, i) => `${i + 1}. ${s.overlayText}`),
@@ -245,7 +208,7 @@ export async function sendCarouselEmail(
   };
 
   if (useAttachments && slideBuffers.length > 0) {
-    (emailPayload as Record<string, unknown>).attachments = slideBuffers.map((s) => ({
+    (emailPayload as unknown as Record<string, unknown>).attachments = slideBuffers.map((s) => ({
       filename: s.filename,
       content: s.buf.toString("base64"),
     }));
@@ -258,149 +221,6 @@ export async function sendCarouselEmail(
   const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
   const emailId = (dataObj.id as string) ?? "";
 
-  // ── Follow-up email: ONE stitched carousel video ────────────────
-  // All slide videos (cover → reasons, text already burned in, silent)
-  // are concatenated into a single ready-to-post MP4 so nothing needs
-  // manual clipping. Exactly one follow-up email, attachment when it
-  // fits under the Resend cap, force-download link otherwise. If the
-  // stitch fails, the email still goes out with per-slide links.
-  if (videoBuffers.length > 0) {
-    let attachment: { filename: string; buf: Buffer } | null = null;
-    let compilationUrl: string | null = null;
-    try {
-      if (videoBuffers.length === 1 && post.slides.length <= 1) {
-        // Single-slide post — nothing to assemble.
-        attachment = videoBuffers[0];
-        compilationUrl = videoSlides[0]?.videoUrl ?? null;
-      } else {
-        // The compilation contains EVERY non-CTA slide in order
-        // (2026-08-13, per Keenan: the slideshow must go through ALL the
-        // reasons). Slides whose animation failed every retry wave are
-        // included as 4s still clips of their static JPEG instead of
-        // being skipped.
-        const { stitchStoryVideo, stillImageClip, stitchClipsWithCrossfade } =
-          await import("./story-video");
-        const segments: Buffer[] = [];
-        for (const slide of post.slides) {
-          if (slide.kind === "CTA") continue;
-          const animated = videoBuffers.find((v) => v.order === slide.order);
-          if (animated) {
-            segments.push(animated.buf);
-            continue;
-          }
-          try {
-            const res = await fetch(slide.imageUrl);
-            if (!res.ok) throw new Error(`image fetch failed (${res.status})`);
-            const still = await stillImageClip(
-              Buffer.from(await res.arrayBuffer()),
-              4
-            );
-            segments.push(still);
-            console.log(
-              `[carousel-email] Slide ${slide.order} has no animation — using a 4s still clip`
-            );
-          } catch (stillErr) {
-            console.error(
-              `[carousel-email] Still clip failed for slide ${slide.order} — compilation will skip it: ${stillErr instanceof Error ? stillErr.message : stillErr}`
-            );
-          }
-        }
-        // Crossfade blending between slides (2026-08-16, per Keenan) —
-        // fall back to 0.4s fade-to-black concat (2026-08-15) if xfade fails.
-        let stitched: Buffer;
-        try {
-          stitched = await stitchClipsWithCrossfade(segments);
-        } catch (xfadeErr) {
-          console.error(
-            `[carousel-email] Crossfade stitch failed — falling back to fade-out cuts: ${xfadeErr instanceof Error ? xfadeErr.message : xfadeErr}`
-          );
-          stitched = await stitchStoryVideo(segments, { fadeOutSec: 0.4 });
-        }
-        const { uploadImage } = await import("./carousel-generate");
-        compilationUrl = await uploadImage(
-          stitched,
-          `carousels/${dateStr}/${post.topicSlug}/slides-compilation.mp4`,
-          "video/mp4"
-        );
-        attachment = { filename: `carousel-${dateStr}.mp4`, buf: stitched };
-      }
-    } catch (err) {
-      console.error(
-        `[carousel-email] Compilation stitch failed — sending links instead: ${err instanceof Error ? err.message : err}`
-      );
-    }
-
-    const attachIt = attachment !== null && attachment.buf.length <= MAX_ATTACHMENT_BYTES;
-    const compilationLink = compilationUrl
-      ? forceDownloadUrl(compilationUrl, `carousel-${dateStr}.mp4`)
-      : null;
-    const linkList = compilationLink
-      ? `<a href="${escapeHtml(compilationLink)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">🎬 Download carousel video (MP4)</a>`
-      : videoSlides
-          .map((s) => `<p style="font-size:13px;"><a href="${escapeHtml(forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))}" style="color:#F97E4E;">Download slide ${s.order + 1} animation</a></p>`)
-          .join("\n");
-
-    try {
-      const videoEmail: Parameters<typeof resend.emails.send>[0] = {
-        from: FROM_ADDRESS,
-        to: TO_ADDRESS,
-        subject: `[Ripple Content] 🎬 Carousel video — ${post.headline}`,
-        html: `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:500px;margin:0 auto;padding:20px;">
-    <h1 style="font-size:18px;color:#FBFAF6;margin:0 0 8px;">🎬 Carousel video, ready to post</h1>
-    <p style="font-size:13px;color:#AAA;margin:0 0 12px;">${escapeHtml(post.headline)}</p>
-    <!-- Caption FIRST (2026-08-20): Gmail mobile clips long messages. -->
-    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:0 0 16px;">
-      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
-      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
-    </div>
-    <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0 0 16px;">
-      ${
-        attachment
-          ? `All ${videoBuffers.length > 1 ? `${videoBuffers.length} animated slides stitched into one MP4` : "the animated cover in one MP4"}${attachIt ? ", attached below" : ""}.<br/><strong>${attachIt ? "Tap and hold the video → Save Video" : "Use the download button below"}</strong> — no clipping needed.`
-          : `The stitched video couldn't be built this time — download the individual slide clips below.`
-      }
-    </p>
-    <div style="text-align:center;margin:16px 0;">${linkList}</div>
-  </div>
-</body>
-</html>`.trim(),
-        text: [
-          `Carousel video — ${post.headline}`,
-          "",
-          "── Caption ──",
-          post.caption,
-          "",
-          attachment
-            ? attachIt
-              ? "One stitched MP4 attached. Tap and hold → Save Video. No clipping needed."
-              : "The stitched MP4 was too large to attach — use the download link:"
-            : "Stitch failed — individual slide clip links below:",
-          ...(compilationLink
-            ? [compilationLink]
-            : videoSlides.map((s) => forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))),
-        ].join("\n"),
-      };
-      if (attachIt && attachment) {
-        (videoEmail as unknown as Record<string, unknown>).attachments = [
-          { filename: attachment.filename, content: attachment.buf.toString("base64") },
-        ];
-      }
-      await resend.emails.send(videoEmail);
-      console.log(
-        `[carousel-email] Sent carousel video email (${attachment ? (attachIt ? "attached" : "link only") : "links fallback"}, ${videoBuffers.length} source clip(s))`
-      );
-    } catch (err) {
-      console.warn(
-        `[carousel-email] Carousel video email failed: ${err instanceof Error ? err.message : err}`
-      );
-    }
-  }
-
   // ── Update DB ───────────────────────────────────────────────────
   await prisma.carouselPost.update({
     where: { id: carouselPostId },
@@ -410,6 +230,171 @@ export async function sendCarouselEmail(
   console.log(
     `[carousel-email] Sent ${carouselPostId} to ${TO_ADDRESS}` +
     ` (${useAttachments ? "attached" : "linked"}, ${(totalBytes / 1024).toFixed(0)}KB, resendId=${emailId})`
+  );
+
+  return { emailId };
+}
+
+/**
+ * Animated carousel delivery (2026-08-25, per Keenan): exactly ONE email —
+ * the fully stitched, ready-to-post MP4 plus the caption. No slide images,
+ * no per-slide clip buttons, no follow-up email.
+ *
+ * The compilation contains EVERY non-CTA slide in order (2026-08-13:
+ * the slideshow must go through ALL the reasons). Slides whose animation
+ * failed every retry wave are included as 4s still clips of their static
+ * JPEG instead of being skipped. Crossfade blending between slides
+ * (2026-08-16), falling back to 0.4s fade-to-black cuts (2026-08-15).
+ */
+async function sendStitchedVideoEmail(
+  post: PostRow,
+  dateStr: string,
+  videoSlides: SlideRow[],
+  videoBuffers: { filename: string; buf: Buffer; order: number }[]
+): Promise<{ emailId: string }> {
+  const { prisma } = await import("@/lib/prisma");
+
+  let attachment: { filename: string; buf: Buffer } | null = null;
+  let compilationUrl: string | null = null;
+  try {
+    if (videoBuffers.length === 1 && post.slides.length <= 1) {
+      // Single-slide post — nothing to assemble.
+      attachment = videoBuffers[0];
+      compilationUrl = videoSlides[0]?.videoUrl ?? null;
+    } else {
+      const { stitchStoryVideo, stillImageClip, stitchClipsWithCrossfade } =
+        await import("./story-video");
+      const segments: Buffer[] = [];
+      for (const slide of post.slides) {
+        if (slide.kind === "CTA") continue;
+        const animated = videoBuffers.find((v) => v.order === slide.order);
+        if (animated) {
+          segments.push(animated.buf);
+          continue;
+        }
+        try {
+          const res = await fetch(slide.imageUrl);
+          if (!res.ok) throw new Error(`image fetch failed (${res.status})`);
+          const still = await stillImageClip(
+            Buffer.from(await res.arrayBuffer()),
+            4
+          );
+          segments.push(still);
+          console.log(
+            `[carousel-email] Slide ${slide.order} has no animation — using a 4s still clip`
+          );
+        } catch (stillErr) {
+          console.error(
+            `[carousel-email] Still clip failed for slide ${slide.order} — compilation will skip it: ${stillErr instanceof Error ? stillErr.message : stillErr}`
+          );
+        }
+      }
+      let stitched: Buffer;
+      try {
+        stitched = await stitchClipsWithCrossfade(segments);
+      } catch (xfadeErr) {
+        console.error(
+          `[carousel-email] Crossfade stitch failed — falling back to fade-out cuts: ${xfadeErr instanceof Error ? xfadeErr.message : xfadeErr}`
+        );
+        stitched = await stitchStoryVideo(segments, { fadeOutSec: 0.4 });
+      }
+      const { uploadImage } = await import("./carousel-generate");
+      compilationUrl = await uploadImage(
+        stitched,
+        `carousels/${dateStr}/${post.topicSlug}/slides-compilation.mp4`,
+        "video/mp4"
+      );
+      attachment = { filename: `carousel-${dateStr}.mp4`, buf: stitched };
+    }
+  } catch (err) {
+    console.error(
+      `[carousel-email] Compilation stitch failed — sending links instead: ${err instanceof Error ? err.message : err}`
+    );
+  }
+
+  const attachIt =
+    attachment !== null && attachment.buf.length <= MAX_ATTACHMENT_BYTES;
+  const compilationLink = compilationUrl
+    ? forceDownloadUrl(compilationUrl, `carousel-${dateStr}.mp4`)
+    : null;
+  // Only if the stitch itself failed do we fall back to per-slide links —
+  // otherwise it's strictly the one finished video.
+  const linkList = compilationLink
+    ? `<a href="${escapeHtml(compilationLink)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">🎬 Download carousel video (MP4)</a>`
+    : videoSlides
+        .map((s) => `<p style="font-size:13px;"><a href="${escapeHtml(forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))}" style="color:#F97E4E;">Download slide ${s.order + 1} animation</a></p>`)
+        .join("\n");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:500px;margin:0 auto;padding:20px;">
+    <h1 style="font-size:18px;color:#FBFAF6;margin:0 0 8px;">🎬 ${escapeHtml(post.headline)}</h1>
+    <p style="font-size:12px;color:#888;margin:0 0 16px;">${escapeHtml(post.topicSlug)} · ${escapeHtml(dateStr)}</p>
+    <!-- Caption FIRST (2026-08-20): Gmail mobile clips long messages. -->
+    <div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:0 0 16px;">
+      <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
+      <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
+    </div>
+    <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0 0 16px;">
+      ${
+        attachment
+          ? `The finished carousel video${attachIt ? " is attached below" : ""}.<br/><strong>${attachIt ? "Tap and hold the video → Save Video" : "Use the download button below"}</strong> — no clipping needed.`
+          : `The stitched video couldn't be built this time — download the individual slide clips below.`
+      }
+    </p>
+    <div style="text-align:center;margin:16px 0;">${linkList}</div>
+    <p style="font-size:11px;color:#555;text-align:center;margin-top:20px;">
+      Ripple Content Factory · Automated carousel delivery
+    </p>
+  </div>
+</body>
+</html>`.trim();
+
+  const text = [
+    `Carousel video — ${post.headline}`,
+    "",
+    "── Caption ──",
+    post.caption,
+    "",
+    attachment
+      ? attachIt
+        ? "One stitched MP4 attached. Tap and hold → Save Video. No clipping needed."
+        : "The stitched MP4 was too large to attach — use the download link:"
+      : "Stitch failed — individual slide clip links below:",
+    ...(compilationLink
+      ? [compilationLink]
+      : videoSlides.map((s) => forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))),
+  ].join("\n");
+
+  const resend = getResendClient();
+  const emailPayload: Parameters<typeof resend.emails.send>[0] = {
+    from: FROM_ADDRESS,
+    to: TO_ADDRESS,
+    subject: `[Ripple Content] 🎬 Carousel video — ${post.headline}`,
+    html,
+    text,
+  };
+  if (attachIt && attachment) {
+    (emailPayload as unknown as Record<string, unknown>).attachments = [
+      { filename: attachment.filename, content: attachment.buf.toString("base64") },
+    ];
+  }
+
+  const resp = await resend.emails.send(emailPayload);
+  const respAny = resp as Record<string, unknown>;
+  const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
+  const emailId = (dataObj.id as string) ?? "";
+
+  await prisma.carouselPost.update({
+    where: { id: post.id },
+    data: { emailedAt: new Date(), emailId },
+  });
+
+  console.log(
+    `[carousel-email] Sent single stitched-video email for ${post.id} to ${TO_ADDRESS} (${attachment ? (attachIt ? "attached" : "link only") : "links fallback"}, ${videoBuffers.length} source clip(s), resendId=${emailId})`
   );
 
   return { emailId };
