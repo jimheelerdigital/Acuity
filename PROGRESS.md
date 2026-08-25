@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-08-25] — Niche Lab reworked: zero setup, daily viral feed, suggestions only
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4db5a7ca
+
+### In plain English (for Keenan)
+The Niche Lab now runs itself. It figures out your niche automatically from the carousels you've already posted (nothing to seed), then every night pulls the posts going viral in that niche TODAY — on both Instagram and TikTok — with a ready-to-paste comment for each. It also suggests accounts worth tracking and 3 carousel topics per day, but nothing it finds ever changes the automatic daily posts: a suggested topic only becomes a carousel when you press "Generate this carousel" in the dashboard.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: new `NicheProfile` singleton (description, igHashtags[], tiktokHashtags[]), new `NicheTopicSuggestion` model + `NicheSuggestionStatus` enum, `NichePost.accountId` now optional with new `authorHandle` and indexed `viralScore` columns
+- apps/web/src/lib/content-factory/niche-research.ts: `scrapeTikTokHashtags()` (clockworks~tiktok-scraper, override via `APIFY_TIKTOK_ACTOR`), `inferNiche()` (Claude reads last 40 posted carousels → niche description + 10-14 hashtags per platform), `webUrl` on hashtag samples
+- apps/web/src/inngest/functions/niche-research-nightly.ts: rewritten — ensure/infer profile → viral IG + TikTok ingestion (viralScore = engagement ÷ per-tag median, accountless posts allowed) → tracked-account scrape → drafted comments → 3 topic suggestions/day (deduped, capped at 9 pending)
+- apps/web/src/inngest/functions/niche-discovery.ts: bootstraps hashtags from NicheProfile (works with zero tracked accounts), scores hashtags and suggests creators on BOTH platforms
+- apps/web/src/inngest/functions/niche-strategy-memo.ts: handles accountless viral posts (viralScore/authorHandle fallbacks)
+- apps/web/src/inngest/functions/carousel-daily.ts + lib/content-factory/generate-topic.ts: niche auto-influence removed; `generateTopic` gains a `mandate` opt
+- apps/web/src/inngest/functions/carousel-one-off.ts: accepts `{suggestionId, headline, angle}`, marks the suggestion GENERATED with the post id
+- apps/web/src/app/api/admin/niche/route.ts + admin/content-factory/niche/page.tsx: rebuilt — profile card w/ Re-detect, suggested topics (Generate/Dismiss), viral feed (48h/7d/30d), account suggestions (Track/Ignore), memo, hashtags, tracked accounts
+
+### Manual steps needed
+- [ ] `npm run db:push` from main on home network — covers NicheProfile/NicheTopicSuggestion/NichePost changes AND the earlier AMBIENT enum (Keenan)
+- [ ] Add `APIFY_TOKEN` in Vercel (Keenan) — lab skips gracefully until set
+- [ ] Optional Vercel overrides: `APIFY_TIKTOK_ACTOR`, `APIFY_IG_ACTOR`, `APIFY_IG_HASHTAG_ACTOR` (Keenan, only if actor defaults misbehave)
+
+### Notes
+- Nothing needs seeding: the niche is inferred from our own posted carousels and re-inferred weekly (or via the Re-detect button). Tracked accounts are now optional flavor, not a prerequisite.
+- viralScore (vs the hashtag sample's median) exists because hashtag-discovered posts have no account baseline; engagementRatio still applies to tracked accounts. Feed orders by viralScore desc, then engagementRatio desc.
+- Daily posts deliberately ignore niche data (Keenan's call, 2026-08-25) — suggestions are the only bridge, via the existing one-off pipeline with a `mandate` on generateTopic.
+- Pre-existing CarouselTopic type errors in carousel-daily.ts and carousel-one-off.ts (missing `style` in a literal) are on origin/main too — not introduced here.
+
 ## [2026-08-24] — Half the old-domain cleanup shipped; the other half is blocked on a missing DNS record
 
 **Requested by:** Jimmy
