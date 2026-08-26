@@ -170,12 +170,14 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlide, composeSlideWithOverlay, renderSelfieCaptionOverlay } =
           await import("@/lib/content-factory/compose");
 
-        const { SELFIE_POSE_VARIANTS } = await import(
+        const { SELFIE_POSE_VARIANTS, SELFIE_COVER_POSE_COUNT } = await import(
           "@/lib/content-factory/brand"
         );
         let poseHash = 0;
         for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
-        const poseBase = Math.abs(poseHash) % SELFIE_POSE_VARIANTS.length;
+        // Cover pose: face-visible prefix ONLY — the cover raw anchors
+        // her identity for future posts, so it can't be a facing-away shot.
+        const poseBase = Math.abs(poseHash) % SELFIE_COVER_POSE_COUNT;
         const prompt = buildSelfieImagePrompt({
           shot: "mirror",
           scene: selfie.coverScene,
@@ -243,12 +245,14 @@ export const carouselDailyCronFn = inngest.createFunction(
           const { composeSlideWithOverlay, renderSelfieCaptionOverlay } =
             await import("@/lib/content-factory/compose");
 
-          const { SELFIE_POSE_VARIANTS } = await import(
+          const { SELFIE_POSE_VARIANTS, SELFIE_COVER_POSE_COUNT } = await import(
             "@/lib/content-factory/brand"
           );
           let poseHash = 0;
           for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
-          const poseBase = Math.abs(poseHash) % SELFIE_POSE_VARIANTS.length;
+          // Same face-visible base index as the cover; steps offset from
+          // it across the FULL pool (incl. facing-away/outdoor poses).
+          const poseBase = Math.abs(poseHash) % SELFIE_COVER_POSE_COUNT;
           const shot = selfie.stepShots[i];
           const prompt = buildSelfieImagePrompt({
             shot: shot.type,

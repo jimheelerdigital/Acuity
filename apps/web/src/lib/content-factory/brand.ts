@@ -80,6 +80,14 @@ export const SELFIE_PERSONA =
  * selfies in a post share pose or framing. Entries marked "NO mirror"
  * are direct front-camera selfies — the pose directive overrides any
  * mirror implied by the scene text.
+ *
+ * ORDERING MATTERS: the first SELFIE_COVER_POSE_COUNT entries show her
+ * face and are the only ones eligible for the COVER — the cover's
+ * text-free raw is the identity anchor for every future post, so it
+ * must never be a facing-away shot. Entries after the cutoff (added
+ * 2026-08-26, per Keenan: "could also be a photo of the person
+ * somewhere where they're facing away, or them in nature") are
+ * facing-away and outdoor shots, used for step slides only.
  */
 export const SELFIE_POSE_VARIANTS = [
   "FULL-LENGTH from several steps back — whole body and feet visible in a floor mirror, phone held at chest height, face fully visible, weight on one hip",
@@ -96,7 +104,21 @@ export const SELFIE_POSE_VARIANTS = [
   "free hand giving a little shrug — palm turned up, eyebrows raised in a wry 'what can you do' expression, phone at collarbone height",
   "mid-laugh with her free hand flat on her chest, eyes nearly closed, genuinely candid imperfect timing, phone slightly tilted",
   "sitting on the stairs with the phone held out low in front of her — NO mirror in the shot: knees together, chin slightly down, quiet end-of-day expression",
+  // ── facing-away / outdoor shots below (step slides only, never the cover) ──
+  "photographed from BEHIND — NO mirror, NO phone visible: she stands at the kitchen window with her back to the camera, mug in hand, hair loose over her shoulders, morning light around her silhouette",
+  "photographed from BEHIND walking away down a quiet tree-lined path — NO mirror, NO phone visible: sneakers and a light jacket, dappled morning light through the leaves, mid-stride",
+  "photographed from BEHIND sitting on the back porch steps — NO mirror, NO phone visible: shoulders relaxed, a blanket around her, looking out at the yard in evening light",
+  "OUTDOORS, three-quarter view from behind at a shoreline or open field — NO mirror, NO phone visible: wind in her hair, arms loosely crossed, face turned away toward the horizon",
+  "OUTDOORS on a park bench, seen from the side and slightly behind — NO mirror, NO phone visible: coffee cup beside her, one knee pulled up, watching the trees, face barely visible in profile",
 ] as const;
+
+/**
+ * How many leading SELFIE_POSE_VARIANTS entries show her face. The
+ * cover MUST draw from this prefix only — its raw is the reference
+ * image that keeps her identity consistent across posts, and a
+ * facing-away cover would break the chain.
+ */
+export const SELFIE_COVER_POSE_COUNT = 14;
 
 /**
  * Realism DNA for the selfie slideshow. Everything here fights
@@ -104,10 +126,10 @@ export const SELFIE_POSE_VARIANTS = [
  * phone photo, not a portrait session.
  */
 export const SELFIE_VISUAL_DNA = [
-  "This is a REAL amateur smartphone selfie — either a mirror selfie or a direct front-camera selfie held at arm's length (the pose directive decides which) — an ordinary photo a real woman took of herself and posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
-  "PHOTOGRAPHY: shot on a phone camera, either into a mirror or on the front camera at arm's length. Natural imperfect framing, slightly off-center, honest angles. Natural indoor lighting only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
-  "SETTING: a lived-in real home or everyday place — slightly cluttered counters, a towel on a hook, cables, door frames, normal furniture. Authentic and unglamorous, never staged or magazine-styled.",
-  "In a MIRROR shot: the mirror, her phone, and her reflection are part of the shot the way real mirror selfies work — fingerprints or smudges on the mirror are fine. In a FRONT-CAMERA shot: there is NO mirror and her phone is NOT visible (she's holding it), just the natural arm's-length angle with slight lens distortion.",
+  "This is a REAL amateur smartphone photo of a real woman — a mirror selfie, a direct front-camera selfie held at arm's length, or a candid shot of her facing away from the camera (the pose directive decides which) — an ordinary photo from her own camera roll, posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
+  "PHOTOGRAPHY: shot on a phone camera. Natural imperfect framing, slightly off-center, honest angles. Natural light only — window light, bathroom vanity light, warm lamp, or real daylight outdoors — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
+  "SETTING: her real, lived-in world — a slightly cluttered home (counters, a towel on a hook, cables, door frames, normal furniture) or an ordinary outdoor place (her backyard, a neighborhood sidewalk, a park path, a quiet shoreline). Authentic and unglamorous, never staged or magazine-styled.",
+  "In a MIRROR shot: the mirror, her phone, and her reflection are part of the shot the way real mirror selfies work — fingerprints or smudges on the mirror are fine. In a FRONT-CAMERA shot: there is NO mirror and her phone is NOT visible (she's holding it), just the natural arm's-length angle with slight lens distortion. In a FACING-AWAY shot: NO mirror and NO phone in frame — her face is turned away or barely in profile, and her identity reads through the same hair, build, and everyday clothes.",
   "VARIANCE: real people never take the same selfie twice. This photo must have its own distinct pose, camera distance, angle, outfit, room, and light — never the polished default of a centered waist-up shot with the phone covering the face.",
   "9:16 vertical portrait, exactly like a phone photo.",
   "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, phone-screen UI, logos, or watermarks. The phone screen faces away or is dark.",

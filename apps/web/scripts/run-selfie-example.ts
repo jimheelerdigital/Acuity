@@ -59,48 +59,51 @@ async function main() {
   // the exact shape generateSelfieTopic returns when Claude auth fails.
   // Complies with the 2026-08-26 shot rules: EXACTLY 2 selfies total
   // including the cover, first step always aesthetic.
+  // Slug chosen so the deterministic pose rotation demos the new pose
+  // kinds: cover pose 13 (front-camera on the stairs, no mirror) and
+  // mirror-step pose 15 (photographed from behind on a tree-lined path).
   const FALLBACK_TOPIC: Awaited<ReturnType<typeof generateSelfieTopic>> = {
-    slug: "how-i-got-my-evenings-back",
-    headline: "this is how i got my evenings back",
+    slug: "how-i-started-going-outside-more",
+    headline: "this is how i started going outside more",
     steps: [
-      "i stopped bringing my phone to the couch",
-      "i made dinner cleanup a hard stop",
-      "i picked one thing that's just mine",
-      "i let the evening be boring on purpose",
+      "i put my shoes by the door the night before",
+      "i walk before i check my phone",
+      "i stopped needing a reason to go",
+      "i let ten minutes count",
     ],
     details: [
-      "it charges in the kitchen now. the couch is for me.",
-      "when the counter's wiped, the workday is over. period.",
-      "twenty minutes with my book. everyone survives.",
-      "boring turned out to be the whole point.",
+      "no decision to make at 6am. they're just there.",
+      "the phone stays home. the street is quieter than my head.",
+      "not steps. not sunlight goals. just out.",
+      "ten minutes around the block still counts. it all counts.",
     ],
     mood: "hopeful",
     coverScene:
-      "evening at home, mirror on a bedroom closet door, wearing a flannel shirt over a tank top, warm lamp light from the side, bed with a folded throw behind her",
+      "early evening at home, sitting at the bottom of the staircase in a zip-up hoodie and sneakers, hallway lamp on, front door visible behind her",
     stepShots: [
       {
         type: "aesthetic",
         scene:
-          "a phone plugged in on the kitchen counter at dusk, screen dark, warm under-cabinet light, dish towel folded nearby, no people",
+          "running shoes lined up on a doormat by the front door, morning light through the sidelight window, keys on a hook above, no people",
       },
       {
         type: "mirror",
         scene:
-          "mirror selfie in the dim hallway after dinner, hair tied back loosely, apron still half-on, day visibly done",
+          "on her morning walk down a quiet tree-lined street, light jacket and sneakers, low morning sun through the leaves",
       },
       {
         type: "aesthetic",
         scene:
-          "an open paperback resting on the arm of a couch with reading glasses on top, soft blanket, one warm lamp glowing, evening window behind, no people",
+          "looking up at the morning sky through green tree branches from a neighborhood sidewalk, soft sun flare between the leaves, no people",
       },
       {
         type: "aesthetic",
         scene:
-          "looking down at slippered feet resting on the edge of a coffee table, a mug of tea beside them, dim lamp glow, tv dark in the background, no people",
+          "a mug of coffee on a wooden porch railing, dew still on the wood, yard soft-focus beyond, early golden light, no people",
       },
     ],
-    captionOpen: "took me 44 years to learn this one.",
-    captionClose: "tell me which one you'd actually try.",
+    captionOpen: "didn't think ten minutes outside would fix anything. i was wrong.",
+    captionClose: "save this for tomorrow morning.",
   };
 
   let topic: Awaited<ReturnType<typeof generateSelfieTopic>>;
@@ -140,8 +143,12 @@ async function main() {
   const stickerColor = SELFIE_TEXT_COLORS[Math.abs(hash) % SELFIE_TEXT_COLORS.length];
   console.log(`[selfie] Sticker color: ${stickerColor}`);
 
-  const { SELFIE_POSE_VARIANTS } = await import("@/lib/content-factory/brand");
-  const poseBase = Math.abs(hash) % SELFIE_POSE_VARIANTS.length;
+  const { SELFIE_POSE_VARIANTS, SELFIE_COVER_POSE_COUNT } = await import(
+    "@/lib/content-factory/brand"
+  );
+  // Cover pose from the face-visible prefix only (identity anchor);
+  // steps offset into the full pool incl. facing-away/outdoor poses.
+  const poseBase = Math.abs(hash) % SELFIE_COVER_POSE_COUNT;
 
   // ── Cover ──────────────────────────────────────────────────────
   console.log("[selfie] Generating cover (mirror selfie)...");

@@ -221,7 +221,7 @@ STEPS (one per slide, 4-6 total):
 SHOTS (one per step, plus the cover):
 - "cover": ALWAYS a mirror selfie of her. Write the scene: which mirror, what she wears, the light, her posture. e.g. "full-length bedroom mirror, oversized grey sweatshirt and leggings, hair clipped up, warm lamp light, phone up covering half her face".
 - Each step's shot is either:
-  • "mirror" — another mirror selfie of THE SAME woman, different mirror/outfit/time of day, subtly acting out the step (gym bag on shoulder, coffee in the other hand, pajamas at night)
+  • "mirror" — another photo of THE SAME woman, different outfit/place/time of day, subtly acting out the step. It can be a mirror selfie, a casual front-camera selfie, OR a candid shot of her facing away from the camera (standing at the window with her back to us, walking a tree-lined path, sitting on the porch steps, out in nature). Vary which kind across posts.
   • "aesthetic" — a genuinely beautiful first-person phone photo with NO person in it: her steaming coffee by the window, the journal and pen in morning sun, her shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed. It should be the satisfying, pleasing-to-the-eye kind of shot people save.
 - SELFIE LIMIT (hard rule): the whole slideshow contains EXACTLY 2 selfies TOTAL, and the cover is one of them — so use exactly ONE "mirror" step and make every other step "aesthetic". The FIRST step must be "aesthetic" (the cover right before it is a selfie); place the "mirror" step somewhere in the middle or end.
 - Every scene distinct: different room, light, angle, time of day, and subject — no two aesthetic scenes may feature the same object or surface. Under 30 words each, concrete nouns only.
