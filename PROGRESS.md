@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-26] — Selfie slideshows now show 2-3 selfies max, spaced out with aesthetic shots
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e678cf83
+
+### In plain English (for Keenan)
+The daily selfie slideshow now follows the mix you asked for: each post has two or three photos of the woman herself (the cover is always one of them) and everything else is the beautiful aesthetic shots — the coffee, the kettle, the phone face-down. Two selfies never appear back-to-back; there's always an aesthetic slide between them, so swiping through feels like a real photo dump instead of a selfie reel. Today's post ("this is how i stopped snapping at everyone i love") was generated with these rules and emailed to you.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SELFIE LIMIT hard rule added to `SELFIE_SYSTEM_PROMPT` (1-2 mirror steps only, first step always aesthetic, no adjacent mirrors) plus deterministic post-parse enforcement in `generateSelfieTopic` — walks `stepShots`, flips rule-breaking mirror steps to aesthetic (fallback scene), caps mirror steps at 2, guarantees at least 1 so the avatar appears beyond the cover. Unknown/missing shot types now default to aesthetic (was mirror)
+- `apps/web/scripts/run-selfie-example.ts`: new compliant fallback topic (cover + steps aesthetic/mirror/aesthetic/mirror = 3 selfies, none adjacent); used for today's emailed post because the local Anthropic key is still 401
+
+### Manual steps needed
+- [ ] Still open from 2026-08-25: update `ANTHROPIC_API_KEY` in root `.env` + `apps/web/.env.local` — local key returns 401, so locally-run slideshows use the script's hand-written fallback topic instead of Claude (Keenan or Jimmy)
+- [ ] Push to deploy — until this lands on Vercel, the daily 12 UTC cron still runs yesterday's shot-mix rules (Keenan says "push it")
+
+### Notes
+- Enforcement is code, not just prompt: the model CAN return a bad mix and it will be silently corrected. When a mirror step gets flipped to aesthetic its scene is replaced with a generic aesthetic fallback (the original scene described her, which conflicts with the person-free aesthetic DNA)
+- Identity chaining held across days: today's cover referenced the 2026-08-25 post's raw cover and produced the same woman in a new kitchen scene
+- Baselines held: no new tsc errors in touched files, 673/673 tests green. (Reminder: run tsc/vitest from `apps/web`, not repo root — root runs resolve no `@/` aliases and explode into 16k phantom errors)
+
 ## [2026-08-25] — One carousel email: stitched video + caption only
 
 **Requested by:** Keenan
