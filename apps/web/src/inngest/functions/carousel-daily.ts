@@ -170,12 +170,19 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlide, composeSlideWithOverlay, renderSelfieCaptionOverlay } =
           await import("@/lib/content-factory/compose");
 
+        const { SELFIE_POSE_VARIANTS } = await import(
+          "@/lib/content-factory/brand"
+        );
+        let poseHash = 0;
+        for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
+        const poseBase = Math.abs(poseHash) % SELFIE_POSE_VARIANTS.length;
         const prompt = buildSelfieImagePrompt({
           shot: "mirror",
           scene: selfie.coverScene,
           slideText: selfie.headline,
           headline: selfie.headline,
           hasReference: !!selfie.anchorUrl,
+          pose: SELFIE_POSE_VARIANTS[poseBase],
         });
 
         let rawBuffer: Buffer;
@@ -236,6 +243,12 @@ export const carouselDailyCronFn = inngest.createFunction(
           const { composeSlideWithOverlay, renderSelfieCaptionOverlay } =
             await import("@/lib/content-factory/compose");
 
+          const { SELFIE_POSE_VARIANTS } = await import(
+            "@/lib/content-factory/brand"
+          );
+          let poseHash = 0;
+          for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
+          const poseBase = Math.abs(poseHash) % SELFIE_POSE_VARIANTS.length;
           const shot = selfie.stepShots[i];
           const prompt = buildSelfieImagePrompt({
             shot: shot.type,
@@ -243,6 +256,11 @@ export const carouselDailyCronFn = inngest.createFunction(
             slideText: selfie.steps[i],
             headline: selfie.headline,
             hasReference: shot.type === "mirror",
+            // Offset by slide index so no two selfies in a post (cover
+            // included) share a pose; slug offset varies it across days.
+            pose: SELFIE_POSE_VARIANTS[
+              (poseBase + i + 1) % SELFIE_POSE_VARIANTS.length
+            ],
           });
 
           let rawBuffer: Buffer;

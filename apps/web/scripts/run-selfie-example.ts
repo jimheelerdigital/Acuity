@@ -60,47 +60,47 @@ async function main() {
   // Complies with the 2026-08-26 shot rules: 3 selfies total including
   // the cover, never back-to-back (cover → aesthetic first step).
   const FALLBACK_TOPIC: Awaited<ReturnType<typeof generateSelfieTopic>> = {
-    slug: "how-i-stopped-snapping-at-everyone-i-love",
-    headline: "this is how i stopped snapping at everyone i love",
+    slug: "how-i-got-my-evenings-back",
+    headline: "this is how i got my evenings back",
     steps: [
-      "i stopped pretending i wasn't tired",
-      "i started taking a walk that belongs to nobody",
-      "i quit answering messages the second they land",
-      "i started naming it before it became a mood",
+      "i stopped bringing my phone to the couch",
+      "i made dinner cleanup a hard stop",
+      "i picked one thing that's just mine",
+      "i let the evening be boring on purpose",
     ],
     details: [
-      "saying 'i'm running on fumes' out loud changed the whole evening.",
-      "around the block. no podcast. just quiet.",
-      "the group chat can wait twenty minutes. it always could.",
-      "'i'm not mad, i'm maxed out.' huge difference.",
+      "it charges in the kitchen now. the couch is for me.",
+      "when the counter's wiped, the workday is over. period.",
+      "twenty minutes with my book. everyone survives.",
+      "boring turned out to be the whole point.",
     ],
     mood: "hopeful",
     coverScene:
-      "standing in her kitchen in late afternoon light, wearing a soft oversized sweater, holding her phone up for a mirror selfie in a mirror by the doorway, lived-in counters and a warm lamp in the background",
+      "evening at home, mirror on a bedroom closet door, wearing a flannel shirt over a tank top, warm lamp light from the side, bed with a folded throw behind her",
     stepShots: [
       {
         type: "aesthetic",
         scene:
-          "a kettle steaming on the stove in warm evening light, a favorite mug waiting beside it, soft shadows, no people",
+          "a phone plugged in on the kitchen counter at dusk, screen dark, warm under-cabinet light, dish towel folded nearby, no people",
       },
       {
         type: "mirror",
         scene:
-          "mirror selfie in the entryway, sneakers on, light zip-up jacket, house keys in her free hand, caught right before heading out the door",
+          "mirror selfie in the dim hallway after dinner, hair tied back loosely, apron still half-on, day visibly done",
       },
       {
         type: "aesthetic",
         scene:
-          "a phone lying face-down on a wooden side table next to a cup of tea and a paperback, golden lamp light, cozy blanket edge in frame, no people",
+          "an open paperback resting on the arm of a couch with reading glasses on top, soft blanket, one warm lamp glowing, evening window behind, no people",
       },
       {
         type: "mirror",
         scene:
-          "soft evening mirror selfie in the bedroom, hair down, comfortable t-shirt, warm bedside lamp glow, relaxed shoulders",
+          "relaxed late-evening mirror selfie in the living room, big cardigan, mug in her free hand, lamp-lit and cozy",
       },
     ],
-    captionOpen: "posting this because last month me needed it.",
-    captionClose: "send this to someone who's been carrying too much.",
+    captionOpen: "took me 44 years to learn this one.",
+    captionClose: "tell me which one you'd actually try.",
   };
 
   let topic: Awaited<ReturnType<typeof generateSelfieTopic>>;
@@ -140,6 +140,9 @@ async function main() {
   const stickerColor = SELFIE_TEXT_COLORS[Math.abs(hash) % SELFIE_TEXT_COLORS.length];
   console.log(`[selfie] Sticker color: ${stickerColor}`);
 
+  const { SELFIE_POSE_VARIANTS } = await import("@/lib/content-factory/brand");
+  const poseBase = Math.abs(hash) % SELFIE_POSE_VARIANTS.length;
+
   // ── Cover ──────────────────────────────────────────────────────
   console.log("[selfie] Generating cover (mirror selfie)...");
   const coverPrompt = buildSelfieImagePrompt({
@@ -148,6 +151,7 @@ async function main() {
     slideText: topic.headline,
     headline: topic.headline,
     hasReference: !!anchorUrl,
+    pose: SELFIE_POSE_VARIANTS[poseBase],
   });
 
   let coverRaw: Buffer;
@@ -192,6 +196,7 @@ async function main() {
       slideText: topic.steps[i],
       headline: topic.headline,
       hasReference: shot.type === "mirror",
+      pose: SELFIE_POSE_VARIANTS[(poseBase + i + 1) % SELFIE_POSE_VARIANTS.length],
     });
 
     let rawBuffer: Buffer;

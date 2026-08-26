@@ -316,6 +316,9 @@ export function buildSelfieImagePrompt(opts: {
   headline: string;
   /** True when a reference photo of the avatar is passed to the edit endpoint. */
   hasReference?: boolean;
+  /** Pose/framing directive (one of SELFIE_POSE_VARIANTS) — forces
+   * every mirror selfie in a post to look different (2026-08-26). */
+  pose?: string;
 }): string {
   const context = `Context (convey through the photo only — subtly, shown not told): this photo belongs to a personal slideshow titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`;
 
@@ -329,10 +332,11 @@ export function buildSelfieImagePrompt(opts: {
 
   return [
     opts.hasReference
-      ? "Use the woman in the reference image: the EXACT same person — identical face, hair, skin tone, and build — photographed again in the new scene below. Do not change her identity in any way."
+      ? "From the reference image take ONLY the woman's identity: the EXACT same person — identical face, hair, skin tone, and build. Take NOTHING else from the reference: do NOT copy or reuse its pose, arm position, phone position, framing, camera distance, outfit, room, furniture, or lighting. This is a COMPLETELY DIFFERENT photo of the same woman, taken on a different day."
       : "",
     SELFIE_PERSONA,
     `Scene (follow exactly): ${opts.scene}`,
+    opts.pose ? `Pose and framing (follow exactly): ${opts.pose}` : "",
     context,
     SELFIE_VISUAL_DNA,
   ]
