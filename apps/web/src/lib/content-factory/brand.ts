@@ -68,14 +68,18 @@ export const SELFIE_PERSONA =
   "The SAME woman appears in every photo of this series: mid-40s, warm approachable face, shoulder-length brown hair with natural greying strands, light natural makeup or none, soft laugh lines, average realistic body. She wears normal everyday clothes (soft sweatshirts, tees, leggings, jeans — nothing styled or aspirational). ONLY her identity repeats across the series — her pose, outfit, framing, room, and lighting are DIFFERENT in every photo, like a real camera roll.";
 
 /**
- * Pose/framing directives rotated across the mirror selfies of a post
+ * Pose/framing directives rotated across the selfies of a post
  * (2026-08-26, per Keenan: "the selfies all look the exact same... you
- * need variance amongst the selfies otherwise everyone knows it's ai").
- * Without these, every mirror shot converges on the same
- * phone-over-face, waist-up, centered composition — and when a mirror
- * slide is generated from a reference photo, the edit model happily
- * clones the reference's pose and room too. Each slide gets a different
- * entry so no two selfies in a post share pose or framing.
+ * need variance amongst the selfies otherwise everyone knows it's ai";
+ * expanded same day: "add more gestures... a seated option... a non
+ * mirror selfie option, MORE variance").
+ * Without these, every shot converges on the same phone-over-face,
+ * waist-up, centered mirror composition — and when a slide is generated
+ * from a reference photo, the edit model happily clones the reference's
+ * pose and room too. Each slide gets a different entry so no two
+ * selfies in a post share pose or framing. Entries marked "NO mirror"
+ * are direct front-camera selfies — the pose directive overrides any
+ * mirror implied by the scene text.
  */
 export const SELFIE_POSE_VARIANTS = [
   "FULL-LENGTH from several steps back — whole body and feet visible in a floor mirror, phone held at chest height, face fully visible, weight on one hip",
@@ -85,6 +89,13 @@ export const SELFIE_POSE_VARIANTS = [
   "caught mid-motion fixing her hair with the free hand, phone at collarbone height, slightly imperfect candid framing",
   "dim room with the phone FLASH ON — harsh flash bloom in the mirror, cooler color cast, deadpan tired expression, face visible",
   "standing off-center with lots of room in frame, phone resting near her cheek at an angle, other hand in a pocket",
+  "sitting on the edge of her bed facing the mirror, elbows resting on her knees, phone held loosely in both hands, soft tired half-smile",
+  "direct front-camera selfie at arm's length — NO mirror in the shot: phone held up and slightly to one side, her arm reaching toward the camera and out of frame, gentle wide-angle distortion, face and shoulders filling the frame",
+  "direct front-camera selfie sunk into the corner of the couch — NO mirror in the shot: legs tucked under her, a blanket over her lap, phone at arm's length slightly above eye level looking down at her",
+  "raising her mug toward the mirror in a small cheers gesture with her free hand, phone at chest height, warm easy grin",
+  "free hand giving a little shrug — palm turned up, eyebrows raised in a wry 'what can you do' expression, phone at collarbone height",
+  "mid-laugh with her free hand flat on her chest, eyes nearly closed, genuinely candid imperfect timing, phone slightly tilted",
+  "sitting on the stairs with the phone held out low in front of her — NO mirror in the shot: knees together, chin slightly down, quiet end-of-day expression",
 ] as const;
 
 /**
@@ -93,10 +104,10 @@ export const SELFIE_POSE_VARIANTS = [
  * phone photo, not a portrait session.
  */
 export const SELFIE_VISUAL_DNA = [
-  "This is a REAL amateur smartphone mirror selfie — an ordinary photo a real woman took of herself in a mirror and posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
-  "PHOTOGRAPHY: shot on a phone front-or-rear camera into a mirror. Natural imperfect framing, slightly off-center, honest angles. Natural indoor lighting only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
+  "This is a REAL amateur smartphone selfie — either a mirror selfie or a direct front-camera selfie held at arm's length (the pose directive decides which) — an ordinary photo a real woman took of herself and posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
+  "PHOTOGRAPHY: shot on a phone camera, either into a mirror or on the front camera at arm's length. Natural imperfect framing, slightly off-center, honest angles. Natural indoor lighting only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
   "SETTING: a lived-in real home or everyday place — slightly cluttered counters, a towel on a hook, cables, door frames, normal furniture. Authentic and unglamorous, never staged or magazine-styled.",
-  "The mirror, her phone, and her reflection are part of the shot the way real mirror selfies work. Fingerprints or smudges on the mirror are fine.",
+  "In a MIRROR shot: the mirror, her phone, and her reflection are part of the shot the way real mirror selfies work — fingerprints or smudges on the mirror are fine. In a FRONT-CAMERA shot: there is NO mirror and her phone is NOT visible (she's holding it), just the natural arm's-length angle with slight lens distortion.",
   "VARIANCE: real people never take the same selfie twice. This photo must have its own distinct pose, camera distance, angle, outfit, room, and light — never the polished default of a centered waist-up shot with the phone covering the face.",
   "9:16 vertical portrait, exactly like a phone photo.",
   "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, phone-screen UI, logos, or watermarks. The phone screen faces away or is dark.",
@@ -116,6 +127,7 @@ export const SELFIE_AESTHETIC_DNA = [
   "PHOTOGRAPHY: shot on a modern phone camera. True-to-life detail and realistic depth — crisp subject, naturally soft background. Golden-hour window light, warm lamplight, or soft morning light. Real materials: steam, linen, wood grain, ceramic, condensation, page texture. It must still read as a photograph, never as a render or illustration.",
   "SUBJECT: first-person / POV or still-life only — her coffee, her journal, her walk, her window, her candle, her unmade bed in morning light. NO people, NO faces, NO mirrors — at most her own hand holding something, photographed from her point of view.",
   "SETTING: her real, lived-in world — same warm home and everyday life as the rest of the series. Beautiful but honest, never staged like a magazine or hotel.",
+  "VARIANCE: every aesthetic photo in the series must look different from the others — its own subject, room, time of day, light temperature, camera angle, and distance. Mix it up: some shots are close and intimate (steam curling off a mug, a pen on a page), some are wide (a whole sunlit corner of a room, the view down the hallway), some are looking down at her feet or hands, some are out a window. Never repeat the same composition, surface, or golden-hour treatment twice.",
   "9:16 vertical portrait, exactly like a phone photo.",
   "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
 ].join("\n");

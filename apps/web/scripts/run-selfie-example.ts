@@ -57,8 +57,8 @@ async function main() {
   // The local ANTHROPIC_API_KEY is stale (401) — prod uses Vercel's valid
   // key. For this one-off example, fall back to a hand-written topic in
   // the exact shape generateSelfieTopic returns when Claude auth fails.
-  // Complies with the 2026-08-26 shot rules: 3 selfies total including
-  // the cover, never back-to-back (cover → aesthetic first step).
+  // Complies with the 2026-08-26 shot rules: EXACTLY 2 selfies total
+  // including the cover, first step always aesthetic.
   const FALLBACK_TOPIC: Awaited<ReturnType<typeof generateSelfieTopic>> = {
     slug: "how-i-got-my-evenings-back",
     headline: "this is how i got my evenings back",
@@ -94,9 +94,9 @@ async function main() {
           "an open paperback resting on the arm of a couch with reading glasses on top, soft blanket, one warm lamp glowing, evening window behind, no people",
       },
       {
-        type: "mirror",
+        type: "aesthetic",
         scene:
-          "relaxed late-evening mirror selfie in the living room, big cardigan, mug in her free hand, lamp-lit and cozy",
+          "looking down at slippered feet resting on the edge of a coffee table, a mug of tea beside them, dim lamp glow, tv dark in the background, no people",
       },
     ],
     captionOpen: "took me 44 years to learn this one.",
@@ -229,15 +229,18 @@ async function main() {
   }
 
   // ── Save + email ───────────────────────────────────────────────
-  const caption = buildCaption({
-    slug,
-    headline: topic.headline,
-    style: "hook",
-    lane: "cinematicReal",
-    reasons: topic.steps,
-    captionOpen: topic.captionOpen,
-    captionClose: topic.captionClose,
-  });
+  const caption = buildCaption(
+    {
+      slug,
+      headline: topic.headline,
+      style: "hook",
+      lane: "cinematicReal",
+      reasons: topic.steps,
+      captionOpen: topic.captionOpen,
+      captionClose: topic.captionClose,
+    },
+    { plug: false }
+  );
 
   // Re-runs regenerate images at the same storage paths; replace any
   // existing post for this slug+date instead of tripping the unique

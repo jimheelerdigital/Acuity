@@ -316,15 +316,20 @@ export const carouselDailyCronFn = inngest.createFunction(
           "@/lib/content-factory/carousel-generate"
         );
 
-        const caption = buildCaption({
-          slug,
-          headline: selfie.headline,
-          style: "hook",
-          lane: "cinematicReal",
-          reasons: selfie.steps,
-          captionOpen: selfie.captionOpen,
-          captionClose: selfie.captionClose,
-        });
+        // plug: false (2026-08-26, per Keenan) — selfie posts build the
+        // page, they don't sell; no ripple/bio line in the caption.
+        const caption = buildCaption(
+          {
+            slug,
+            headline: selfie.headline,
+            style: "hook",
+            lane: "cinematicReal",
+            reasons: selfie.steps,
+            captionOpen: selfie.captionOpen,
+            captionClose: selfie.captionClose,
+          },
+          { plug: false }
+        );
 
         const post = await prisma.carouselPost.create({
           data: {

@@ -336,7 +336,9 @@ export function buildSelfieImagePrompt(opts: {
       : "",
     SELFIE_PERSONA,
     `Scene (follow exactly): ${opts.scene}`,
-    opts.pose ? `Pose and framing (follow exactly): ${opts.pose}` : "",
+    opts.pose
+      ? `Pose and framing (follow exactly — this OVERRIDES any camera or mirror setup implied by the scene): ${opts.pose}`
+      : "",
     context,
     SELFIE_VISUAL_DNA,
   ]

@@ -223,13 +223,13 @@ SHOTS (one per step, plus the cover):
 - Each step's shot is either:
   • "mirror" — another mirror selfie of THE SAME woman, different mirror/outfit/time of day, subtly acting out the step (gym bag on shoulder, coffee in the other hand, pajamas at night)
   • "aesthetic" — a genuinely beautiful first-person phone photo with NO person in it: her steaming coffee by the window, the journal and pen in morning sun, her shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed. It should be the satisfying, pleasing-to-the-eye kind of shot people save.
-- SELFIE LIMIT (hard rule): the whole slideshow contains 2-3 selfies TOTAL, and the cover is one of them — so use exactly 1 or 2 "mirror" steps and make every other step "aesthetic". NEVER put two selfie slides back-to-back: the FIRST step must be "aesthetic" (the cover right before it is a selfie), and any two "mirror" steps must have an "aesthetic" step between them.
-- Every scene distinct: different room, light, angle. Under 30 words each, concrete nouns only.
+- SELFIE LIMIT (hard rule): the whole slideshow contains EXACTLY 2 selfies TOTAL, and the cover is one of them — so use exactly ONE "mirror" step and make every other step "aesthetic". The FIRST step must be "aesthetic" (the cover right before it is a selfie); place the "mirror" step somewhere in the middle or end.
+- Every scene distinct: different room, light, angle, time of day, and subject — no two aesthetic scenes may feature the same object or surface. Under 30 words each, concrete nouns only.
 - Each scene must visually echo its step's meaning (the step about the phone shows the phone face-down; the step about walking shows the sneakers or the morning street).
 
 CAPTION: written by her, text-message tone, lowercase-leaning, contractions.
 - "captionOpen": ONE line under 12 words — personal aside or confession ("posting this because i needed the reminder"). Never restate the headline. At most one emoji.
-- "captionClose": ONE line — a soft ask ("tell me which one you'd actually try", "save this for the week you need it").
+- "captionClose": ONE line — a soft conversational ask ("tell me which one you'd actually try", "save this for the week you need it"). NEVER "follow me"/"follow for more", NEVER mention any app or product — this is her personal post, not a promotion.
 
 TONE TEST: read every line as a tired real woman at 9pm. If anything sounds like a brand, a coach, or AI, rewrite it. US English spelling.
 
@@ -329,30 +329,25 @@ export async function generateSelfieTopic(
       };
     });
 
-    // Enforce the selfie limits deterministically (2026-08-26, per
-    // Keenan): 2-3 selfies TOTAL including the cover (so max 2 mirror
-    // steps, min 1), and never two selfie slides back-to-back. The
-    // cover is always a selfie, so the first step can never be mirror.
+    // Enforce the selfie limit deterministically (2026-08-26, per
+    // Keenan): EXACTLY 2 selfies TOTAL including the cover — so exactly
+    // one mirror step, everything else aesthetic. The cover is always a
+    // selfie, so the first step can never be mirror.
     let mirrorSteps = 0;
-    let prevWasMirror = true; // the cover
     for (let i = 0; i < stepShots.length; i++) {
       if (stepShots[i].type === "mirror") {
-        if (prevWasMirror || mirrorSteps >= 2) {
+        if (i === 0 || mirrorSteps >= 1) {
           stepShots[i] = { type: "aesthetic", scene: AESTHETIC_FALLBACK_SCENE };
-          prevWasMirror = false;
         } else {
           mirrorSteps++;
-          prevWasMirror = true;
         }
-      } else {
-        prevWasMirror = false;
       }
     }
     if (mirrorSteps === 0 && stepShots.length >= 2) {
-      // Guarantee at least 2 selfies total. Step 1 is safe: step 0 is
-      // aesthetic (forced above) and step 2, if any, is also aesthetic
-      // here since no mirror steps existed at all.
-      stepShots[1] = { type: "mirror", scene: MIRROR_FALLBACK_SCENE };
+      // Guarantee the second selfie exists — drop it mid-deck (never
+      // step 0, which must stay aesthetic right after the selfie cover).
+      const mid = Math.min(2, stepShots.length - 1);
+      stepShots[mid] = { type: "mirror", scene: MIRROR_FALLBACK_SCENE };
     }
 
     const slug = (parsed.headline as string)

@@ -171,7 +171,13 @@ export function pickHashtags(slug: string): string[] {
 // SHORT captions (2026-08-21, per Keenan): the numbered list is GONE
 // from the caption — it just reiterated the slides. A caption is now
 // hook + one ask + plug + hashtags, nothing else.
-export function buildCaption(topic: CarouselTopic): string {
+// `plug: false` (2026-08-26, per Keenan): selfie slideshows are NOT a
+// ripple plug — they exist to build views/likes/follows, so their
+// captions carry no bio line and no product mention.
+export function buildCaption(
+  topic: CarouselTopic,
+  opts?: { plug?: boolean }
+): string {
   const lines: string[] = [];
 
   // Opening: the LLM-written personal open (2026-08-20) — or the
@@ -193,8 +199,10 @@ export function buildCaption(topic: CarouselTopic): string {
   const close = topic.captionClose?.trim();
   lines.push(close || pickBySlug(topic.slug, COMMENT_CTAS));
   lines.push("");
-  lines.push(CLOSING_LINE);
-  lines.push("");
+  if (opts?.plug !== false) {
+    lines.push(CLOSING_LINE);
+    lines.push("");
+  }
   lines.push(pickHashtags(topic.slug).join(" "));
 
   return lines.join("\n");
