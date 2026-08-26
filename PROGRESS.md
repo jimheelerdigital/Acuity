@@ -41,6 +41,29 @@ Nothing about pricing changed. Nothing about who gets Pro access changed. This i
 - **`appVersionSource: "remote"` + `autoIncrement: true`** means EAS assigns the real build number server-side; the `app.json` bump is for local consistency. `runtimeVersion` follows `appVersion`, so 1.4.1 correctly starts a new OTA lineage.
 - Baselines: web tsc **152**, mobile tsc **19** — both verified equal to clean `main` by stashing, not assumed. (The 153 quoted in earlier entries is stale; main has since drifted to 152.) Tests **695/695** across 42 files (673 + 22 new).
 - `npx prisma generate` is required after pulling main's Niche Lab schema, or web tsc reports 190 phantom errors from a stale client.
+## [2026-08-26] — Her photos can now face away from the camera or be outdoors
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a89d1e3d
+
+### In plain English (for Keenan)
+The "photo of her" slide in a selfie slideshow no longer has to be a selfie at all — it can now be a candid shot where she's facing away from the camera (standing at the window, walking down a tree-lined street, sitting on the porch steps) or a shot of her out in nature. Five of these joined the pose rotation. One guardrail: the COVER always shows her face, because the cover photo is what keeps her looking like the same person across every post — if it were a from-behind shot, her face could drift over time. A fresh example ("this is how i started going outside more") was emailed to you: the cover is a casual front-camera selfie on the stairs, and the walk slide is her from behind on a sunlit street.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_POSE_VARIANTS` 14 → 19 (from-behind at the kitchen window, walking away down a tree-lined path, porch steps from behind, shoreline/field three-quarter from behind, park bench from the side); new export `SELFIE_COVER_POSE_COUNT = 14` — the face-visible prefix; `SELFIE_VISUAL_DNA` now describes three shot kinds (mirror / front-camera / facing-away, each with explicit phone-and-mirror visibility rules) and allows outdoor settings
+- `apps/web/src/lib/content-factory/generate-topic.ts`: "mirror" step-type description in `SELFIE_SYSTEM_PROMPT` now includes facing-away and in-nature scene options
+- `apps/web/src/inngest/functions/carousel-daily.ts` + `apps/web/scripts/run-selfie-example.ts`: `poseBase` is now `hash % SELFIE_COVER_POSE_COUNT` (cover can never draw a facing-away pose); step slides offset from it into the full 19-entry pool
+- Runner fallback topic replaced with "how-i-started-going-outside-more", whose slug hash deterministically lands cover pose 13 (front-camera stairs) and step pose 15 (from-behind walk) to demo both new kinds
+
+### Manual steps needed
+- [ ] Push to deploy — 12 UTC cron uses the previous pose pool until this lands on Vercel (Keenan)
+- [ ] Still open: local `ANTHROPIC_API_KEY` is 401 (root `.env` + `apps/web/.env.local`) — local runs use the hand-written fallback topic (Keenan or Jimmy)
+
+### Notes
+- Facing-away shots keep identity through hair, build, and clothes — the reference image still passes her identity even when the face isn't visible, but the anchor CHAIN must stay face-visible, hence the cover restriction
+- The step pose formula `(poseBase + i + 1) % 19` can't collide with the cover's index for any realistic slide count, since poseBase < 14
+- Baselines held: no new tsc errors, 673/673 tests green
 
 ## [2026-08-26] — Selfie slideshows: more poses, exactly 2 selfies, no more ripple plug
 
