@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-26] — Every selfie in a slideshow now looks like its own photo
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dc89b776
+
+### In plain English (for Keenan)
+The selfies were all coming out as the exact same shot — same pose, same framing, same room, phone in front of her face every time — which screamed AI. Now each selfie in a slideshow gets its own look: one might be a full-length shot in the floor mirror, the next a close-up with flash on, another leaning against a wall. Different rooms, outfits, and angles — but always the same woman. It reads like a real camera roll instead of one photo copied five times. A fresh example ("this is how i got my evenings back") was generated with the new rules and emailed to you.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_PERSONA` reworded — only her identity repeats; pose/outfit/framing/room/lighting must differ per photo. New `SELFIE_POSE_VARIANTS` export (7 pose/framing directives: full-length floor mirror, close waist-up, sitting on floor, wall-lean three-quarter, candid mid-motion, flash-on deadpan, off-center wide). VARIANCE rule added to `SELFIE_VISUAL_DNA`
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `buildSelfieImagePrompt` gains `pose?: string`; the reference-image line now demands identity-ONLY transfer ("take NOTHING else… do NOT copy its pose, framing, outfit, room, or lighting") — the .edit endpoint was cloning the reference's whole composition, which was the root cause
+- `apps/web/src/inngest/functions/carousel-daily.ts` + `apps/web/scripts/run-selfie-example.ts`: slug-hash `poseBase` rotates through `SELFIE_POSE_VARIANTS`; cover uses `poseBase`, step i uses `(poseBase + i + 1) % len` so no two slides in a post share a pose
+
+### Manual steps needed
+- [ ] Push to deploy — the 12 UTC cron runs old no-variance prompts until this lands on Vercel (Keenan says "push it"; commits e678cf83 + 77894146 also still unpushed)
+- [ ] Still open: update `ANTHROPIC_API_KEY` in root `.env` + `apps/web/.env.local` — local key is 401, local runs use the hand-written fallback topic (Keenan or Jimmy)
+
+### Notes
+- Verified visually on the emailed example: cover = waist-up wall-lean in flannel/bedroom, step 2 = close-up flash-on in hallway with apron + hair up, step 4 = full-length floor-mirror in cardigan with mug — three clearly different photos, same woman. Identity chain to the 2026-08-25 post held
+- Pose selection is deterministic per slug (same `((hash<<5)-hash+c)|0` hash as sticker color), so cron retries reproduce the same poses. Gotcha: normalize with `Math.abs(hash) % len` FIRST, then offset — `Math.abs(hash + i + 1)` can fold negatives back onto the cover's index
+- Baselines held: no new tsc errors in touched files, 673/673 tests green (from `apps/web`, never repo root)
+
 ## [2026-08-26] — Selfie slideshows now show 2-3 selfies max, spaced out with aesthetic shots
 
 **Requested by:** Keenan
