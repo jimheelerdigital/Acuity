@@ -223,7 +223,8 @@ SHOTS (one per step, plus the cover):
 - Each step's shot is either:
   • "mirror" — another mirror selfie of THE SAME woman, different mirror/outfit/time of day, subtly acting out the step (gym bag on shoulder, coffee in the other hand, pajamas at night)
   • "aesthetic" — a genuinely beautiful first-person phone photo with NO person in it: her steaming coffee by the window, the journal and pen in morning sun, her shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed. It should be the satisfying, pleasing-to-the-eye kind of shot people save.
-- MIX the two — a real photo dump alternates. Use at least 2 of each across the post. Every scene distinct: different room, light, angle. Under 30 words each, concrete nouns only.
+- SELFIE LIMIT (hard rule): the whole slideshow contains 2-3 selfies TOTAL, and the cover is one of them — so use exactly 1 or 2 "mirror" steps and make every other step "aesthetic". NEVER put two selfie slides back-to-back: the FIRST step must be "aesthetic" (the cover right before it is a selfie), and any two "mirror" steps must have an "aesthetic" step between them.
+- Every scene distinct: different room, light, angle. Under 30 words each, concrete nouns only.
 - Each scene must visually echo its step's meaning (the step about the phone shows the phone face-down; the step about walking shows the sneakers or the morning street).
 
 CAPTION: written by her, text-message tone, lowercase-leaning, contractions.
@@ -309,17 +310,50 @@ export async function generateSelfieTopic(
       typeof rawDetails[i] === "string" ? (rawDetails[i] as string).trim() : ""
     );
 
+    const AESTHETIC_FALLBACK_SCENE =
+      "a beautiful first-person phone photo of a warm home detail in soft golden light, no people";
+    const MIRROR_FALLBACK_SCENE =
+      "another mirror selfie of the same woman, different room and outfit, natural light";
     const rawShots = Array.isArray(parsed.stepShots) ? parsed.stepShots : [];
     const stepShots = steps.map((_, i) => {
       const s = (rawShots[i] ?? {}) as { type?: unknown; scene?: unknown };
+      const type = s.type === "mirror" ? ("mirror" as const) : ("aesthetic" as const);
       return {
-        type: s.type === "aesthetic" ? ("aesthetic" as const) : ("mirror" as const),
+        type,
         scene:
           typeof s.scene === "string" && s.scene.trim()
             ? s.scene.trim()
-            : "another mirror selfie, different room and outfit, natural light",
+            : type === "mirror"
+              ? MIRROR_FALLBACK_SCENE
+              : AESTHETIC_FALLBACK_SCENE,
       };
     });
+
+    // Enforce the selfie limits deterministically (2026-08-26, per
+    // Keenan): 2-3 selfies TOTAL including the cover (so max 2 mirror
+    // steps, min 1), and never two selfie slides back-to-back. The
+    // cover is always a selfie, so the first step can never be mirror.
+    let mirrorSteps = 0;
+    let prevWasMirror = true; // the cover
+    for (let i = 0; i < stepShots.length; i++) {
+      if (stepShots[i].type === "mirror") {
+        if (prevWasMirror || mirrorSteps >= 2) {
+          stepShots[i] = { type: "aesthetic", scene: AESTHETIC_FALLBACK_SCENE };
+          prevWasMirror = false;
+        } else {
+          mirrorSteps++;
+          prevWasMirror = true;
+        }
+      } else {
+        prevWasMirror = false;
+      }
+    }
+    if (mirrorSteps === 0 && stepShots.length >= 2) {
+      // Guarantee at least 2 selfies total. Step 1 is safe: step 0 is
+      // aesthetic (forced above) and step 2, if any, is also aesthetic
+      // here since no mirror steps existed at all.
+      stepShots[1] = { type: "mirror", scene: MIRROR_FALLBACK_SCENE };
+    }
 
     const slug = (parsed.headline as string)
       .toLowerCase()

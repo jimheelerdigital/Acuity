@@ -57,48 +57,50 @@ async function main() {
   // The local ANTHROPIC_API_KEY is stale (401) — prod uses Vercel's valid
   // key. For this one-off example, fall back to a hand-written topic in
   // the exact shape generateSelfieTopic returns when Claude auth fails.
+  // Complies with the 2026-08-26 shot rules: 3 selfies total including
+  // the cover, never back-to-back (cover → aesthetic first step).
   const FALLBACK_TOPIC: Awaited<ReturnType<typeof generateSelfieTopic>> = {
-    slug: "how-i-stopped-running-on-empty",
-    headline: "this is how i stopped running on empty every single day",
+    slug: "how-i-stopped-snapping-at-everyone-i-love",
+    headline: "this is how i stopped snapping at everyone i love",
     steps: [
-      "i started saying it out loud",
-      "i stopped skipping the quiet part of my morning",
-      "i let the list live somewhere other than my head",
-      "i started closing the day instead of just ending it",
+      "i stopped pretending i wasn't tired",
+      "i started taking a walk that belongs to nobody",
+      "i quit answering messages the second they land",
+      "i started naming it before it became a mood",
     ],
     details: [
-      "two minutes of talking to myself in the car. that's it.",
-      "coffee first. phone later. non negotiable now.",
-      "if it's written down, my brain finally lets it go.",
-      "a five minute debrief and i actually sleep.",
+      "saying 'i'm running on fumes' out loud changed the whole evening.",
+      "around the block. no podcast. just quiet.",
+      "the group chat can wait twenty minutes. it always could.",
+      "'i'm not mad, i'm maxed out.' huge difference.",
     ],
     mood: "hopeful",
     coverScene:
-      "standing in her bedroom in soft morning light, wearing an oversized knit cardigan over a simple top, holding her phone up for a mirror selfie in a full-length mirror, unmade bed and warm lamp in the background",
+      "standing in her kitchen in late afternoon light, wearing a soft oversized sweater, holding her phone up for a mirror selfie in a mirror by the doorway, lived-in counters and a warm lamp in the background",
     stepShots: [
       {
-        type: "mirror",
-        scene:
-          "mirror selfie in the hallway by the front door, keys in one hand, light jacket on, caught mid-morning before leaving the house",
-      },
-      {
         type: "aesthetic",
         scene:
-          "a steaming mug of coffee on a windowsill in golden morning light, soft focus curtain, condensation on the glass, no people",
-      },
-      {
-        type: "aesthetic",
-        scene:
-          "an open lined notebook on a wooden kitchen table with a pen resting on it, a candle burning nearby, warm afternoon light, no people",
+          "a kettle steaming on the stove in warm evening light, a favorite mug waiting beside it, soft shadows, no people",
       },
       {
         type: "mirror",
         scene:
-          "cozy evening mirror selfie in the bathroom, hair up, skincare done, soft warm vanity lighting, wearing a comfortable sweatshirt",
+          "mirror selfie in the entryway, sneakers on, light zip-up jacket, house keys in her free hand, caught right before heading out the door",
+      },
+      {
+        type: "aesthetic",
+        scene:
+          "a phone lying face-down on a wooden side table next to a cup of tea and a paperback, golden lamp light, cozy blanket edge in frame, no people",
+      },
+      {
+        type: "mirror",
+        scene:
+          "soft evening mirror selfie in the bedroom, hair down, comfortable t-shirt, warm bedside lamp glow, relaxed shoulders",
       },
     ],
-    captionOpen: "i didn't fix my life. i just stopped carrying all of it in my head.",
-    captionClose: "save this for the next morning that starts too fast.",
+    captionOpen: "posting this because last month me needed it.",
+    captionClose: "send this to someone who's been carrying too much.",
   };
 
   let topic: Awaited<ReturnType<typeof generateSelfieTopic>>;
