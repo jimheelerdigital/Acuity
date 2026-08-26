@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-26] — Selfie slideshows: more poses, exactly 2 selfies, no more ripple plug
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e61f2cad
+
+### In plain English (for Keenan)
+Three changes from your review: (1) the pose pool doubled — she can now be seated on the bed or stairs, take a regular arm's-length selfie with no mirror at all, or be caught in a gesture (raising her mug, shrugging, mid-laugh) — so the selfies feel even less repeatable. (2) Every slideshow now has exactly TWO photos of her — the cover plus one step — and everything else is the aesthetic shots, which now also have their own variance rule so no two look alike. (3) The caption no longer plugs ripple or asks for follows — these posts exist purely to earn views, likes, and follows on their own. A fresh example was generated with all of this and emailed to you (cover = mug-cheers in the bedroom mirror, step selfie = mid-laugh close-up in the apron).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_POSE_VARIANTS` 7 → 14 (seated-on-bed, arm's-length front-camera NO-mirror ×2, sitting-on-stairs, mug-cheers, shrug, mid-laugh); `SELFIE_VISUAL_DNA` now describes both mirror and front-camera selfies (front-camera = no mirror, phone not visible); VARIANCE line added to `SELFIE_AESTHETIC_DNA` (distinct subject/room/time/light/angle/distance per photo)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SELFIE LIMIT is now EXACTLY 2 selfies total (one "mirror" step); post-parse enforcement caps mirror steps at 1 and inserts the fallback mirror mid-deck when the model returns none; aesthetic scenes may not repeat an object/surface; captionClose rule bans "follow me"/product mentions
+- `apps/web/src/lib/content-factory/caption.ts`: `buildCaption(topic, { plug: false })` omits the ripple bio CLOSING_LINE (default unchanged for animated carousels)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: pose directive line now states it OVERRIDES any mirror setup implied by the scene (needed for the NO-mirror pose variants, since topic scenes say "mirror selfie…")
+- `apps/web/src/inngest/functions/carousel-daily.ts` + `apps/web/scripts/run-selfie-example.ts`: selfie `buildCaption` calls pass `{ plug: false }`; runner fallback topic now 2 selfies (last step became an aesthetic POV shot)
+
+### Manual steps needed
+- [ ] Push to deploy — 12 UTC cron runs the old rules (2-3 selfies, plugged caption) until this lands on Vercel (Keenan says "push it")
+- [ ] Still open: local `ANTHROPIC_API_KEY` is 401 (root `.env` + `apps/web/.env.local`) — local runs use the hand-written fallback topic (Keenan or Jimmy)
+
+### Notes
+- Verified on the emailed example: exactly 2 selfies (cover mug-cheers gesture, step mid-laugh close-up — both clearly different poses, same woman), new slippers-POV aesthetic shot distinct from the paperback shot, caption is open + soft ask + hashtags only, no plug
+- Animated-carousel captions still carry the ripple plug — `plug: false` is opt-in and only the selfie lane uses it
+- Baselines held: no new tsc errors (pre-existing adlab/niche-* and carousel-daily CarouselTopic errors only), 673/673 tests green
+
 ## [2026-08-26] — Every selfie in a slideshow now looks like its own photo
 
 **Requested by:** Keenan
