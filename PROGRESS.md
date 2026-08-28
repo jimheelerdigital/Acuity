@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-28] — Carousel headlines banned from trailing filler words
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ae8b1942
+
+### In plain English (for Keenan)
+Carousel headlines will no longer end with padding words like "today" — the AI is now told "5 ways to reset your mind" is the target shape, using your exact example. Shorter, cleaner covers.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: added a NO FILLER WORDS rule (bans trailing "today", "right now", "in your life", etc.) under the SIMPLICITY TEST in buildSystemPrompt
+- Prompt-only change; no signatures, schema, or code paths touched
+
+### Manual steps needed
+None
+
+### Notes
+- Triggered by today's nature positive cover reading "6 ways to reset your mind today" — Keenan: "eliminate the 'today'. '5 ways to reset your mind' would've been perfect."
+- Applies from the next generation onward; already-generated posts are unchanged.
+
+---
+
 ## [2026-08-28] — Carousel text centered mid-frame, cover question removed
 
 **Requested by:** Keenan
