@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** 535a34e7
 
 ### In plain English (for Keenan)
 There's a new page that reads your file back to you: how long Ripple has been listening, the people you keep mentioning and whether those relationships sound warm or strained, the goals it's heard you talk about, the subjects that keep coming back, and a short written summary of each part of your life. All of it was already being collected quietly in the background — this is the first place a user can actually see it.
