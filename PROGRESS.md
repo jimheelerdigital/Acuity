@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-08-28] — A page that shows you everything Ripple has picked up about you
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 535a34e7
+
+### In plain English (for Keenan)
+There's a new page that reads your file back to you: how long Ripple has been listening, the people you keep mentioning and whether those relationships sound warm or strained, the goals it's heard you talk about, the subjects that keep coming back, and a short written summary of each part of your life. All of it was already being collected quietly in the background — this is the first place a user can actually see it.
+
+If someone is brand new and has only recorded once or twice, they get an encouraging "still getting to know you" note instead of a page of empty boxes. It sits behind the same Pro gate as the Life Matrix, and it only ever shows a person their own words back. Nothing new is recorded or analysed to build it.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/lifemap-memory-payload.ts` — pure `buildMemoryPayload(memory)`, `daysSince()`, `axisMeta()`, `axisToLifeArea()`, and the `MEMORY_AXES` order
+- `apps/web/src/app/api/lifemap/route.ts` — `memory` block now built by `buildMemoryPayload`. Adds the 10 `*Summary` prose strings + the canonical 10-axis `*Mentions` counts. Every pre-existing field kept. 60s `private` cache header unchanged
+- New `apps/web/src/app/insights/what-ripple-knows.tsx` — client view (header line, People, Goals, Themes, per-axis summaries, two distinct empty states)
+- New `apps/web/src/app/insights/knows/page.tsx` — gated server page, `/insights/knows`
+- `apps/web/src/app/insights/page.tsx` — hub `HeroCard` linking to it
+- New `apps/web/src/lib/lifemap-memory-payload.test.ts` — 17 tests
+- No schema change, no migration, no Inngest function, no writes
+
+### Manual steps needed
+- [ ] Nobody: no env var, no `db push`, no redeploy beyond the normal push-to-deploy
+- [ ] Keenan (optional): read the page copy on a real account and tell us if the register is right — it's written to §7 of the design system ("remembers", never "insights")
+
+### Notes
+- **The gate is reused, not invented.** `/insights/knows` mirrors `/life-matrix` exactly: session → `ProLockedCard surfaceId="life_matrix_locked"` → `LockedFeatureCard unlockKey="lifeMatrix"`. Both ids are closed unions in `@acuity/shared`; a new one would have meant editing shared and maintaining a second gate over identical data behind an identical PRO boundary.
+- **No gate inside the component, deliberately.** `life-map.tsx` carries a comment about a previous in-component gate keyed on `memory.totalEntries` causing false-locks when `UserMemory` hadn't been seeded (the App Store reviewer account hit it). The parent page decides; the component renders.
+- **The payload builder exists so the response shape is testable.** The route needs Prisma + a session, so it can't be invoked in the web vitest env. Extracting a pure builder means the added fields and — more importantly — the *unremoved* ones are asserted directly rather than by regex over source.
+- **Backward compatibility is the real risk here, not the new fields.** Mobile binaries already on the App Store read this block and ship on Apple's schedule, not ours. A test pins all 11 pre-existing keys including the dormant V1 counts (`healthMentions`, `relationshipsMentions`, `financesMentions`, `personalMentions`, `otherMentions`), which is why the builder still emits them.
+- **`daysSince` floors at 1, not 0.** "Learning about you for 0 days" reads as broken on the day someone starts. Also clamps a clock-skewed future `firstEntryDate` to 1 rather than a negative.
+- **Two empty states, not one.** Under 3 entries = "still getting to know you" (the user hasn't recorded enough). At 3+ with nothing extracted = "hasn't finished reading them back yet" (the user has done their part, Inngest hasn't caught up). Collapsing these would tell someone to record more when the queue is the thing that's behind.
+- **Sentiment renders as `warm` / `steady` / `strained`, not the raw `positive|neutral|negative`.** Design system §7.1 — observational, not clinical. The raw values are what `lib/memory.ts` writes.
+- Baselines: web tsc **150 before, 150 after** — identical error sets, verified by stashing and diffing, not assumed. (The 152 in the brief and the 153 in older entries are both stale; main has drifted to 150.) Tests **712/712** across 43 files (695 + 17 new). `npx next build` exits 0 with `/insights/knows` registered at 4.45 kB.
+
 ## [2026-08-28] — Calm video rebuilt as simple full-frame nature loops
 
 **Requested by:** Keenan
