@@ -62,9 +62,10 @@ export interface AmbientScript {
   vocalScript?: string;
   /**
    * What the single image shows — a serene scene, no people, no text.
-   * Since 2026-08-28 (per Keenan): a STATIONARY foreground/frame (window,
-   * cliff edge, porch, canopy) with the only movement far in the distance,
-   * so the loop reads constant.
+   * Since 2026-08-28 PM (per Keenan: "it should just be background...
+   * less is more"): a SIMPLE full-frame hyper-real nature scene with ONE
+   * natural motion (waves, clouds, rain, snow) — no window/frame/interior
+   * vantages (the i2v model hallucinated furniture into them).
    */
   visual: string;
   /** The ambient movement for the i2v prompt (clouds drift, light shifts...). */
@@ -108,28 +109,27 @@ SCRIPT RULES:
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
 - No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). NO call to action of any kind — no follow, share, save, send, or comment asks, and never a product CTA. The script ends on the settling close.
 
-VISUAL RULES ("visual" — the single image the whole video lives on; 2026-08-28, per Keenan: a STABLE frame with movement only in the distance, so the loop reads constant instead of fragmented):
-- Every scene uses the same composition trick: a STATIONARY foreground/frame that anchors the shot, with the ONLY movement far away in the distance. Like looking out a window — the room, frame, and sill never move; only what's outside does.
-- Rotate among these vantages (and invent more that follow the same stationary-frame + distant-motion pattern):
-  • looking out a rain-streaked window from a warm, dim room — rain and clouds move outside, glass and sill perfectly still
-  • lying in a forest looking straight up — treetops still, clouds drifting past the canopy in the wind
-  • a cliff edge over the ocean — rock and grass still, waves rolling far below
-  • a covered porch facing a storm — railing and posts still, rain falling beyond
-  • a mountain overlook — foreground stones still, clouds moving across the valley
-  • a stone arch or cave mouth framing the sea — the opening still, water moving in the distance
-  • a still lakeshore at dusk — reeds and shore still, fog drifting on the far side
-  • a city window at night — the frame still, distant lights and slow clouds beyond
-- The stationary elements (window frame, sill, rocks, branches, railing) should frame the edges of the shot, with the distant motion living in the middle of the frame.
-- Breathtaking and SOOTHING, catchy enough to stop a scroll on the first frame. VARY the vantage boldly across posts.
-- NO people, NO animals in focus, NO text or typography of any kind.
+VISUAL RULES ("visual" — the single image the whole video lives on; 2026-08-28 PM, per Keenan: "it should just be background, look hyper realistic, and flow properly. less is more, simple movements... minimal movement, calming"):
+- PURE full-frame nature background. NO windows, NO rooms, NO porches, NO furniture, NO man-made framing device of any kind — those vantages made the video AI invent objects. Just nature, edge to edge.
+- LESS IS MORE: the scene is SIMPLE — one subject, one weather condition, one light. A wide calm view with very few distinct elements. If the scene needs a second sentence to describe, it's too busy.
+- Rotate among simple scenes like these (and invent equally simple ones):
+  • ocean waves rolling gently toward an empty shore
+  • clouds drifting slowly over a mountain range
+  • rain falling on a still lake
+  • snow falling softly in a quiet pine forest
+  • mist drifting across a green valley at dawn
+  • slow clouds moving across a pastel dusk sky
+- HYPER-REALISTIC: it must look like real footage a nature cinematographer shot — true-to-life color and light, never painterly, never fantasy, never oversaturated.
+- Breathtaking and SOOTHING, catchy enough to stop a scroll on the first frame. VARY the scene boldly across posts.
+- NO people, NO animals in focus, NO buildings, NO text or typography of any kind.
 - Composed for a vertical 9:16 frame with calm space in the middle third (captions sit there).
-- One sentence, concrete and specific about the vantage point, the stationary frame, light, color, and weather.
+- One sentence, concrete and specific about the subject, light, color, and weather.
 
 MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole video, so this MUST read as one continuous shot):
-- ONLY the distant element moves — clouds, waves, rain, fog, snow — at ONE constant, even, endless rate. Every stationary element (the window, sill, rocks, branches, railing, room) stays PERFECTLY still, like a photograph around the motion.
-- The movement must have no beginning, middle, or end — the same rate and direction the entire time, so any moment looks like any other moment, and the clip can START and END on the same image.
-- The lighting, colors, and framing stay IDENTICAL from first frame to last. Nothing enters or leaves the frame. No people appear. No camera movement at all.
-- Under 20 words, present tense, naming what moves AND what stays still.
+- ONE simple natural movement, and nothing else: waves rolling, clouds drifting, rain falling, snow falling, mist sliding. MINIMAL — barely more than a photograph. Slow, gentle, calming.
+- The movement runs at ONE constant, even, endless rate — no beginning, middle, or end, so any moment looks like any other moment and the clip can START and END on the same image.
+- The lighting, colors, and framing stay IDENTICAL from first frame to last. Nothing enters or leaves the frame. Nothing new appears. No people. No camera movement at all.
+- Under 15 words, present tense, naming the one thing that moves.
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
@@ -284,11 +284,11 @@ Return ONLY valid JSON.`;
  */
 export function buildAmbientImagePrompt(script: Pick<AmbientScript, "visual">): string {
   return [
-    `Breathtaking photorealistic cinematic photograph: ${script.visual}`,
-    "A stable, stationary foreground (window frame, sill, rocks, branches, railing) anchors and frames the shot; the scene's energy lives far away in the distance, in the middle of the frame.",
-    "Shot on a full-frame camera, rich natural color grading, soft gradients, immense depth and atmosphere. Serene, calming, awe-inspiring.",
+    `Breathtaking hyper-realistic nature photograph: ${script.visual}`,
+    "Pure full-frame nature, edge to edge — a simple, uncluttered scene with very few elements. No windows, rooms, furniture, buildings, or man-made objects of any kind.",
+    "Shot on a full-frame camera by a nature cinematographer: true-to-life natural color and light, soft gradients, immense depth and atmosphere. Serene, calming, awe-inspiring — indistinguishable from a real photograph.",
     "Vertical 9:16 composition with a calm, uncluttered middle third of the frame.",
-    "NO people, NO animals, NO buildings in focus unless the scene requires distant lights.",
+    "NO people, NO animals in focus.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
 }
@@ -300,12 +300,12 @@ export function buildAmbientImagePrompt(script: Pick<AmbientScript, "visual">): 
  */
 export function buildAmbientVideoPrompt(script: Pick<AmbientScript, "motion">): string {
   return [
-    `Only the distant part of the scene moves: ${script.motion}.`,
-    "Every near, stationary element — window frames, sills, rocks, branches, railings, furniture, walls — stays PERFECTLY still the entire clip, like a photograph with motion only in the distance.",
-    "That single distant movement runs at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
+    `Subtle, minimal ambient motion — one gentle natural movement only: ${script.motion}.`,
+    "The movement is slow and barely perceptible, like a living photograph. It runs at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
     "The clip starts and ends on the SAME image: the last frame is identical to the first frame.",
-    "Fixed, locked camera. The lighting, colors, framing, and every object stay identical from first frame to last.",
-    "Crisp, sharp, high-definition cinematic footage with steady soft lighting and clean detail throughout.",
+    "The scene itself NEVER changes: the exact same landscape, the exact same composition, the exact same objects from first frame to last. Nothing new appears, nothing leaves, nothing transforms.",
+    "Fixed, locked, completely static camera — no pan, no zoom, no drift, no push-in.",
+    "Hyper-realistic, crisp, high-definition nature footage with steady soft lighting and clean detail throughout.",
   ].join(" ");
 }
 
