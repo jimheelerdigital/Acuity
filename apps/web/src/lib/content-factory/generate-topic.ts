@@ -116,6 +116,7 @@ RULES FOR HEADLINES:
   • "6 signs you've made yourself the easiest person to disappoint"
   • "8 things you stopped wanting because wanting hurt too much"
   SIMPLICITY TEST (mandatory): if the headline contains a subordinate clause, a poetic turn, an "ouch"-clever accusation, or ANY idea that takes a beat to parse, it FAILS — cut it down until it's a phrase a stranger could repeat back after hearing it once. The specificity, cleverness, and emotional depth belong in the SLIDES; the headline is the wide-open door as many people as possible can walk through.
+  NO FILLER WORDS (2026-08-28, per Keenan): never pad the headline with trailing filler like "today", "right now", "in your life", "for real". "5 ways to reset your mind" is perfect; "6 ways to reset your mind today" is not. If a word can be cut without changing the meaning, cut it.
   Formats to rotate: "X signs...", "X ways...", "X reasons...", "X things...", "X habits...", "X reminders..." — always with a broad, plain object ("you're burnt out", "you're doing too much", "to get your energy back", "holding you back").
 - CLARITY TEST (mandatory — run it before finalizing): read the headline out loud. It must sound like a complete, natural phrase a friend would text you, instantly understandable on the FIRST read. No clipped grammar, no missing words. If the headline is even slightly awkward, rewrite it until it's effortless.
 - The number in the headline MUST match the number of item slides generated
