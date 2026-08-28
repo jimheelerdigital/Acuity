@@ -7,7 +7,13 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { FORCED_STYLE_LANE, isMood, type Mood, type StyleLane } from "./brand";
+import {
+  FORCED_STYLE_LANE,
+  isMood,
+  type CarouselVisualStyle,
+  type Mood,
+  type StyleLane,
+} from "./brand";
 import type { SlideEmotion } from "./animate-cover";
 import { fetchGrowthosResearch, growthosResearchBlock } from "./growthos-research";
 
@@ -53,7 +59,30 @@ export interface GeneratedTopic {
   captionQuestion?: string;
 }
 
-const SYSTEM_PROMPT = `You are a social media content strategist for Ripple, an AI-powered voice self-reflection app. Your job is to write carousel topics that stop the scroll and make people feel deeply seen.
+/**
+ * Per-style scene direction for the daily carousels (2026-08-28, per
+ * Keenan: no more AI animation on the negative/positive carousels — JUST
+ * image gen, rotating four visual styles).
+ */
+const SCENE_DIRECTION: Record<CarouselVisualStyle, string> = {
+  aesthetic: `For each slide write a "scene" — a PHOTOREAL still, like a casual aesthetic photo taken on a phone in a real home. ONE concrete visual that embodies that slide's exact text:
+- NO PEOPLE, EVER. No faces, no bodies, no silhouettes, no reflections of anyone, no mirrors. At most a hand at the edge of frame holding a mug or resting on a table.
+- The feeling lives in objects and light: a mug going cold beside an open laptop, a phone face-down on rumpled sheets, rain on the kitchen window over an untouched to-do list, one lit candle in a dark kitchen, a kettle steaming with nobody there.
+- Each scene must be DIFFERENT from every other slide's — different room, different subject, different light, different distance (close-up, tabletop, doorway). Under 30 words, concrete nouns only, no abstractions.`,
+  avatar: `For each slide write a "scene" — ONE moment starring the SAME animated character: a relatable, tired-but-warm woman in her 40s rendered like a modern Pixar film, physically ACTING OUT that slide's exact text with her posture, face, and hands (slumped at the kitchen table over cold coffee, mid-laugh pulling on sneakers by the door, staring at a glowing phone in the dark).
+- Describe her action, expression, and the room. She appears in EVERY slide and must read as the same woman each time.
+- Each scene must be DIFFERENT from every other slide's — different room, different action, different light, different distance. Under 30 words, concrete.`,
+  illustrated: `For each slide write a "scene" — ONE illustrated still, like a frame of background art from a modern animated film. NO people, no characters, no silhouettes:
+- The feeling lives in rooms, objects, weather, and light: a lamp-lit kitchen at night with dishes waiting, rain streaking an attic window, a quiet hallway with light under one door.
+- Each scene must be DIFFERENT from every other slide's — different room or place, different subject, different light. Under 30 words, concrete nouns only.`,
+  nature: `For each slide write a "scene" — ONE breathtaking hyper-realistic NATURE scene whose weather, season, and light embody that slide's exact text (fog sitting low over a still lake, a single tree in an open field at dusk, waves hitting rocks under a grey sky, morning sun breaking through pines).
+- NO people, no animals in focus, no buildings.
+- Each scene must be DIFFERENT from every other slide's — different landscape, different weather, different time of day. Under 30 words, concrete nouns only.`,
+};
+
+const buildSystemPrompt = (
+  visualStyle: CarouselVisualStyle
+) => `You are a social media content strategist for Ripple, an AI-powered voice self-reflection app. Your job is to write carousel topics that stop the scroll and make people feel deeply seen.
 
 TARGET AUDIENCE: Women aged 40–50 carrying a heavy mental load — work, family, aging parents, invisible labor. They are capable, busy, reflective women who want clarity and relief, not productivity hacks or wellness clichés.
 
@@ -133,22 +162,12 @@ CONTENT THEMES TO DRAW FROM:
 - Boundaries, people-pleasing, shutting down
 - Sunday scaries, burnout, decision fatigue
 
-VISUAL DIRECTION (these posts are ANIMATED — every slide becomes a 4-second video clip, and YOU direct both the imagery and its motion):
-Every post has a dominant mood and EVERY slide (cover + each reason) gets its own "mood", "scene", and "motion" matched to the emotional weight of its exact text. Available moods: "heavy" (exhausted, drained), "tender" (vulnerable, quietly sad), "wry" (knowing, self-aware, "ouch, that's me"), "frustrated" (fed up, tense), "hopeful" (relief, release, healing).
+VISUAL DIRECTION (these posts are STATIC image carousels — every slide is one still image, and YOU direct the imagery):
+Every post has a dominant mood and EVERY slide (cover + each reason) gets its own "mood" and "scene" matched to the emotional weight of its exact text. Available moods: "heavy" (exhausted, drained), "tender" (vulnerable, quietly sad), "wry" (knowing, self-aware, "ouch, that's me"), "frustrated" (fed up, tense), "hopeful" (relief, release, healing).
 - Never default to happy or joyous. If a slide's text is draining, an accusation, or an "ouch" truth, the visual must read tired, tender, or fed up — not smiling.
 - The mood can shift across the arc (e.g. heavy → heavy → frustrated → tender → hopeful when the last reason lands as release). The cover carries the post's dominant mood.
 
-For each slide write a "scene" — a PHOTOREAL still, like a casual aesthetic photo taken on a phone in a real home. ONE concrete visual that embodies that slide's exact text (2026-08-28, per Keenan: photoreal aesthetic shots, not illustration):
-- NO PEOPLE, EVER. No faces, no bodies, no silhouettes, no reflections of anyone, no mirrors. At most a hand at the edge of frame holding a mug or resting on a table.
-- The feeling lives in objects and light: a mug going cold beside an open laptop, a phone face-down on rumpled sheets, rain on the kitchen window over an untouched to-do list, one lit candle in a dark kitchen, a kettle steaming with nobody there.
-- Each scene must be DIFFERENT from every other slide's — different room, different subject, different light, different distance (close-up, tabletop, doorway). Under 30 words, concrete nouns only, no abstractions.
-
-For each slide also write a "motion" — what visibly MOVES in the 4-second clip of that scene, acting out the slide's meaning so the animation IS the message. One or two connected movements, a complete present-tense sentence, under 25 words (e.g. "Steam drifts off the mug and thins to nothing", "The phone screen flares again and again, light pulsing across the dark room").
-
-STRICT RULES for every "motion":
-- It must ACT OUT that slide's exact text — visible and emotionally unmistakable, never a generic idle (2026-08-16, per Keenan: subtle-only clips read as boring).
-- Only things ALREADY IN YOUR SCENE move — objects, light, steam, rain, curtains, flame. Nothing new appears; nobody and nothing enters or leaves the frame. No people arrive.
-- No camera directions.
+${SCENE_DIRECTION[visualStyle]}
 
 CAPTION (2026-08-28, per Keenan: one question, a few hashtags, done):
 - "captionQuestion": ONE thought-provoking question in the voice of the real woman who runs the page — under 15 words, lowercase-leaning, text-message tone, contractions. It should make her audience stop and answer honestly in their heads ("when did being tired become your baseline?"). NEVER restate the headline, NEVER summarize the slides, NEVER a share/send/"send this to" ask, NEVER "which one are you doing first", NEVER mention any app or product. At most one emoji, only if natural.
@@ -163,8 +182,8 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "details": ["supporting sentence for item 1", "supporting sentence for item 2", ...],
   "reasonCount": 5 or 6 or 7 or 8 or 9 or 10,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
-  "cover": { "mood": "...", "scene": "...", "motion": "..." },
-  "reasonEmotions": [{ "mood": "...", "scene": "...", "motion": "..." }, ...],
+  "cover": { "mood": "...", "scene": "..." },
+  "reasonEmotions": [{ "mood": "...", "scene": "..." }, ...],
   "captionQuestion": "one thought-provoking question in the page-owner's voice"
 }
 
@@ -393,6 +412,13 @@ export async function generateTopic(
     archetype?: "resonance" | "actionable";
     /** Mandated topic (headline + angle) — the model writes THIS topic. */
     mandate?: { headline: string; angle?: string };
+    /**
+     * Visual style for the STATIC daily carousels (2026-08-28, per
+     * Keenan: no more AI animation on negative/positive — just image
+     * gen, rotating aesthetic / avatar / illustrated / nature). Steers
+     * the scene-direction block of the prompt. Defaults to "aesthetic".
+     */
+    visualStyle?: CarouselVisualStyle;
   }
 ): Promise<GeneratedTopic> {
   const { prisma } = await import("@/lib/prisma");
@@ -453,7 +479,7 @@ Return ONLY valid JSON, no other text.`;
       // 2026-08-24: raised from 1000 — per-slide "scene" directions added
       // ~500 output tokens and were getting the JSON truncated mid-array.
       max_tokens: 2500,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(opts?.visualStyle ?? "aesthetic"),
       messages: [{ role: "user", content: userPrompt }],
     });
 

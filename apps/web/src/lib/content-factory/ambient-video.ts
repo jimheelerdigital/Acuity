@@ -60,7 +60,12 @@ export interface AmbientScript {
    * `script`.
    */
   vocalScript?: string;
-  /** What the single image shows — a serene scene, no people, no text. */
+  /**
+   * What the single image shows — a serene scene, no people, no text.
+   * Since 2026-08-28 (per Keenan): a STATIONARY foreground/frame (window,
+   * cliff edge, porch, canopy) with the only movement far in the distance,
+   * so the loop reads constant.
+   */
   visual: string;
   /** The ambient movement for the i2v prompt (clouds drift, light shifts...). */
   motion: string;
@@ -103,18 +108,28 @@ SCRIPT RULES:
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
 - No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). NO call to action of any kind — no follow, share, save, send, or comment asks, and never a product CTA. The script ends on the settling close.
 
-VISUAL RULES ("visual" — the single image the whole video lives on):
-- A breathtaking, SOOTHING natural scene with strong visual pull, catchy enough to stop a scroll on the first frame. VARY the scene type boldly across posts — be creative, we are testing what works (2026-08-20, per Keenan). Rotate among (and invent beyond): storm clouds rolling at golden hour, rain running down a window at dusk, ocean waves rolling in under moonlight, a near-still scene where only the light changes (a candle, a sunbeam crossing a room, city lights at night), fog moving over a lake, snow falling past a streetlight.
-- The scene must be built around ONE repeatable motion (the same clip plays the whole video) — pick scenes whose movement is naturally cyclical or constant.
+VISUAL RULES ("visual" — the single image the whole video lives on; 2026-08-28, per Keenan: a STABLE frame with movement only in the distance, so the loop reads constant instead of fragmented):
+- Every scene uses the same composition trick: a STATIONARY foreground/frame that anchors the shot, with the ONLY movement far away in the distance. Like looking out a window — the room, frame, and sill never move; only what's outside does.
+- Rotate among these vantages (and invent more that follow the same stationary-frame + distant-motion pattern):
+  • looking out a rain-streaked window from a warm, dim room — rain and clouds move outside, glass and sill perfectly still
+  • lying in a forest looking straight up — treetops still, clouds drifting past the canopy in the wind
+  • a cliff edge over the ocean — rock and grass still, waves rolling far below
+  • a covered porch facing a storm — railing and posts still, rain falling beyond
+  • a mountain overlook — foreground stones still, clouds moving across the valley
+  • a stone arch or cave mouth framing the sea — the opening still, water moving in the distance
+  • a still lakeshore at dusk — reeds and shore still, fog drifting on the far side
+  • a city window at night — the frame still, distant lights and slow clouds beyond
+- The stationary elements (window frame, sill, rocks, branches, railing) should frame the edges of the shot, with the distant motion living in the middle of the frame.
+- Breathtaking and SOOTHING, catchy enough to stop a scroll on the first frame. VARY the vantage boldly across posts.
 - NO people, NO animals in focus, NO text or typography of any kind.
 - Composed for a vertical 9:16 frame with calm space in the middle third (captions sit there).
-- One sentence, concrete and specific about light, color, and weather.
+- One sentence, concrete and specific about the vantage point, the stationary frame, light, color, and weather.
 
-MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole video, so this MUST read as one continuous shot, 2026-08-20, per Keenan):
-- ONE constant, even, endless movement: clouds rolling steadily by, rain sliding down the glass, waves rolling in, light breathing slowly, fog drifting at a constant pace.
-- The movement must have no beginning, middle, or end — the same rate and direction the entire time, so any moment looks like any other moment.
+MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole video, so this MUST read as one continuous shot):
+- ONLY the distant element moves — clouds, waves, rain, fog, snow — at ONE constant, even, endless rate. Every stationary element (the window, sill, rocks, branches, railing, room) stays PERFECTLY still, like a photograph around the motion.
+- The movement must have no beginning, middle, or end — the same rate and direction the entire time, so any moment looks like any other moment, and the clip can START and END on the same image.
 - The lighting, colors, and framing stay IDENTICAL from first frame to last. Nothing enters or leaves the frame. No people appear. No camera movement at all.
-- Under 20 words, present tense.
+- Under 20 words, present tense, naming what moves AND what stays still.
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
@@ -270,6 +285,7 @@ Return ONLY valid JSON.`;
 export function buildAmbientImagePrompt(script: Pick<AmbientScript, "visual">): string {
   return [
     `Breathtaking photorealistic cinematic photograph: ${script.visual}`,
+    "A stable, stationary foreground (window frame, sill, rocks, branches, railing) anchors and frames the shot; the scene's energy lives far away in the distance, in the middle of the frame.",
     "Shot on a full-frame camera, rich natural color grading, soft gradients, immense depth and atmosphere. Serene, calming, awe-inspiring.",
     "Vertical 9:16 composition with a calm, uncluttered middle third of the frame.",
     "NO people, NO animals, NO buildings in focus unless the scene requires distant lights.",
@@ -284,9 +300,10 @@ export function buildAmbientImagePrompt(script: Pick<AmbientScript, "visual">): 
  */
 export function buildAmbientVideoPrompt(script: Pick<AmbientScript, "motion">): string {
   return [
-    `The scene breathes in slow motion: ${script.motion}.`,
-    "One single continuous movement at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
-    "The movement at the last frame matches the first frame exactly.",
+    `Only the distant part of the scene moves: ${script.motion}.`,
+    "Every near, stationary element — window frames, sills, rocks, branches, railings, furniture, walls — stays PERFECTLY still the entire clip, like a photograph with motion only in the distance.",
+    "That single distant movement runs at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
+    "The clip starts and ends on the SAME image: the last frame is identical to the first frame.",
     "Fixed, locked camera. The lighting, colors, framing, and every object stay identical from first frame to last.",
     "Crisp, sharp, high-definition cinematic footage with steady soft lighting and clean detail throughout.",
   ].join(" ");

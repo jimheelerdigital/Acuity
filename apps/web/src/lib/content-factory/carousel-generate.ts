@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import { buildCaption } from "./caption";
@@ -298,6 +298,28 @@ function buildCoverTeaser(items: string[]): string {
     ...teased.map((item, i) => `${i + 1}. "${item}"`),
     `The remaining ${n - teaserCount} answers stay completely hidden — do not show, hint at, or leave blank spots for them. It's fine to imply there's more inside (e.g. a trailing "..." or a partially visible next note), but NO readable text beyond the ${teaserCount} item${teaserCount === 1 ? "" : "s"} above.`,
     `Each teased item in smaller text than the headline, all fully inside the safe zone.`,
+  ].join("\n");
+}
+
+/**
+ * Image prompt for one STATIC daily-carousel slide (2026-08-28, per
+ * Keenan: no more AI animation on the negative/positive carousels —
+ * JUST image gen, rotating four visual styles: aesthetic photoreal,
+ * Pixar-style avatar, animated-film illustration, hyper-real nature).
+ * Text is never baked — burned on by renderSlideTextOverlay.
+ */
+export function buildCarouselImagePrompt(opts: {
+  style: CarouselVisualStyle;
+  /** Scene direction from the topic model. */
+  scene: string;
+  /** The slide's burned-on line — the image quietly acts it out. */
+  slideText: string;
+  headline: string;
+}): string {
+  return [
+    `Scene (follow exactly): ${opts.scene}`,
+    `Context (convey through the image only — subtly, shown not told): this image belongs to a carousel titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`,
+    CAROUSEL_VISUAL_STYLES[opts.style],
   ].join("\n");
 }
 

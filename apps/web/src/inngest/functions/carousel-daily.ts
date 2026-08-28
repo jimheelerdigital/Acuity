@@ -6,16 +6,21 @@ import { inngest } from "@/inngest/client";
  * the two animated lanes went photoreal (times below are CDT; they
  * shift one hour later in winter CST):
  *
- * -  6 UTC (1am Central):  VIDEO — animated PHOTOREAL carousel, always
- *                          the NEGATIVE "that's me" recognition
- *                          archetype ("5 signs you're burnt out"; topic
- *                          capped at 6 reasons → 7 clips max). Every
- *                          slide is a STRICTLY AESTHETIC phone-photo
- *                          scene (selfie lane's aesthetic DNA — no
- *                          people, no avatar; 2026-08-28 per Keenan).
- * -  8 UTC (3am Central):  POSITIVE — same photoreal aesthetic
- *                          treatment, always the POSITIVE actionable
- *                          archetype ("5 ways to have a better day").
+ * -  6 UTC (1am Central):  VIDEO bucket — STATIC image carousel (no AI
+ *                          animation since 2026-08-28, per Keenan:
+ *                          "JUST image gen"), always the NEGATIVE
+ *                          "that's me" recognition archetype ("5 signs
+ *                          you're burnt out"; topic capped at 6
+ *                          reasons). Each day's post rotates one of 4
+ *                          visual styles: aesthetic (photoreal, no
+ *                          people) / avatar (Pixar-style woman) /
+ *                          illustrated (animated-film scenes, no
+ *                          people) / nature (hyper-real photography).
+ * -  8 UTC (3am Central):  POSITIVE — same static 4-style rotation
+ *                          (offset so the pair never shares a look on
+ *                          the same day), always the POSITIVE
+ *                          actionable archetype ("5 ways to have a
+ *                          better day").
  * - 10 UTC (5am Central):  AMBIENT — single-scene calm video with the
  *                          female AI voiceover (handled by
  *                          carouselAmbientVideoFn)
@@ -376,9 +381,36 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 1, bucket, ...selfieResult };
     }
 
+    // ── Visual style rotation (2026-08-28, per Keenan: no more AI
+    // animation on the negative/positive carousels — JUST image gen,
+    // rotating four looks). Deterministic by day (event.ts is stable
+    // across retries) so each bucket cycles all four styles over four
+    // days; the positive bucket is offset by 2 so the daily pair never
+    // shares a look. An explicit event override wins (admin testing).
+    const CAROUSEL_STYLE_ROTATION = [
+      "aesthetic",
+      "avatar",
+      "illustrated",
+      "nature",
+    ] as const;
+    type VisualStyle = (typeof CAROUSEL_STYLE_ROTATION)[number];
+    const styleOverride = (
+      event?.data as { visualStyle?: string } | undefined
+    )?.visualStyle;
+    const eventTs = typeof event?.ts === "number" ? event.ts : Date.now();
+    const dayIndex = Math.floor(eventTs / 86_400_000);
+    const visualStyle: VisualStyle = (CAROUSEL_STYLE_ROTATION as readonly string[]).includes(
+      styleOverride ?? ""
+    )
+      ? (styleOverride as VisualStyle)
+      : CAROUSEL_STYLE_ROTATION[
+          (dayIndex + (bucket === "positive" ? 2 : 0)) %
+            CAROUSEL_STYLE_ROTATION.length
+        ];
+    logger.info(`[carousel-cron] Visual style: ${visualStyle}`);
+
     // ── Step 1: Generate a fresh topic via Claude ──────────────────
-    // Both animated buckets' topics are capped at 6 reasons so at most
-    // 7 slides (cover + 6 reasons) get videos.
+    // Both daily buckets' topics are capped at 6 reasons (7 slides max).
     const topicData = await step.run("generate-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
       const { generateTopic } = await import(
@@ -444,6 +476,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         maxReasons: 6,
         archetype: bucket === "video" ? ("resonance" as const) : ("actionable" as const),
         performance,
+        // Steers the prompt's scene direction to today's rotated look.
+        visualStyle,
       });
       return topic;
     });
@@ -478,18 +512,14 @@ export const carouselDailyCronFn = inngest.createFunction(
     });
 
     // ── Step 2: Generate cover slide ──────────────────────────────
-    // TEXT-FREE photoreal artwork (2026-08-28, per Keenan — the toon3d
-    // illustration lane is dead, and these lanes are STRICTLY AESTHETIC:
-    // phone-photo scenes via the selfie lane's aesthetic DNA, never the
-    // avatar). The video model never sees the words, so they can't move
-    // or be blocked. Text is composited on afterwards — sharp for the
-    // static JPEG here, ffmpeg for the rendered MP4 (see
-    // storeSlideVideo). "-notext" in the raw path is the marker the
-    // animate pipeline keys off.
+    // STATIC image in today's rotated visual style (2026-08-28, per
+    // Keenan: no more AI animation on these lanes — JUST image gen).
+    // The artwork is generated text-free and the words are composited
+    // on afterwards with sharp, so the model can't mangle them.
     const coverSlide = await step.run("generate-cover", async () => {
-      const { buildSelfieImagePrompt, generateImage, uploadImage } =
+      const { buildCarouselImagePrompt, generateImage, uploadImage } =
         await import("@/lib/content-factory/carousel-generate");
-      const { composeSlide, composeSlideWithOverlay, renderSlideTextOverlay } =
+      const { composeSlideWithOverlay, renderSlideTextOverlay } =
         await import("@/lib/content-factory/compose");
 
       // On-cover engagement ask (2026-08-13, per Keenan): the cover asks
@@ -499,8 +529,8 @@ export const carouselDailyCronFn = inngest.createFunction(
       );
       const engagementLine = coverEngagementLine(topicData.headline, slug);
 
-      const prompt = buildSelfieImagePrompt({
-        shot: "aesthetic",
+      const prompt = buildCarouselImagePrompt({
+        style: visualStyle,
         scene:
           topicData.coverEmotion?.scene ||
           "A quiet kitchen counter in early morning light, a mug steaming alone by the window",
@@ -509,26 +539,12 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
       const rawBuffer = await generateImage(prompt);
 
-      // Text-free start frame (resized to final 1080x1920 so the video
-      // aspect matches the overlay exactly).
-      const textFree = await composeSlide(rawBuffer, "", "COVER");
-      const rawImageUrl = await uploadImage(
-        textFree,
-        `carousels/${dateStr}/${slug}/slide-0-cover-notext.jpg`
-      );
       const overlay = await renderSlideTextOverlay(
         topicData.headline,
         "COVER",
         undefined,
         colorScheme.accent,
         engagementLine
-      );
-      // Persist the overlay so the video burn (storeSlideVideo) uses the
-      // EXACT same pixels as the static JPEG.
-      await uploadImage(
-        overlay,
-        `carousels/${dateStr}/${slug}/slide-0-overlay.png`,
-        "image/png"
       );
       const composed = await composeSlideWithOverlay(rawBuffer, overlay);
       const imageUrl = await uploadImage(
@@ -537,7 +553,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       );
       return {
         imageUrl,
-        rawImageUrl,
         overlayText: topicData.headline,
         imagePrompt: prompt,
       };
@@ -546,22 +561,21 @@ export const carouselDailyCronFn = inngest.createFunction(
     // ── Steps 3..N: Generate reason slides ────────────────────────
     const reasonSlides: {
       imageUrl: string;
-      rawImageUrl?: string;
       overlayText: string;
       imagePrompt: string;
     }[] = [];
     for (let i = 0; i < topicData.reasons.length; i++) {
       const slide = await step.run(`generate-reason-${i}`, async () => {
-        const { buildSelfieImagePrompt, generateImage, uploadImage } =
+        const { buildCarouselImagePrompt, generateImage, uploadImage } =
           await import("@/lib/content-factory/carousel-generate");
-        const { composeSlide, composeSlideWithOverlay, renderSlideTextOverlay } =
+        const { composeSlideWithOverlay, renderSlideTextOverlay } =
           await import("@/lib/content-factory/compose");
 
         const reason = topicData.reasons[i];
         // Supporting detail sentence for this item (2026-08-16 revamp).
         const detail = topicData.details?.[i] || undefined;
-        const prompt = buildSelfieImagePrompt({
-          shot: "aesthetic",
+        const prompt = buildCarouselImagePrompt({
+          style: visualStyle,
           scene:
             topicData.reasonEmotions?.[i]?.scene ||
             "A different quiet corner of the same real home — one everyday object carrying the feeling, warm natural light",
@@ -570,12 +584,6 @@ export const carouselDailyCronFn = inngest.createFunction(
         });
         const rawBuffer = await generateImage(prompt);
 
-        // Text-free start frame + our own text composite (see cover).
-        const textFree = await composeSlide(rawBuffer, "", "REASON");
-        const rawImageUrl = await uploadImage(
-          textFree,
-          `carousels/${dateStr}/${slug}/slide-${i + 1}-reason-notext.jpg`
-        );
         const overlay = await renderSlideTextOverlay(
           reason,
           "REASON",
@@ -584,17 +592,12 @@ export const carouselDailyCronFn = inngest.createFunction(
           undefined,
           detail
         );
-        await uploadImage(
-          overlay,
-          `carousels/${dateStr}/${slug}/slide-${i + 1}-overlay.png`,
-          "image/png"
-        );
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
         const imageUrl = await uploadImage(
           composed,
           `carousels/${dateStr}/${slug}/slide-${i + 1}-reason.jpg`
         );
-        return { imageUrl, rawImageUrl, overlayText: reason, imagePrompt: prompt };
+        return { imageUrl, overlayText: reason, imagePrompt: prompt };
       });
       reasonSlides.push(slide);
     }
@@ -605,8 +608,6 @@ export const carouselDailyCronFn = inngest.createFunction(
     // posts and an easy restore.
 
     // ── Step N+1: Save to DB ─────────────────────────────────────
-    // Email is sent AFTER cover animation completes (see the animate
-    // function) so the video arrives in the same Resend email.
     const result = await step.run("save-and-email", async () => {
       const { prisma } = await import("@/lib/prisma");
       const { buildCaption } = await import(
@@ -623,7 +624,6 @@ export const carouselDailyCronFn = inngest.createFunction(
           overlayText: coverSlide.overlayText,
           imagePrompt: coverSlide.imagePrompt,
           imageUrl: coverSlide.imageUrl,
-          rawImageUrl: coverSlide.rawImageUrl,
         },
         ...reasonSlides.map((s, i) => ({
           order: i + 1,
@@ -631,7 +631,6 @@ export const carouselDailyCronFn = inngest.createFunction(
           overlayText: s.overlayText,
           imagePrompt: s.imagePrompt,
           imageUrl: s.imageUrl,
-          rawImageUrl: s.rawImageUrl,
         })),
       ];
 
@@ -652,13 +651,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           topicSlug: slug,
           headline: topicData.headline,
           status: "DRAFT",
-          format: "VIDEO",
+          // STATIC since 2026-08-28 (per Keenan: no more AI animation on
+          // negative/positive — just image gen).
+          format: "PHOTO",
           caption,
           hashtags: extractHashtags(caption),
           generatedFor: today,
-          // Persisted for the story-video fn (style/mood fallback) and the
-          // engagement feedback loop (2026-08-12).
-          lane: topicData.lane,
+          // Lane records today's visual style (aesthetic / avatar /
+          // illustrated / nature) so the admin and future feedback loops
+          // can compare how each look performs.
+          lane: visualStyle,
           mood: topicData.mood ?? null,
           slides: {
             create: allSlides.map((s) => ({
@@ -667,7 +669,6 @@ export const carouselDailyCronFn = inngest.createFunction(
               overlayText: s.overlayText,
               imagePrompt: s.imagePrompt,
               imageUrl: s.imageUrl,
-              rawImageUrl: "rawImageUrl" in s ? s.rawImageUrl : undefined,
             })),
           },
         },
@@ -680,42 +681,13 @@ export const carouselDailyCronFn = inngest.createFunction(
       };
     });
 
-    // ── Step N+3: deliver ─────────────────────────────────────────
-    // Enqueue full-post animation (every slide); the animate function
-    // sends the email on EVERY exit path (success, skip, failure,
-    // timeout) so Keenan always gets exactly one email — with videos
-    // when animation worked, static otherwise.
+    // ── Step N+2: deliver ─────────────────────────────────────────
+    // Static post (2026-08-28, per Keenan: no more AI animation on the
+    // negative/positive carousels) — email the finished images right
+    // away.
     await step.run("deliver", async () => {
-      try {
-        await inngest.send({
-          name: "content-factory/cover.animate",
-          data: {
-            postId: result.postId,
-            sendEmail: true,
-            animateAll: true,
-            animationStyle: "smooth",
-            // Per-slide emotion directions, indexed by slide order
-            // (0 = cover, 1..N = reasons). The animate function uses the
-            // bespoke motion for each slide's video prompt, with the mood
-            // pool as fallback.
-            slideEmotions: [
-              topicData.coverEmotion ?? { mood: topicData.mood },
-              ...topicData.reasons.map(
-                (_: string, i: number) =>
-                  topicData.reasonEmotions?.[i] ?? { mood: topicData.mood }
-              ),
-            ],
-          },
-        });
-      } catch (animateErr) {
-        logger.error(
-          `[carousel-cron] Failed to enqueue animation for ${slug}: ${animateErr instanceof Error ? animateErr.message : animateErr}`
-        );
-        // Never leave the post unsent — fall back to emailing the static
-        // carousel right away if the animation event can't be enqueued.
-        const { sendCarouselEmail } = await import("@/lib/content-factory/email");
-        await sendCarouselEmail(result.postId);
-      }
+      const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+      await sendCarouselEmail(result.postId);
     });
 
     logger.info(

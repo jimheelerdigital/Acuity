@@ -131,6 +131,52 @@ export const SELFIE_AESTHETIC_DNA = [
   "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
 ].join("\n");
 
+// ─── Daily carousel visual styles (2026-08-28, per Keenan) ───────────────────
+// The 6 UTC (negative) and 8 UTC (positive) carousels are fully STATIC —
+// no AI animation, JUST image gen — and rotate between four looks:
+// 1. aesthetic   — hyper-realistic phone photos, NO people (reuses the
+//                  selfie lane's aesthetic DNA)
+// 2. avatar      — Pixar-style 3D animated woman acting out each slide
+// 3. illustrated — animated-film illustration scenes, NO people
+// 4. nature      — hyper-realistic nature photography, NO people
+
+export const CAROUSEL_AVATAR_DNA = [
+  "Soft 3D animated illustration in the style of a modern Pixar/DreamWorks film — one warm, expressive animated scene. Never a photograph.",
+  "CHARACTER: ONE relatable animated woman in her 40s — soft rounded features, believable tiredness and warmth, everyday clothes (sweatshirt, cardigan, jeans). She is mid-moment, physically acting out this slide's exact feeling with her posture, face, and hands. The SAME character appears on every slide of this carousel — identical hair, build, and outfit each time.",
+  "WORLD: a cozy, lived-in animated home — warm cinematic lighting, rounded shapes, rich color, gentle depth of field, small honest details (mugs, laundry, lamps).",
+  "9:16 vertical portrait composition.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
+].join("\n");
+
+export const CAROUSEL_ILLUSTRATED_DNA = [
+  "Beautiful stylized illustration in the style of a modern animated film's background art — painterly, warm, richly textured, atmospheric. Never a photograph.",
+  "NO people, NO faces, NO characters, NO silhouettes anywhere. The feeling lives entirely in the scene: rooms, objects, weather, and light — a lamp-lit kitchen at night, rain on an attic window, steam rising from a kettle.",
+  "Warm light, soft painterly edges, storybook depth — the kind of frame you'd pause an animated movie on because it's beautiful.",
+  "9:16 vertical portrait composition.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, logos, or watermarks.",
+].join("\n");
+
+export const CAROUSEL_NATURE_DNA = [
+  "Breathtaking hyper-realistic nature photography — shot on a full-frame camera, rich natural color grading, immense depth and atmosphere. It must read as a real photograph, never a render or illustration.",
+  "NO people, NO animals in focus, NO buildings or man-made objects. Pure natural scenes: ocean waves, forest light, mountain ridges, storm clouds, golden fields, fog over water, falling snow.",
+  "The scene's weather, season, and light carry the slide's exact feeling — heavy skies for heavy lines, clearing light for hopeful ones.",
+  "9:16 vertical portrait composition.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, logos, or watermarks.",
+].join("\n");
+
+export const CAROUSEL_VISUAL_STYLES = {
+  aesthetic: SELFIE_AESTHETIC_DNA,
+  avatar: CAROUSEL_AVATAR_DNA,
+  illustrated: CAROUSEL_ILLUSTRATED_DNA,
+  nature: CAROUSEL_NATURE_DNA,
+} as const;
+
+export type CarouselVisualStyle = keyof typeof CAROUSEL_VISUAL_STYLES;
+
+export const CAROUSEL_VISUAL_STYLE_KEYS = Object.keys(
+  CAROUSEL_VISUAL_STYLES
+) as CarouselVisualStyle[];
+
 /**
  * Rotating scene settings for the text-free (animated) pipeline. One is
  * assigned per slide so a 7-slide carousel never repeats the same room —

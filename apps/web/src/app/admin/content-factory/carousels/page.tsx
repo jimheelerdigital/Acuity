@@ -231,12 +231,9 @@ export default function CarouselReviewPage() {
         body: JSON.stringify({ action: "generate-daily", bucket }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const eta =
-        bucket === "selfie"
-          ? "~3-5 min"
-          : bucket === "ambient"
-            ? "~8 min"
-            : "~10-15 min";
+      // Video/positive are static image posts since 2026-08-28 (no AI
+      // animation) — they finish about as fast as the selfie slideshow.
+      const eta = bucket === "ambient" ? "~8 min" : "~3-5 min";
       setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ${eta}`);
       setTimeout(() => setGenerateMsg(null), 10000);
     } catch (err) {
