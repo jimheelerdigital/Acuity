@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** 0d284056
 
 ### In plain English (for Keenan)
 We're moving our subscription plumbing over to RevenueCat eventually, and the safe first step is to let it *watch* real purchases without letting it *control* anything. This sets up a special build that does exactly that. RevenueCat sees every subscription that happens and builds up its own records, while the app keeps working exactly as it does today — same $4.99 / $39.99 prices, same checkout, same source of truth. If someone installed this build, they could not tell the difference.
