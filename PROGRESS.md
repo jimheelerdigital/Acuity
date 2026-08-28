@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-28] — Fixed: the daily selfie slideshow was never running
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** none (operational fix + push of 88ae0deb/884318a8)
+
+### In plain English (for Keenan)
+The daily selfie slideshow post was never actually being scheduled — the code was live, but the scheduler (Inngest) was still holding the OLD daily timetable from before the selfie slot existed, so the noon slot simply never fired. The other four daily posts kept arriving normally, which is why only the selfie posts were missing. The schedule has been re-registered and the noon slot now exists; the first automated selfie post arrives at the next 12:00 UTC run. If you want one today, the admin carousels page has a "Generate selfie slideshow now" button — that runs in production with a fresh AI-written topic.
+
+### Technical changes (for Jimmy)
+- No code changes. Root cause: the cron expression on `carouselDailyCronFn` changed from `0 4,6,8,10 * * *` to `0 4,6,8,10,12 * * *` when the selfie bucket landed (2026-08-25), but Inngest never picked up the new trigger — Vercel deploys were NOT auto-syncing the app. DB confirmed: buckets 4/6/8/10 ran on 8-27 and 8-28, hour 12 never fired, zero cron-created `lane="selfie"` posts ever existed
+- Fix: `curl -X PUT https://goripple.io/api/inngest` → `{"message":"Successfully registered","modified":true}` — `modified:true` confirms the stale config
+- Also pushed the held facing-away/outdoor pose commits (rebased onto Jimmy's e858a28c): 88ae0deb + 884318a8, so the first real cron run uses the final pose rules
+
+### Manual steps needed
+- [ ] Verify tomorrow's 12:00 UTC selfie post arrives by email (Keenan)
+- [ ] Optional: trigger today's post via admin → content-factory → carousels → "Generate selfie slideshow now" (Keenan)
+- [ ] Still open: local `ANTHROPIC_API_KEY` is 401 — local example runs use the hardcoded fallback topic (Keenan or Jimmy)
+
+### Notes
+- GOTCHA for future cron changes: changing an Inngest function's cron expression (or adding functions) does NOT reliably reach Inngest on Vercel deploy in this app. After any trigger change, run `curl -X PUT https://goripple.io/api/inngest` and confirm `modified:true` (a no-op sync returns `modified:false`). A PR-time code review can't catch this — it's invisible until the slot silently doesn't fire
+- This matches the 2026-08-18 note "Inngest did not auto-register new functions until we triggered a redeploy" — but this time even redeploys didn't sync it; the explicit PUT did
+
 ## [2026-08-27] — RevenueCat can start watching real purchases, without changing anything a customer sees
 
 **Requested by:** Jimmy
