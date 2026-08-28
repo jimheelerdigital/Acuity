@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ripple",
     "slug": "acuity",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -16,7 +16,7 @@
       "**/*"
     ],
     "ios": {
-      "buildNumber": "45",
+      "buildNumber": "46",
       "supportsTablet": false,
       "bundleIdentifier": "com.heelerdigital.acuity",
       "usesAppleSignIn": true,
