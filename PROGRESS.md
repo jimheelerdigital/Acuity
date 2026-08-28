@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 13b17383
+**Commit hash:** b8da14ee
 
 ### In plain English (for Keenan)
 The daily content factory now produces exactly 4 posts overnight: a negative animated carousel at 6 UTC ("5 signs you're burnt out"), a positive one at 8 UTC ("5 ways to have a better day"), the ambient calm video at 10 UTC — now with the female AI voiceover restored — and the selfie slideshow at 12 UTC, unchanged. The old 4 UTC cartoon-style photo carousel is gone. The two animated carousels switched from illustration to strictly aesthetic, realistic phone-photo scenes — cozy home moments, objects, and light, with no people in them (Keenan's call: the avatar only appears in the selfie lane). Headlines across all lanes now follow the "simple and broad" rule — "6 signs you're falling behind", never "6 signs you've made yourself the easiest person to disappoint".
