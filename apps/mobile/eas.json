@@ -58,7 +58,9 @@
         "EXPO_PUBLIC_API_URL": "https://goripple.io",
         "EXPO_PUBLIC_SENTRY_DSN": "https://c29c3ab6b17807b427a677cd5c518d1c@o4511258398818304.ingest.us.sentry.io/4511258441547776",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
-        "EXPO_PUBLIC_RC_OBSERVER": "1"
+        "EXPO_PUBLIC_RC_OBSERVER": "1",
+        "EXPO_PUBLIC_RC_IOS_KEY": "appl_OiPWlxyTKxSsBGnaFdXiOqsgeOT",
+        "EXPO_PUBLIC_RC_ANDROID_KEY": "goog_LpHyZxOdnrjVfxTMRjoVfCjnEft"
       }
     },
     "observer": {
@@ -69,7 +71,9 @@
         "EXPO_PUBLIC_API_URL": "https://goripple.io",
         "EXPO_PUBLIC_SENTRY_DSN": "https://c29c3ab6b17807b427a677cd5c518d1c@o4511258398818304.ingest.us.sentry.io/4511258441547776",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
-        "EXPO_PUBLIC_RC_OBSERVER": "1"
+        "EXPO_PUBLIC_RC_OBSERVER": "1",
+        "EXPO_PUBLIC_RC_IOS_KEY": "appl_OiPWlxyTKxSsBGnaFdXiOqsgeOT",
+        "EXPO_PUBLIC_RC_ANDROID_KEY": "goog_LpHyZxOdnrjVfxTMRjoVfCjnEft"
       }
     },
     "testflight-async": {

@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-08-27] — RevenueCat can start watching real purchases, without changing anything a customer sees
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 0d284056
+
+### In plain English (for Keenan)
+We're moving our subscription plumbing over to RevenueCat eventually, and the safe first step is to let it *watch* real purchases without letting it *control* anything. This sets up a special build that does exactly that. RevenueCat sees every subscription that happens and builds up its own records, while the app keeps working exactly as it does today — same $4.99 / $39.99 prices, same checkout, same source of truth. If someone installed this build, they could not tell the difference.
+
+Nothing about pricing changed. Nothing about who gets Pro access changed. This is a separate test build, not the one in the App Store.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/eas.json` — added `EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY` (both PUBLIC, safe to commit) to the **`observer`** and **`observer-internal`** profiles, which already carried `EXPO_PUBLIC_RC_OBSERVER=1`. **`production` deliberately untouched.**
+- `apps/mobile/app.json` — `version` 1.4.0 → **1.4.1**, `ios.buildNumber` 45 → 46
+- `packages/shared/src/revenuecat.ts` — new pure `rcConfigureMode(flags)` → `"disabled" | "observer" | "purchases"` and `rcUnsafePurchaseConfig(flags)`
+- `apps/mobile/lib/revenuecat/index.ts` — `configureRevenueCat` now branches on those helpers instead of inline flag checks (behaviour-identical); StoreKit comment updated with the verification result
+- `apps/web/src/lib/evidence/rc-observer-build.test.ts` — new, 22 tests reading the real `eas.json`
+- `docs/REVENUECAT_MIGRATION.md` §6.2 — StoreKit open decision marked resolved
+
+### Manual steps needed
+- [ ] Jimmy: build it — `eas build --profile observer --platform all` (or `observer-internal` for an internal-distribution APK/ad-hoc build first)
+- [ ] Jimmy: confirm in the RevenueCat dashboard that transactions start appearing after a test purchase on the observer build
+- [ ] Jimmy: `EXPO_PUBLIC_FACEBOOK_APP_ID` / `_CLIENT_TOKEN` must exist as EAS Secrets or `app.config.ts` drops the Meta SDK plugin — unrelated to RC but it affects any new build
+- [ ] Nobody: no env change in Vercel, no schema change, no App Store submission
+
+### Notes
+- **`production` was deliberately not given the RC keys.** The `observer` profile already `extends` it, and the ask was for an observer build. Putting RC keys in `production` would ship them in the public App Store binary for no benefit — with `RC_OBSERVER` unset, `configureRevenueCat` returns `"disabled"` before the key is ever read and the native module is never imported. A test asserts `production` resolves to `disabled`.
+- **The mode decision was extracted to `@acuity/shared` so the test asserts the real branch.** `configureRevenueCat` lives in the Expo app and imports `react-native`, so it cannot run in the web vitest env. Testing a copy of its `if` conditions would pass while the real code drifted. `rcConfigureMode` is now the single expression both use.
+- **The test reads the real `eas.json`, not a fixture**, and was mutation-checked: removing the iOS key fails 1 test, setting `EXPO_PUBLIC_RC_SOURCE_OF_TRUTH` fails 3, and leaking `EXPO_PUBLIC_RC_OBSERVER` into `production` fails 2.
+- **A flag alone would have observed nothing.** `configureRevenueCat` returns `"no-key"` and never loads the native module without a platform key — so the pre-existing `observer` profile (flag set, no keys) was a build that looked enabled and did nothing. That is the actual gap this closes.
+- **StoreKit 2 confirmed, closing migration-doc decision #2.** `react-native-iap@15.3.1`'s podspec says *"React Native IAP uses StoreKit 2 via OpenIAP, which requires iOS 15+"* and pins `:ios => '15.0'`. RC would mis-parse transactions if this were wrong, so the observer data would have been quietly incorrect.
+- **`appVersionSource: "remote"` + `autoIncrement: true`** means EAS assigns the real build number server-side; the `app.json` bump is for local consistency. `runtimeVersion` follows `appVersion`, so 1.4.1 correctly starts a new OTA lineage.
+- Baselines: web tsc **152**, mobile tsc **19** — both verified equal to clean `main` by stashing, not assumed. (The 153 quoted in earlier entries is stale; main has since drifted to 152.) Tests **695/695** across 42 files (673 + 22 new).
+- `npx prisma generate` is required after pulling main's Niche Lab schema, or web tsc reports 190 phantom errors from a stale client.
+
 ## [2026-08-26] — Selfie slideshows: more poses, exactly 2 selfies, no more ripple plug
 
 **Requested by:** Keenan

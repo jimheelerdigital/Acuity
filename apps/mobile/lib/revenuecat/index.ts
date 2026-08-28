@@ -5,6 +5,8 @@ import {
   RC_PACKAGES,
   offeringIdForTier,
   pricingTierFor,
+  rcConfigureMode,
+  rcUnsafePurchaseConfig,
   type PricingConfig,
 } from "@acuity/shared";
 
@@ -92,12 +94,16 @@ export async function configureRevenueCat(
   appUserId: string | null = null
 ): Promise<RcConfigureResult> {
   const flags = rcFlags();
+  // Mode decision lives in @acuity/shared (rcConfigureMode) so it can be
+  // asserted in the test suite without a React Native runtime — see
+  // apps/web/src/lib/evidence/rc-observer-build.test.ts.
+  const mode = rcConfigureMode(flags);
 
-  if (!flags.RC_OBSERVER && !flags.RC_SDK_PURCHASES) {
+  if (mode === "disabled") {
     return "disabled";
   }
 
-  if (flags.RC_SDK_PURCHASES && !flags.RC_SOURCE_OF_TRUTH) {
+  if (rcUnsafePurchaseConfig(flags)) {
     // Misconfiguration that would take real money and grant no access.
     // eslint-disable-next-line no-console
     console.warn(
@@ -123,7 +129,7 @@ export async function configureRevenueCat(
   try {
     if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
 
-    if (flags.RC_SDK_PURCHASES) {
+    if (mode === "purchases") {
       // RC completes purchases and acknowledges them itself.
       Purchases.configure({
         apiKey,
@@ -139,10 +145,13 @@ export async function configureRevenueCat(
     // purchasesAreCompletedBy is MY_APP, and it must match what our existing
     // purchase library actually uses or RC will mis-parse transactions.
     //
-    // ⚠️ VERIFY BEFORE ENABLING: this must match react-native-iap@15's
-    // StoreKit version on iOS. Overridable via
-    // EXPO_PUBLIC_RC_STOREKIT_VERSION so it can be corrected without a code
-    // change. See docs/REVENUECAT_MIGRATION.md §"Decisions needed".
+    // ✅ VERIFIED 2026-08-27 against the installed react-native-iap@15.3.1:
+    // its podspec states "React Native IAP uses StoreKit 2 via OpenIAP,
+    // which requires iOS 15+" and pins :ios => '15.0' (a StoreKit-2-only
+    // floor; StoreKit 1 has no such requirement). STOREKIT_2 below is
+    // therefore correct. Still overridable via EXPO_PUBLIC_RC_STOREKIT_VERSION
+    // so a future react-native-iap change can be corrected without a code
+    // change. See docs/REVENUECAT_MIGRATION.md §6.
     const skOverride = process.env.EXPO_PUBLIC_RC_STOREKIT_VERSION;
     const storeKitVersion =
       skOverride === "STOREKIT_1"
