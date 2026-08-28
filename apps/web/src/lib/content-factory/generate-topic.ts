@@ -74,27 +74,23 @@ TWO CONTENT ARCHETYPES — pick ONE per post, and alternate so the feed stays fr
 
 RULES FOR HEADLINES:
 - EVERY headline MUST start with a number. No exceptions. No vague headlines without a number.
-- Short, punchy, scroll-stopping — under 60 characters ideal
-- VARY the headline format every time — these are starting points, not templates. Remix them, invent new ones in the same spirit. Nothing is set in stone:
-  RESONANCE structures:
-  • "X reasons..." (e.g. "6 reasons you're exhausted and none of them are sleep")
-  • "X signs..." (e.g. "7 signs you're burnt out, not just tired")
-  • "X things nobody tells you about..." (e.g. "5 things nobody tells you about the mental load")
-  • "X truths..." (e.g. "5 truths about midlife nobody says out loud")
-  • "X lies you tell yourself..." (e.g. "6 lies you tell yourself to keep the peace")
-  • "X quiet ways you..." (e.g. "5 quiet ways you abandon yourself every day")
-  • "X things you'd never say out loud..." (e.g. "6 things you'd never say out loud but think daily")
-  • "X texts you should send..." — share-bait format (e.g. "5 things every exhausted friend needs to hear")
-  ACTIONABLE structures:
-  • "X things to do every day for..." (e.g. "7 things to do every day for yourself")
-  • "X tiny habits..." (e.g. "6 tiny habits for the weeks you're running on empty")
-  • "X ways to get a piece of yourself back"
-  • "X questions to ask yourself..." (e.g. "5 questions to ask yourself before you say yes again")
-  • "X small resets for..." (e.g. "6 small resets for when the day already got away from you")
-  • "X reminders for..." — save-bait (e.g. "7 reminders for the week you're barely holding it together")
-- The strongest hooks combine a number + a curiosity gap + something she can't deny — either a quiet accusation or a need she recognizes. "5 things you celebrate for others but never for yourself" works because she has to swipe to find out if she's guilty — and she already knows she is.
-- CLARITY TEST (mandatory — run it before finalizing): read the headline out loud. It must sound like a complete, natural sentence a friend would text you, instantly understandable on the FIRST read. No clipped grammar, no missing words, no phrase that needs a second read to parse. "5 reminders for the week you have nothing left" FAILS (nothing left... to what? the sentence is broken); "5 reminders for when you have nothing left to give" passes. If the headline is even slightly awkward, rewrite it until it's effortless.
-- RELATABILITY TEST (mandatory): she must see her actual life in the headline within one second — name a situation she's literally in ("6 signs you're everyone's emergency contact but nobody's priority"), not an abstract concept. The headline names the FEELING or the situation; the reasons stay hidden so she HAS to swipe to find out what they are. If the headline doesn't create that itch to swipe, it's not done.
+- Short, punchy, scroll-stopping — under 40 characters ideal
+- ⭐ SIMPLE, BROAD, MASS-APPEAL (2026-08-28, per Keenan — THE most important headline rule, it overrides everything else): the headline must name a feeling or situation so universal that a TON of people instantly think "that's me". Number + dead-simple noun phrase, nothing more.
+  GOOD — exactly this simple and this broad:
+  • "5 signs you're burnt out"
+  • "6 reasons to keep pushing"
+  • "5 ways to get out of a slump"
+  • "8 things holding you back"
+  • "6 signs you're falling behind"
+  • "6 ways to gain momentum"
+  • "5 ways to have a better day"
+  BAD — too specific, too clever, too written (never produce headlines like these):
+  • "6 small things you do when you've given everything away today"
+  • "6 signs you've made yourself the easiest person to disappoint"
+  • "8 things you stopped wanting because wanting hurt too much"
+  SIMPLICITY TEST (mandatory): if the headline contains a subordinate clause, a poetic turn, an "ouch"-clever accusation, or ANY idea that takes a beat to parse, it FAILS — cut it down until it's a phrase a stranger could repeat back after hearing it once. The specificity, cleverness, and emotional depth belong in the SLIDES; the headline is the wide-open door as many people as possible can walk through.
+  Formats to rotate: "X signs...", "X ways...", "X reasons...", "X things...", "X habits...", "X reminders..." — always with a broad, plain object ("you're burnt out", "you're doing too much", "to get your energy back", "holding you back").
+- CLARITY TEST (mandatory — run it before finalizing): read the headline out loud. It must sound like a complete, natural phrase a friend would text you, instantly understandable on the FIRST read. No clipped grammar, no missing words. If the headline is even slightly awkward, rewrite it until it's effortless.
 - The number in the headline MUST match the number of item slides generated
 - Emotionally provocative — make them think "that's me" and then "I need to send this to her" (or, for ACTIONABLE, "I need to save this")
 - No emojis, no all-caps, no clickbait that doesn't deliver
@@ -139,22 +135,21 @@ CONTENT THEMES TO DRAW FROM:
 - Boundaries, people-pleasing, shutting down
 - Sunday scaries, burnout, decision fatigue
 
-VISUAL DIRECTION (these posts are ANIMATED — every slide becomes a 4-second video clip, and YOU direct both the artwork and its motion):
+VISUAL DIRECTION (these posts are ANIMATED — every slide becomes a 4-second video clip, and YOU direct both the imagery and its motion):
 Every post has a dominant mood and EVERY slide (cover + each reason) gets its own "mood", "scene", and "motion" matched to the emotional weight of its exact text. Available moods: "heavy" (exhausted, drained), "tender" (vulnerable, quietly sad), "wry" (knowing, self-aware, "ouch, that's me"), "frustrated" (fed up, tense), "hopeful" (relief, release, healing).
 - Never default to happy or joyous. If a slide's text is draining, an accusation, or an "ouch" truth, the visual must read tired, tender, or fed up — not smiling.
 - The mood can shift across the arc (e.g. heavy → heavy → frustrated → tender → hopeful when the last reason lands as release). The cover carries the post's dominant mood.
 
-For each slide write a "scene" — the illustrated artwork, ONE concrete visual that embodies that slide's exact text. VARY THE SUBJECT across the post; never let every slide be a woman in a room:
-- Some slides: a woman (35-50) caught in a real, recognizable moment that acts out the slide's text — sitting in the parked car in the driveway, staring at a glowing phone at 2am, a mug going cold beside an open laptop.
-- Some slides: NO person at all — a symbolic object scene that carries the feeling: an overflowing mug, a phone buried under blank sticky notes, a tangle of chargers, one lit candle in a dark kitchen, an unmade bed in morning light, a kettle steaming with nobody there.
-- Each scene must be DIFFERENT from every other slide's — different setting, different subject, different angle. Under 30 words, concrete nouns only, no abstractions.
+For each slide write a "scene" — a PHOTOREAL still, like a casual aesthetic photo taken on a phone in a real home. ONE concrete visual that embodies that slide's exact text (2026-08-28, per Keenan: photoreal aesthetic shots, not illustration):
+- NO PEOPLE, EVER. No faces, no bodies, no silhouettes, no reflections of anyone, no mirrors. At most a hand at the edge of frame holding a mug or resting on a table.
+- The feeling lives in objects and light: a mug going cold beside an open laptop, a phone face-down on rumpled sheets, rain on the kitchen window over an untouched to-do list, one lit candle in a dark kitchen, a kettle steaming with nobody there.
+- Each scene must be DIFFERENT from every other slide's — different room, different subject, different light, different distance (close-up, tabletop, doorway). Under 30 words, concrete nouns only, no abstractions.
 
-For each slide also write a "motion" — what visibly MOVES in the 4-second clip of that scene, acting out the slide's meaning so the animation IS the message. One or two connected movements, a complete present-tense sentence, under 25 words (e.g. "Steam drifts off the mug as her shoulders finally drop", "The phone screen flares again and again, light pulsing across the dark room").
+For each slide also write a "motion" — what visibly MOVES in the 4-second clip of that scene, acting out the slide's meaning so the animation IS the message. One or two connected movements, a complete present-tense sentence, under 25 words (e.g. "Steam drifts off the mug and thins to nothing", "The phone screen flares again and again, light pulsing across the dark room").
 
 STRICT RULES for every "motion":
 - It must ACT OUT that slide's exact text — visible and emotionally unmistakable, never a generic idle (2026-08-16, per Keenan: subtle-only clips read as boring).
-- Only things ALREADY IN YOUR SCENE move. Nothing new appears; nobody and nothing enters or leaves the frame.
-- If the scene has a woman: she stays in the same spot and pose, lips closed — no talking, no walking, no standing up, no sitting down, no turning around. Her face, eyes, head, shoulders, hands, and breath carry the emotion.
+- Only things ALREADY IN YOUR SCENE move — objects, light, steam, rain, curtains, flame. Nothing new appears; nobody and nothing enters or leaves the frame. No people arrive.
 - No camera directions.
 
 CAPTION (2026-08-20, per Keenan: captions must read personal, never AI-written. 2026-08-21: SHORT — the slides carry the content, the caption never repeats them):
@@ -440,7 +435,7 @@ export async function generateTopic(
 
   const archetypeBlock =
     opts?.archetype === "resonance"
-      ? `\n\nTODAY'S ARCHETYPE (mandatory, overrides the alternation rule): RESONANCE. Write a "that's me" recognition list — the negative, uncomfortably accurate framing (reasons you're exhausted, signs you're burnt out, quiet ways you abandon yourself). Do NOT write an actionable how-to list today.`
+      ? `\n\nTODAY'S ARCHETYPE (mandatory, overrides the alternation rule): RESONANCE. Write a "that's me" recognition list — the negative, uncomfortably accurate framing (reasons you're exhausted, signs you're burnt out, things holding you back). Do NOT write an actionable how-to list today.`
       : opts?.archetype === "actionable"
         ? `\n\nTODAY'S ARCHETYPE (mandatory, overrides the alternation rule): ACTIONABLE. Write a positive, improvement-forward list — ways to fix, break out, or get a piece of yourself back ("7 ways to break out of a slump"). Every item must be TANGIBLE: a concrete thing she could actually do today, with the detail saying how or why it works. Hopeful and forward-moving, never preachy. Do NOT write a signs/reasons recognition list today.`
         : "";

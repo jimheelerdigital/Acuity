@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-08-28] — Daily content restructured to 4 lanes: photoreal carousels, voiced ambient, selfie
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 13b17383
+
+### In plain English (for Keenan)
+The daily content factory now produces exactly 4 posts overnight: a negative animated carousel at 6 UTC ("5 signs you're burnt out"), a positive one at 8 UTC ("5 ways to have a better day"), the ambient calm video at 10 UTC — now with the female AI voiceover restored — and the selfie slideshow at 12 UTC, unchanged. The old 4 UTC cartoon-style photo carousel is gone. The two animated carousels switched from illustration to strictly aesthetic, realistic phone-photo scenes — cozy home moments, objects, and light, with no people in them (Keenan's call: the avatar only appears in the selfie lane). Headlines across all lanes now follow the "simple and broad" rule — "6 signs you're falling behind", never "6 signs you've made yourself the easiest person to disappoint".
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cron `0 6,8,10,12 * * *` (photo bucket removed from DailyBucket, hour map, and all branches; legacy `animated` event flag dropped — unknown buckets fall back to "video"). Animated lanes now generate strictly aesthetic photoreal images via `buildSelfieImagePrompt({ shot: "aesthetic" })` with the topic model's per-slide scene (no avatar, no reference/edit calls — an avatar-day variant was built mid-session and removed per Keenan). Format is always `VIDEO`; `colorScheme.prompt` no longer feeds the artwork (accent kept for text overlays).
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SYSTEM_PROMPT headline rules replaced with the SIMPLE/BROAD/mass-appeal rule (good/bad examples + simplicity test); VISUAL DIRECTION rewritten for photoreal no-people scenes with object/light-only motion; resonance archetype block no longer suggests over-specific framings.
+- `apps/web/src/lib/content-factory/ambient-video.ts`: ElevenLabs TTS restored (removed 2026-08-24) — `vocalScript` back in the script prompt/parse, `ambientVoiceoverOptions()` hard-wired to voice `OZxMHsGaBmV5pjMIDIn0` (env override `AMBIENT_ELEVENLABS_VOICE_ID`), `ambientTtsText()` guarantees a leading [softly] tag.
+- `apps/web/src/inngest/functions/carousel-ambient-video.ts`: new `tts-script` step (eleven_v3 → multilingual_v2 → OpenAI fallback chain via `generateVoiceover`); loop length follows real voiceover duration + 1s; mux step burns NO captions (Keenan captions by hand); falls back to the silent pipeline if TTS fails; persists `storyVoiced`.
+- `apps/web/src/lib/content-factory/costs.ts`: AMBIENT estimate includes TTS again.
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 📷 photo generate buttons removed (header + empty state now queue "video"); bucket union narrowed.
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily no longer forwards the legacy `animated` flag.
+- Verified: `tsc` clean in all touched files (the two pre-existing CarouselTopic errors in carousel-daily disappeared with `buildImagePrompt` removal); vitest 695/695 passing.
+
+### Manual steps needed
+- [ ] Confirm `ELEVENLABS_API_KEY` is set in Vercel (Keenan — it is NOT in the local env; without it every ambient video silently falls back to OpenAI TTS or silent)
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` and confirm `modified: true` (cron change won't take effect until resync)
+- [ ] Review the 4 manually-triggered test posts emailed right after this deploy, then watch the first overnight cron cycle (Keenan)
+
+### Notes
+- Keenan explicitly wants the animated carousels STRICTLY aesthetic — no people, no avatar, ever. The avatar lives only in the 12 UTC selfie lane. Don't re-add an avatar mix without him asking.
+- The topic model writes people-free scenes with object/light-only motion; `sceneHasWoman()` in animate-cover will therefore rarely fire on these lanes, which is correct.
+- Ambient voiceover has no burned captions on either path — deliberate, Keenan captions manually.
+- If manual "photo" generation is ever triggered from an old client, it falls back to the negative video lane rather than erroring.
+
+---
+
 ## [2026-08-28] — Fixed: the daily selfie slideshow was never running
 
 **Requested by:** Keenan

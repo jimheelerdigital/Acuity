@@ -217,15 +217,14 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "photo" | "video" | "positive" | "ambient" |
-      // "selfie" (legacy `animated` boolean still honored: true→video,
-      // false→photo; omitted→video).
+      // images). `bucket`: "video" | "positive" | "ambient" | "selfie"
+      // (anything else falls back to "video" — the photo lane is dead,
+      // 2026-08-28).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",
         data: {
           bucket: (body as { bucket?: string }).bucket,
-          animated: (body as { animated?: boolean }).animated,
         },
       });
       return NextResponse.json({ ok: true, queued: true });
