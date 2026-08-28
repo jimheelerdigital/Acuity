@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** TBD
+**Commit hash:** 54e127c1
 
 ### In plain English (for Keenan)
 Three changes you asked for, all live. (1) The selfie slideshow now has exactly ONE selfie — the cover — with her phone covering her face and a realistically slightly-dirty mirror (smudges, fingerprints, a faint streak); every other slide is an aesthetic no-people shot. (2) The calm ambient video scripts are now generic and high-level — relaxing, meditative, listen-along, things almost anyone relates to — and they never tell people to follow; the script just ends softly. (3) Captions on EVERY post are now just one thought-provoking question plus 3-4 hashtags. No more "send this to…" lines, no "which one are you doing first", no bio plug on any post.
