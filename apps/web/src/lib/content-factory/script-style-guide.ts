@@ -5,9 +5,10 @@
  * This is audience-building content, NOT ads: no Ripple, no Acuity, no
  * app, no AI, no journaling, no selling — ever. The goal is that a woman
  * 35-55 carrying everyone's load watches and thinks "this account
- * understands me." Scripts follow HOOK → SCENE → TRUTH → REFRAME →
- * soft FOLLOWER CTA, rotate across five core pain branches, and aim to
- * sound uncomfortably accurate rather than beautiful.
+ * understands me." Scripts follow HOOK → UNFOLDING → TRUTH → REFRAME
+ * (no CTA of any kind — 2026-08-28, per Keenan: "it should never tell
+ * people to follow"), rotate across five core pain branches, and read
+ * as relaxing, meditative listen-alongs.
  *
  * ambient-video.ts embeds SCRIPT_STYLE_GUIDE in its system prompt and
  * picks one PAIN_BRANCH per run for variety.
@@ -69,9 +70,9 @@ export const SCRIPT_STYLE_GUIDE = `WHO SHE IS: a woman in midlife (35-55) who lo
 EMOTIONAL TERRITORY — write from the private thoughts she rarely says out loud:
 "I can't keep doing this." / "I'm doing everything all day, so why do I still feel behind?" / "There are too many tabs open in my brain." / "I look fine to everyone, but I'm barely holding on." / "I keep having the same week in different clothes." / "I don't even know what I want anymore." / "I'm tired of being the person who remembers." / "I'm not mad about the dishes. I'm mad that nobody notices the load." / "I used to have preferences." / "I keep saying I'm fine because explaining would take too much energy."
 
-THE REACTION YOU'RE ENGINEERING: "I feel seen." / "This is exactly me." / "I'm sending this to my husband." / "How did you know?" / "I thought I was the only one." / "This made me cry." / "Following immediately." If the script wouldn't trigger one of those, rewrite it.
+THE REACTION YOU'RE ENGINEERING: "I feel seen." / "This is exactly me." / "I thought I was the only one." / "I could listen to this on repeat." / "This made me exhale." If the script wouldn't trigger one of those, rewrite it.
 
-HOOKS — the first line names a private, SPECIFIC emotional truth. The register (create original ones, never copy):
+HOOKS — the first line names a private emotional truth in a GENERIC, HIGH-LEVEL way that nearly every woman this age has lived (2026-08-28, per Keenan: broad and universal, not niche or clever). The register (create original ones, never copy):
 - "At some point, being easygoing became another way to disappear."
 - "You're not tired because you did too little. You're tired because you're tracking too much."
 - "You're not mad about the dishes. You're mad that nobody noticed you were drowning."
@@ -81,18 +82,13 @@ HOOKS — the first line names a private, SPECIFIC emotional truth. The register
 - "Sometimes burnout looks like being very calm while slowly disappearing."
 NEVER hooks like "Are you overwhelmed?", "Do you feel stressed?", "Self-care is important", "Women carry so much", "You deserve to put yourself first", "Life can be hard sometimes" — generic questions and platitudes are dead on arrival.
 
-GROUND IT IN A REAL MOMENT — one concrete daily-life scene she recognizes, like: sitting in the car after snapping at someone; standing in the kitchen after everyone has gone to bed; lying awake replaying the day; saying "I don't mind" at a restaurant even though she used to have favorites; opening the fridge and forgetting why; crying over one small inconvenience because it was the final straw; realizing she only talks to her partner about logistics; getting annoyed when someone asks "what's wrong?" because the answer is too big; scrolling her phone because choosing something she actually wants feels impossible; being praised as "so strong" while privately wishing someone would help.
+KEEP IT UNIVERSAL — stay at the level of experiences almost everyone shares: being tired for no single reason, a mind that won't quiet down, always being the one who holds it together, days that blur into each other, the quiet moment at the end of the night. Touch a real-life moment lightly if it helps (the kitchen after everyone's asleep, lying awake replaying the day) — but never so specific or clever that someone has to see herself in an exact scenario to relate. Broad recognition over niche precision, every time.
 
 TONE: intimate, emotionally precise, grounded, quietly powerful, conversational, direct, specific, validating without being cheesy. It should feel like a private thought said out loud. NEVER sound like: a therapist giving advice, a wellness influencer, a productivity coach, a motivational speaker, a brand selling software, generic self-care content, or poetic Instagram fluff. Do not try to sound beautiful — try to sound UNCOMFORTABLY ACCURATE. The writing can be simple; the truth should be sharp.
 
 HARD BANS: never mention Ripple, Acuity, any app, AI, journaling, or any product. No selling, no product CTA of any kind ("download", "try the app", "free trial", "click the link", "journal about it" — all banned). The trust comes before any product ever does.
 
-THE CLOSING CTA: the script's LAST line is exactly ONE soft audience-building ask, in the same quiet voice — never a product CTA. The approved family (rotate and adapt, keep the register):
-- "Follow for more reminders you didn't know you needed."
-- "Send this to the woman who always says she's fine."
-- "Save this for the next time you wonder why you're so tired."
-- "If this felt familiar, you're not the only one."
-- "Follow if you're tired of carrying everything quietly."`;
+THE ENDING (2026-08-28, per Keenan: "it should never tell people to follow"): NO call to action of any kind — never tell her to follow, share, save, send, comment, or do anything at all. The last line is a soft, settling release in the same quiet voice — a permission or a landing, like an exhale ("Tonight, nothing needs you." / "You're allowed to just be here for a minute."). The script simply ends, gently.`;
 
 /**
  * Prompt block assigning this run's pain branch. Injected into the

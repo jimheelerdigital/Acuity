@@ -65,60 +65,36 @@ export const VISUAL_DNA_NOTEXT = [
  * text is the fallback description and the guardrail.
  */
 export const SELFIE_PERSONA =
-  "The SAME woman appears in every photo of this series: mid-40s, warm approachable face, shoulder-length brown hair with natural greying strands, light natural makeup or none, soft laugh lines, average realistic body. She wears normal everyday clothes (soft sweatshirts, tees, leggings, jeans — nothing styled or aspirational). ONLY her identity repeats across the series — her pose, outfit, framing, room, and lighting are DIFFERENT in every photo, like a real camera roll.";
+  "The SAME woman appears in every photo of this series: mid-40s, shoulder-length brown hair with natural greying strands, average realistic body. Her face is NEVER visible — her raised phone completely covers it in every photo, so her identity reads through her hair, build, and everyday clothes (soft sweatshirts, tees, leggings, jeans — nothing styled or aspirational). ONLY her identity repeats across the series — her pose, outfit, framing, room, and lighting are DIFFERENT in every photo, like a real camera roll.";
 
 /**
- * Pose/framing directives rotated across the selfies of a post
- * (2026-08-26, per Keenan: "the selfies all look the exact same... you
- * need variance amongst the selfies otherwise everyone knows it's ai";
- * expanded same day: "add more gestures... a seated option... a non
- * mirror selfie option, MORE variance").
- * Without these, every shot converges on the same phone-over-face,
- * waist-up, centered mirror composition — and when a slide is generated
- * from a reference photo, the edit model happily clones the reference's
- * pose and room too. Each slide gets a different entry so no two
- * selfies in a post share pose or framing. Entries marked "NO mirror"
- * are direct front-camera selfies — the pose directive overrides any
- * mirror implied by the scene text.
- *
- * ORDERING MATTERS: the first SELFIE_COVER_POSE_COUNT entries show her
- * face and are the only ones eligible for the COVER — the cover's
- * text-free raw is the identity anchor for every future post, so it
- * must never be a facing-away shot. Entries after the cutoff (added
- * 2026-08-26, per Keenan: "could also be a photo of the person
- * somewhere where they're facing away, or them in nature") are
- * facing-away and outdoor shots, used for step slides only.
+ * Pose/framing directives rotated across selfie covers (2026-08-28, per
+ * Keenan: the phone must COVER her face in every selfie, only ONE
+ * selfie per slideshow). Every entry is a mirror selfie with the raised
+ * phone hiding her face — identity persists through hair, build, and
+ * clothes plus the previous cover's raw as an image reference. Variance
+ * lives in framing, posture, room, and light, never in showing her
+ * face.
  */
 export const SELFIE_POSE_VARIANTS = [
-  "FULL-LENGTH from several steps back — whole body and feet visible in a floor mirror, phone held at chest height, face fully visible, weight on one hip",
-  "close waist-up shot, phone held high beside her head, head tilted, hint of a tired smile, face mostly visible",
-  "sitting cross-legged on the floor in front of the mirror, phone at face height in one hand, shoulders relaxed",
-  "leaning a shoulder against the wall next to the mirror, body at a three-quarter angle, phone low at stomach height, eyes down on the screen",
-  "caught mid-motion fixing her hair with the free hand, phone at collarbone height, slightly imperfect candid framing",
-  "dim room with the phone FLASH ON — harsh flash bloom in the mirror, cooler color cast, deadpan tired expression, face visible",
-  "standing off-center with lots of room in frame, phone resting near her cheek at an angle, other hand in a pocket",
-  "sitting on the edge of her bed facing the mirror, elbows resting on her knees, phone held loosely in both hands, soft tired half-smile",
-  "direct front-camera selfie at arm's length — NO mirror in the shot: phone held up and slightly to one side, her arm reaching toward the camera and out of frame, gentle wide-angle distortion, face and shoulders filling the frame",
-  "direct front-camera selfie sunk into the corner of the couch — NO mirror in the shot: legs tucked under her, a blanket over her lap, phone at arm's length slightly above eye level looking down at her",
-  "raising her mug toward the mirror in a small cheers gesture with her free hand, phone at chest height, warm easy grin",
-  "free hand giving a little shrug — palm turned up, eyebrows raised in a wry 'what can you do' expression, phone at collarbone height",
-  "mid-laugh with her free hand flat on her chest, eyes nearly closed, genuinely candid imperfect timing, phone slightly tilted",
-  "sitting on the stairs with the phone held out low in front of her — NO mirror in the shot: knees together, chin slightly down, quiet end-of-day expression",
-  // ── facing-away / outdoor shots below (step slides only, never the cover) ──
-  "photographed from BEHIND — NO mirror, NO phone visible: she stands at the kitchen window with her back to the camera, mug in hand, hair loose over her shoulders, morning light around her silhouette",
-  "photographed from BEHIND walking away down a quiet tree-lined path — NO mirror, NO phone visible: sneakers and a light jacket, dappled morning light through the leaves, mid-stride",
-  "photographed from BEHIND sitting on the back porch steps — NO mirror, NO phone visible: shoulders relaxed, a blanket around her, looking out at the yard in evening light",
-  "OUTDOORS, three-quarter view from behind at a shoreline or open field — NO mirror, NO phone visible: wind in her hair, arms loosely crossed, face turned away toward the horizon",
-  "OUTDOORS on a park bench, seen from the side and slightly behind — NO mirror, NO phone visible: coffee cup beside her, one knee pulled up, watching the trees, face barely visible in profile",
+  "FULL-LENGTH from several steps back — whole body and feet visible in a floor mirror, phone raised directly in front of her face and fully covering it, weight on one hip",
+  "close waist-up shot, phone held up square over her face so it's completely hidden, elbow out, shoulders relaxed",
+  "sitting cross-legged on the floor in front of the mirror, phone raised in one hand covering her whole face, back slightly rounded",
+  "leaning a shoulder against the wall next to the mirror, body at a three-quarter angle, phone up over her face hiding it, free hand in a pocket",
+  "caught mid-motion fixing her hair with the free hand, phone raised in front of her face and blocking it, slightly imperfect candid framing",
+  "dim room with the phone FLASH ON — harsh flash bloom in the mirror washing out the phone that covers her face, cooler color cast",
+  "standing off-center with lots of room in frame, phone angled up in front of her face so none of it shows, other hand hanging loose",
+  "sitting on the edge of her bed facing the mirror, elbows resting on her knees, phone lifted in both hands directly in front of her face",
+  "raising her mug toward the mirror in a small cheers gesture with her free hand, phone held over her face hiding it completely",
+  "free hand giving a little shrug — palm turned up, phone raised square in front of her face so it's fully covered",
 ] as const;
 
 /**
- * How many leading SELFIE_POSE_VARIANTS entries show her face. The
- * cover MUST draw from this prefix only — its raw is the reference
- * image that keeps her identity consistent across posts, and a
- * facing-away cover would break the chain.
+ * How many leading SELFIE_POSE_VARIANTS entries are cover-eligible.
+ * Every pose is now a phone-over-face mirror selfie (2026-08-28), so
+ * the whole pool qualifies.
  */
-export const SELFIE_COVER_POSE_COUNT = 14;
+export const SELFIE_COVER_POSE_COUNT = SELFIE_POSE_VARIANTS.length;
 
 /**
  * Realism DNA for the selfie slideshow. Everything here fights
@@ -126,11 +102,12 @@ export const SELFIE_COVER_POSE_COUNT = 14;
  * phone photo, not a portrait session.
  */
 export const SELFIE_VISUAL_DNA = [
-  "This is a REAL amateur smartphone photo of a real woman — a mirror selfie, a direct front-camera selfie held at arm's length, or a candid shot of her facing away from the camera (the pose directive decides which) — an ordinary photo from her own camera roll, posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
-  "PHOTOGRAPHY: shot on a phone camera. Natural imperfect framing, slightly off-center, honest angles. Natural light only — window light, bathroom vanity light, warm lamp, or real daylight outdoors — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
-  "SETTING: her real, lived-in world — a slightly cluttered home (counters, a towel on a hook, cables, door frames, normal furniture) or an ordinary outdoor place (her backyard, a neighborhood sidewalk, a park path, a quiet shoreline). Authentic and unglamorous, never staged or magazine-styled.",
-  "In a MIRROR shot: the mirror, her phone, and her reflection are part of the shot the way real mirror selfies work — fingerprints or smudges on the mirror are fine. In a FRONT-CAMERA shot: there is NO mirror and her phone is NOT visible (she's holding it), just the natural arm's-length angle with slight lens distortion. In a FACING-AWAY shot: NO mirror and NO phone in frame — her face is turned away or barely in profile, and her identity reads through the same hair, build, and everyday clothes.",
-  "VARIANCE: real people never take the same selfie twice. This photo must have its own distinct pose, camera distance, angle, outfit, room, and light — never the polished default of a centered waist-up shot with the phone covering the face.",
+  "This is a REAL amateur smartphone photo of a real woman — a mirror selfie, an ordinary photo from her own camera roll, posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
+  "PHOTOGRAPHY: shot on a phone camera. Natural imperfect framing, slightly off-center, honest angles. Natural light only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
+  "SETTING: her real, lived-in world — a slightly cluttered home (counters, a towel on a hook, cables, door frames, normal furniture). Authentic and unglamorous, never staged or magazine-styled.",
+  "THE MIRROR IS A LITTLE DIRTY: light smudges, a few fingerprints, specks of dust, maybe a faint streak catching the light — the way a real, lived-with mirror actually looks. Subtle and realistic, not filthy.",
+  "HER FACE IS COVERED: her raised phone is directly in front of her face and completely hides it — no eyes, nose, or mouth visible. Her identity reads through her hair, build, and everyday clothes, never her face.",
+  "VARIANCE: real people never take the same selfie twice. This photo must have its own distinct posture, camera distance, angle, outfit, room, and light compared to her other posts.",
   "9:16 vertical portrait, exactly like a phone photo.",
   "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, phone-screen UI, logos, or watermarks. The phone screen faces away or is dark.",
 ].join("\n");

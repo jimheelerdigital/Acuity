@@ -28,13 +28,11 @@ export interface CarouselTopic {
    */
   emotionBeat?: string;
   /**
-   * LLM-written caption opening (2026-08-20, per Keenan: captions must
-   * read personal, not AI). 1-3 short lines in the page-owner's voice,
-   * shown above the numbered list. Falls back to templates when absent.
+   * LLM-written thought-provoking question — the entire caption above
+   * the hashtags (2026-08-28, per Keenan: one question + 3-4 hashtags,
+   * nothing else). Falls back to a question pool when absent.
    */
-  captionOpen?: string;
-  /** LLM-written caption closing — comment/share ask in the same voice. */
-  captionClose?: string;
+  captionQuestion?: string;
 }
 
 export const CAROUSEL_TOPICS: CarouselTopic[] = [

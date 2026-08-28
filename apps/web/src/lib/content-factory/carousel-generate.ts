@@ -332,7 +332,7 @@ export function buildSelfieImagePrompt(opts: {
 
   return [
     opts.hasReference
-      ? "From the reference image take ONLY the woman's identity: the EXACT same person — identical face, hair, skin tone, and build. Take NOTHING else from the reference: do NOT copy or reuse its pose, arm position, phone position, framing, camera distance, outfit, room, furniture, or lighting. This is a COMPLETELY DIFFERENT photo of the same woman, taken on a different day."
+      ? "From the reference image take ONLY the woman's identity: the EXACT same person — identical hair, skin tone, and build (her face is hidden behind her raised phone in every photo of this series, and stays hidden here). Take NOTHING else from the reference: do NOT copy or reuse its pose, arm position, framing, camera distance, outfit, room, furniture, or lighting. This is a COMPLETELY DIFFERENT photo of the same woman, taken on a different day."
       : "",
     SELFIE_PERSONA,
     `Scene (follow exactly): ${opts.scene}`,

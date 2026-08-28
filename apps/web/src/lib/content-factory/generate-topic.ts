@@ -46,13 +46,11 @@ export interface GeneratedTopic {
   /** Bespoke emotion direction per reason slide, same order as `reasons`. */
   reasonEmotions?: SlideEmotion[];
   /**
-   * LLM-written caption opener, ONE short line in the page-owner's
-   * voice (2026-08-20, per Keenan: captions must read personal, never
-   * AI-written; 2026-08-21: short — the caption never repeats the slides).
+   * LLM-written thought-provoking question — the ENTIRE caption above
+   * the hashtags (2026-08-28, per Keenan: "just give me a thought
+   * provoking question and then 3-4 hashtags. this goes for all posts").
    */
-  captionOpen?: string;
-  /** LLM-written comment/share ask line, same voice. */
-  captionClose?: string;
+  captionQuestion?: string;
 }
 
 const SYSTEM_PROMPT = `You are a social media content strategist for Ripple, an AI-powered voice self-reflection app. Your job is to write carousel topics that stop the scroll and make people feel deeply seen.
@@ -152,11 +150,9 @@ STRICT RULES for every "motion":
 - Only things ALREADY IN YOUR SCENE move — objects, light, steam, rain, curtains, flame. Nothing new appears; nobody and nothing enters or leaves the frame. No people arrive.
 - No camera directions.
 
-CAPTION (2026-08-20, per Keenan: captions must read personal, never AI-written. 2026-08-21: SHORT — the slides carry the content, the caption never repeats them):
-The post caption is written by YOU, in the voice of a real woman who runs this page — she's in the audience herself, posting to her own page. Text-message tone, lowercase-leaning, contractions always, no marketing words, no emoji (one at most), nothing that sounds like a brand or a coach.
-- "captionOpen": ONE short line, under 12 words. It's the only line visible before "...more", so it must hook on its own — a personal aside ("number 4 took me out"), a confession, or a direct question to her. NEVER restate the headline, NEVER list or summarize the slides — they can read those in the post.
-- "captionClose": ONE line — a comment ask or a share/save ask in the same voice ("tell me which number got you", "send this to the friend who never stops moving"). Vary it; never reuse the examples verbatim.
-- The test for both: would a real person paste this from their Notes app? If it reads like copy, rewrite it.
+CAPTION (2026-08-28, per Keenan: one question, a few hashtags, done):
+- "captionQuestion": ONE thought-provoking question in the voice of the real woman who runs the page — under 15 words, lowercase-leaning, text-message tone, contractions. It should make her audience stop and answer honestly in their heads ("when did being tired become your baseline?"). NEVER restate the headline, NEVER summarize the slides, NEVER a share/send/"send this to" ask, NEVER "which one are you doing first", NEVER mention any app or product. At most one emoji, only if natural.
+- That question plus a few hashtags IS the entire caption — nothing else is written.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -169,8 +165,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
   "cover": { "mood": "...", "scene": "...", "motion": "..." },
   "reasonEmotions": [{ "mood": "...", "scene": "...", "motion": "..." }, ...],
-  "captionOpen": "one short hook line in the page-owner's voice",
-  "captionClose": "one comment/share ask in the same voice"
+  "captionQuestion": "one thought-provoking question in the page-owner's voice"
 }
 
 "details" and "reasonEmotions" MUST each have exactly one entry per item, in the same order as "reasons". ACTIONABLE posts usually lean hopeful or tender (calm, relief, small acts of care) — the emotion must still match each slide's exact text.
@@ -188,17 +183,25 @@ export interface GeneratedSelfieTopic {
   /** One supporting sentence per step, same order. */
   details: string[];
   mood?: Mood;
-  /** Mirror-selfie scene direction for the cover (always a mirror shot). */
+  /**
+   * Mirror-selfie scene direction for the cover — the ONLY selfie in
+   * the slideshow (2026-08-28, per Keenan): phone covering her face,
+   * mirror a little dirty.
+   */
   coverScene: string;
-  /** Per-step shot: mirror selfie of the avatar OR aesthetic POV/still-life. */
+  /**
+   * Per-step shot. Since 2026-08-28 every step is forced "aesthetic"
+   * (no people) — "mirror" stays in the type for the pipeline's shape
+   * but never occurs at runtime.
+   */
   stepShots: { type: "mirror" | "aesthetic"; scene: string }[];
-  captionOpen?: string;
-  captionClose?: string;
+  /** ONE thought-provoking question — the entire caption above hashtags. */
+  captionQuestion?: string;
 }
 
 const SELFIE_SYSTEM_PROMPT = `You are writing a first-person photo slideshow for the woman who runs a self-reflection Instagram/TikTok page. She is 40-something, carries a heavy mental load (work, family, aging parents, invisible labor), and posts like a real person — this is HER photo dump, not brand content.
 
-FORMAT: a swipeable image slideshow. Slide 1 (cover) is a mirror selfie of her with the hook text burned on. Each following slide is one thing she actually did to fix ONE specific, relatable problem.
+FORMAT: a swipeable image slideshow. Slide 1 (cover) is a mirror selfie of her — phone raised and COVERING her face — with the hook text burned on. It is the ONLY photo of her in the whole slideshow. Each following slide is an aesthetic no-people photo paired with one thing she actually did to fix ONE specific, relatable problem.
 
 AUDIENCE: women ~40-50 exactly like her. They should feel "she's me, and she figured something out" — never lectured.
 
@@ -214,17 +217,14 @@ STEPS (one per slide, 4-6 total):
 - No emojis anywhere in headline, steps, or details (the text is burned onto photos in sticker type).
 
 SHOTS (one per step, plus the cover):
-- "cover": ALWAYS a mirror selfie of her. Write the scene: which mirror, what she wears, the light, her posture. e.g. "full-length bedroom mirror, oversized grey sweatshirt and leggings, hair clipped up, warm lamp light, phone up covering half her face".
-- Each step's shot is either:
-  • "mirror" — another photo of THE SAME woman, different outfit/place/time of day, subtly acting out the step. It can be a mirror selfie, a casual front-camera selfie, OR a candid shot of her facing away from the camera (standing at the window with her back to us, walking a tree-lined path, sitting on the porch steps, out in nature). Vary which kind across posts.
-  • "aesthetic" — a genuinely beautiful first-person phone photo with NO person in it: her steaming coffee by the window, the journal and pen in morning sun, her shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed. It should be the satisfying, pleasing-to-the-eye kind of shot people save.
-- SELFIE LIMIT (hard rule): the whole slideshow contains EXACTLY 2 selfies TOTAL, and the cover is one of them — so use exactly ONE "mirror" step and make every other step "aesthetic". The FIRST step must be "aesthetic" (the cover right before it is a selfie); place the "mirror" step somewhere in the middle or end.
+- "cover": ALWAYS a mirror selfie of her with her raised phone COMPLETELY covering her face — no eyes, nose, or mouth ever visible. The mirror is a little dirty, realistically: light smudges, a few fingerprints, a faint streak catching the light. Write the scene: which mirror, what she wears, the light, her posture. e.g. "full-length bedroom mirror with light smudges, oversized grey sweatshirt and leggings, warm lamp light, phone raised covering her whole face".
+- EVERY step's shot is "aesthetic" — a genuinely beautiful first-person phone photo with NO person in it: her steaming coffee by the window, the journal and pen in morning sun, her shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed. It should be the satisfying, pleasing-to-the-eye kind of shot people save. The cover is the ONLY selfie in the slideshow — never put her (or any person) in a step shot.
 - Every scene distinct: different room, light, angle, time of day, and subject — no two aesthetic scenes may feature the same object or surface. Under 30 words each, concrete nouns only.
 - Each scene must visually echo its step's meaning (the step about the phone shows the phone face-down; the step about walking shows the sneakers or the morning street).
 
-CAPTION: written by her, text-message tone, lowercase-leaning, contractions.
-- "captionOpen": ONE line under 12 words — personal aside or confession ("posting this because i needed the reminder"). Never restate the headline. At most one emoji.
-- "captionClose": ONE line — a soft conversational ask ("tell me which one you'd actually try", "save this for the week you need it"). NEVER "follow me"/"follow for more", NEVER mention any app or product — this is her personal post, not a promotion.
+CAPTION — one question, nothing else:
+- "captionQuestion": ONE thought-provoking question in her voice, under 15 words, lowercase-leaning, text-message tone — the kind a real woman would type that makes someone stop and answer honestly in their head ("when did resting start feeling like something you have to earn?"). Never restate the headline, never "which one are you doing first", never a share/send ask, never mention any app or product. At most one emoji, and only if it feels natural.
+- That question plus a few hashtags IS the entire caption — do not write anything else.
 
 TONE TEST: read every line as a tired real woman at 9pm. If anything sounds like a brand, a coach, or AI, rewrite it. US English spelling.
 
@@ -236,10 +236,9 @@ OUTPUT (strict JSON, no markdown):
   "details": ["one sentence", ...],
   "stepCount": 4 | 5 | 6,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
-  "cover": { "scene": "mirror selfie scene" },
-  "stepShots": [{ "type": "mirror" | "aesthetic", "scene": "..." }, ...],
-  "captionOpen": "...",
-  "captionClose": "..."
+  "cover": { "scene": "mirror selfie scene, phone covering her face, slightly dirty mirror" },
+  "stepShots": [{ "type": "aesthetic", "scene": "..." }, ...],
+  "captionQuestion": "one thought-provoking question in her voice"
 }
 "details" and "stepShots" MUST each have exactly one entry per step, in order.`;
 
@@ -307,43 +306,21 @@ export async function generateSelfieTopic(
 
     const AESTHETIC_FALLBACK_SCENE =
       "a beautiful first-person phone photo of a warm home detail in soft golden light, no people";
-    const MIRROR_FALLBACK_SCENE =
-      "another mirror selfie of the same woman, different room and outfit, natural light";
+    // ONE selfie per slideshow (2026-08-28, per Keenan): the cover is
+    // the only photo of her — every step slide is forced aesthetic,
+    // whatever the model returned.
     const rawShots = Array.isArray(parsed.stepShots) ? parsed.stepShots : [];
     const stepShots = steps.map((_, i) => {
       const s = (rawShots[i] ?? {}) as { type?: unknown; scene?: unknown };
-      const type = s.type === "mirror" ? ("mirror" as const) : ("aesthetic" as const);
+      const modelSaidMirror = s.type === "mirror";
       return {
-        type,
+        type: "aesthetic" as const,
         scene:
-          typeof s.scene === "string" && s.scene.trim()
+          typeof s.scene === "string" && s.scene.trim() && !modelSaidMirror
             ? s.scene.trim()
-            : type === "mirror"
-              ? MIRROR_FALLBACK_SCENE
-              : AESTHETIC_FALLBACK_SCENE,
+            : AESTHETIC_FALLBACK_SCENE,
       };
     });
-
-    // Enforce the selfie limit deterministically (2026-08-26, per
-    // Keenan): EXACTLY 2 selfies TOTAL including the cover — so exactly
-    // one mirror step, everything else aesthetic. The cover is always a
-    // selfie, so the first step can never be mirror.
-    let mirrorSteps = 0;
-    for (let i = 0; i < stepShots.length; i++) {
-      if (stepShots[i].type === "mirror") {
-        if (i === 0 || mirrorSteps >= 1) {
-          stepShots[i] = { type: "aesthetic", scene: AESTHETIC_FALLBACK_SCENE };
-        } else {
-          mirrorSteps++;
-        }
-      }
-    }
-    if (mirrorSteps === 0 && stepShots.length >= 2) {
-      // Guarantee the second selfie exists — drop it mid-deck (never
-      // step 0, which must stay aesthetic right after the selfie cover).
-      const mid = Math.min(2, stepShots.length - 1);
-      stepShots[mid] = { type: "mirror", scene: MIRROR_FALLBACK_SCENE };
-    }
 
     const slug = (parsed.headline as string)
       .toLowerCase()
@@ -360,15 +337,11 @@ export async function generateSelfieTopic(
       coverScene:
         typeof parsed.cover?.scene === "string" && parsed.cover.scene.trim()
           ? parsed.cover.scene.trim()
-          : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone up by her face",
+          : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone raised covering her whole face, mirror lightly smudged",
       stepShots,
-      captionOpen:
-        typeof parsed.captionOpen === "string" && parsed.captionOpen.trim()
-          ? parsed.captionOpen.trim()
-          : undefined,
-      captionClose:
-        typeof parsed.captionClose === "string" && parsed.captionClose.trim()
-          ? parsed.captionClose.trim()
+      captionQuestion:
+        typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
+          ? parsed.captionQuestion.trim()
           : undefined,
     };
   } catch (err) {
@@ -564,13 +537,9 @@ Return ONLY valid JSON, no other text.`;
       mood,
       coverEmotion: parseEmotion(parsed.cover),
       reasonEmotions,
-      captionOpen:
-        typeof parsed.captionOpen === "string" && parsed.captionOpen.trim()
-          ? parsed.captionOpen.trim()
-          : undefined,
-      captionClose:
-        typeof parsed.captionClose === "string" && parsed.captionClose.trim()
-          ? parsed.captionClose.trim()
+      captionQuestion:
+        typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
+          ? parsed.captionQuestion.trim()
           : undefined,
     };
   } catch (err) {

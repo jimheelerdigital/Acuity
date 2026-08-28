@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-08-28] — One-selfie slideshows, meditative ambient scripts, question-only captions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** TBD
+
+### In plain English (for Keenan)
+Three changes you asked for, all live. (1) The selfie slideshow now has exactly ONE selfie — the cover — with her phone covering her face and a realistically slightly-dirty mirror (smudges, fingerprints, a faint streak); every other slide is an aesthetic no-people shot. (2) The calm ambient video scripts are now generic and high-level — relaxing, meditative, listen-along, things almost anyone relates to — and they never tell people to follow; the script just ends softly. (3) Captions on EVERY post are now just one thought-provoking question plus 3-4 hashtags. No more "send this to…" lines, no "which one are you doing first", no bio plug on any post.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: SELFIE_POSE_VARIANTS rewritten to 10 all-mirror phone-covering-face poses (front-camera + facing-away entries removed); SELFIE_COVER_POSE_COUNT = pool length; SELFIE_PERSONA + SELFIE_VISUAL_DNA now demand a hidden face and a lightly dirty mirror
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SELFIE_SYSTEM_PROMPT — cover is the only selfie, all step shots aesthetic; the exactly-2-selfies enforcement loop and MIRROR_FALLBACK_SCENE deleted (parse now forces every step aesthetic); both topic prompts replace captionOpen/captionClose with a single `captionQuestion`
+- `apps/web/src/lib/content-factory/topics.ts`: CarouselTopic.captionOpen/captionClose → captionQuestion
+- `apps/web/src/lib/content-factory/caption.ts`: buildCaption + buildAmbientCaption rewritten — one question + hashtags, nothing else; ripple bio plug (CLOSING_LINE), comment CTAs, and share-line pools deleted; pickHashtags now returns 3-4 tags (1 mega + 2-3 niche, slug-rotated) instead of 5
+- `apps/web/src/lib/content-factory/ambient-video.ts`: system prompt restructured to 4 beats (hook → unfolding → truth → settling close), generic/high-level meditative direction, NO CTA of any kind; caption field is now the single question
+- `apps/web/src/lib/content-factory/script-style-guide.ts`: closing-CTA family removed (never tell people to follow); hooks/grounding sections redirected from hyper-specific to universal/high-level
+- `apps/web/src/inngest/functions/carousel-daily.ts`, `carousel-one-off.ts`, `scripts/run-selfie-example.ts`: callers updated for captionQuestion; plug option gone
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: selfie reference prompt takes identity from hair/build (face always hidden)
+- No schema changes, no cron/trigger changes (prompt + code only → no Inngest resync needed)
+
+### Manual steps needed
+- [ ] Review the re-sent selfie + ambient test posts in email (Keenan)
+
+### Notes
+- Keenan's caption rule is global and emphatic ("this goes for all posts"): ONE thought-provoking question + 3-4 hashtags, nothing else — no plug even on carousel posts, reversing the 2026-08-20 bio-plug line.
+- The selfie avatar's face is now NEVER visible (reverses the 2026-08-26 face-visible cover-pose rule). Identity persistence now rides on hair/build/clothes + the reference image chain.
+- Ambient scripts reversed direction: the 2026-08-19 "substance/specificity" push is replaced by generic, high-level, meditative listen-along — and the follower CTA is banned outright.
+
 ## [2026-08-28] — Daily content restructured to 4 lanes: photoreal carousels, voiced ambient, selfie
 
 **Requested by:** Keenan

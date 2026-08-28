@@ -21,10 +21,13 @@ import { inngest } from "@/inngest/client";
  *                          carouselAmbientVideoFn)
  * - 12 UTC (7am Central):  SELFIE — realistic first-person "this is how
  *                          i ..." photo slideshow (2026-08-25 per
- *                          Keenan): a consistent, hyper-realistic woman
- *                          taking mirror selfies, mixed with aesthetic
- *                          POV shots, captions burned onto every image
- *                          in TikTok sticker style. Same avatar across
+ *                          Keenan; tightened 2026-08-28: ONE selfie per
+ *                          slideshow): the cover is a mirror selfie of
+ *                          a consistent, hyper-realistic woman — phone
+ *                          covering her face, mirror a little dirty —
+ *                          and every step slide is an aesthetic POV
+ *                          shot, captions burned onto every image in
+ *                          TikTok sticker style. Same avatar across
  *                          posts — each run anchors identity on the
  *                          previous selfie post's cover via the
  *                          gpt-image-2 edit (reference) endpoint. This
@@ -87,11 +90,12 @@ export const carouselDailyCronFn = inngest.createFunction(
     }
 
     // ── SELFIE bucket: realistic first-person photo slideshow ──────
-    // 2026-08-25, per Keenan. Fully static (no animation): cover mirror
-    // selfie + 4-6 step slides mixing mirror selfies (same avatar,
-    // identity anchored on a reference image) and hyper-realistic
-    // aesthetic POV shots. Captions burned onto every image in TikTok
-    // sticker style. Emails immediately (no animation).
+    // 2026-08-25, per Keenan; 2026-08-28: ONE selfie per slideshow.
+    // Fully static (no animation): cover mirror selfie (phone covering
+    // her face, slightly dirty mirror; same avatar, identity anchored
+    // on a reference image) + 4-6 hyper-realistic aesthetic POV step
+    // slides. Captions burned onto every image in TikTok sticker
+    // style. Emails immediately (no animation).
     if (bucket === "selfie") {
       // Step 1: topic + persona anchor (previous selfie post's raw cover).
       const selfie = await step.run("generate-selfie-topic", async () => {
@@ -307,20 +311,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           "@/lib/content-factory/carousel-generate"
         );
 
-        // plug: false (2026-08-26, per Keenan) — selfie posts build the
-        // page, they don't sell; no ripple/bio line in the caption.
-        const caption = buildCaption(
-          {
-            slug,
-            headline: selfie.headline,
-            style: "hook",
-            lane: "cinematicReal",
-            reasons: selfie.steps,
-            captionOpen: selfie.captionOpen,
-            captionClose: selfie.captionClose,
-          },
-          { plug: false }
-        );
+        // Caption = one thought-provoking question + 3-4 hashtags
+        // (2026-08-28, per Keenan — all posts, no plug, no asks).
+        const caption = buildCaption({
+          slug,
+          headline: selfie.headline,
+          style: "hook",
+          lane: "cinematicReal",
+          reasons: selfie.steps,
+          captionQuestion: selfie.captionQuestion,
+        });
 
         const post = await prisma.carouselPost.create({
           data: {
@@ -641,10 +641,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         style: topicData.style as any,
         lane: topicData.lane as any,
         reasons: topicData.reasons,
-        // LLM-written personal caption lines (2026-08-20) — buildCaption
-        // falls back to its pools when these are absent.
-        captionOpen: topicData.captionOpen,
-        captionClose: topicData.captionClose,
+        // LLM-written caption question (2026-08-28) — buildCaption
+        // falls back to its question pool when absent.
+        captionQuestion: topicData.captionQuestion,
       };
       const caption = buildCaption(topic);
 

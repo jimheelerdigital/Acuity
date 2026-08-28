@@ -102,8 +102,7 @@ async function main() {
           "a mug of coffee on a wooden porch railing, dew still on the wood, yard soft-focus beyond, early golden light, no people",
       },
     ],
-    captionOpen: "didn't think ten minutes outside would fix anything. i was wrong.",
-    captionClose: "save this for tomorrow morning.",
+    captionQuestion: "when's the last time you gave yourself ten minutes outside?",
   };
 
   let topic: Awaited<ReturnType<typeof generateSelfieTopic>>;
@@ -236,18 +235,14 @@ async function main() {
   }
 
   // ── Save + email ───────────────────────────────────────────────
-  const caption = buildCaption(
-    {
-      slug,
-      headline: topic.headline,
-      style: "hook",
-      lane: "cinematicReal",
-      reasons: topic.steps,
-      captionOpen: topic.captionOpen,
-      captionClose: topic.captionClose,
-    },
-    { plug: false }
-  );
+  const caption = buildCaption({
+    slug,
+    headline: topic.headline,
+    style: "hook",
+    lane: "cinematicReal",
+    reasons: topic.steps,
+    captionQuestion: topic.captionQuestion,
+  });
 
   // Re-runs regenerate images at the same storage paths; replace any
   // existing post for this slug+date instead of tripping the unique

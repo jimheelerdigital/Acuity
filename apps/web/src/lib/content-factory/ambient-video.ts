@@ -64,13 +64,13 @@ export interface AmbientScript {
   visual: string;
   /** The ambient movement for the i2v prompt (clouds drift, light shifts...). */
   motion: string;
-  /** 1-2 caption lines that tee up the video, same voice. */
+  /** Legacy fallback for the caption question. */
   captionHook?: string;
-  /** One question inviting viewers to share their version. */
+  /** Fallback for the caption question. */
   commentPrompt?: string;
   /**
-   * Full LLM-written post caption body (2026-08-20, per Keenan: captions
-   * must read personal, never AI). Everything above the hashtags.
+   * ONE thought-provoking question (2026-08-28, per Keenan: question +
+   * a few hashtags is the entire caption, all posts).
    */
   caption?: string;
 }
@@ -83,16 +83,15 @@ ${SCRIPT_STYLE_GUIDE}
 
 ${painBranchBlock(branch)}
 
-THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thought that lands. Success is her sending the video to a friend, tagging her sister, saving it for a hard day, and following the account. Pick the most universally relatable version of every idea — moments most women this age have actually lived, not niche or clever ones.
+THE FORMAT (why it works, 2026-08-28, per Keenan: "much more generic and high level... a relaxing meditative post that people want to listen along to"): a beautiful, quiet scene + a low, warm voice + a thought almost anyone can relate to. It should feel like a guided breath — something she puts on, listens along to, and replays because it soothes her. GENERIC and HIGH-LEVEL always beats specific and clever here: universal experiences most women this age have lived, never niche scenarios.
 
-STRUCTURE — every script lands all five beats, in this order:
-1. HOOK (first line): names a private, specific emotional truth — it must make her stop mid-scroll and think "wait — that's me." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
-2. SCENE (the middle): AT LEAST 2-3 distinct, concrete moments from her real life. Every line adds a NEW specific detail or pushes the idea one step further — no line may just restate the previous one. She should NEVER have to work to decode a metaphor.
-3. TRUTH: the deeper emotional insight underneath the moments.
-4. REFRAME: show her she is not broken, dramatic, lazy, or failing.
-5. FOLLOWER CTA (last line): one soft audience-building ask from the approved family, in the same quiet voice.
+STRUCTURE — every script lands these four beats, in this order:
+1. HOOK (first line): names a private but UNIVERSAL emotional truth — she stops mid-scroll and thinks "that's me," without needing any specific scenario to apply. NO poetic fragments, NO scene-setting, NO openers that need context.
+2. UNFOLDING (the middle): the idea opens up slowly and gently, one breath at a time — broad, recognizable strokes (the tiredness with no single cause, the mind that won't go quiet, always holding it together). No decoding, no cleverness, nothing she has to work for.
+3. TRUTH: the deeper emotional insight underneath — still high-level and universal.
+4. SETTLING CLOSE (last line): a soft landing — permission, release, an exhale. NO call to action of ANY kind: never tell her to follow, share, save, send, or comment. The script just ends, gently.
 
-SUBSTANCE TEST (2026-08-19, per Keenan): by the end she should have RECOGNIZED something specific she hadn't put into words — a real observation with insight, not a vibe. If you removed the middle lines and nothing was lost, the script has no substance. Rewrite it.
+MEDITATIVE TEST: read it at half speed. It should feel calming to LISTEN to — unhurried, warm, like being talked down from the day. If any line feels like content, cleverness, or a lecture instead of a breath, rewrite it.
 
 COHERENCE TEST: one idea per script. If a stranger heard it once at half-attention, could she repeat the point back in one sentence? If not, rewrite it.
 
@@ -102,7 +101,7 @@ SCRIPT RULES:
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
-- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). The ONLY call to action is the single soft follower CTA that ends the script — never a product CTA.
+- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). NO call to action of any kind — no follow, share, save, send, or comment asks, and never a product CTA. The script ends on the settling close.
 
 VISUAL RULES ("visual" — the single image the whole video lives on):
 - A breathtaking, SOOTHING natural scene with strong visual pull, catchy enough to stop a scroll on the first frame. VARY the scene type boldly across posts — be creative, we are testing what works (2026-08-20, per Keenan). Rotate among (and invent beyond): storm clouds rolling at golden hour, rain running down a window at dusk, ocean waves rolling in under moonlight, a near-still scene where only the light changes (a candle, a sunbeam crossing a room, city lights at night), fog moving over a lake, snow falling past a streetlight.
@@ -119,12 +118,12 @@ MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
-- "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. KEEP IT SHORT: exactly 2 lines, blank line between them. Line 1 is a question or personal aside that stops the scroll on its own, under 12 words (it's the only line visible before "...more"). Line 2 is one share/save ask in her voice ("send this to the friend who never stops moving"). NEVER retell, quote, or summarize the video's script — the video says it; the caption doesn't repeat it. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever.
-- "commentPrompt": the same first-line question on its own (fallback field).
-- "captionHook": 1-2 of the personal lines on their own (fallback field).
+- "caption": ONE thought-provoking question in the voice of a real woman who runs the page — under 15 words, lowercase-leaning, text-message tone, contractions (hashtags are added automatically; the question IS the whole caption). It should make someone stop and answer honestly in their head ("when's the last time your mind was actually quiet?"). NEVER retell or summarize the video's script, NEVER a share/send/save ask, NEVER "comment below", NEVER mention any app or product. At most one emoji, only if natural.
+- "commentPrompt": the same question on its own (fallback field).
+- "captionHook": the same question again (legacy fallback field).
 - "vocalScript": the EXACT same script text turned into a fully directed vocal PERFORMANCE using ElevenLabs v3 audio tags. This is where the read becomes hyper-realistic — direct it like a voice actor's marked-up script:
   • Use 5-10 tags across the read, one wherever the delivery should shift. Allowed tags: [softly], [warmly], [gently], [quietly], [whispers], [sighs], [exhales], [tired], [tender], [hesitates], [pause], [long pause].
-  • Start with [softly] or [warmly]. Change the emotional register as the script moves — e.g. [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the CTA.
+  • Start with [softly] or [warmly]. Change the emotional register as the script moves — e.g. [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the settling close.
   • Add [pause] or [long pause] where a real person would actually stop — before the truth lands, after the hardest line. You may also add extra "..." beyond the clean script's for micro-hesitations.
   • Put [sighs] or [exhales] where a tired woman would audibly breathe — at most twice, where it's earned.
   • Tags and ellipses direct delivery only — the WORDS must stay identical to "script". Never all-caps, never exclamation marks.
@@ -133,7 +132,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
 {
   "theme": "5-10 word label for this concept (used to avoid future repeats)",
   "title": "...",
-  "caption": "the full post caption, in her voice, no hashtags",
+  "caption": "one thought-provoking question in her voice, no hashtags",
   "captionHook": "...",
   "commentPrompt": "...",
   "script": "the full 40-80 word narration",
