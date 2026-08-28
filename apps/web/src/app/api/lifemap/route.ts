@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { buildMemoryPayload } from "@/lib/lifemap-memory-payload";
 import { DEFAULT_LIFE_AREAS } from "@acuity/shared";
 
 export const dynamic = "force-dynamic";
@@ -49,19 +50,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       areas,
-      memory: {
-        totalEntries: memory.totalEntries,
-        firstEntryDate: memory.firstEntryDate,
-        recurringThemes: memory.recurringThemes,
-        recurringPeople: memory.recurringPeople,
-        recurringGoals: memory.recurringGoals,
-        careerMentions: memory.careerMentions,
-        healthMentions: memory.healthMentions,
-        relationshipsMentions: memory.relationshipsMentions,
-        financesMentions: memory.financesMentions,
-        personalMentions: memory.personalMentions,
-        otherMentions: memory.otherMentions,
-      },
+      // Adds the ten axis prose summaries + the canonical 10-axis
+      // mention counts on top of everything this block already
+      // returned. Purely additive — see lib/lifemap-memory-payload.ts
+      // for why nothing here is ever removed.
+      memory: buildMemoryPayload(memory),
     },
     { headers: { "Cache-Control": "private, max-age=60" } }
   );
