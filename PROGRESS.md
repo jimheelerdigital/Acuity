@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-28] — Calm video rebuilt as simple full-frame nature loops
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ec1e371b
+
+### In plain English (for Keenan)
+The calm video no longer uses the window/room framing — today's video flickered because the AI kept inventing furniture and a balcony into the scene between loops. Now it's just a pure hyper-realistic nature background with one gentle motion (waves rolling, clouds drifting, rain or snow falling). Simple scenes give the AI nothing to hallucinate on, so the loop should finally flow.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/ambient-video.ts: rewrote VISUAL RULES (bans windows/rooms/porches/man-made framing; one-subject full-frame nature scenes; hyper-real), MOTION RULES (one barely-perceptible movement, under 15 words), buildAmbientImagePrompt (pure nature edge-to-edge, no man-made objects), and buildAmbientVideoPrompt (adds "scene NEVER changes, nothing new appears, nothing transforms" + locked static camera)
+- Prompt-only; loop/crossfade mechanics, ElevenLabs TTS, and the Inngest pipeline are untouched
+
+### Manual steps needed
+None
+
+### Notes
+- Root cause of today's bad video (calm-2026-08-28): frame extraction showed the i2v model hallucinated a balcony, railing, table, and cabinet into the window-vantage image on some clips, so the crossfaded loop ping-ponged between the real scene and the invented one.
+- This supersedes the same-morning stationary-frame/window vantage design (34092c6d) — complex framing devices give i2v models surfaces to invent on; minimal single-subject scenes are what they handle best.
+
+---
+
 ## [2026-08-28] — Carousel headlines banned from trailing filler words
 
 **Requested by:** Keenan
