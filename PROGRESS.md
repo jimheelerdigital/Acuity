@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-28] — Carousel text centered mid-frame, cover question removed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b0a06196
+
+### In plain English (for Keenan)
+On the negative and positive carousels, all the burned-on text (the headline, the numbered items, and their supporting lines) now sits centered in the middle of the image instead of near the top. The cover also no longer asks a question like "Which one hits the hardest?" — it's just the headline.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` pre-renders the badge/main/detail/bar pieces, measures the total block height, and vertically centers the whole block; the `subline` parameter (bottom-anchored engagement question) is deleted, so `detail` is now the 5th parameter
+- apps/web/src/inngest/functions/carousel-daily.ts: cover overlay call drops `coverEngagementLine`; reason call updated for the new signature
+- apps/web/src/lib/content-factory/caption.ts: `coverEngagementLine`, `ENGAGEMENT_LINE_FAMILIES`, and `ENGAGEMENT_LINES_DEFAULT` deleted (no remaining references)
+- animate-cover's legacy fallback re-render (3-arg call) still compiles; old animated posts burn their STORED overlay PNGs, so their look is untouched
+
+### Manual steps needed
+None.
+
+### Notes
+- The two static carousels triggered earlier today (avatar + nature styles) went out with the OLD top-anchored layout and cover question — fresh ones were re-triggered after this deploy so Keenan sees the centered/no-question version.
+- Centering applies wherever `renderSlideTextOverlay` renders fresh (daily lanes + the legacy no-stored-overlay fallback); selfie-slideshow text placement is a different function (`renderSelfieCaptionOverlay`) and is unchanged.
+
 ## [2026-08-28] — Static daily carousels with 4 rotating looks; seamless ambient loops
 
 **Requested by:** Keenan
