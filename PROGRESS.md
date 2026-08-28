@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-08-28] — Static daily carousels with 4 rotating looks; seamless ambient loops
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 34092c6d
+
+### In plain English (for Keenan)
+The negative and positive daily carousels are no longer animated — they're pure image posts now, which also makes them arrive in ~3-5 minutes instead of ~10-15. Each day they rotate through four looks: hyper-real photos with no people, a Pixar-style animated woman acting out each slide, animated-movie illustration scenes, and hyper-real nature photography — and the two posts never wear the same look on the same day. The calm video now always frames a still foreground (a window, a cliff edge, a porch, a forest canopy) with the only movement far off in the distance, and the clip starts and ends on the exact same image, so the loop plays as one constant scene instead of visibly restarting.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/brand.ts: new `CAROUSEL_VISUAL_STYLES` map (`aesthetic` reuses SELFIE_AESTHETIC_DNA; new `CAROUSEL_AVATAR_DNA`, `CAROUSEL_ILLUSTRATED_DNA`, `CAROUSEL_NATURE_DNA`) + `CarouselVisualStyle` type
+- apps/web/src/lib/content-factory/generate-topic.ts: `SYSTEM_PROMPT` → `buildSystemPrompt(visualStyle)` with a per-style `SCENE_DIRECTION` block; all motion direction removed from the carousel prompt (slides are static stills); `generateTopic` gains a `visualStyle` option (defaults to `aesthetic`, so one-off/Niche Lab callers are unaffected)
+- apps/web/src/lib/content-factory/carousel-generate.ts: new `buildCarouselImagePrompt({ style, scene, slideText, headline })`
+- apps/web/src/inngest/functions/carousel-daily.ts: day-deterministic style rotation (`dayIndex % 4`, positive bucket offset +2 so the pair differs daily; `event.data.visualStyle` override for admin testing); posts save as `format: "PHOTO"` with `lane` = the visual style; the `content-factory/cover.animate` enqueue is deleted — the deliver step calls `sendCarouselEmail` directly; the text-free `-notext.jpg` raws and overlay PNG persist uploads are dropped (they only existed for the animate pipeline)
+- apps/web/src/lib/content-factory/ambient-video.ts: VISUAL RULES rewritten around stationary-frame vantages (window/canopy/cliff/porch/overlook/arch/lakeshore/city window) with distant-only motion; MOTION RULES require the distant element alone to move; `buildAmbientImagePrompt` adds a stable-foreground composition line; `buildAmbientVideoPrompt` demands a perfectly still near frame and identical first/last frames
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: video/positive queue eta text now ~3-5 min
+- No Prisma schema, cron, or event-shape changes
+
+### Manual steps needed
+None — deploy is automatic on push; no Inngest resync needed (no trigger changes).
+
+### Notes
+- "Just image gen" was explicit from Keenan ("to be clear, no more ai animation on the positive/negative. JUST image gen.") — the animate function itself is untouched and still serves the one-off admin flow.
+- Style rotation is deterministic from `event.ts` (stable across Inngest retries), so a retried run picks the same style. On 2026-08-28 the rotation lands on avatar (negative) + nature (positive).
+- This deliberately reinstates illustration/avatar styles for the daily carousels, reversing the 2026-08-28-morning "strictly aesthetic" rule — per Keenan's 4-style directive the same day.
+- Higgsfield context for the ambient loop ask: clips cap at ~10s per render (we generate 5s, 2 credits ≈ 10¢); looping is free ffmpeg stitching, so the seamless-loop fix lives in the image/video prompts, not longer renders.
+
 ## [2026-08-28] — One-selfie slideshows, meditative ambient scripts, question-only captions
 
 **Requested by:** Keenan
