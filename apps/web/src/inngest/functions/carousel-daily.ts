@@ -522,13 +522,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       const { composeSlideWithOverlay, renderSlideTextOverlay } =
         await import("@/lib/content-factory/compose");
 
-      // On-cover engagement ask (2026-08-13, per Keenan): the cover asks
-      // "which one hits the hardest" (varied per post).
-      const { coverEngagementLine } = await import(
-        "@/lib/content-factory/caption"
-      );
-      const engagementLine = coverEngagementLine(topicData.headline, slug);
-
       const prompt = buildCarouselImagePrompt({
         style: visualStyle,
         scene:
@@ -539,12 +532,13 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
       const rawBuffer = await generateImage(prompt);
 
+      // No engagement question on the cover (2026-08-28, per Keenan) —
+      // just the centered headline.
       const overlay = await renderSlideTextOverlay(
         topicData.headline,
         "COVER",
         undefined,
-        colorScheme.accent,
-        engagementLine
+        colorScheme.accent
       );
       const composed = await composeSlideWithOverlay(rawBuffer, overlay);
       const imageUrl = await uploadImage(
@@ -589,7 +583,6 @@ export const carouselDailyCronFn = inngest.createFunction(
           "REASON",
           i + 1,
           colorScheme.accent,
-          undefined,
           detail
         );
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);

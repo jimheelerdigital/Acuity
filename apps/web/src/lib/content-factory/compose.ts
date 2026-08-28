@@ -253,9 +253,11 @@ function buildLinesMarkup(
  * this exact overlay is composited onto the static JPEG (sharp) AND
  * burned onto the finished MP4 (ffmpeg) — pixel-identical, pixel-frozen.
  *
- * Design (2026-08-11 "eye-popping" pass, requested by Keenan):
- *   - UPPERCASE Poppins Bold, big type, starting 15% from the top
- *     (below TikTok's status bar + search pill)
+ * Design (2026-08-11 "eye-popping" pass, requested by Keenan; re-anchored
+ * 2026-08-28, per Keenan: the whole text block is CENTERED in the middle
+ * of the image, and the cover engagement question is gone):
+ *   - UPPERCASE Poppins Bold, big type, the full block vertically
+ *     centered in the frame
  *   - Numbers inside the text rendered in the carousel's accent color
  *   - REASON slides get an accent-filled circle badge with the number
  *   - COVER gets a rounded accent underline bar beneath the headline
@@ -266,13 +268,6 @@ export async function renderSlideTextOverlay(
   kind: "COVER" | "REASON",
   slideNumber?: number,
   accent: string = BURNT_ORANGE,
-  /**
-   * COVER only (2026-08-13, per Keenan): a short engagement question
-   * ("Which one hits the hardest?") rendered as a smaller line anchored
-   * near the bottom of the slide — the ask lives on the cover itself,
-   * static AND animated.
-   */
-  subline?: string,
   /**
    * REASON only (2026-08-16, per Keenan): the supporting "how/why"
    * sentence from the topic engine, rendered smaller under the main text.
@@ -294,37 +289,66 @@ export async function renderSlideTextOverlay(
   const main = await renderMarkup(mainMarkup, fontPath, maxTextW, 12, 10);
   const blurredShadow = await sharp(shadow.buffer).blur(6).png().toBuffer();
 
-  // 15% top buffer (2026-08-12, per Keenan): TikTok's status bar + search
-  // pill cover roughly the top 13% of the screen — at the old 10% the
-  // first headline line rendered underneath the search bar.
-  const topStart = Math.round(OUTPUT_H * 0.15);
-  const composites: sharp.OverlayOptions[] = [];
-  let cursorY = topStart;
-
-  // REASON: accent circle badge with the slide number, centered above the text.
+  // ── Pre-render every piece so the WHOLE block can be measured and
+  // vertically centered (2026-08-28, per Keenan: "centered in the middle
+  // of the generation for all posts").
+  const BADGE_D = 118;
+  const BADGE_GAP = 26;
+  let badge: { circle: Buffer; shadow: Buffer; num: { buffer: Buffer; width: number; height: number } } | null = null;
   if (kind === "REASON" && slideNumber) {
-    const D = 118;
-    const circle = await circlePng(D, hexToRgb(accent), { ringWidth: 5 });
+    const circle = await circlePng(BADGE_D, hexToRgb(accent), { ringWidth: 5 });
     const numMarkup = `<span font_desc="Poppins Bold 52" foreground="#FFFFFF">${slideNumber}</span>`;
-    const num = await renderMarkup(numMarkup, fontPath, D, 0, 0);
-
+    const num = await renderMarkup(numMarkup, fontPath, BADGE_D, 0, 0);
     const badgeShadow = await sharp(
-      await circlePng(D, { r: 17, g: 17, b: 17 }, { alpha: 0.65 })
+      await circlePng(BADGE_D, { r: 17, g: 17, b: 17 }, { alpha: 0.65 })
     )
       .blur(6)
       .png()
       .toBuffer();
-    const badgeLeft = Math.round((OUTPUT_W - D) / 2);
+    badge = { circle, shadow: badgeShadow, num };
+  }
+
+  const DETAIL_GAP = 18;
+  let detailPiece: { blurred: Buffer; main: { buffer: Buffer; width: number; height: number } } | null = null;
+  if (detail && detail.trim()) {
+    const mediumPath = await ensureFontFile("Medium");
+    const detailLines = wordWrap(detail.trim(), 34);
+    const detailBody = detailLines.map((l) => escapePango(l)).join("\n");
+    const detailSize = 30;
+    const detailMarkupMain = `<span font_desc="Poppins Medium ${detailSize}" foreground="#FFFFFF">${detailBody}</span>`;
+    const detailMarkupShadow = `<span font_desc="Poppins Medium ${detailSize}" foreground="#111111">${detailBody}</span>`;
+    const dShadow = await renderMarkup(detailMarkupShadow, mediumPath ?? fontPath, maxTextW, 8, 8);
+    const dMain = await renderMarkup(detailMarkupMain, mediumPath ?? fontPath, maxTextW, 8, 8);
+    const dBlurred = await sharp(dShadow.buffer).blur(5).png().toBuffer();
+    detailPiece = { blurred: dBlurred, main: dMain };
+  }
+
+  const BAR_W = 180;
+  const BAR_H = 14;
+  const BAR_GAP = 16;
+
+  const totalH =
+    (badge ? BADGE_D + BADGE_GAP : 0) +
+    main.height +
+    (detailPiece ? DETAIL_GAP + detailPiece.main.height : 0) +
+    (kind === "COVER" ? BAR_GAP + BAR_H : 0);
+
+  const composites: sharp.OverlayOptions[] = [];
+  let cursorY = Math.round((OUTPUT_H - totalH) / 2);
+
+  // REASON: accent circle badge with the slide number, centered above the text.
+  if (badge) {
+    const badgeLeft = Math.round((OUTPUT_W - BADGE_D) / 2);
     composites.push(
-      { input: badgeShadow, top: cursorY + 5, left: badgeLeft + 4 },
-      { input: circle, top: cursorY, left: badgeLeft },
+      { input: badge.shadow, top: cursorY + 5, left: badgeLeft + 4 },
+      { input: badge.circle, top: cursorY, left: badgeLeft },
       {
-        input: num.buffer,
-        top: Math.round(cursorY + (D - num.height) / 2),
-        left: Math.round(badgeLeft + (D - num.width) / 2),
+        input: badge.num.buffer,
+        top: Math.round(cursorY + (BADGE_D - badge.num.height) / 2),
+        left: Math.round(badgeLeft + (BADGE_D - badge.num.width) / 2),
       }
     );
-    cursorY += D + 26;
+    cursorY += BADGE_D + BADGE_GAP;
   }
 
   const textLeft = Math.round((OUTPUT_W - main.width) / 2);
@@ -336,62 +360,33 @@ export async function renderSlideTextOverlay(
 
   // Supporting detail line (2026-08-16, per Keenan): a smaller sentence
   // under the main text — the "how/why" beat from the topic engine.
-  // Poppins Medium, sentence case, same shadow treatment.
-  if (detail && detail.trim()) {
-    const mediumPath = await ensureFontFile("Medium");
-    const detailLines = wordWrap(detail.trim(), 34);
-    const detailBody = detailLines.map((l) => escapePango(l)).join("\n");
-    const detailSize = 30;
-    const detailMarkupMain = `<span font_desc="Poppins Medium ${detailSize}" foreground="#FFFFFF">${detailBody}</span>`;
-    const detailMarkupShadow = `<span font_desc="Poppins Medium ${detailSize}" foreground="#111111">${detailBody}</span>`;
-    const dShadow = await renderMarkup(detailMarkupShadow, mediumPath ?? fontPath, maxTextW, 8, 8);
-    const dMain = await renderMarkup(detailMarkupMain, mediumPath ?? fontPath, maxTextW, 8, 8);
-    const dBlurred = await sharp(dShadow.buffer).blur(5).png().toBuffer();
-    const dLeft = Math.round((OUTPUT_W - dMain.width) / 2);
-    const dTop = cursorY + 18;
+  if (detailPiece) {
+    const dLeft = Math.round((OUTPUT_W - detailPiece.main.width) / 2);
+    const dTop = cursorY + DETAIL_GAP;
     composites.push(
-      { input: dBlurred, top: dTop + 4, left: dLeft + 3 },
-      { input: dMain.buffer, top: dTop, left: dLeft }
+      { input: detailPiece.blurred, top: dTop + 4, left: dLeft + 3 },
+      { input: detailPiece.main.buffer, top: dTop, left: dLeft }
     );
-    cursorY = dTop + dMain.height;
+    cursorY = dTop + detailPiece.main.height;
   }
 
-  // COVER: rounded accent bar under the headline for extra pop.
+  // COVER: rounded accent bar under the headline for extra pop. The
+  // engagement question sub-line is GONE (2026-08-28, per Keenan: "no
+  // more question on the cover").
   if (kind === "COVER") {
-    const barW = 180;
-    const barH = 14;
-    const bar = await capsulePng(barW, barH, hexToRgb(accent));
+    const bar = await capsulePng(BAR_W, BAR_H, hexToRgb(accent));
     const barShadow = await sharp(
-      await capsulePng(barW, barH, { r: 17, g: 17, b: 17 }, 0.65)
+      await capsulePng(BAR_W, BAR_H, { r: 17, g: 17, b: 17 }, 0.65)
     )
       .blur(5)
       .png()
       .toBuffer();
-    const barLeft = Math.round((OUTPUT_W - barW) / 2);
+    const barLeft = Math.round((OUTPUT_W - BAR_W) / 2);
     composites.push(
-      { input: barShadow, top: cursorY + 20, left: barLeft + 3 },
-      { input: bar, top: cursorY + 16, left: barLeft }
+      { input: barShadow, top: cursorY + BAR_GAP + 4, left: barLeft + 3 },
+      { input: bar, top: cursorY + BAR_GAP, left: barLeft }
     );
-    cursorY += barH + 16;
-
-    // Engagement sub-line anchored near the BOTTOM of the slide
-    // (2026-08-14, per Keenan: cleaner than stacking it under the
-    // headline). Bottom edge sits at 86% of the frame so TikTok's
-    // caption/music UI (bottom ~12-15%) never covers it.
-    if (subline) {
-      const subLines = wordWrap(subline.toUpperCase(), 26);
-      const subShadowMarkup = buildLinesMarkup(subLines, 38, "#111111", "#111111");
-      const subMainMarkup = buildLinesMarkup(subLines, 38, "#FFFFFF", accent);
-      const subShadow = await renderMarkup(subShadowMarkup, fontPath, maxTextW, 8, 6);
-      const subMain = await renderMarkup(subMainMarkup, fontPath, maxTextW, 8, 6);
-      const subBlurred = await sharp(subShadow.buffer).blur(5).png().toBuffer();
-      const subLeft = Math.round((OUTPUT_W - subMain.width) / 2);
-      const subTop = Math.round(OUTPUT_H * 0.86) - subMain.height;
-      composites.push(
-        { input: subBlurred, top: subTop + 4, left: subLeft + 3 },
-        { input: subMain.buffer, top: subTop, left: subLeft }
-      );
-    }
+    cursorY += BAR_GAP + BAR_H;
   }
 
   return sharp({
