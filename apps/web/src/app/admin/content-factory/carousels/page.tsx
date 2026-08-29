@@ -220,7 +220,7 @@ export default function CarouselReviewPage() {
   };
 
   const generateBucket = async (
-    bucket: "video" | "positive" | "ambient" | "selfie"
+    bucket: "video" | "positive" | "ambient" | "selfie" | "moody-women" | "moody-men"
   ) => {
     setGenerating(true);
     setGenerateMsg(null);
@@ -596,6 +596,22 @@ export default function CarouselReviewPage() {
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🤳"}
+          </button>
+          <button
+            onClick={() => generateBucket("moody-women")}
+            disabled={generating}
+            title="Generate a moody discipline carousel (women funnel) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🕯️"}
+          </button>
+          <button
+            onClick={() => generateBucket("moody-men")}
+            disabled={generating}
+            title="Generate a moody discipline carousel (men funnel) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🏛️"}
           </button>
           <button
             onClick={() => fetchPosts()}

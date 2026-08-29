@@ -38,20 +38,39 @@ import { inngest } from "@/inngest/client";
  *                          gpt-image-2 edit (reference) endpoint. This
  *                          is the ONLY lane the avatar appears in.
  *
+ * - 14 UTC (9am Central):  MOODY-WOMEN — dark/moody discipline photo
+ *                          carousel for the core demographic (2026-08-28
+ *                          per Keenan, cloned from the "TRUST THE
+ *                          PROCESS" reference): dim quiet-luxury
+ *                          photography, white text centered mid-frame,
+ *                          hashtag-only caption. Audience-growth funnel,
+ *                          no product CTA.
+ * - 16 UTC (11am Central): MOODY-MEN — same skeleton for the second
+ *                          market (young aspiring men): stark dark
+ *                          architecture, command-energy discipline
+ *                          content, its own hashtag pool.
+ *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
- * with data.bucket = "video" | "positive" | "ambient" | "selfie".
+ * with data.bucket = "video" | "positive" | "ambient" | "selfie" |
+ * "moody-women" | "moody-men".
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
  * API call gets its own 300s Lambda invocation.
  */
-type DailyBucket = "video" | "positive" | "ambient" | "selfie";
+type DailyBucket =
+  | "video"
+  | "positive"
+  | "ambient"
+  | "selfie"
+  | "moody-women"
+  | "moody-men";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 6,8,10,12 * * *" },
+      { cron: "0 6,8,10,12,14,16 * * *" },
       // Manual/test trigger (admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
@@ -67,7 +86,12 @@ export const carouselDailyCronFn = inngest.createFunction(
     if (event?.name === "content-factory/daily.generate") {
       const b = event.data?.bucket as string | undefined;
       bucket =
-        b === "video" || b === "positive" || b === "ambient" || b === "selfie"
+        b === "video" ||
+        b === "positive" ||
+        b === "ambient" ||
+        b === "selfie" ||
+        b === "moody-women" ||
+        b === "moody-men"
           ? b
           : "video";
     } else {
@@ -80,7 +104,11 @@ export const carouselDailyCronFn = inngest.createFunction(
             ? "positive"
             : hour < 11
               ? "ambient"
-              : "selfie";
+              : hour < 13
+                ? "selfie"
+                : hour < 15
+                  ? "moody-women"
+                  : "moody-men";
     }
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
 
@@ -92,6 +120,161 @@ export const carouselDailyCronFn = inngest.createFunction(
         await inngest.send({ name: "content-factory/ambient.video", data: {} });
       });
       return { generated: 0, bucket, delegated: "ambient.video" };
+    }
+
+    // ── MOODY buckets: dark discipline carousels, two funnels ──────
+    // (2026-08-28, per Keenan — cloned from the "TRUST THE PROCESS"
+    // reference.) Cover + 5 numbered item slides: dim cinematic
+    // photography, white text centered mid-frame, hashtag-only caption.
+    // "moody-women" = core demographic, softer warm-dim visuals;
+    // "moody-men" = young aspiring men, stark dark visuals. Both are
+    // audience-growth funnels — no product CTA anywhere.
+    if (bucket === "moody-women" || bucket === "moody-men") {
+      const audience = bucket === "moody-women" ? "women" : "men";
+
+      const moody = await step.run("generate-moody-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateMoodyTopic } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
+          select: { headline: true },
+        });
+        return generateMoodyTopic(audience, recent.map((p) => p.headline));
+      });
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const dateStr = today.toISOString().slice(0, 10);
+      const slug = moody.slug;
+      logger.info(
+        `[carousel-cron] Moody (${audience}) topic: "${moody.title}" (${moody.items.length} items)`
+      );
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        await ensureBucket();
+      });
+
+      const moodyCover = await step.run("generate-moody-cover", async () => {
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMoodyImagePrompt } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+
+        const prompt = buildMoodyImagePrompt(audience, moody.coverScene);
+        const rawBuffer = await generateImage(prompt);
+        const overlay = await renderMoodyTextOverlay([moody.title], "COVER");
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
+        );
+        return { imageUrl, overlayText: moody.title, imagePrompt: prompt };
+      });
+
+      const moodySlides: {
+        imageUrl: string;
+        overlayText: string;
+        imagePrompt: string;
+      }[] = [];
+      for (let i = 0; i < moody.items.length; i++) {
+        const slide = await step.run(`generate-moody-item-${i}`, async () => {
+          const { generateImage, uploadImage } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          const { buildMoodyImagePrompt } = await import(
+            "@/lib/content-factory/moody-carousel"
+          );
+          const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+            await import("@/lib/content-factory/compose");
+
+          const item = moody.items[i];
+          const paragraphs = [`${i + 1}. ${item.name}`, ...item.lines];
+          const prompt = buildMoodyImagePrompt(audience, item.scene);
+          const rawBuffer = await generateImage(prompt);
+          const overlay = await renderMoodyTextOverlay(paragraphs, "ITEM");
+          const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+          const imageUrl = await uploadImage(
+            composed,
+            `carousels/${dateStr}/${slug}/slide-${i + 1}-item.jpg`
+          );
+          return {
+            imageUrl,
+            overlayText: paragraphs.join("\n\n"),
+            imagePrompt: prompt,
+          };
+        });
+        moodySlides.push(slide);
+      }
+
+      const moodyResult = await step.run("save-and-email-moody", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildMoodyCaption } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { extractHashtags } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+
+        // Hashtag-only caption cloned from the reference (2026-08-28,
+        // per Keenan — deliberate exception to the question+tags rule).
+        const caption = buildMoodyCaption(audience, slug);
+
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: slug,
+            headline: moody.title,
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: bucket,
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: moodyCover.overlayText,
+                  imagePrompt: moodyCover.imagePrompt,
+                  imageUrl: moodyCover.imageUrl,
+                },
+                ...moodySlides.map((s, i) => ({
+                  order: i + 1,
+                  kind: "REASON" as const,
+                  overlayText: s.overlayText,
+                  imagePrompt: s.imagePrompt,
+                  imageUrl: s.imageUrl,
+                })),
+              ],
+            },
+          },
+        });
+
+        const { sendCarouselEmail } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendCarouselEmail(post.id);
+        return {
+          postId: post.id,
+          slideCount: moodySlides.length + 1,
+          estimatedCostCents: (moodySlides.length + 1) * 8 + 2,
+        };
+      });
+
+      logger.info(
+        `[carousel-cron] Generated moody (${audience}) "${moody.title}": ${moodyResult.slideCount} slides`
+      );
+      return { generated: 1, bucket, ...moodyResult };
     }
 
     // ── SELFIE bucket: realistic first-person photo slideshow ──────

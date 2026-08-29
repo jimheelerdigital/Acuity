@@ -556,6 +556,68 @@ export async function renderSelfieCaptionOverlay(
 }
 
 /**
+ * Render the MOODY discipline-carousel text as a transparent 1080x1920
+ * PNG (2026-08-28, per Keenan — cloned from the "TRUST THE PROCESS"
+ * reference): clean white sentence-case type, centered dead-middle of
+ * the frame, paragraphs separated by blank lines, a soft blurred shadow
+ * for legibility on the dim photography. Deliberately NOT the branded
+ * overlay — no accent color, no badge, no bar.
+ *
+ * COVER: the short title, uppercase, bold, letter-spaced.
+ * ITEM: the numbered name ("4. Reset day.") + its paragraphs, all one
+ * uniform size like the reference.
+ */
+export async function renderMoodyTextOverlay(
+  paragraphs: string[],
+  kind: "COVER" | "ITEM"
+): Promise<Buffer> {
+  const fontPath = await ensureFontFile(kind === "COVER" ? "Bold" : "Medium");
+
+  const fontSize = kind === "COVER" ? 72 : 42;
+  const wrapChars = kind === "COVER" ? 14 : 30;
+  const font = kind === "COVER" ? "Poppins Bold" : "Poppins Medium";
+
+  const body = paragraphs
+    .map((p) =>
+      wordWrap(
+        stripUnrenderable(kind === "COVER" ? p.toUpperCase() : p),
+        wrapChars
+      )
+        .map((l) => escapePango(l))
+        .join("\n")
+    )
+    .join("\n\n"); // blank line = paragraph gap (Pango honors empty lines)
+
+  const spacing = kind === "COVER" ? 16 : 14;
+  const letterSpacing = kind === "COVER" ? ` letter_spacing="3072"` : "";
+  const mainMarkup = `<span font_desc="${font} ${fontSize}" foreground="#FFFFFF"${letterSpacing}>${body}</span>`;
+  const shadowMarkup = `<span font_desc="${font} ${fontSize}" foreground="#000000"${letterSpacing}>${body}</span>`;
+
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+  const main = await renderMarkup(mainMarkup, fontPath, maxTextW, spacing, 8);
+  const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, spacing, 8);
+  const blurredShadow = await sharp(shadow.buffer).blur(9).png().toBuffer();
+
+  const top = Math.round((OUTPUT_H - main.height) / 2);
+  const left = Math.round((OUTPUT_W - main.width) / 2);
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: OUTPUT_H,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      { input: blurredShadow, top: top + 4, left: left + 2 },
+      { input: main.buffer, top, left },
+    ])
+    .png()
+    .toBuffer();
+}
+
+/**
  * Compose a text-free raw image + pre-rendered text overlay into the
  * final static slide JPEG (animated-post pipeline).
  */
