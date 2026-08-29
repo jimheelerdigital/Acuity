@@ -50,7 +50,7 @@ export interface MoodyTopic {
 
 export const AUDIENCE_BRIEF: Record<MoodyAudience, string> = {
   men: `AUDIENCE: young aspiring men (18-30) deep in the self-improvement / discipline / "trust the process" niche. They save posts that read like orders from a future self: monk mode, order, focus, momentum, delayed gratification, becoming undeniable.
-VOICE: calm command energy. Short declarative sentences. No softness, no hedging, no "maybe try". Direct second person. The tone of a mentor who's already made it and doesn't waste words. Never bro-slang, never yelling, never toxic — controlled, austere, certain.
+VOICE: calm command energy, HIGHLY MOTIVATIONAL — every slide should make him want to stand up and train. Short declarative sentences. No softness, no hedging, no "maybe try". Direct second person. The tone of a mentor who's already made it and doesn't waste words. Never bro-slang, never yelling, never toxic — controlled, austere, certain, relentless.
 TOPICS to rotate: discipline systems, monk mode, dopamine control, morning/evening order, cutting noise, training, focus blocks, silence, patience, becoming hard to distract.`,
   women: `AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. They save posts that feel like quiet permission to reclaim order and protect their peace.
 VOICE: quiet strength. Short declarative sentences with warmth underneath — a woman who has stopped explaining herself. Direct second person. Never preachy, never girlboss, never clinical. Discipline framed as self-respect: boundaries, resets, saying no, protecting energy, doing less on purpose.
@@ -58,8 +58,8 @@ TOPICS to rotate: protecting your peace, reset rituals, boundaries without guilt
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark minimalist luxury architecture and interiors — floor-to-ceiling glass walls with rain or dark forest beyond, polished concrete, black furniture, empty gyms at night, stone stairways, dim libraries. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it). No people ever.`,
-  women: `SCENES: the same moody cinematic photography but softer and warmer — dim quiet-luxury interiors in low warm light: rain on tall windows with linen curtains, a dark kitchen lit by one small lamp, a deep armchair by a dusk window, a bath in half-light, a shadowed hallway with warm evening glow. Muted, subdued, DIM (white text must read on it) — moody but gentle, never bright or airy. No people ever.`,
+  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. No people ever.`,
+  women: `SCENES: soft, aesthetically pleasing FEMININE photography in low light — silk and linen in a dim bedroom, peonies or dried flowers on a nightstand by one warm lamp, a candlelit bath, a vanity glowing warm in a dark room, a silk robe draped over a chair at dusk, rain on tall windows with sheer curtains, a steaming tea cup by candlelight. Muted, warm, dreamy — beautiful, never cluttered, and every scene DIM (white text must read on it). Moody but gentle, never bright or airy. No people ever.`,
 };
 
 const buildMoodySystemPrompt = (
@@ -227,10 +227,10 @@ export function buildMoodyImagePrompt(
 ): string {
   const style =
     audience === "men"
-      ? "Dark, moody, minimalist luxury architecture photography. Desaturated, near-monochrome color grade — charcoal, slate, black, cold glass. Overcast or night light, deep shadows, austere and powerful."
+      ? "Dark, dominant, moody minimalist photography. Desaturated, near-monochrome color grade — charcoal, slate, black, cold glass, storm light. Deep shadows, austere, powerful, commanding."
       : audience === "universal"
         ? "Dark, moody, cinematic photography. Muted, desaturated color grade with deep shadow — dusk, night, or heavy overcast light. Vast, still, contemplative — the weight of time made visible."
-        : "Dark, moody, quiet-luxury interior photography with soft warmth. Muted, subdued color grade — deep shadow with one source of low warm light. Calm, intimate, cinematic, dim.";
+        : "Soft, aesthetically pleasing feminine photography — quiet luxury in low warm light: silk, linen, candlelight, flowers. Muted, warm, dreamy color grade with deep shadow. Beautiful, calm, intimate, dim.";
   return [
     `Hyper-realistic cinematic photograph: ${scene}`,
     style,
@@ -289,7 +289,7 @@ const MEMENTO_SYSTEM_PROMPTS: Record<MoodyAudience, string> = {
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock: aging parents, summers while the kids still come home, Saturdays before the house empties, healthy years, hours lost holding it together for everyone else. Never her own death by name — the finitude is felt, not stated.
 
-SCENES: dark cinematic photography, vast and contemplative with soft warmth — an empty beach at last light, a single lit window in a dark house, an empty chair by a cold window, a kitchen table cleared after dinner, autumn leaves on wet pavement, a porch light on at dusk. Every frame DIM (white text must read on it). No people ever.
+SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
 "You'll see your parents about 15 more times.
@@ -497,7 +497,7 @@ const MISSED_SYSTEM_PROMPTS: Record<"universal" | "men", string> = {
 
 AUDIENCE: everyone scrolling at midnight. The numbers must hit universally — strangers passed, friends drifted, conversations not started, calls not made. No gendered content.
 
-SCENES: dark cinematic photography of in-between public places, empty of people — a rain-streaked bus window at night, an empty train platform under sodium light, a crosswalk at dusk, an airport gate after the last flight, a diner counter at closing, a lit phone booth on a dark street. Every frame DIM (white text must read on it). No people ever.
+SCENES: soft, aesthetically pleasing feminine photography of quiet in-between moments, empty of people — a rain-streaked café window at dusk, an empty park bench under warm lamplight, a train window at last light, sheer curtains stirring by a phone left face-down, two tea cups on a candlelit table with one untouched, a letter unopened on a nightstand. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
 "You'll walk past about 80,000 strangers in your life.
@@ -807,7 +807,7 @@ const FREE_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-caro
 
 AUDIENCE: everyone scrolling at midnight. Universal — no gendered content, no niche jargon.
 
-SCENES: dark cinematic photography, calm and contemplative — rain sliding down a dark window, a bench under a streetlamp, dawn light through thin curtains, a quiet dock at dusk, steam rising off a cup by a dark window. Every frame DIM (white text must read on it). No people ever.
+SCENES: soft, aesthetically pleasing feminine photography, calm and contemplative — rain sliding down a dark window above a lit candle, dawn light through sheer linen curtains, a bath filling in half-light, a garden bench in blue dusk with a shawl left behind, steam rising off a tea cup by a dark window. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
 "1. Watching it rain.
@@ -1040,7 +1040,7 @@ VOICE: warm, certain, plain. Permission — never pressure, never hustle, never 
 RULES:
 - ONE line, 8-16 words total, beginning exactly "THIS IS YOUR SIGN TO". Specific and concrete, not generic ("...to stop rehearsing the apology you don't owe", not "...to live your best life").
 - No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI.
-- "scene": one concrete sentence describing the photograph — dim quiet-luxury interiors or nature in low warm light (rain on tall windows, a dark kitchen lit by one lamp, dusk through linen curtains). DIM, no people ever.
+- "scene": one concrete sentence describing the photograph — soft, aesthetically pleasing feminine interiors in low warm light (silk and linen in a dim bedroom, a candlelit bath, peonies by one warm lamp, dusk through sheer curtains). DIM, beautiful, no people ever.
 - "theme": 2-4 words naming what the sign releases (for repeat-avoidance).
 
 OUTPUT (strict JSON, no markdown):

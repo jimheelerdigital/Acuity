@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-08-29] — Trimmed to 11 lanes with two locked visual identities: Ripple feminine, BWK dark & motivational
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): 11 lanes, split visual identities` commit)
+
+### In plain English (for Keenan)
+The nightly lineup is now 11 posts with two unmistakable looks. Every Ripple post gets soft, aesthetically pleasing feminine imagery — silk, candlelight, flowers, warm dim rooms — while every Build With Key post gets dark, dominant, highly motivational imagery — brutalist towers, storm light, empty gyms under one cold light — with the writing pushed to make him want to stand up and train. Six formats are gone: late bloomers, unsent texts, what ___ taught me, forbidden truths, and missed connections on both accounts. Generation now runs midnight–5am Central, so everything's still in your inbox well before 7am.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `SCENE_BRIEF` rewritten both sides (women = feminine soft-luxury low-light scenes, men = dark dominant power imagery); `AUDIENCE_BRIEF.men` adds the HIGHLY MOTIVATIONAL voice directive; `buildMoodyImagePrompt` style strings split the same way; inline SCENES feminized in `MEMENTO_SYSTEM_PROMPTS.women`, `FREE_SYSTEM_PROMPT`, `SIGN_SYSTEM_PROMPT`
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `CAROUSEL_LANES` cut from 17 → 11 (dropped missed, missed-men, forbidden, bloomers, taught, unsent); cron `0 5,6,7,8,9,10 * * *` with a new 6-hour `HOUR_LANES` map; caption chain simplified (no missed/bloomers branches); topic-select branches for dead lanes removed
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: bucket union trimmed to 11; 🫂 📵 🤫 🌱 📖 📩 buttons removed
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment → 11-lane roster
+- Dead-lane generators (`generateMissedTopic`, `buildMissedCaption`, `generateBloomersTopic`, `generateTaughtTopic`, `generateForbiddenTopic`, `generateUnsentTopic`) left dormant in moody-carousel.ts, not deleted — same pattern as quote-loop/ambient
+- `email.ts` untouched: `BWK_LANES` keeps `missed-men` so historical posts resend with the right label
+- No schema changes
+
+### Manual steps needed
+- [ ] Eyeball the new-look samples (feminine Ripple vs dark BWK) triggered after this deploy (Keenan)
+- [ ] Confirm tomorrow morning (2026-08-30) all 11 posts arrived by ~7am Central with the new visuals (Keenan)
+
+### Notes
+- Cron expression CHANGED again — Inngest resync (`curl -X PUT https://goripple.io/api/inngest`) after deploy is mandatory, done as part of this ship
+- BWK is now 4 lanes (moody-men, memento-men, year, behind); Ripple is 7 (moody-women, rules, memento, questions, sign, free, nobody)
+- Women's scenes stay DIM despite the softer aesthetic — white overlay text must stay readable
+
 ## [2026-08-28] — Men vs women split: 5 Build With Key lanes, calm video killed
 
 **Requested by:** Keenan

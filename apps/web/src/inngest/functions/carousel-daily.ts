@@ -1,82 +1,70 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — 17 lanes, ALL generated overnight so every post
+ * Carousel generation — 11 lanes, ALL generated overnight so every post
  * is in Keenan's inbox by 7am Central (2026-08-28 night, per Keenan:
  * "I want ALL posts to be in my inbox in the morning"). The cron fires
- * hourly 3-11 UTC (10pm-6am CDT; one hour later in winter CST) and each
+ * hourly 5-10 UTC (12am-5am CDT; one hour later in winter CST) and each
  * run FANS OUT this hour's lanes as events — generation itself always
  * runs on the event trigger.
  *
- * The animated quote loop was ELIMINATED 2026-08-28 night (replaced by
- * the static SIGN post), and the AMBIENT calm video was ELIMINATED the
- * same late night ("get rid of the calm video") when the BWK split
- * landed: year + behind retargeted to men, plus new missed-men and
- * memento-men lanes so men (BUILD WITH KEY) and women (Ripple) get
- * their own versions.
+ * Kill history (never revive without asking): animated quote loop
+ * (2026-08-28 night, replaced by SIGN), AMBIENT calm video (same late
+ * night, "get rid of the calm video"), and — 2026-08-29 — LATE
+ * BLOOMERS, UNSENT TEXTS, WHAT ___ TAUGHT ME, FORBIDDEN TRUTHS, and
+ * MISSED CONNECTIONS (both missed and missed-men, "get rid of missed
+ * connections on both pipelines"). Same 2026-08-29 directive locked the
+ * two visual identities: Ripple = aesthetically pleasing FEMININE
+ * (soft, silk/candlelight/flowers, warm-dim), BWK = male-dominant dark
+ * themes, highly motivational.
  *
  * Overnight schedule (CDT):
- * -  3 UTC (10pm): RULES — "Rules I broke to get my life back" (women)
- *                  + MISSED — universal missed-connection math
- * -  4 UTC (11pm): MISSED-MEN — cost-of-the-grind connection math (BWK)
- *                  + FORBIDDEN — "DELETE THIS AFTER READING" (women,
- *                  QUOTE serif one-liners)
  * -  5 UTC (12am): MOODY-WOMEN + MOODY-MEN — the numbered discipline
  *                  carousels (men = BWK)
  * -  6 UTC (1am):  MEMENTO — women's time-math (Ripple)
  *                  + MEMENTO-MEN — men's time-math (BWK)
- * -  7 UTC (2am):  QUESTIONS — women's hard questions
- *                  + BLOOMERS — real late-bloomer proof (universal)
- * -  8 UTC (3am):  TAUGHT — "WHAT ___ TAUGHT ME" (women) + SIGN —
- *                  single static bold "THIS IS YOUR SIGN TO..." image
- * -  9 UTC (4am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
- *                  (men, BWK) + FREE — "THINGS THAT ARE STILL FREE"
- *                  (universal, numbered)
- * - 10 UTC (5am):  BEHIND — "YOU'RE NOT BEHIND" timeline lies (men,
- *                  BWK, numbered) + NOBODY — "NOBODY TELLS YOU ABOUT
- *                  ___" (women, rotating season)
- * - 11 UTC (6am):  UNSENT — deleted texts (women, QUOTE serif)
+ * -  7 UTC (2am):  RULES — "Rules I broke to get my life back" (women)
+ *                  + QUESTIONS — women's hard questions
+ * -  8 UTC (3am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
+ *                  (men, BWK) + BEHIND — "YOU'RE NOT BEHIND" timeline
+ *                  lies (men, BWK, numbered)
+ * -  9 UTC (4am):  SIGN — single static bold "THIS IS YOUR SIGN TO..."
+ *                  image (women) + FREE — "THINGS THAT ARE STILL FREE"
+ *                  (women/Ripple, numbered)
+ * - 10 UTC (5am):  NOBODY — "NOBODY TELLS YOU ABOUT ___" (women,
+ *                  rotating season)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
- * to: [BUILD WITH KEY] for moody-men / missed-men / memento-men / year
- * / behind, [RIPPLE] for everything else (handled in
- * lib/content-factory/email.ts, keyed off post.lane).
+ * to: [BUILD WITH KEY] for moody-men / memento-men / year / behind,
+ * [RIPPLE] for everything else (handled in lib/content-factory/
+ * email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
   "rules",
-  "missed",
-  "missed-men",
-  "forbidden",
   "moody-women",
   "moody-men",
   "memento",
   "memento-men",
   "questions",
-  "bloomers",
-  "taught",
   "sign",
   "year",
   "free",
   "behind",
   "nobody",
-  "unsent",
 ] as const;
 type DailyBucket = (typeof CAROUSEL_LANES)[number];
 
 /** Which lanes each overnight cron hour fans out (UTC hour). */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
-  3: ["rules", "missed"],
-  4: ["missed-men", "forbidden"],
   5: ["moody-women", "moody-men"],
   6: ["memento", "memento-men"],
-  7: ["questions", "bloomers"],
-  8: ["taught", "sign"],
-  9: ["year", "free"],
-  10: ["behind", "nobody"],
-  11: ["unsent"],
+  7: ["rules", "questions"],
+  8: ["year", "behind"],
+  9: ["sign", "free"],
+  10: ["nobody"],
 };
 
 export const carouselDailyCronFn = inngest.createFunction(
@@ -84,7 +72,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 3,4,5,6,7,8,9,10,11 * * *" },
+      { cron: "0 5,6,7,8,9,10 * * *" },
       // Generation trigger (cron fan-out + admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
@@ -225,35 +213,27 @@ export const carouselDailyCronFn = inngest.createFunction(
     // photography, white text centered mid-frame, hashtag-only
     // caption. All are audience-growth funnels — no product CTA.
 
-    // Visual DNA per lane: BWK men's lanes = stark architecture;
-    // universal lanes = vast contemplative dark cinematics; the rest
-    // (women funnels, incl. the retuned memento) = warm-dim quiet
-    // luxury.
-    const imageAudience: "women" | "men" | "universal" =
+    // Visual DNA per lane (2026-08-29, per Keenan): BWK men's lanes =
+    // male-dominant dark power imagery; EVERY Ripple lane = soft
+    // aesthetically-pleasing feminine photography.
+    const imageAudience: "women" | "men" =
       bucket === "moody-men" ||
-      bucket === "missed-men" ||
       bucket === "memento-men" ||
       bucket === "year" ||
       bucket === "behind"
         ? "men"
-        : bucket === "missed" || bucket === "bloomers" || bucket === "free"
-          ? "universal"
-          : "women";
+        : "women";
     // Lanes whose items carry an "N. Name." header (discipline, rules,
-    // bloomer names, free things, timeline lies).
+    // free things, timeline lies).
     const numbered =
       bucket === "moody-women" ||
       bucket === "moody-men" ||
       bucket === "rules" ||
-      bucket === "bloomers" ||
       bucket === "free" ||
       bucket === "behind";
     // Single-line lanes render in the bigger premium QUOTE serif
     // italic; multi-paragraph lanes use ITEM.
-    const itemKind =
-      bucket === "questions" || bucket === "forbidden" || bucket === "unsent"
-        ? ("QUOTE" as const)
-        : ("ITEM" as const);
+    const itemKind = bucket === "questions" ? ("QUOTE" as const) : ("ITEM" as const);
 
     const moody = await step.run("generate-moody-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
@@ -262,27 +242,15 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateMementoTopic,
         generateQuestionsTopic,
         generateRulesTopic,
-        generateMissedTopic,
-        generateForbiddenTopic,
-        generateBloomersTopic,
-        generateTaughtTopic,
         generateYearTopic,
         generateFreeTopic,
         generateBehindTopic,
         generateNobodyTopic,
-        generateUnsentTopic,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
       const recent = await prisma.carouselPost.findMany({
         where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
-        select: {
-          headline: true,
-          // Bloomers dedupes on PEOPLE, not titles — the slide headers
-          // carry the names ("1. Vera Wang.").
-          ...(bucket === "bloomers"
-            ? { slides: { select: { overlayText: true } } }
-            : {}),
-        },
+        select: { headline: true },
       });
       const headlines = recent.map((p) => p.headline);
       if (bucket === "memento") return generateMementoTopic("women", headlines);
@@ -290,25 +258,10 @@ export const carouselDailyCronFn = inngest.createFunction(
         return generateMementoTopic("men", headlines);
       if (bucket === "questions") return generateQuestionsTopic(headlines);
       if (bucket === "rules") return generateRulesTopic(headlines);
-      if (bucket === "missed")
-        return generateMissedTopic("universal", headlines);
-      if (bucket === "missed-men") return generateMissedTopic("men", headlines);
-      if (bucket === "forbidden") return generateForbiddenTopic(headlines);
-      if (bucket === "bloomers") {
-        const usedNames = recent.flatMap((p) =>
-          ((p as { slides?: { overlayText: string }[] }).slides ?? [])
-            .map((s) => s.overlayText.split("\n")[0]?.trim() ?? "")
-            .filter((l) => /^\d+\.\s/.test(l))
-            .map((l) => l.replace(/^\d+\.\s*/, ""))
-        );
-        return generateBloomersTopic([...headlines, ...usedNames]);
-      }
-      if (bucket === "taught") return generateTaughtTopic(headlines);
       if (bucket === "year") return generateYearTopic(headlines);
       if (bucket === "free") return generateFreeTopic(headlines);
       if (bucket === "behind") return generateBehindTopic(headlines);
       if (bucket === "nobody") return generateNobodyTopic(headlines);
-      if (bucket === "unsent") return generateUnsentTopic(headlines);
       return generateMoodyTopic(
         bucket === "moody-women" ? "women" : "men",
         headlines
@@ -387,36 +340,28 @@ export const carouselDailyCronFn = inngest.createFunction(
 
     const moodyResult = await step.run("save-and-email-moody", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const {
-        buildMoodyCaption,
-        buildMementoCaption,
-        buildMissedCaption,
-        buildUniversalCaption,
-      } = await import("@/lib/content-factory/moody-carousel");
+      const { buildMoodyCaption, buildMementoCaption, buildUniversalCaption } =
+        await import("@/lib/content-factory/moody-carousel");
       const { extractHashtags } = await import(
         "@/lib/content-factory/carousel-generate"
       );
 
       // Hashtag-only caption cloned from the reference (2026-08-28,
       // per Keenan — the moody-family exception to the question+tags
-      // rule). Memento/missed lanes keep their niche pools regardless
-      // of audience; universal lanes get universal pools; BWK men's
-      // lanes use the men's pool; the women's lanes share the women's.
+      // rule). Memento lanes keep their niche pool regardless of
+      // audience; FREE gets the universal pool; BWK men's lanes use
+      // the men's pool; the women's lanes share the women's.
       const caption =
         bucket === "memento" || bucket === "memento-men"
           ? buildMementoCaption(slug)
-          : bucket === "missed" || bucket === "missed-men"
-            ? buildMissedCaption(slug)
-            : bucket === "bloomers" || bucket === "free"
-              ? buildUniversalCaption(slug)
-              : buildMoodyCaption(
-                  bucket === "moody-men" ||
-                    bucket === "year" ||
-                    bucket === "behind"
-                    ? "men"
-                    : "women",
-                  slug
-                );
+          : bucket === "free"
+            ? buildUniversalCaption(slug)
+            : buildMoodyCaption(
+                bucket === "moody-men" || bucket === "year" || bucket === "behind"
+                  ? "men"
+                  : "women",
+                slug
+              );
 
       const post = await prisma.carouselPost.create({
         data: {

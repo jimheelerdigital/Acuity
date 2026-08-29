@@ -222,22 +222,16 @@ export default function CarouselReviewPage() {
   const generateBucket = async (
     bucket:
       | "rules"
-      | "missed"
-      | "missed-men"
-      | "forbidden"
       | "moody-women"
       | "moody-men"
       | "memento"
       | "memento-men"
       | "questions"
-      | "bloomers"
-      | "taught"
       | "sign"
       | "year"
       | "free"
       | "behind"
       | "nobody"
-      | "unsent"
   ) => {
     setGenerating(true);
     setGenerateMsg(null);
@@ -588,30 +582,6 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "🔓"}
           </button>
           <button
-            onClick={() => generateBucket("missed")}
-            disabled={generating}
-            title="Generate a missed-connection math carousel now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🫂"}
-          </button>
-          <button
-            onClick={() => generateBucket("missed-men")}
-            disabled={generating}
-            title="Generate a missed-connection math carousel (men / BWK) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "📵"}
-          </button>
-          <button
-            onClick={() => generateBucket("forbidden")}
-            disabled={generating}
-            title="Generate a forbidden-truths carousel (women funnel) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🤫"}
-          </button>
-          <button
             onClick={() => generateBucket("moody-women")}
             disabled={generating}
             title="Generate a moody discipline carousel (women funnel) now"
@@ -652,22 +622,6 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "❓"}
           </button>
           <button
-            onClick={() => generateBucket("bloomers")}
-            disabled={generating}
-            title="Generate a late-bloomers carousel (universal) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🌱"}
-          </button>
-          <button
-            onClick={() => generateBucket("taught")}
-            disabled={generating}
-            title="Generate a what-it-taught-me carousel (women funnel) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "📖"}
-          </button>
-          <button
             onClick={() => generateBucket("sign")}
             disabled={generating}
             title="Generate a This Is Your Sign static image (women funnel) now"
@@ -706,14 +660,6 @@ export default function CarouselReviewPage() {
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🤐"}
-          </button>
-          <button
-            onClick={() => generateBucket("unsent")}
-            disabled={generating}
-            title="Generate an unsent-texts carousel (women funnel) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "📩"}
           </button>
           <button
             onClick={() => fetchPosts()}
