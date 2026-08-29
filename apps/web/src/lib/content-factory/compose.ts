@@ -21,14 +21,21 @@ const PADDING_X = 72; // horizontal padding for text
 // ─── Font management ────────────────────────────────────────────────────────
 
 /**
- * Ensure a Poppins font file is available on disk and return its path.
+ * Ensure a font file is available on disk and return its path.
  * Checks local paths first (local dev), then downloads from the CDN
  * and caches in /tmp/ (Lambda). Returns null if all attempts fail.
+ *
+ * "QuoteSerif" = Playfair Display Medium Italic — the premium editorial
+ * serif used by the quote-loop / questions overlays (2026-08-28 PM, per
+ * Keenan: "italicized and fancier... stand out and feel premium").
  */
 export async function ensureFontFile(
-  variant: "Bold" | "Medium" = "Bold"
+  variant: "Bold" | "Medium" | "QuoteSerif" = "Bold"
 ): Promise<string | null> {
-  const filename = `Poppins-${variant}.ttf`;
+  const filename =
+    variant === "QuoteSerif"
+      ? "PlayfairDisplay-MediumItalic.ttf"
+      : `Poppins-${variant}.ttf`;
   const tmpPath = `/tmp/${filename}`;
 
   if (fs.existsSync(tmpPath)) return tmpPath;
@@ -566,19 +573,28 @@ export async function renderSelfieCaptionOverlay(
  * COVER: the short title, uppercase, bold, letter-spaced.
  * ITEM: the numbered name ("4. Reset day.") + its paragraphs, all one
  * uniform size like the reference.
- * QUOTE (2026-08-28 PM): one short devastating line, bold sentence-case
- * at a size between COVER and ITEM — used by the quote-loop videos and
- * the hard-questions slides, where a single line carries the frame.
+ * QUOTE (2026-08-28 PM): one short devastating line in Playfair Display
+ * Medium Italic — a premium editorial serif (per Keenan: "italicized and
+ * fancier... stand out and feel premium") — used by the quote-loop
+ * videos and the hard-questions slides, where a single line carries the
+ * frame.
  */
 export async function renderMoodyTextOverlay(
   paragraphs: string[],
   kind: "COVER" | "ITEM" | "QUOTE"
 ): Promise<Buffer> {
-  const fontPath = await ensureFontFile(kind === "ITEM" ? "Medium" : "Bold");
+  const fontPath = await ensureFontFile(
+    kind === "ITEM" ? "Medium" : kind === "QUOTE" ? "QuoteSerif" : "Bold"
+  );
 
-  const fontSize = kind === "COVER" ? 72 : kind === "QUOTE" ? 54 : 42;
-  const wrapChars = kind === "COVER" ? 14 : kind === "QUOTE" ? 20 : 30;
-  const font = kind === "ITEM" ? "Poppins Medium" : "Poppins Bold";
+  const fontSize = kind === "COVER" ? 72 : kind === "QUOTE" ? 58 : 42;
+  const wrapChars = kind === "COVER" ? 14 : kind === "QUOTE" ? 22 : 30;
+  const font =
+    kind === "ITEM"
+      ? "Poppins Medium"
+      : kind === "QUOTE"
+        ? "Playfair Display Medium Italic"
+        : "Poppins Bold";
 
   const body = paragraphs
     .map((p) =>

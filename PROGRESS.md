@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-08-28] — Quote videos get a premium italic serif
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `style(content-factory): Premium serif italic` commit)
+
+### In plain English (for Keenan)
+The line burned onto the looping quote videos now renders in an elegant italic serif (Playfair Display) instead of the plain bold sans-serif everything else uses — bigger, fancier, and premium-feeling, like a magazine pull-quote. The five question slides in the hard-questions carousel use the same typeface, since a single line carries those frames too.
+
+### Technical changes (for Jimmy)
+- `apps/web/public/fonts/PlayfairDisplay-MediumItalic.ttf`: new font asset (OFL license, static instance from Google Fonts)
+- `apps/web/src/lib/content-factory/compose.ts`: `ensureFontFile` accepts a `"QuoteSerif"` variant mapping to the new file; `renderMoodyTextOverlay` QUOTE kind now uses `Playfair Display Medium Italic 58` (was Poppins Bold 54), wrap width 22 chars
+- No pipeline, cron, or schema changes — pure rendering change; Inngest resync not needed
+
+### Manual steps needed
+- [ ] Eyeball the next quote-loop / questions email to confirm the serif actually rendered in prod (Keenan) — if the text looks like a generic italic sans, the font didn't load and Claude Code should investigate
+
+### Notes
+- Local font verification is IMPOSSIBLE on the dev Mac: its fontconfig is broken ("Cannot load default config file") and sharp/Pango silently falls back to Helvetica — even Poppins never actually rendered locally. Prod Lambda is the only faithful renderer; Poppins works there via the same `fontfile` mechanism, and the new font's internal family/subfamily names ("Playfair Display" / "Medium Italic") were verified against the Pango font_desc.
+- The font downloads via the same 3-tier path as Poppins: /tmp cache → bundled public/fonts → CDN (goripple.io/fonts/…, live after this deploy).
+
 ## [2026-08-28] — Three new daily post formats: looping quote videos, memento mori, hard questions
 
 **Requested by:** Keenan
