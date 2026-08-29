@@ -115,6 +115,22 @@ export interface ExtractedProgressSuggestion {
   rationale: string;
 }
 
+/**
+ * Normalise the model's `reflection` field to `string | null`.
+ *
+ * Exported (rather than inlined in the pipeline parse) so the contract
+ * is unit-testable without loading the extraction module and its SDK.
+ *
+ * Everything that is not a non-empty string becomes null — including an
+ * array or object, which would otherwise stringify to "[object Object]"
+ * and be rendered to a user as their reflection.
+ */
+export function normalizeReflection(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export interface ExtractionResult {
   summary: string;
   mood: Mood;
@@ -133,6 +149,14 @@ export interface ExtractionResult {
   blockers: string[];
   /** 2–4 reflective observations or actionable recommendations */
   insights: string[];
+  /**
+   * Feature #1 Phase A: one warm 2-3 sentence observation addressed TO
+   * the user. Deliberately NOT `summary` (which recaps the day) and NOT
+   * `insights` (a list). Optional because the FREE branch never runs
+   * extraction and because extractions predating the field have none —
+   * every reader null-guards.
+   */
+  reflection?: string | null;
   tasks: ExtractedTask[];
   goals: ExtractedGoal[];
   /** Sub-goal suggestions anchored to existing user goals. Persisted
