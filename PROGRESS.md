@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-08-29] — Ripple now writes you one warm observation after each entry
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+After each debrief, Ripple now writes back a short note — two or three sentences, in its own voice, saying what it noticed. Not a recap of your day (that already exists) and not a list of takeaways (that exists too). One observation, the way a friend who's been paying attention would say it. Once someone has a bit of history, it can connect things across entries: "the 4am wake-up and the Jordan meeting landing in the same week has shown up together before."
+
+This is deliberately not a "you haven't recorded lately" nudge. We removed an email in the past for exactly that reason, and the prompt now bans it in several different disguises — including the sneaky one where it praises you just for opening the app.
+
+It costs nothing extra: it rides along on the analysis we already run per entry, so no new AI call, no extra wait. It shows on the website today. Paid entries only — free entries skip the analysis step entirely, so they simply won't have one. The phone app shows it in a follow-up.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma` — `Entry.reflection String?` (additive nullable, no backfill)
+- `packages/shared/src/types.ts` — `ExtractionResult.reflection?: string | null`; new pure `normalizeReflection(value: unknown): string | null`
+- `apps/web/src/lib/pipeline.ts` — `REFLECTION_GUIDELINE` const + `"reflection"` in the extract JSON schema + `${REFLECTION_GUIDELINE}` interpolated into the guidelines block; parse via `normalizeReflection(parsed.reflection)`; sync-path Entry write
+- `apps/web/src/inngest/functions/process-entry.ts` — async-path Entry write
+- `apps/web/src/app/entries/[id]/page.tsx` — "Ripple noticed" tinted Card above the Summary section, null-guarded
+- `apps/web/src/lib/entry-reflection.test.ts` — 21 tests
+- Untouched on purpose: `apps/mobile` (Phase B), no new Inngest function, no second Claude call, no backfill
+
+### Manual steps needed
+- [ ] Jimmy: **merge to `main` first, then run `npm run db:push` FROM `main`** — never from this branch (CLAUDE.md corollary). The column is additive so the destructive-diff guard should pass clean
+- [ ] Jimmy: the guard could not be run from this machine — `npm run db:guard` failed with P1001 (can't reach `aws-1-us-west-2.pooler.supabase.com:5432`). Run it from the home network before pushing
+- [ ] Nobody: no env var, no Inngest resync, no backfill
+
+### Notes
+- **Two persistence paths, not one.** `pipeline.ts::processEntry` (sync) and `inngest/functions/process-entry.ts` (async, behind `ENABLE_INNGEST_PIPELINE`) both write the Entry. Writing the reflection in only one would make it appear or vanish depending on a flag the user cannot see. A test pins both.
+- **`normalizeReflection` lives in `@acuity/shared`, not inline in the parse.** pipeline.ts pulls the Anthropic SDK at module scope, so it can't be imported in the web vitest env. Putting the normaliser in shared makes the actual shipped function testable instead of a copy of it.
+- **Non-strings normalise to null, not `String(...)`.** If the model returned an array or object, `String()` would render "[object Object]" to a user in the warmest slot on the page.
+- **The prompt was tightened after seeing real output, not before.** Running the shipped prompt against three transcripts pre-merge produced, on a deliberately thin entry: *"even on a quiet, tired day, you still showed up."* That is praise for USING THE APP — the 2d76c829 failure in a friendlier register, and it passed every ban that existed at the time. Added an explicit clause banning praise for showing up/opening the app/speaking at all, with the correct alternative spelled out. Re-ran: the thin entry now returns *"Work showing up three times across your entries, and today it's still there — even when there's almost nothing left to say about it."*
+- **The same re-run fixed a second weakness.** With memory context available, the first version picked the smallest available observation (a nice moment with Marcus) and ignored an 8x recurring 4am-waking pattern sitting right there. After the edit it connects the 4am wake-up to the Jordan meeting — the pattern-awareness the feature is for.
+- **Reflections are PRO-only by construction, not by a flag.** The FREE branch returns a Haiku summary and returns before extraction, so there is no code path where a FREE entry gets one. Every reader must null-guard; so must legacy entries, which have no backfill.
+- Baselines: web tsc **163 before, 163 after** — identical error sets, verified by stashing and diffing. (The brief said 150; `main` has drifted up by 13 since PR #47. The stale-baseline pattern is now four for four — worth reading the number off `main` each time rather than off the brief.) Tests **733/733** across 44 files.
+
 ## [2026-08-28] — A page that shows you everything Ripple has picked up about you
 
 **Requested by:** Jimmy

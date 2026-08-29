@@ -175,6 +175,25 @@ export default async function EntryDetailPage({
         {isComplete && <ExtractionReview entryId={entry.id} />}
 
         <div className="space-y-8">
+          {/* Ripple's reflection — one warm observation written back to
+              the user. Null on every FREE entry (that branch exits before
+              extraction) and on every entry predating the column, so the
+              guard is load-bearing, not defensive habit. Sits above the
+              summary because it is the part worth reading first, and is
+              visually distinct so it never reads as more recap. */}
+          {isComplete && entry.reflection && (
+            <section>
+              <Card variant="tinted" radius="lg" padding={6}>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+                  Ripple noticed
+                </p>
+                <p className="mt-3 whitespace-pre-wrap font-display text-[17px] leading-relaxed text-acuity-text sm:text-lg">
+                  {entry.reflection}
+                </p>
+              </Card>
+            </section>
+          )}
+
           {isComplete && entry.summary && (
             <section>
               <SectionHeader label="Summary" />

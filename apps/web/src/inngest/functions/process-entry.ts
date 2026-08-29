@@ -694,6 +694,7 @@ export const processEntryFn = inngest.createFunction(
           where: { id: entryId },
           data: {
             summary: extraction.summary,
+            reflection: extraction.reflection ?? null,
             mood: extraction.mood,
             moodScore: extraction.moodScore,
             energy: extraction.energy,

@@ -744,6 +744,14 @@ model Entry {
   audioDuration         Int?
   transcript            String?
   summary               String?
+  // Feature #1 Phase A (2026-08-29): a single warm 2-3 sentence
+  // observation written TO the user, produced as an added field on the
+  // EXISTING extraction call. Distinct from `summary` (a recap of the
+  // day) and from the `insights` array (a list). PRO-only — the FREE
+  // branch short-circuits before extraction, so this stays null there
+  // and on every entry predating this column. Every reader must
+  // null-guard; there is no backfill.
+  reflection            String?
   mood                  String?
   moodScore             Int?
   energy                Int?

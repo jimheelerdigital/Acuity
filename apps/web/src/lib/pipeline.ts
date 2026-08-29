@@ -13,6 +13,7 @@ import {
   CLAUDE_MODEL,
   WHISPER_LANGUAGE,
   WHISPER_MODEL,
+  normalizeReflection,
   type ExtractionResult,
   type LifeAreaMention,
   type LifeAreaMentions,
@@ -157,6 +158,33 @@ const DISPOSITIONAL_THEME_GUIDELINE = `- Themes are DISPOSITIONAL PATTERNS, not 
     - Lowercase labels except where genuinely required by grammar.
     - Reuse is the goal — when a familiar pattern fits, prefer the familiar phrasing over inventing a new one.`;
 
+/**
+ * The `reflection` field's prompt guidance.
+ *
+ * ── Why this is written so defensively ───────────────────────────────
+ * A previous "first-insight" activation email was REMOVED (commit
+ * 2d76c829) because it surfaced low-value, non-insight text — usage
+ * nags rather than real observations. That is the exact failure mode
+ * this field has to clear, so the prohibitions below are explicit and
+ * come with counter-examples rather than being left to inference.
+ *
+ * Voice follows _design/DESIGN_SYSTEM.md §7: plainspoken, specific,
+ * observational not prescriptive, and "remembers" rather than
+ * "insights"/"intelligence".
+ */
+const REFLECTION_GUIDELINE = `- reflection: ONE short message written directly TO the user, second person, 2-3 sentences. This is the single most important field for how the product feels — treat it as such.
+  WHAT IT IS: an observation. You noticed something and you are saying it back plainly. When the memory context shows this user has history, ground it in a pattern across entries — "that's the third time this week the meeting with Jordan came up right before you mentioned not sleeping". When there is little or no history, observe THIS entry closely instead; a day-one reflection is specific about today, not vague about the future.
+  WHAT IT IS NOT:
+    * NOT a recap of the day — that is the "summary" field. If your reflection would still be true as a summary, rewrite it.
+    * NOT a list, and not multiple observations stapled together — that is the "insights" field. One thread, followed properly.
+    * NOT advice, a suggestion, a next step, or a question. You are a mirror, not a coach. Never tell the user what to do.
+    * NEVER a usage nag. Do not mention recording, streaks, consistency, coming back, how long it has been, or the app itself. "You haven't recorded in a while", "keep it up", "try recording tomorrow" are all forbidden. If you have nothing to observe, observe something small and real from the transcript instead.
+    * NEVER praise the user for showing up, opening the app, or speaking at all. "You still showed up", "even on a hard day you took the time", "good on you for checking in" are the SAME banned category as a nag wearing a compliment — they are about the app, not about the user's life. On a thin or tired entry the correct move is to take the small thing they DID say seriously: "work was work" from someone carrying months of work stress is itself worth naming, without congratulating them for saying it.
+    * NOT therapeutic or diagnostic. No "that sounds like burnout", no advice about mental health.
+    * NOT flattery. "What a productive day!" is worthless. Praise only a specific thing the user actually did.
+  TONE: warm and steady, the way a friend who has been paying attention talks. Plain words, short sentences. Name the specific person, time, or number when you have it — vagueness is the main way this field fails.
+  Write the reflection LAST, after you have filled in everything else, so it can draw on what you found.`;
+
 function buildExtractionSystemPrompt(useDispositional: boolean): string {
   const themeGuideline = useDispositional
     ? DISPOSITIONAL_THEME_GUIDELINE
@@ -167,6 +195,7 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
 
 {
   "summary": "2-3 sentence synthesis of the day",
+  "reflection": "2-3 sentences written TO the user — see the Reflection section below",
   "mood": "GREAT" | "GOOD" | "NEUTRAL" | "LOW" | "ROUGH",
   "moodScore": <integer 1–10, where ROUGH=1-2, LOW=3-4, NEUTRAL=5-6, GOOD=7-8, GREAT=9-10>,
   "energy": <integer 1–10>,
@@ -226,6 +255,7 @@ Guidelines:
 - progressSuggestions: populate ONLY when the transcript contains concrete, quantifiable evidence of progress on an existing user goal from the memory context — e.g. "closed our first $100k deal" against a "close $1M" goal. goalText must match an existing goal. suggestedProgressPct is the new total percent (not a delta) — infer from the numeric relationship when possible (e.g. $100k of $1M → 10), otherwise leave conservative. rationale is one short sentence that QUOTES a phrase from the transcript. Do NOT invent progress or guess percentages without clear evidence. Skip if unsure — these get shown to the user for validation before anything is written, so precision beats enthusiasm.
 ${themeGuideline}
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
+${REFLECTION_GUIDELINE}
 - moodScore should be a nuanced score that reflects the overall emotional tone
 - Today's date context will be provided in the user message
 ${LIFE_AREA_EXTRACTION_SCHEMA}`;
@@ -412,6 +442,9 @@ export async function extractFromTranscript(
 
   return {
     summary: String(parsed.summary ?? ""),
+    // Empty/absent/non-string normalises to null so downstream readers
+    // have ONE "no reflection" value to guard. See normalizeReflection.
+    reflection: normalizeReflection(parsed.reflection),
     mood: validateMood(parsed.mood),
     moodScore: clamp(Number(parsed.moodScore ?? 5), 1, 10),
     energy: clamp(Number(parsed.energy ?? 5), 1, 10),
@@ -728,6 +761,7 @@ export async function processEntry({
           audioDuration: durationSeconds ?? null,
           transcript,
           summary: extraction.summary,
+          reflection: extraction.reflection ?? null,
           mood: extraction.mood,
           moodScore: extraction.moodScore,
           energy: extraction.energy,
