@@ -14,7 +14,7 @@ import {
   HeroCard,
   SectionHeader,
   ThemePill,
-  type ThemeKey,
+  themeKeyFor,
 } from "@/components/acuity";
 
 import { EntryStatusGate } from "./entry-status-gate";
@@ -29,31 +29,6 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-const CANONICAL_THEME_KEYS: ReadonlyArray<ThemeKey> = [
-  "career",
-  "family",
-  "health",
-  "avoidance",
-  "money",
-  "relationships",
-  "sleep",
-  "growth",
-  "solitude",
-];
-
-/**
- * Map a free-text theme string to one of the canonical 9 hues for
- * `<ThemePill>`. Lowercase + lookup; falls through to `other` for
- * any user-generated theme that isn't in the canonical table. Matches
- * mobile's `hueForTheme()` fallback chain conceptually — full
- * FNV-1a hash-to-hue is deferred to slice 6b orbital work.
- */
-function themeKeyFor(name: string): ThemeKey {
-  const k = name.toLowerCase().trim();
-  return (CANONICAL_THEME_KEYS as readonly string[]).includes(k)
-    ? (k as ThemeKey)
-    : "other";
-}
 
 /**
  * Extract a pull-quote from the entry summary — first sentence,
