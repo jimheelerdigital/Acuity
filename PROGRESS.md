@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-08-29] — Ripple starts noticing patterns at entry 2 instead of entry 10
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The Theme Map stays locked until someone has ten entries, which means the first week or two feels like nothing is happening. There's now a small card on the Insights page that shows up much earlier: once a subject has come up in two different debriefs, Ripple says so — gently. "Sleep has come up in more than one of your debriefs. It's early, so this might be nothing — but Ripple noticed."
+
+The wording is deliberately unsure of itself, because with two entries it genuinely is. It never quotes a count, never tells anyone what to do, and it quietly disappears the moment the real Theme Map unlocks. If nothing has come up twice yet, the card simply isn't there — no empty box, no "keep recording" nudge.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/emerging-patterns.ts` — pure `selectEmergingThemes()` (returns `[]` for every hide case) + `emergingPatternsCopy()`; constants `MIN_ENTRIES_FOR_PEEK` 2, `MIN_ENTRIES_PER_THEME` 2, `MAX_EMERGING_THEMES` 2
+- New `apps/web/src/app/insights/emerging-patterns-card.tsx` — async server component; `themeMention.groupBy` with `having` on `_count >= 2`, then a `theme.findMany` for names
+- `apps/web/src/app/insights/page.tsx` — renders it above the featured cards, passing `progression.entriesCount` + `progression.unlocked.themeMap`
+- `apps/web/src/components/acuity/ThemePill.tsx` + `index.ts` — `CANONICAL_THEME_KEYS` and `themeKeyFor()` promoted out of the entry page and exported
+- `apps/web/src/app/entries/[id]/page.tsx` — drops its local copies, imports the shared ones
+- New `apps/web/src/lib/emerging-patterns.test.ts` — 22 tests
+- Untouched on purpose: `UNLOCK_THRESHOLD`, `MIN_MENTIONS_FOR_PLANET`, `unlocked.themeMap`, `apps/mobile`, schema, extraction, Inngest
+
+### Manual steps needed
+- [ ] Nobody: no env var, no schema change, no `db:push`, no Inngest resync
+
+### Notes
+- **`ThemeMention` is `@@unique([themeId, entryId])`**, so a `groupBy` count over it is already "distinct entries containing this theme" — not a raw mention tally. That is what makes the card's claim ("come up in more than one of your debriefs") literally true rather than approximately true. Using `UserMemory.recurringThemes.count` would have been the looser option.
+- **Returning `[]` for every hide case is deliberate**, so the caller has one condition and there is no empty state to design. An empty "no patterns yet" card on a 2-entry account is a nag with a chart on it — the exact thing the 2d76c829 email removal was about.
+- **The copy quotes no numbers.** "Seen 4 times" claims precision two entries have not earned and turns a gentle observation into a scoreboard. A test asserts the copy contains no digits at all.
+- **Kept Ripple in the third person, deviating from the brief's example wording.** The brief suggested "Something I'm starting to notice…", but there is no first-person Ripple voice anywhere in the product — every surface says "Ripple remembers" / "Ripple noticed". Introducing "I" on this card would have been a brand-voice change smuggled in via a feature ticket. Flagged in the PR for Jimmy to overrule if he wants it.
+- **Found and fixed a real copy bug while sampling output.** Theme names are stored lowercase by `normalizeThemeName`, so the sentence opened "sleep has come up…" and read like a rendering fault. Now sentence-cased on the first character only, so "self-care" and "9-to-5" survive; a label in second position stays as stored, since theme labels are not proper nouns.
+- **`CANONICAL_THEME_KEYS` was about to become a second hand-declared copy.** It lived as a local const in the entry page; the new card needed the same list. That is precisely the drift DESIGN_SYSTEM §2.6 documents for the amber token ("re-declaring `#FBBF24` at six call sites caused drift"), so it moved next to `ThemeKey` in `ThemePill.tsx` and both consumers import it.
+- **FREE users cannot see this card without a separate entitlement check.** Themes come from `recordThemesFromExtraction`, which only the PRO extraction path calls — the FREE branch returns a Haiku summary and exits first. No extraction, no `ThemeMention` rows, nothing to show. This matches the sibling cards on the hub, which gate on `progression.unlocked.*` only.
+- Baselines: web tsc **163 before, 163 after**; tests **734/734** across 44 files (712 + 22 new). `npx next build` exits 0.
+
 ## [2026-08-29] — Fixed text editing on the new-style posts (edits were producing blank images)
 
 **Requested by:** Keenan

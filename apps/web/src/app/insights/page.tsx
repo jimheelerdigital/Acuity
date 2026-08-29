@@ -11,6 +11,7 @@ import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { PageContainer } from "@/components/page-container";
 import { HeroCard, SectionHeader } from "@/components/acuity";
 
+import { EmergingPatternsCard } from "./emerging-patterns-card";
 import { InsightsView } from "./insights-view";
 import { RecentTimeline } from "./recent-timeline";
 import { MetricsDrawer } from "./metrics-drawer";
@@ -59,6 +60,17 @@ export default async function InsightsPage() {
             Explore your reflections beyond the basics.
           </p>
         </header>
+
+        {/* Early peek at emerging patterns. Renders only between entry 2
+            and the Theme Map unlock, and only when a theme has actually
+            appeared in 2+ entries — otherwise it returns null and this
+            slot collapses. Deliberately no empty state: a "no patterns
+            yet" card on a 2-entry account is a nag with a chart on it. */}
+        <EmergingPatternsCard
+          userId={session.user.id}
+          entriesCount={progression.entriesCount}
+          themeMapUnlocked={progression.unlocked.themeMap}
+        />
 
         {/* Featured destinations — the long-tail analytical features.
             Ask + State of Me get HeroCard treatment (primary + secondary
