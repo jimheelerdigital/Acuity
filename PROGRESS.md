@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** aade6426
 
 ### In plain English (for Keenan)
 The Theme Map stays locked until someone has ten entries, which means the first week or two feels like nothing is happening. There's now a small card on the Insights page that shows up much earlier: once a subject has come up in two different debriefs, Ripple says so — gently. "Sleep has come up in more than one of your debriefs. It's early, so this might be nothing — but Ripple noticed."
