@@ -278,17 +278,18 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 }
 
 // ─── MEMENTO MORI carousel (2026-08-28 PM, per Keenan) ────────────────
-// One universal lane: a cover + 5 slides of sobering time-math ("You'll
-// see your parents about 15 more times."), each landing on a short
-// command. Same moody skeleton (dark photography, white centered text,
-// hashtag-only caption) but NO "N. Name." number headers — the numbers
-// ARE the content.
+// Split into TWO audience lanes (2026-08-28 late night, per Keenan):
+// "memento" targets women 40-50 (Ripple), "memento-men" targets young
+// men (BWK). Same skeleton: cover + 5 slides of sobering time-math
+// ("You'll see your parents about 15 more times."), each landing on a
+// short command. NO "N. Name." headers — the numbers ARE the content.
 
-const MEMENTO_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MEMENTO MORI TIME-MATH — sobering, concrete numbers about how finite life is, each slide ending on a short command to act on it.
+const MEMENTO_SYSTEM_PROMPTS: Record<MoodyAudience, string> = {
+  women: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MEMENTO MORI TIME-MATH — sobering, concrete numbers about how finite life is, each slide ending on a short command to act on it.
 
-AUDIENCE: everyone scrolling at midnight. The numbers must hit universally — parents, weekends, summers, healthy years, hours on a phone. No gendered content, no niche jargon.
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock: aging parents, summers while the kids still come home, Saturdays before the house empties, healthy years, hours lost holding it together for everyone else. Never her own death by name — the finitude is felt, not stated.
 
-SCENES: dark cinematic photography, vast and contemplative — an empty beach at last light, a night sky over a black ridgeline, a long empty road at dusk, a single lit window in a dark house, an empty chair by a cold window, autumn leaves on wet pavement. Every frame DIM (white text must read on it). No people ever.
+SCENES: dark cinematic photography, vast and contemplative with soft warmth — an empty beach at last light, a single lit window in a dark house, an empty chair by a cold window, a kitchen table cleared after dinner, autumn leaves on wet pavement, a porch light on at dusk. Every frame DIM (white text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
 "You'll see your parents about 15 more times.
@@ -300,10 +301,10 @@ Call them tonight."
 RULES:
 - "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("YOU'RE ON THE CLOCK", "DO THE MATH"). No number in the title.
 - Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
-  - First line: ONE concrete, honest number about finite time ("~1,200 Saturdays left before you're 60.", "About 30 more summers."). Plausible arithmetic only — never invented statistics, never fake precision, hedge with "about" or "~".
+  - First line: ONE concrete, honest number about finite time ("~1,200 Saturdays left before you're 60.", "About 12 more summers before the youngest leaves."). Plausible arithmetic only — never invented statistics, never fake precision, hedge with "about" or "~".
   - Optional middle line: the one-sentence math or truth behind it.
   - Last line: a 2-5 word command ("Call them tonight.", "Stop wasting them.").
-- Vary the subject across the 5 slides: parents, weekends/summers, healthy years, time with your kids or friends, hours lost to the phone. Never two slides on the same subject.
+- Vary the subject across the 5 slides: aging parents, summers or holidays with the kids, healthy years, old friendships, hours lost to the phone or to obligation. Never two slides on the same subject.
 - Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
 - US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Never mention death by name on the cover.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
@@ -315,17 +316,52 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "lines": ["...", "...", "..."], "scene": "..." }
   ]
-}`;
+}`,
+  men: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MEMENTO MORI TIME-MATH — sobering, concrete numbers about how finite time is, each slide ending on a short command to act on it.
 
-/** Generate one memento mori topic (universal audience). */
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock: peak physical years, Mondays left this decade, visits home to his parents, hours lost to the scroll, years until the excuses stop working. The math should read like a bill coming due.
+VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
+
+SCENES: dark minimalist photography — an empty gym at night, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass. Desaturated, near-monochrome. Every frame DIM (white text must read on it). No people ever.
+
+FORMAT — each slide reads like this (match the rhythm):
+"You'll visit your parents about 20 more times.
+
+Twice a year. Do the math.
+
+Call them tonight."
+
+RULES:
+- "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("YOU'RE ON THE CLOCK", "DO THE MATH"). No number in the title.
+- Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
+  - First line: ONE concrete, honest number about finite time ("~500 Mondays left in your 20s and 30s.", "About 15 peak training years."). Plausible arithmetic only — never invented statistics, never fake precision, hedge with "about" or "~".
+  - Optional middle line: the one-sentence math or truth behind it.
+  - Last line: a 2-5 word command ("Stop wasting them.", "Start tonight.").
+- Vary the subject across the 5 slides: parents, peak physical years, hours lost to the scroll, weekends or Mondays left, the window to build something. Never two slides on the same subject.
+- Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
+- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Never mention death by name on the cover.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["...", "...", "..."], "scene": "..." }
+  ]
+}`,
+};
+
+/** Generate one memento mori topic for the given audience lane. */
 export async function generateMementoTopic(
+  audience: MoodyAudience,
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
   return generateMoodyFamilyTopic({
-    purpose: "memento-carousel-topic",
-    system: MEMENTO_SYSTEM_PROMPT,
+    purpose: audience === "men" ? "memento-men-carousel-topic" : "memento-carousel-topic",
+    system: MEMENTO_SYSTEM_PROMPTS[audience],
     user: `Write one new memento mori time-math post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
-    slugPrefix: "memento",
+    slugPrefix: audience === "men" ? "memento-men" : "memento",
     requireName: false,
     minLines: 2,
   });
@@ -451,12 +487,13 @@ export async function generateRulesTopic(
 }
 
 // ─── MISSED CONNECTIONS carousel (2026-08-28 late PM, per Keenan) ─────
-// Replaces the positive lane (8 UTC). Universal: near-miss math about
-// the people you almost knew — cousin of memento mori, but the finite
-// thing is CONNECTION, not time. Each slide a small ghost story told in
-// plausible numbers.
+// Near-miss math about the people you almost knew — cousin of memento
+// mori, but the finite thing is CONNECTION, not time. Two lanes
+// (2026-08-28 late night): "missed" = universal (Ripple), "missed-men"
+// = the cost-of-the-grind variant for young men (BWK).
 
-const MISSED_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MISSED-CONNECTION MATH — quiet, concrete numbers about the people we walk past, lose touch with, or never quite meet. Each slide is a small ghost story told in plausible arithmetic.
+const MISSED_SYSTEM_PROMPTS: Record<"universal" | "men", string> = {
+  universal: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MISSED-CONNECTION MATH — quiet, concrete numbers about the people we walk past, lose touch with, or never quite meet. Each slide is a small ghost story told in plausible arithmetic.
 
 AUDIENCE: everyone scrolling at midnight. The numbers must hit universally — strangers passed, friends drifted, conversations not started, calls not made. No gendered content.
 
@@ -487,17 +524,52 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "lines": ["...", "...", "..."], "scene": "..." }
   ]
-}`;
+}`,
+  men: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MISSED-CONNECTION MATH — quiet, concrete numbers about the people a man loses while he's grinding: friends gone quiet, mentors never asked, calls home not made. Each slide is a small ghost story told in plausible arithmetic.
 
-/** Generate one missed-connections topic (universal, replaces positive). */
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They talk about the grind and lone-wolf focus — this format is the cost column they don't audit: the group chat that died, the mentor they never messaged, the calls to dad they keep postponing, the friends success quietly filtered out.
+VOICE: calm, flat, unsparing. Short declarative sentences. Direct second person. The sting is arithmetic, not sentiment. Never bro-slang, never mushy.
+
+SCENES: dark minimalist photography of in-between places, empty of people — an empty train platform under sodium light, a gym lobby after close, a rain-streaked car window at night, an airport gate after the last flight, a dorm hallway at 2am, a diner counter at closing. Desaturated, near-monochrome. Every frame DIM (white text must read on it). No people ever.
+
+FORMAT — each slide reads like this (match the rhythm):
+"Your group chat used to get 100 messages a day.
+
+Now it gets about 3 a month.
+
+Nobody decided that. It just happened."
+
+RULES:
+- "title": the cover text. 2-5 words, works in ALL CAPS ("THE PEOPLE YOU LOST", "THE COST OF THE GRIND"). No number in the title.
+- Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
+  - First line: ONE concrete, plausible number about connection lost or never made ("You'll call your dad about 40 more times.", "It takes about 2 years for a friendship to go quiet."). Plausible arithmetic only — never invented precision, hedge with "about" or "~".
+  - Middle line: the flat truth inside the number.
+  - Last line: a short landing — a command or flat statement (2-6 words: "Text them first.", "Send the message.", "Nobody decided that.").
+- Vary the subject across the 5 slides: old friends gone quiet, the mentor never asked, calls home, the people the grind filtered out, the conversation never started. Never two slides on the same subject.
+- Every sentence short. It should feel like cold arithmetic with an ache inside — never sentimental, never poetry.
+- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["...", "...", "..."], "scene": "..." }
+  ]
+}`,
+};
+
+/** Generate one missed-connections topic for the given audience lane. */
 export async function generateMissedTopic(
+  audience: "universal" | "men",
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
   return generateMoodyFamilyTopic({
-    purpose: "missed-carousel-topic",
-    system: MISSED_SYSTEM_PROMPT,
+    purpose: audience === "men" ? "missed-men-carousel-topic" : "missed-carousel-topic",
+    system: MISSED_SYSTEM_PROMPTS[audience],
     user: `Write one new missed-connection math post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
-    slugPrefix: "missed",
+    slugPrefix: audience === "men" ? "missed-men" : "missed",
     requireName: false,
     minLines: 2,
   });
@@ -673,15 +745,17 @@ export async function generateTaughtTopic(
 }
 
 // ─── ONE YEAR FROM NOW carousel (2026-08-28 night, per Keenan) ────────
-// Universal lane: forward-pointing time math — five concrete
-// transformations a single year holds, each grounded in plausible
-// arithmetic. Memento mori's hopeful twin.
+// BWK men's lane (retargeted 2026-08-28 late night, per Keenan):
+// forward-pointing time math — five concrete transformations a single
+// year of discipline holds, each grounded in plausible arithmetic.
+// Memento mori's hopeful twin, in command voice.
 
-const YEAR_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: ONE YEAR FROM NOW — concrete, arithmetic proof of what a single year quietly holds. Forward-pointing time math. Not motivation — evidence.
+const YEAR_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: ONE YEAR FROM NOW — concrete, arithmetic proof of what a single year of discipline quietly builds. Forward-pointing time math. Not motivation — evidence.
 
-AUDIENCE: everyone scrolling at midnight and telling themselves it's too late to start. No gendered content.
+AUDIENCE: young aspiring men (18-30) deep in the self-improvement / discipline / "trust the process" niche, scrolling at midnight and telling themselves they'll start Monday. The math should read like orders from a future self.
+VOICE: calm command energy. Short declarative sentences. No softness, no hedging on the tone (hedge only the numbers). Direct second person. A mentor who's already made it and doesn't waste words. Never bro-slang, never yelling.
 
-SCENES: dark cinematic photography, vast and contemplative — a road disappearing into pre-dawn fog, a single lit window before sunrise, a calendar-blank horizon at first light, an empty running track at night, a doorway opening onto early morning. Every frame DIM (white text must read on it). No people ever.
+SCENES: dark minimalist photography — an empty running track at night, a dim gym with one light on, a desk lamp over an open notebook before dawn, a pre-dawn road disappearing into fog, a city rooftop at first light, rain on a black car windshield. Desaturated, near-monochrome. Every frame DIM (white text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
 "A year from now you could have read 24 books.
@@ -693,10 +767,10 @@ The year passes either way."
 RULES:
 - "title": the cover text. 2-5 words, works in ALL CAPS ("ONE YEAR FROM NOW", "THE YEAR PASSES ANYWAY"). No number in the title.
 - Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
-  - First line: ONE concrete thing a year could hold, with an honest number ("A year from now you could have walked ~1,000 miles."). Plausible arithmetic only — hedge with "about" or "~" where needed, never fake precision.
-  - Middle line: the small daily math that gets there ("Three miles a day. That's all.").
-  - Last line: a short landing (2-6 words) — a statement or quiet command ("Start tonight.", "The year passes either way.").
-- Vary the subject across the 5 slides: body, mind or skill, money, a relationship repaired, something quit. Never two slides on the same subject.
+  - First line: ONE concrete thing a year could build, with an honest number ("A year from now you could have trained ~300 sessions."). Plausible arithmetic only — hedge with "about" or "~" where needed, never fake precision.
+  - Middle line: the small daily math that gets there ("Six days a week. One hour."). Cold and simple.
+  - Last line: a short landing (2-6 words) — a command or flat statement ("Start tonight.", "The year passes either way.").
+- Vary the subject across the 5 slides: body or training, a skill mastered, money saved or earned, a habit quit, something built (a business, a rep, a name). Never two slides on the same subject.
 - It should feel like cold arithmetic pointed forward — never a pep talk, never poetry.
 - Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
@@ -710,7 +784,7 @@ OUTPUT (strict JSON, no markdown):
   ]
 }`;
 
-/** Generate one one-year-from-now topic (universal). */
+/** Generate one one-year-from-now topic (BWK men's lane). */
 export async function generateYearTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
@@ -776,29 +850,30 @@ export async function generateFreeTopic(
 }
 
 // ─── YOU'RE NOT BEHIND carousel (2026-08-28 night, per Keenan) ────────
-// Women's funnel: five timeline lies, each named as a header ("1.
-// Married by thirty.") and quietly dismantled underneath.
+// BWK men's lane (retargeted 2026-08-28 late night, per Keenan): five
+// internet timeline lies, each named as a header ("1. Millionaire by
+// 25.") and flatly dismantled underneath.
 
-const BEHIND_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: YOU'RE NOT BEHIND — five timeline lies the reader was handed, each named and quietly dismantled. Not a pep talk — a correction of the record.
+const BEHIND_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: YOU'RE NOT BEHIND — five timeline lies the reader was handed, each named and flatly dismantled. Not a pep talk — a correction of the record.
 
-AUDIENCE: women roughly 40-50 carrying a heavy mental load — measuring themselves against a schedule nobody actually agreed to. Reading it should feel like someone finally saying the quiet part: the deadline was made up.
-VOICE: quiet, certain, a little dry. Second person. Never girlboss, never preachy, never "it's never too late!" cheerfulness — flat, factual permission.
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche — measuring themselves against highlight reels and made-up deadlines: rich by 25, founder by 22, shredded by summer. Reading it should feel like a mentor finally saying the quiet part: the schedule was invented to sell you something.
+VOICE: calm command energy, a little dry. Short declarative sentences. Direct second person. Never bro-slang, never yelling, never "it's never too late!" cheerfulness — flat, factual correction.
 
-${SCENE_BRIEF["women"]}
+${SCENE_BRIEF["men"]}
 
 FORMAT — each slide reads like this (match the rhythm):
-"1. Figured out by forty.
+"1. Millionaire by 25.
 
-Nobody is. The ones who look it just stopped narrating the doubt.
+Most real wealth compounds after 40. The guys posting rented it.
 
-The schedule was made up."
+The clock is fake."
 
 RULES:
 - "title": the cover text. 2-5 words, works in ALL CAPS ("YOU'RE NOT BEHIND", "THE TIMELINE WAS MADE UP"). No number.
 - Exactly 5 items. Each item:
-  - "name": the timeline lie as a short deadline phrase + period ("Married by thirty.", "Career settled by forty.", "Body back by summer."). 2-6 words.
-  - "lines": 1-2 short paragraphs. First: dismantle the lie in one or two plain sentences — where it came from, or the quiet truth that breaks it. Optional last line: a short settled closer (2-6 words), a statement, never a command.
-- Each of the 5 lies comes from a DIFFERENT domain: love or marriage, career, money, body, self or purpose. Never two on the same domain.
+  - "name": the timeline lie as a short deadline phrase + period ("Millionaire by 25.", "Founder by 22.", "Shredded by summer.", "Figured out by 30."). 2-6 words.
+  - "lines": 1-2 short paragraphs. First: dismantle the lie in one or two plain sentences — the real math, where the lie came from, or the documented truth that breaks it. Optional last line: a short flat closer (2-6 words), a statement, never a command.
+- Each of the 5 lies comes from a DIFFERENT domain: money, career or title, body, relationship, mastery or purpose. Never two on the same domain.
 - Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs. Never mention any app, product, journaling, therapy, or AI.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
 
@@ -811,7 +886,7 @@ OUTPUT (strict JSON, no markdown):
   ]
 }`;
 
-/** Generate one you're-not-behind topic (women's funnel). */
+/** Generate one you're-not-behind topic (BWK men's lane). */
 export async function generateBehindTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {

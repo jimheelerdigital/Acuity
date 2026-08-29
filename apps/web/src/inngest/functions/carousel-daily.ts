@@ -1,55 +1,59 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — 16 lanes, ALL generated overnight so every post
+ * Carousel generation — 17 lanes, ALL generated overnight so every post
  * is in Keenan's inbox by 7am Central (2026-08-28 night, per Keenan:
  * "I want ALL posts to be in my inbox in the morning"). The cron fires
- * hourly 4-11 UTC (11pm-6am CDT; one hour later in winter CST) and each
- * run FANS OUT two lanes as events — generation itself always runs on
- * the event trigger.
+ * hourly 3-11 UTC (10pm-6am CDT; one hour later in winter CST) and each
+ * run FANS OUT this hour's lanes as events — generation itself always
+ * runs on the event trigger.
  *
- * The animated quote loop (quote-women / quote-men) was ELIMINATED the
- * same night, replaced by the static SIGN image post.
+ * The animated quote loop was ELIMINATED 2026-08-28 night (replaced by
+ * the static SIGN post), and the AMBIENT calm video was ELIMINATED the
+ * same late night ("get rid of the calm video") when the BWK split
+ * landed: year + behind retargeted to men, plus new missed-men and
+ * memento-men lanes so men (BUILD WITH KEY) and women (Ripple) get
+ * their own versions.
  *
  * Overnight schedule (CDT):
- * -  4 UTC (11pm): RULES — "Rules I broke to get my life back" (women)
+ * -  3 UTC (10pm): RULES — "Rules I broke to get my life back" (women)
  *                  + MISSED — universal missed-connection math
- * -  5 UTC (12am): AMBIENT — calm voiced video (carouselAmbientVideoFn)
+ * -  4 UTC (11pm): MISSED-MEN — cost-of-the-grind connection math (BWK)
  *                  + FORBIDDEN — "DELETE THIS AFTER READING" (women,
  *                  QUOTE serif one-liners)
- * -  6 UTC (1am):  MOODY-WOMEN + MOODY-MEN — the numbered discipline
- *                  carousels (men = BUILD WITH KEY account)
- * -  7 UTC (2am):  MEMENTO — universal time-math
- *                  + QUESTIONS — women's hard questions
- * -  8 UTC (3am):  BLOOMERS — real late-bloomer proof (universal,
- *                  numbered names) + TAUGHT — "WHAT ___ TAUGHT ME"
- *                  (women, rotating teacher)
- * -  9 UTC (4am):  SIGN — single static image, ONE bold "THIS IS YOUR
- *                  SIGN TO..." line (women; replaces the quote loop)
- *                  + YEAR — "ONE YEAR FROM NOW" forward time-math
- *                  (universal)
- * - 10 UTC (5am):  FREE — "THINGS THAT ARE STILL FREE" (universal,
- *                  numbered) + BEHIND — "YOU'RE NOT BEHIND" timeline
- *                  lies (women, numbered)
- * - 11 UTC (6am):  NOBODY — "NOBODY TELLS YOU ABOUT ___" (women,
- *                  rotating season) + UNSENT — deleted texts (women,
- *                  QUOTE serif one-liners)
+ * -  5 UTC (12am): MOODY-WOMEN + MOODY-MEN — the numbered discipline
+ *                  carousels (men = BWK)
+ * -  6 UTC (1am):  MEMENTO — women's time-math (Ripple)
+ *                  + MEMENTO-MEN — men's time-math (BWK)
+ * -  7 UTC (2am):  QUESTIONS — women's hard questions
+ *                  + BLOOMERS — real late-bloomer proof (universal)
+ * -  8 UTC (3am):  TAUGHT — "WHAT ___ TAUGHT ME" (women) + SIGN —
+ *                  single static bold "THIS IS YOUR SIGN TO..." image
+ * -  9 UTC (4am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
+ *                  (men, BWK) + FREE — "THINGS THAT ARE STILL FREE"
+ *                  (universal, numbered)
+ * - 10 UTC (5am):  BEHIND — "YOU'RE NOT BEHIND" timeline lies (men,
+ *                  BWK, numbered) + NOBODY — "NOBODY TELLS YOU ABOUT
+ *                  ___" (women, rotating season)
+ * - 11 UTC (6am):  UNSENT — deleted texts (women, QUOTE serif)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
- * to: [BUILD WITH KEY] for moody-men, [RIPPLE] for everything else
- * (handled in lib/content-factory/email.ts, keyed off post.lane).
+ * to: [BUILD WITH KEY] for moody-men / missed-men / memento-men / year
+ * / behind, [RIPPLE] for everything else (handled in
+ * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
   "rules",
   "missed",
-  "ambient",
+  "missed-men",
   "forbidden",
   "moody-women",
   "moody-men",
   "memento",
+  "memento-men",
   "questions",
   "bloomers",
   "taught",
@@ -62,16 +66,17 @@ const CAROUSEL_LANES = [
 ] as const;
 type DailyBucket = (typeof CAROUSEL_LANES)[number];
 
-/** Which two lanes each overnight cron hour fans out (UTC hour). */
+/** Which lanes each overnight cron hour fans out (UTC hour). */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
-  4: ["rules", "missed"],
-  5: ["ambient", "forbidden"],
-  6: ["moody-women", "moody-men"],
-  7: ["memento", "questions"],
-  8: ["bloomers", "taught"],
-  9: ["sign", "year"],
-  10: ["free", "behind"],
-  11: ["nobody", "unsent"],
+  3: ["rules", "missed"],
+  4: ["missed-men", "forbidden"],
+  5: ["moody-women", "moody-men"],
+  6: ["memento", "memento-men"],
+  7: ["questions", "bloomers"],
+  8: ["taught", "sign"],
+  9: ["year", "free"],
+  10: ["behind", "nobody"],
+  11: ["unsent"],
 };
 
 export const carouselDailyCronFn = inngest.createFunction(
@@ -79,7 +84,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 4,5,6,7,8,9,10,11 * * *" },
+      { cron: "0 3,4,5,6,7,8,9,10,11 * * *" },
       // Generation trigger (cron fan-out + admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
@@ -118,16 +123,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       ? (b as DailyBucket)
       : "rules";
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
-
-    // ── AMBIENT bucket: hand off to the calm-video pipeline ────────
-    // The ambient function generates its own concept, creates its own
-    // CarouselPost (format=AMBIENT), and emails the result.
-    if (bucket === "ambient") {
-      await step.run("enqueue-ambient-video", async () => {
-        await inngest.send({ name: "content-factory/ambient.video", data: {} });
-      });
-      return { generated: 0, bucket, delegated: "ambient.video" };
-    }
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -230,17 +225,18 @@ export const carouselDailyCronFn = inngest.createFunction(
     // photography, white text centered mid-frame, hashtag-only
     // caption. All are audience-growth funnels — no product CTA.
 
-    // Visual DNA per lane: men = stark architecture; universal lanes =
-    // vast contemplative dark cinematics; the rest (women funnels) =
-    // warm-dim quiet luxury.
+    // Visual DNA per lane: BWK men's lanes = stark architecture;
+    // universal lanes = vast contemplative dark cinematics; the rest
+    // (women funnels, incl. the retuned memento) = warm-dim quiet
+    // luxury.
     const imageAudience: "women" | "men" | "universal" =
-      bucket === "moody-men"
+      bucket === "moody-men" ||
+      bucket === "missed-men" ||
+      bucket === "memento-men" ||
+      bucket === "year" ||
+      bucket === "behind"
         ? "men"
-        : bucket === "memento" ||
-            bucket === "missed" ||
-            bucket === "bloomers" ||
-            bucket === "year" ||
-            bucket === "free"
+        : bucket === "missed" || bucket === "bloomers" || bucket === "free"
           ? "universal"
           : "women";
     // Lanes whose items carry an "N. Name." header (discipline, rules,
@@ -289,10 +285,14 @@ export const carouselDailyCronFn = inngest.createFunction(
         },
       });
       const headlines = recent.map((p) => p.headline);
-      if (bucket === "memento") return generateMementoTopic(headlines);
+      if (bucket === "memento") return generateMementoTopic("women", headlines);
+      if (bucket === "memento-men")
+        return generateMementoTopic("men", headlines);
       if (bucket === "questions") return generateQuestionsTopic(headlines);
       if (bucket === "rules") return generateRulesTopic(headlines);
-      if (bucket === "missed") return generateMissedTopic(headlines);
+      if (bucket === "missed")
+        return generateMissedTopic("universal", headlines);
+      if (bucket === "missed-men") return generateMissedTopic("men", headlines);
       if (bucket === "forbidden") return generateForbiddenTopic(headlines);
       if (bucket === "bloomers") {
         const usedNames = recent.flatMap((p) =>
@@ -399,17 +399,22 @@ export const carouselDailyCronFn = inngest.createFunction(
 
       // Hashtag-only caption cloned from the reference (2026-08-28,
       // per Keenan — the moody-family exception to the question+tags
-      // rule). Universal lanes get universal pools; the women's lanes
-      // share the women's pool; moody-men keeps the men's pool.
+      // rule). Memento/missed lanes keep their niche pools regardless
+      // of audience; universal lanes get universal pools; BWK men's
+      // lanes use the men's pool; the women's lanes share the women's.
       const caption =
-        bucket === "memento"
+        bucket === "memento" || bucket === "memento-men"
           ? buildMementoCaption(slug)
-          : bucket === "missed"
+          : bucket === "missed" || bucket === "missed-men"
             ? buildMissedCaption(slug)
-            : bucket === "bloomers" || bucket === "year" || bucket === "free"
+            : bucket === "bloomers" || bucket === "free"
               ? buildUniversalCaption(slug)
               : buildMoodyCaption(
-                  bucket === "moody-men" ? "men" : "women",
+                  bucket === "moody-men" ||
+                    bucket === "year" ||
+                    bucket === "behind"
+                    ? "men"
+                    : "women",
                   slug
                 );
 

@@ -223,11 +223,12 @@ export default function CarouselReviewPage() {
     bucket:
       | "rules"
       | "missed"
-      | "ambient"
+      | "missed-men"
       | "forbidden"
       | "moody-women"
       | "moody-men"
       | "memento"
+      | "memento-men"
       | "questions"
       | "bloomers"
       | "taught"
@@ -247,8 +248,7 @@ export default function CarouselReviewPage() {
         body: JSON.stringify({ action: "generate-daily", bucket }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const eta = bucket === "ambient" ? "~8 min" : "~3-5 min";
-      setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ${eta}`);
+      setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ~3-5 min`);
       setTimeout(() => setGenerateMsg(null), 10000);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to queue generation");
@@ -596,12 +596,12 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "🫂"}
           </button>
           <button
-            onClick={() => generateBucket("ambient")}
+            onClick={() => generateBucket("missed-men")}
             disabled={generating}
-            title="Generate a calm ambient video now"
+            title="Generate a missed-connection math carousel (men / BWK) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🌙"}
+            {generating ? "…" : "📵"}
           </button>
           <button
             onClick={() => generateBucket("forbidden")}
@@ -630,10 +630,18 @@ export default function CarouselReviewPage() {
           <button
             onClick={() => generateBucket("memento")}
             disabled={generating}
-            title="Generate a memento-mori time-math carousel now"
+            title="Generate a memento-mori time-math carousel (women / Ripple) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "⏳"}
+          </button>
+          <button
+            onClick={() => generateBucket("memento-men")}
+            disabled={generating}
+            title="Generate a memento-mori time-math carousel (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "⌛"}
           </button>
           <button
             onClick={() => generateBucket("questions")}
@@ -670,7 +678,7 @@ export default function CarouselReviewPage() {
           <button
             onClick={() => generateBucket("year")}
             disabled={generating}
-            title="Generate a one-year-from-now carousel (universal) now"
+            title="Generate a one-year-from-now carousel (men / BWK) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "📅"}
@@ -686,7 +694,7 @@ export default function CarouselReviewPage() {
           <button
             onClick={() => generateBucket("behind")}
             disabled={generating}
-            title="Generate a you're-not-behind carousel (women funnel) now"
+            title="Generate a you're-not-behind carousel (men / BWK) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🐢"}

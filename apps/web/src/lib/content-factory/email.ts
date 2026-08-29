@@ -37,11 +37,19 @@ function forceDownloadUrl(url: string, filename: string): string {
  * TikTok destination account (2026-08-28 night, per Keenan: "they should
  * be labeled based on which account they should go to on tiktok — ripple
  * account vs build with key account. it should be the first thing in the
- * subject."). moody-men is the only Build With Key lane; every other
- * lane — all women-funnel and universal posts, plus ambient — is Ripple.
+ * subject."). Build With Key = the men-targeted lanes (2026-08-28 late
+ * night split, per Keenan): moody-men, missed-men, memento-men, year,
+ * behind. Every other lane — women-funnel and universal — is Ripple.
  */
+const BWK_LANES = new Set([
+  "moody-men",
+  "missed-men",
+  "memento-men",
+  "year",
+  "behind",
+]);
 function accountLabel(lane: string | null | undefined): string {
-  return lane === "moody-men" ? "[BUILD WITH KEY]" : "[RIPPLE]";
+  return lane && BWK_LANES.has(lane) ? "[BUILD WITH KEY]" : "[RIPPLE]";
 }
 
 interface SlideRow {

@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-28] — Men vs women split: 5 Build With Key lanes, calm video killed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): BWK/Ripple lane split` commit)
+
+### In plain English (for Keenan)
+The daily lineup now splits cleanly between your two TikTok accounts. Build With Key gets five men-targeted posts every night: the moody discipline carousel, a new men's version of the missed-connection math (the cost of the grind — group chats gone quiet, mentors never asked, calls to dad), a new men's memento mori (Mondays left, peak training years), One Year From Now rewritten in the mentor command voice (training sessions, money, something built), and You're Not Behind rewritten to dismantle the internet's timelines ("Millionaire by 25." "Founder by 22." "Shredded by summer."). Ripple keeps everything else, and its memento mori was retuned to hit the women's clock — aging parents, summers while the kids still come home, Saturdays before the house empties. The calm ambient video is dead. That's 17 posts a night, all in your inbox by ~7am Central, each subject starting with the right account label.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `YEAR_SYSTEM_PROMPT` + `BEHIND_SYSTEM_PROMPT` rewritten to the men's audience (command voice, stark scenes, men's subjects/domains); `generateMementoTopic(audience, headlines)` now audience-parametrized via `MEMENTO_SYSTEM_PROMPTS` (women variant retuned to women 40-50, men variant new — slugPrefix/purpose `memento-men`); `generateMissedTopic(audience, headlines)` likewise via `MISSED_SYSTEM_PROMPTS` ("universal" | "men", men slugPrefix `missed-men`)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: 17-lane `CAROUSEL_LANES` (removed `ambient`, added `missed-men` + `memento-men`); cron now `0 3,4,5,6,7,8,9,10,11 * * *` (9 hours, 10pm–6am CDT); new `HOUR_LANES` map (11 UTC runs one lane); ambient delegation branch deleted — nothing sends `content-factory/ambient.video` anymore (fn dormant like quote-loop); `imageAudience` men for the 5 BWK lanes; caption wiring: memento-men → `buildMementoCaption`, missed-men → `buildMissedCaption`, year/behind → `buildMoodyCaption("men")`
+- `apps/web/src/lib/content-factory/email.ts`: `accountLabel` now keys off a `BWK_LANES` set — moody-men, missed-men, memento-men, year, behind → `[BUILD WITH KEY]`; everything else `[RIPPLE]`
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🌙 ambient button removed; 📵 missed-men + ⌛ memento-men buttons added; bucket union + titles updated; ambient ETA special-case removed
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment updated to the 17-lane roster
+- No schema changes (lane is a plain string column)
+
+### Manual steps needed
+- [ ] Eyeball the 4 sample emails (missed-men, memento-men, year, behind) — check the men's voice and the [BUILD WITH KEY] prefixes (Keenan)
+- [ ] Confirm tomorrow morning (2026-08-29) all 17 posts arrived by ~7am Central (Keenan)
+
+### Notes
+- Cron expression CHANGED again — Inngest resync (`curl -X PUT https://goripple.io/api/inngest`) after deploy is mandatory, done as part of this ship
+- `year` and `behind` keep their lane names (no data migration) but flipped audience — old posts under those lanes were women/universal voiced; dedupe headlines carry over harmlessly
+- carousel-ambient-video.ts (and its ElevenLabs voiceover path) is dormant, not deleted — event-triggered only, nothing sends the event
+
 ## [2026-08-28] — 8 new daily formats, quote loop killed, everything lands overnight with account labels
 
 **Requested by:** Keenan
