@@ -33,6 +33,17 @@ function forceDownloadUrl(url: string, filename: string): string {
   return `${REVIEW_BASE_URL}/api/content-factory/download?path=${encodeURIComponent(bucketPath)}&name=${encodeURIComponent(filename)}`;
 }
 
+/**
+ * TikTok destination account (2026-08-28 night, per Keenan: "they should
+ * be labeled based on which account they should go to on tiktok — ripple
+ * account vs build with key account. it should be the first thing in the
+ * subject."). moody-men is the only Build With Key lane; every other
+ * lane — all women-funnel and universal posts, plus ambient — is Ripple.
+ */
+function accountLabel(lane: string | null | undefined): string {
+  return lane === "moody-men" ? "[BUILD WITH KEY]" : "[RIPPLE]";
+}
+
 interface SlideRow {
   id: string;
   order: number;
@@ -49,6 +60,7 @@ interface PostRow {
   caption: string;
   generatedFor: Date;
   emailedAt: Date | null;
+  lane: string | null;
   slides: SlideRow[];
 }
 
@@ -202,7 +214,7 @@ export async function sendCarouselEmail(
   const emailPayload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    subject: `[Ripple Content] ${post.headline} — ${dateStr}`,
+    subject: `${accountLabel(post.lane)} ${post.headline} — ${dateStr}`,
     html,
     text,
   };
@@ -373,7 +385,7 @@ async function sendStitchedVideoEmail(
   const emailPayload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    subject: `[Ripple Content] 🎬 Carousel video — ${post.headline}`,
+    subject: `${accountLabel(post.lane)} 🎬 Carousel video — ${post.headline}`,
     html,
     text,
   };
@@ -461,7 +473,7 @@ export async function sendStoryVideoEmail(
   const { prisma } = await import("@/lib/prisma");
   const post = await prisma.carouselPost.findUniqueOrThrow({
     where: { id: carouselPostId },
-    select: { headline: true, caption: true, generatedFor: true },
+    select: { headline: true, caption: true, generatedFor: true, lane: true },
   });
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
   const kind = opts.quote ? "quote loop" : opts.calm ? "calm video" : "story video";
@@ -598,10 +610,10 @@ export async function sendStoryVideoEmail(
     // subject so it can't be posted by accident (2026-08-16). Silent
     // BY DESIGN (selfVoice) gets a calm 🎙️ subject instead.
     subject: opts.selfVoice
-      ? `[Ripple Content] ${emoji}🎙️ ${label} + your script — ${post.headline}`
+      ? `${accountLabel(post.lane)} ${emoji}🎙️ ${label} + your script — ${post.headline}`
       : opts.silent
-        ? `[Ripple Content] ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
-        : `[Ripple Content] ${emoji} ${label} — ${post.headline}`,
+        ? `${accountLabel(post.lane)} ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
+        : `${accountLabel(post.lane)} ${emoji} ${label} — ${post.headline}`,
     html,
     text,
   };

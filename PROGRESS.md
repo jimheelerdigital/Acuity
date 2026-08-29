@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-08-28] — 8 new daily formats, quote loop killed, everything lands overnight with account labels
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): 8 new lanes, overnight schedule` commit)
+
+### In plain English (for Keenan)
+Three big changes. First: eight brand-new daily post formats, all in the proven dark moody style — Late Bloomers (real famous people who started late, like Vera Wang at 40), What ___ Taught Me (the teacher rotates daily: grief, silence, the quiet house), This Is Your Sign (a single static image with one bold permission-giving line — this replaces the animated quote loop videos, which are gone), One Year From Now (forward-pointing time math), Things That Are Still Free, You're Not Behind (timeline lies dismantled), Nobody Tells You (rotating life season), and Unsent Texts (messages typed and deleted, in the fancy serif). Second: ALL 16 daily posts now generate overnight, two per hour, so your entire day of content is waiting in your inbox by about 6:30am Central. Third: every email subject now starts with the TikTok account it belongs to — [BUILD WITH KEY] for the men's post, [RIPPLE] for everything else — so you can sort your inbox at a glance. Eight samples of the new formats are generating now.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: seven new carousel topic generators (`generateBloomersTopic`, `generateTaughtTopic`, `generateYearTopic`, `generateFreeTopic`, `generateBehindTopic`, `generateNobodyTopic`, `generateUnsentTopic`) + `buildUniversalCaption` + `generateSignTopic` (single-line, own Claude call/log, returns `SignTopic {slug, line, scene}`)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: rewritten as a dispatcher/worker — cron is now `0 4,5,6,7,8,9,10,11 * * *` (11pm–6am CDT) and each cron run FANS OUT two lanes as `content-factory/daily.generate` events; generation only happens on event runs. 16-lane `CAROUSEL_LANES` const + `HOUR_LANES` map. quote-women/quote-men branches deleted (the quote-loop Inngest fn stays registered but nothing triggers it). New `sign` branch: one image, `SIGN` overlay kind, single-COVER post (lane "sign"). Bloomers dedupes on person names pulled from recent slide overlayText, not just titles
+- `apps/web/src/lib/content-factory/compose.ts`: `renderMoodyTextOverlay` gained a `"SIGN"` kind — Poppins Bold 60pt, uppercase, wrap 18 chars (COVER's treatment sized for a full sentence)
+- `apps/web/src/lib/content-factory/email.ts`: new `accountLabel(lane)` — every subject line (static carousel, stitched video, story/calm/quote video) now leads with `[BUILD WITH KEY]` (moody-men only) or `[RIPPLE]`; replaces the old `[Ripple Content]` prefix. `PostRow` + the story-email select gained `lane`
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: quote buttons removed; 8 new buttons (🌱 bloomers, 📖 taught, 🪧 sign, 📅 year, 🕊️ free, 🐢 behind, 🤐 nobody, 📩 unsent); bucket union updated
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily bucket doc comment updated
+- No schema changes (lane is a plain string column)
+
+### Manual steps needed
+- [ ] Eyeball the 8 sample emails and check each new format + the [RIPPLE]/[BUILD WITH KEY] subject prefixes (Keenan)
+- [ ] Confirm tomorrow morning (2026-08-29) that all 16 posts arrived by ~7am Central (Keenan)
+
+### Notes
+- Cron expression CHANGED — the Inngest resync (`curl -X PUT https://goripple.io/api/inngest`) after deploy is mandatory, done as part of this ship
+- The cron→event fan-out means each lane runs as its own Inngest run with independent retries; two lanes generate in parallel per hour
+- Late Bloomers is the one lane with a factual-accuracy risk (real people, real ages) — the prompt hard-requires widely documented figures and tells the model to pick a person it is certain about; worth spot-checking the first few
+- The old quote-loop pipeline (quote-loop.ts, carouselQuoteLoopFn) is dormant, not deleted — nothing sends `content-factory/quote.loop` anymore
+
 ## [2026-08-28] — Old negative/positive/selfie posts replaced with three new moody formats
 
 **Requested by:** Keenan

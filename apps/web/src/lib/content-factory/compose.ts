@@ -581,14 +581,20 @@ export async function renderSelfieCaptionOverlay(
  */
 export async function renderMoodyTextOverlay(
   paragraphs: string[],
-  kind: "COVER" | "ITEM" | "QUOTE"
+  // SIGN (2026-08-28 night, per Keenan: "bold, confident lettering", no
+  // italics): the single-image sign post — COVER's bold uppercase
+  // treatment, sized down and wrapped wider so a full 8-16-word line
+  // reads as a block instead of a skinny tower.
+  kind: "COVER" | "ITEM" | "QUOTE" | "SIGN"
 ): Promise<Buffer> {
   const fontPath = await ensureFontFile(
     kind === "ITEM" ? "Medium" : kind === "QUOTE" ? "QuoteSerif" : "Bold"
   );
 
-  const fontSize = kind === "COVER" ? 72 : kind === "QUOTE" ? 58 : 42;
-  const wrapChars = kind === "COVER" ? 14 : kind === "QUOTE" ? 22 : 30;
+  const fontSize =
+    kind === "COVER" ? 72 : kind === "SIGN" ? 60 : kind === "QUOTE" ? 58 : 42;
+  const wrapChars =
+    kind === "COVER" ? 14 : kind === "SIGN" ? 18 : kind === "QUOTE" ? 22 : 30;
   const font =
     kind === "ITEM"
       ? "Poppins Medium"
@@ -596,19 +602,17 @@ export async function renderMoodyTextOverlay(
         ? "Playfair Display Medium Italic"
         : "Poppins Bold";
 
+  const uppercase = kind === "COVER" || kind === "SIGN";
   const body = paragraphs
     .map((p) =>
-      wordWrap(
-        stripUnrenderable(kind === "COVER" ? p.toUpperCase() : p),
-        wrapChars
-      )
+      wordWrap(stripUnrenderable(uppercase ? p.toUpperCase() : p), wrapChars)
         .map((l) => escapePango(l))
         .join("\n")
     )
     .join("\n\n"); // blank line = paragraph gap (Pango honors empty lines)
 
-  const spacing = kind === "COVER" ? 16 : kind === "QUOTE" ? 18 : 14;
-  const letterSpacing = kind === "COVER" ? ` letter_spacing="3072"` : "";
+  const spacing = uppercase ? 16 : kind === "QUOTE" ? 18 : 14;
+  const letterSpacing = uppercase ? ` letter_spacing="3072"` : "";
   const mainMarkup = `<span font_desc="${font} ${fontSize}" foreground="#FFFFFF"${letterSpacing}>${body}</span>`;
   const shadowMarkup = `<span font_desc="${font} ${fontSize}" foreground="#000000"${letterSpacing}>${body}</span>`;
 

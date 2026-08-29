@@ -1,131 +1,122 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — runs 10× daily via cron, each run an EXPLICIT
- * bucket. 2026-08-28 late PM, per Keenan: the negative ("video"),
- * positive, and selfie lanes are REPLACED by three new moody-family
- * formats — the whole daily rotation is now the moody visual DNA (the
- * only formats he's validated), plus the ambient voiced video. Times
- * below are CDT; they shift one hour later in winter CST:
+ * Carousel generation — 16 lanes, ALL generated overnight so every post
+ * is in Keenan's inbox by 7am Central (2026-08-28 night, per Keenan:
+ * "I want ALL posts to be in my inbox in the morning"). The cron fires
+ * hourly 4-11 UTC (11pm-6am CDT; one hour later in winter CST) and each
+ * run FANS OUT two lanes as events — generation itself always runs on
+ * the event trigger.
  *
- * -  6 UTC (1am Central):  RULES — "Rules I broke to get my life back"
- *                          (women): five quiet first-person rebellions,
- *                          numbered like the discipline lanes.
- *                          (Replaces the negative "video" lane.)
- * -  8 UTC (3am Central):  MISSED — universal missed-connection math
- *                          ("You'll walk past about 80,000 strangers.
- *                          One of them would have been your best
- *                          friend."). Memento's cousin — the finite
- *                          thing is connection, not time.
- *                          (Replaces the positive lane.)
- * - 10 UTC (5am Central):  AMBIENT — single-scene calm video with the
- *                          female AI voiceover (handled by
- *                          carouselAmbientVideoFn)
- * - 12 UTC (7am Central):  FORBIDDEN — "DELETE THIS AFTER READING"
- *                          (women): warning-label cover + 5 slides,
- *                          each ONE truth you're not supposed to say
- *                          out loud, in the premium QUOTE serif.
- *                          (Replaces the selfie lane.)
- * - 14 UTC (9am Central):  MOODY-WOMEN — dark/moody discipline photo
- *                          carousel for the core demographic (2026-08-28
- *                          per Keenan, cloned from the "TRUST THE
- *                          PROCESS" reference): dim quiet-luxury
- *                          photography, white text centered mid-frame,
- *                          hashtag-only caption. Audience-growth funnel,
- *                          no product CTA.
- * - 16 UTC (11am Central): MOODY-MEN — same skeleton for the second
- *                          market (young aspiring men): stark dark
- *                          architecture, command-energy discipline
- *                          content, its own hashtag pool.
- * - 18 UTC (1pm Central):  QUOTE-WOMEN — one devastating line burned on
- *                          a dark scene that loops with NO visible
- *                          start/end (mathematically perfect loop,
- *                          handled by carouselQuoteLoopFn), 12-18s.
- * - 19 UTC (2pm Central):  QUOTE-MEN — same format, men's funnel.
- * - 20 UTC (3pm Central):  MEMENTO — universal memento-mori time-math
- *                          carousel ("You'll see your parents about 15
- *                          more times."), moody skeleton, no number
- *                          headers.
- * - 21 UTC (4pm Central):  QUESTIONS — women's hard-questions carousel:
- *                          5 slides, ONE question each, no answers
- *                          anywhere.
+ * The animated quote loop (quote-women / quote-men) was ELIMINATED the
+ * same night, replaced by the static SIGN image post.
+ *
+ * Overnight schedule (CDT):
+ * -  4 UTC (11pm): RULES — "Rules I broke to get my life back" (women)
+ *                  + MISSED — universal missed-connection math
+ * -  5 UTC (12am): AMBIENT — calm voiced video (carouselAmbientVideoFn)
+ *                  + FORBIDDEN — "DELETE THIS AFTER READING" (women,
+ *                  QUOTE serif one-liners)
+ * -  6 UTC (1am):  MOODY-WOMEN + MOODY-MEN — the numbered discipline
+ *                  carousels (men = BUILD WITH KEY account)
+ * -  7 UTC (2am):  MEMENTO — universal time-math
+ *                  + QUESTIONS — women's hard questions
+ * -  8 UTC (3am):  BLOOMERS — real late-bloomer proof (universal,
+ *                  numbered names) + TAUGHT — "WHAT ___ TAUGHT ME"
+ *                  (women, rotating teacher)
+ * -  9 UTC (4am):  SIGN — single static image, ONE bold "THIS IS YOUR
+ *                  SIGN TO..." line (women; replaces the quote loop)
+ *                  + YEAR — "ONE YEAR FROM NOW" forward time-math
+ *                  (universal)
+ * - 10 UTC (5am):  FREE — "THINGS THAT ARE STILL FREE" (universal,
+ *                  numbered) + BEHIND — "YOU'RE NOT BEHIND" timeline
+ *                  lies (women, numbered)
+ * - 11 UTC (6am):  NOBODY — "NOBODY TELLS YOU ABOUT ___" (women,
+ *                  rotating season) + UNSENT — deleted texts (women,
+ *                  QUOTE serif one-liners)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
- * with data.bucket = "rules" | "missed" | "ambient" | "forbidden" |
- * "moody-women" | "moody-men" | "quote-women" | "quote-men" |
- * "memento" | "questions".
+ * with data.bucket set to any lane name above.
  *
- * Each run generates a fresh AI-written topic (via Claude) then
- * creates images with gpt-image-2. Uses Inngest steps so each
- * API call gets its own 300s Lambda invocation.
+ * Every email subject leads with the TikTok account the post belongs
+ * to: [BUILD WITH KEY] for moody-men, [RIPPLE] for everything else
+ * (handled in lib/content-factory/email.ts, keyed off post.lane).
  */
-type DailyBucket =
-  | "rules"
-  | "missed"
-  | "ambient"
-  | "forbidden"
-  | "moody-women"
-  | "moody-men"
-  | "quote-women"
-  | "quote-men"
-  | "memento"
-  | "questions";
+const CAROUSEL_LANES = [
+  "rules",
+  "missed",
+  "ambient",
+  "forbidden",
+  "moody-women",
+  "moody-men",
+  "memento",
+  "questions",
+  "bloomers",
+  "taught",
+  "sign",
+  "year",
+  "free",
+  "behind",
+  "nobody",
+  "unsent",
+] as const;
+type DailyBucket = (typeof CAROUSEL_LANES)[number];
+
+/** Which two lanes each overnight cron hour fans out (UTC hour). */
+const HOUR_LANES: Record<number, DailyBucket[]> = {
+  4: ["rules", "missed"],
+  5: ["ambient", "forbidden"],
+  6: ["moody-women", "moody-men"],
+  7: ["memento", "questions"],
+  8: ["bloomers", "taught"],
+  9: ["sign", "year"],
+  10: ["free", "behind"],
+  11: ["nobody", "unsent"],
+};
+
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 6,8,10,12,14,16,18,19,20,21 * * *" },
-      // Manual/test trigger (admin generate actions).
+      { cron: "0 4,5,6,7,8,9,10,11 * * *" },
+      // Generation trigger (cron fan-out + admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
     retries: 1,
   },
   async ({ event, step, logger }) => {
-    // ── Resolve the bucket ─────────────────────────────────────────
-    // Event trigger: explicit bucket wins (anything else — including the
-    // dead video/positive/selfie names — falls back to rules). Cron:
-    // keyed off the trigger hour (event.ts is stable across retries).
-    let bucket: DailyBucket;
-    if (event?.name === "content-factory/daily.generate") {
-      const b = event.data?.bucket as string | undefined;
-      bucket =
-        b === "rules" ||
-        b === "missed" ||
-        b === "ambient" ||
-        b === "forbidden" ||
-        b === "moody-women" ||
-        b === "moody-men" ||
-        b === "quote-women" ||
-        b === "quote-men" ||
-        b === "memento" ||
-        b === "questions"
-          ? b
-          : "rules";
-    } else {
+    // ── CRON runs only DISPATCH: fan out this hour's two lanes ─────
+    // (2026-08-28 night.) Generation always happens on the event
+    // trigger so the two lanes run as parallel, independently-retried
+    // Inngest runs and the whole night finishes by ~6:30am Central.
+    if (event?.name !== "content-factory/daily.generate") {
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
-      bucket =
-        hour < 7
-          ? "rules"
-          : hour < 9
-            ? "missed"
-            : hour < 11
-              ? "ambient"
-              : hour < 13
-                ? "forbidden"
-                : hour < 15
-                  ? "moody-women"
-                  : hour < 18
-                    ? "moody-men"
-                    : hour < 19
-                      ? "quote-women"
-                      : hour < 20
-                        ? "quote-men"
-                        : hour < 21
-                          ? "memento"
-                          : "questions";
+      const lanes = HOUR_LANES[hour] ?? [];
+      if (lanes.length === 0) {
+        logger.warn(`[carousel-cron] No lanes mapped for hour ${hour} UTC`);
+        return { generated: 0, dispatched: [] };
+      }
+      await step.run("dispatch-hour-lanes", async () => {
+        await inngest.send(
+          lanes.map((lane) => ({
+            name: "content-factory/daily.generate" as const,
+            data: { bucket: lane },
+          }))
+        );
+      });
+      logger.info(`[carousel-cron] Dispatched: ${lanes.join(", ")}`);
+      return { generated: 0, dispatched: lanes };
     }
+
+    // ── Resolve the bucket (event runs) ────────────────────────────
+    const b = event.data?.bucket as string | undefined;
+    const bucket: DailyBucket = (CAROUSEL_LANES as readonly string[]).includes(
+      b ?? ""
+    )
+      ? (b as DailyBucket)
+      : "rules";
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
 
     // ── AMBIENT bucket: hand off to the calm-video pipeline ────────
@@ -138,54 +129,133 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 0, bucket, delegated: "ambient.video" };
     }
 
-    // ── QUOTE buckets: hand off to the quote-loop pipeline ─────────
-    // (2026-08-28 PM, per Keenan.) The quote function generates its own
-    // concept, creates its own post (format=AMBIENT, lane=quote-*),
-    // builds the mathematically-seamless 12-18s loop, and emails it.
-    if (bucket === "quote-women" || bucket === "quote-men") {
-      const audience = bucket === "quote-women" ? "women" : "men";
-      await step.run("enqueue-quote-loop", async () => {
-        await inngest.send({
-          name: "content-factory/quote.loop",
-          data: { audience },
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const dateStr = today.toISOString().slice(0, 10);
+
+    // ── SIGN bucket: single static image, ONE bold line ────────────
+    // (2026-08-28 night, per Keenan — replaces the animated quote
+    // loop. "static image post but no fancy italics. bold, confident
+    // lettering.") One dark scene + one "THIS IS YOUR SIGN TO..."
+    // line rendered in the bold COVER treatment.
+    if (bucket === "sign") {
+      const sign = await step.run("generate-sign-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateSignTopic } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: thirtyDaysAgo }, lane: "sign" },
+          select: { headline: true },
         });
+        return generateSignTopic(recent.map((p) => p.headline));
       });
-      return { generated: 0, bucket, delegated: "quote.loop" };
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        await ensureBucket();
+      });
+
+      const signImage = await step.run("generate-sign-image", async () => {
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMoodyImagePrompt } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+        const prompt = buildMoodyImagePrompt("women", sign.scene);
+        const rawBuffer = await generateImage(prompt);
+        const overlay = await renderMoodyTextOverlay([sign.line], "SIGN");
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${sign.slug}/slide-0-cover.jpg`
+        );
+        return { imageUrl, imagePrompt: prompt };
+      });
+
+      const signResult = await step.run("save-and-email-sign", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildMoodyCaption } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { extractHashtags } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const caption = buildMoodyCaption("women", sign.slug);
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: sign.slug,
+            headline: sign.line,
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: "sign",
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: sign.line,
+                  imagePrompt: signImage.imagePrompt,
+                  imageUrl: signImage.imageUrl,
+                },
+              ],
+            },
+          },
+        });
+        const { sendCarouselEmail } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendCarouselEmail(post.id);
+        return { postId: post.id, slideCount: 1, estimatedCostCents: 10 };
+      });
+
+      logger.info(`[carousel-cron] Generated sign image: "${sign.line}"`);
+      return { generated: 1, bucket, ...signResult };
     }
 
     // ── MOODY-FAMILY buckets: dark centered-text carousels ─────────
     // (2026-08-28, per Keenan — cloned from the "TRUST THE PROCESS"
-    // reference; expanded same day with memento + questions, then rules
-    // + missed + forbidden replacing the old negative/positive/selfie
-    // lanes.) Every remaining bucket is a moody-family carousel: cover
-    // + 5 item slides, dim cinematic photography, white text centered
-    // mid-frame, hashtag-only caption. All are audience-growth funnels —
-    // no product CTA anywhere.
-    // - moody-women/moody-men: numbered discipline items per funnel.
-    // - rules: women's numbered first-person quiet rebellions.
-    // - memento: universal time-math slides, NO number headers.
-    // - missed: universal near-miss connection math, NO headers.
-    // - questions: women's funnel, ONE big question per slide.
-    // - forbidden: women's funnel, ONE forbidden truth per slide.
+    // reference and expanded lane by lane until the whole daily
+    // rotation is the moody visual DNA.) Every remaining bucket is a
+    // moody-family carousel: cover + 5 item slides, dim cinematic
+    // photography, white text centered mid-frame, hashtag-only
+    // caption. All are audience-growth funnels — no product CTA.
 
-    // Visual DNA per lane: men = stark architecture; universal lanes
-    // (memento/missed) = vast contemplative dark cinematics; the rest
-    // (women funnels) = warm-dim quiet luxury.
+    // Visual DNA per lane: men = stark architecture; universal lanes =
+    // vast contemplative dark cinematics; the rest (women funnels) =
+    // warm-dim quiet luxury.
     const imageAudience: "women" | "men" | "universal" =
       bucket === "moody-men"
         ? "men"
-        : bucket === "memento" || bucket === "missed"
+        : bucket === "memento" ||
+            bucket === "missed" ||
+            bucket === "bloomers" ||
+            bucket === "year" ||
+            bucket === "free"
           ? "universal"
           : "women";
-    // Discipline lanes and rules prefix items with "N. Name." like the
-    // reference; the math lanes' numbers ARE the content and the
-    // single-line lanes carry no header.
+    // Lanes whose items carry an "N. Name." header (discipline, rules,
+    // bloomer names, free things, timeline lies).
     const numbered =
-      bucket === "moody-women" || bucket === "moody-men" || bucket === "rules";
-    // Single-line lanes render in the bigger premium QUOTE serif italic;
-    // multi-paragraph lanes use ITEM.
+      bucket === "moody-women" ||
+      bucket === "moody-men" ||
+      bucket === "rules" ||
+      bucket === "bloomers" ||
+      bucket === "free" ||
+      bucket === "behind";
+    // Single-line lanes render in the bigger premium QUOTE serif
+    // italic; multi-paragraph lanes use ITEM.
     const itemKind =
-      bucket === "questions" || bucket === "forbidden"
+      bucket === "questions" || bucket === "forbidden" || bucket === "unsent"
         ? ("QUOTE" as const)
         : ("ITEM" as const);
 
@@ -198,11 +268,25 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateRulesTopic,
         generateMissedTopic,
         generateForbiddenTopic,
+        generateBloomersTopic,
+        generateTaughtTopic,
+        generateYearTopic,
+        generateFreeTopic,
+        generateBehindTopic,
+        generateNobodyTopic,
+        generateUnsentTopic,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
       const recent = await prisma.carouselPost.findMany({
         where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
-        select: { headline: true },
+        select: {
+          headline: true,
+          // Bloomers dedupes on PEOPLE, not titles — the slide headers
+          // carry the names ("1. Vera Wang.").
+          ...(bucket === "bloomers"
+            ? { slides: { select: { overlayText: true } } }
+            : {}),
+        },
       });
       const headlines = recent.map((p) => p.headline);
       if (bucket === "memento") return generateMementoTopic(headlines);
@@ -210,15 +294,27 @@ export const carouselDailyCronFn = inngest.createFunction(
       if (bucket === "rules") return generateRulesTopic(headlines);
       if (bucket === "missed") return generateMissedTopic(headlines);
       if (bucket === "forbidden") return generateForbiddenTopic(headlines);
+      if (bucket === "bloomers") {
+        const usedNames = recent.flatMap((p) =>
+          ((p as { slides?: { overlayText: string }[] }).slides ?? [])
+            .map((s) => s.overlayText.split("\n")[0]?.trim() ?? "")
+            .filter((l) => /^\d+\.\s/.test(l))
+            .map((l) => l.replace(/^\d+\.\s*/, ""))
+        );
+        return generateBloomersTopic([...headlines, ...usedNames]);
+      }
+      if (bucket === "taught") return generateTaughtTopic(headlines);
+      if (bucket === "year") return generateYearTopic(headlines);
+      if (bucket === "free") return generateFreeTopic(headlines);
+      if (bucket === "behind") return generateBehindTopic(headlines);
+      if (bucket === "nobody") return generateNobodyTopic(headlines);
+      if (bucket === "unsent") return generateUnsentTopic(headlines);
       return generateMoodyTopic(
         bucket === "moody-women" ? "women" : "men",
         headlines
       );
     });
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const dateStr = today.toISOString().slice(0, 10);
     const slug = moody.slug;
     logger.info(
       `[carousel-cron] Moody-family (${bucket}) topic: "${moody.title}" (${moody.items.length} items)`
@@ -291,22 +387,31 @@ export const carouselDailyCronFn = inngest.createFunction(
 
     const moodyResult = await step.run("save-and-email-moody", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const { buildMoodyCaption, buildMementoCaption, buildMissedCaption } =
-        await import("@/lib/content-factory/moody-carousel");
+      const {
+        buildMoodyCaption,
+        buildMementoCaption,
+        buildMissedCaption,
+        buildUniversalCaption,
+      } = await import("@/lib/content-factory/moody-carousel");
       const { extractHashtags } = await import(
         "@/lib/content-factory/carousel-generate"
       );
 
       // Hashtag-only caption cloned from the reference (2026-08-28,
       // per Keenan — the moody-family exception to the question+tags
-      // rule). Universal lanes get their own pools; the women's lanes
-      // (moody-women/rules/questions/forbidden) share the women's pool.
+      // rule). Universal lanes get universal pools; the women's lanes
+      // share the women's pool; moody-men keeps the men's pool.
       const caption =
         bucket === "memento"
           ? buildMementoCaption(slug)
           : bucket === "missed"
             ? buildMissedCaption(slug)
-            : buildMoodyCaption(bucket === "moody-men" ? "men" : "women", slug);
+            : bucket === "bloomers" || bucket === "year" || bucket === "free"
+              ? buildUniversalCaption(slug)
+              : buildMoodyCaption(
+                  bucket === "moody-men" ? "men" : "women",
+                  slug
+                );
 
       const post = await prisma.carouselPost.create({
         data: {

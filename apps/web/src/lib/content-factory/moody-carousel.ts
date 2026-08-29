@@ -572,3 +572,477 @@ export async function generateForbiddenTopic(
     minLines: 1,
   });
 }
+
+// ─── LATE BLOOMERS carousel (2026-08-28 night, per Keenan) ────────────
+// Universal lane: real, verifiable people who started late — one person
+// per slide, numbered like the discipline lanes ("1. Vera Wang."). The
+// daily fn passes recently-used NAMES in the avoid list so the same
+// person never repeats within 30 days.
+
+const BLOOMERS_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: LATE BLOOMERS — real, famous people who started late and still made it. Proof, not pep talk.
+
+AUDIENCE: everyone scrolling at midnight who quietly believes their window has closed. Every slide should read as evidence that it hasn't.
+
+SCENES: dark cinematic photography, vast and contemplative — an empty stage in low light, a desk lamp over an open notebook at night, a long road at dawn, a workshop in half-light, a city window lit late. Every frame DIM (white text must read on it). No people ever.
+
+FORMAT — each slide reads like this (match the rhythm):
+"1. Vera Wang.
+
+Figure skater, then journalist. Didn't design her first dress until 40.
+
+The empire came after."
+
+RULES:
+- "title": the cover text. 2-5 words, works in ALL CAPS ("THEY ALL STARTED LATE", "YOUR WINDOW ISN'T CLOSED"). No number in the title.
+- Exactly 5 items. Each item:
+  - "name": the person's real full name + period ("Vera Wang.").
+  - "lines": 1-2 short paragraphs. First: what they were doing before and the REAL age they started or broke through — only widely documented facts about famous people (Vera Wang, Julia Child, Samuel L. Jackson, Toni Morrison, Ray Kroc caliber). If you are not certain of the age, pick someone you are certain about. Last line: a short settled statement (2-6 words), never a command.
+- Vary the fields across the 5 slides: business, writing, film or music, food, art or science. Never two people from the same field.
+- NEVER invent people, ages, or facts. Real names, real documented timelines only.
+- Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs. Never mention any app, product, journaling, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "name": "...", "lines": ["...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one late-bloomers topic (universal). Pass recent NAMES too. */
+export async function generateBloomersTopic(
+  recentHeadlinesAndNames: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "bloomers-carousel-topic",
+    system: BLOOMERS_SYSTEM_PROMPT,
+    user: `Write one new late-bloomers post.${avoidBlock(recentHeadlinesAndNames)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "bloomers",
+    requireName: true,
+    minLines: 1,
+  });
+}
+
+// ─── WHAT ___ TAUGHT ME carousel (2026-08-28 night, per Keenan) ───────
+// Women's funnel: the teacher rotates daily (grief, silence, burnout,
+// an empty house...) so the title itself is the dedupe key. Five
+// first-person lessons, no headers.
+
+const TAUGHT_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: WHAT ___ TAUGHT ME — one hard teacher per post (grief, silence, burnout, an empty house, being the strong one, waiting rooms), five quiet first-person lessons it left behind.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The lessons should feel earned, not quoted — like a woman telling the truth about what a hard season actually gave her.
+VOICE: first person, quiet, settled. Plain sentences with warmth underneath. Never preachy, never inspirational-poster, never bitter.
+
+${SCENE_BRIEF["women"]}
+
+FORMAT — each slide reads like this (match the rhythm):
+"Nobody is coming to grade how well I held it together.
+
+So I stopped performing it."
+
+RULES:
+- "title": the cover text — "WHAT ___ TAUGHT ME" with ONE hard teacher filled in ("WHAT GRIEF TAUGHT ME", "WHAT THE QUIET HOUSE TAUGHT ME"). Pick a DIFFERENT teacher than any recent title. 3-7 words.
+- Exactly 5 items. Each item's "lines": 1-2 short paragraphs — one lesson, first person, concrete. Optional second paragraph: a short settled closer (2-8 words), a statement, never a command to the reader.
+- Each lesson hits a DIFFERENT nerve: what she dropped, what she kept, what she stopped believing, what she now protects, what surprised her. Never two on the same nerve.
+- Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs. Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one what-X-taught-me topic (women's funnel). */
+export async function generateTaughtTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "taught-carousel-topic",
+    system: TAUGHT_SYSTEM_PROMPT,
+    user: `Write one new what-it-taught-me post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "taught",
+    requireName: false,
+    minLines: 1,
+  });
+}
+
+// ─── ONE YEAR FROM NOW carousel (2026-08-28 night, per Keenan) ────────
+// Universal lane: forward-pointing time math — five concrete
+// transformations a single year holds, each grounded in plausible
+// arithmetic. Memento mori's hopeful twin.
+
+const YEAR_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: ONE YEAR FROM NOW — concrete, arithmetic proof of what a single year quietly holds. Forward-pointing time math. Not motivation — evidence.
+
+AUDIENCE: everyone scrolling at midnight and telling themselves it's too late to start. No gendered content.
+
+SCENES: dark cinematic photography, vast and contemplative — a road disappearing into pre-dawn fog, a single lit window before sunrise, a calendar-blank horizon at first light, an empty running track at night, a doorway opening onto early morning. Every frame DIM (white text must read on it). No people ever.
+
+FORMAT — each slide reads like this (match the rhythm):
+"A year from now you could have read 24 books.
+
+Two a month. Twenty minutes a night.
+
+The year passes either way."
+
+RULES:
+- "title": the cover text. 2-5 words, works in ALL CAPS ("ONE YEAR FROM NOW", "THE YEAR PASSES ANYWAY"). No number in the title.
+- Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
+  - First line: ONE concrete thing a year could hold, with an honest number ("A year from now you could have walked ~1,000 miles."). Plausible arithmetic only — hedge with "about" or "~" where needed, never fake precision.
+  - Middle line: the small daily math that gets there ("Three miles a day. That's all.").
+  - Last line: a short landing (2-6 words) — a statement or quiet command ("Start tonight.", "The year passes either way.").
+- Vary the subject across the 5 slides: body, mind or skill, money, a relationship repaired, something quit. Never two slides on the same subject.
+- It should feel like cold arithmetic pointed forward — never a pep talk, never poetry.
+- Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["...", "...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one one-year-from-now topic (universal). */
+export async function generateYearTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "year-carousel-topic",
+    system: YEAR_SYSTEM_PROMPT,
+    user: `Write one new one-year-from-now post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "year",
+    requireName: false,
+    minLines: 2,
+  });
+}
+
+// ─── THINGS THAT ARE STILL FREE carousel (2026-08-28 night) ───────────
+// Universal lane: five free things, numbered like the discipline lanes
+// ("1. Watching it rain.") with one quiet expansion each. Quietly
+// devastating positivity.
+
+const FREE_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: THINGS THAT ARE STILL FREE — small, real, available-tonight things money never touched. Quietly devastating in how obvious they are.
+
+AUDIENCE: everyone scrolling at midnight. Universal — no gendered content, no niche jargon.
+
+SCENES: dark cinematic photography, calm and contemplative — rain sliding down a dark window, a bench under a streetlamp, dawn light through thin curtains, a quiet dock at dusk, steam rising off a cup by a dark window. Every frame DIM (white text must read on it). No people ever.
+
+FORMAT — each slide reads like this (match the rhythm):
+"1. Watching it rain.
+
+No ticket, no line, no upgrade. The best seat is the one by the window.
+
+It's playing tonight."
+
+RULES:
+- "title": the cover text. 3-6 words, works in ALL CAPS ("STILL FREE", "THINGS THAT ARE STILL FREE"). No number in the title.
+- Exactly 5 items. Each item:
+  - "name": the free thing, 2-5 words + period ("Watching it rain.", "Being early.", "Saying it first.").
+  - "lines": 1-2 short paragraphs. First: one quiet, concrete expansion of why it matters. Optional last line: a short settled closer (2-6 words), a statement, never a command.
+- Vary the kind of free thing across the 5 slides: something in nature, something about time, something human, something sensory, something done alone. Never two of the same kind.
+- Never saccharine, never a gratitude lecture — the tone is someone pointing out what was on the table the whole time.
+- Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs. Never mention any app, product, journaling, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "name": "...", "lines": ["...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one still-free topic (universal). */
+export async function generateFreeTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "free-carousel-topic",
+    system: FREE_SYSTEM_PROMPT,
+    user: `Write one new things-that-are-still-free post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "free",
+    requireName: true,
+    minLines: 1,
+  });
+}
+
+// ─── YOU'RE NOT BEHIND carousel (2026-08-28 night, per Keenan) ────────
+// Women's funnel: five timeline lies, each named as a header ("1.
+// Married by thirty.") and quietly dismantled underneath.
+
+const BEHIND_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: YOU'RE NOT BEHIND — five timeline lies the reader was handed, each named and quietly dismantled. Not a pep talk — a correction of the record.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — measuring themselves against a schedule nobody actually agreed to. Reading it should feel like someone finally saying the quiet part: the deadline was made up.
+VOICE: quiet, certain, a little dry. Second person. Never girlboss, never preachy, never "it's never too late!" cheerfulness — flat, factual permission.
+
+${SCENE_BRIEF["women"]}
+
+FORMAT — each slide reads like this (match the rhythm):
+"1. Figured out by forty.
+
+Nobody is. The ones who look it just stopped narrating the doubt.
+
+The schedule was made up."
+
+RULES:
+- "title": the cover text. 2-5 words, works in ALL CAPS ("YOU'RE NOT BEHIND", "THE TIMELINE WAS MADE UP"). No number.
+- Exactly 5 items. Each item:
+  - "name": the timeline lie as a short deadline phrase + period ("Married by thirty.", "Career settled by forty.", "Body back by summer."). 2-6 words.
+  - "lines": 1-2 short paragraphs. First: dismantle the lie in one or two plain sentences — where it came from, or the quiet truth that breaks it. Optional last line: a short settled closer (2-6 words), a statement, never a command.
+- Each of the 5 lies comes from a DIFFERENT domain: love or marriage, career, money, body, self or purpose. Never two on the same domain.
+- Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs. Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "name": "...", "lines": ["...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one you're-not-behind topic (women's funnel). */
+export async function generateBehindTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "behind-carousel-topic",
+    system: BEHIND_SYSTEM_PROMPT,
+    user: `Write one new you're-not-behind post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "behind",
+    requireName: true,
+    minLines: 1,
+  });
+}
+
+// ─── NOBODY TELLS YOU carousel (2026-08-28 night, per Keenan) ─────────
+// Women's funnel: the subject rotates daily ("NOBODY TELLS YOU ABOUT
+// 45", "...ABOUT THE QUIET HOUSE") so the title is the dedupe key.
+// Five unspoken truths, no headers.
+
+const NOBODY_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: NOBODY TELLS YOU — one life season per post, five truths about it that nobody says out loud beforehand.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load. The seasons rotate: turning 45, the year the kids stop needing you, a long marriage, caring for aging parents, friendship after 40, the quiet house. Each truth should land as recognition — "so it's not just me."
+VOICE: quiet, flat, honest. Plain statements with warmth underneath. Never bitter, never dramatic — the sting is recognition.
+
+${SCENE_BRIEF["women"]}
+
+FORMAT — each slide reads like this (match the rhythm):
+"The hardest part isn't the missing. It's that the missing becomes normal.
+
+Nobody warns you about that part."
+
+RULES:
+- "title": the cover text — "NOBODY TELLS YOU" plus ONE specific season ("NOBODY TELLS YOU ABOUT 45", "NOBODY TELLS YOU ABOUT THE QUIET HOUSE"). Pick a DIFFERENT season than any recent title. 4-8 words.
+- Exactly 5 items. Each item's "lines": 1-2 short paragraphs — one unspoken truth about that season, plain declarative sentences. Optional second paragraph: a short settled closer (2-8 words), a statement, never a command.
+- Each truth hits a DIFFERENT nerve of the season: the body, the relationships, the identity, the surprise good part, the part she'd never admit. Exactly ONE of the 5 truths is unexpectedly good.
+- Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs. Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one nobody-tells-you topic (women's funnel). */
+export async function generateNobodyTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "nobody-carousel-topic",
+    system: NOBODY_SYSTEM_PROMPT,
+    user: `Write one new nobody-tells-you post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "nobody",
+    requireName: false,
+    minLines: 1,
+  });
+}
+
+// ─── UNSENT TEXTS carousel (2026-08-28 night, per Keenan) ─────────────
+// Women's funnel: five messages typed and deleted — ONE per slide, in
+// the premium QUOTE serif like the forbidden lane. Each to a different
+// unnamed recipient.
+
+const UNSENT_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: UNSENT TEXTS — messages someone typed, read back, and deleted. Each slide is ONE deleted message. No commentary, no advice, anywhere.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load. Each message should read as something she herself has typed and erased — to a husband, a mother, an old friend, a grown child, someone gone, or herself.
+VOICE: first person, raw but restrained — the honesty of a message that was never going to be sent. Plain texting language, not literary. Lowercase is allowed where it feels real.
+
+${SCENE_BRIEF["women"]}
+
+FORMAT — each slide is ONE message like:
+"i'm not mad. i'm just tired of being the only one who notices."
+"you were my best friend for 20 years. i don't even know what happened."
+
+RULES:
+- "title": the cover text. 2-5 words, works in ALL CAPS ("TYPED AND DELETED", "TEXTS I NEVER SENT"). Not a question.
+- Exactly 5 items. Each item's "lines": exactly ONE line — the deleted message. 6-20 words. It must sound like a real text: plain words, contractions, no polish.
+- Each message is to a DIFFERENT unnamed recipient: a partner, a parent, an old friend, a grown child or family member, someone gone or her past self. Never name names.
+- Each hits a DIFFERENT nerve: exhaustion, drifted love, grief, resentment, tenderness. Exactly ONE of the 5 is tender instead of heavy.
+- No metaphors, no aphorisms — these are texts, not quotes. If it sounds writerly, rewrite it plainer.
+- US English. No emojis, no hashtags, no quotation marks around the lines. Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one unsent-texts topic (women's funnel). */
+export async function generateUnsentTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "unsent-carousel-topic",
+    system: UNSENT_SYSTEM_PROMPT,
+    user: `Write one new unsent-texts post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "unsent",
+    requireName: false,
+    minLines: 1,
+  });
+}
+
+// ─── Universal-lane caption (bloomers / year / free) ──────────────────
+const UNIVERSAL_CORE_TAGS = ["#fyp", "#mindset", "#perspective", "#motivation"];
+const UNIVERSAL_ROTATING_TAGS = [
+  "#lifelessons",
+  "#growth",
+  "#presence",
+  "#intentionalliving",
+  "#reminder",
+  "#itsnottoolate",
+];
+
+/** Hashtag-only caption for the forward-looking universal lanes. */
+export function buildUniversalCaption(slug: string): string {
+  let hash = 0;
+  for (const c of slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+  const h = Math.abs(hash);
+  const extra = [
+    UNIVERSAL_ROTATING_TAGS[h % UNIVERSAL_ROTATING_TAGS.length],
+    UNIVERSAL_ROTATING_TAGS[(h + 3) % UNIVERSAL_ROTATING_TAGS.length],
+  ];
+  return [...UNIVERSAL_CORE_TAGS, ...new Set(extra)].join(" ");
+}
+
+// ─── THIS IS YOUR SIGN — single static image (2026-08-28 night) ───────
+// Replaces the animated quote loop (which Keenan eliminated the same
+// night). ONE dark cinematic image with ONE permission-giving line in
+// bold confident lettering (per Keenan: "no fancy italics. bold,
+// confident lettering"). Positive polarity — the warm cousin of the
+// dead quote format.
+
+export interface SignTopic {
+  slug: string;
+  /** The full sign line, starts with "THIS IS YOUR SIGN". */
+  line: string;
+  scene: string;
+}
+
+const SIGN_SYSTEM_PROMPT = `You write ONE line for a dark, moody single-image post. The format: bold white text on a dim cinematic photograph. The line always begins "THIS IS YOUR SIGN TO ..." and gives the reader quiet permission to do the thing they've been waiting for a sign to do.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The sign should release something specific: rest, a boundary, a call, letting something go, starting something small.
+VOICE: warm, certain, plain. Permission — never pressure, never hustle, never "go get it queen" energy.
+
+RULES:
+- ONE line, 8-16 words total, beginning exactly "THIS IS YOUR SIGN TO". Specific and concrete, not generic ("...to stop rehearsing the apology you don't owe", not "...to live your best life").
+- No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI.
+- "scene": one concrete sentence describing the photograph — dim quiet-luxury interiors or nature in low warm light (rain on tall windows, a dark kitchen lit by one lamp, dusk through linen curtains). DIM, no people ever.
+- "theme": 2-4 words naming what the sign releases (for repeat-avoidance).
+
+OUTPUT (strict JSON, no markdown):
+{ "line": "...", "scene": "...", "theme": "..." }`;
+
+/** Generate one this-is-your-sign line + scene (women's funnel). */
+export async function generateSignTopic(
+  recentLines: string[]
+): Promise<SignTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 400,
+      system: SIGN_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: `Write one new sign.${avoidBlock(recentLines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "sign-image-topic",
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      line?: string;
+      scene?: string;
+      theme?: string;
+    };
+    const line = (parsed.line ?? "").trim();
+    const scene = (parsed.scene ?? "").trim();
+    if (!line.toUpperCase().startsWith("THIS IS YOUR SIGN") || !scene) {
+      throw new Error(`sign-image-topic unusable: line="${line}"`);
+    }
+
+    const slug = line
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    return { slug: `sign-${slug}`, line, scene };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "sign-image-topic",
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
