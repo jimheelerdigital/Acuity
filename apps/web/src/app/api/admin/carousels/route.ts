@@ -217,10 +217,10 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "video" | "positive" | "ambient" | "selfie" |
+      // images). `bucket`: "rules" | "missed" | "ambient" | "forbidden" |
       // "moody-women" | "moody-men" | "quote-women" | "quote-men" |
-      // "memento" | "questions" (anything else falls back to "video" —
-      // the photo lane is dead, 2026-08-28).
+      // "memento" | "questions" (anything else falls back to "rules" —
+      // the video/positive/selfie lanes are dead, 2026-08-28).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",

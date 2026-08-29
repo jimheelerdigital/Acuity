@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-28] — Old negative/positive/selfie posts replaced with three new moody formats
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): Replace negative/positive/selfie lanes` commit)
+
+### In plain English (for Keenan)
+The three daily slots that were still making the old-style posts now make new posts in the proven dark moody aesthetic instead. The 1am Central slot (formerly the negative animated post) now makes "Rules I broke to get my life back" — a numbered carousel of small quiet rebellions, written for the women funnel. The 3am slot (formerly the positive animated post) now makes "Missed-connection math" — a universal carousel with lines like "You'll walk past about 80,000 strangers in your life. One of them would have been your best friend. You were looking at your phone." The 7am slot (formerly the selfie slideshow) now makes "Delete this after reading" — five forbidden one-liners in the fancy italic serif, for the women funnel. Same schedule, same 10 emails a day — three of them just got much better. Three samples of the new formats are being generated now so you can see them tonight.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: three new topic generators — `generateRulesTopic`, `generateMissedTopic` (+ `buildMissedCaption`, hashtag-only), `generateForbiddenTopic` — all riding the shared `generateMoodyFamilyTopic` core with their own system prompts
+- `apps/web/src/inngest/functions/carousel-daily.ts`: fully rewritten — `DailyBucket` is now `rules | missed | ambient | forbidden | moody-women | moody-men | quote-women | quote-men | memento | questions`; the selfie branch and the entire old style-rotation/`generateTopic` tail are DELETED; the moody-family pipeline is now the unconditional catch-all. Per-lane config: rules = numbered + women imagery; missed = universal imagery + own caption; forbidden = QUOTE overlay kind (Playfair serif, one line per slide) + women imagery. Fallback bucket for unknown event data is `rules`
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🎬/✨/🤳 buttons replaced with 🔓 rules / 🫂 missed / 🤫 forbidden; `generateBucket` union updated; empty-state button now queues `rules`
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily bucket doc comment updated
+- Cron expression unchanged (`0 6,8,10,12,14,16,18,19,20,21 * * *`) — only the hour→bucket mapping changed, so no new Inngest trigger, but resync anyway after deploy
+- Old lane libraries (`generate-topic.ts`, selfie libs, `caption.ts`) left intact — `carousel-one-off` and other functions still reference them
+
+### Manual steps needed
+- [ ] Eyeball the three sample emails (rules, missed, forbidden) and confirm the formats look right (Keenan)
+- [ ] Forbidden sample doubles as the Playfair serif prod check from the previous entry (Keenan)
+
+### Notes
+- These lanes replace the last non-moody daily formats; every daily lane except ambient is now moody-family. The negative/positive 4-style static rotation and the selfie slideshow pipeline are dead as daily lanes.
+- "missed" saves with `format: "PHOTO"`, `lane: "missed"` like the other moody carousels; recent-headline dedupe filters by lane, so each new lane starts with a clean slate.
+
 ## [2026-08-28] — Quote videos get a premium italic serif
 
 **Requested by:** Keenan

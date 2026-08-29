@@ -221,10 +221,10 @@ export default function CarouselReviewPage() {
 
   const generateBucket = async (
     bucket:
-      | "video"
-      | "positive"
+      | "rules"
+      | "missed"
       | "ambient"
-      | "selfie"
+      | "forbidden"
       | "moody-women"
       | "moody-men"
       | "quote-women"
@@ -241,8 +241,6 @@ export default function CarouselReviewPage() {
         body: JSON.stringify({ action: "generate-daily", bucket }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // Video/positive are static image posts since 2026-08-28 (no AI
-      // animation) — they finish about as fast as the selfie slideshow.
       const eta =
         bucket === "ambient" || bucket.startsWith("quote-") ? "~8 min" : "~3-5 min";
       setGenerateMsg(`${bucket[0].toUpperCase() + bucket.slice(1)} queued — check email in ${eta}`);
@@ -577,20 +575,20 @@ export default function CarouselReviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => generateBucket("video")}
+            onClick={() => generateBucket("rules")}
             disabled={generating}
-            title="Generate an animated carousel video now"
+            title="Generate a rules-I-broke carousel (women funnel) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🎬"}
+            {generating ? "…" : "🔓"}
           </button>
           <button
-            onClick={() => generateBucket("positive")}
+            onClick={() => generateBucket("missed")}
             disabled={generating}
-            title="Generate a positive animated carousel now"
+            title="Generate a missed-connection math carousel now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "✨"}
+            {generating ? "…" : "🫂"}
           </button>
           <button
             onClick={() => generateBucket("ambient")}
@@ -601,12 +599,12 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "🌙"}
           </button>
           <button
-            onClick={() => generateBucket("selfie")}
+            onClick={() => generateBucket("forbidden")}
             disabled={generating}
-            title="Generate a realistic selfie slideshow now"
+            title="Generate a forbidden-truths carousel (women funnel) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🤳"}
+            {generating ? "…" : "🤫"}
           </button>
           <button
             onClick={() => generateBucket("moody-women")}
@@ -743,7 +741,7 @@ export default function CarouselReviewPage() {
             </p>
             {!allFilter && (
               <button
-                onClick={() => generateBucket("video")}
+                onClick={() => generateBucket("rules")}
                 disabled={generating}
                 className="mt-3 min-h-[44px] rounded-acuity-pill bg-acuity-primary px-6 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
               >

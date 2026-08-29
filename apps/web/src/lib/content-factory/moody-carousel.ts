@@ -396,3 +396,179 @@ export async function generateQuestionsTopic(
     minLines: 1,
   });
 }
+
+// ─── RULES I BROKE carousel (2026-08-28 late PM, per Keenan) ──────────
+// Replaces the negative "video" lane (6 UTC). Women's funnel: an
+// inversion of the discipline format — instead of five commands, five
+// QUIET REBELLIONS ("1. I stopped answering right away.") each with a
+// short justification. Same numbered moody skeleton, first person.
+
+const RULES_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: RULES I BROKE — five polite, invisible rules the writer quietly stopped following to get her life back. Not advice. A first-person record of small rebellions.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. Each broken rule should be one they still obey, and reading it should feel like permission.
+VOICE: first person, quiet, settled, unapologetic. A woman who has stopped explaining herself, telling you what she quit doing — not telling you what to do. Never preachy, never girlboss, never bitter.
+
+${SCENE_BRIEF["women"]}
+
+FORMAT — each slide reads like this (match the rhythm):
+"1. I stopped answering right away.
+
+A text is not a summons. It waited hours to matter to them.
+
+It can wait an hour for me."
+
+RULES:
+- "title": the cover text. 3-7 words, first person, works in ALL CAPS ("RULES I BROKE TO GET MY LIFE BACK", "POLITE RULES I QUIT"). No number.
+- Exactly 5 items. Each item:
+  - "name": the broken rule as a short first-person past-tense line + period ("I stopped answering right away.", "I let the house be imperfect."). 4-8 words.
+  - "lines": 1-2 short paragraphs. First: the quiet reasoning in one or two plain sentences. Optional last line: a short settled closer (2-6 words) — a statement, never a command to the reader.
+- Every rebellion is SMALL and concrete — answering instantly, over-explaining, hosting every holiday, being the default parent contact, apologizing for resting. Never dramatic (no quitting jobs, leaving marriages).
+- Each of the 5 breaks a DIFFERENT kind of rule: availability, explanation, appearance, obligation, self-denial. Never two on the same kind.
+- Every sentence short. US English. No emojis, no hashtags, no quotes, no advice-verbs. Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "name": "...", "lines": ["...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one rules-I-broke topic (women's funnel, replaces negative). */
+export async function generateRulesTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "rules-carousel-topic",
+    system: RULES_SYSTEM_PROMPT,
+    user: `Write one new rules-I-broke post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "rules",
+    requireName: true,
+    minLines: 1,
+  });
+}
+
+// ─── MISSED CONNECTIONS carousel (2026-08-28 late PM, per Keenan) ─────
+// Replaces the positive lane (8 UTC). Universal: near-miss math about
+// the people you almost knew — cousin of memento mori, but the finite
+// thing is CONNECTION, not time. Each slide a small ghost story told in
+// plausible numbers.
+
+const MISSED_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MISSED-CONNECTION MATH — quiet, concrete numbers about the people we walk past, lose touch with, or never quite meet. Each slide is a small ghost story told in plausible arithmetic.
+
+AUDIENCE: everyone scrolling at midnight. The numbers must hit universally — strangers passed, friends drifted, conversations not started, calls not made. No gendered content.
+
+SCENES: dark cinematic photography of in-between public places, empty of people — a rain-streaked bus window at night, an empty train platform under sodium light, a crosswalk at dusk, an airport gate after the last flight, a diner counter at closing, a lit phone booth on a dark street. Every frame DIM (white text must read on it). No people ever.
+
+FORMAT — each slide reads like this (match the rhythm):
+"You'll walk past about 80,000 strangers in your life.
+
+One of them would have been your best friend.
+
+You were looking at your phone."
+
+RULES:
+- "title": the cover text. 2-5 words, works in ALL CAPS ("THE PEOPLE YOU MISSED", "ALMOST FRIENDS"). No number in the title.
+- Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
+  - First line: ONE concrete, plausible number about near-missed connection ("You'll walk past about 80,000 strangers.", "The average friendship that fades takes about 2 years to go quiet."). Plausible arithmetic only — never invented precision, hedge with "about" or "~".
+  - Middle line: the quiet human truth inside the number.
+  - Last line: a short landing — a statement or gentle command (2-6 words: "Look up.", "Text them first.", "You were almost friends.").
+- Vary the subject across the 5 slides: strangers passed, friendships gone quiet, family you rarely see, conversations never started, the people one choice removed. Never two slides on the same subject.
+- Every sentence short. It should feel like cold arithmetic with an ache inside — never sentimental, never poetry.
+- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["...", "...", "..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one missed-connections topic (universal, replaces positive). */
+export async function generateMissedTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "missed-carousel-topic",
+    system: MISSED_SYSTEM_PROMPT,
+    user: `Write one new missed-connection math post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "missed",
+    requireName: false,
+    minLines: 2,
+  });
+}
+
+const MISSED_CORE_TAGS = ["#fyp", "#deepthoughts", "#perspective", "#mindset"];
+const MISSED_ROTATING_TAGS = [
+  "#sonder",
+  "#connection",
+  "#strangers",
+  "#lifelessons",
+  "#presence",
+  "#almost",
+];
+
+/** Hashtag-only caption for the missed-connections lane (universal pool). */
+export function buildMissedCaption(slug: string): string {
+  let hash = 0;
+  for (const c of slug) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+  const h = Math.abs(hash);
+  const extra = [
+    MISSED_ROTATING_TAGS[h % MISSED_ROTATING_TAGS.length],
+    MISSED_ROTATING_TAGS[(h + 3) % MISSED_ROTATING_TAGS.length],
+  ];
+  return [...MISSED_CORE_TAGS, ...new Set(extra)].join(" ");
+}
+
+// ─── DELETE THIS AFTER READING carousel (2026-08-28 late PM) ──────────
+// Replaces the selfie lane (12 UTC). Women's funnel: a cover styled
+// like a warning ("DELETE THIS AFTER READING") + 5 slides, each ONE
+// truth you're not supposed to say out loud. Single-line slides render
+// in the premium QUOTE serif italic, like the questions lane.
+
+const FORBIDDEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: FORBIDDEN TRUTHS — each slide is ONE line you're not supposed to say out loud. The post is framed like a note the reader shouldn't have seen. No advice, no answers, anywhere.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. Each line should name something she has thought and never said: the unspoken ledger of marriage, motherhood, friendship, aging, wanting more.
+VOICE: quiet, flat, devastatingly honest. Plain statements. Never cruel, never cynical for its own sake — the sting is recognition, not shock.
+
+${SCENE_BRIEF["women"]}
+
+FORMAT — each slide is ONE line like:
+"You don't miss him. You miss being chosen."
+"Some of the love you give is just fear with better manners."
+
+RULES:
+- "title": the cover text. 3-6 words with warning-label energy, works in ALL CAPS ("DELETE THIS AFTER READING", "DON'T SCREENSHOT THIS", "YOU DIDN'T SEE THIS"). Not a question.
+- Exactly 5 items. Each item's "lines": exactly ONE line — the truth. 8-18 words, a plain declarative statement (may be two short sentences). No question marks.
+- Each line hits a DIFFERENT nerve: love, motherhood or family, friendship, self, time. Never two lines on the same nerve.
+- Short declarative words. No metaphors that need decoding, no clichés, no advice-verbs. Read each line out loud — it should feel like something overheard, not written.
+- US English. No emojis, no hashtags, no quotes around the lines. Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one forbidden-truths topic (women's funnel, replaces selfie). */
+export async function generateForbiddenTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "forbidden-carousel-topic",
+    system: FORBIDDEN_SYSTEM_PROMPT,
+    user: `Write one new forbidden-truths post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "forbidden",
+    requireName: false,
+    minLines: 1,
+  });
+}
