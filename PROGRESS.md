@@ -44,7 +44,7 @@ If someone is brand new and has only recorded once or twice, they get an encoura
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1cef959f
+**Commit hash:** d48e343b
 
 ### In plain English (for Keenan)
 Two new daily posts now generate automatically, cloned from the "TRUST THE PROCESS" reference you sent: dark, moody photo carousels with clean white text centered on each image (cover title + 5 numbered slides like "4. Reset day."). One funnel speaks to your core audience (women 40-50 — quiet discipline, protecting peace, softer warm-dim visuals) and one to your second market (young aspiring men — discipline/trust-the-process, stark dark architecture). Captions are hashtags only, like the reference. You'll now get 6 emails a day instead of 4 — the women's post at 9am, the men's at 11am Central.
