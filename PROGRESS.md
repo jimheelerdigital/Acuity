@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-08-28] — Three new daily post formats: looping quote videos, memento mori, hard questions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d7148163
+
+### In plain English (for Keenan)
+The content factory now makes three new kinds of posts every day, all in the same dark moody style as the carousels you said were our best work so far. First: a quote video — one devastating line sitting on a dark cinematic scene (rain on glass, a candle, steam from a cup) that loops perfectly, so viewers can't tell where it starts or ends and just sit with the line. One goes to each funnel daily (women at 1pm Central, men at 2pm). The loop is now guaranteed by video math on our side, not by hoping the AI video model cooperates. Second: a memento mori carousel — time-math slides like "about 15 more visits with your parents" ending in a short command — one universal post daily at 3pm Central. Third: a hard-questions carousel for the women funnel — five questions, no answers — daily at 4pm Central. That takes you from 6 to 10 emailed posts per day. The quote videos are silent on purpose: add a trending calm sound when you post them.
+
+### Technical changes (for Jimmy)
+- New file `apps/web/src/lib/content-factory/quote-loop.ts`: quote+scene concept generation (Claude), i2v prompt builder, env knobs `HIGGSFIELD_QUOTE_VIDEO_MODEL` (better-model override, falls back to `HIGGSFIELD_VIDEO_MODEL`) and `HIGGSFIELD_QUOTE_CLIP_DURATION` (default 10s)
+- New Inngest function `carousel-quote-loop` (`apps/web/src/inngest/functions/carousel-quote-loop.ts`), event `content-factory/quote.loop` with `data.audience` — concept → gpt-image-2 scene → Higgsfield clip (2 attempts, 2nd drops to 5s) → seamless loop + quote burn → email
+- `story-video.ts`: new `seamlessLoopWithOverlay()` — crossfades the clip into itself (xfade) then trims so the first and last frames are pixel-identical by construction, burns the text overlay in the same encode, stream-copy concats to 12-18s
+- `moody-carousel.ts`: refactored to a shared `generateMoodyFamilyTopic` core; added `generateMementoTopic` (universal audience, no numbered names), `generateQuestionsTopic` (single-line items), `buildMementoCaption`, universal image style; `AUDIENCE_BRIEF`/`SCENE_BRIEF` exported
+- `compose.ts`: `renderMoodyTextOverlay` gained a `QUOTE` kind (54pt bold, sentence case, wider wrap) used by quote videos and question slides
+- `animate-cover.ts`: `submitCoverVideo` accepts a per-call `model` override
+- `email.ts`: `sendStoryVideoEmail` quote framing (🖤 subject, loop explanation, no voiceover script)
+- `carousel-daily.ts`: cron is now `0 6,8,10,12,14,16,18,19,20,21 * * *`; hours 18/19 delegate to the quote-loop event, 20 = memento, 21 = questions (both ride the generalized moody branch)
+- Registered in `/api/inngest`; admin carousels page has 4 new trigger buttons (🖤 🗿 ⏳ ❓); `/api/admin/carousels` docs updated
+- No schema change: quote posts reuse format `AMBIENT` + lanes `quote-women`/`quote-men`; memento/questions use `PHOTO` + lanes `memento`/`questions`
+
+### Manual steps needed
+- [ ] Inngest resync after deploy — `curl -X PUT https://goripple.io/api/inngest` (Claude Code runs it this session; re-run if the new cron hours don't show in Inngest Cloud)
+- [ ] Optional: set `HIGGSFIELD_QUOTE_VIDEO_MODEL` in Vercel to a better Higgsfield model for the quote lane (Keenan/Jimmy — without it, quote clips use the same model as ambient)
+
+### Notes
+- The seamless loop is enforced by ffmpeg, not the model: xfade(A→A, offset=d−f) then trim [f, d] yields a segment whose first frame equals its last frame exactly, so lossless `-c copy` concat loops with zero visible seam regardless of what Higgsfield outputs. Prompt-level "make it loop" instructions were never honored — this is why.
+- Quote scenes are constrained to exactly ONE repeatable natural motion with a locked camera (the ambient-lane hallucination lesson) — calmer motion also hides the self-dissolve at the loop point.
+- Quote posts encode 12-18s at maxrate 5M (Supabase 50MB lesson). Attempt 2 drops the source clip to the proven 5s in case the chosen model rejects 10s durations.
+- tsc baseline unchanged at 199 pre-existing errors — no new errors from this change.
+
 ## [2026-08-28] — A page that shows you everything Ripple has picked up about you
 
 **Requested by:** Jimmy
