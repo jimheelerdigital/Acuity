@@ -40,6 +40,31 @@ If someone is brand new and has only recorded once or twice, they get an encoura
 - **Two empty states, not one.** Under 3 entries = "still getting to know you" (the user hasn't recorded enough). At 3+ with nothing extracted = "hasn't finished reading them back yet" (the user has done their part, Inngest hasn't caught up). Collapsing these would tell someone to record more when the queue is the thing that's behind.
 - **Sentiment renders as `warm` / `steady` / `strained`, not the raw `positive|neutral|negative`.** Design system §7.1 — observational, not clinical. The raw values are what `lib/memory.ts` writes.
 - Baselines: web tsc **150 before, 150 after** — identical error sets, verified by stashing and diffing, not assumed. (The 152 in the brief and the 153 in older entries are both stale; main has drifted to 150.) Tests **712/712** across 43 files (695 + 17 new). `npx next build` exits 0 with `/insights/knows` registered at 4.45 kB.
+## [2026-08-28] — Moody discipline carousels: two new daily audience funnels
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1cef959f
+
+### In plain English (for Keenan)
+Two new daily posts now generate automatically, cloned from the "TRUST THE PROCESS" reference you sent: dark, moody photo carousels with clean white text centered on each image (cover title + 5 numbered slides like "4. Reset day."). One funnel speaks to your core audience (women 40-50 — quiet discipline, protecting peace, softer warm-dim visuals) and one to your second market (young aspiring men — discipline/trust-the-process, stark dark architecture). Captions are hashtags only, like the reference. You'll now get 6 emails a day instead of 4 — the women's post at 9am, the men's at 11am Central.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/moody-carousel.ts: generateMoodyTopic (Claude claude-sonnet-4-6, per-audience system prompts, ClaudeCallLog purpose "moody-carousel-topic-{audience}"), buildMoodyImagePrompt, buildMoodyCaption (hashtag-only, per-funnel pools)
+- apps/web/src/lib/content-factory/compose.ts: NEW renderMoodyTextOverlay(paragraphs, "COVER"|"ITEM") — centered white Poppins block, blank-line paragraph gaps, blurred drop shadow; cover uppercase Bold 72 letter-spaced, items Medium 42
+- apps/web/src/inngest/functions/carousel-daily.ts: cron `0 6,8,10,12,14,16 * * *`; DailyBucket adds "moody-women" | "moody-men" (hours 14/16 UTC); new branch: topic → cover → 5 item slides (gpt-image-2, text composited with sharp) → CarouselPost format PHOTO, lane = bucket name → sendCarouselEmail
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 🕯️ (moody-women) and 🏛️ (moody-men) generate buttons
+- No schema changes; ~48¢/post in image cost (6 slides × 8¢)
+
+### Manual steps needed
+- [x] Inngest resync after deploy (cron change) — done via `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- Decisions (Keenan, via Q&A): daily automatic from day one; captions clone the reference (pure discovery hashtags, NO question — deliberate exception to the question+tags rule that governs every other lane); women's funnel gets a softer warm-dim variant of the dark look; both funnels are audience-growth only, no product CTA.
+- Overlay verified locally on a dark test background before shipping (item + cover renders matched the reference rhythm).
+- Image prompts demand every frame be DIM enough for centered white text — even the women's warmer scenes.
+
+---
 
 ## [2026-08-28] — Calm video rebuilt as simple full-frame nature loops
 
