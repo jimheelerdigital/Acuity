@@ -136,7 +136,7 @@ describe("the prompt forbids the 2d76c829 failure mode", () => {
     // a pattern — the reflection slot is the warmest, most authoritative
     // place on the page, and a neat insight about someone's crisis is
     // the worst thing it could hold.
-    expect(PIPELINE).toMatch(/SAFETY:/);
+    expect(PIPELINE).toMatch(/SAFETY/);
     for (const term of [
       "self-harm",
       "suicidal thoughts",
@@ -146,9 +146,57 @@ describe("the prompt forbids the 2d76c829 failure mode", () => {
       expect(PIPELINE, `safety clause should name "${term}"`).toContain(term);
     }
     expect(PIPELINE).toMatch(/never reflect the distress back as an insight/i);
-    expect(PIPELINE).toMatch(/Never diagnose, advise, or dramatize/i);
     // The safe fallback must be spelled out, not left to inference.
-    expect(PIPELINE).toMatch(/reflect a small neutral detail from elsewhere/i);
+    expect(PIPELINE).toMatch(/small neutral concrete detail from elsewhere/i);
+  });
+
+  it("tells the model it is NOT the help path — the 988 footer is", () => {
+    // The observed failure was advice ("that thought is worth talking to
+    // someone about tonight"). A bare "no advice" rule did not hold,
+    // because the model reaches for help when it believes nothing else
+    // will. Naming the always-on CrisisFooter removes that belief.
+    // Standing product decision (crisis-footer.tsx, 2026-04-21): passive
+    // resources only, no AI crisis detection.
+    expect(PIPELINE).toMatch(/YOU ARE NOT THE HELP PATH/);
+    expect(PIPELINE).toMatch(/988/);
+    expect(PIPELINE).toContain("/support/crisis");
+  });
+
+  it("bans the exact sentence shapes that failed, not just 'advice'", () => {
+    // Each of these is a distinct violation seen in the failing output:
+    // an imperative, a reassuring promise, and announcing the model's
+    // own reaction.
+    expect(PIPELINE).toMatch(
+      /telling the user to talk to someone, reach out, call anyone, get help/i
+    );
+    expect(PIPELINE).toMatch(/any imperative verb aimed at the user at all/i);
+    expect(PIPELINE).toMatch(/you're still here and that matters/i);
+    expect(PIPELINE).toMatch(/announcing your own reaction/i);
+    expect(PIPELINE).toMatch(/If you are unsure whether a sentence is advice, it is/i);
+  });
+
+  it("carries the worked example with a labelled WRONG answer", () => {
+    // The show-up-praise ban only started holding once the prompt quoted
+    // the bad sentence verbatim. Same technique applied here.
+    expect(PIPELINE).toMatch(/WORKED EXAMPLE/);
+    expect(PIPELINE).toMatch(/WRONG:/);
+    expect(PIPELINE).toMatch(/worth talking to someone about tonight/);
+  });
+
+  it("does not add detection, flagging, or suppression", () => {
+    // Explicitly out of scope: the standing decision is passive
+    // resources only. This must stay prompt discipline, not a classifier.
+    for (const banned of [
+      "crisisDetected",
+      "isCrisis",
+      "crisisFlag",
+      "detectCrisis",
+      "suppressReflection",
+    ]) {
+      expect(PIPELINE, `${banned} would reverse the 2026-04-21 decision`).not.toContain(
+        banned
+      );
+    }
   });
 
   it("forbids inventing patterns or amplifying mood", () => {
