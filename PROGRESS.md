@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-29] — Fixed text editing on the new-style posts (edits were producing blank images)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `fix(content-factory): edit-text on moody posts` commit)
+
+### In plain English (for Keenan)
+Editing the text on any of the current post formats was silently producing an image with no text on it at all. Found while making your requested change to "THE QUIET AUDIT" — the edit came back as a beautiful empty scene. Fixed, so text edits now re-render properly with the same fonts and styling as the original.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `recomposeSlide` (the edit-text action) was calling legacy `composeSlide`, which since the gpt-image-2 switch is resize-only (text baked into the AI image on legacy lanes). Moody-family posts render text via `renderMoodyTextOverlay` + `composeSlideWithOverlay` — so every edit on a moody post shipped a text-free scene. Added a `MOODY_LANES` branch (all 11 live + 6 dead moody lanes) that regenerates the scene from `slide.imagePrompt` and re-renders the Pango overlay with the correct kind (sign→SIGN, cover→COVER, questions items→QUOTE, else ITEM)
+- No schema changes
+
+### Manual steps needed
+None
+
+### Notes
+- Overlay kind is derived from `carouselPost.lane` + `slide.kind` — matches the daily pipeline's mapping exactly
+- Legacy lanes (topic in `CAROUSEL_TOPICS` / one-offs) keep the old regenerate-with-baked-text path
+
 ## [2026-08-29] — Trimmed to 11 lanes with two locked visual identities: Ripple feminine, BWK dark & motivational
 
 **Requested by:** Keenan

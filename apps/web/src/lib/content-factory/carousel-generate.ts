@@ -504,12 +504,38 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
   let composed: Buffer;
   let rawBuffer: Buffer | null = null;
 
+  // Moody-family lanes (live + dead) render text as a sharp/Pango overlay
+  // — NOT baked into the AI image. Editing one of these must re-run
+  // renderMoodyTextOverlay, or the edit ships a text-free scene (bug
+  // found 2026-08-29 editing THE QUIET AUDIT cover).
+  const MOODY_LANES = new Set([
+    "rules", "moody-women", "moody-men", "memento", "memento-men",
+    "missed", "missed-men", "questions", "sign", "year", "free",
+    "behind", "nobody", "bloomers", "taught", "forbidden", "unsent",
+  ]);
+
   if (slide.kind === "CTA") {
     composed = await composeCTASlide(newText);
+  } else if (MOODY_LANES.has(slide.carouselPost.lane ?? "")) {
+    // Regenerate the scene from the stored prompt (scenes are text-free),
+    // then re-render the overlay with the new text.
+    const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
+    rawBuffer = await generateImage(slide.imagePrompt);
+    const lane = slide.carouselPost.lane;
+    const moodyKind =
+      lane === "sign"
+        ? "SIGN"
+        : slide.kind === "COVER"
+          ? "COVER"
+          : lane === "questions"
+            ? "QUOTE"
+            : "ITEM";
+    const overlay = await renderMoodyTextOverlay(newText.split("\n\n"), moodyKind);
+    composed = await composeSlideWithOverlay(rawBuffer, overlay);
   } else {
-    // Re-generate the raw image from the same prompt and re-compose with new text.
-    // We can't strip text from an already-composed image, so we regenerate the
-    // underlying image. This costs ~$0.08 but gives a clean result.
+    // Legacy lanes bake text into the AI image via gpt-image-2 — regenerate
+    // the underlying image with the new text. This costs ~$0.08 but gives a
+    // clean result.
     const topic = CAROUSEL_TOPICS.find((t) => t.slug === slide.carouselPost.topicSlug);
     const lanePrefix = STYLE_LANES[resolveStyleLane(topic?.lane)];
     const prompt = slide.imagePrompt || buildImagePrompt(
