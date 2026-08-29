@@ -391,8 +391,14 @@ export async function submitCoverVideo(opts: {
   prompt: string;
   /** Explicit clip length in seconds (story clips use 5). Overrides env/default. */
   duration?: number;
+  /**
+   * Model path override (2026-08-28, per Keenan: quote loops may use a
+   * better model than the default lane). Falls back to
+   * HIGGSFIELD_VIDEO_MODEL.
+   */
+  model?: string;
 }): Promise<string> {
-  const model = process.env.HIGGSFIELD_VIDEO_MODEL!;
+  const model = opts.model || process.env.HIGGSFIELD_VIDEO_MODEL!;
 
   const body: Record<string, unknown> = {
     prompt: opts.prompt,

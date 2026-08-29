@@ -450,6 +450,12 @@ export async function sendStoryVideoEmail(
      * "record this" — no ⚠️ failure framing, no scary subject.
      */
     selfVoice?: boolean;
+    /**
+     * Quote-loop video (2026-08-28 PM, per Keenan): silent BY DESIGN
+     * with the quote burned in — no voiceover-script framing at all.
+     * Gets its own 🖤 subject; `narration` carries the quote line.
+     */
+    quote?: boolean;
   }
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
@@ -458,10 +464,10 @@ export async function sendStoryVideoEmail(
     select: { headline: true, caption: true, generatedFor: true },
   });
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
-  const kind = opts.calm ? "calm video" : "story video";
-  const emoji = opts.calm ? "🌙" : "🎥";
-  const label = opts.calm ? "Calm video" : "Story video";
-  const filename = `${opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
+  const kind = opts.quote ? "quote loop" : opts.calm ? "calm video" : "story video";
+  const emoji = opts.quote ? "🖤" : opts.calm ? "🌙" : "🎥";
+  const label = opts.quote ? "Quote loop" : opts.calm ? "Calm video" : "Story video";
+  const filename = `${opts.quote ? "quote" : opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
   const downloadUrl = forceDownloadUrl(videoUrl, filename);
 
   // Attach when it fits under the Resend cap; always include the button.
@@ -499,7 +505,17 @@ export async function sendStoryVideoEmail(
       <pre style="white-space:pre-wrap;font-size:15px;color:#FBFAF6;font-family:-apple-system,sans-serif;margin:0;line-height:1.7;background:#1A1A1A;border-radius:8px;padding:12px;">${escapeHtml(opts.narration)}</pre>
     </div>`
     : "";
-  const silentNote = opts.silent && !opts.selfVoice
+  // Quote loop (2026-08-28 PM): silent by design, quote burned in — no
+  // script framing anywhere. One calm explainer block instead.
+  const quoteNote = opts.quote
+    ? `
+    <div style="background:#16161A;border:1px solid #555;border-radius:12px;padding:16px;margin:0 0 16px;">
+      <p style="font-size:13px;font-weight:600;color:#DDD;margin:0 0 8px;">🖤 Seamless quote loop</p>
+      <p style="font-size:12px;color:#DDD;margin:0 0 10px;line-height:1.5;">The quote is burned in and the video loops with no visible start or end (runs <strong>${durationLabel}</strong>). It's silent on purpose — pair it with a trending calm/ambient sound when you post.</p>
+      <pre style="white-space:pre-wrap;font-size:15px;color:#FBFAF6;font-family:-apple-system,sans-serif;margin:0;line-height:1.7;background:#1A1A1A;border-radius:8px;padding:12px;">${escapeHtml(opts.narration)}</pre>
+    </div>`
+    : "";
+  const silentNote = opts.silent && !opts.selfVoice && !opts.quote
     ? `
     <div style="background:#2A1A12;border:1px solid #F97E4E;border-radius:12px;padding:16px;margin:0 0 16px;">
       <p style="font-size:13px;font-weight:600;color:#F97E4E;margin:0 0 8px;">🎙️ Voiceover failed — record this yourself</p>
@@ -519,6 +535,7 @@ export async function sendStoryVideoEmail(
     <p style="font-size:13px;color:#AAA;margin:0 0 16px;">${escapeHtml(post.headline)} · ${escapeHtml(dateStr)}</p>
 
     ${partialNote}
+    ${quoteNote}
     ${selfVoiceNote}
     ${silentNote}
 
@@ -529,7 +546,7 @@ export async function sendStoryVideoEmail(
     </div>
 
     <p style="font-size:14px;color:#DDD;line-height:1.6;">
-      ${opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.selfVoice ? " — clean visual, ready for your voiceover" : opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
+      ${opts.quote ? "Seamlessly looping quote video (silent — add audio when you post)" : opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.quote ? "" : opts.selfVoice ? " — clean visual, ready for your voiceover" : opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.
     </p>
 
     <div style="text-align:center;margin:20px 0;">
@@ -538,7 +555,7 @@ export async function sendStoryVideoEmail(
       </a>
     </div>
 
-    ${opts.silent ? "" : `<div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
+    ${opts.silent || opts.quote ? "" : `<div style="background:#1A1A1A;border-radius:12px;padding:16px;margin:16px 0;">
       <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Voiceover script${opts.voiceEngine ? ` · voiced by ${escapeHtml(opts.voiceEngine)}` : ""}</p>
       <pre style="white-space:pre-wrap;font-size:13px;color:#BBB;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(opts.narration)}</pre>
     </div>`}
@@ -559,15 +576,17 @@ export async function sendStoryVideoEmail(
     opts.sceneCount < opts.totalScenes
       ? `NOTE: ${opts.totalScenes - opts.sceneCount} scene(s) failed to render — video runs short; each remaining scene keeps its own narration line.`
       : "",
-    opts.selfVoice
-      ? `The video is silent on purpose — record the script below in your own voice (it runs ${durationLabel}) and add it as the audio when you post. No captions burned in.`
-      : opts.silent
-        ? `NOTE: voiceover failed — the video has NO audio${captioned ? ", but the script is burned in as captions" : " and NO captions"}. Record the script below (aim for ${durationLabel}) and add it as audio when you post.${opts.voiceoverError ? ` Failure reason: ${opts.voiceoverError.slice(0, 200)}` : ""}`
-        : "",
+    opts.quote
+      ? `Seamless quote loop (runs ${durationLabel}, no visible start or end). Silent on purpose — pair it with a trending calm sound when you post.`
+      : opts.selfVoice
+        ? `The video is silent on purpose — record the script below in your own voice (it runs ${durationLabel}) and add it as the audio when you post. No captions burned in.`
+        : opts.silent
+          ? `NOTE: voiceover failed — the video has NO audio${captioned ? ", but the script is burned in as captions" : " and NO captions"}. Record the script below (aim for ${durationLabel}) and add it as audio when you post.${opts.voiceoverError ? ` Failure reason: ${opts.voiceoverError.slice(0, 200)}` : ""}`
+          : "",
     "",
     `Download: ${downloadUrl}`,
     "",
-    opts.selfVoice ? "── YOUR VOICEOVER SCRIPT ──" : opts.silent ? "── RECORD THIS SCRIPT ──" : "── Voiceover script ──",
+    opts.quote ? "── THE QUOTE ──" : opts.selfVoice ? "── YOUR VOICEOVER SCRIPT ──" : opts.silent ? "── RECORD THIS SCRIPT ──" : "── Voiceover script ──",
     opts.narration,
   ].filter(Boolean).join("\n");
 

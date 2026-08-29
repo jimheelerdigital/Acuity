@@ -50,9 +50,26 @@ import { inngest } from "@/inngest/client";
  *                          architecture, command-energy discipline
  *                          content, its own hashtag pool.
  *
+ * 2026-08-28 PM expansion (per Keenan: "literally none of the stuff
+ * we're doing right now is working so it's worth exploring other
+ * options") — four more daily lanes:
+ * - 18 UTC (1pm Central):  QUOTE-WOMEN — one devastating line burned on
+ *                          a dark scene that loops with NO visible
+ *                          start/end (mathematically perfect loop,
+ *                          handled by carouselQuoteLoopFn), 12-18s.
+ * - 19 UTC (2pm Central):  QUOTE-MEN — same format, men's funnel.
+ * - 20 UTC (3pm Central):  MEMENTO — universal memento-mori time-math
+ *                          carousel ("You'll see your parents about 15
+ *                          more times."), moody skeleton, no number
+ *                          headers.
+ * - 21 UTC (4pm Central):  QUESTIONS — women's hard-questions carousel:
+ *                          5 slides, ONE question each, no answers
+ *                          anywhere.
+ *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket = "video" | "positive" | "ambient" | "selfie" |
- * "moody-women" | "moody-men".
+ * "moody-women" | "moody-men" | "quote-women" | "quote-men" |
+ * "memento" | "questions".
  *
  * Each run generates a fresh AI-written topic (via Claude) then
  * creates images with gpt-image-2. Uses Inngest steps so each
@@ -64,13 +81,17 @@ type DailyBucket =
   | "ambient"
   | "selfie"
   | "moody-women"
-  | "moody-men";
+  | "moody-men"
+  | "quote-women"
+  | "quote-men"
+  | "memento"
+  | "questions";
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 6,8,10,12,14,16 * * *" },
+      { cron: "0 6,8,10,12,14,16,18,19,20,21 * * *" },
       // Manual/test trigger (admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
@@ -91,7 +112,11 @@ export const carouselDailyCronFn = inngest.createFunction(
         b === "ambient" ||
         b === "selfie" ||
         b === "moody-women" ||
-        b === "moody-men"
+        b === "moody-men" ||
+        b === "quote-women" ||
+        b === "quote-men" ||
+        b === "memento" ||
+        b === "questions"
           ? b
           : "video";
     } else {
@@ -108,7 +133,15 @@ export const carouselDailyCronFn = inngest.createFunction(
                 ? "selfie"
                 : hour < 15
                   ? "moody-women"
-                  : "moody-men";
+                  : hour < 18
+                    ? "moody-men"
+                    : hour < 19
+                      ? "quote-women"
+                      : hour < 20
+                        ? "quote-men"
+                        : hour < 21
+                          ? "memento"
+                          : "questions";
     }
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
 
@@ -122,27 +155,70 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 0, bucket, delegated: "ambient.video" };
     }
 
-    // ── MOODY buckets: dark discipline carousels, two funnels ──────
+    // ── QUOTE buckets: hand off to the quote-loop pipeline ─────────
+    // (2026-08-28 PM, per Keenan.) The quote function generates its own
+    // concept, creates its own post (format=AMBIENT, lane=quote-*),
+    // builds the mathematically-seamless 12-18s loop, and emails it.
+    if (bucket === "quote-women" || bucket === "quote-men") {
+      const audience = bucket === "quote-women" ? "women" : "men";
+      await step.run("enqueue-quote-loop", async () => {
+        await inngest.send({
+          name: "content-factory/quote.loop",
+          data: { audience },
+        });
+      });
+      return { generated: 0, bucket, delegated: "quote.loop" };
+    }
+
+    // ── MOODY-FAMILY buckets: dark centered-text carousels ─────────
     // (2026-08-28, per Keenan — cloned from the "TRUST THE PROCESS"
-    // reference.) Cover + 5 numbered item slides: dim cinematic
-    // photography, white text centered mid-frame, hashtag-only caption.
-    // "moody-women" = core demographic, softer warm-dim visuals;
-    // "moody-men" = young aspiring men, stark dark visuals. Both are
-    // audience-growth funnels — no product CTA anywhere.
-    if (bucket === "moody-women" || bucket === "moody-men") {
-      const audience = bucket === "moody-women" ? "women" : "men";
+    // reference; expanded same day with memento + questions.) Cover + 5
+    // item slides: dim cinematic photography, white text centered
+    // mid-frame, hashtag-only caption. All are audience-growth funnels —
+    // no product CTA anywhere.
+    // - moody-women/moody-men: numbered discipline items per funnel.
+    // - memento: universal time-math slides, NO number headers.
+    // - questions: women's funnel, ONE big question per slide, no
+    //   answers anywhere.
+    if (
+      bucket === "moody-women" ||
+      bucket === "moody-men" ||
+      bucket === "memento" ||
+      bucket === "questions"
+    ) {
+      // Visual DNA per lane: men = stark architecture, women = warm-dim
+      // quiet luxury (questions shares it), universal = vast
+      // contemplative dark cinematics (memento).
+      const imageAudience: "women" | "men" | "universal" =
+        bucket === "moody-men"
+          ? "men"
+          : bucket === "memento"
+            ? "universal"
+            : "women";
+      // Discipline lanes prefix items with "N. Name." like the
+      // reference; memento's numbers ARE the content and questions
+      // carry a single line — neither gets a header.
+      const numbered = bucket === "moody-women" || bucket === "moody-men";
+      // Questions render one short line per slide — the bigger QUOTE
+      // type carries the frame; multi-paragraph lanes use ITEM.
+      const itemKind = bucket === "questions" ? ("QUOTE" as const) : ("ITEM" as const);
 
       const moody = await step.run("generate-moody-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
-        const { generateMoodyTopic } = await import(
-          "@/lib/content-factory/moody-carousel"
-        );
+        const { generateMoodyTopic, generateMementoTopic, generateQuestionsTopic } =
+          await import("@/lib/content-factory/moody-carousel");
         const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
         const recent = await prisma.carouselPost.findMany({
           where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
           select: { headline: true },
         });
-        return generateMoodyTopic(audience, recent.map((p) => p.headline));
+        const headlines = recent.map((p) => p.headline);
+        if (bucket === "memento") return generateMementoTopic(headlines);
+        if (bucket === "questions") return generateQuestionsTopic(headlines);
+        return generateMoodyTopic(
+          bucket === "moody-women" ? "women" : "men",
+          headlines
+        );
       });
 
       const today = new Date();
@@ -150,7 +226,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       const dateStr = today.toISOString().slice(0, 10);
       const slug = moody.slug;
       logger.info(
-        `[carousel-cron] Moody (${audience}) topic: "${moody.title}" (${moody.items.length} items)`
+        `[carousel-cron] Moody-family (${bucket}) topic: "${moody.title}" (${moody.items.length} items)`
       );
 
       await step.run("ensure-bucket", async () => {
@@ -170,7 +246,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
-        const prompt = buildMoodyImagePrompt(audience, moody.coverScene);
+        const prompt = buildMoodyImagePrompt(imageAudience, moody.coverScene);
         const rawBuffer = await generateImage(prompt);
         const overlay = await renderMoodyTextOverlay([moody.title], "COVER");
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
@@ -198,10 +274,12 @@ export const carouselDailyCronFn = inngest.createFunction(
             await import("@/lib/content-factory/compose");
 
           const item = moody.items[i];
-          const paragraphs = [`${i + 1}. ${item.name}`, ...item.lines];
-          const prompt = buildMoodyImagePrompt(audience, item.scene);
+          const paragraphs = numbered
+            ? [`${i + 1}. ${item.name}`, ...item.lines]
+            : item.lines;
+          const prompt = buildMoodyImagePrompt(imageAudience, item.scene);
           const rawBuffer = await generateImage(prompt);
-          const overlay = await renderMoodyTextOverlay(paragraphs, "ITEM");
+          const overlay = await renderMoodyTextOverlay(paragraphs, itemKind);
           const composed = await composeSlideWithOverlay(rawBuffer, overlay);
           const imageUrl = await uploadImage(
             composed,
@@ -218,7 +296,7 @@ export const carouselDailyCronFn = inngest.createFunction(
 
       const moodyResult = await step.run("save-and-email-moody", async () => {
         const { prisma } = await import("@/lib/prisma");
-        const { buildMoodyCaption } = await import(
+        const { buildMoodyCaption, buildMementoCaption } = await import(
           "@/lib/content-factory/moody-carousel"
         );
         const { extractHashtags } = await import(
@@ -226,8 +304,13 @@ export const carouselDailyCronFn = inngest.createFunction(
         );
 
         // Hashtag-only caption cloned from the reference (2026-08-28,
-        // per Keenan — deliberate exception to the question+tags rule).
-        const caption = buildMoodyCaption(audience, slug);
+        // per Keenan — the moody-family exception to the question+tags
+        // rule). Memento gets its universal pool; questions shares the
+        // women's pool.
+        const caption =
+          bucket === "memento"
+            ? buildMementoCaption(slug)
+            : buildMoodyCaption(bucket === "moody-men" ? "men" : "women", slug);
 
         const post = await prisma.carouselPost.create({
           data: {
@@ -272,7 +355,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
 
       logger.info(
-        `[carousel-cron] Generated moody (${audience}) "${moody.title}": ${moodyResult.slideCount} slides`
+        `[carousel-cron] Generated moody-family (${bucket}) "${moody.title}": ${moodyResult.slideCount} slides`
       );
       return { generated: 1, bucket, ...moodyResult };
     }

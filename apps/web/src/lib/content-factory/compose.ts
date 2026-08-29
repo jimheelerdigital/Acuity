@@ -566,16 +566,19 @@ export async function renderSelfieCaptionOverlay(
  * COVER: the short title, uppercase, bold, letter-spaced.
  * ITEM: the numbered name ("4. Reset day.") + its paragraphs, all one
  * uniform size like the reference.
+ * QUOTE (2026-08-28 PM): one short devastating line, bold sentence-case
+ * at a size between COVER and ITEM — used by the quote-loop videos and
+ * the hard-questions slides, where a single line carries the frame.
  */
 export async function renderMoodyTextOverlay(
   paragraphs: string[],
-  kind: "COVER" | "ITEM"
+  kind: "COVER" | "ITEM" | "QUOTE"
 ): Promise<Buffer> {
-  const fontPath = await ensureFontFile(kind === "COVER" ? "Bold" : "Medium");
+  const fontPath = await ensureFontFile(kind === "ITEM" ? "Medium" : "Bold");
 
-  const fontSize = kind === "COVER" ? 72 : 42;
-  const wrapChars = kind === "COVER" ? 14 : 30;
-  const font = kind === "COVER" ? "Poppins Bold" : "Poppins Medium";
+  const fontSize = kind === "COVER" ? 72 : kind === "QUOTE" ? 54 : 42;
+  const wrapChars = kind === "COVER" ? 14 : kind === "QUOTE" ? 20 : 30;
+  const font = kind === "ITEM" ? "Poppins Medium" : "Poppins Bold";
 
   const body = paragraphs
     .map((p) =>
@@ -588,7 +591,7 @@ export async function renderMoodyTextOverlay(
     )
     .join("\n\n"); // blank line = paragraph gap (Pango honors empty lines)
 
-  const spacing = kind === "COVER" ? 16 : 14;
+  const spacing = kind === "COVER" ? 16 : kind === "QUOTE" ? 18 : 14;
   const letterSpacing = kind === "COVER" ? ` letter_spacing="3072"` : "";
   const mainMarkup = `<span font_desc="${font} ${fontSize}" foreground="#FFFFFF"${letterSpacing}>${body}</span>`;
   const shadowMarkup = `<span font_desc="${font} ${fontSize}" foreground="#000000"${letterSpacing}>${body}</span>`;

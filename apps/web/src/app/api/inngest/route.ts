@@ -51,6 +51,7 @@ import { carouselDailyCronFn } from "@/inngest/functions/carousel-daily";
 import { carouselGenerateOneOffFn } from "@/inngest/functions/carousel-one-off";
 import { carouselAnimateCoverFn } from "@/inngest/functions/carousel-animate-cover";
 import { carouselAmbientVideoFn } from "@/inngest/functions/carousel-ambient-video";
+import { carouselQuoteLoopFn } from "@/inngest/functions/carousel-quote-loop";
 import { carouselMetricsRefreshFn } from "@/inngest/functions/carousel-metrics-refresh";
 import { nicheResearchNightlyFn } from "@/inngest/functions/niche-research-nightly";
 import { nicheStrategyMemoFn } from "@/inngest/functions/niche-strategy-memo";
@@ -111,6 +112,7 @@ const handler = serve({
     carouselGenerateOneOffFn,
     carouselAnimateCoverFn,
     carouselAmbientVideoFn,
+    carouselQuoteLoopFn,
     carouselMetricsRefreshFn,
     nicheResearchNightlyFn,
     nicheStrategyMemoFn,
