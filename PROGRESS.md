@@ -9477,7 +9477,7 @@ The /start-bwk paywall now quotes a real 5-star App Store review, "The task mana
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** 046a8248
 
 ### In plain English (for Keenan)
 The automated weekly business audit (emails a full report every Saturday 9pm Central) was already built earlier today. Jimmy asked to build it, so instead of rebuilding, we reviewed the whole thing against the spec, ran the metrics collector against the real database to prove it works, and fixed one bug. It's ready to go live as soon as the API keys are added in GitHub — see the handoff Jimmy has.
