@@ -131,6 +131,42 @@ describe("the prompt forbids the 2d76c829 failure mode", () => {
     expect(PIPELINE).toMatch(/NOT flattery/i);
   });
 
+  it("carries the crisis-safety clause", () => {
+    // A distressing entry must not be turned into a tidy observation or
+    // a pattern — the reflection slot is the warmest, most authoritative
+    // place on the page, and a neat insight about someone's crisis is
+    // the worst thing it could hold.
+    expect(PIPELINE).toMatch(/SAFETY:/);
+    for (const term of [
+      "self-harm",
+      "suicidal thoughts",
+      "abuse",
+      "acute crisis",
+    ]) {
+      expect(PIPELINE, `safety clause should name "${term}"`).toContain(term);
+    }
+    expect(PIPELINE).toMatch(/never reflect the distress back as an insight/i);
+    expect(PIPELINE).toMatch(/Never diagnose, advise, or dramatize/i);
+    // The safe fallback must be spelled out, not left to inference.
+    expect(PIPELINE).toMatch(/reflect a small neutral detail from elsewhere/i);
+  });
+
+  it("forbids inventing patterns or amplifying mood", () => {
+    // Two distinct failure modes: fabricating a pattern that isn't in
+    // the memory context, and making the entry sound darker than the
+    // user made it.
+    expect(PIPELINE).toMatch(/Do not invent\./);
+    expect(PIPELINE).toMatch(
+      /Ground a pattern only when it is actually present/i
+    );
+    expect(PIPELINE).toMatch(
+      /Do not assert feelings the user did not express/i
+    );
+    expect(PIPELINE).toMatch(
+      /never make the mood darker than they made it/i
+    );
+  });
+
   it("requires specificity, which is how the old version failed", () => {
     expect(PIPELINE).toMatch(/vagueness is the main way this field fails/i);
   });
