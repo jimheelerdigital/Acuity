@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** 046a8248
 
 ### In plain English (for Keenan)
 After each debrief, Ripple now writes back a short note — two or three sentences, in its own voice, saying what it noticed. Not a recap of your day (that already exists) and not a list of takeaways (that exists too). One observation, the way a friend who's been paying attention would say it. Once someone has a bit of history, it can connect things across entries: "the 4am wake-up and the Jordan meeting landing in the same week has shown up together before."
