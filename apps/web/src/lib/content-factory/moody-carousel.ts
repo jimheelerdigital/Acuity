@@ -1167,3 +1167,185 @@ export async function generateSignTopic(
     throw err;
   }
 }
+
+// ─── AURA: single-image BWK persona post (2026-08-30, per Keenan) ─────
+// "add aura" — the BWK counterpart to SIGN: one cinematic shot of the
+// persona mid-element or mid-grind, one bold command line. Cloned from
+// his "The photo with the most aura win" reference.
+
+const AURA_SYSTEM_PROMPT = `You write ONE line for a dark, dominant, single-image post. The format: bold white text on a cinematic photograph of a lone man living at full intensity — ascending a snowy ridge in a storm, standing at a cliff edge in rain, cold-plunging at dawn, training alone in a dark gym, working at a glowing laptop in a near-black room.
+
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The image is the aura; the line is the caption burned onto it.
+VOICE: calm command energy. Stark, declarative, a little cold. Never bro-slang, never yelling, never cliché hustle quotes.
+
+RULES:
+- ONE line, 2-8 words total, ALL-CAPS-friendly ("NOBODY'S COMING.", "EARN THE VIEW.", "COMFORT IS A DEBT."). Punchy and specific — never generic filler like "RISE AND GRIND".
+- No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI.
+- "scene": one concrete sentence describing the photograph — it MUST feature the lone man mid-action in black technical or dark luxury clothing, face hidden (goggles, hood, silhouette, from behind, or deep shadow). Dark, desaturated, DIM overall (white text must read on it).
+- "theme": 2-4 words naming the idea (for repeat-avoidance).
+
+OUTPUT (strict JSON, no markdown):
+{ "line": "...", "scene": "...", "theme": "..." }`;
+
+/** Generate one aura line + persona scene (men / BWK funnel). */
+export async function generateAuraTopic(
+  recentLines: string[]
+): Promise<SignTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 400,
+      system: AURA_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: `Write one new aura post.${avoidBlock(recentLines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "aura-image-topic",
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      line?: string;
+      scene?: string;
+      theme?: string;
+    };
+    const line = (parsed.line ?? "").trim();
+    const scene = (parsed.scene ?? "").trim();
+    if (!line || line.split(/\s+/).length > 10 || !scene) {
+      throw new Error(`aura-image-topic unusable: line="${line}"`);
+    }
+
+    const slug = line
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    return { slug: `aura-${slug}`, line, scene };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "aura-image-topic",
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
+
+// ─── VERSIONS: "two versions of you" contrast carousel (2026-08-30) ───
+// Per Keenan: "add ... two versions". Slide pairs contrasting the man
+// who kept the promise vs. the one who didn't — same 24 hours.
+
+const VERSIONS_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: TWO VERSIONS OF YOU — each slide contrasts the man who kept the promise with the man who didn't, in the same situation. Same 24 hours, two outcomes.
+
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. Each contrast should sting because both versions are plausible — the reader recognizes himself in the weaker one and wants to be the other.
+VOICE: calm command energy, flat and factual. Short declarative sentences. Direct. Never mocking, never yelling — the contrast does the work.
+
+SCENES: dark minimalist photography — a lone man at a glowing laptop in a near-black room, a dim gym with one figure training, a pre-dawn road, a silhouette at a rain-streaked window, a black ridgeline at night, an empty desk lit by one lamp. Desaturated, near-monochrome. Every frame DIM (white text must read on it). A man appears ONLY when he elevates the scene — always alone, luxury-styled (dark knits, overcoat, watch; dark suit; training gear; black expedition gear on a ridge or cliff), face usually hidden (behind/silhouette/shadow/sunglasses/goggles), rarely visible.
+
+FORMAT — each slide reads like this (match the rhythm):
+"Both were tired at 5 AM.
+
+Only one got up.
+
+The alarm didn't decide. He did."
+
+RULES:
+- "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("TWO VERSIONS OF YOU", "SAME 24 HOURS"). 
+- Each item: "lines" = 2-3 short paragraphs — first states what BOTH versions faced, then the split, then (optionally) the flat truth underneath. The LAST item must land the close: same time, same tiredness, same excuses available — one chose. End it on a short command ("Choose.", "Pick one.").
+- Each item's "scene": one concrete sentence for the photograph, per SCENES above.
+- "coverScene": one scene sentence for the cover.
+- No emojis, no hashtags. Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "title": "...", "coverScene": "...", "items": [{ "name": "", "lines": ["...", "..."], "scene": "..." }] }`;
+
+/** Generate one two-versions contrast carousel (men / BWK funnel). */
+export async function generateVersionsTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "versions-carousel-topic",
+    system: VERSIONS_SYSTEM_PROMPT,
+    user: `Write one new two-versions post with 5 or 6 contrast slides.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "versions",
+    requireName: false,
+    minLines: 2,
+  });
+}
+
+// ─── PROTOCOL: "DO THIS FOR 30 DAYS" carousel (2026-08-30) ───────────
+// Per Keenan: "add ... 30 days". A concrete numbered protocol — the
+// save-bait format: people bookmark protocols, not motivation.
+
+const PROTOCOL_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: 30-DAY PROTOCOL — a concrete, numbered daily protocol a man can start tonight and run for 30 days. Not motivation — instructions.
+
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE protocols. Every step must be concrete enough to schedule: a time, a count, a limit, a rule — never vague advice like "work harder" or "stay focused".
+VOICE: calm command energy. Imperative mood. Short declarative sentences. A mentor issuing orders, not a poet. Never bro-slang, never yelling.
+
+SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a lone man at a glowing laptop in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table. Desaturated, near-monochrome. Every frame DIM (white text must read on it). A man appears ONLY when he elevates the scene — always alone, luxury-styled (dark knits, overcoat, watch; dark suit; training gear; black expedition gear on a ridge or cliff), face usually hidden (behind/silhouette/shadow/sunglasses/goggles), rarely visible.
+
+FORMAT — each slide reads like this (match the rhythm):
+"5. One hour on the skill.
+
+Same hour every day. Phone in another room.
+
+Thirty hours in a month. Most people give it zero."
+
+RULES:
+- "title": the cover text. Must contain "30 DAYS" ("DO THIS FOR 30 DAYS", "30 DAYS. NEW MAN."). 2-6 words, commanding, works in ALL CAPS.
+- Each protocol needs a THEME for the month (sleep + training + focus, money discipline, physical hardening, digital detox, building a skill) — vary it post to post.
+- Each item: "name" = the step, 2-5 words ("One hour on the skill."). "lines" = 2-3 short paragraphs: the exact rule (specific time/count/limit), then why it compounds over 30 days.
+- Each item's "scene": one concrete sentence for the photograph, per SCENES above.
+- "coverScene": one scene sentence for the cover.
+- No emojis, no hashtags. Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "title": "...", "coverScene": "...", "items": [{ "name": "...", "lines": ["...", "..."], "scene": "..." }] }`;
+
+/** Generate one 30-day protocol carousel (men / BWK funnel). */
+export async function generateProtocolTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  return generateMoodyFamilyTopic({
+    purpose: "protocol-carousel-topic",
+    system: PROTOCOL_SYSTEM_PROMPT,
+    user: `Write one new 30-day protocol with 5, 6, or 7 numbered steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "protocol",
+    requireName: true,
+    minLines: 2,
+    minItems: 5,
+    maxItems: 7,
+  });
+}

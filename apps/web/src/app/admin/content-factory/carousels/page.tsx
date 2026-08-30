@@ -229,6 +229,9 @@ export default function CarouselReviewPage() {
       | "free"
       | "behind"
       | "nobody"
+      | "aura"
+      | "versions"
+      | "protocol"
   ) => {
     setGenerating(true);
     setGenerateMsg(null);
@@ -633,6 +636,30 @@ export default function CarouselReviewPage() {
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🤐"}
+          </button>
+          <button
+            onClick={() => generateBucket("aura")}
+            disabled={generating}
+            title="Generate an aura single-image persona post (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🏔️"}
+          </button>
+          <button
+            onClick={() => generateBucket("versions")}
+            disabled={generating}
+            title="Generate a two-versions-of-you carousel (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "⚖️"}
+          </button>
+          <button
+            onClick={() => generateBucket("protocol")}
+            disabled={generating}
+            title="Generate a 30-day protocol carousel (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "📋"}
           </button>
           <button
             onClick={() => fetchPosts()}

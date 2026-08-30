@@ -541,6 +541,7 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     "rules", "moody-women", "moody-men", "memento", "memento-men",
     "missed", "missed-men", "questions", "sign", "year", "free",
     "behind", "nobody", "bloomers", "taught", "forbidden", "unsent",
+    "aura", "versions", "protocol",
   ]);
 
   if (slide.kind === "CTA") {
@@ -564,7 +565,11 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // daily pipeline.
     const lane = slide.carouselPost.lane;
     const moodyKind =
-      lane === "sign" ? "SIGN" : slide.kind === "COVER" ? "COVER" : "ITEM";
+      lane === "sign" || lane === "aura"
+        ? "SIGN"
+        : slide.kind === "COVER"
+          ? "COVER"
+          : "ITEM";
     // Live Ripple lanes are LIGHT airy scenes with dark charcoal text
     // (2026-08-30, per Keenan: "make the ripple posts be lighter
     // schemes"); everything else stays white-on-dark.

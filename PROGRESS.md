@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-30] — Three new Build With Key formats: AURA, TWO VERSIONS OF YOU, and 30-DAY PROTOCOL
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): aura/versions/protocol lanes` commit)
+
+### In plain English (for Keenan)
+Build With Key now gets three more posts every night, all built around your persona. AURA is a single striking image — you mid-element (storm ridge, cliff edge, cold plunge) with one bold line like "NOBODY'S COMING." TWO VERSIONS OF YOU is a carousel contrasting the man who kept the promise with the one who didn't, ending on "Choose." 30-DAY PROTOCOL is a numbered, save-worthy protocol people can start tonight — exact times, counts, and rules, not vague motivation. That's 11 posts per night: 7 Build With Key, 4 Ripple, all in your inbox by morning.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: new `generateAuraTopic` (mirrors generateSignTopic — 2-8 word line + persona scene, purpose "aura-image-topic"), `generateVersionsTopic` + `generateProtocolTopic` (via generateMoodyFamilyTopic; protocol is numbered with 5-7 items via minItems/maxItems)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: lanes 8 → 11; new dedicated `aura` branch (single COVER, SIGN overlay in white, avatar reference ALWAYS used); `versions`/`protocol` join the moody-family path as men/BWK (protocol numbered); caption chain simplified to `buildMoodyCaption(imageAudience, slug)`; hour map now 5: moody-men+memento-men+aura, 6: year+behind+versions, 7: questions+sign, 8: free+nobody+protocol — **cron string unchanged** (`0 5,6,7,8`), so no Inngest resync needed
+- `apps/web/src/lib/content-factory/email.ts`: BWK_LANES adds aura/versions/protocol
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: recomposeSlide MOODY_LANES adds the three; aura re-renders in SIGN kind
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🏔️/⚖️/📋 buttons + union; `apps/web/src/app/api/admin/carousels/route.ts` doc comment updated
+- No schema changes (lane is a free string column)
+
+### Manual steps needed
+None — cron expression unchanged, Inngest picks up HOUR_LANES at runtime.
+
+### Notes
+- AURA always uses the avatar reference (its scenes are persona-by-definition); versions/protocol use it only when the scene features the lone man, same as other BWK lanes
+- Volume check: 11 posts/night is above the 4-6/day capacity Keenan previously stated — he explicitly requested all three additions, so this is deliberate
+- If protocol posts feel too listicle, the knob is PROTOCOL_SYSTEM_PROMPT's theme rotation, not the item count
+
 ## [2026-08-30] — Keenan is now the Build With Key avatar — his likeness appears in scenes that call for a person
 
 **Requested by:** Keenan
