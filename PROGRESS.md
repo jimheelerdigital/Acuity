@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-30] — The selfie photo slideshow is back in the Ripple nightly rotation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): revive selfie lane` commit)
+
+### In plain English (for Keenan)
+The realistic selfie slideshow (mirror selfie cover with the phone covering her face, followed by aesthetic point-of-view shots with TikTok-style sticker captions) is back in the nightly lineup, exactly as it worked before it was cut on Aug 28. It generates at 2am Central alongside the questions and sign posts, lands in your inbox tagged [RIPPLE], and keeps using the same woman across posts — each new cover is generated from the last one so she stays recognizable. That's now 12 posts per night: 7 Build With Key, 5 Ripple. There's also a new 🤳 button on the admin page to fire one on demand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: selfie branch restored verbatim from the pre-kill version (`git show baa957fc~1`) — topic + identity-anchor step, deterministic slug-hashed sticker color and pose, text-free raws saved per slide (`rawImageUrl`), mirror steps referencing the cover raw via `generateImageWithReference`; only change is dropping the branch's own `today`/`dateStr` declaration (now declared once before all branches). `CAROUSEL_LANES` 11 → 12; `HOUR_LANES[7]` = questions + sign + selfie (3/3/3/3 across the four hours); header comment updated
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: `generateBucket` union + 🤳 button
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment
+- `email.ts` untouched — selfie is not in BWK_LANES, so [RIPPLE] subject is automatic
+- Cron string unchanged (`0 5,6,7,8`) — HOUR_LANES is runtime data, no Inngest resync needed
+- All support code survived the 2026-08-28 kill and needed no changes: `generateSelfieTopic`, `buildSelfieImagePrompt`, `renderSelfieCaptionOverlay`, `SELFIE_TEXT_COLORS`, `SELFIE_POSE_VARIANTS`/`SELFIE_COVER_POSE_COUNT`, `buildCaption`
+
+### Manual steps needed
+None — cron expression unchanged, Inngest picks up HOUR_LANES at runtime.
+
+### Notes
+- Identity anchor chain resumes automatically: the newest selfie post with a raw cover (from before the kill) seeds the next post's cover, so the avatar carries over across the gap
+- Verified gap, unchanged from pre-kill: `recomposeSlide` has no selfie path — edit-text on a selfie slide falls through to the legacy baked-text path (regenerates the image, loses the sticker style and identity anchor). The raws exist precisely to make caption re-renders cheap; if Keenan ever edits a selfie caption, wire a raw-based `renderSelfieCaptionOverlay` path into recomposeSlide first
+- tsc from apps/web: exactly 199 errors (baseline)
+
 ## [2026-08-30] — Three new Build With Key formats: AURA, TWO VERSIONS OF YOU, and 30-DAY PROTOCOL
 
 **Requested by:** Keenan
