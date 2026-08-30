@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-30] — Killed two more lanes: "This Is Your Sign" and "You're Not Behind"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): kill sign and behind lanes` commit)
+
+### In plain English (for Keenan)
+The nightly "THIS IS YOUR SIGN TO..." single image (Ripple) and the "YOU'RE NOT BEHIND" timeline-lies carousel (the one that produced "SOMEONE ELSE'S SCHEDULE" — Build With Key) no longer generate. Nightly output is now 10 posts: 6 Build With Key, 4 Ripple. Their admin buttons are gone too. Old posts of both types stay in the library and can still be edited or resent.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: removed the dedicated SIGN branch and behind's moody-family routing (imageAudience/numbered/topic-select); `CAROUSEL_LANES` 12 → 10; `HOUR_LANES` now 6 UTC = year+versions, 7 UTC = questions+selfie; header comment updated. Cron string unchanged — no Inngest resync needed
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: removed 🪧 (sign) and 🐢 (behind) buttons + union entries
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment
+- Dormant-not-deleted: `generateSignTopic`/`generateBehindTopic` stay in moody-carousel.ts; recomposeSlide's MOODY_LANES/LIGHT_LANES keep both so historical posts still re-render correctly; email.ts BWK_LANES keeps behind so historical resends label [BUILD WITH KEY]
+
+### Manual steps needed
+None — cron expression unchanged, Inngest picks up HOUR_LANES at runtime.
+
+### Notes
+- "someone elses schedule" was identified via DB lookup: the 2026-08-30 behind post's headline was literally "SOMEONE ELSE'S SCHEDULE" — the kill applies to the whole behind lane, not just that post
+- AURA still uses the "SIGN" overlay *treatment* (bold uppercase line) — that render kind is alive; only the sign *lane* is dead
+- tsc from apps/web: exactly 199 errors (baseline)
+
 ## [2026-08-30] — The selfie photo slideshow is back in the Ripple nightly rotation
 
 **Requested by:** Keenan

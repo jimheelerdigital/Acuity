@@ -1,7 +1,7 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — 12 lanes, ALL generated overnight so every post
+ * Carousel generation — 10 lanes, ALL generated overnight so every post
  * is in Keenan's inbox by 7am Central (2026-08-28 night, per Keenan:
  * "I want ALL posts to be in my inbox in the morning"). The cron fires
  * hourly 5-8 UTC (12am-3am CDT; one hour later in winter CST) and each
@@ -13,8 +13,11 @@ import { inngest } from "@/inngest/client";
  * night); 2026-08-29 — LATE BLOOMERS, UNSENT TEXTS, WHAT ___ TAUGHT
  * ME, FORBIDDEN TRUTHS, MISSED CONNECTIONS (both); 2026-08-30 — RULES
  * ("get rid of the 'rules i let go of'"), MEMENTO women ("...and the
- * 'finite act now' ripple posts"), and MOODY-WOMEN ("also get rid of
- * the 'hold your own'").
+ * 'finite act now' ripple posts"), MOODY-WOMEN ("also get rid of
+ * the 'hold your own'"), and — later the same day — SIGN and BEHIND
+ * ("get rid of the 'this is your sign to' and 'someone elses
+ * schedule'"). Generators stay dormant in moody-carousel.ts;
+ * recomposeSlide keeps both lanes for editing historical posts.
  *
  * Visual identities (2026-08-29, RETUNED 2026-08-30): Ripple =
  * aesthetically pleasing FEMININE in LIGHT, airy schemes ("make the
@@ -37,13 +40,11 @@ import { inngest } from "@/inngest/client";
  *                  + MEMENTO-MEN — men's life-math (BWK, 4-10 slides)
  *                  + AURA — single persona image + bold line (BWK)
  * -  6 UTC (1am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
- *                  (men, BWK) + BEHIND — "YOU'RE NOT BEHIND" timeline
- *                  lies (men, BWK, numbered) + VERSIONS — "two
- *                  versions of you" contrasts (BWK)
+ *                  (men, BWK) + VERSIONS — "two versions of you"
+ *                  contrasts (BWK)
  * -  7 UTC (2am):  QUESTIONS — women's hard questions (Ripple)
- *                  + SIGN — single static "THIS IS YOUR SIGN TO..."
- *                  image (Ripple) + SELFIE — realistic first-person
- *                  photo slideshow (Ripple)
+ *                  + SELFIE — realistic first-person photo slideshow
+ *                  (Ripple)
  * -  8 UTC (3am):  FREE — "THINGS THAT ARE STILL FREE" (Ripple,
  *                  numbered) + NOBODY — "NOBODY TELLS YOU ABOUT ___"
  *                  (Ripple, rotating season) + PROTOCOL — "DO THIS
@@ -53,18 +54,16 @@ import { inngest } from "@/inngest/client";
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
- * to: [BUILD WITH KEY] for moody-men / memento-men / year / behind /
- * aura / versions / protocol, [RIPPLE] for everything else (handled
- * in lib/content-factory/email.ts, keyed off post.lane).
+ * to: [BUILD WITH KEY] for moody-men / memento-men / year / aura /
+ * versions / protocol, [RIPPLE] for everything else (handled in
+ * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
   "moody-men",
   "memento-men",
   "questions",
-  "sign",
   "year",
   "free",
-  "behind",
   "nobody",
   "aura",
   "versions",
@@ -76,8 +75,8 @@ type DailyBucket = (typeof CAROUSEL_LANES)[number];
 /** Which lanes each overnight cron hour fans out (UTC hour). */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
   5: ["moody-men", "memento-men", "aura"],
-  6: ["year", "behind", "versions"],
-  7: ["questions", "sign", "selfie"],
+  6: ["year", "versions"],
+  7: ["questions", "selfie"],
   8: ["free", "nobody", "protocol"],
 };
 
@@ -129,95 +128,6 @@ export const carouselDailyCronFn = inngest.createFunction(
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const dateStr = today.toISOString().slice(0, 10);
-
-    // ── SIGN bucket: single static image, ONE bold line ────────────
-    // (2026-08-28 night, per Keenan — replaces the animated quote
-    // loop. "static image post but no fancy italics. bold, confident
-    // lettering.") One dark scene + one "THIS IS YOUR SIGN TO..."
-    // line rendered in the bold COVER treatment.
-    if (bucket === "sign") {
-      const sign = await step.run("generate-sign-topic", async () => {
-        const { prisma } = await import("@/lib/prisma");
-        const { generateSignTopic } = await import(
-          "@/lib/content-factory/moody-carousel"
-        );
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
-        const recent = await prisma.carouselPost.findMany({
-          where: { generatedFor: { gte: thirtyDaysAgo }, lane: "sign" },
-          select: { headline: true },
-        });
-        return generateSignTopic(recent.map((p) => p.headline));
-      });
-
-      await step.run("ensure-bucket", async () => {
-        const { ensureBucket } = await import(
-          "@/lib/content-factory/carousel-generate"
-        );
-        await ensureBucket();
-      });
-
-      const signImage = await step.run("generate-sign-image", async () => {
-        const { generateImage, uploadImage } = await import(
-          "@/lib/content-factory/carousel-generate"
-        );
-        const { buildMoodyImagePrompt } = await import(
-          "@/lib/content-factory/moody-carousel"
-        );
-        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
-          await import("@/lib/content-factory/compose");
-        const prompt = buildMoodyImagePrompt("women", sign.scene);
-        const rawBuffer = await generateImage(prompt);
-        const overlay = await renderMoodyTextOverlay([sign.line], "SIGN", "dark");
-        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
-        const imageUrl = await uploadImage(
-          composed,
-          `carousels/${dateStr}/${sign.slug}/slide-0-cover.jpg`
-        );
-        return { imageUrl, imagePrompt: prompt };
-      });
-
-      const signResult = await step.run("save-and-email-sign", async () => {
-        const { prisma } = await import("@/lib/prisma");
-        const { buildMoodyCaption } = await import(
-          "@/lib/content-factory/moody-carousel"
-        );
-        const { extractHashtags } = await import(
-          "@/lib/content-factory/carousel-generate"
-        );
-        const caption = buildMoodyCaption("women", sign.slug);
-        const post = await prisma.carouselPost.create({
-          data: {
-            topicSlug: sign.slug,
-            headline: sign.line,
-            status: "DRAFT",
-            format: "PHOTO",
-            caption,
-            hashtags: extractHashtags(caption),
-            generatedFor: today,
-            lane: "sign",
-            slides: {
-              create: [
-                {
-                  order: 0,
-                  kind: "COVER" as const,
-                  overlayText: sign.line,
-                  imagePrompt: signImage.imagePrompt,
-                  imageUrl: signImage.imageUrl,
-                },
-              ],
-            },
-          },
-        });
-        const { sendCarouselEmail } = await import(
-          "@/lib/content-factory/email"
-        );
-        await sendCarouselEmail(post.id);
-        return { postId: post.id, slideCount: 1, estimatedCostCents: 10 };
-      });
-
-      logger.info(`[carousel-cron] Generated sign image: "${sign.line}"`);
-      return { generated: 1, bucket, ...signResult };
-    }
 
     // ── AURA bucket: single persona image, ONE bold line (BWK) ─────
     // (2026-08-30, per Keenan: "add aura" — cloned from his "The photo
@@ -620,17 +530,15 @@ export const carouselDailyCronFn = inngest.createFunction(
       bucket === "moody-men" ||
       bucket === "memento-men" ||
       bucket === "year" ||
-      bucket === "behind" ||
       bucket === "versions" ||
       bucket === "protocol"
         ? "men"
         : "women";
     // Lanes whose items carry an "N. Name." header (discipline, free
-    // things, timeline lies, protocol steps).
+    // things, protocol steps).
     const numbered =
       bucket === "moody-men" ||
       bucket === "free" ||
-      bucket === "behind" ||
       bucket === "protocol";
     // Ripple lanes render on LIGHT airy scenes, so their text is dark
     // charcoal; BWK lanes stay white-on-dark (2026-08-30, per Keenan:
@@ -650,7 +558,6 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateQuestionsTopic,
         generateYearTopic,
         generateFreeTopic,
-        generateBehindTopic,
         generateNobodyTopic,
         generateVersionsTopic,
         generateProtocolTopic,
@@ -666,7 +573,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       if (bucket === "questions") return generateQuestionsTopic(headlines);
       if (bucket === "year") return generateYearTopic(headlines);
       if (bucket === "free") return generateFreeTopic(headlines);
-      if (bucket === "behind") return generateBehindTopic(headlines);
       if (bucket === "nobody") return generateNobodyTopic(headlines);
       if (bucket === "versions") return generateVersionsTopic(headlines);
       if (bucket === "protocol") return generateProtocolTopic(headlines);

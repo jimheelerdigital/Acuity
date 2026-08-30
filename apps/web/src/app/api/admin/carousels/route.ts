@@ -218,13 +218,13 @@ export async function POST(req: NextRequest) {
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
       // images). `bucket`: "moody-men" | "memento-men" | "questions" |
-      // "sign" | "year" | "free" | "behind" | "nobody" | "aura" |
-      // "versions" | "protocol" | "selfie" (anything else falls back
-      // to "questions" — the video/positive/quote-loop/ambient lanes
-      // died 2026-08-28; missed/missed-men/forbidden/bloomers/
-      // taught/unsent died 2026-08-29; rules/memento-women/moody-women
-      // died 2026-08-30; aura/versions/protocol added 2026-08-30;
-      // selfie killed 2026-08-28 and revived 2026-08-30).
+      // "year" | "free" | "nobody" | "aura" | "versions" | "protocol"
+      // | "selfie" (anything else falls back to "questions" — the
+      // video/positive/quote-loop/ambient lanes died 2026-08-28;
+      // missed/missed-men/forbidden/bloomers/taught/unsent died
+      // 2026-08-29; rules/memento-women/moody-women/sign/behind died
+      // 2026-08-30; aura/versions/protocol added 2026-08-30; selfie
+      // killed 2026-08-28 and revived 2026-08-30).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",

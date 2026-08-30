@@ -224,10 +224,8 @@ export default function CarouselReviewPage() {
       | "moody-men"
       | "memento-men"
       | "questions"
-      | "sign"
       | "year"
       | "free"
-      | "behind"
       | "nobody"
       | "aura"
       | "versions"
@@ -599,14 +597,6 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "❓"}
           </button>
           <button
-            onClick={() => generateBucket("sign")}
-            disabled={generating}
-            title="Generate a This Is Your Sign static image (women funnel) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🪧"}
-          </button>
-          <button
             onClick={() => generateBucket("year")}
             disabled={generating}
             title="Generate a one-year-from-now carousel (men / BWK) now"
@@ -621,14 +611,6 @@ export default function CarouselReviewPage() {
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🕊️"}
-          </button>
-          <button
-            onClick={() => generateBucket("behind")}
-            disabled={generating}
-            title="Generate a you're-not-behind carousel (men / BWK) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🐢"}
           </button>
           <button
             onClick={() => generateBucket("nobody")}
