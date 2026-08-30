@@ -521,15 +521,13 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // then re-render the overlay with the new text.
     const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
     rawBuffer = await generateImage(slide.imagePrompt);
+    // QUOTE (Playfair serif italic) is dead — 2026-08-30, per Keenan:
+    // "get rid of the italicized ripple characters. make everything
+    // consistent". All item slides re-render as ITEM, matching the
+    // daily pipeline.
     const lane = slide.carouselPost.lane;
     const moodyKind =
-      lane === "sign"
-        ? "SIGN"
-        : slide.kind === "COVER"
-          ? "COVER"
-          : lane === "questions"
-            ? "QUOTE"
-            : "ITEM";
+      lane === "sign" ? "SIGN" : slide.kind === "COVER" ? "COVER" : "ITEM";
     const overlay = await renderMoodyTextOverlay(newText.split("\n\n"), moodyKind);
     composed = await composeSlideWithOverlay(rawBuffer, overlay);
   } else {

@@ -231,9 +231,11 @@ export const carouselDailyCronFn = inngest.createFunction(
       bucket === "rules" ||
       bucket === "free" ||
       bucket === "behind";
-    // Single-line lanes render in the bigger premium QUOTE serif
-    // italic; multi-paragraph lanes use ITEM.
-    const itemKind = bucket === "questions" ? ("QUOTE" as const) : ("ITEM" as const);
+    // Every lane's item slides render in the same ITEM style
+    // (2026-08-30, per Keenan: "get rid of the italicized ripple
+    // characters. make everything consistent" — the Playfair QUOTE
+    // serif italic is dead; questions now match every other lane).
+    const itemKind = "ITEM" as const;
 
     const moody = await step.run("generate-moody-topic", async () => {
       const { prisma } = await import("@/lib/prisma");

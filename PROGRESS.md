@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-08-30] — Killed the italic serif font — every post now uses the same consistent lettering
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `style(content-factory): retire italic serif` commit)
+
+### In plain English (for Keenan)
+The fancy italicized serif lettering (used on the hard-questions slides) is gone. Every slide on every post now uses the same clean font family as the rest of the lineup, so the whole feed looks consistent.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `itemKind` is now always `"ITEM"` — the `questions → "QUOTE"` (Playfair Display Medium Italic) special case is removed; questions slides render in Poppins Medium 42 like every other lane
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `recomposeSlide`'s moody-kind mapping drops the questions→QUOTE branch to match
+- `compose.ts`'s QUOTE render branch left dormant (only the dead quote-loop references it), same pattern as other retired formats
+- No schema changes
+
+### Manual steps needed
+None — no cron/trigger changes.
+
+### Notes
+- Tonight's questions post (7 UTC) is the first with the consistent font
+- If a question line looks too small at ITEM size, the fix is bumping ITEM sizing globally, not reviving QUOTE
+
 ## [2026-08-30] — Memento mori posts now use whole-life numbers and vary from 4 to 10 slides
 
 **Requested by:** Keenan
