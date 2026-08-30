@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-30] — Build With Key scenes can now show a lone man grinding late at night
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): lone-man grind scenes` commit)
+
+### In plain English (for Keenan)
+Based on the TikTok screenshot you shared (the dark living room with a guy working on his laptop at night), Build With Key posts can now include a solitary man in the scene — working at a glowing laptop in a near-black room, at a desk lit only by a screen, or training alone in a dark gym. He's always alone, always seen from behind or in silhouette, and his face is never shown. Ripple stays people-free.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts` only:
+  - `SCENE_BRIEF.men` adds "lived-in late-night grind scenes" (lone man + laptop glow, screen-lit desk, hooded figure in dark gym) with the always-alone / from-behind / face-never-visible rule
+  - Inline SCENES pools for memento-men and YEAR get the same additions (behind + moody-men inherit via `SCENE_BRIEF["men"]`)
+  - `buildMoodyImagePrompt`: the hard "NO people" line is now branched — men's audience allows "at most ONE person... from behind or in silhouette, face NEVER visible" and lets screens glow without readable content; women/universal keep the full ban
+- No schema changes, no cron changes
+
+### Manual steps needed
+None — no cron/trigger changes (deploy auto-syncs the same Inngest function).
+
+### Notes
+- Dead men's lanes (missed-men, quote loop) keep their old people-free SCENES — dormant, untouched
+- If gpt-image-2 renders a visible face despite the prompt, tighten the buildMoodyImagePrompt person line first (it's the last-word constraint), not the lane SCENES
+
 ## [2026-08-30] — Ripple posts go light and airy with dark text; three more lanes killed (8 lanes total)
 
 **Requested by:** Keenan
