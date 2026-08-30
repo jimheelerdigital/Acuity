@@ -58,7 +58,7 @@ TOPICS to rotate: protecting your peace, reset rituals, boundaries without guilt
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND lived-in late-night grind scenes: a near-black minimalist living room where a lone man sits on a couch working at a glowing laptop, floor-to-ceiling windows with dark trees beyond, a solitary man at a desk lit only by a screen, a lone hooded figure in a dark empty gym. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. If a man appears he is ALWAYS alone, seen from behind or in silhouette, face NEVER visible.`,
+  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND lived-in late-night grind scenes: a near-black minimalist living room where a lone man sits on a couch working at a glowing laptop, floor-to-ceiling windows with dark trees beyond, a solitary man at a desk lit only by a screen, a lone hooded figure in a dark empty gym — AND living-the-elements scenes: a lone man in black technical gear ascending a snowy ridge in a whiteout storm, standing at a cliff edge in driving rain, cold-plunging into a grey sea at dawn, trail-running into mountain fog. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. A lone man may appear ONLY when he genuinely elevates the scene — most scenes need no one. When he appears he is ALWAYS alone and styled LUXURY: dark tailored knits or an overcoat with an expensive watch, a dark suit with open collar, training gear (shirtless only mid-training), a plain dark tee at a glowing laptop, or black technical expedition gear (goggles/balaclava hiding the face). His face is usually hidden — from behind, in silhouette, in deep shadow, behind dark sunglasses, or behind goggles; rarely, a visible face is fine.`,
   women: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever.`,
 };
 
@@ -244,15 +244,43 @@ export function buildMoodyImagePrompt(
       : "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
     "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. Indistinguishable from a real photograph.",
     "Vertical 9:16 composition, calm and uncluttered in the middle of the frame.",
-    // BWK reference (2026-08-30, Keenan's screenshot): a lone man
-    // grinding at night is ON-brand for the men's lanes — back turned,
-    // face never shown. Women's lanes stay people-free.
+    // BWK reference (2026-08-30, Keenan's screenshot + avatar photo):
+    // a lone man is ON-brand for the men's lanes — face usually hidden,
+    // occasionally visible. Women's lanes stay people-free.
     audience === "men"
-      ? "At most ONE person: a lone man seen from behind or in silhouette, face NEVER visible. No other people, NO animals. Screens may glow softly but show NO readable content."
+      ? "At most ONE person: a lone man, luxury-styled to match the scene, usually seen from behind, in silhouette, in deep shadow, or behind dark sunglasses — a clearly visible face only if the scene explicitly calls for it. No other people, NO animals. Screens may glow softly but show NO readable content."
       : "NO people, NO animals, NO screens with content.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
 }
+
+// ─── BWK avatar persona (2026-08-30, per Keenan) ─────────────────────
+// Keenan supplied a reference photo of himself: "use me as an avatar
+// for pictures that need one... it will help with depth. try to hide
+// my face where possible, or put sunglasses on me, etc. make it feel
+// luxury." When a men's-lane scene features the lone man, he IS Keenan
+// — generated via gpt-image-2's edit endpoint with the reference photo
+// (generateImageWithReference), identity transfer only.
+
+/**
+ * Does this scene description feature the lone man? Scenes are written
+ * by Claude against SCENE_BRIEF.men, which only ever describes ONE
+ * solitary male figure — so a person-word means the avatar is in frame.
+ */
+export function sceneFeaturesAvatar(scene: string): boolean {
+  return /\b(man|figure|silhouette)\b/i.test(scene);
+}
+
+/**
+ * Appended to buildMoodyImagePrompt output when generating WITH the
+ * avatar reference. The phrase "reference photo" doubles as the marker
+ * recomposeSlide uses to know a stored imagePrompt needs the reference.
+ */
+export const MOODY_AVATAR_PROMPT = [
+  "IDENTITY: the lone man in this scene IS the man in the attached reference photo — the same person: same build, same hair, same skin tone.",
+  "Transfer his IDENTITY ONLY. Completely IGNORE the reference photo's setting, mirror, bathroom, clothing, pose, and lighting — build the scene described above from scratch and restyle him in the luxury wardrobe the scene calls for.",
+  "Keep his face treatment as the scene directs (from behind, silhouette, deep shadow, or dark sunglasses unless the scene says otherwise). Photorealistic, luxury editorial quality.",
+].join("\n");
 
 // ─── Captions: pure discovery hashtags, cloned from the reference ─────
 // (2026-08-28, per Keenan — no question on these two funnels.)
@@ -334,7 +362,7 @@ OUTPUT (strict JSON, no markdown):
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — an empty gym at night, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass, a lone man working at a glowing laptop in a near-black minimalist living room, a solitary figure at a desk lit only by a screen. Desaturated, near-monochrome. Every frame DIM (white text must read on it). If a man appears he is ALWAYS alone, from behind or in silhouette, face NEVER visible.
+SCENES: dark minimalist photography — an empty gym at night, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass, a lone man working at a glowing laptop in a near-black minimalist living room, a solitary figure at a desk lit only by a screen. Desaturated, near-monochrome. Every frame DIM (white text must read on it). A man appears ONLY when he elevates the scene — always alone, luxury-styled (dark knits, overcoat, watch; dark suit; training gear; black expedition gear on a ridge or cliff), face usually hidden (behind/silhouette/shadow/sunglasses/goggles), rarely visible.
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 30, you have about 2,500 weekends left. On average.
@@ -773,7 +801,7 @@ const YEAR_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-caro
 AUDIENCE: young aspiring men (18-30) deep in the self-improvement / discipline / "trust the process" niche, scrolling at midnight and telling themselves they'll start Monday. The math should read like orders from a future self.
 VOICE: calm command energy. Short declarative sentences. No softness, no hedging on the tone (hedge only the numbers). Direct second person. A mentor who's already made it and doesn't waste words. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — an empty running track at night, a dim gym with one light on, a desk lamp over an open notebook before dawn, a pre-dawn road disappearing into fog, a city rooftop at first light, rain on a black car windshield, a lone man on a couch working at a glowing laptop in a near-black living room, a solitary hooded figure training alone in a dark gym. Desaturated, near-monochrome. Every frame DIM (white text must read on it). If a man appears he is ALWAYS alone, from behind or in silhouette, face NEVER visible.
+SCENES: dark minimalist photography — an empty running track at night, a dim gym with one light on, a desk lamp over an open notebook before dawn, a pre-dawn road disappearing into fog, a city rooftop at first light, rain on a black car windshield, a lone man on a couch working at a glowing laptop in a near-black living room, a solitary hooded figure training alone in a dark gym. Desaturated, near-monochrome. Every frame DIM (white text must read on it). A man appears ONLY when he elevates the scene — always alone, luxury-styled (dark knits, overcoat, watch; dark suit; training gear; black expedition gear on a ridge or cliff), face usually hidden (behind/silhouette/shadow/sunglasses/goggles), rarely visible.
 
 FORMAT — each slide reads like this (match the rhythm):
 "A year from now you could have read 24 books.

@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-30] — Keenan is now the Build With Key avatar — his likeness appears in scenes that call for a person
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): BWK avatar persona` commit)
+
+### In plain English (for Keenan)
+When a Build With Key scene features the lone man, that man is now generated from your reference photo — same build, hair, and skin tone, restyled to fit the scene in luxury wardrobe (dark knits and a watch, a suit, training gear, or black expedition gear on a mountain). Your face stays hidden most of the time — from behind, silhouette, shadow, sunglasses, or goggles — with a visible face allowed only rarely. Scenes that don't need a person stay empty; the AI only adds you when it enhances the post. "Living the elements" scenes (storm ridge climbs, cliff edges in rain, cold plunges) are now part of the scene vocabulary too.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: new `sceneFeaturesAvatar(scene)` (person-word regex) + `MOODY_AVATAR_PROMPT` (identity-transfer block; the phrase "reference photo" doubles as the recompose marker); SCENE_BRIEF.men + memento-men/YEAR SCENES gain elements/adventure scenes, luxury wardrobe options, and the face-usually-hidden/rarely-visible policy (replaces yesterday's face-NEVER rule); buildMoodyImagePrompt men's person line updated to match
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: new `getAvatarReference()` — downloads `reference/bwk-avatar.jpg` from the content-factory bucket, module-cached, returns null on miss (graceful fallback to plain generation); `recomposeSlide` uses the reference when a stored imagePrompt contains the marker
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cover + item steps route men's-audience scenes through `generateImageWithReference` (gpt-image-2 edit endpoint, 1024x1536) when `sceneFeaturesAvatar` hits and the reference exists
+- Keenan's photo uploaded to Supabase storage at `content-factory/reference/bwk-avatar.jpg` (one-off script, deleted after)
+- No schema or cron changes
+
+### Manual steps needed
+None.
+
+### Notes
+- The content-factory bucket is PUBLIC, so the raw reference photo is technically reachable at its storage URL — flagged to Keenan; move to a private bucket if that ever matters
+- Edit endpoint tops out at 1024x1536 (vs 1024x1792 generate); composeSlideWithOverlay cover-crops to 1080x1920 either way
+- If identity drifts (different-looking man across slides), the fix is strengthening MOODY_AVATAR_PROMPT, not lowering the reference
+- Ripple/women lanes are untouched — people-free stays absolute there
+
 ## [2026-08-30] — Build With Key scenes can now show a lone man grinding late at night
 
 **Requested by:** Keenan

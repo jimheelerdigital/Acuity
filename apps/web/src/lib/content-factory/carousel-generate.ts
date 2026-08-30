@@ -368,6 +368,35 @@ export function buildSelfieImagePrompt(opts: {
     .join("\n");
 }
 
+/**
+ * Keenan's avatar reference photo for BWK lone-man scenes (2026-08-30,
+ * per Keenan: "use me as an avatar for pictures that need one").
+ * Uploaded once to Supabase storage; cached per lambda instance.
+ * Returns null (and the caller falls back to plain generation) if the
+ * file is missing — the avatar is an enhancement, never a dependency.
+ */
+const AVATAR_REFERENCE_PATH = "reference/bwk-avatar.jpg";
+let _avatarCache: Buffer | null | undefined;
+export async function getAvatarReference(): Promise<Buffer | null> {
+  if (_avatarCache !== undefined) return _avatarCache;
+  try {
+    const { supabase } = await import("@/lib/supabase.server");
+    const { data, error } = await supabase.storage
+      .from("content-factory")
+      .download(AVATAR_REFERENCE_PATH);
+    if (error || !data) {
+      console.warn(`[carousel] Avatar reference missing: ${error?.message}`);
+      _avatarCache = null;
+    } else {
+      _avatarCache = Buffer.from(await data.arrayBuffer());
+    }
+  } catch (e) {
+    console.warn(`[carousel] Avatar reference fetch failed:`, e);
+    _avatarCache = null;
+  }
+  return _avatarCache;
+}
+
 export async function generateImage(prompt: string): Promise<Buffer> {
   const response = await openai().images.generate({
     model: "gpt-image-2",
@@ -520,7 +549,15 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // Regenerate the scene from the stored prompt (scenes are text-free),
     // then re-render the overlay with the new text.
     const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
-    rawBuffer = await generateImage(slide.imagePrompt);
+    // Prompts generated with the BWK avatar carry the "reference photo"
+    // identity block — re-rendering them needs the reference too, or the
+    // lone man becomes a stranger (2026-08-30).
+    const avatar = slide.imagePrompt.includes("reference photo")
+      ? await getAvatarReference()
+      : null;
+    rawBuffer = avatar
+      ? await generateImageWithReference(slide.imagePrompt, avatar)
+      : await generateImage(slide.imagePrompt);
     // QUOTE (Playfair serif italic) is dead — 2026-08-30, per Keenan:
     // "get rid of the italicized ripple characters. make everything
     // consistent". All item slides re-render as ITEM, matching the

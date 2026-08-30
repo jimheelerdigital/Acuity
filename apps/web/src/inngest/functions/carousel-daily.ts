@@ -273,17 +273,31 @@ export const carouselDailyCronFn = inngest.createFunction(
     });
 
     const moodyCover = await step.run("generate-moody-cover", async () => {
-      const { generateImage, uploadImage } = await import(
-        "@/lib/content-factory/carousel-generate"
-      );
-      const { buildMoodyImagePrompt } = await import(
-        "@/lib/content-factory/moody-carousel"
-      );
+      const {
+        generateImage,
+        generateImageWithReference,
+        getAvatarReference,
+        uploadImage,
+      } = await import("@/lib/content-factory/carousel-generate");
+      const { buildMoodyImagePrompt, sceneFeaturesAvatar, MOODY_AVATAR_PROMPT } =
+        await import("@/lib/content-factory/moody-carousel");
       const { composeSlideWithOverlay, renderMoodyTextOverlay } =
         await import("@/lib/content-factory/compose");
 
-      const prompt = buildMoodyImagePrompt(imageAudience, moody.coverScene);
-      const rawBuffer = await generateImage(prompt);
+      // BWK avatar (2026-08-30, per Keenan): when a men's-lane scene
+      // features the lone man, he's Keenan — identity via reference.
+      let prompt = buildMoodyImagePrompt(imageAudience, moody.coverScene);
+      let rawBuffer: Buffer;
+      const avatar =
+        imageAudience === "men" && sceneFeaturesAvatar(moody.coverScene)
+          ? await getAvatarReference()
+          : null;
+      if (avatar) {
+        prompt = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
+        rawBuffer = await generateImageWithReference(prompt, avatar);
+      } else {
+        rawBuffer = await generateImage(prompt);
+      }
       const overlay = await renderMoodyTextOverlay(
         [moody.title],
         "COVER",
@@ -304,12 +318,17 @@ export const carouselDailyCronFn = inngest.createFunction(
     }[] = [];
     for (let i = 0; i < moody.items.length; i++) {
       const slide = await step.run(`generate-moody-item-${i}`, async () => {
-        const { generateImage, uploadImage } = await import(
-          "@/lib/content-factory/carousel-generate"
-        );
-        const { buildMoodyImagePrompt } = await import(
-          "@/lib/content-factory/moody-carousel"
-        );
+        const {
+          generateImage,
+          generateImageWithReference,
+          getAvatarReference,
+          uploadImage,
+        } = await import("@/lib/content-factory/carousel-generate");
+        const {
+          buildMoodyImagePrompt,
+          sceneFeaturesAvatar,
+          MOODY_AVATAR_PROMPT,
+        } = await import("@/lib/content-factory/moody-carousel");
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
@@ -317,8 +336,18 @@ export const carouselDailyCronFn = inngest.createFunction(
         const paragraphs = numbered
           ? [`${i + 1}. ${item.name}`, ...item.lines]
           : item.lines;
-        const prompt = buildMoodyImagePrompt(imageAudience, item.scene);
-        const rawBuffer = await generateImage(prompt);
+        let prompt = buildMoodyImagePrompt(imageAudience, item.scene);
+        let rawBuffer: Buffer;
+        const avatar =
+          imageAudience === "men" && sceneFeaturesAvatar(item.scene)
+            ? await getAvatarReference()
+            : null;
+        if (avatar) {
+          prompt = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
+          rawBuffer = await generateImageWithReference(prompt, avatar);
+        } else {
+          rawBuffer = await generateImage(prompt);
+        }
         const overlay = await renderMoodyTextOverlay(
           paragraphs,
           itemKind,
