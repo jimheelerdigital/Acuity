@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-08-30] — Ripple posts go light and airy with dark text; three more lanes killed (8 lanes total)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): lighter Ripple schemes` commit)
+
+### In plain English (for Keenan)
+The Ripple account's posts now use bright, airy photography — morning light, cream and blush tones — with dark charcoal lettering instead of the dark moody scenes with white text. Build With Key keeps its dark motivational look. Three formats are retired: "Rules I Let Go Of," the women's "count what remains" posts (Finite Act Now), and the women's discipline posts (Hold Your Own). That leaves 8 nightly posts: 4 dark ones for Build With Key and 4 light feminine ones for Ripple, all still in your inbox by morning.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/compose.ts`: `renderMoodyTextOverlay` gains a `tone: "white" | "dark"` param — dark = #2B2622 text with white blurred halo (for light scenes), white = existing white-with-black-shadow
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `SCENE_BRIEF.women` and `buildMoodyImagePrompt`'s women branch rewritten for LIGHT airy scenes (bright even exposure so dark text reads); SIGN/FREE scene pools and QUESTIONS/FREE/NOBODY system-prompt intros lightened to match
+- `apps/web/src/inngest/functions/carousel-daily.ts`: lanes trimmed 11 → 8 (`rules`, `memento` (women), `moody-women` removed); cron `0 5,6,7,8 * * *` (was 5-10); hour map re-packed to 2 lanes/hour; topic-select branches and fallback (`rules` → `questions`) updated; new `textTone` (`imageAudience === "women" ? "dark" : "white"`) passed to all COVER/ITEM/SIGN overlay calls
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `recomposeSlide` passes `tone: "dark"` for the light lanes (questions/sign/free/nobody) so admin text edits re-render correctly
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🔓/🕯️/⏳ generate buttons removed; empty-state button now queues `questions`
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment updated to the 8 lanes
+- Dead-lane prompts left dormant in moody-carousel.ts (standard revival pattern); no schema changes
+
+### Manual steps needed
+- [x] Inngest resync after deploy (cron changed) — Claude Code runs `curl -X PUT goripple.io/api/inngest` post-deploy
+
+### Notes
+- Old posts in dead lanes still render/edit fine — recomposeSlide's MOODY_LANES set keeps all historical lane names, and only the 4 live Ripple lanes get dark text on edit
+- First light-scheme Ripple posts land tonight at 7-8 UTC; if dark text struggles on any scene the knob is the halo blur/opacity in compose.ts, not reverting the scenes
+- This push also carries the italic-serif retirement commit below (held to bundle into one Vercel build)
+
 ## [2026-08-30] — Killed the italic serif font — every post now uses the same consistent lettering
 
 **Requested by:** Keenan

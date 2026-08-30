@@ -221,10 +221,7 @@ export default function CarouselReviewPage() {
 
   const generateBucket = async (
     bucket:
-      | "rules"
-      | "moody-women"
       | "moody-men"
-      | "memento"
       | "memento-men"
       | "questions"
       | "sign"
@@ -574,36 +571,12 @@ export default function CarouselReviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => generateBucket("rules")}
-            disabled={generating}
-            title="Generate a rules-I-broke carousel (women funnel) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🔓"}
-          </button>
-          <button
-            onClick={() => generateBucket("moody-women")}
-            disabled={generating}
-            title="Generate a moody discipline carousel (women funnel) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🕯️"}
-          </button>
-          <button
             onClick={() => generateBucket("moody-men")}
             disabled={generating}
             title="Generate a moody discipline carousel (men funnel) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🏛️"}
-          </button>
-          <button
-            onClick={() => generateBucket("memento")}
-            disabled={generating}
-            title="Generate a memento-mori time-math carousel (women / Ripple) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "⏳"}
           </button>
           <button
             onClick={() => generateBucket("memento-men")}
@@ -748,7 +721,7 @@ export default function CarouselReviewPage() {
             </p>
             {!allFilter && (
               <button
-                onClick={() => generateBucket("rules")}
+                onClick={() => generateBucket("questions")}
                 disabled={generating}
                 className="mt-3 min-h-[44px] rounded-acuity-pill bg-acuity-primary px-6 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
               >

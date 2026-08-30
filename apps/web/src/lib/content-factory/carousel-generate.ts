@@ -528,7 +528,18 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     const lane = slide.carouselPost.lane;
     const moodyKind =
       lane === "sign" ? "SIGN" : slide.kind === "COVER" ? "COVER" : "ITEM";
-    const overlay = await renderMoodyTextOverlay(newText.split("\n\n"), moodyKind);
+    // Live Ripple lanes are LIGHT airy scenes with dark charcoal text
+    // (2026-08-30, per Keenan: "make the ripple posts be lighter
+    // schemes"); everything else stays white-on-dark.
+    const LIGHT_LANES = new Set(["questions", "sign", "free", "nobody"]);
+    const tone = LIGHT_LANES.has(lane ?? "")
+      ? ("dark" as const)
+      : ("white" as const);
+    const overlay = await renderMoodyTextOverlay(
+      newText.split("\n\n"),
+      moodyKind,
+      tone
+    );
     composed = await composeSlideWithOverlay(rawBuffer, overlay);
   } else {
     // Legacy lanes bake text into the AI image via gpt-image-2 — regenerate

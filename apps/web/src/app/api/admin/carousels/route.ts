@@ -217,12 +217,12 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "rules" | "moody-women" | "moody-men" |
-      // "memento" | "memento-men" | "questions" | "sign" | "year" |
-      // "free" | "behind" | "nobody" (anything else falls back to
-      // "rules" — the video/positive/selfie/quote-loop/ambient lanes
-      // died 2026-08-28; missed/missed-men/forbidden/bloomers/taught/
-      // unsent died 2026-08-29).
+      // images). `bucket`: "moody-men" | "memento-men" | "questions" |
+      // "sign" | "year" | "free" | "behind" | "nobody" (anything else
+      // falls back to "questions" — the video/positive/selfie/
+      // quote-loop/ambient lanes died 2026-08-28; missed/missed-men/
+      // forbidden/bloomers/taught/unsent died 2026-08-29; rules/
+      // memento-women/moody-women died 2026-08-30).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",

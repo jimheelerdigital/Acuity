@@ -585,7 +585,12 @@ export async function renderMoodyTextOverlay(
   // italics): the single-image sign post — COVER's bold uppercase
   // treatment, sized down and wrapped wider so a full 8-16-word line
   // reads as a block instead of a skinny tower.
-  kind: "COVER" | "ITEM" | "QUOTE" | "SIGN"
+  kind: "COVER" | "ITEM" | "QUOTE" | "SIGN",
+  // Text tone (2026-08-30, per Keenan: "make the ripple posts be
+  // lighter schemes") — Ripple lanes shoot LIGHT airy scenes, so their
+  // text renders dark charcoal with a soft light halo; BWK keeps white
+  // text on dark scenes.
+  tone: "white" | "dark" = "white"
 ): Promise<Buffer> {
   const fontPath = await ensureFontFile(
     kind === "ITEM" ? "Medium" : kind === "QUOTE" ? "QuoteSerif" : "Bold"
@@ -613,8 +618,10 @@ export async function renderMoodyTextOverlay(
 
   const spacing = uppercase ? 16 : kind === "QUOTE" ? 18 : 14;
   const letterSpacing = uppercase ? ` letter_spacing="3072"` : "";
-  const mainMarkup = `<span font_desc="${font} ${fontSize}" foreground="#FFFFFF"${letterSpacing}>${body}</span>`;
-  const shadowMarkup = `<span font_desc="${font} ${fontSize}" foreground="#000000"${letterSpacing}>${body}</span>`;
+  const mainColor = tone === "dark" ? "#2B2622" : "#FFFFFF";
+  const shadowColor = tone === "dark" ? "#FFFFFF" : "#000000";
+  const mainMarkup = `<span font_desc="${font} ${fontSize}" foreground="${mainColor}"${letterSpacing}>${body}</span>`;
+  const shadowMarkup = `<span font_desc="${font} ${fontSize}" foreground="${shadowColor}"${letterSpacing}>${body}</span>`;
 
   const maxTextW = OUTPUT_W - PADDING_X * 2;
   const main = await renderMarkup(mainMarkup, fontPath, maxTextW, spacing, 8);

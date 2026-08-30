@@ -1,38 +1,39 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — 11 lanes, ALL generated overnight so every post
+ * Carousel generation — 8 lanes, ALL generated overnight so every post
  * is in Keenan's inbox by 7am Central (2026-08-28 night, per Keenan:
  * "I want ALL posts to be in my inbox in the morning"). The cron fires
- * hourly 5-10 UTC (12am-5am CDT; one hour later in winter CST) and each
+ * hourly 5-8 UTC (12am-3am CDT; one hour later in winter CST) and each
  * run FANS OUT this hour's lanes as events — generation itself always
  * runs on the event trigger.
  *
  * Kill history (never revive without asking): animated quote loop
  * (2026-08-28 night, replaced by SIGN), AMBIENT calm video (same late
- * night, "get rid of the calm video"), and — 2026-08-29 — LATE
- * BLOOMERS, UNSENT TEXTS, WHAT ___ TAUGHT ME, FORBIDDEN TRUTHS, and
- * MISSED CONNECTIONS (both missed and missed-men, "get rid of missed
- * connections on both pipelines"). Same 2026-08-29 directive locked the
- * two visual identities: Ripple = aesthetically pleasing FEMININE
- * (soft, silk/candlelight/flowers, warm-dim), BWK = male-dominant dark
- * themes, highly motivational.
+ * night); 2026-08-29 — LATE BLOOMERS, UNSENT TEXTS, WHAT ___ TAUGHT
+ * ME, FORBIDDEN TRUTHS, MISSED CONNECTIONS (both); 2026-08-30 — RULES
+ * ("get rid of the 'rules i let go of'"), MEMENTO women ("...and the
+ * 'finite act now' ripple posts"), and MOODY-WOMEN ("also get rid of
+ * the 'hold your own'").
+ *
+ * Visual identities (2026-08-29, RETUNED 2026-08-30): Ripple =
+ * aesthetically pleasing FEMININE in LIGHT, airy schemes ("make the
+ * ripple posts be lighter schemes") — bright cream/ivory scenes with
+ * DARK charcoal text. BWK = male-dominant dark themes, highly
+ * motivational — dim scenes, white text.
  *
  * Overnight schedule (CDT):
- * -  5 UTC (12am): MOODY-WOMEN + MOODY-MEN — the numbered discipline
- *                  carousels (men = BWK)
- * -  6 UTC (1am):  MEMENTO — women's time-math (Ripple)
- *                  + MEMENTO-MEN — men's time-math (BWK)
- * -  7 UTC (2am):  RULES — "Rules I broke to get my life back" (women)
- *                  + QUESTIONS — women's hard questions
- * -  8 UTC (3am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
+ * -  5 UTC (12am): MOODY-MEN — numbered discipline carousel (BWK)
+ *                  + MEMENTO-MEN — men's life-math (BWK, 4-10 slides)
+ * -  6 UTC (1am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
  *                  (men, BWK) + BEHIND — "YOU'RE NOT BEHIND" timeline
  *                  lies (men, BWK, numbered)
- * -  9 UTC (4am):  SIGN — single static bold "THIS IS YOUR SIGN TO..."
- *                  image (women) + FREE — "THINGS THAT ARE STILL FREE"
- *                  (women/Ripple, numbered)
- * - 10 UTC (5am):  NOBODY — "NOBODY TELLS YOU ABOUT ___" (women,
- *                  rotating season)
+ * -  7 UTC (2am):  QUESTIONS — women's hard questions (Ripple)
+ *                  + SIGN — single static "THIS IS YOUR SIGN TO..."
+ *                  image (Ripple)
+ * -  8 UTC (3am):  FREE — "THINGS THAT ARE STILL FREE" (Ripple,
+ *                  numbered) + NOBODY — "NOBODY TELLS YOU ABOUT ___"
+ *                  (Ripple, rotating season)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
@@ -43,10 +44,7 @@ import { inngest } from "@/inngest/client";
  * email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
-  "rules",
-  "moody-women",
   "moody-men",
-  "memento",
   "memento-men",
   "questions",
   "sign",
@@ -59,12 +57,10 @@ type DailyBucket = (typeof CAROUSEL_LANES)[number];
 
 /** Which lanes each overnight cron hour fans out (UTC hour). */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
-  5: ["moody-women", "moody-men"],
-  6: ["memento", "memento-men"],
-  7: ["rules", "questions"],
-  8: ["year", "behind"],
-  9: ["sign", "free"],
-  10: ["nobody"],
+  5: ["moody-men", "memento-men"],
+  6: ["year", "behind"],
+  7: ["questions", "sign"],
+  8: ["free", "nobody"],
 };
 
 export const carouselDailyCronFn = inngest.createFunction(
@@ -72,7 +68,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 5,6,7,8,9,10 * * *" },
+      { cron: "0 5,6,7,8 * * *" },
       // Generation trigger (cron fan-out + admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
@@ -109,7 +105,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       b ?? ""
     )
       ? (b as DailyBucket)
-      : "rules";
+      : "questions";
     logger.info(`[carousel-cron] Bucket: ${bucket}`);
 
     const today = new Date();
@@ -153,7 +149,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           await import("@/lib/content-factory/compose");
         const prompt = buildMoodyImagePrompt("women", sign.scene);
         const rawBuffer = await generateImage(prompt);
-        const overlay = await renderMoodyTextOverlay([sign.line], "SIGN");
+        const overlay = await renderMoodyTextOverlay([sign.line], "SIGN", "dark");
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
         const imageUrl = await uploadImage(
           composed,
@@ -223,14 +219,14 @@ export const carouselDailyCronFn = inngest.createFunction(
       bucket === "behind"
         ? "men"
         : "women";
-    // Lanes whose items carry an "N. Name." header (discipline, rules,
-    // free things, timeline lies).
+    // Lanes whose items carry an "N. Name." header (discipline, free
+    // things, timeline lies).
     const numbered =
-      bucket === "moody-women" ||
-      bucket === "moody-men" ||
-      bucket === "rules" ||
-      bucket === "free" ||
-      bucket === "behind";
+      bucket === "moody-men" || bucket === "free" || bucket === "behind";
+    // Ripple lanes render on LIGHT airy scenes, so their text is dark
+    // charcoal; BWK lanes stay white-on-dark (2026-08-30, per Keenan:
+    // "make the ripple posts be lighter schemes").
+    const textTone = imageAudience === "women" ? ("dark" as const) : ("white" as const);
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -243,7 +239,6 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateMoodyTopic,
         generateMementoTopic,
         generateQuestionsTopic,
-        generateRulesTopic,
         generateYearTopic,
         generateFreeTopic,
         generateBehindTopic,
@@ -255,19 +250,14 @@ export const carouselDailyCronFn = inngest.createFunction(
         select: { headline: true },
       });
       const headlines = recent.map((p) => p.headline);
-      if (bucket === "memento") return generateMementoTopic("women", headlines);
       if (bucket === "memento-men")
         return generateMementoTopic("men", headlines);
       if (bucket === "questions") return generateQuestionsTopic(headlines);
-      if (bucket === "rules") return generateRulesTopic(headlines);
       if (bucket === "year") return generateYearTopic(headlines);
       if (bucket === "free") return generateFreeTopic(headlines);
       if (bucket === "behind") return generateBehindTopic(headlines);
       if (bucket === "nobody") return generateNobodyTopic(headlines);
-      return generateMoodyTopic(
-        bucket === "moody-women" ? "women" : "men",
-        headlines
-      );
+      return generateMoodyTopic("men", headlines);
     });
 
     const slug = moody.slug;
@@ -294,7 +284,11 @@ export const carouselDailyCronFn = inngest.createFunction(
 
       const prompt = buildMoodyImagePrompt(imageAudience, moody.coverScene);
       const rawBuffer = await generateImage(prompt);
-      const overlay = await renderMoodyTextOverlay([moody.title], "COVER");
+      const overlay = await renderMoodyTextOverlay(
+        [moody.title],
+        "COVER",
+        textTone
+      );
       const composed = await composeSlideWithOverlay(rawBuffer, overlay);
       const imageUrl = await uploadImage(
         composed,
@@ -325,7 +319,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           : item.lines;
         const prompt = buildMoodyImagePrompt(imageAudience, item.scene);
         const rawBuffer = await generateImage(prompt);
-        const overlay = await renderMoodyTextOverlay(paragraphs, itemKind);
+        const overlay = await renderMoodyTextOverlay(
+          paragraphs,
+          itemKind,
+          textTone
+        );
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
         const imageUrl = await uploadImage(
           composed,
@@ -354,7 +352,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       // audience; FREE gets the universal pool; BWK men's lanes use
       // the men's pool; the women's lanes share the women's.
       const caption =
-        bucket === "memento" || bucket === "memento-men"
+        bucket === "memento-men"
           ? buildMementoCaption(slug)
           : bucket === "free"
             ? buildUniversalCaption(slug)

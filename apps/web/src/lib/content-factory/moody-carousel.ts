@@ -59,7 +59,7 @@ TOPICS to rotate: protecting your peace, reset rituals, boundaries without guilt
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
   men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. No people ever.`,
-  women: `SCENES: soft, aesthetically pleasing FEMININE photography in low light — silk and linen in a dim bedroom, peonies or dried flowers on a nightstand by one warm lamp, a candlelit bath, a vanity glowing warm in a dark room, a silk robe draped over a chair at dusk, rain on tall windows with sheer curtains, a steaming tea cup by candlelight. Muted, warm, dreamy — beautiful, never cluttered, and every scene DIM (white text must read on it). Moody but gentle, never bright or airy. No people ever.`,
+  women: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever.`,
 };
 
 const buildMoodySystemPrompt = (
@@ -235,11 +235,13 @@ export function buildMoodyImagePrompt(
       ? "Dark, dominant, moody minimalist photography. Desaturated, near-monochrome color grade — charcoal, slate, black, cold glass, storm light. Deep shadows, austere, powerful, commanding."
       : audience === "universal"
         ? "Dark, moody, cinematic photography. Muted, desaturated color grade with deep shadow — dusk, night, or heavy overcast light. Vast, still, contemplative — the weight of time made visible."
-        : "Soft, aesthetically pleasing feminine photography — quiet luxury in low warm light: silk, linen, candlelight, flowers. Muted, warm, dreamy color grade with deep shadow. Beautiful, calm, intimate, dim.";
+        : "Soft, aesthetically pleasing feminine photography — quiet luxury in light, airy tones: cream silk, linen, morning sun, white flowers. Warm, dreamy, light color grade — ivory, blush, soft gold. Beautiful, calm, intimate, bright but gentle.";
   return [
     `Hyper-realistic cinematic photograph: ${scene}`,
     style,
-    "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
+    audience === "women"
+      ? "The entire frame is SOFT and LIGHT — a bright, even, airy exposure so dark charcoal text placed at the center of the image would be perfectly legible. No harsh highlights or busy detail in the middle of the frame."
+      : "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
     "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. Indistinguishable from a real photograph.",
     "Vertical 9:16 composition, calm and uncluttered in the middle of the frame.",
     "NO people, NO animals, NO screens with content.",
@@ -406,7 +408,7 @@ export function buildMementoCaption(slug: string): string {
 // that's the save/share mechanic. Women's soft-dim visuals, hashtag-only
 // caption from the women's pool.
 
-const QUESTIONS_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: HARD QUESTIONS — each slide is ONE question the reader can't answer comfortably. No answers, no advice, anywhere. The question does all the work.
+const QUESTIONS_SYSTEM_PROMPT = `You write text for a soft, light, feminine minimal photo-carousel account. Each post is a cover + 5 slides of dark text centered on bright, airy photography. The niche: HARD QUESTIONS — each slide is ONE question the reader can't answer comfortably. No answers, no advice, anywhere. The question does all the work.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The questions should press gently on what they already know but avoid saying out loud: lost pieces of themselves, one-sided giving, deferred wants, who they're becoming.
 VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wise friend would ask and then just wait.
@@ -814,11 +816,11 @@ export async function generateYearTopic(
 // ("1. Watching it rain.") with one quiet expansion each. Quietly
 // devastating positivity.
 
-const FREE_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: THINGS THAT ARE STILL FREE — small, real, available-tonight things money never touched. Quietly devastating in how obvious they are.
+const FREE_SYSTEM_PROMPT = `You write text for a soft, light, feminine minimal photo-carousel account. Each post is a cover + 5 slides of dark text centered on bright, airy photography. The niche: THINGS THAT ARE STILL FREE — small, real, available-tonight things money never touched. Quietly devastating in how obvious they are.
 
 AUDIENCE: everyone scrolling at midnight. Universal — no gendered content, no niche jargon.
 
-SCENES: soft, aesthetically pleasing feminine photography, calm and contemplative — rain sliding down a dark window above a lit candle, dawn light through sheer linen curtains, a bath filling in half-light, a garden bench in blue dusk with a shawl left behind, steam rising off a tea cup by a dark window. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever.
+SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy tones, calm and contemplative — morning sun through sheer linen curtains, rain on a bright window above white flowers, a sunlit bath filling with steam, a garden bench in golden morning light with a shawl left behind, tea steaming by a light-washed window. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, every frame SOFT and LIGHT (dark charcoal text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
 "1. Watching it rain.
@@ -916,7 +918,7 @@ export async function generateBehindTopic(
 // 45", "...ABOUT THE QUIET HOUSE") so the title is the dedupe key.
 // Five unspoken truths, no headers.
 
-const NOBODY_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: NOBODY TELLS YOU — one life season per post, five truths about it that nobody says out loud beforehand.
+const NOBODY_SYSTEM_PROMPT = `You write text for a soft, light, feminine minimal photo-carousel account. Each post is a cover + 5 slides of dark text centered on bright, airy photography. The niche: NOBODY TELLS YOU — one life season per post, five truths about it that nobody says out loud beforehand.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load. The seasons rotate: turning 45, the year the kids stop needing you, a long marriage, caring for aging parents, friendship after 40, the quiet house. Each truth should land as recognition — "so it's not just me."
 VOICE: quiet, flat, honest. Plain statements with warmth underneath. Never bitter, never dramatic — the sting is recognition.
@@ -1043,7 +1045,7 @@ export interface SignTopic {
   scene: string;
 }
 
-const SIGN_SYSTEM_PROMPT = `You write ONE line for a dark, moody single-image post. The format: bold white text on a dim cinematic photograph. The line always begins "THIS IS YOUR SIGN TO ..." and gives the reader quiet permission to do the thing they've been waiting for a sign to do.
+const SIGN_SYSTEM_PROMPT = `You write ONE line for a soft, light, feminine single-image post. The format: bold dark text on a bright, airy photograph. The line always begins "THIS IS YOUR SIGN TO ..." and gives the reader quiet permission to do the thing they've been waiting for a sign to do.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The sign should release something specific: rest, a boundary, a call, letting something go, starting something small.
 VOICE: warm, certain, plain. Permission — never pressure, never hustle, never "go get it queen" energy.
@@ -1051,7 +1053,7 @@ VOICE: warm, certain, plain. Permission — never pressure, never hustle, never 
 RULES:
 - ONE line, 8-16 words total, beginning exactly "THIS IS YOUR SIGN TO". Specific and concrete, not generic ("...to stop rehearsing the apology you don't owe", not "...to live your best life").
 - No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI.
-- "scene": one concrete sentence describing the photograph — soft, aesthetically pleasing feminine interiors in low warm light (silk and linen in a dim bedroom, a candlelit bath, peonies by one warm lamp, dusk through sheer curtains). DIM, beautiful, no people ever.
+- "scene": one concrete sentence describing the photograph — soft, aesthetically pleasing feminine interiors in LIGHT, airy tones (cream silk and linen in a bright bedroom, a sunlit bath, white peonies by a light-washed window, morning sun through sheer curtains). SOFT and LIGHT (dark text must read on it), beautiful, no people ever.
 - "theme": 2-4 words naming what the sign releases (for repeat-avoidance).
 
 OUTPUT (strict JSON, no markdown):
