@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-08-30] — Memento mori posts now use whole-life numbers and vary from 4 to 10 slides
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): life-scale memento math` commit)
+
+### In plain English (for Keenan)
+The memento mori posts on both accounts now go for the biggest numbers — the whole-life kind, like "At 30, you have about 2,500 weekends left. On average." — instead of smaller this-year math. Saying "until you die" or "before they're gone" inside the slides is now allowed (still never on the cover). And the posts vary in length: anywhere from 4 to 10 slides per post, picked randomly each night, since more scrolls means better engagement.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`:
+  - `MEMENTO_SYSTEM_PROMPTS` (both audiences) rewritten from "time-math" to "LIFE-MATH": first line of each slide must be an age-anchored, average-lifespan-scale number ("GO BIG: reframe her/his whole remaining life"); death naming allowed in slides, banned on covers; rhythm variance encouraged (some slides number+command only)
+  - `generateMementoTopic` picks a random item count 3-9 per run (+cover = 4-10 slides) and injects it into the user prompt
+  - `generateMoodyFamilyTopic` gains optional `minItems`/`maxItems` (defaults 4/6 — all other lanes unchanged); `max_tokens` 1200 → 2000 so 9-item posts don't clip
+- No schema changes; carousel-daily already loops `moody.items.length`, so variable counts flow through untouched
+
+### Manual steps needed
+None — no cron/trigger changes, so no Inngest resync needed.
+
+### Notes
+- The example numbers in the prompts use honest arithmetic (US average lifespan ~78: at 30 → ~2,500 weekends, at 45 → ~1,700), with "about/on average" hedges required — the prompts ban invented statistics
+- Only the memento lanes vary length for now; the other 9 lanes keep their fixed formats
+
 ## [2026-08-29] — Fixed text editing on the new-style posts (edits were producing blank images)
 
 **Requested by:** Keenan

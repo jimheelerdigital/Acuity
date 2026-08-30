@@ -111,13 +111,18 @@ async function generateMoodyFamilyTopic(opts: {
   slugPrefix: string;
   requireName: boolean;
   minLines: number;
+  /** Slide-count variance (2026-08-29, per Keenan: "they can be 4-10
+   *  slides long. the more scrolls the better engagement") — lanes that
+   *  vary length pass these; everything else keeps the 4-6 default. */
+  minItems?: number;
+  maxItems?: number;
 }): Promise<MoodyTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 1200,
+      max_tokens: 2000,
       system: opts.system,
       messages: [{ role: "user", content: opts.user }],
     });
@@ -163,7 +168,7 @@ async function generateMoodyFamilyTopic(opts: {
         lines: it.lines!.map((l) => l.trim()).filter(Boolean),
         scene: it.scene!.trim(),
       }));
-    if (!title || items.length < 4) {
+    if (!title || items.length < (opts.minItems ?? 4)) {
       throw new Error(
         `${opts.purpose} unusable: title="${title}", ${items.length} valid items`
       );
@@ -180,7 +185,7 @@ async function generateMoodyFamilyTopic(opts: {
       slug: `${opts.slugPrefix}-${slug}`,
       title,
       coverScene: (parsed.coverScene ?? "").trim() || items[0].scene,
-      items: items.slice(0, 6),
+      items: items.slice(0, opts.maxItems ?? 6),
     };
   } catch (err) {
     await prisma.claudeCallLog.create({
@@ -285,28 +290,28 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 // short command. NO "N. Name." headers — the numbers ARE the content.
 
 const MEMENTO_SYSTEM_PROMPTS: Record<MoodyAudience, string> = {
-  women: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MEMENTO MORI TIME-MATH — sobering, concrete numbers about how finite life is, each slide ending on a short command to act on it.
+  women: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
 
-AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock: aging parents, summers while the kids still come home, Saturdays before the house empties, healthy years, hours lost holding it together for everyone else. Never her own death by name — the finitude is felt, not stated.
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock at full scale: weekends left in an average lifetime, times she'll see her parents before they're gone, Christmases left with everyone at the table, healthy years remaining, summers while the kids still come home.
 
 SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
-"You'll see your parents about 15 more times.
+"At 45, you have about 1,700 weekends left. On average.
 
-One visit a year. Do the math.
+That's the whole number. Not this year's.
 
-Call them tonight."
+Stop giving them away."
 
 RULES:
 - "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("YOU'RE ON THE CLOCK", "DO THE MATH"). No number in the title.
-- Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
-  - First line: ONE concrete, honest number about finite time ("~1,200 Saturdays left before you're 60.", "About 12 more summers before the youngest leaves."). Plausible arithmetic only — never invented statistics, never fake precision, hedge with "about" or "~".
+- The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
+  - First line: ONE life-scale number — anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
-  - Last line: a 2-5 word command ("Call them tonight.", "Stop wasting them.").
-- Vary the subject across the 5 slides: aging parents, summers or holidays with the kids, healthy years, old friendships, hours lost to the phone or to obligation. Never two slides on the same subject.
+  - Last line: a 2-5 word command ("Call them tonight.", "Stop giving them away.").
+- Vary the subject across the slides: weekends left, aging parents, summers or holidays with the kids, healthy years, old friendships, hours lost to the phone. Never two slides on the same subject. Vary the rhythm too — let one slide be just the number and the command, no middle line.
 - Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
-- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Never mention death by name on the cover.
+- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Naming death in the slides is allowed ("before they're gone", "until you die") — but never on the cover.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
 
 OUTPUT (strict JSON, no markdown):
@@ -317,29 +322,29 @@ OUTPUT (strict JSON, no markdown):
     { "lines": ["...", "...", "..."], "scene": "..." }
   ]
 }`,
-  men: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: MEMENTO MORI TIME-MATH — sobering, concrete numbers about how finite time is, each slide ending on a short command to act on it.
+  men: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
 
-AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock: peak physical years, Mondays left this decade, visits home to his parents, hours lost to the scroll, years until the excuses stop working. The math should read like a bill coming due.
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
 
 SCENES: dark minimalist photography — an empty gym at night, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass. Desaturated, near-monochrome. Every frame DIM (white text must read on it). No people ever.
 
 FORMAT — each slide reads like this (match the rhythm):
-"You'll visit your parents about 20 more times.
+"At 30, you have about 2,500 weekends left. On average.
 
-Twice a year. Do the math.
+That number only goes down.
 
-Call them tonight."
+Stop wasting them."
 
 RULES:
 - "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("YOU'RE ON THE CLOCK", "DO THE MATH"). No number in the title.
-- Exactly 5 items. Each item's "lines": 2-3 short paragraphs.
-  - First line: ONE concrete, honest number about finite time ("~500 Mondays left in your 20s and 30s.", "About 15 peak training years."). Plausible arithmetic only — never invented statistics, never fake precision, hedge with "about" or "~".
+- The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
+  - First line: ONE life-scale number — anchored to his age, measured against an average lifespan or an ending that is coming ("At 30, you have about 2,500 weekends left. On average.", "You'll see your parents about 20 more times before they're gone."). GO BIG: the number must reframe his whole remaining life, not just this month. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
   - Last line: a 2-5 word command ("Stop wasting them.", "Start tonight.").
-- Vary the subject across the 5 slides: parents, peak physical years, hours lost to the scroll, weekends or Mondays left, the window to build something. Never two slides on the same subject.
+- Vary the subject across the slides: weekends left until the end, parents, peak physical years, healthy decades, hours lost to the scroll, the window to build something. Never two slides on the same subject. Vary the rhythm too — let one slide be just the number and the command, no middle line.
 - Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
-- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Never mention death by name on the cover.
+- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Naming death in the slides is allowed ("until you die", "before they're gone") — but never on the cover.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
 
 OUTPUT (strict JSON, no markdown):
@@ -352,18 +357,24 @@ OUTPUT (strict JSON, no markdown):
 }`,
 };
 
-/** Generate one memento mori topic for the given audience lane. */
+/** Generate one memento mori topic for the given audience lane.
+ *  Slide count varies per post (2026-08-29, per Keenan: "they can be
+ *  4-10 slides long. the more scrolls the better engagement") — 3-9
+ *  items + cover = 4-10 slides. */
 export async function generateMementoTopic(
   audience: MoodyAudience,
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
+  const itemCount = 3 + Math.floor(Math.random() * 7); // 3-9 items
   return generateMoodyFamilyTopic({
     purpose: audience === "men" ? "memento-men-carousel-topic" : "memento-carousel-topic",
     system: MEMENTO_SYSTEM_PROMPTS[audience],
-    user: `Write one new memento mori time-math post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: audience === "men" ? "memento-men" : "memento",
     requireName: false,
     minLines: 2,
+    minItems: 3,
+    maxItems: 9,
   });
 }
 
