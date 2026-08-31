@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-08-31] — Selfie topics must be big universal problems, not quirky micro-habits
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `content: selfie topic prompt` commit)
+
+### In plain English (for Keenan)
+The selfie slideshow's topic writer was told "specific beats general," which is how it landed on "this is how i stopped eating lunch standing up." That instruction is reversed: the cover problem now has to be something millions of women 40-50 would instantly recognize (running on empty, snapping at everyone, doom-scrolling at midnight), with a hard test — "would a million tired women say 'that's me'?" — and your lunch example baked in as the named failure to avoid. The specific little moments still show up, but inside the slides, never as the headline.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: rewrote THE PROBLEM + HEADLINE sections of `SELFIE_SYSTEM_PROMPT` — universal-problem test, explicit ban on niche micro-habit topics with the real failure quoted as a BAD example, "specificity belongs in steps/details" rule (aligns the selfie lane with the existing mass-appeal headline rule from generateTopic)
+- Prompt-only change — no code paths, schema, or cron touched
+
+### Manual steps needed
+None.
+
+### Notes
+- Root cause: the selfie prompt predates the 2026-08-28 "simple broad mass-appeal headlines" directive and was never updated when that rule landed in generateTopic's SYSTEM_PROMPT — lesson: when a headline rule lands, sweep ALL topic generators, not just the main one
+- tsc from apps/web: exactly 199 errors (baseline)
+
 ## [2026-08-31] — Avatar retired across all lanes; "Two Versions of You" killed
 
 **Requested by:** Keenan

@@ -225,9 +225,11 @@ FORMAT: a swipeable image slideshow. Slide 1 (cover) is a mirror selfie of her �
 
 AUDIENCE: women ~40-50 exactly like her. They should feel "she's me, and she figured something out" — never lectured.
 
-THE PROBLEM: pick ONE concrete, deeply relatable problem per post (running on empty, doom-scrolling at midnight, snapping at everyone, losing herself in the roles, saying yes to everything, the 3am spiral, never having a minute alone). Specific beats general.
+THE PROBLEM: pick ONE BIG, UNIVERSAL problem per post — something millions of women ~40-50 would instantly recognize as their own life (running on empty, doom-scrolling at midnight, snapping at everyone, losing herself in the roles, saying yes to everything, the 3am spiral, never having a minute alone, feeling invisible, being tired all the time). The problem must pass this test: would a MILLION tired women read the cover and think "that's me"? If it's a quirky micro-habit only some people have, it fails.
+- NEVER build a post around a niche, oddly-specific behavior. BAD (real failure): "this is how i stopped eating lunch standing up" — that is a weird detail, not a universal problem. BAD: anything about one specific meal, one chore, one app, one room.
+- The specificity belongs in the STEPS and DETAILS — the cover stays broad, the slides get concrete. (A "standing up at lunch" moment can be one step's detail inside a broad "running on empty" post — never the headline.)
 
-HEADLINE (cover text): first person, lowercase-leaning, starts with "this is how i" — e.g. "this is how i stopped running on empty" or "this is how i got my evenings back". Under 55 characters. It must create the itch to swipe. No numbers required, no emojis.
+HEADLINE (cover text): first person, lowercase-leaning, starts with "this is how i" — e.g. "this is how i stopped running on empty" or "this is how i got my evenings back". Broad and mass-appeal, per the problem test above. Under 55 characters. It must create the itch to swipe. No numbers required, no emojis.
 
 STEPS (one per slide, 4-6 total):
 - Each step is a short first-person line, 3-8 words, lowercase-leaning: "i started leaving my phone in the kitchen", "i stopped apologizing for resting".
