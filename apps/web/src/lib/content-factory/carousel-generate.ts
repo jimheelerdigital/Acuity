@@ -550,15 +550,13 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // Regenerate the scene from the stored prompt (scenes are text-free),
     // then re-render the overlay with the new text.
     const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
-    // Prompts generated with the BWK avatar carry the "reference photo"
-    // identity block — re-rendering them needs the reference too, or the
-    // lone man becomes a stranger (2026-08-30).
-    const avatar = slide.imagePrompt.includes("reference photo")
-      ? await getAvatarReference()
-      : null;
-    rawBuffer = avatar
-      ? await generateImageWithReference(slide.imagePrompt, avatar)
-      : await generateImage(slide.imagePrompt);
+    // Avatar RETIRED 2026-08-31 ("get rid of the avatar across the
+    // field") — historical prompts generated with the BWK avatar carry
+    // the "reference photo" identity block; strip it so the model isn't
+    // told to match a photo that's no longer attached.
+    const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
+    const cleanPrompt = slide.imagePrompt.replace(MOODY_AVATAR_PROMPT, "").trimEnd();
+    rawBuffer = await generateImage(cleanPrompt);
     // QUOTE (Playfair serif italic) is dead — 2026-08-30, per Keenan:
     // "get rid of the italicized ripple characters. make everything
     // consistent". All item slides re-render as ITEM, matching the

@@ -1,7 +1,7 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Carousel generation — 10 lanes, ALL generated overnight so every post
+ * Carousel generation — 9 lanes, ALL generated overnight so every post
  * is in Keenan's inbox by 7am Central (2026-08-28 night, per Keenan:
  * "I want ALL posts to be in my inbox in the morning"). The cron fires
  * hourly 5-8 UTC (12am-3am CDT; one hour later in winter CST) and each
@@ -18,6 +18,13 @@ import { inngest } from "@/inngest/client";
  * ("get rid of the 'this is your sign to' and 'someone elses
  * schedule'"). Generators stay dormant in moody-carousel.ts;
  * recomposeSlide keeps both lanes for editing historical posts.
+ * 2026-08-31 — VERSIONS ("get rid of the 'two people' post" — the
+ * "SAME DAY. TWO MEN." contrast carousel), and the AVATAR PERSONA is
+ * RETIRED across all lanes ("you put the avatar into literally every
+ * single post... get rid of the avatar across the field") — every
+ * lane generates from the text prompt alone again; getAvatarReference
+ * / sceneFeaturesAvatar / MOODY_AVATAR_PROMPT are dormant. Lone-man
+ * SCENES stay — the figure is just generic now, never Keenan.
  *
  * Visual identities (2026-08-29, RETUNED 2026-08-30): Ripple =
  * aesthetically pleasing FEMININE in LIGHT, airy schemes ("make the
@@ -26,10 +33,10 @@ import { inngest } from "@/inngest/client";
  * motivational — dim scenes, white text.
  *
  * 2026-08-30 additions (per Keenan: "add aura and two versions and 30
- * days" — all three built on his avatar persona): AURA (single image,
- * one bold line, persona mid-element), VERSIONS ("two versions of
- * you" contrast carousel), PROTOCOL ("DO THIS FOR 30 DAYS" numbered
- * save-bait). All BWK. Also 2026-08-30 (per Keenan: "add the selfie
+ * days"): AURA (single image, one bold line, lone man mid-element)
+ * and PROTOCOL ("DO THIS FOR 30 DAYS" numbered save-bait) — VERSIONS
+ * died 2026-08-31, see kill history. All BWK. Also 2026-08-30 (per
+ * Keenan: "add the selfie
  * carousel back to the ripple pipeline"): the SELFIE slideshow —
  * killed 2026-08-28 — is revived unchanged (mirror-selfie cover with
  * phone over her face, identity anchored on the previous post's
@@ -38,10 +45,9 @@ import { inngest } from "@/inngest/client";
  * Overnight schedule (CDT):
  * -  5 UTC (12am): MOODY-MEN — numbered discipline carousel (BWK)
  *                  + MEMENTO-MEN — men's life-math (BWK, 4-10 slides)
- *                  + AURA — single persona image + bold line (BWK)
+ *                  + AURA — single lone-man image + bold line (BWK)
  * -  6 UTC (1am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
- *                  (men, BWK) + VERSIONS — "two versions of you"
- *                  contrasts (BWK)
+ *                  (men, BWK)
  * -  7 UTC (2am):  QUESTIONS — women's hard questions (Ripple)
  *                  + SELFIE — realistic first-person photo slideshow
  *                  (Ripple)
@@ -55,7 +61,7 @@ import { inngest } from "@/inngest/client";
  *
  * Every email subject leads with the TikTok account the post belongs
  * to: [BUILD WITH KEY] for moody-men / memento-men / year / aura /
- * versions / protocol, [RIPPLE] for everything else (handled in
+ * protocol, [RIPPLE] for everything else (handled in
  * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
@@ -66,7 +72,6 @@ const CAROUSEL_LANES = [
   "free",
   "nobody",
   "aura",
-  "versions",
   "protocol",
   "selfie",
 ] as const;
@@ -75,7 +80,7 @@ type DailyBucket = (typeof CAROUSEL_LANES)[number];
 /** Which lanes each overnight cron hour fans out (UTC hour). */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
   5: ["moody-men", "memento-men", "aura"],
-  6: ["year", "versions"],
+  6: ["year"],
   7: ["questions", "selfie"],
   8: ["free", "nobody", "protocol"],
 };
@@ -129,12 +134,12 @@ export const carouselDailyCronFn = inngest.createFunction(
     today.setUTCHours(0, 0, 0, 0);
     const dateStr = today.toISOString().slice(0, 10);
 
-    // ── AURA bucket: single persona image, ONE bold line (BWK) ─────
+    // ── AURA bucket: single lone-man image, ONE bold line (BWK) ────
     // (2026-08-30, per Keenan: "add aura" — cloned from his "The photo
-    // with the most aura win" reference.) One cinematic shot of the
-    // avatar persona mid-element + one 2-8 word command line in the
-    // bold SIGN treatment, white on dark. The scene ALWAYS features
-    // the lone man, so the avatar reference is always used.
+    // with the most aura win" reference.) One cinematic shot of a lone
+    // man mid-element + one 2-8 word command line in the bold SIGN
+    // treatment, white on dark. 2026-08-31: the man is GENERIC — the
+    // Keenan avatar reference is retired across all lanes.
     if (bucket === "aura") {
       const aura = await step.run("generate-aura-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
@@ -157,26 +162,16 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
 
       const auraImage = await step.run("generate-aura-image", async () => {
-        const {
-          generateImage,
-          generateImageWithReference,
-          getAvatarReference,
-          uploadImage,
-        } = await import("@/lib/content-factory/carousel-generate");
-        const { buildMoodyImagePrompt, MOODY_AVATAR_PROMPT } = await import(
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMoodyImagePrompt } = await import(
           "@/lib/content-factory/moody-carousel"
         );
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
-        let prompt = buildMoodyImagePrompt("men", aura.scene);
-        let rawBuffer: Buffer;
-        const avatar = await getAvatarReference();
-        if (avatar) {
-          prompt = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
-          rawBuffer = await generateImageWithReference(prompt, avatar);
-        } else {
-          rawBuffer = await generateImage(prompt);
-        }
+        const prompt = buildMoodyImagePrompt("men", aura.scene);
+        const rawBuffer = await generateImage(prompt);
         const overlay = await renderMoodyTextOverlay([aura.line], "SIGN");
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
         const imageUrl = await uploadImage(
@@ -530,7 +525,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       bucket === "moody-men" ||
       bucket === "memento-men" ||
       bucket === "year" ||
-      bucket === "versions" ||
       bucket === "protocol"
         ? "men"
         : "women";
@@ -559,7 +553,6 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateYearTopic,
         generateFreeTopic,
         generateNobodyTopic,
-        generateVersionsTopic,
         generateProtocolTopic,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
@@ -574,7 +567,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       if (bucket === "year") return generateYearTopic(headlines);
       if (bucket === "free") return generateFreeTopic(headlines);
       if (bucket === "nobody") return generateNobodyTopic(headlines);
-      if (bucket === "versions") return generateVersionsTopic(headlines);
       if (bucket === "protocol") return generateProtocolTopic(headlines);
       return generateMoodyTopic("men", headlines);
     });
@@ -592,31 +584,18 @@ export const carouselDailyCronFn = inngest.createFunction(
     });
 
     const moodyCover = await step.run("generate-moody-cover", async () => {
-      const {
-        generateImage,
-        generateImageWithReference,
-        getAvatarReference,
-        uploadImage,
-      } = await import("@/lib/content-factory/carousel-generate");
-      const { buildMoodyImagePrompt, sceneFeaturesAvatar, MOODY_AVATAR_PROMPT } =
-        await import("@/lib/content-factory/moody-carousel");
+      const { generateImage, uploadImage } = await import(
+        "@/lib/content-factory/carousel-generate"
+      );
+      const { buildMoodyImagePrompt } = await import(
+        "@/lib/content-factory/moody-carousel"
+      );
       const { composeSlideWithOverlay, renderMoodyTextOverlay } =
         await import("@/lib/content-factory/compose");
 
-      // BWK avatar (2026-08-30, per Keenan): when a men's-lane scene
-      // features the lone man, he's Keenan — identity via reference.
-      let prompt = buildMoodyImagePrompt(imageAudience, moody.coverScene);
-      let rawBuffer: Buffer;
-      const avatar =
-        imageAudience === "men" && sceneFeaturesAvatar(moody.coverScene)
-          ? await getAvatarReference()
-          : null;
-      if (avatar) {
-        prompt = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
-        rawBuffer = await generateImageWithReference(prompt, avatar);
-      } else {
-        rawBuffer = await generateImage(prompt);
-      }
+      // Avatar retired 2026-08-31 — lone-man scenes render generic.
+      const prompt = buildMoodyImagePrompt(imageAudience, moody.coverScene);
+      const rawBuffer = await generateImage(prompt);
       const overlay = await renderMoodyTextOverlay(
         [moody.title],
         "COVER",
@@ -637,17 +616,12 @@ export const carouselDailyCronFn = inngest.createFunction(
     }[] = [];
     for (let i = 0; i < moody.items.length; i++) {
       const slide = await step.run(`generate-moody-item-${i}`, async () => {
-        const {
-          generateImage,
-          generateImageWithReference,
-          getAvatarReference,
-          uploadImage,
-        } = await import("@/lib/content-factory/carousel-generate");
-        const {
-          buildMoodyImagePrompt,
-          sceneFeaturesAvatar,
-          MOODY_AVATAR_PROMPT,
-        } = await import("@/lib/content-factory/moody-carousel");
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMoodyImagePrompt } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
@@ -655,18 +629,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         const paragraphs = numbered
           ? [`${i + 1}. ${item.name}`, ...item.lines]
           : item.lines;
-        let prompt = buildMoodyImagePrompt(imageAudience, item.scene);
-        let rawBuffer: Buffer;
-        const avatar =
-          imageAudience === "men" && sceneFeaturesAvatar(item.scene)
-            ? await getAvatarReference()
-            : null;
-        if (avatar) {
-          prompt = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
-          rawBuffer = await generateImageWithReference(prompt, avatar);
-        } else {
-          rawBuffer = await generateImage(prompt);
-        }
+        const prompt = buildMoodyImagePrompt(imageAudience, item.scene);
+        const rawBuffer = await generateImage(prompt);
         const overlay = await renderMoodyTextOverlay(
           paragraphs,
           itemKind,

@@ -228,7 +228,6 @@ export default function CarouselReviewPage() {
       | "free"
       | "nobody"
       | "aura"
-      | "versions"
       | "protocol"
       | "selfie"
   ) => {
@@ -627,14 +626,6 @@ export default function CarouselReviewPage() {
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "🏔️"}
-          </button>
-          <button
-            onClick={() => generateBucket("versions")}
-            disabled={generating}
-            title="Generate a two-versions-of-you carousel (men / BWK) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "⚖️"}
           </button>
           <button
             onClick={() => generateBucket("protocol")}

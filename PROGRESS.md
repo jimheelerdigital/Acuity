@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-08-31] — Avatar retired across all lanes; "Two Versions of You" killed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): retire avatar, kill versions` commit)
+
+### In plain English (for Keenan)
+Your likeness no longer appears in any generated post — every scene with a person now uses a generic figure, same as before the avatar experiment. The overnight run had put you in far more posts than intended, so the whole avatar system is switched off, not just dialed down. The "two versions of you" carousel (last night's "SAME DAY. TWO MEN.") is also gone. Nightly output is now 9 posts: 5 Build With Key, 4 Ripple.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: removed all `getAvatarReference`/`sceneFeaturesAvatar`/`MOODY_AVATAR_PROMPT` usage from the aura branch and the moody-family cover/item steps (plain `generateImage` again); `CAROUSEL_LANES` 10 → 9 (versions removed); `HOUR_LANES[6]` = year only; versions removed from imageAudience/topic routing; header updated
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: recomposeSlide no longer fetches the avatar — it strips the `MOODY_AVATAR_PROMPT` block from historical prompts before regenerating (so the model isn't told to match a photo that isn't attached); `getAvatarReference` itself stays, dormant
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: ⚖️ button + union entry removed
+- `apps/web/src/app/api/admin/carousels/route.ts`: doc comment
+- Dormant-not-deleted: `generateVersionsTopic`, `sceneFeaturesAvatar`, `MOODY_AVATAR_PROMPT` remain in moody-carousel.ts; recomposeSlide MOODY_LANES and email BWK_LANES keep versions for historical posts
+- Cron string unchanged — no Inngest resync needed
+
+### Manual steps needed
+- [ ] Decide whether to delete the avatar photo from Supabase storage (`content-factory/reference/bwk-avatar.jpg` — it's in a PUBLIC bucket and nothing references it anymore) (Keenan)
+
+### Notes
+- Root cause of "avatar in every post": aura/protocol/versions covers all triggered the reference path last night, and `sceneFeaturesAvatar`'s regex (`man|figure|silhouette`) matched nearly every BWK scene the topic generator wrote — so item slides used it too. The scene-text regex was too broad a gate for a "use sparingly" feature
+- Lone-man SCENES are unchanged — the grind/elements scene DNA stays; only the identity transfer is gone
+- Editing a historical avatar post now produces a generic man in the same scene — expected and accepted
+
 ## [2026-08-30] — Killed two more lanes: "This Is Your Sign" and "You're Not Behind"
 
 **Requested by:** Keenan
