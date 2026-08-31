@@ -21,10 +21,21 @@ import { inngest } from "@/inngest/client";
  * 2026-08-31 — VERSIONS ("get rid of the 'two people' post" — the
  * "SAME DAY. TWO MEN." contrast carousel), and the AVATAR PERSONA is
  * RETIRED across all lanes ("you put the avatar into literally every
- * single post... get rid of the avatar across the field") — every
- * lane generates from the text prompt alone again; getAvatarReference
- * / sceneFeaturesAvatar / MOODY_AVATAR_PROMPT are dormant. Lone-man
- * SCENES stay — the figure is just generic now, never Keenan.
+ * single post... get rid of the avatar across the field") — then
+ * REVIVED the same day behind a hard cap ("you can include it in
+ * 5-10% of generated posts, max"): one AVATAR_POST_PROBABILITY roll
+ * per BWK post; a winning post gets the avatar on exactly one slide.
+ * Lone-man SCENES render a generic figure everywhere else.
+ *
+ * 2026-08-31 — VARIANCE PASS (per Keenan: "we need more variation
+ * across all different posts... create a ton of variance between
+ * posts and image generations while keeping the theme intact"):
+ * widened scene families in every lane (night-vantage penthouse
+ * skylines, brutalist-coastal cliff houses — from his two TRUST THE
+ * PROCESS references), "inspiration not a menu" directives, a
+ * vantage-variance line in buildMoodyImagePrompt, a strengthened
+ * substance-level avoid-list, and randomized slide counts on the
+ * fixed-5 lanes (moody/year 4-7, questions/free/nobody 4-6).
  *
  * Visual identities (2026-08-29, RETUNED 2026-08-30): Ripple =
  * aesthetically pleasing FEMININE in LIGHT, airy schemes ("make the
@@ -85,6 +96,17 @@ const HOUR_LANES: Record<number, DailyBucket[]> = {
   8: ["free", "nobody", "protocol"],
 };
 
+/**
+ * Keenan-avatar frequency cap (2026-08-31, per Keenan: "you can
+ * include it in 5-10% of generated posts, max"). One random roll per
+ * BWK post — when it wins, exactly ONE slide whose scene features the
+ * lone man is generated with the avatar reference. HISTORY: the first
+ * avatar rollout gated on scene text (sceneFeaturesAvatar) and hit
+ * ~every post; the frequency gate must stay this explicit probability,
+ * never a scene-text regex.
+ */
+const AVATAR_POST_PROBABILITY = 0.08;
+
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
@@ -138,8 +160,8 @@ export const carouselDailyCronFn = inngest.createFunction(
     // (2026-08-30, per Keenan: "add aura" — cloned from his "The photo
     // with the most aura win" reference.) One cinematic shot of a lone
     // man mid-element + one 2-8 word command line in the bold SIGN
-    // treatment, white on dark. 2026-08-31: the man is GENERIC — the
-    // Keenan avatar reference is retired across all lanes.
+    // treatment, white on dark. The man is GENERIC except when the
+    // post wins the ≤8% Keenan-avatar roll (2026-08-31 cap).
     if (bucket === "aura") {
       const aura = await step.run("generate-aura-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
@@ -151,7 +173,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo }, lane: "aura" },
           select: { headline: true },
         });
-        return generateAuraTopic(recent.map((p) => p.headline));
+        const topic = await generateAuraTopic(recent.map((p) => p.headline));
+        // Rolled inside the step so Inngest memoizes it across replays.
+        return { ...topic, useAvatar: Math.random() < AVATAR_POST_PROBABILITY };
       });
 
       await step.run("ensure-bucket", async () => {
@@ -162,7 +186,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
 
       const auraImage = await step.run("generate-aura-image", async () => {
-        const { generateImage, uploadImage } = await import(
+        const { generateMoodyImage, uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildMoodyImagePrompt } = await import(
@@ -170,8 +194,10 @@ export const carouselDailyCronFn = inngest.createFunction(
         );
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
-        const prompt = buildMoodyImagePrompt("men", aura.scene);
-        const rawBuffer = await generateImage(prompt);
+        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+          buildMoodyImagePrompt("men", aura.scene),
+          aura.useAvatar
+        );
         const overlay = await renderMoodyTextOverlay([aura.line], "SIGN");
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
         const imageUrl = await uploadImage(
@@ -554,6 +580,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateFreeTopic,
         generateNobodyTopic,
         generateProtocolTopic,
+        sceneFeaturesAvatar,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
       const recent = await prisma.carouselPost.findMany({
@@ -561,14 +588,33 @@ export const carouselDailyCronFn = inngest.createFunction(
         select: { headline: true },
       });
       const headlines = recent.map((p) => p.headline);
-      if (bucket === "memento-men")
-        return generateMementoTopic("men", headlines);
-      if (bucket === "questions") return generateQuestionsTopic(headlines);
-      if (bucket === "year") return generateYearTopic(headlines);
-      if (bucket === "free") return generateFreeTopic(headlines);
-      if (bucket === "nobody") return generateNobodyTopic(headlines);
-      if (bucket === "protocol") return generateProtocolTopic(headlines);
-      return generateMoodyTopic("men", headlines);
+      const topic =
+        bucket === "memento-men"
+          ? await generateMementoTopic("men", headlines)
+          : bucket === "questions"
+            ? await generateQuestionsTopic(headlines)
+            : bucket === "year"
+              ? await generateYearTopic(headlines)
+              : bucket === "free"
+                ? await generateFreeTopic(headlines)
+                : bucket === "nobody"
+                  ? await generateNobodyTopic(headlines)
+                  : bucket === "protocol"
+                    ? await generateProtocolTopic(headlines)
+                    : await generateMoodyTopic("men", headlines);
+
+      // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
+      // max"). One roll per BWK post; a winning post puts the avatar
+      // on exactly ONE slide — the first whose scene features the lone
+      // man. Rolled INSIDE this step so Inngest memoizes the result
+      // across replays.
+      let avatarSlideIndex: number | null = null;
+      if (imageAudience === "men" && Math.random() < AVATAR_POST_PROBABILITY) {
+        const scenes = [topic.coverScene, ...topic.items.map((it) => it.scene)];
+        const idx = scenes.findIndex(sceneFeaturesAvatar);
+        if (idx >= 0) avatarSlideIndex = idx; // 0 = cover
+      }
+      return { ...topic, avatarSlideIndex };
     });
 
     const slug = moody.slug;
@@ -584,7 +630,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     });
 
     const moodyCover = await step.run("generate-moody-cover", async () => {
-      const { generateImage, uploadImage } = await import(
+      const { generateMoodyImage, uploadImage } = await import(
         "@/lib/content-factory/carousel-generate"
       );
       const { buildMoodyImagePrompt } = await import(
@@ -593,9 +639,12 @@ export const carouselDailyCronFn = inngest.createFunction(
       const { composeSlideWithOverlay, renderMoodyTextOverlay } =
         await import("@/lib/content-factory/compose");
 
-      // Avatar retired 2026-08-31 — lone-man scenes render generic.
-      const prompt = buildMoodyImagePrompt(imageAudience, moody.coverScene);
-      const rawBuffer = await generateImage(prompt);
+      // Avatar only when this post won the ≤8% roll AND the cover is
+      // the chosen slide (2026-08-31 cap).
+      const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+        buildMoodyImagePrompt(imageAudience, moody.coverScene),
+        moody.avatarSlideIndex === 0
+      );
       const overlay = await renderMoodyTextOverlay(
         [moody.title],
         "COVER",
@@ -616,7 +665,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     }[] = [];
     for (let i = 0; i < moody.items.length; i++) {
       const slide = await step.run(`generate-moody-item-${i}`, async () => {
-        const { generateImage, uploadImage } = await import(
+        const { generateMoodyImage, uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildMoodyImagePrompt } = await import(
@@ -629,8 +678,12 @@ export const carouselDailyCronFn = inngest.createFunction(
         const paragraphs = numbered
           ? [`${i + 1}. ${item.name}`, ...item.lines]
           : item.lines;
-        const prompt = buildMoodyImagePrompt(imageAudience, item.scene);
-        const rawBuffer = await generateImage(prompt);
+        // Avatar only when this post won the ≤8% roll AND this is the
+        // chosen slide (2026-08-31 cap).
+        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+          buildMoodyImagePrompt(imageAudience, item.scene),
+          moody.avatarSlideIndex === i + 1
+        );
         const overlay = await renderMoodyTextOverlay(
           paragraphs,
           itemKind,

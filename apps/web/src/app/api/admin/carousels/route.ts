@@ -224,8 +224,9 @@ export async function POST(req: NextRequest) {
       // missed/missed-men/forbidden/bloomers/taught/unsent died
       // 2026-08-29; rules/memento-women/moody-women/sign/behind died
       // 2026-08-30; aura/versions/protocol added 2026-08-30; selfie
-      // killed 2026-08-28 and revived 2026-08-30; versions + the
-      // Keenan avatar reference died 2026-08-31).
+      // killed 2026-08-28 and revived 2026-08-30; versions died
+      // 2026-08-31; the Keenan avatar died 2026-08-31 and was revived
+      // the same day behind a ≤8% per-post cap).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",

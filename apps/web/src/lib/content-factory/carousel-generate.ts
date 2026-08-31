@@ -437,6 +437,33 @@ export async function generateImageWithReference(
   return Buffer.from(b64, "base64");
 }
 
+/**
+ * Generate a moody-lane image, optionally with the Keenan avatar
+ * reference (2026-08-31, per Keenan: avatar allowed again in "5-10% of
+ * generated posts, max" — the caller decides via a per-post random
+ * roll in carousel-daily.ts; this function NEVER decides frequency).
+ * Returns the prompt actually used so it can be stored on the slide —
+ * the MOODY_AVATAR_PROMPT "reference photo" marker is what
+ * recomposeSlide keys off to re-attach the reference on edits.
+ */
+export async function generateMoodyImage(
+  prompt: string,
+  withAvatar: boolean
+): Promise<{ buffer: Buffer; prompt: string }> {
+  if (withAvatar) {
+    const reference = await getAvatarReference();
+    if (reference) {
+      const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
+      const full = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
+      return {
+        buffer: await generateImageWithReference(full, reference),
+        prompt: full,
+      };
+    }
+  }
+  return { buffer: await generateImage(prompt), prompt };
+}
+
 /** gpt-image-2 at 1024x1536 costs ~$0.04-0.08 per image. Estimate conservatively. */
 function estimateImageCost(): number {
   return 8; // 8 cents per image
@@ -550,13 +577,24 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // Regenerate the scene from the stored prompt (scenes are text-free),
     // then re-render the overlay with the new text.
     const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
-    // Avatar RETIRED 2026-08-31 ("get rid of the avatar across the
-    // field") — historical prompts generated with the BWK avatar carry
-    // the "reference photo" identity block; strip it so the model isn't
-    // told to match a photo that's no longer attached.
+    // Avatar slides (capped at ≤10% of posts since 2026-08-31) store
+    // the MOODY_AVATAR_PROMPT "reference photo" block in their prompt —
+    // re-attach the reference on edit so the man stays Keenan. If the
+    // reference is missing, strip the block so the model isn't told to
+    // match a photo that isn't attached.
     const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
-    const cleanPrompt = slide.imagePrompt.replace(MOODY_AVATAR_PROMPT, "").trimEnd();
-    rawBuffer = await generateImage(cleanPrompt);
+    if (slide.imagePrompt.includes(MOODY_AVATAR_PROMPT)) {
+      const reference = await getAvatarReference();
+      if (reference) {
+        rawBuffer = await generateImageWithReference(slide.imagePrompt, reference);
+      } else {
+        rawBuffer = await generateImage(
+          slide.imagePrompt.replace(MOODY_AVATAR_PROMPT, "").trimEnd()
+        );
+      }
+    } else {
+      rawBuffer = await generateImage(slide.imagePrompt);
+    }
     // QUOTE (Playfair serif italic) is dead — 2026-08-30, per Keenan:
     // "get rid of the italicized ripple characters. make everything
     // consistent". All item slides re-render as ITEM, matching the

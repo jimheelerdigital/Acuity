@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-08-31] — Way more variance across all posts, avatar back at 5-10% max
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every lane now has a much bigger world to draw from — new scene families straight from your two TRUST THE PROCESS references (the dark bedroom looking out over a city skyline at night, the black stone house on the cliff in sea fog), plus an explicit instruction that the example scenes are inspiration, not a menu, so the AI invents new locations every day instead of cycling the same gym/laptop/linen shots. Post length now varies too (4-7 slides on the men's carousels, 4-6 on the women's), and the "don't repeat" instruction got much stronger: a new post can't re-teach the same info under a different title. Your avatar is back, but hard-capped — roughly 1 in 12 posts (under your 10% max) gets you on exactly one slide; everything else renders a generic figure.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts:
+  - SCENE_BRIEF.men + .women widened with new families (night-vantage penthouse/skyline interiors, brutalist-coastal cliff scenes for men; balcony/garden/lake/market scenes for women) + "inspiration, not a menu — invent new locations" directives
+  - Inline SCENES in memento (both), year, protocol, aura, free prompts widened the same way
+  - avoidBlock() rewritten: recent titles now framed as covered TERRITORY — new post must differ in substance (ideas/subjects/numbers/structure), not just wording. Hits every moody-family lane + aura
+  - buildMoodyImagePrompt adds a vantage-variance line (low/through-glass/elevated/one-point perspective) while keeping the grade on theme
+  - Slide-count variance: generateMoodyTopic + generateYearTopic 4-7 items; generateQuestionsTopic, generateFreeTopic, generateNobodyTopic 4-6 (prompts changed from "Exactly 5 items" to request-driven counts)
+  - sceneFeaturesAvatar re-documented as scene DETECTOR only — never a frequency gate
+- apps/web/src/lib/content-factory/carousel-generate.ts:
+  - New generateMoodyImage(prompt, withAvatar) — attaches the avatar reference + MOODY_AVATAR_PROMPT only when the caller's roll won; returns the final prompt for slide storage
+  - recomposeSlide MOODY_LANES branch: prompts carrying the "reference photo" marker re-attach the avatar reference on edit again (falls back to stripping if the reference file is missing)
+- apps/web/src/inngest/functions/carousel-daily.ts:
+  - AVATAR_POST_PROBABILITY = 0.08 (Keenan: "5-10% of generated posts, max"). One roll per BWK post inside the topic step (Inngest-memoized); winner puts the avatar on the FIRST slide whose scene features the lone man. Aura rolls the same gate
+  - Cover/item/aura image steps use generateMoodyImage
+- apps/web/src/lib/content-factory/generate-topic.ts: SELFIE_SYSTEM_PROMPT gets cross-post shot-world variety (street/park/car/garden/porch, not always the coffee-journal-bedroom set); selfie avoid-list strengthened to substance level
+- apps/web/src/app/api/admin/carousels/route.ts: history comment updated (avatar revived same day behind ≤8% cap)
+- No schema changes, no cron change → no Inngest resync needed
+
+### Manual steps needed
+None (the avatar reference is already at content-factory/reference/bwk-avatar.jpg — the earlier "delete it?" question is now moot, it's in use again).
+
+### Notes
+- The avatar frequency gate is now an explicit per-post probability, NOT scene-text matching — the 2026-08-31 "avatar in every post" failure came from gating on a `man|figure|silhouette` regex that matched nearly every BWK scene. sceneFeaturesAvatar survives only to pick WHICH slide gets the reference after a post wins the roll. If a winning post has no lone-man scene, it simply gets no avatar (keeps the true rate ≤8%).
+- The roll lives INSIDE the generate-topic step so Inngest memoizes it — a roll outside step.run would re-randomize on every replay and could produce avatar on some slides but not others.
+- Protocol keeps its existing 5-7 step variance; memento keeps 3-9. Cover text treatment (bold ALL CAPS) intentionally untouched — Keenan locked "make everything consistent" when killing the italic.
+
+---
+
 ## [2026-08-31] — Selfie topics must be big universal problems, not quirky micro-habits
 
 **Requested by:** Keenan

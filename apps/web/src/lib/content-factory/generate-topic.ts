@@ -242,6 +242,7 @@ SHOTS (one per step, plus the cover):
 - "cover": ALWAYS a mirror selfie of her with her raised phone COMPLETELY covering her face — no eyes, nose, or mouth ever visible. The mirror is a little dirty, realistically: light smudges, a few fingerprints, a faint streak catching the light. Write the scene: which mirror, what she wears, the light, her posture. e.g. "full-length bedroom mirror with light smudges, oversized grey sweatshirt and leggings, warm lamp light, phone raised covering her whole face".
 - EVERY step's shot is "aesthetic" — a genuinely beautiful first-person phone photo with NO person in it: her steaming coffee by the window, the journal and pen in morning sun, her shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed. It should be the satisfying, pleasing-to-the-eye kind of shot people save. The cover is the ONLY selfie in the slideshow — never put her (or any person) in a step shot.
 - Every scene distinct: different room, light, angle, time of day, and subject — no two aesthetic scenes may feature the same object or surface. Under 30 words each, concrete nouns only.
+- Vary the WORLD of the shots post to post — never the same coffee-journal-bedroom set every time. Rotate through her whole life: the morning street, a park bench, the car dashboard at sunrise, a garden step, a library corner, the porch at dusk, a farmers-market bag on the counter, rain on the kitchen window. If recent posts lived in soft home interiors, take this one somewhere new.
 - Each scene must visually echo its step's meaning (the step about the phone shows the phone face-down; the step about walking shows the sneakers or the morning street).
 
 CAPTION — one question, nothing else:
@@ -277,7 +278,7 @@ export async function generateSelfieTopic(
 
   const avoidList =
     recentHeadlines.length > 0
-      ? `\n\nDO NOT pick a problem or headline that repeats or closely resembles any of these recent posts:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}`
+      ? `\n\nRECENT POSTS — this ground is already covered:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}\nYour post must be genuinely NEW against that list — a different problem, different steps, different rooms and shots. Not the same fix under a new headline.`
       : "";
 
   const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}\n\nReturn ONLY valid JSON, no other text.`;
