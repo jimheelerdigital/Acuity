@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-01] — BWK images people-free (generic-man bug), aura killed, memento + delete-after-reading back on Ripple
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The "avatar in every post" problem wasn't the avatar — the database showed your reference photo was only being attached at the capped rate. The real bug: the image instructions always ALLOWED "a lone man" in BWK scenes, so the AI painted a random generic guy into nearly every image, which looks identical to the avatar being everywhere. Now BWK images are people-free by default — empty gyms, glowing laptops, storm ridges with nobody in them — and a man only appears in the ~1-in-12 posts that win the avatar roll (and then it's actually you, on the cover). Also per your ask: the single-image "aura" post type (FINISH WHAT THEY LAUGHED AT) is gone, and two lanes are back on Ripple — the "DO THE MATH" memento-mori life-math posts and the "DELETE THIS AFTER READING" posts, both retuned to Ripple's light, airy look with dark text.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: SCENE_BRIEF.men + inline SCENES in memento-men/year/protocol prompts rewritten people-free ("NO people EVER — write every scene EMPTY"); buildMoodyImagePrompt men branch now hard-overrides to an empty location; MOODY_AVATAR_PROMPT gains an "EXCEPTION to the no-people rule" block that re-introduces the lone man for ≤8% winners; sceneFeaturesAvatar deleted (no longer needed); MEMENTO_SYSTEM_PROMPTS.women + FORBIDDEN_SYSTEM_PROMPT retuned from dark/white-text to LIGHT airy/dark-charcoal (Ripple identity); forbidden gets randomized 4-6 slide counts; AURA generator marked dead-dormant
+- apps/web/src/inngest/functions/carousel-daily.ts: aura branch deleted; CAROUSEL_LANES −aura +memento +forbidden; HOUR_LANES now 5:[moody-men,memento-men], 6:[year,memento], 7:[questions,selfie,forbidden], 8:[free,nobody,protocol]; topic-select adds generateMementoTopic("women")/generateForbiddenTopic branches; avatar roll simplified — winner always puts the avatar on the COVER (scenes are people-free, so no scene-text detection)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide avatar detection keys off the "reference photo" phrase (survives prompt-wording changes; historical posts still match) with an index-cut strip fallback; LIGHT_LANES +memento +forbidden
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: aura button (🏔️) replaced with memento (⏳) + forbidden (🤫); generateBucket union updated
+- apps/web/src/app/api/admin/carousels/route.ts: bucket comment updated with the 2026-09-01 lane history
+- No schema changes; cron string unchanged (dispatch-only) — no Inngest resync needed
+
+### Manual steps needed
+None — deploy is automatic on push; today's BWK posts were regenerated via the admin trigger as part of this session (Keenan: "resend todays BWK posts").
+
+### Notes
+- Root cause was subtle: the ≤8% gate on the reference photo worked perfectly (0 of today's 9 posts attached it), but a standing "At most ONE person: a lone man, luxury-styled..." line in the base image prompt invited a GENERIC man into ~every BWK image. Gating the reference is not gating the figure. The rule now: people appear in BWK imagery ONLY via the avatar-winner exception block.
+- Historical memento/forbidden posts (pre-kill) were dark scenes; they're now in LIGHT_LANES, so recomposing one of those old slides would render dark text on a dark image. Accepted — new posts are what matter.
+- Aura's generator stays dormant in moody-carousel.ts (dormant-not-deleted pattern) so historical aura posts can still be recomposed/emailed.
+
 ## [2026-08-31] — Way more variance across all posts, avatar back at 5-10% max
 
 **Requested by:** Keenan

@@ -223,11 +223,12 @@ export default function CarouselReviewPage() {
     bucket:
       | "moody-men"
       | "memento-men"
+      | "memento"
       | "questions"
       | "year"
       | "free"
       | "nobody"
-      | "aura"
+      | "forbidden"
       | "protocol"
       | "selfie"
   ) => {
@@ -620,12 +621,20 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "🤐"}
           </button>
           <button
-            onClick={() => generateBucket("aura")}
+            onClick={() => generateBucket("memento")}
             disabled={generating}
-            title="Generate an aura single-image persona post (men / BWK) now"
+            title="Generate a memento-mori DO THE MATH carousel (women / Ripple) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🏔️"}
+            {generating ? "…" : "⏳"}
+          </button>
+          <button
+            onClick={() => generateBucket("forbidden")}
+            disabled={generating}
+            title="Generate a delete-after-reading carousel (women / Ripple) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🤫"}
           </button>
           <button
             onClick={() => generateBucket("protocol")}

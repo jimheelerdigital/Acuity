@@ -577,19 +577,27 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // Regenerate the scene from the stored prompt (scenes are text-free),
     // then re-render the overlay with the new text.
     const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
-    // Avatar slides (capped at ≤10% of posts since 2026-08-31) store
-    // the MOODY_AVATAR_PROMPT "reference photo" block in their prompt —
-    // re-attach the reference on edit so the man stays Keenan. If the
-    // reference is missing, strip the block so the model isn't told to
-    // match a photo that isn't attached.
-    const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
-    if (slide.imagePrompt.includes(MOODY_AVATAR_PROMPT)) {
+    // Avatar slides (capped at ≤8% of posts since 2026-08-31) store an
+    // avatar block mentioning the "reference photo" in their prompt —
+    // re-attach the reference on edit so the man stays Keenan. Match on
+    // the phrase, not the current MOODY_AVATAR_PROMPT constant, so
+    // historical prompts stored under older block wording still work.
+    // If the reference is missing, cut the block (it always starts at
+    // one of the known lead-ins) so the model isn't told to match a
+    // photo that isn't attached.
+    if (slide.imagePrompt.includes("reference photo")) {
       const reference = await getAvatarReference();
       if (reference) {
         rawBuffer = await generateImageWithReference(slide.imagePrompt, reference);
       } else {
+        const cutAt = ["EXCEPTION to the no-people rule", "IDENTITY: the lone man"]
+          .map((m) => slide.imagePrompt.indexOf(m))
+          .filter((i) => i >= 0)
+          .sort((a, b) => a - b)[0];
         rawBuffer = await generateImage(
-          slide.imagePrompt.replace(MOODY_AVATAR_PROMPT, "").trimEnd()
+          cutAt !== undefined
+            ? slide.imagePrompt.slice(0, cutAt).trimEnd()
+            : slide.imagePrompt
         );
       }
     } else {
@@ -608,8 +616,13 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
           : "ITEM";
     // Live Ripple lanes are LIGHT airy scenes with dark charcoal text
     // (2026-08-30, per Keenan: "make the ripple posts be lighter
-    // schemes"); everything else stays white-on-dark.
-    const LIGHT_LANES = new Set(["questions", "sign", "free", "nobody"]);
+    // schemes"); everything else stays white-on-dark. memento and
+    // forbidden joined 2026-09-01 (revived INTO Ripple as light lanes;
+    // gotcha: their pre-kill posts were dark scenes, so recomposing one
+    // of those historical slides renders dark text on a dark image).
+    const LIGHT_LANES = new Set([
+      "questions", "sign", "free", "nobody", "memento", "forbidden",
+    ]);
     const tone = LIGHT_LANES.has(lane ?? "")
       ? ("dark" as const)
       : ("white" as const);

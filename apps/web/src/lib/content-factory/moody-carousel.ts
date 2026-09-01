@@ -58,7 +58,7 @@ TOPICS to rotate: protecting your peace, reset rituals, boundaries without guilt
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND lived-in late-night grind scenes: a near-black minimalist living room where a lone man sits on a couch working at a glowing laptop, floor-to-ceiling windows with dark trees beyond, a solitary man at a desk lit only by a screen, a lone hooded figure in a dark empty gym — AND living-the-elements scenes: a lone man in black technical gear ascending a snowy ridge in a whiteout storm, standing at a cliff edge in driving rain, cold-plunging into a grey sea at dawn, trail-running into mountain fog — AND night-vantage interior scenes: a dark minimalist bedroom or penthouse seen from the bed or a low couch, floor-to-ceiling glass filling the frame with a glittering city skyline at night (rain-blurred, fog-wrapped, or snow-dusted variants), a black car interior on an empty night highway with distant city lights ahead — AND brutalist-coastal scenes: a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. A lone man may appear ONLY when he genuinely elevates the scene — most scenes need no one. When he appears he is ALWAYS alone and styled LUXURY: dark tailored knits or an overcoat with an expensive watch, a dark suit with open collar, training gear (shirtless only mid-training), a plain dark tee at a glowing laptop, or black technical expedition gear (goggles/balaclava hiding the face). His face is usually hidden — from behind, in silhouette, in deep shadow, behind dark sunglasses, or behind goggles; rarely, a visible face is fine. These families are INSPIRATION, not a menu — invent new locations with the same DNA (night city, cold nature, austere architecture, late-night interiors, sea fog) and vary the vantage, weather, and time of night boldly so no two posts look alike.`,
+  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND late-night grind still-lifes: a glowing laptop open on a couch in a near-black minimalist living room, a desk lit by a single screen in an empty room, a barbell resting under one cold light in an empty gym — AND raw-elements landscapes: a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog — AND night-vantage interior scenes: a dark minimalist bedroom or penthouse seen from the bed or a low couch, floor-to-ceiling glass filling the frame with a glittering city skyline at night (rain-blurred, fog-wrapped, or snow-dusted variants), an empty black car interior on a night highway with distant city lights ahead — AND brutalist-coastal scenes: a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. NO people EVER — write every scene EMPTY. The empty location does the work: the still-glowing laptop, the unused gym, the storm nobody is standing in. These families are INSPIRATION, not a menu — invent new locations with the same DNA (night city, cold nature, austere architecture, late-night interiors, sea fog) and vary the vantage, weather, and time of night boldly so no two posts look alike.`,
   women: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window, a balcony breakfast in early sun, a garden path after light rain, market flowers wrapped in paper on a pale counter, a lake seen from a wooden dock in soft morning light, white linen breathing on a line, a bright window seat with an open book. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever. These are INSPIRATION, not a menu — invent new light-airy locations (garden, coast, bright morning interiors, a sunlit balcony over a soft city) and vary the vantage and time of morning so no two posts look alike.`,
 };
 
@@ -260,11 +260,15 @@ export function buildMoodyImagePrompt(
     // variance between posts and image generations while keeping the
     // theme intact").
     "Choose a distinctive vantage for THIS image — low from the ground or a bed, from inside looking out through glass, elevated, or deep one-point perspective — so it doesn't compose like a default eye-level shot. Keep the color grade and mood exactly on theme.",
-    // BWK reference (2026-08-30, Keenan's screenshot + avatar photo):
-    // a lone man is ON-brand for the men's lanes — face usually hidden,
-    // occasionally visible. Women's lanes stay people-free.
+    // People-free EVERYWHERE (2026-09-01, per Keenan: "the avatar is in
+    // literally every single post again" — the standing "at most ONE
+    // person: a lone man" allowance made gpt-image-2 paint a generic
+    // man into ~every BWK image even though the avatar reference was
+    // never attached). A man may ONLY enter via generateMoodyImage's
+    // avatar-winner exception block (≤8% of posts, and then he's
+    // Keenan).
     audience === "men"
-      ? "At most ONE person: a lone man, luxury-styled to match the scene, usually seen from behind, in silhouette, in deep shadow, or behind dark sunglasses — a clearly visible face only if the scene explicitly calls for it. No other people, NO animals. Screens may glow softly but show NO readable content."
+      ? "NO people, NO animals — even if the scene description implies a person, render the location EMPTY. Screens may glow softly but show NO readable content."
       : "NO people, NO animals, NO screens with content.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
@@ -273,33 +277,31 @@ export function buildMoodyImagePrompt(
 // ─── BWK avatar persona (2026-08-30, per Keenan) ─────────────────────
 // Keenan supplied a reference photo of himself: "use me as an avatar
 // for pictures that need one... try to hide my face where possible...
-// make it feel luxury." HISTORY: using sceneFeaturesAvatar as the
+// make it feel luxury." HISTORY: using scene-text detection as the
 // frequency gate put him in ~every post → retired 2026-08-31, then
 // REVIVED same day at a hard cap ("you can include it in 5-10% of
-// generated posts, max"). The frequency gate is now a per-POST random
-// roll in carousel-daily.ts (≤8%); sceneFeaturesAvatar is only the
-// scene DETECTOR that picks which slide gets the reference once a post
-// wins the roll. Never gate frequency on scene text again.
-
-/**
- * Does this scene description feature the lone man? Scenes are written
- * by Claude against SCENE_BRIEF.men, which only ever describes ONE
- * solitary male figure — so a person-word means a man is in frame.
- * DETECTOR ONLY — the 5-10% frequency cap lives in carousel-daily.ts.
- */
-export function sceneFeaturesAvatar(scene: string): boolean {
-  return /\b(man|figure|silhouette)\b/i.test(scene);
-}
+// generated posts, max"). Then 2026-09-01: even with the reference
+// gated to ≤8%, the base prompt's "at most ONE person: a lone man"
+// allowance made gpt-image-2 paint a GENERIC man into ~every image.
+// So now: BWK scenes are people-free by definition, the frequency
+// gate is a per-POST random roll in carousel-daily.ts (≤8%), and a
+// winning post puts the avatar on the COVER via MOODY_AVATAR_PROMPT's
+// exception block. Never gate frequency on scene text again.
 
 /**
  * Appended to buildMoodyImagePrompt output when generating WITH the
  * avatar reference. The phrase "reference photo" doubles as the marker
  * recomposeSlide uses to know a stored imagePrompt needs the reference.
+ *
+ * Since 2026-09-01 the base prompt renders every BWK location EMPTY,
+ * so this block must first RE-INTRODUCE the lone man (the exception),
+ * then bind his identity to the reference.
  */
 export const MOODY_AVATAR_PROMPT = [
-  "IDENTITY: the lone man in this scene IS the man in the attached reference photo — the same person: same build, same hair, same skin tone.",
+  "EXCEPTION to the no-people rule: this image features exactly ONE lone man, luxury-styled to match the scene (dark tailored knits or an overcoat with an expensive watch, a dark suit with open collar, training gear mid-training, a plain dark tee at a laptop, or black technical expedition gear). His face is hidden — from behind, in silhouette, in deep shadow, or behind dark sunglasses.",
+  "IDENTITY: that lone man IS the man in the attached reference photo — the same person: same build, same hair, same skin tone.",
   "Transfer his IDENTITY ONLY. Completely IGNORE the reference photo's setting, mirror, bathroom, clothing, pose, and lighting — build the scene described above from scratch and restyle him in the luxury wardrobe the scene calls for.",
-  "Keep his face treatment as the scene directs (from behind, silhouette, deep shadow, or dark sunglasses unless the scene says otherwise). Photorealistic, luxury editorial quality.",
+  "Photorealistic, luxury editorial quality.",
 ].join("\n");
 
 // ─── Captions: pure discovery hashtags, cloned from the reference ─────
@@ -340,16 +342,20 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 // ─── MEMENTO MORI carousel (2026-08-28 PM, per Keenan) ────────────────
 // Split into TWO audience lanes (2026-08-28 late night, per Keenan):
 // "memento" targets women 40-50 (Ripple), "memento-men" targets young
-// men (BWK). Same skeleton: cover + 5 slides of sobering time-math
+// men (BWK). Same skeleton: cover + slides of sobering time-math
 // ("You'll see your parents about 15 more times."), each landing on a
 // short command. NO "N. Name." headers — the numbers ARE the content.
+// 2026-09-01: "memento" (women) REVIVED into Ripple ("add the 'do the
+// math' / less time than you think back to ripple... add memento mori
+// posts back") and retuned to the LIGHT Ripple identity — bright airy
+// scenes, dark charcoal text.
 
 const MEMENTO_SYSTEM_PROMPTS: Record<MoodyAudience, string> = {
-  women: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
+  women: `You write text for a soft, light, minimal photo-carousel account. Each post is a cover + slides of dark charcoal text centered on bright airy photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock at full scale: weekends left in an average lifetime, times she'll see her parents before they're gone, Christmases left with everyone at the table, healthy years remaining, summers while the kids still come home.
 
-SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass, a dark garden seen through a lit kitchen window, a single lamp on in a house at blue hour, an emptied dining table with one chair pulled out. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever. These are inspiration, not a menu — invent new quiet-evening locations in the same DNA so no two posts look alike.
+SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy schemes — an empty porch swing in pale morning sun, a cream kitchen table cleared after breakfast by a bright window, dried flowers on a white sill in soft daylight, a child's empty bedroom with sheer curtains glowing, linen bedding in diffused morning light, a silk robe over a chair by a sunlit window, a garden bench under soft overcast light, a pale staircase with light falling across it, an emptied dining table with one chair pulled out in late-afternoon glow. Bright cream, ivory, warm white — every frame LIGHT (dark charcoal text must read on it), the quiet ache carried by emptiness and light, not darkness. No people ever. These are inspiration, not a menu — invent new quiet-daylight locations in the same DNA so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 45, you have about 1,700 weekends left. On average.
@@ -382,7 +388,7 @@ OUTPUT (strict JSON, no markdown):
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — an empty gym at night, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass, a lone man working at a glowing laptop in a near-black minimalist living room, a solitary figure at a desk lit only by a screen, a dark bedroom seen from the bed with floor-to-ceiling glass over a glittering night skyline, a stone walkway to a cliff edge in sea fog, a black car interior on an empty night highway. Desaturated, near-monochrome. Every frame DIM (white text must read on it). A man appears ONLY when he elevates the scene — always alone, luxury-styled (dark knits, overcoat, watch; dark suit; training gear; black expedition gear on a ridge or cliff), face usually hidden (behind/silhouette/shadow/sunglasses/goggles), rarely visible. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
+SCENES: dark minimalist photography — an empty gym at night with a loaded barbell under one cold light, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass, a glowing laptop open on a couch in a near-black minimalist living room, a dark bedroom seen from the bed with floor-to-ceiling glass over a glittering night skyline, a stone walkway to a cliff edge in sea fog, a black car interior on an empty night highway. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY; the still-glowing laptop, the unused gym, the road nobody is on do the work. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 30, you have about 2,500 weekends left. On average.
@@ -668,12 +674,15 @@ export function buildMissedCaption(slug: string): string {
 }
 
 // ─── DELETE THIS AFTER READING carousel (2026-08-28 late PM) ──────────
-// Replaces the selfie lane (12 UTC). Women's funnel: a cover styled
-// like a warning ("DELETE THIS AFTER READING") + 5 slides, each ONE
-// truth you're not supposed to say out loud. Single-line slides render
-// in the premium QUOTE serif italic, like the questions lane.
+// Women's funnel: a cover styled like a warning ("DELETE THIS AFTER
+// READING") + slides, each ONE truth you're not supposed to say out
+// loud. 2026-09-01: REVIVED into Ripple ("add the delete after reading
+// posts back to ripple") — retuned to the LIGHT Ripple identity (bright
+// airy scenes, dark charcoal text; the old QUOTE serif italic is dead,
+// slides render as ITEM) with randomized 4-6 slide counts per the
+// variance pass.
 
-const FORBIDDEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 slides of white text centered on cinematic photography. The niche: FORBIDDEN TRUTHS — each slide is ONE line you're not supposed to say out loud. The post is framed like a note the reader shouldn't have seen. No advice, no answers, anywhere.
+const FORBIDDEN_SYSTEM_PROMPT = `You write text for a soft, light, minimal photo-carousel account. Each post is a cover + slides of dark charcoal text centered on bright airy photography. The niche: FORBIDDEN TRUTHS — each slide is ONE line you're not supposed to say out loud. The post is framed like a note the reader shouldn't have seen. No advice, no answers, anywhere.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. Each line should name something she has thought and never said: the unspoken ledger of marriage, motherhood, friendship, aging, wanting more.
 VOICE: quiet, flat, devastatingly honest. Plain statements. Never cruel, never cynical for its own sake — the sting is recognition, not shock.
@@ -686,7 +695,7 @@ FORMAT — each slide is ONE line like:
 
 RULES:
 - "title": the cover text. 3-6 words with warning-label energy, works in ALL CAPS ("DELETE THIS AFTER READING", "DON'T SCREENSHOT THIS", "YOU DIDN'T SEE THIS"). Not a question.
-- Exactly 5 items. Each item's "lines": exactly ONE line — the truth. 8-18 words, a plain declarative statement (may be two short sentences). No question marks.
+- The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the truth. 8-18 words, a plain declarative statement (may be two short sentences). No question marks.
 - Each line hits a DIFFERENT nerve: love, motherhood or family, friendship, self, time. Never two lines on the same nerve.
 - Short declarative words. No metaphors that need decoding, no clichés, no advice-verbs. Read each line out loud — it should feel like something overheard, not written.
 - US English. No emojis, no hashtags, no quotes around the lines. Never mention any app, product, journaling, therapy, or AI.
@@ -701,17 +710,20 @@ OUTPUT (strict JSON, no markdown):
   ]
 }`;
 
-/** Generate one forbidden-truths topic (women's funnel, replaces selfie). */
+/** Generate one forbidden-truths topic (women's funnel, Ripple). */
 export async function generateForbiddenTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "forbidden-carousel-topic",
     system: FORBIDDEN_SYSTEM_PROMPT,
-    user: `Write one new forbidden-truths post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new forbidden-truths post with exactly ${itemCount} truths.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "forbidden",
     requireName: false,
     minLines: 1,
+    minItems: 4,
+    maxItems: 6,
   });
 }
 
@@ -825,7 +837,7 @@ const YEAR_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-caro
 AUDIENCE: young aspiring men (18-30) deep in the self-improvement / discipline / "trust the process" niche, scrolling at midnight and telling themselves they'll start Monday. The math should read like orders from a future self.
 VOICE: calm command energy. Short declarative sentences. No softness, no hedging on the tone (hedge only the numbers). Direct second person. A mentor who's already made it and doesn't waste words. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — an empty running track at night, a dim gym with one light on, a desk lamp over an open notebook before dawn, a pre-dawn road disappearing into fog, a city rooftop at first light, rain on a black car windshield, a lone man on a couch working at a glowing laptop in a near-black living room, a solitary hooded figure training alone in a dark gym, a dark penthouse bedroom with floor-to-ceiling glass over a glittering night skyline, a dark stone house on a cliff above a fog-covered sea. Desaturated, near-monochrome. Every frame DIM (white text must read on it). A man appears ONLY when he elevates the scene — always alone, luxury-styled (dark knits, overcoat, watch; dark suit; training gear; black expedition gear on a ridge or cliff), face usually hidden (behind/silhouette/shadow/sunglasses/goggles), rarely visible. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
+SCENES: dark minimalist photography — an empty running track at night, a dim gym with one light on and a loaded barbell waiting, a desk lamp over an open notebook before dawn, a pre-dawn road disappearing into fog, a city rooftop at first light, rain on a black car windshield, a glowing laptop open on a couch in a near-black living room, a dark penthouse bedroom with floor-to-ceiling glass over a glittering night skyline, a dark stone house on a cliff above a fog-covered sea. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY; the still-glowing laptop, the unused gym, the track nobody is running do the work. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "A year from now you could have read 24 books.
@@ -1208,6 +1220,10 @@ export async function generateSignTopic(
 // "add aura" — the BWK counterpart to SIGN: one cinematic shot of the
 // persona mid-element or mid-grind, one bold command line. Cloned from
 // his "The photo with the most aura win" reference.
+// ☠️ KILLED 2026-09-01 (per Keenan: "get rid of the 'finish what they
+// laughed at' post type where it's just one picture generation").
+// Generator kept dormant for historical posts; lane removed from
+// carousel-daily.ts.
 
 const AURA_SYSTEM_PROMPT = `You write ONE line for a dark, dominant, single-image post. The format: bold white text on a cinematic photograph of a lone man living at full intensity — ascending a snowy ridge in a storm, standing at a cliff edge in rain, cold-plunging at dawn, training alone in a dark gym, working at a glowing laptop in a near-black room, standing at floor-to-ceiling glass over a glittering night skyline, walking a long stone path to a cliff-top house in sea fog, running an empty city street before first light, rowing across cold grey water at dawn. Those are inspiration, not a menu — invent new full-intensity moments in the same DNA so no two posts look alike.
 
@@ -1350,7 +1366,7 @@ const PROTOCOL_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE protocols. Every step must be concrete enough to schedule: a time, a count, a limit, a rule — never vague advice like "work harder" or "stay focused".
 VOICE: calm command energy. Imperative mood. Short declarative sentences. A mentor issuing orders, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a lone man at a glowing laptop in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table, a dark bedroom with floor-to-ceiling glass over a night skyline, a stone stairway climbing into fog. Desaturated, near-monochrome. Every frame DIM (white text must read on it). A man appears ONLY when he elevates the scene — always alone, luxury-styled (dark knits, overcoat, watch; dark suit; training gear; black expedition gear on a ridge or cliff), face usually hidden (behind/silhouette/shadow/sunglasses/goggles), rarely visible. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
+SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a glowing laptop open in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table, a dark bedroom with floor-to-ceiling glass over a night skyline, a stone stairway climbing into fog. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY; the still-glowing laptop, the unused gym, the face-down phone do the work. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "5. One hour on the skill.
