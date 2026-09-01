@@ -479,10 +479,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       bucket === "moody-men" ||
       bucket === "free" ||
       bucket === "protocol";
-    // Ripple lanes render on LIGHT airy scenes, so their text is dark
-    // charcoal; BWK lanes stay white-on-dark (2026-08-30, per Keenan:
-    // "make the ripple posts be lighter schemes").
-    const textTone = imageAudience === "women" ? ("dark" as const) : ("white" as const);
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -507,21 +503,36 @@ export const carouselDailyCronFn = inngest.createFunction(
         select: { headline: true },
       });
       const headlines = recent.map((p) => p.headline);
+
+      // Ripple light/dark scheme roll (2026-09-01, per Keenan: "make
+      // half the ripple posts light like they currently are, and the
+      // other half dark like they used to be"). One 50/50 roll per
+      // women-lane post — light = airy scenes + dark charcoal text,
+      // dark = the original warm-dim quiet-luxury scenes + white
+      // text. BWK men's lanes are always dark (scheme null). Rolled
+      // INSIDE this step so Inngest memoizes it across replays.
+      const scheme =
+        imageAudience === "women"
+          ? Math.random() < 0.5
+            ? ("light" as const)
+            : ("dark" as const)
+          : null;
+      const womenScheme = scheme ?? "light";
       const topic =
         bucket === "memento-men"
           ? await generateMementoTopic("men", headlines)
           : bucket === "memento"
-            ? await generateMementoTopic("women", headlines)
+            ? await generateMementoTopic("women", headlines, womenScheme)
             : bucket === "questions"
-              ? await generateQuestionsTopic(headlines)
+              ? await generateQuestionsTopic(headlines, womenScheme)
               : bucket === "year"
                 ? await generateYearTopic(headlines)
                 : bucket === "free"
-                  ? await generateFreeTopic(headlines)
+                  ? await generateFreeTopic(headlines, womenScheme)
                   : bucket === "nobody"
-                    ? await generateNobodyTopic(headlines)
+                    ? await generateNobodyTopic(headlines, womenScheme)
                     : bucket === "forbidden"
-                      ? await generateForbiddenTopic(headlines)
+                      ? await generateForbiddenTopic(headlines, womenScheme)
                       : bucket === "protocol"
                         ? await generateProtocolTopic(headlines)
                         : await generateMoodyTopic("men", headlines);
@@ -536,8 +547,13 @@ export const carouselDailyCronFn = inngest.createFunction(
         imageAudience === "men" && Math.random() < AVATAR_POST_PROBABILITY
           ? 0
           : null;
-      return { ...topic, avatarSlideIndex };
+      return { ...topic, avatarSlideIndex, scheme };
     });
+
+    // Light scenes need dark charcoal text; dark scenes (BWK always,
+    // Ripple on a "dark" roll) need white text.
+    const textTone =
+      moody.scheme === "light" ? ("dark" as const) : ("white" as const);
 
     const slug = moody.slug;
     logger.info(
@@ -564,7 +580,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       // Avatar only when this post won the ≤8% roll AND the cover is
       // the chosen slide (2026-08-31 cap).
       const { buffer: rawBuffer, prompt } = await generateMoodyImage(
-        buildMoodyImagePrompt(imageAudience, moody.coverScene),
+        buildMoodyImagePrompt(imageAudience, moody.coverScene, moody.scheme ?? "light"),
         moody.avatarSlideIndex === 0
       );
       const overlay = await renderMoodyTextOverlay(
@@ -603,7 +619,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         // Avatar only when this post won the ≤8% roll AND this is the
         // chosen slide (2026-08-31 cap).
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
-          buildMoodyImagePrompt(imageAudience, item.scene),
+          buildMoodyImagePrompt(imageAudience, item.scene, moody.scheme ?? "light"),
           moody.avatarSlideIndex === i + 1
         );
         const overlay = await renderMoodyTextOverlay(

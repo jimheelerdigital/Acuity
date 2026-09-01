@@ -614,18 +614,25 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
         : slide.kind === "COVER"
           ? "COVER"
           : "ITEM";
-    // Live Ripple lanes are LIGHT airy scenes with dark charcoal text
-    // (2026-08-30, per Keenan: "make the ripple posts be lighter
-    // schemes"); everything else stays white-on-dark. memento and
-    // forbidden joined 2026-09-01 (revived INTO Ripple as light lanes;
-    // gotcha: their pre-kill posts were dark scenes, so recomposing one
-    // of those historical slides renders dark text on a dark image).
+    // Text tone comes from the STORED image prompt, not the lane:
+    // since 2026-09-01 every Ripple women-lane post rolls a 50/50
+    // light/dark scheme, so a lane no longer implies a tone. The
+    // buildMoodyImagePrompt exposure line doubles as the marker
+    // ("SOFT and LIGHT" → dark charcoal text, "DIM and shadowed" →
+    // white text) — this also fixes the old gotcha where recomposing
+    // a pre-kill dark memento/forbidden slide via the lane table
+    // rendered dark text on a dark image. LIGHT_LANES is only the
+    // fallback for slides whose prompts predate the markers.
     const LIGHT_LANES = new Set([
       "questions", "sign", "free", "nobody", "memento", "forbidden",
     ]);
-    const tone = LIGHT_LANES.has(lane ?? "")
+    const tone = slide.imagePrompt?.includes("SOFT and LIGHT")
       ? ("dark" as const)
-      : ("white" as const);
+      : slide.imagePrompt?.includes("DIM and shadowed")
+        ? ("white" as const)
+        : LIGHT_LANES.has(lane ?? "")
+          ? ("dark" as const)
+          : ("white" as const);
     const overlay = await renderMoodyTextOverlay(
       newText.split("\n\n"),
       moodyKind,

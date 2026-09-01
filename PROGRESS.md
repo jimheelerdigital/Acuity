@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-01] — Ripple posts split 50/50 between light and dark looks
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Ripple posts are no longer all light and airy. Each post now flips a coin: half come out in the current bright, soft look with dark charcoal text, and half come out in the original dark look — warm candlelight, lamplit rooms, rain on night windows — with white text. Every Ripple lane (questions, free things, nobody-tells-you, memento mori, delete-after-reading) rolls its own coin per post, so a given day's mix varies naturally. The selfie posts are untouched (they're real-photo style, not scenery). BWK stays all-dark as before.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new `WomenScheme` ("light" | "dark") with `WOMEN_SCENE_BRIEFS` + `WOMEN_PROMPT_HEADER` records (dark brief restores the pre-2026-08-30 warm-dim quiet-luxury scenes); questions/free/nobody/forbidden/memento-women system prompts converted from consts to `build*SystemPrompt(scheme)` builders; their generators (`generateQuestionsTopic`, `generateFreeTopic`, `generateNobodyTopic`, `generateForbiddenTopic`, `generateMementoTopic`) take a `scheme: WomenScheme = "light"` param; `buildMoodyImagePrompt` takes a third `womenScheme` param — light keeps the airy style + "SOFT and LIGHT" exposure line, dark uses a warm-low-light style + "DIM and shadowed" exposure line
+- apps/web/src/inngest/functions/carousel-daily.ts: 50/50 scheme rolled INSIDE the generate-moody-topic step (memoized across Inngest replays, same pattern as the avatar roll) and returned on the topic; `textTone` now derived from `moody.scheme` after the step (light→dark text, dark/null→white); both `buildMoodyImagePrompt` calls pass the scheme
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide text tone now reads the STORED imagePrompt markers ("SOFT and LIGHT"→dark, "DIM and shadowed"→white) with the LIGHT_LANES table demoted to a fallback for pre-marker slides — lanes no longer imply a tone
+- No schema changes; cron string unchanged (dispatch-only) — no Inngest resync needed
+
+### Manual steps needed
+None — deploy is automatic on push. Tomorrow's 5-8 UTC runs pick this up automatically.
+
+### Notes
+- The scheme roll must live inside the Inngest step (like the avatar roll) — a roll outside would re-randomize on replay and could give a light topic dark imagery mid-generation.
+- The prompt-marker tone detection also fixes the 2026-09-01 gotcha noted below: recomposing a historical pre-kill dark memento/forbidden slide now correctly picks white text from its stored prompt instead of lane-guessing dark.
+- Selfie is exempt by construction — it early-returns before the moody-family branch and never touches buildMoodyImagePrompt.
+
 ## [2026-09-01] — BWK images people-free (generic-man bug), aura killed, memento + delete-after-reading back on Ripple
 
 **Requested by:** Keenan

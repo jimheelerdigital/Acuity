@@ -57,9 +57,31 @@ VOICE: quiet strength. Short declarative sentences with warmth underneath — a 
 TOPICS to rotate: protecting your peace, reset rituals, boundaries without guilt, quiet mornings, dropping what drains you, unhurried order, saying no, letting the phone go dark.`,
 };
 
+export type WomenScheme = "light" | "dark";
+
+// Ripple 50/50 scheme split (2026-09-01, per Keenan: "make half the
+// ripple posts light like they currently are, and the other half dark
+// like they used to be"). Every women/Ripple moody-family post rolls a
+// scheme in carousel-daily.ts: "light" = the 2026-08-30 airy identity
+// (bright scenes, dark charcoal text), "dark" = the original warm-dim
+// quiet-luxury identity (dim scenes, white text). Selfie is a
+// real-photo lane and exempt.
+export const WOMEN_SCENE_BRIEFS: Record<WomenScheme, string> = {
+  light: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window, a balcony breakfast in early sun, a garden path after light rain, market flowers wrapped in paper on a pale counter, a lake seen from a wooden dock in soft morning light, white linen breathing on a line, a bright window seat with an open book. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever. These are INSPIRATION, not a menu — invent new light-airy locations (garden, coast, bright morning interiors, a sunlit balcony over a soft city) and vary the vantage and time of morning so no two posts look alike.`,
+  dark: `SCENES: soft, aesthetically pleasing FEMININE photography in warm LOW light — silk bedding in candlelight, a kitchen table cleared after dinner lit by one warm lamp, dried flowers by a dark window, a bath steaming in flickering candlelight, a silk robe over a chair by rain-streaked night glass, a dark garden seen through a lit kitchen window, tea steaming under a single lamp at blue hour, an armchair and open book in a pool of lamplight, a lit porch at dusk with rain falling beyond, an emptied dining table with one chair pulled out at night. Muted, warm, dreamy — quiet luxury after dark, never harsh or cold. Every scene DIM (white text must read on it), soft shadows, intimate. No people ever. These are INSPIRATION, not a menu — invent new warm-evening locations (a candlelit bedroom, a rainy night window seat, a garden at dusk) and vary the vantage and time of evening so no two posts look alike.`,
+};
+
+// First sentence of every women-lane system prompt, by scheme — the
+// text treatment must match the photography the scheme produces.
+const WOMEN_PROMPT_HEADER: Record<WomenScheme, string> = {
+  light:
+    "You write text for a soft, light, feminine minimal photo-carousel account. Each post is a cover + slides of dark text centered on bright, airy photography.",
+  dark: "You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography.",
+};
+
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
   men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND late-night grind still-lifes: a glowing laptop open on a couch in a near-black minimalist living room, a desk lit by a single screen in an empty room, a barbell resting under one cold light in an empty gym — AND raw-elements landscapes: a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog — AND night-vantage interior scenes: a dark minimalist bedroom or penthouse seen from the bed or a low couch, floor-to-ceiling glass filling the frame with a glittering city skyline at night (rain-blurred, fog-wrapped, or snow-dusted variants), an empty black car interior on a night highway with distant city lights ahead — AND brutalist-coastal scenes: a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. NO people EVER — write every scene EMPTY. The empty location does the work: the still-glowing laptop, the unused gym, the storm nobody is standing in. These families are INSPIRATION, not a menu — invent new locations with the same DNA (night city, cold nature, austere architecture, late-night interiors, sea fog) and vary the vantage, weather, and time of night boldly so no two posts look alike.`,
-  women: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window, a balcony breakfast in early sun, a garden path after light rain, market flowers wrapped in paper on a pale counter, a lake seen from a wooden dock in soft morning light, white linen breathing on a line, a bright window seat with an open book. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever. These are INSPIRATION, not a menu — invent new light-airy locations (garden, coast, bright morning interiors, a sunlit balcony over a soft city) and vary the vantage and time of morning so no two posts look alike.`,
+  women: WOMEN_SCENE_BRIEFS.light,
 };
 
 const buildMoodySystemPrompt = (
@@ -237,21 +259,31 @@ export async function generateMoodyTopic(
   });
 }
 
-/** Image prompt for one moody slide — dark cinematic, text-free, no people. */
+/** Image prompt for one moody slide — cinematic, text-free, no people.
+ *  For women/Ripple, `womenScheme` picks light-airy (dark text) or the
+ *  original warm-dim quiet luxury (white text) — 2026-09-01, per
+ *  Keenan: "make half the ripple posts light like they currently are,
+ *  and the other half dark like they used to be." */
 export function buildMoodyImagePrompt(
   audience: MoodyAudience | "universal",
-  scene: string
+  scene: string,
+  womenScheme: WomenScheme = "light"
 ): string {
   const style =
     audience === "men"
       ? "Dark, dominant, moody minimalist photography. Desaturated, near-monochrome color grade — charcoal, slate, black, cold glass, storm light. Deep shadows, austere, powerful, commanding."
       : audience === "universal"
         ? "Dark, moody, cinematic photography. Muted, desaturated color grade with deep shadow — dusk, night, or heavy overcast light. Vast, still, contemplative — the weight of time made visible."
-        : "Soft, aesthetically pleasing feminine photography — quiet luxury in light, airy tones: cream silk, linen, morning sun, white flowers. Warm, dreamy, light color grade — ivory, blush, soft gold. Beautiful, calm, intimate, bright but gentle.";
+        : womenScheme === "light"
+          ? "Soft, aesthetically pleasing feminine photography — quiet luxury in light, airy tones: cream silk, linen, morning sun, white flowers. Warm, dreamy, light color grade — ivory, blush, soft gold. Beautiful, calm, intimate, bright but gentle."
+          : "Soft, aesthetically pleasing feminine photography — quiet luxury in warm low light: silk in candlelight, warm lamplight, dried flowers, rain on dark windows. Muted, warm, dreamy color grade with soft shadow. Beautiful, calm, intimate, dim but never cold.";
+  // The scheme lines below double as recomposeSlide's text-tone
+  // markers ("SOFT and LIGHT" → dark text, "DIM and shadowed" →
+  // white) — change the phrases in both places or not at all.
   return [
     `Hyper-realistic cinematic photograph: ${scene}`,
     style,
-    audience === "women"
+    audience === "women" && womenScheme === "light"
       ? "The entire frame is SOFT and LIGHT — a bright, even, airy exposure so dark charcoal text placed at the center of the image would be perfectly legible. No harsh highlights or busy detail in the middle of the frame."
       : "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
     "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. Indistinguishable from a real photograph.",
@@ -347,15 +379,21 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 // short command. NO "N. Name." headers — the numbers ARE the content.
 // 2026-09-01: "memento" (women) REVIVED into Ripple ("add the 'do the
 // math' / less time than you think back to ripple... add memento mori
-// posts back") and retuned to the LIGHT Ripple identity — bright airy
-// scenes, dark charcoal text.
+// posts back"); like all Ripple lanes it rolls the 50/50 light/dark
+// scheme per post.
 
-const MEMENTO_SYSTEM_PROMPTS: Record<MoodyAudience, string> = {
-  women: `You write text for a soft, light, minimal photo-carousel account. Each post is a cover + slides of dark charcoal text centered on bright airy photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
+const MEMENTO_WOMEN_SCENES: Record<WomenScheme, string> = {
+  light: `SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy schemes — an empty porch swing in pale morning sun, a cream kitchen table cleared after breakfast by a bright window, dried flowers on a white sill in soft daylight, a child's empty bedroom with sheer curtains glowing, linen bedding in diffused morning light, a silk robe over a chair by a sunlit window, a garden bench under soft overcast light, a pale staircase with light falling across it, an emptied dining table with one chair pulled out in late-afternoon glow. Bright cream, ivory, warm white — every frame LIGHT (dark charcoal text must read on it), the quiet ache carried by emptiness and light, not darkness. No people ever. These are inspiration, not a menu — invent new quiet-daylight locations in the same DNA so no two posts look alike.`,
+  dark: `SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass, a dark garden seen through a lit kitchen window, a single lamp on in a house at blue hour, an emptied dining table with one chair pulled out. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever. These are inspiration, not a menu — invent new quiet-evening locations in the same DNA so no two posts look alike.`,
+};
+
+const buildMementoWomenSystemPrompt = (
+  scheme: WomenScheme
+) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock at full scale: weekends left in an average lifetime, times she'll see her parents before they're gone, Christmases left with everyone at the table, healthy years remaining, summers while the kids still come home.
 
-SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy schemes — an empty porch swing in pale morning sun, a cream kitchen table cleared after breakfast by a bright window, dried flowers on a white sill in soft daylight, a child's empty bedroom with sheer curtains glowing, linen bedding in diffused morning light, a silk robe over a chair by a sunlit window, a garden bench under soft overcast light, a pale staircase with light falling across it, an emptied dining table with one chair pulled out in late-afternoon glow. Bright cream, ivory, warm white — every frame LIGHT (dark charcoal text must read on it), the quiet ache carried by emptiness and light, not darkness. No people ever. These are inspiration, not a menu — invent new quiet-daylight locations in the same DNA so no two posts look alike.
+${MEMENTO_WOMEN_SCENES[scheme]}
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 45, you have about 1,700 weekends left. On average.
@@ -382,8 +420,9 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "lines": ["...", "...", "..."], "scene": "..." }
   ]
-}`,
-  men: `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
+}`;
+
+const MEMENTO_MEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
 
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
@@ -415,21 +454,24 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "lines": ["...", "...", "..."], "scene": "..." }
   ]
-}`,
-};
+}`;
 
 /** Generate one memento mori topic for the given audience lane.
  *  Slide count varies per post (2026-08-29, per Keenan: "they can be
  *  4-10 slides long. the more scrolls the better engagement") — 3-9
- *  items + cover = 4-10 slides. */
+ *  items + cover = 4-10 slides. `scheme` applies to women only. */
 export async function generateMementoTopic(
   audience: MoodyAudience,
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  scheme: WomenScheme = "light"
 ): Promise<MoodyTopic> {
   const itemCount = 3 + Math.floor(Math.random() * 7); // 3-9 items
   return generateMoodyFamilyTopic({
     purpose: audience === "men" ? "memento-men-carousel-topic" : "memento-carousel-topic",
-    system: MEMENTO_SYSTEM_PROMPTS[audience],
+    system:
+      audience === "men"
+        ? MEMENTO_MEN_SYSTEM_PROMPT
+        : buildMementoWomenSystemPrompt(scheme),
     user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: audience === "men" ? "memento-men" : "memento",
     requireName: false,
@@ -467,12 +509,14 @@ export function buildMementoCaption(slug: string): string {
 // that's the save/share mechanic. Women's soft-dim visuals, hashtag-only
 // caption from the women's pool.
 
-const QUESTIONS_SYSTEM_PROMPT = `You write text for a soft, light, feminine minimal photo-carousel account. Each post is a cover + 5 slides of dark text centered on bright, airy photography. The niche: HARD QUESTIONS — each slide is ONE question the reader can't answer comfortably. No answers, no advice, anywhere. The question does all the work.
+const buildQuestionsSystemPrompt = (
+  scheme: WomenScheme
+) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: HARD QUESTIONS — each slide is ONE question the reader can't answer comfortably. No answers, no advice, anywhere. The question does all the work.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The questions should press gently on what they already know but avoid saying out loud: lost pieces of themselves, one-sided giving, deferred wants, who they're becoming.
 VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wise friend would ask and then just wait.
 
-${SCENE_BRIEF["women"]}
+${WOMEN_SCENE_BRIEFS[scheme]}
 
 RULES:
 - "title": the cover text. 2-4 words, commanding, works in ALL CAPS ("ANSWER HONESTLY", "READ THESE SLOWLY"). Not itself a question.
@@ -494,12 +538,13 @@ OUTPUT (strict JSON, no markdown):
 /** Generate one hard-questions topic (women's funnel). 4-6 questions
  *  per post (2026-08-31 variance). */
 export async function generateQuestionsTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  scheme: WomenScheme = "light"
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "questions-carousel-topic",
-    system: QUESTIONS_SYSTEM_PROMPT,
+    system: buildQuestionsSystemPrompt(scheme),
     user: `Write one new hard-questions post with exactly ${itemCount} questions.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "questions",
     requireName: false,
@@ -677,17 +722,18 @@ export function buildMissedCaption(slug: string): string {
 // Women's funnel: a cover styled like a warning ("DELETE THIS AFTER
 // READING") + slides, each ONE truth you're not supposed to say out
 // loud. 2026-09-01: REVIVED into Ripple ("add the delete after reading
-// posts back to ripple") — retuned to the LIGHT Ripple identity (bright
-// airy scenes, dark charcoal text; the old QUOTE serif italic is dead,
-// slides render as ITEM) with randomized 4-6 slide counts per the
-// variance pass.
+// posts back to ripple") — the old QUOTE serif italic is dead, slides
+// render as ITEM, with randomized 4-6 slide counts per the variance
+// pass; scheme rolls 50/50 light/dark like all Ripple lanes.
 
-const FORBIDDEN_SYSTEM_PROMPT = `You write text for a soft, light, minimal photo-carousel account. Each post is a cover + slides of dark charcoal text centered on bright airy photography. The niche: FORBIDDEN TRUTHS — each slide is ONE line you're not supposed to say out loud. The post is framed like a note the reader shouldn't have seen. No advice, no answers, anywhere.
+const buildForbiddenSystemPrompt = (
+  scheme: WomenScheme
+) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: FORBIDDEN TRUTHS — each slide is ONE line you're not supposed to say out loud. The post is framed like a note the reader shouldn't have seen. No advice, no answers, anywhere.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. Each line should name something she has thought and never said: the unspoken ledger of marriage, motherhood, friendship, aging, wanting more.
 VOICE: quiet, flat, devastatingly honest. Plain statements. Never cruel, never cynical for its own sake — the sting is recognition, not shock.
 
-${SCENE_BRIEF["women"]}
+${WOMEN_SCENE_BRIEFS[scheme]}
 
 FORMAT — each slide is ONE line like:
 "You don't miss him. You miss being chosen."
@@ -712,12 +758,13 @@ OUTPUT (strict JSON, no markdown):
 
 /** Generate one forbidden-truths topic (women's funnel, Ripple). */
 export async function generateForbiddenTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  scheme: WomenScheme = "light"
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "forbidden-carousel-topic",
-    system: FORBIDDEN_SYSTEM_PROMPT,
+    system: buildForbiddenSystemPrompt(scheme),
     user: `Write one new forbidden-truths post with exactly ${itemCount} truths.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "forbidden",
     requireName: false,
@@ -889,11 +936,13 @@ export async function generateYearTopic(
 // ("1. Watching it rain.") with one quiet expansion each. Quietly
 // devastating positivity.
 
-const FREE_SYSTEM_PROMPT = `You write text for a soft, light, feminine minimal photo-carousel account. Each post is a cover + 5 slides of dark text centered on bright, airy photography. The niche: THINGS THAT ARE STILL FREE — small, real, available-tonight things money never touched. Quietly devastating in how obvious they are.
+const buildFreeSystemPrompt = (
+  scheme: WomenScheme
+) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: THINGS THAT ARE STILL FREE — small, real, available-tonight things money never touched. Quietly devastating in how obvious they are.
 
 AUDIENCE: everyone scrolling at midnight. Universal — no gendered content, no niche jargon.
 
-SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy tones, calm and contemplative — morning sun through sheer linen curtains, rain on a bright window above white flowers, a sunlit bath filling with steam, a garden bench in golden morning light with a shawl left behind, tea steaming by a light-washed window, a lake from a wooden dock in soft first light, a bright porch with the door left open, wildflowers in a jar on a sunlit sill. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, every frame SOFT and LIGHT (dark charcoal text must read on it). No people ever. These are inspiration, not a menu — invent new light-airy locations in the same DNA so no two posts look alike.
+${WOMEN_SCENE_BRIEFS[scheme]}
 
 FORMAT — each slide reads like this (match the rhythm):
 "1. Watching it rain.
@@ -924,12 +973,13 @@ OUTPUT (strict JSON, no markdown):
 /** Generate one still-free topic (universal). 4-6 items per post
  *  (2026-08-31 variance). */
 export async function generateFreeTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  scheme: WomenScheme = "light"
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "free-carousel-topic",
-    system: FREE_SYSTEM_PROMPT,
+    system: buildFreeSystemPrompt(scheme),
     user: `Write one new things-that-are-still-free post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "free",
     requireName: true,
@@ -995,12 +1045,14 @@ export async function generateBehindTopic(
 // 45", "...ABOUT THE QUIET HOUSE") so the title is the dedupe key.
 // Five unspoken truths, no headers.
 
-const NOBODY_SYSTEM_PROMPT = `You write text for a soft, light, feminine minimal photo-carousel account. Each post is a cover + 5 slides of dark text centered on bright, airy photography. The niche: NOBODY TELLS YOU — one life season per post, five truths about it that nobody says out loud beforehand.
+const buildNobodySystemPrompt = (
+  scheme: WomenScheme
+) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: NOBODY TELLS YOU — one life season per post, five truths about it that nobody says out loud beforehand.
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load. The seasons rotate: turning 45, the year the kids stop needing you, a long marriage, caring for aging parents, friendship after 40, the quiet house. Each truth should land as recognition — "so it's not just me."
 VOICE: quiet, flat, honest. Plain statements with warmth underneath. Never bitter, never dramatic — the sting is recognition.
 
-${SCENE_BRIEF["women"]}
+${WOMEN_SCENE_BRIEFS[scheme]}
 
 FORMAT — each slide reads like this (match the rhythm):
 "The hardest part isn't the missing. It's that the missing becomes normal.
@@ -1026,12 +1078,13 @@ OUTPUT (strict JSON, no markdown):
 /** Generate one nobody-tells-you topic (women's funnel). 4-6 items
  *  per post (2026-08-31 variance). */
 export async function generateNobodyTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  scheme: WomenScheme = "light"
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "nobody-carousel-topic",
-    system: NOBODY_SYSTEM_PROMPT,
+    system: buildNobodySystemPrompt(scheme),
     user: `Write one new nobody-tells-you post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "nobody",
     requireName: false,
