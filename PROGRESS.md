@@ -11,7 +11,7 @@
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** 0b6aee38
 
 ### In plain English (for Keenan)
 There's now a build recipe called `pricing` that produces an app showing the new $9.99 / $89.99 prices. It's the same recipe as the RevenueCat observer build with one switch flipped, so the behind-the-scenes RevenueCat trial run we started keeps going uninterrupted — we don't have to choose between the two.
