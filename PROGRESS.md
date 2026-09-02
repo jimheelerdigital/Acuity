@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-09-02] — The phone app can now be built at the new prices, without pausing the RevenueCat trial run
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+There's now a build recipe called `pricing` that produces an app showing the new $9.99 / $89.99 prices. It's the same recipe as the RevenueCat observer build with one switch flipped, so the behind-the-scenes RevenueCat trial run we started keeps going uninterrupted — we don't have to choose between the two.
+
+Nothing changes for existing subscribers: grandfathering is automatic, so everyone already paying stays at $4.99 / $39.99 forever. Only brand-new buyers on this build see the new prices. And nothing ships to anyone until Jimmy actually runs the build and submits it — this is the recipe, not the release.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/eas.json`:
+  - new **build** profile `pricing` — `extends: "observer"`, sole literal env `EXPO_PUBLIC_NEW_PRICING: "1"`
+  - new **submit** profile `pricing` — `extends: "production"` (submit profiles do NOT inherit from build profiles, and no `observer` submit profile exists)
+- `apps/mobile/app.json` — `version` 1.4.1 → **1.5.0**
+- `apps/web/src/lib/evidence/rc-observer-build.test.ts` — now resolves `extends` chains; new `pricing` block; 34 tests
+- Untouched: web, `packages/shared`, mobile purchase code, every other RC flag
+
+### Manual steps needed
+- [ ] Jimmy: `eas build --profile pricing --platform all`, then `eas submit --profile pricing`
+- [ ] Jimmy: the build lands on the **`rc-observer` OTA channel** (inherited). Runtime version follows appVersion, so 1.5.0 binaries are already segregated from the 1.4.x observer builds — but be aware the channel name is shared
+- [ ] Nobody: no env var, no schema, no server change. The server already maps the v2 product ids to PRO
+
+### Notes
+- **Verified that EAS actually merges `env` through `extends`, rather than assuming it.** This was the one fact the whole approach rests on: if `env` did not inherit, a `pricing` profile declaring only `NEW_PRICING` would silently ship WITHOUT the RC keys and kill the soak. `npx eas-cli@23.2.0 config --profile pricing` resolves all six inherited vars plus the new one, so the minimal profile is correct and re-listing them would just be a second copy to drift.
+- **The existing test was reading the LITERAL env block, not the resolved one.** With `pricing` declaring only `NEW_PRICING`, the old "every other profile resolves to disabled" assertion would have passed for `pricing` — while the shipped binary has `RC_OBSERVER=1`. The suite would have been asserting something false about the build. `resolvedEnv()` / `resolvedChannel()` now walk the `extends` chain the way EAS does.
+- **The account-wide "no profile sets NEW_PRICING" assertion had to be narrowed, not deleted.** It is now: SOURCE_OF_TRUTH and SDK_PURCHASES stay unset on EVERY profile (resolved), NEW_PRICING is set on `pricing` and *nowhere else* (asserted as an exact list, so a leak into `production` fails), and observer/observer-internal/production are each named explicitly as staying on legacy.
+- **`pricing` was added to `OBSERVER_PROFILES` deliberately** — it configures the SDK in observer mode, so it should be held to every observer expectation. The one exception is the NEW_PRICING assertion, which moved out of the shared block with a comment saying why.
+- **A submit profile was needed.** `eas submit --profile pricing` on a missing profile fails with "Missing submit profile in eas.json"; with the new one it gets past resolution to the archive prompt. That contrast is how the profile was verified without running a real submission.
+- Baselines: web tsc **161 before, 161 after**; mobile tsc **19 before, 19 after** — both measured by stashing. (The brief said 163; main has drifted to 161. That is five briefs running with a stale tsc number.) Tests **724/724** across 43 files; the RC evidence file went 22 → 34. Six mutations of `eas.json` each fail between 1 and 7 tests.
+
 ## [2026-09-01] — Ripple posts split 50/50 between light and dark looks
 
 **Requested by:** Keenan

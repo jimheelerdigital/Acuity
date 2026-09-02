@@ -76,6 +76,12 @@
         "EXPO_PUBLIC_RC_ANDROID_KEY": "goog_LpHyZxOdnrjVfxTMRjoVfCjnEft"
       }
     },
+    "pricing": {
+      "extends": "observer",
+      "env": {
+        "EXPO_PUBLIC_NEW_PRICING": "1"
+      }
+    },
     "testflight-async": {
       "extends": "production",
       "channel": "v133-async-validation",
@@ -88,6 +94,9 @@
     }
   },
   "submit": {
+    "pricing": {
+      "extends": "production"
+    },
     "preview": {
       "ios": {
         "appleId": "jim@heelerdigital.com",

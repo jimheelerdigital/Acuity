@@ -51,16 +51,54 @@ const eas = JSON.parse(readFileSync(EAS_PATH, "utf8")) as {
   build: Record<string, EasProfile>;
 };
 
+/**
+ * Resolve a profile's env the way EAS actually builds it: `extends`
+ * deep-merges, with the child overriding parent keys.
+ *
+ * This must follow the chain, not read the literal block. The `pricing`
+ * profile declares ONLY `EXPO_PUBLIC_NEW_PRICING` and inherits the RC
+ * observer flag and keys from `observer`. A literal read would report it
+ * as RC-disabled while the shipped binary has the SDK configured — the
+ * test would assert something false about the build.
+ *
+ * Verified against `eas config --profile pricing` (eas-cli 23.2.0), which
+ * resolves all six inherited vars plus the new one.
+ */
+function profileChain(profile: string): EasProfile[] {
+  const seen = new Set<string>();
+  const chain: EasProfile[] = [];
+  let cursor: string | undefined = profile;
+  while (cursor && eas.build[cursor] && !seen.has(cursor)) {
+    seen.add(cursor);
+    chain.unshift(eas.build[cursor]);
+    cursor = eas.build[cursor].extends;
+  }
+  return chain;
+}
+
+function resolvedEnv(profile: string): Record<string, string> {
+  return Object.assign({}, ...profileChain(profile).map((p) => p.env ?? {}));
+}
+
+/** Nearest declaration of a scalar field along the extends chain. */
+function resolvedChannel(profile: string): string | undefined {
+  return profileChain(profile)
+    .map((p) => p.channel)
+    .filter((c): c is string => typeof c === "string")
+    .pop();
+}
+
 /** Read a profile's env exactly as `flags.ts` reads process.env. */
 function flagsForProfile(profile: string) {
-  const env = eas.build[profile]?.env ?? {};
+  const env = resolvedEnv(profile);
   return resolveRcFlags((key: RcFlagKey) => env[`EXPO_PUBLIC_${key}`]);
 }
 
-const OBSERVER_PROFILES = ["observer", "observer-internal"] as const;
+/** Profiles that intentionally configure the RC SDK in observer mode. */
+const OBSERVER_PROFILES = ["observer", "observer-internal", "pricing"] as const;
 
 describe.each(OBSERVER_PROFILES)("eas.json %s profile", (profile) => {
-  const env = () => eas.build[profile]?.env ?? {};
+  const env = () => resolvedEnv(profile);
 
   it("exists and carries both PUBLIC RC SDK keys", () => {
     expect(eas.build[profile]).toBeDefined();
@@ -85,15 +123,17 @@ describe.each(OBSERVER_PROFILES)("eas.json %s profile", (profile) => {
     expect(rcUnsafePurchaseConfig(flagsForProfile(profile))).toBe(false);
   });
 
-  it("leaves pricing and source-of-truth untouched", () => {
-    // The three vars that would make this build user-visible.
-    expect(env().EXPO_PUBLIC_NEW_PRICING).toBeUndefined();
+  it("advances no RC stage past observation", () => {
+    // NEW_PRICING is deliberately NOT asserted here — `pricing` is in
+    // this list because it configures the SDK in observer mode, and it
+    // sets NEW_PRICING on purpose. Per-profile pricing expectations live
+    // in the "no EAS profile can advance the RC migration" block below.
     expect(env().EXPO_PUBLIC_RC_SOURCE_OF_TRUTH).toBeUndefined();
     expect(env().EXPO_PUBLIC_RC_SDK_PURCHASES).toBeUndefined();
   });
 
   it("points at production and the rc-observer channel", () => {
-    expect(eas.build[profile].channel).toBe("rc-observer");
+    expect(resolvedChannel(profile)).toBe("rc-observer");
     expect(env().EXPO_PUBLIC_API_URL).toBe("https://goripple.io");
   });
 });
@@ -112,20 +152,19 @@ describe("every other EAS profile stays RC-disabled", () => {
     // profile that extends it; enabling RC here would put the SDK in the
     // public build.
     expect(flagsForProfile("production")).toEqual(RC_FLAG_DEFAULTS);
-    const env = eas.build.production.env ?? {};
+    const env = resolvedEnv("production");
     expect(env.EXPO_PUBLIC_RC_OBSERVER).toBeUndefined();
     expect(env.EXPO_PUBLIC_NEW_PRICING).toBeUndefined();
   });
 });
 
-describe("no EAS profile can enable new pricing or source-of-truth", () => {
-  it("holds across every profile", () => {
-    for (const [name, profile] of Object.entries(eas.build)) {
-      const env = profile.env ?? {};
-      expect(
-        env.EXPO_PUBLIC_NEW_PRICING,
-        `${name} must not set EXPO_PUBLIC_NEW_PRICING`
-      ).toBeUndefined();
+describe("no EAS profile can advance the RC migration past observer", () => {
+  it("SOURCE_OF_TRUTH and SDK_PURCHASES stay unset on EVERY profile", () => {
+    // These two are the stages that let RC write entitlements and take
+    // money. Neither is in scope for any build that exists today, and
+    // `pricing` turning on new pricing must not drag them along.
+    for (const name of Object.keys(eas.build)) {
+      const env = resolvedEnv(name);
       expect(
         env.EXPO_PUBLIC_RC_SOURCE_OF_TRUTH,
         `${name} must not set EXPO_PUBLIC_RC_SOURCE_OF_TRUTH`
@@ -135,6 +174,61 @@ describe("no EAS profile can enable new pricing or source-of-truth", () => {
         `${name} must not set EXPO_PUBLIC_RC_SDK_PURCHASES`
       ).toBeUndefined();
     }
+  });
+
+  it("new pricing is set on `pricing` and NOWHERE else", () => {
+    const withPricing = Object.keys(eas.build).filter(
+      (n) => resolvedEnv(n).EXPO_PUBLIC_NEW_PRICING !== undefined
+    );
+    expect(withPricing).toEqual(["pricing"]);
+  });
+
+  it("observer, observer-internal and production stay on legacy pricing", () => {
+    for (const name of ["observer", "observer-internal", "production"]) {
+      expect(
+        resolvedEnv(name).EXPO_PUBLIC_NEW_PRICING,
+        `${name} must stay on legacy pricing`
+      ).toBeUndefined();
+    }
+  });
+});
+
+describe("the `pricing` profile — new pricing WITHOUT disturbing the soak", () => {
+  const env = () => resolvedEnv("pricing");
+
+  it("extends observer rather than re-declaring the soak config", () => {
+    expect(eas.build.pricing?.extends).toBe("observer");
+    // Only the one new var is declared literally; everything else is
+    // inherited. Re-listing would be a second copy to drift.
+    expect(Object.keys(eas.build.pricing?.env ?? {})).toEqual([
+      "EXPO_PUBLIC_NEW_PRICING",
+    ]);
+  });
+
+  it("turns new pricing ON", () => {
+    expect(env().EXPO_PUBLIC_NEW_PRICING).toBe("1");
+  });
+
+  it("KEEPS the observer soak running — flag and both SDK keys", () => {
+    // The whole point: enabling pricing must not interrupt observation.
+    expect(env().EXPO_PUBLIC_RC_OBSERVER).toBe("1");
+    expect(env().EXPO_PUBLIC_RC_IOS_KEY).toBe("appl_OiPWlxyTKxSsBGnaFdXiOqsgeOT");
+    expect(env().EXPO_PUBLIC_RC_ANDROID_KEY).toBe("goog_LpHyZxOdnrjVfxTMRjoVfCjnEft");
+    expect(rcConfigureMode(flagsForProfile("pricing"))).toBe("observer");
+  });
+
+  it("advances no other RC stage", () => {
+    expect(env().EXPO_PUBLIC_RC_SOURCE_OF_TRUTH).toBeUndefined();
+    expect(env().EXPO_PUBLIC_RC_SDK_PURCHASES).toBeUndefined();
+    expect(rcUnsafePurchaseConfig(flagsForProfile("pricing"))).toBe(false);
+  });
+
+  it("has a matching submit profile — submit does not inherit from build", () => {
+    const easFull = JSON.parse(readFileSync(EAS_PATH, "utf8")) as {
+      submit?: Record<string, { extends?: string }>;
+    };
+    expect(easFull.submit?.pricing).toBeDefined();
+    expect(easFull.submit?.pricing?.extends).toBe("production");
   });
 });
 
