@@ -341,6 +341,11 @@ export function buildSelfieImagePrompt(opts: {
   /** Pose/framing directive (one of SELFIE_POSE_VARIANTS) — forces
    * every mirror selfie in a post to look different (2026-08-26). */
   pose?: string;
+  /** Photography-style directive (one of SELFIE_STYLE_VARIANTS) —
+   * per-POST, so each day's two selfie posts read as different days
+   * (2026-09-03, per Keenan: "more variance and different picture
+   * styles"). */
+  style?: string;
 }): string {
   const context = `Context (convey through the photo only — subtly, shown not told): this photo belongs to a personal slideshow titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`;
 
@@ -348,8 +353,11 @@ export function buildSelfieImagePrompt(opts: {
     return [
       `Scene (follow exactly): ${opts.scene}`,
       context,
+      opts.style ?? "",
       SELFIE_AESTHETIC_DNA,
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
   }
 
   return [
@@ -362,6 +370,7 @@ export function buildSelfieImagePrompt(opts: {
       ? `Pose and framing (follow exactly — this OVERRIDES any camera or mirror setup implied by the scene): ${opts.pose}`
       : "",
     context,
+    opts.style ?? "",
     SELFIE_VISUAL_DNA,
   ]
     .filter(Boolean)
@@ -568,11 +577,21 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     "rules", "moody-women", "moody-men", "memento", "memento-men",
     "missed", "missed-men", "questions", "sign", "year", "free",
     "behind", "nobody", "bloomers", "taught", "forbidden", "unsent",
-    "aura", "versions", "protocol",
+    "aura", "versions", "protocol", "line", "phone-quote",
+    "phone-quote-men",
   ]);
 
   if (slide.kind === "CTA") {
     composed = await composeCTASlide(newText);
+  } else if (slide.imagePrompt.startsWith("PHONE-QUOTE NOTE SCREEN")) {
+    // Phone-quote NOTE slides (2026-09-03) are composed programmatically
+    // — the slide IS the notes-app screen, no image model involved.
+    // Editing one just re-renders the screen with the new quote text.
+    const { renderPhoneQuoteSlide } = await import("./compose");
+    composed = await renderPhoneQuoteSlide(
+      newText,
+      slide.carouselPost.lane === "phone-quote-men" ? "men" : "women"
+    );
   } else if (MOODY_LANES.has(slide.carouselPost.lane ?? "")) {
     // Regenerate the scene from the stored prompt (scenes are text-free),
     // then re-render the overlay with the new text.
@@ -608,12 +627,17 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // consistent". All item slides re-render as ITEM, matching the
     // daily pipeline.
     const lane = slide.carouselPost.lane;
+    // Phone-quote COVERS carry a lowercase sentence-case hook ("this
+    // quote kept me up all night...") — ITEM treatment, never the
+    // uppercase COVER style.
     const moodyKind =
       lane === "sign" || lane === "aura"
         ? "SIGN"
-        : slide.kind === "COVER"
-          ? "COVER"
-          : "ITEM";
+        : lane === "phone-quote" || lane === "phone-quote-men"
+          ? "ITEM"
+          : slide.kind === "COVER"
+            ? "COVER"
+            : "ITEM";
     // Text tone comes from the STORED image prompt, not the lane:
     // since 2026-09-01 every Ripple women-lane post rolls a 50/50
     // light/dark scheme, so a lane no longer implies a tone. The

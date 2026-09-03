@@ -85,13 +85,14 @@ export const SCENE_BRIEF: Record<MoodyAudience, string> = {
 };
 
 const buildMoodySystemPrompt = (
-  audience: MoodyAudience
+  audience: MoodyAudience,
+  opts?: { theme?: string; coverRule?: string }
 ) => `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 item slides of white text centered on cinematic photography.
 
 ${AUDIENCE_BRIEF[audience]}
-
+${opts?.theme ? `\n${opts.theme}\n` : ""}
 ${SCENE_BRIEF[audience]}
-
+${opts?.coverRule ? `\n${opts.coverRule}\n` : ""}
 FORMAT — study this real slide and match its rhythm exactly:
 "4. Reset day.
 
@@ -239,9 +240,25 @@ function avoidBlock(recentHeadlines: string[]): string {
     : "";
 }
 
+// ─── BWK theme lock (2026-09-03, per Keenan) ─────────────────────────
+// "the best post so far was the 'earn your silence' post for build
+// with key, followed by 30 days. earn it. and hold the line got a lot
+// of views with the skyscraper start image... focus around these
+// topics and images for the inital posts. still include variance. but
+// keep to these three for BWK." BWK is now 3 posts/day, one per
+// winning family: moody-men = SILENCE, line = HOLD THE LINE
+// (storm-skyscraper covers), protocol = 30 DAYS (already the winner
+// format, unchanged).
+const SILENCE_THEME = `THEME — every post belongs to the SILENCE family: moving in silence, building in private, working unseen, no announcements, letting results speak. Rotate the angle every post — going quiet for a season, killing announcement culture, private standards nobody sees, disappearing to build, the quiet hours before the world wakes, winning without telling anyone — so no two posts repeat, but every post is unmistakably a silence post. Titles live in the family too ("EARN YOUR SILENCE" energy) without repeating a recent title.`;
+
+const LINE_THEME = `THEME — every post belongs to the HOLD THE LINE family: endurance, standards that do not move, staying when it gets hard, refusing to break the streak, holding position when motivation dies. Rotate the angle every post — holding the morning line, standards under pressure, the days nobody claps, finishing what the first week started, never negotiating with yourself — so no two posts repeat, but every post is unmistakably a hold-the-line post. Titles live in the family too ("HOLD THE LINE" energy) without repeating a recent title.`;
+
+const LINE_COVER_RULE = `COVER SCENE RULE: "coverScene" MUST come from the storm-skyscraper family — a lone dark skyscraper or brutalist tower against a storm sky: rain streaking the frame, black clouds, night or blue-hour storm light, a single lit floor or window glowing cold. Vary the building, the storm, and the vantage every post (from the street looking up, across the skyline, from a facing rooftop, the tower half-lost in fog). Item scenes follow the normal SCENES brief with bold variety.`;
+
 /** Generate one moody-carousel topic for the given audience funnel.
  *  Slide count varies 4-7 items per post (2026-08-31, per Keenan:
- *  "create a ton of variance between posts"). */
+ *  "create a ton of variance between posts"). The men's lane is
+ *  theme-locked to the SILENCE family (2026-09-03). */
 export async function generateMoodyTopic(
   audience: MoodyAudience,
   recentHeadlines: string[]
@@ -249,9 +266,34 @@ export async function generateMoodyTopic(
   const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: `moody-carousel-topic-${audience}`,
-    system: buildMoodySystemPrompt(audience),
+    system: buildMoodySystemPrompt(
+      audience,
+      audience === "men" ? { theme: SILENCE_THEME } : undefined
+    ),
     user: `Write one new post for the ${audience === "men" ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: `moody-${audience}`,
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: 7,
+  });
+}
+
+/** HOLD THE LINE lane (2026-09-03, per Keenan: "hold the line got a
+ *  lot of views with the skyscraper start image"). Endurance family,
+ *  numbered "N. Name." items like moody-men, storm-skyscraper covers. */
+export async function generateLineTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: "line-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: LINE_THEME,
+      coverRule: LINE_COVER_RULE,
+    }),
+    user: `Write one new hold-the-line post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "line",
     requireName: true,
     minLines: 2,
     minItems: 4,
@@ -379,13 +421,18 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 // short command. NO "N. Name." headers — the numbers ARE the content.
 // 2026-09-01: "memento" (women) REVIVED into Ripple ("add the 'do the
 // math' / less time than you think back to ripple... add memento mori
-// posts back"); like all Ripple lanes it rolls the 50/50 light/dark
-// scheme per post.
+// posts back"). 2026-09-03: pinned to the DARK scheme with dusk-coast
+// covers — per Keenan, the winning post was "the 'do the math' piture
+// of the beach. this one did well on instagram/facebook reals with
+// multiple shares and likes. so give me more of that."
 
 const MEMENTO_WOMEN_SCENES: Record<WomenScheme, string> = {
   light: `SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy schemes — an empty porch swing in pale morning sun, a cream kitchen table cleared after breakfast by a bright window, dried flowers on a white sill in soft daylight, a child's empty bedroom with sheer curtains glowing, linen bedding in diffused morning light, a silk robe over a chair by a sunlit window, a garden bench under soft overcast light, a pale staircase with light falling across it, an emptied dining table with one chair pulled out in late-afternoon glow. Bright cream, ivory, warm white — every frame LIGHT (dark charcoal text must read on it), the quiet ache carried by emptiness and light, not darkness. No people ever. These are inspiration, not a menu — invent new quiet-daylight locations in the same DNA so no two posts look alike.`,
   dark: `SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass, a dark garden seen through a lit kitchen window, a single lamp on in a house at blue hour, an emptied dining table with one chair pulled out. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever. These are inspiration, not a menu — invent new quiet-evening locations in the same DNA so no two posts look alike.`,
 };
+
+// Winning-cover family for the dark scheme (the "DO THE MATH" beach).
+const MEMENTO_COVER_RULE = `COVER SCENE RULE: "coverScene" MUST come from the dusk-coast family — an empty shoreline at last light: a beach as the tide pulls back from dark wet sand, a thin line of amber on a grey horizon, a lake shore at dusk, dunes at blue hour, a wide bay going dark, a pier reaching into evening mist. Vary the water, the light, and the vantage every post so no two covers repeat, but every cover is unmistakably an empty shore at the end of the day. Item scenes follow the normal SCENES brief with full variety.`;
 
 const buildMementoWomenSystemPrompt = (
   scheme: WomenScheme
@@ -393,7 +440,7 @@ const buildMementoWomenSystemPrompt = (
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock at full scale: weekends left in an average lifetime, times she'll see her parents before they're gone, Christmases left with everyone at the table, healthy years remaining, summers while the kids still come home.
 
-${MEMENTO_WOMEN_SCENES[scheme]}
+${MEMENTO_WOMEN_SCENES[scheme]}${scheme === "dark" ? `\n\n${MEMENTO_COVER_RULE}` : ""}
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 45, you have about 1,700 weekends left. On average.
@@ -519,7 +566,7 @@ VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wis
 ${WOMEN_SCENE_BRIEFS[scheme]}
 
 RULES:
-- "title": the cover text. 2-4 words, commanding, works in ALL CAPS ("ANSWER HONESTLY", "READ THESE SLOWLY"). Not itself a question.
+- "title": the cover text — a direct PROMPT to the reader that sets up the slides and makes swiping irresistible: 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER HONESTLY", "READ THESE SLOWLY", "BE HONEST NOW", "DON'T LOOK AWAY"). Not itself a question.
 - The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the question. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise.
 - Each question hits a DIFFERENT nerve: identity, resentment, time, what she's postponing, what she'd never admit. Never two questions on the same nerve.
 - The questions must be answerable only by the reader — never rhetorical, never yes-obvious.
@@ -1453,4 +1500,135 @@ export async function generateProtocolTopic(
     minItems: 5,
     maxItems: 7,
   });
+}
+
+// ─── PHONE-QUOTE: "this quote kept me up all night" (2026-09-03) ─────
+// Per Keenan (with reference screenshots): "add a lane for both of
+// these types of posts. one for ripple, one for BWK. 'this quote kept
+// me up all night...' first slide, and then the next slide is a phone
+// screen with a quote about something important. a message that people
+// resonate with. something motivational and developmental."
+// 2 slides: cover = photo + sentence-case hook; slide 2 = a phone
+// notes-app screen with the quote TYPED on it. The quote slide is
+// composed PROGRAMMATICALLY in compose.ts (renderPhoneQuoteSlide) —
+// gpt-image-2 never touches the text. Lane names are "phone-quote"
+// (Ripple) / "phone-quote-men" (BWK) — NOT the dormant
+// "quote-women"/"quote-men" from the killed animated-loop format.
+
+export interface PhoneQuoteTopic {
+  slug: string;
+  /** Sentence-case cover hook, e.g. "this quote kept me up all night..." */
+  hook: string;
+  coverScene: string;
+  /** The quote typed on the notes-app slide. No attribution. */
+  quote: string;
+}
+
+const PHONE_QUOTE_SYSTEM: Record<MoodyAudience, string> = {
+  women: `You write 2-slide quote posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "someone sent me this and i can't stop thinking about it...", "i found this at exactly the right moment..."). Vary the framing every post — never reuse a recent hook's framing.
+- "quote": 20-45 words. Motivational and developmental — self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. It must read like something a real person would screenshot and send a friend at 2am: warm, plain words, second person welcome, no clichés stacked on clichés. NO attribution, NO quotation marks, NO emojis, NO hashtags.
+- "coverScene": one concrete sentence for the photograph — a quiet night interior in warm low light: a lamp-lit bedroom at night, tea by a dark rain-streaked window, a candlelit bath, a lit porch at dusk, a phone glowing face-up on dark bedding. DIM, warm, intimate, NO people. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "quote": "..." }`,
+  men: `You write 2-slide quote posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "read this before you quit...", "someone sent me this at 2am..."). Vary the framing every post — never reuse a recent hook's framing.
+- "quote": 20-45 words. Motivational and developmental — discipline, patience, building in silence, becoming the man who keeps his word, delayed gratification, standards. It must read like something a man would screenshot and set as his lock screen: calm command energy, plain declarative words, second person welcome, never bro-slang, never yelling. NO attribution, NO quotation marks, NO emojis, NO hashtags.
+- "coverScene": one concrete sentence for the photograph — a night-city vantage: a dark balcony over a glittering skyline, floor-to-ceiling glass at night with rain, an empty rooftop at blue hour, a lone lit window across a dark street, a black car interior facing distant city lights. DIM, desaturated, NO people. Vary the vantage every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "quote": "..." }`,
+};
+
+/** Generate one phone-quote topic (2-slide format) for either funnel. */
+export async function generatePhoneQuoteTopic(
+  audience: MoodyAudience,
+  recentHeadlines: string[]
+): Promise<PhoneQuoteTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const purpose =
+    audience === "men" ? "phone-quote-men-topic" : "phone-quote-topic";
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      system: PHONE_QUOTE_SYSTEM[audience],
+      messages: [
+        {
+          role: "user",
+          content: `Write one new phone-quote post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      hook?: string;
+      coverScene?: string;
+      quote?: string;
+    };
+    const hook = (parsed.hook ?? "").trim();
+    const coverScene = (parsed.coverScene ?? "").trim();
+    const quote = (parsed.quote ?? "").trim();
+    const quoteWords = quote.split(/\s+/).length;
+    if (!hook || !coverScene || !quote || quoteWords < 10 || quoteWords > 60) {
+      throw new Error(
+        `${purpose} unusable: hook="${hook}", quote ${quoteWords} words`
+      );
+    }
+
+    const slug = hook
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    return {
+      slug: `${audience === "men" ? "phone-quote-men" : "phone-quote"}-${slug}`,
+      hook,
+      coverScene,
+      quote,
+    };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
 }

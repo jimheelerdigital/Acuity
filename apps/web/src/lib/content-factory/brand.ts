@@ -113,6 +113,23 @@ export const SELFIE_VISUAL_DNA = [
 ].join("\n");
 
 /**
+ * Photography-style variants for the selfie lane (2026-09-03, per
+ * Keenan: "give me 2x of those per day with more variance and different
+ * picture styles"). One style is chosen per POST (slug-deterministic in
+ * carousel-daily.ts, like stickerColor/pose) and appended to every
+ * image prompt in that post so the whole slideshow reads as one camera
+ * roll from one day — but different posts look like different days.
+ */
+export const SELFIE_STYLE_VARIANTS = [
+  "STYLE: warm golden-hour light — late-afternoon sun through the windows, long soft shadows, honeyed tones on skin and walls.",
+  "STYLE: bright clean daylight — crisp late-morning light, white-balanced and airy, the room looks freshly lit and awake.",
+  "STYLE: moody evening lamplight — after dark, warm lamps only, deep cozy shadows in the corners, intimate low-light phone photo grain.",
+  "STYLE: soft overcast light — a grey day outside, flat gentle window light, muted calm colors, no hard shadows anywhere.",
+  "STYLE: crisp cool morning light — early pale-blue daylight, slightly cool white balance, the quiet of a house before anyone else is up.",
+  "STYLE: dusk blue-hour mix — deep blue fading daylight in the windows while warm lamps glow inside, two light temperatures in one frame.",
+] as const;
+
+/**
  * DNA for the AESTHETIC slides mixed into the selfie slideshow
  * (2026-08-25, per Keenan: "hyper realistic aesthetic images in there
  * as well… super pleasing to the eye"). Still a believable phone photo

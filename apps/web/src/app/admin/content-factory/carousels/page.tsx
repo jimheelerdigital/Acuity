@@ -222,15 +222,13 @@ export default function CarouselReviewPage() {
   const generateBucket = async (
     bucket:
       | "moody-men"
-      | "memento-men"
+      | "line"
       | "memento"
       | "questions"
-      | "year"
-      | "free"
-      | "nobody"
-      | "forbidden"
       | "protocol"
       | "selfie"
+      | "phone-quote"
+      | "phone-quote-men"
   ) => {
     setGenerating(true);
     setGenerateMsg(null);
@@ -581,12 +579,12 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "🏛️"}
           </button>
           <button
-            onClick={() => generateBucket("memento-men")}
+            onClick={() => generateBucket("line")}
             disabled={generating}
-            title="Generate a memento-mori time-math carousel (men / BWK) now"
+            title="Generate a HOLD THE LINE carousel (men / BWK) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "⌛"}
+            {generating ? "…" : "🌩️"}
           </button>
           <button
             onClick={() => generateBucket("questions")}
@@ -597,30 +595,6 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "❓"}
           </button>
           <button
-            onClick={() => generateBucket("year")}
-            disabled={generating}
-            title="Generate a one-year-from-now carousel (men / BWK) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "📅"}
-          </button>
-          <button
-            onClick={() => generateBucket("free")}
-            disabled={generating}
-            title="Generate a things-still-free carousel (universal) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🕊️"}
-          </button>
-          <button
-            onClick={() => generateBucket("nobody")}
-            disabled={generating}
-            title="Generate a nobody-tells-you carousel (women funnel) now"
-            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
-          >
-            {generating ? "…" : "🤐"}
-          </button>
-          <button
             onClick={() => generateBucket("memento")}
             disabled={generating}
             title="Generate a memento-mori DO THE MATH carousel (women / Ripple) now"
@@ -629,12 +603,20 @@ export default function CarouselReviewPage() {
             {generating ? "…" : "⏳"}
           </button>
           <button
-            onClick={() => generateBucket("forbidden")}
+            onClick={() => generateBucket("phone-quote")}
             disabled={generating}
-            title="Generate a delete-after-reading carousel (women / Ripple) now"
+            title="Generate a phone-quote post (women / Ripple) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🤫"}
+            {generating ? "…" : "📱"}
+          </button>
+          <button
+            onClick={() => generateBucket("phone-quote-men")}
+            disabled={generating}
+            title="Generate a phone-quote post (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "📲"}
           </button>
           <button
             onClick={() => generateBucket("protocol")}

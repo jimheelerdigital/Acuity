@@ -62,49 +62,69 @@ import { inngest } from "@/inngest/client";
  * add memento mori posts back to ripple and the delete after reading
  * posts back to ripple").
  *
+ * 2026-09-03 — WINNER-FOCUSED RESTRUCTURE (per Keenan: "we're cutting
+ * social posting to 3x/day for BWK and 4x/day for Ripple... focus
+ * around these topics and images for the inital posts. still include
+ * variance."). Every lane is now anchored on a post that already
+ * performed:
+ * - BWK: MOODY-MEN theme-locked to the SILENCE family ("earn your
+ *   silence"), new LINE lane = HOLD THE LINE family with
+ *   storm-skyscraper covers, PROTOCOL unchanged ("30 days. earn it."
+ *   was already the winner format). MEMENTO-MEN and YEAR go DORMANT.
+ * - Ripple: SELFIE runs TWICE daily with per-post photography styles
+ *   ("give me 2x of those per day with more variance and different
+ *   picture styles"), QUESTIONS pinned dark with direct-prompt covers
+ *   ("the 'answer honestly' post... go back to that style of
+ *   imagery"), MEMENTO pinned dark with dusk-coast covers ("the 'do
+ *   the math' piture of the beach... give me more of that"). FREE,
+ *   NOBODY, FORBIDDEN go DORMANT — this supersedes the 50/50
+ *   light/dark roll: live women scenery lanes PIN to dark (the
+ *   winners were dark-era); the light machinery stays implemented.
+ * - NEW phone-quote lane pair, added ON TOP of the caps ("add a lane
+ *   for both of these types of posts. one for ripple, one for BWK"):
+ *   2 slides — photo cover with a sentence-case hook ("this quote
+ *   kept me up all night...") + a programmatically-composed notes-app
+ *   quote screen. Total: BWK 4/day, Ripple 5/day.
+ *
  * Overnight schedule (CDT):
- * -  5 UTC (12am): MOODY-MEN — numbered discipline carousel (BWK)
- *                  + MEMENTO-MEN — men's life-math (BWK, 4-10 slides)
- * -  6 UTC (1am):  YEAR — "ONE YEAR FROM NOW" discipline time-math
- *                  (men, BWK) + MEMENTO — women's "DO THE MATH"
- *                  life-math (Ripple, 4-10 slides)
- * -  7 UTC (2am):  QUESTIONS — women's hard questions (Ripple)
- *                  + SELFIE — realistic first-person photo slideshow
- *                  (Ripple) + FORBIDDEN — "DELETE THIS AFTER READING"
- *                  save-bait (Ripple)
- * -  8 UTC (3am):  FREE — "THINGS THAT ARE STILL FREE" (Ripple,
- *                  numbered) + NOBODY — "NOBODY TELLS YOU ABOUT ___"
- *                  (Ripple, rotating season) + PROTOCOL — "DO THIS
- *                  FOR 30 DAYS" (BWK, numbered, 5-7 steps)
+ * -  5 UTC (12am): MOODY-MEN — SILENCE-family discipline carousel
+ *                  (BWK) + SELFIE #1 (Ripple)
+ * -  6 UTC (1am):  LINE — HOLD THE LINE carousel, storm-skyscraper
+ *                  cover (BWK) + QUESTIONS — hard questions, dark
+ *                  (Ripple) + PHONE-QUOTE (Ripple, 2 slides)
+ * -  7 UTC (2am):  PROTOCOL — "DO THIS FOR 30 DAYS" (BWK) + SELFIE
+ *                  #2 (Ripple) + PHONE-QUOTE-MEN (BWK, 2 slides)
+ * -  8 UTC (3am):  MEMENTO — women's "DO THE MATH" life-math, dark
+ *                  dusk-coast cover (Ripple, 4-10 slides)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
- * to: [BUILD WITH KEY] for moody-men / memento-men / year /
- * protocol, [RIPPLE] for everything else (handled in
+ * to: [BUILD WITH KEY] for moody-men / line / protocol /
+ * phone-quote-men, [RIPPLE] for everything else (handled in
  * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
   "moody-men",
-  "memento-men",
-  "memento",
-  "questions",
-  "year",
-  "free",
-  "nobody",
-  "forbidden",
+  "line",
   "protocol",
+  "questions",
+  "memento",
   "selfie",
+  "phone-quote",
+  "phone-quote-men",
 ] as const;
 type DailyBucket = (typeof CAROUSEL_LANES)[number];
 
-/** Which lanes each overnight cron hour fans out (UTC hour). */
+/** Which lanes each overnight cron hour fans out (UTC hour). Selfie
+ *  appears twice on purpose (2026-09-03: "give me 2x of those per
+ *  day"). */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
-  5: ["moody-men", "memento-men"],
-  6: ["year", "memento"],
-  7: ["questions", "selfie", "forbidden"],
-  8: ["free", "nobody", "protocol"],
+  5: ["moody-men", "selfie"],
+  6: ["line", "questions", "phone-quote"],
+  7: ["protocol", "selfie", "phone-quote-men"],
+  8: ["memento"],
 };
 
 /**
@@ -240,9 +260,11 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlide, composeSlideWithOverlay, renderSelfieCaptionOverlay } =
           await import("@/lib/content-factory/compose");
 
-        const { SELFIE_POSE_VARIANTS, SELFIE_COVER_POSE_COUNT } = await import(
-          "@/lib/content-factory/brand"
-        );
+        const {
+          SELFIE_POSE_VARIANTS,
+          SELFIE_COVER_POSE_COUNT,
+          SELFIE_STYLE_VARIANTS,
+        } = await import("@/lib/content-factory/brand");
         let poseHash = 0;
         for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
         // Cover pose: face-visible prefix ONLY — the cover raw anchors
@@ -255,6 +277,14 @@ export const carouselDailyCronFn = inngest.createFunction(
           headline: selfie.headline,
           hasReference: !!selfie.anchorUrl,
           pose: SELFIE_POSE_VARIANTS[poseBase],
+          // Photography style: per-POST (slug-deterministic like the
+          // sticker color) so the day's two selfie posts read as
+          // different days (2026-09-03, per Keenan: "more variance and
+          // different picture styles").
+          style:
+            SELFIE_STYLE_VARIANTS[
+              Math.abs(poseHash) % SELFIE_STYLE_VARIANTS.length
+            ],
         });
 
         let rawBuffer: Buffer;
@@ -315,9 +345,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           const { composeSlideWithOverlay, renderSelfieCaptionOverlay } =
             await import("@/lib/content-factory/compose");
 
-          const { SELFIE_POSE_VARIANTS, SELFIE_COVER_POSE_COUNT } = await import(
-            "@/lib/content-factory/brand"
-          );
+          const {
+            SELFIE_POSE_VARIANTS,
+            SELFIE_COVER_POSE_COUNT,
+            SELFIE_STYLE_VARIANTS,
+          } = await import("@/lib/content-factory/brand");
           let poseHash = 0;
           for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
           // Same face-visible base index as the cover; steps offset from
@@ -335,6 +367,11 @@ export const carouselDailyCronFn = inngest.createFunction(
             pose: SELFIE_POSE_VARIANTS[
               (poseBase + i + 1) % SELFIE_POSE_VARIANTS.length
             ],
+            // Same per-POST style as the cover — one camera roll, one day.
+            style:
+              SELFIE_STYLE_VARIANTS[
+                Math.abs(poseHash) % SELFIE_STYLE_VARIANTS.length
+              ],
           });
 
           let rawBuffer: Buffer;
@@ -455,6 +492,144 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 1, bucket, ...selfieResult };
     }
 
+    // ── PHONE-QUOTE buckets: 2-slide quote posts (2026-09-03) ──────
+    // Per Keenan (with reference screenshots): "'this quote kept me up
+    // all night...' first slide, and then the next slide is a phone
+    // screen with a quote." Cover = photo + sentence-case hook
+    // (rendered ITEM-style, never uppercase); slide 2 = the notes-app
+    // screen composed programmatically by renderPhoneQuoteSlide — the
+    // quote text never touches gpt-image-2, so it can't be misspelled.
+    if (bucket === "phone-quote" || bucket === "phone-quote-men") {
+      const variant = bucket === "phone-quote-men" ? "men" : "women";
+
+      const pq = await step.run("generate-phone-quote-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generatePhoneQuoteTopic } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
+          select: { headline: true },
+        });
+        return generatePhoneQuoteTopic(
+          variant,
+          recent.map((p) => p.headline)
+        );
+      });
+
+      const slug = pq.slug;
+      logger.info(`[carousel-cron] Phone-quote (${bucket}): "${pq.hook}"`);
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        await ensureBucket();
+      });
+
+      // Slide 0: photo cover with the sentence-case hook. Both funnels
+      // shoot the DARK scheme (night interiors / night-city vantage) —
+      // white text.
+      const pqCover = await step.run("generate-phone-quote-cover", async () => {
+        const { generateMoodyImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMoodyImagePrompt } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+
+        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+          buildMoodyImagePrompt(variant, pq.coverScene, "dark"),
+          false
+        );
+        const overlay = await renderMoodyTextOverlay([pq.hook], "ITEM", "white");
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
+        );
+        return { imageUrl, overlayText: pq.hook, imagePrompt: prompt };
+      });
+
+      // Slide 1: the notes-app quote screen — no image model.
+      const pqQuote = await step.run("compose-phone-quote-screen", async () => {
+        const { uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { renderPhoneQuoteSlide } = await import(
+          "@/lib/content-factory/compose"
+        );
+        const composed = await renderPhoneQuoteSlide(pq.quote, variant);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${slug}/slide-1-quote.jpg`
+        );
+        // Marker prompt — recomposeSlide keys off the prefix to
+        // re-render the screen instead of calling an image model.
+        return {
+          imageUrl,
+          overlayText: pq.quote,
+          imagePrompt: `PHONE-QUOTE NOTE SCREEN (${variant}) — composed programmatically by renderPhoneQuoteSlide; no image model involved.`,
+        };
+      });
+
+      const pqResult = await step.run("save-and-email-phone-quote", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildMoodyCaption } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { extractHashtags } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+
+        const caption = buildMoodyCaption(variant, slug);
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: slug,
+            headline: pq.hook,
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: bucket,
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: pqCover.overlayText,
+                  imagePrompt: pqCover.imagePrompt,
+                  imageUrl: pqCover.imageUrl,
+                },
+                {
+                  order: 1,
+                  kind: "REASON" as const,
+                  overlayText: pqQuote.overlayText,
+                  imagePrompt: pqQuote.imagePrompt,
+                  imageUrl: pqQuote.imageUrl,
+                },
+              ],
+            },
+          },
+        });
+
+        const { sendCarouselEmail } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendCarouselEmail(post.id);
+        return { postId: post.id, slideCount: 2, estimatedCostCents: 8 + 2 };
+      });
+
+      logger.info(
+        `[carousel-cron] Generated phone-quote (${bucket}) "${pq.hook}": 2 slides`
+      );
+      return { generated: 1, bucket, ...pqResult };
+    }
+
     // ── MOODY-FAMILY buckets: dark centered-text carousels ─────────
     // (2026-08-28, per Keenan — cloned from the "TRUST THE PROCESS"
     // reference and expanded lane by lane until the whole daily
@@ -467,17 +642,14 @@ export const carouselDailyCronFn = inngest.createFunction(
     // male-dominant dark power imagery; EVERY Ripple lane = soft
     // aesthetically-pleasing feminine photography.
     const imageAudience: "women" | "men" =
-      bucket === "moody-men" ||
-      bucket === "memento-men" ||
-      bucket === "year" ||
-      bucket === "protocol"
+      bucket === "moody-men" || bucket === "line" || bucket === "protocol"
         ? "men"
         : "women";
-    // Lanes whose items carry an "N. Name." header (discipline, free
-    // things, protocol steps).
+    // Lanes whose items carry an "N. Name." header (discipline,
+    // hold-the-line, protocol steps).
     const numbered =
       bucket === "moody-men" ||
-      bucket === "free" ||
+      bucket === "line" ||
       bucket === "protocol";
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
@@ -489,12 +661,9 @@ export const carouselDailyCronFn = inngest.createFunction(
       const { prisma } = await import("@/lib/prisma");
       const {
         generateMoodyTopic,
+        generateLineTopic,
         generateMementoTopic,
         generateQuestionsTopic,
-        generateYearTopic,
-        generateFreeTopic,
-        generateNobodyTopic,
-        generateForbiddenTopic,
         generateProtocolTopic,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
@@ -504,38 +673,28 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
       const headlines = recent.map((p) => p.headline);
 
-      // Ripple light/dark scheme roll (2026-09-01, per Keenan: "make
-      // half the ripple posts light like they currently are, and the
-      // other half dark like they used to be"). One 50/50 roll per
-      // women-lane post — light = airy scenes + dark charcoal text,
-      // dark = the original warm-dim quiet-luxury scenes + white
-      // text. BWK men's lanes are always dark (scheme null). Rolled
-      // INSIDE this step so Inngest memoizes it across replays.
-      const scheme =
-        imageAudience === "women"
-          ? Math.random() < 0.5
-            ? ("light" as const)
-            : ("dark" as const)
-          : null;
-      const womenScheme = scheme ?? "light";
+      // Ripple scheme: PINNED to "dark" (2026-09-03 — the winning
+      // posts, ANSWER HONESTLY and DO THE MATH, were both dark-era;
+      // supersedes the 2026-09-01 50/50 roll, whose light machinery
+      // stays implemented and can be re-rolled later). BWK men's
+      // lanes are always dark (scheme null).
+      // (Widened cast: the pin makes this literally "dark" | null, but
+      // downstream tone logic still handles "light" for a future
+      // re-roll — keep the comparison legal.)
+      const scheme = (imageAudience === "women" ? "dark" : null) as
+        | "light"
+        | "dark"
+        | null;
       const topic =
-        bucket === "memento-men"
-          ? await generateMementoTopic("men", headlines)
-          : bucket === "memento"
-            ? await generateMementoTopic("women", headlines, womenScheme)
-            : bucket === "questions"
-              ? await generateQuestionsTopic(headlines, womenScheme)
-              : bucket === "year"
-                ? await generateYearTopic(headlines)
-                : bucket === "free"
-                  ? await generateFreeTopic(headlines, womenScheme)
-                  : bucket === "nobody"
-                    ? await generateNobodyTopic(headlines, womenScheme)
-                    : bucket === "forbidden"
-                      ? await generateForbiddenTopic(headlines, womenScheme)
-                      : bucket === "protocol"
-                        ? await generateProtocolTopic(headlines)
-                        : await generateMoodyTopic("men", headlines);
+        bucket === "memento"
+          ? await generateMementoTopic("women", headlines, "dark")
+          : bucket === "questions"
+            ? await generateQuestionsTopic(headlines, "dark")
+            : bucket === "line"
+              ? await generateLineTopic(headlines)
+              : bucket === "protocol"
+                ? await generateProtocolTopic(headlines)
+                : await generateMoodyTopic("men", headlines);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar
@@ -643,23 +802,19 @@ export const carouselDailyCronFn = inngest.createFunction(
 
     const moodyResult = await step.run("save-and-email-moody", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const { buildMoodyCaption, buildMementoCaption, buildUniversalCaption } =
-        await import("@/lib/content-factory/moody-carousel");
+      const { buildMoodyCaption } = await import(
+        "@/lib/content-factory/moody-carousel"
+      );
       const { extractHashtags } = await import(
         "@/lib/content-factory/carousel-generate"
       );
 
       // Hashtag-only caption cloned from the reference (2026-08-28,
       // per Keenan — the moody-family exception to the question+tags
-      // rule). Memento lanes keep their niche pool regardless of
-      // audience; FREE gets the universal pool; BWK men's lanes use
-      // the men's pool; the women's lanes share the women's.
-      const caption =
-        bucket === "memento-men"
-          ? buildMementoCaption(slug)
-          : bucket === "free"
-            ? buildUniversalCaption(slug)
-            : buildMoodyCaption(imageAudience, slug);
+      // rule). BWK men's lanes use the men's pool; the women's lanes
+      // share the women's. (The memento/universal niche pools went
+      // dormant with their lanes, 2026-09-03.)
+      const caption = buildMoodyCaption(imageAudience, slug);
 
       const post = await prisma.carouselPost.create({
         data: {

@@ -648,6 +648,53 @@ export async function renderMoodyTextOverlay(
 }
 
 /**
+ * Render the PHONE-QUOTE note-screen slide as a complete 1080x1920 JPEG
+ * (2026-09-03, per Keenan's reference screenshots: "the next slide is a
+ * phone screen with a quote about something important").
+ *
+ * The slide IS the phone screen — no photography, no gpt-image-2. The
+ * quote is deterministic text composed here so it can never be
+ * misspelled by an image model. Two variants:
+ * - "women" (Ripple): soft light-blue notes-app screen, near-black
+ *   typed text — cloned from the reference.
+ * - "men" (BWK): near-black screen, off-white text — same layout in
+ *   the BWK dark identity.
+ */
+export async function renderPhoneQuoteSlide(
+  quote: string,
+  variant: "women" | "men"
+): Promise<Buffer> {
+  const fontPath = await ensureFontFile("Medium");
+  const bg =
+    variant === "women"
+      ? { r: 0xd9, g: 0xea, b: 0xf7 }
+      : { r: 0x12, g: 0x14, b: 0x16 };
+  const textColor = variant === "women" ? "#1C2733" : "#F2F2F0";
+
+  const lines = wordWrap(stripUnrenderable(quote), 24);
+  const markup = `<span font_desc="Poppins Medium 54" foreground="${textColor}">${lines
+    .map((l) => escapePango(l))
+    .join("\n")}</span>`;
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+  const main = await renderMarkup(markup, fontPath, maxTextW, 22, 8);
+
+  const top = Math.round((OUTPUT_H - main.height) / 2);
+  const left = Math.round((OUTPUT_W - main.width) / 2);
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: OUTPUT_H,
+      channels: 3,
+      background: bg,
+    },
+  })
+    .composite([{ input: main.buffer, top, left }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+/**
  * Compose a text-free raw image + pre-rendered text overlay into the
  * final static slide JPEG (animated-post pipeline).
  */

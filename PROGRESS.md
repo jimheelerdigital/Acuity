@@ -38,6 +38,34 @@ Nothing changes for existing subscribers: grandfathering is automatic, so everyo
 - **`pricing` was added to `OBSERVER_PROFILES` deliberately** — it configures the SDK in observer mode, so it should be held to every observer expectation. The one exception is the NEW_PRICING assertion, which moved out of the shared block with a comment saying why.
 - **A submit profile was needed.** `eas submit --profile pricing` on a missing profile fails with "Missing submit profile in eas.json"; with the new one it gets past resolution to the archive prompt. That contrast is how the profile was verified without running a real submission.
 - Baselines: web tsc **161 before, 161 after**; mobile tsc **19 before, 19 after** — both measured by stashing. (The brief said 163; main has drifted to 161. That is five briefs running with a stale tsc number.) Tests **724/724** across 43 files; the RC evidence file went 22 → 34. Six mutations of `eas.json` each fail between 1 and 7 tests.
+## [2026-09-03] — Content factory rebuilt around the winning posts: 9 posts/day, new HOLD THE LINE and phone-quote lanes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The daily content is now built entirely around the posts that already performed. BWK gets 4 posts a day, each anchored on a winner: every discipline post is now a "move in silence" post (EARN YOUR SILENCE family), a new HOLD THE LINE lane always opens on a storm-skyscraper image like the one that got views, the 30 DAYS protocol posts continue unchanged, and there's a new 2-slide quote post ("this quote kept me up all night..." over a night skyline, then a phone notes-screen with the quote). Ripple gets 5 a day: the selfie slideshow now runs TWICE daily with a different photography style per post (golden hour, lamplight, overcast, etc.), the ANSWER HONESTLY-style question posts are back to the dark warm imagery that worked, the DO THE MATH posts always open on a dusk beach like the one that got shares, and Ripple gets its own version of the 2-slide quote post (light-blue notes screen). The lanes that weren't winning — men's life-math, ONE YEAR FROM NOW, THINGS THAT ARE STILL FREE, NOBODY TELLS YOU, DELETE THIS AFTER READING — are paused, not deleted, and can come back anytime. The quote text on the phone-screen slides is typed by code, not drawn by the image AI, so it can never be misspelled.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: CAROUSEL_LANES → [moody-men, line, protocol, questions, memento, selfie, phone-quote, phone-quote-men]; HOUR_LANES → 5:[moody-men,selfie] 6:[line,questions,phone-quote] 7:[protocol,selfie,phone-quote-men] 8:[memento] (selfie twice on purpose); Ripple scheme PINNED to "dark" (supersedes the 2026-09-01 50/50 roll — light machinery stays implemented); new phone-quote branch (own early-return like selfie: moody dark cover + programmatic quote screen); caption ternary collapsed to buildMoodyCaption; selfie branch threads a slug-deterministic SELFIE_STYLE_VARIANTS pick into every image prompt
+- apps/web/src/lib/content-factory/moody-carousel.ts: buildMoodySystemPrompt gains opts { theme, coverRule }; SILENCE_THEME injected into generateMoodyTopic("men"); new generateLineTopic (LINE_THEME + storm-skyscraper LINE_COVER_RULE, numbered 4-7 items); questions title rule → direct reader-prompt covers ("ANSWER HONESTLY" energy); memento women dark scheme gains MEMENTO_COVER_RULE (dusk-coast covers); new PhoneQuoteTopic + generatePhoneQuoteTopic(audience) with per-audience system prompts (hook + 20-45-word quote + coverScene)
+- apps/web/src/lib/content-factory/compose.ts: new renderPhoneQuoteSlide(quote, variant) — full 1080x1920 JPEG notes-app screen (women: #D9EAF7 bg / near-black text; men: near-black bg / off-white text), Poppins Medium via the existing Pango pipeline
+- apps/web/src/lib/content-factory/brand.ts: SELFIE_STYLE_VARIANTS (6 photography styles, per-post)
+- apps/web/src/lib/content-factory/carousel-generate.ts: buildSelfieImagePrompt takes style; MOODY_LANES + line/phone-quote/phone-quote-men; recomposeSlide branch for "PHONE-QUOTE NOTE SCREEN" marker prompts (re-renders the screen, never calls an image model); phone-quote covers recompose as ITEM (sentence-case hook, never uppercase)
+- apps/web/src/lib/content-factory/email.ts: BWK_LANES + line, phone-quote-men
+- apps/web/src/app/admin/content-factory/carousels/page.tsx + api/admin/carousels/route.ts: generate buttons/union → new lane set (year/free/nobody/forbidden/memento-men buttons removed)
+- No schema changes; cron string unchanged (dispatch-only) — no Inngest resync needed
+
+### Manual steps needed
+None — deploy is automatic on push. Tonight's 5-8 UTC runs pick this up automatically.
+
+### Notes
+- Volume decision (Keenan, AskUserQuestion): the phone-quote lanes are ADDED ON TOP of the 3+4 cut → BWK 4/day, Ripple 5/day, 9 total. This supersedes his earlier "Rotate 4 of 6 daily" answer — selfie×2 + questions + memento exactly filled Ripple's 4 before the quote lane landed on top.
+- Lane names are "phone-quote"/"phone-quote-men", NOT the dormant "quote-women"/"quote-men" from the killed animated quote loop — reusing those would collide in recomposeSlide's lane tables.
+- The Ripple dark pin lives where the 50/50 roll lived (inside the generate-moody-topic step) and is cast wide ("light"|"dark"|null) so the textTone comparison stays legal and a future re-roll is a one-line change.
+- The quote slide's imagePrompt is a marker string ("PHONE-QUOTE NOTE SCREEN (…)"); recomposeSlide keys off the prefix BEFORE the moody-lanes branch, so editing quote text is free (no gpt-image-2 call).
+- HOLD THE LINE items are numbered ("N. Name.") like moody-men; the winner post was a moody-men post, so the two BWK carousel lanes intentionally share a skeleton and differ by theme + cover family.
 
 ## [2026-09-01] — Ripple posts split 50/50 between light and dark looks
 
