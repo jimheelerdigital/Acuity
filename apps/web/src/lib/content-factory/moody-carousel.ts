@@ -103,7 +103,7 @@ Chaos outside = chaos inside.
 Bring order back."
 
 RULES:
-- "title": the cover text. 2-4 words, commanding, works in ALL CAPS ("TRUST THE PROCESS", "PROTECT YOUR PEACE"). No number, no punctuation except a period if natural.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act ("EARN YOUR SILENCE", "HOLD THE LINE") or a direct prompt to engage what's inside ("READ THESE SLOWLY", "ANSWER THIS FIRST..."). Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe.
 - The request tells you EXACTLY how many items to write. Each item:
   - "name": 1-3 words + period ("Reset day.", "Go quiet.").
   - "lines": 2-3 short paragraphs. First expands the item concretely in one sentence (can use lists: "room, car, digital files, notes"). Optional middle line: a compressed truth, equations welcome ("Chaos outside = chaos inside."). Last line: a 2-5 word command ("Bring order back.").
@@ -450,7 +450,7 @@ That's the whole number. Not this year's.
 Stop giving them away."
 
 RULES:
-- "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("YOU'RE ON THE CLOCK", "DO THE MATH"). No number in the title.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides ("DO THE MATH", "COUNT THESE HONESTLY...", "LOOK AT THE CLOCK"). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe.
 - The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
   - First line: ONE life-scale number — anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
@@ -566,7 +566,7 @@ VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wis
 ${WOMEN_SCENE_BRIEFS[scheme]}
 
 RULES:
-- "title": the cover text — a direct PROMPT to the reader that sets up the slides and makes swiping irresistible: 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER HONESTLY", "READ THESE SLOWLY", "BE HONEST NOW", "DON'T LOOK AWAY"). Not itself a question.
+- "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER THESE HONESTLY...", "READ THESE SLOWLY", "BE HONEST NOW", "DON'T LOOK AWAY"). Not itself a question. A trailing "..." is allowed when it baits the swipe.
 - The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the question. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise.
 - Each question hits a DIFFERENT nerve: identity, resentment, time, what she's postponing, what she'd never admit. Never two questions on the same nerve.
 - The questions must be answerable only by the reader — never rhetorical, never yes-obvious.
@@ -1476,7 +1476,7 @@ Same hour every day. Phone in another room.
 Thirty hours in a month. Most people give it zero."
 
 RULES:
-- "title": the cover text. Must contain "30 DAYS" ("DO THIS FOR 30 DAYS", "30 DAYS. NEW MAN."). 2-6 words, commanding, works in ALL CAPS.
+- "title": the cover text — short, sweet, and impossible to scroll past. Must contain "30 DAYS" and land as a direct challenge the reader has to answer ("DO THIS FOR 30 DAYS", "30 DAYS. EARN IT."). 2-6 words, works in ALL CAPS. Never a passive label.
 - Each protocol needs a THEME for the month (sleep + training + focus, money discipline, physical hardening, digital detox, building a skill, going quiet, cutting the circle, morning ownership) — vary it post to post, invent new themes, and NEVER reuse a theme from the recent-posts list.
 - Each item: "name" = the step, 2-5 words ("One hour on the skill."). "lines" = 2-3 short paragraphs: the exact rule (specific time/count/limit), then why it compounds over 30 days.
 - Each item's "scene": one concrete sentence for the photograph, per SCENES above.
