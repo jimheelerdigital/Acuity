@@ -323,12 +323,16 @@ export function buildMoodyImagePrompt(
   // markers ("SOFT and LIGHT" → dark text, "DIM and shadowed" →
   // white) — change the phrases in both places or not at all.
   return [
-    `Hyper-realistic cinematic photograph: ${scene}`,
+    // Hyperrealism mandate (2026-09-03, per Keenan: "the images also
+    // need to be hyperrealistic for all posts... they should look like
+    // someone took a photo across all platforms").
+    `A REAL photograph a person actually took with a camera: ${scene}`,
     style,
     audience === "women" && womenScheme === "light"
       ? "The entire frame is SOFT and LIGHT — a bright, even, airy exposure so dark charcoal text placed at the center of the image would be perfectly legible. No harsh highlights or busy detail in the middle of the frame."
       : "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
-    "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. Indistinguishable from a real photograph.",
+    "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. Physically believable optics: honest exposure, natural depth of field, subtle real-world imperfection — a faint touch of grain, light behaving the way it actually does. It must be INDISTINGUISHABLE from a real photograph someone took.",
+    "Absolutely NOT a 3D render, NOT CGI, NOT digital art, NOT an illustration, NOT a matte painting, and NOT the oversaturated too-perfect AI look — no plastic surfaces, no impossible glow, no fake-clean geometry.",
     "Vertical 9:16 composition, calm and uncluttered in the middle of the frame.",
     // Variance directive (2026-08-31, per Keenan: "create a ton of
     // variance between posts and image generations while keeping the
