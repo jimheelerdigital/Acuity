@@ -331,13 +331,16 @@ export function buildMoodyImagePrompt(
     audience === "women" && womenScheme === "light"
       ? "The entire frame is SOFT and LIGHT — a bright, even, airy exposure so dark charcoal text placed at the center of the image would be perfectly legible. No harsh highlights or busy detail in the middle of the frame."
       : "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
-    "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. Physically believable optics: honest exposure, natural depth of field, subtle real-world imperfection — a faint touch of grain, light behaving the way it actually does. It must be INDISTINGUISHABLE from a real photograph someone took.",
+    // Clarity mandate (2026-09-03, per Keenan: "all high quality, clear
+    // images that are hyper realistic").
+    "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. TACK-SHARP and high-resolution — crisp, clear, and perfectly focused on the subject; never blurry, hazy, murky, soft, or low-quality. Physically believable optics: honest exposure, natural depth of field, at most a faint touch of grain, light behaving the way it actually does. It must be INDISTINGUISHABLE from a real photograph someone took.",
     "Absolutely NOT a 3D render, NOT CGI, NOT digital art, NOT an illustration, NOT a matte painting, and NOT the oversaturated too-perfect AI look — no plastic surfaces, no impossible glow, no fake-clean geometry.",
     "Vertical 9:16 composition, calm and uncluttered in the middle of the frame.",
     // Variance directive (2026-08-31, per Keenan: "create a ton of
     // variance between posts and image generations while keeping the
-    // theme intact").
-    "Choose a distinctive vantage for THIS image — low from the ground or a bed, from inside looking out through glass, elevated, or deep one-point perspective — so it doesn't compose like a default eye-level shot. Keep the color grade and mood exactly on theme.",
+    // theme intact"; widened 2026-09-03: "there should be variance
+    // everywhere").
+    "Choose a distinctive vantage for THIS image — low from the ground or a bed, from inside looking out through glass, elevated, or deep one-point perspective — so it doesn't compose like a default eye-level shot. Also make its OTHER choices its own: vary the focal length (wide vs. tight), camera distance, weather, and the light's direction and character from image to image — no two frames should ever feel like the same shot. Keep the color grade and mood exactly on theme.",
     // People-free EVERYWHERE (2026-09-01, per Keenan: "the avatar is in
     // literally every single post again" — the standing "at most ONE
     // person: a lone man" allowance made gpt-image-2 paint a generic
