@@ -17,6 +17,9 @@
  * var must never silently enable an experimental path.
  */
 
+import { newPricingEnabled } from "./pricing";
+
+
 /**
  * Onboarding v10 (2026-08-19). Replaces the screens BEHIND the existing
  * /onboarding-new/* routes rather than adding new ones, so the Meta-ad deep
@@ -36,7 +39,8 @@ export function isOnboardingV10Enabled(): boolean {
 }
 
 /**
- * New ($8.99 / $79.99) pricing.
+ * New ($9.99 / $89.99) pricing — the V2_TIER values in
+ * packages/shared/src/pricing-plans.ts.
  *
  * OFF (default) → every surface quotes and charges LEGACY ($4.99 / $39.99),
  * i.e. today's behaviour for today's 17 subscribers, unchanged.
@@ -48,12 +52,16 @@ export function isOnboardingV10Enabled(): boolean {
  *
  * ⚠️ Flipping this is NOT sufficient to charge the new price — the V2
  * products must exist in App Store Connect / Play Console / Stripe first.
- * See packages/shared/src/pricing-plans.ts::PLACEHOLDER_V2_PRODUCT_IDS.
+ * See packages/shared/src/pricing-plans.ts.
  *
- * Static member access required — see isOnboardingV10Enabled above.
+ * ⚠️ UNLIKE every other flag in this file, this one does NOT read
+ * process.env here. It delegates to `lib/pricing.ts::newPricingEnabled`,
+ * which is the single parser for this variable. Re-adding a local
+ * `=== "true"` check would reintroduce the split that made the app and the
+ * v10 paywall quote different prices from the same env var.
  */
 export function isNewPricingEnabled(): boolean {
-  return process.env.EXPO_PUBLIC_NEW_PRICING === "true";
+  return newPricingEnabled();
 }
 
 /**
