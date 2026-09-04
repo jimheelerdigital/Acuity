@@ -101,10 +101,18 @@ const OBSERVER_PROFILES = [
   "pricing",
   // Extends `pricing`, so it inherits the soak as well as new pricing.
   "v10-pricing",
+  // Simulator variant of v10-pricing. Inherits the RC config too, though
+  // observation is inert on a simulator — StoreKit purchases don't happen
+  // there, so RC has nothing to watch. Harmless, and cheaper than carving
+  // an exception into the inheritance chain.
+  "v10-sim",
 ] as const;
 
 /** Profiles that intentionally ship V2 prices. Exact list — see below. */
-const NEW_PRICING_PROFILES = ["pricing", "v10-pricing"];
+const NEW_PRICING_PROFILES = ["pricing", "v10-pricing", "v10-sim"];
+
+/** Profiles that intentionally ship the v10 onboarding flow. Exact list. */
+const V10_PROFILES = ["v10", "v10-pricing", "v10-sim"];
 
 describe.each(OBSERVER_PROFILES)("eas.json %s profile", (profile) => {
   const env = () => resolvedEnv(profile);
@@ -200,7 +208,7 @@ describe("no EAS profile can advance the RC migration past observer", () => {
     const withV10 = Object.keys(eas.build).filter(
       (n) => resolvedEnv(n).EXPO_PUBLIC_ONBOARDING_V10 !== undefined
     );
-    expect(withV10.sort()).toEqual(["v10", "v10-pricing"]);
+    expect(withV10.sort()).toEqual([...V10_PROFILES].sort());
     // The store build must never carry it.
     expect(resolvedEnv("production").EXPO_PUBLIC_ONBOARDING_V10).toBeUndefined();
   });
@@ -297,6 +305,38 @@ describe("the `v10-pricing` profile — both flags in one QA binary", () => {
     // ...and the parent must itself resolve, or the chain dead-ends.
     expect(easFull.submit?.pricing?.extends).toBe("production");
     expect(easFull.submit?.production).toBeDefined();
+  });
+});
+
+describe("the `v10-sim` profile — v10 QA on a clean simulator", () => {
+  const env = () => resolvedEnv("v10-sim");
+  const raw = () => eas.build["v10-sim"] as
+    | { extends?: string; distribution?: string; ios?: { simulator?: boolean } }
+    | undefined;
+
+  it("extends `v10-pricing` and only overrides the build target", () => {
+    expect(raw()?.extends).toBe("v10-pricing");
+    // No env of its own — the flags come entirely from the parent chain,
+    // so a change to v10-pricing reaches the simulator build too.
+    expect(eas.build["v10-sim"]?.env).toBeUndefined();
+  });
+
+  it("is a simulator build distributed internally", () => {
+    expect(raw()?.ios?.simulator).toBe(true);
+    expect(raw()?.distribution).toBe("internal");
+  });
+
+  it("inherits BOTH feature flags from v10-pricing", () => {
+    // The point of the profile: a clean simulator has no app history, so
+    // cold start routes into v10 with no override needed.
+    expect(env().EXPO_PUBLIC_ONBOARDING_V10).toBe("true");
+    expect(env().EXPO_PUBLIC_NEW_PRICING).toBe("1");
+  });
+
+  it("advances no RC stage past observation", () => {
+    expect(env().EXPO_PUBLIC_RC_SOURCE_OF_TRUTH).toBeUndefined();
+    expect(env().EXPO_PUBLIC_RC_SDK_PURCHASES).toBeUndefined();
+    expect(rcUnsafePurchaseConfig(flagsForProfile("v10-sim"))).toBe(false);
   });
 });
 

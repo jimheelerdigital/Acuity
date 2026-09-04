@@ -99,6 +99,13 @@
         "EXPO_PUBLIC_ONBOARDING_V10": "true"
       }
     },
+    "v10-sim": {
+      "extends": "v10-pricing",
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
     "testflight-async": {
       "extends": "production",
       "channel": "v133-async-validation",
