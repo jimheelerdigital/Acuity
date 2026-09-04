@@ -19,6 +19,7 @@ import {
   FAQSection,
   StickyCTA,
 } from "@/components/landing-shared";
+import { displayMonthly } from "@/lib/pricing";
 
 const UTM = "sleep";
 const WAITLIST = `/start?utm_campaign=${UTM}`;
@@ -264,7 +265,7 @@ export default function SleepPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline="Better sleep for $4.99/month"
+        headline={`Better sleep for ${displayMonthly()}/month`}
         subheadline="One plan. Everything included. Cancel anytime."
         utmCampaign={UTM}
       />

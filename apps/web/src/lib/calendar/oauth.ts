@@ -9,7 +9,9 @@
  * Google Cloud Console OAuth client, two redirect URIs registered).
  *
  * Required redirect URIs on the Google Cloud Console OAuth client:
- *   - https://getacuity.io/api/calendar/callback         (prod)
+ *   - https://goripple.io/api/calendar/callback          (prod)
+ *   - https://getacuity.io/api/calendar/callback         (legacy domain —
+ *     keep registered while old sessions may still round-trip through it)
  *   - http://localhost:3000/api/calendar/callback        (dev)
  *
  * Scopes requested:
@@ -40,7 +42,7 @@ function redirectUri(): string {
   const base =
     process.env.NEXTAUTH_URL ??
     process.env.APP_URL ??
-    "https://getacuity.io";
+    "https://goripple.io";
   return `${base.replace(/\/$/, "")}/api/calendar/callback`;
 }
 

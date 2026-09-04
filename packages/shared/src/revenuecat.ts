@@ -95,6 +95,36 @@ export function resolveRcFlags(
   };
 }
 
+/**
+ * The SDK configure mode implied by a flag set. Pure, so the mobile
+ * `configureRevenueCat` branch is assertable without a native runtime.
+ *
+ *   "disabled"  neither observation nor purchasing — nothing is configured
+ *               and the native module is never even imported.
+ *   "observer"  RC watches the transactions our own IAP flow makes
+ *               (purchasesAreCompletedBy: MY_APP). Writes nothing here.
+ *   "purchases" RC performs purchases itself.
+ *
+ * RC_SDK_PURCHASES wins over RC_OBSERVER when both are set, matching the
+ * order the SDK is actually configured in.
+ */
+export function rcConfigureMode(
+  flags: RcFlags
+): "disabled" | "observer" | "purchases" {
+  if (flags.RC_SDK_PURCHASES) return "purchases";
+  if (flags.RC_OBSERVER) return "observer";
+  return "disabled";
+}
+
+/**
+ * The one combination that can take real money and grant no access:
+ * purchasing through RC while nothing on our side is allowed to write the
+ * entitlement. `configureRevenueCat` logs a loud warning when this is true.
+ */
+export function rcUnsafePurchaseConfig(flags: RcFlags): boolean {
+  return flags.RC_SDK_PURCHASES && !flags.RC_SOURCE_OF_TRUTH;
+}
+
 // ─── Identifiers ─────────────────────────────────────────────────────
 
 /**
@@ -116,7 +146,7 @@ export const RC_ENTITLEMENT_PRO = "pro";
  * compiles and runs before the real offerings exist in the dashboard.
  */
 export const RC_OFFERINGS = {
-  /** Current default offering — new pricing ($8.99 / $79.99). */
+  /** Current default offering — new pricing ($9.99 / $89.99). */
   default: "default",
   /** Legacy pricing offering for grandfathered subscribers ($4.99 / $39.99). */
   grandfathered: "grandfathered",

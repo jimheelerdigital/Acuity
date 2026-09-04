@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import { buildCaption } from "./caption";
@@ -241,12 +241,18 @@ export function buildImagePrompt(
   // live 2026-08-11) — so the noText prompt swaps in VISUAL_DNA_NOTEXT
   // and never uses the words "slide" or "carousel".
   if (opts?.noText) {
+    // 2026-08-24: sceneHint may now be a bespoke object scene with no
+    // person — the character-expression mood line would make gpt-image-2
+    // add a woman anyway, so it only applies when the scene has one.
+    // (No sceneHint = legacy rotating room settings, which always do.)
+    const personInScene =
+      !opts.sceneHint || /\b(she|her|hers|herself|woman)\b/i.test(opts.sceneHint);
     return [
       styleLock,
       colorPrompt ?? "",
       `An illustrated scene that visually represents: ${sceneText}`,
       opts.sceneHint ?? "",
-      moodLine,
+      personInScene ? moodLine : "",
       `Mood context: ${topic.headline} — self-reflection and mental load, for women.`,
       VISUAL_DNA_NOTEXT,
     ].filter(Boolean).join("\n");
@@ -295,6 +301,102 @@ function buildCoverTeaser(items: string[]): string {
   ].join("\n");
 }
 
+/**
+ * Image prompt for one STATIC daily-carousel slide (2026-08-28, per
+ * Keenan: no more AI animation on the negative/positive carousels —
+ * JUST image gen, rotating four visual styles: aesthetic photoreal,
+ * Pixar-style avatar, animated-film illustration, hyper-real nature).
+ * Text is never baked — burned on by renderSlideTextOverlay.
+ */
+export function buildCarouselImagePrompt(opts: {
+  style: CarouselVisualStyle;
+  /** Scene direction from the topic model. */
+  scene: string;
+  /** The slide's burned-on line — the image quietly acts it out. */
+  slideText: string;
+  headline: string;
+}): string {
+  return [
+    `Scene (follow exactly): ${opts.scene}`,
+    `Context (convey through the image only — subtly, shown not told): this image belongs to a carousel titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`,
+    CAROUSEL_VISUAL_STYLES[opts.style],
+  ].join("\n");
+}
+
+/**
+ * Build the image prompt for one SELFIE-slideshow slide (2026-08-25,
+ * per Keenan: realistic mirror-selfie avatar + hyper-realistic
+ * aesthetic shots). Text is never baked — captions are burned on by
+ * renderSelfieCaptionOverlay.
+ */
+export function buildSelfieImagePrompt(opts: {
+  shot: "mirror" | "aesthetic";
+  /** Scene direction from the topic model. */
+  scene: string;
+  /** The slide's burned-on line — the photo quietly acts it out. */
+  slideText: string;
+  headline: string;
+  /** True when a reference photo of the avatar is passed to the edit endpoint. */
+  hasReference?: boolean;
+  /** Pose/framing directive (one of SELFIE_POSE_VARIANTS) — forces
+   * every mirror selfie in a post to look different (2026-08-26). */
+  pose?: string;
+}): string {
+  const context = `Context (convey through the photo only — subtly, shown not told): this photo belongs to a personal slideshow titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`;
+
+  if (opts.shot === "aesthetic") {
+    return [
+      `Scene (follow exactly): ${opts.scene}`,
+      context,
+      SELFIE_AESTHETIC_DNA,
+    ].join("\n");
+  }
+
+  return [
+    opts.hasReference
+      ? "From the reference image take ONLY the woman's identity: the EXACT same person — identical hair, skin tone, and build (her face is hidden behind her raised phone in every photo of this series, and stays hidden here). Take NOTHING else from the reference: do NOT copy or reuse its pose, arm position, framing, camera distance, outfit, room, furniture, or lighting. This is a COMPLETELY DIFFERENT photo of the same woman, taken on a different day."
+      : "",
+    SELFIE_PERSONA,
+    `Scene (follow exactly): ${opts.scene}`,
+    opts.pose
+      ? `Pose and framing (follow exactly — this OVERRIDES any camera or mirror setup implied by the scene): ${opts.pose}`
+      : "",
+    context,
+    SELFIE_VISUAL_DNA,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Keenan's avatar reference photo for BWK lone-man scenes (2026-08-30,
+ * per Keenan: "use me as an avatar for pictures that need one").
+ * Uploaded once to Supabase storage; cached per lambda instance.
+ * Returns null (and the caller falls back to plain generation) if the
+ * file is missing — the avatar is an enhancement, never a dependency.
+ */
+const AVATAR_REFERENCE_PATH = "reference/bwk-avatar.jpg";
+let _avatarCache: Buffer | null | undefined;
+export async function getAvatarReference(): Promise<Buffer | null> {
+  if (_avatarCache !== undefined) return _avatarCache;
+  try {
+    const { supabase } = await import("@/lib/supabase.server");
+    const { data, error } = await supabase.storage
+      .from("content-factory")
+      .download(AVATAR_REFERENCE_PATH);
+    if (error || !data) {
+      console.warn(`[carousel] Avatar reference missing: ${error?.message}`);
+      _avatarCache = null;
+    } else {
+      _avatarCache = Buffer.from(await data.arrayBuffer());
+    }
+  } catch (e) {
+    console.warn(`[carousel] Avatar reference fetch failed:`, e);
+    _avatarCache = null;
+  }
+  return _avatarCache;
+}
+
 export async function generateImage(prompt: string): Promise<Buffer> {
   const response = await openai().images.generate({
     model: "gpt-image-2",
@@ -333,6 +435,33 @@ export async function generateImageWithReference(
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("gpt-image-2 edit returned no image data");
   return Buffer.from(b64, "base64");
+}
+
+/**
+ * Generate a moody-lane image, optionally with the Keenan avatar
+ * reference (2026-08-31, per Keenan: avatar allowed again in "5-10% of
+ * generated posts, max" — the caller decides via a per-post random
+ * roll in carousel-daily.ts; this function NEVER decides frequency).
+ * Returns the prompt actually used so it can be stored on the slide —
+ * the MOODY_AVATAR_PROMPT "reference photo" marker is what
+ * recomposeSlide keys off to re-attach the reference on edits.
+ */
+export async function generateMoodyImage(
+  prompt: string,
+  withAvatar: boolean
+): Promise<{ buffer: Buffer; prompt: string }> {
+  if (withAvatar) {
+    const reference = await getAvatarReference();
+    if (reference) {
+      const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
+      const full = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
+      return {
+        buffer: await generateImageWithReference(full, reference),
+        prompt: full,
+      };
+    }
+  }
+  return { buffer: await generateImage(prompt), prompt };
 }
 
 /** gpt-image-2 at 1024x1536 costs ~$0.04-0.08 per image. Estimate conservatively. */
@@ -431,12 +560,89 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
   let composed: Buffer;
   let rawBuffer: Buffer | null = null;
 
+  // Moody-family lanes (live + dead) render text as a sharp/Pango overlay
+  // — NOT baked into the AI image. Editing one of these must re-run
+  // renderMoodyTextOverlay, or the edit ships a text-free scene (bug
+  // found 2026-08-29 editing THE QUIET AUDIT cover).
+  const MOODY_LANES = new Set([
+    "rules", "moody-women", "moody-men", "memento", "memento-men",
+    "missed", "missed-men", "questions", "sign", "year", "free",
+    "behind", "nobody", "bloomers", "taught", "forbidden", "unsent",
+    "aura", "versions", "protocol",
+  ]);
+
   if (slide.kind === "CTA") {
     composed = await composeCTASlide(newText);
+  } else if (MOODY_LANES.has(slide.carouselPost.lane ?? "")) {
+    // Regenerate the scene from the stored prompt (scenes are text-free),
+    // then re-render the overlay with the new text.
+    const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
+    // Avatar slides (capped at ≤8% of posts since 2026-08-31) store an
+    // avatar block mentioning the "reference photo" in their prompt —
+    // re-attach the reference on edit so the man stays Keenan. Match on
+    // the phrase, not the current MOODY_AVATAR_PROMPT constant, so
+    // historical prompts stored under older block wording still work.
+    // If the reference is missing, cut the block (it always starts at
+    // one of the known lead-ins) so the model isn't told to match a
+    // photo that isn't attached.
+    if (slide.imagePrompt.includes("reference photo")) {
+      const reference = await getAvatarReference();
+      if (reference) {
+        rawBuffer = await generateImageWithReference(slide.imagePrompt, reference);
+      } else {
+        const cutAt = ["EXCEPTION to the no-people rule", "IDENTITY: the lone man"]
+          .map((m) => slide.imagePrompt.indexOf(m))
+          .filter((i) => i >= 0)
+          .sort((a, b) => a - b)[0];
+        rawBuffer = await generateImage(
+          cutAt !== undefined
+            ? slide.imagePrompt.slice(0, cutAt).trimEnd()
+            : slide.imagePrompt
+        );
+      }
+    } else {
+      rawBuffer = await generateImage(slide.imagePrompt);
+    }
+    // QUOTE (Playfair serif italic) is dead — 2026-08-30, per Keenan:
+    // "get rid of the italicized ripple characters. make everything
+    // consistent". All item slides re-render as ITEM, matching the
+    // daily pipeline.
+    const lane = slide.carouselPost.lane;
+    const moodyKind =
+      lane === "sign" || lane === "aura"
+        ? "SIGN"
+        : slide.kind === "COVER"
+          ? "COVER"
+          : "ITEM";
+    // Text tone comes from the STORED image prompt, not the lane:
+    // since 2026-09-01 every Ripple women-lane post rolls a 50/50
+    // light/dark scheme, so a lane no longer implies a tone. The
+    // buildMoodyImagePrompt exposure line doubles as the marker
+    // ("SOFT and LIGHT" → dark charcoal text, "DIM and shadowed" →
+    // white text) — this also fixes the old gotcha where recomposing
+    // a pre-kill dark memento/forbidden slide via the lane table
+    // rendered dark text on a dark image. LIGHT_LANES is only the
+    // fallback for slides whose prompts predate the markers.
+    const LIGHT_LANES = new Set([
+      "questions", "sign", "free", "nobody", "memento", "forbidden",
+    ]);
+    const tone = slide.imagePrompt?.includes("SOFT and LIGHT")
+      ? ("dark" as const)
+      : slide.imagePrompt?.includes("DIM and shadowed")
+        ? ("white" as const)
+        : LIGHT_LANES.has(lane ?? "")
+          ? ("dark" as const)
+          : ("white" as const);
+    const overlay = await renderMoodyTextOverlay(
+      newText.split("\n\n"),
+      moodyKind,
+      tone
+    );
+    composed = await composeSlideWithOverlay(rawBuffer, overlay);
   } else {
-    // Re-generate the raw image from the same prompt and re-compose with new text.
-    // We can't strip text from an already-composed image, so we regenerate the
-    // underlying image. This costs ~$0.08 but gives a clean result.
+    // Legacy lanes bake text into the AI image via gpt-image-2 — regenerate
+    // the underlying image with the new text. This costs ~$0.08 but gives a
+    // clean result.
     const topic = CAROUSEL_TOPICS.find((t) => t.slug === slide.carouselPost.topicSlug);
     const lanePrefix = STYLE_LANES[resolveStyleLane(topic?.lane)];
     const prompt = slide.imagePrompt || buildImagePrompt(

@@ -23,7 +23,7 @@ import { useOnboardingState, type Q1Answer, type Q2Answer } from "@/contexts/onb
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
-import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
+import { displayMonthly } from "@/lib/pricing";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
 import V10Paywall from "./_v10/paywall";
@@ -448,7 +448,7 @@ function PaywallScreen() {
                 textAlign: "center",
               }}
             >
-              {formatDollars(MONTHLY_PRICE_CENTS)}/month after your 7-day
+              {displayMonthly()}/month after your 7-day
               trial. Cancel anytime.
             </Text>
           </Animated.View>

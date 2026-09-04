@@ -21,14 +21,21 @@ const PADDING_X = 72; // horizontal padding for text
 // ─── Font management ────────────────────────────────────────────────────────
 
 /**
- * Ensure a Poppins font file is available on disk and return its path.
+ * Ensure a font file is available on disk and return its path.
  * Checks local paths first (local dev), then downloads from the CDN
  * and caches in /tmp/ (Lambda). Returns null if all attempts fail.
+ *
+ * "QuoteSerif" = Playfair Display Medium Italic — the premium editorial
+ * serif used by the quote-loop / questions overlays (2026-08-28 PM, per
+ * Keenan: "italicized and fancier... stand out and feel premium").
  */
 export async function ensureFontFile(
-  variant: "Bold" | "Medium" = "Bold"
+  variant: "Bold" | "Medium" | "QuoteSerif" = "Bold"
 ): Promise<string | null> {
-  const filename = `Poppins-${variant}.ttf`;
+  const filename =
+    variant === "QuoteSerif"
+      ? "PlayfairDisplay-MediumItalic.ttf"
+      : `Poppins-${variant}.ttf`;
   const tmpPath = `/tmp/${filename}`;
 
   if (fs.existsSync(tmpPath)) return tmpPath;
@@ -49,7 +56,7 @@ export async function ensureFontFile(
 
   // Download from CDN (Vercel serves public/ files via CDN)
   try {
-    const url = `https://getacuity.io/fonts/${filename}`;
+    const url = `https://goripple.io/fonts/${filename}`;
     console.log(`[compose] Downloading font ${filename} from CDN…`);
     const res = await fetch(url);
     if (res.ok) {
@@ -253,9 +260,11 @@ function buildLinesMarkup(
  * this exact overlay is composited onto the static JPEG (sharp) AND
  * burned onto the finished MP4 (ffmpeg) — pixel-identical, pixel-frozen.
  *
- * Design (2026-08-11 "eye-popping" pass, requested by Keenan):
- *   - UPPERCASE Poppins Bold, big type, starting 15% from the top
- *     (below TikTok's status bar + search pill)
+ * Design (2026-08-11 "eye-popping" pass, requested by Keenan; re-anchored
+ * 2026-08-28, per Keenan: the whole text block is CENTERED in the middle
+ * of the image, and the cover engagement question is gone):
+ *   - UPPERCASE Poppins Bold, big type, the full block vertically
+ *     centered in the frame
  *   - Numbers inside the text rendered in the carousel's accent color
  *   - REASON slides get an accent-filled circle badge with the number
  *   - COVER gets a rounded accent underline bar beneath the headline
@@ -266,13 +275,6 @@ export async function renderSlideTextOverlay(
   kind: "COVER" | "REASON",
   slideNumber?: number,
   accent: string = BURNT_ORANGE,
-  /**
-   * COVER only (2026-08-13, per Keenan): a short engagement question
-   * ("Which one hits the hardest?") rendered as a smaller line anchored
-   * near the bottom of the slide — the ask lives on the cover itself,
-   * static AND animated.
-   */
-  subline?: string,
   /**
    * REASON only (2026-08-16, per Keenan): the supporting "how/why"
    * sentence from the topic engine, rendered smaller under the main text.
@@ -294,37 +296,66 @@ export async function renderSlideTextOverlay(
   const main = await renderMarkup(mainMarkup, fontPath, maxTextW, 12, 10);
   const blurredShadow = await sharp(shadow.buffer).blur(6).png().toBuffer();
 
-  // 15% top buffer (2026-08-12, per Keenan): TikTok's status bar + search
-  // pill cover roughly the top 13% of the screen — at the old 10% the
-  // first headline line rendered underneath the search bar.
-  const topStart = Math.round(OUTPUT_H * 0.15);
-  const composites: sharp.OverlayOptions[] = [];
-  let cursorY = topStart;
-
-  // REASON: accent circle badge with the slide number, centered above the text.
+  // ── Pre-render every piece so the WHOLE block can be measured and
+  // vertically centered (2026-08-28, per Keenan: "centered in the middle
+  // of the generation for all posts").
+  const BADGE_D = 118;
+  const BADGE_GAP = 26;
+  let badge: { circle: Buffer; shadow: Buffer; num: { buffer: Buffer; width: number; height: number } } | null = null;
   if (kind === "REASON" && slideNumber) {
-    const D = 118;
-    const circle = await circlePng(D, hexToRgb(accent), { ringWidth: 5 });
+    const circle = await circlePng(BADGE_D, hexToRgb(accent), { ringWidth: 5 });
     const numMarkup = `<span font_desc="Poppins Bold 52" foreground="#FFFFFF">${slideNumber}</span>`;
-    const num = await renderMarkup(numMarkup, fontPath, D, 0, 0);
-
+    const num = await renderMarkup(numMarkup, fontPath, BADGE_D, 0, 0);
     const badgeShadow = await sharp(
-      await circlePng(D, { r: 17, g: 17, b: 17 }, { alpha: 0.65 })
+      await circlePng(BADGE_D, { r: 17, g: 17, b: 17 }, { alpha: 0.65 })
     )
       .blur(6)
       .png()
       .toBuffer();
-    const badgeLeft = Math.round((OUTPUT_W - D) / 2);
+    badge = { circle, shadow: badgeShadow, num };
+  }
+
+  const DETAIL_GAP = 18;
+  let detailPiece: { blurred: Buffer; main: { buffer: Buffer; width: number; height: number } } | null = null;
+  if (detail && detail.trim()) {
+    const mediumPath = await ensureFontFile("Medium");
+    const detailLines = wordWrap(detail.trim(), 34);
+    const detailBody = detailLines.map((l) => escapePango(l)).join("\n");
+    const detailSize = 30;
+    const detailMarkupMain = `<span font_desc="Poppins Medium ${detailSize}" foreground="#FFFFFF">${detailBody}</span>`;
+    const detailMarkupShadow = `<span font_desc="Poppins Medium ${detailSize}" foreground="#111111">${detailBody}</span>`;
+    const dShadow = await renderMarkup(detailMarkupShadow, mediumPath ?? fontPath, maxTextW, 8, 8);
+    const dMain = await renderMarkup(detailMarkupMain, mediumPath ?? fontPath, maxTextW, 8, 8);
+    const dBlurred = await sharp(dShadow.buffer).blur(5).png().toBuffer();
+    detailPiece = { blurred: dBlurred, main: dMain };
+  }
+
+  const BAR_W = 180;
+  const BAR_H = 14;
+  const BAR_GAP = 16;
+
+  const totalH =
+    (badge ? BADGE_D + BADGE_GAP : 0) +
+    main.height +
+    (detailPiece ? DETAIL_GAP + detailPiece.main.height : 0) +
+    (kind === "COVER" ? BAR_GAP + BAR_H : 0);
+
+  const composites: sharp.OverlayOptions[] = [];
+  let cursorY = Math.round((OUTPUT_H - totalH) / 2);
+
+  // REASON: accent circle badge with the slide number, centered above the text.
+  if (badge) {
+    const badgeLeft = Math.round((OUTPUT_W - BADGE_D) / 2);
     composites.push(
-      { input: badgeShadow, top: cursorY + 5, left: badgeLeft + 4 },
-      { input: circle, top: cursorY, left: badgeLeft },
+      { input: badge.shadow, top: cursorY + 5, left: badgeLeft + 4 },
+      { input: badge.circle, top: cursorY, left: badgeLeft },
       {
-        input: num.buffer,
-        top: Math.round(cursorY + (D - num.height) / 2),
-        left: Math.round(badgeLeft + (D - num.width) / 2),
+        input: badge.num.buffer,
+        top: Math.round(cursorY + (BADGE_D - badge.num.height) / 2),
+        left: Math.round(badgeLeft + (BADGE_D - badge.num.width) / 2),
       }
     );
-    cursorY += D + 26;
+    cursorY += BADGE_D + BADGE_GAP;
   }
 
   const textLeft = Math.round((OUTPUT_W - main.width) / 2);
@@ -336,62 +367,33 @@ export async function renderSlideTextOverlay(
 
   // Supporting detail line (2026-08-16, per Keenan): a smaller sentence
   // under the main text — the "how/why" beat from the topic engine.
-  // Poppins Medium, sentence case, same shadow treatment.
-  if (detail && detail.trim()) {
-    const mediumPath = await ensureFontFile("Medium");
-    const detailLines = wordWrap(detail.trim(), 34);
-    const detailBody = detailLines.map((l) => escapePango(l)).join("\n");
-    const detailSize = 30;
-    const detailMarkupMain = `<span font_desc="Poppins Medium ${detailSize}" foreground="#FFFFFF">${detailBody}</span>`;
-    const detailMarkupShadow = `<span font_desc="Poppins Medium ${detailSize}" foreground="#111111">${detailBody}</span>`;
-    const dShadow = await renderMarkup(detailMarkupShadow, mediumPath ?? fontPath, maxTextW, 8, 8);
-    const dMain = await renderMarkup(detailMarkupMain, mediumPath ?? fontPath, maxTextW, 8, 8);
-    const dBlurred = await sharp(dShadow.buffer).blur(5).png().toBuffer();
-    const dLeft = Math.round((OUTPUT_W - dMain.width) / 2);
-    const dTop = cursorY + 18;
+  if (detailPiece) {
+    const dLeft = Math.round((OUTPUT_W - detailPiece.main.width) / 2);
+    const dTop = cursorY + DETAIL_GAP;
     composites.push(
-      { input: dBlurred, top: dTop + 4, left: dLeft + 3 },
-      { input: dMain.buffer, top: dTop, left: dLeft }
+      { input: detailPiece.blurred, top: dTop + 4, left: dLeft + 3 },
+      { input: detailPiece.main.buffer, top: dTop, left: dLeft }
     );
-    cursorY = dTop + dMain.height;
+    cursorY = dTop + detailPiece.main.height;
   }
 
-  // COVER: rounded accent bar under the headline for extra pop.
+  // COVER: rounded accent bar under the headline for extra pop. The
+  // engagement question sub-line is GONE (2026-08-28, per Keenan: "no
+  // more question on the cover").
   if (kind === "COVER") {
-    const barW = 180;
-    const barH = 14;
-    const bar = await capsulePng(barW, barH, hexToRgb(accent));
+    const bar = await capsulePng(BAR_W, BAR_H, hexToRgb(accent));
     const barShadow = await sharp(
-      await capsulePng(barW, barH, { r: 17, g: 17, b: 17 }, 0.65)
+      await capsulePng(BAR_W, BAR_H, { r: 17, g: 17, b: 17 }, 0.65)
     )
       .blur(5)
       .png()
       .toBuffer();
-    const barLeft = Math.round((OUTPUT_W - barW) / 2);
+    const barLeft = Math.round((OUTPUT_W - BAR_W) / 2);
     composites.push(
-      { input: barShadow, top: cursorY + 20, left: barLeft + 3 },
-      { input: bar, top: cursorY + 16, left: barLeft }
+      { input: barShadow, top: cursorY + BAR_GAP + 4, left: barLeft + 3 },
+      { input: bar, top: cursorY + BAR_GAP, left: barLeft }
     );
-    cursorY += barH + 16;
-
-    // Engagement sub-line anchored near the BOTTOM of the slide
-    // (2026-08-14, per Keenan: cleaner than stacking it under the
-    // headline). Bottom edge sits at 86% of the frame so TikTok's
-    // caption/music UI (bottom ~12-15%) never covers it.
-    if (subline) {
-      const subLines = wordWrap(subline.toUpperCase(), 26);
-      const subShadowMarkup = buildLinesMarkup(subLines, 38, "#111111", "#111111");
-      const subMainMarkup = buildLinesMarkup(subLines, 38, "#FFFFFF", accent);
-      const subShadow = await renderMarkup(subShadowMarkup, fontPath, maxTextW, 8, 6);
-      const subMain = await renderMarkup(subMainMarkup, fontPath, maxTextW, 8, 6);
-      const subBlurred = await sharp(subShadow.buffer).blur(5).png().toBuffer();
-      const subLeft = Math.round((OUTPUT_W - subMain.width) / 2);
-      const subTop = Math.round(OUTPUT_H * 0.86) - subMain.height;
-      composites.push(
-        { input: subBlurred, top: subTop + 4, left: subLeft + 3 },
-        { input: subMain.buffer, top: subTop, left: subLeft }
-      );
-    }
+    cursorY += BAR_GAP + BAR_H;
   }
 
   return sharp({
@@ -403,6 +405,244 @@ export async function renderSlideTextOverlay(
     },
   })
     .composite(composites)
+    .png()
+    .toBuffer();
+}
+
+/** Selfie sticker-text fill colors (per Keenan's 2026-08-25 reference:
+ * viral mirror-selfie slideshows use pink/pastel TikTok sticker text
+ * with a white outline). Rotated deterministically per post. */
+export const SELFIE_TEXT_COLORS = [
+  "#FF6FA5", // hot pink (the classic)
+  "#FF8FB8", // soft pink
+  "#B784F5", // lilac
+  "#5EC8F2", // sky blue
+] as const;
+
+/** Strip emoji/symbols the Lambda Pango stack can't render (they'd
+ * come out as tofu boxes on the burned caption). */
+function stripUnrenderable(s: string): string {
+  return s
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
+ * Render the burned-on caption for a SELFIE slideshow slide as a
+ * transparent 1080x1920 PNG (2026-08-25, per Keenan).
+ *
+ * Deliberately NOT the branded overlay (uppercase Poppins + accent
+ * badges) — a realistic mirror-selfie post must read like text a real
+ * person typed over her own photo. Style mimics the viral reference
+ * posts: sentence-case colored sticker text with a thick white outline.
+ *
+ * Placement (per Keenan's 2026-08-25 review of the first example):
+ * NEVER over the face. Mirror shots put the block at chest/torso level
+ * ("lower"); aesthetic shots have no faces so the upper-middle position
+ * stays ("upper").
+ */
+export async function renderSelfieCaptionOverlay(
+  text: string,
+  opts?: {
+    /** COVER gets bigger type than the step slides. */
+    kind?: "COVER" | "REASON";
+    /** Smaller supporting line burned below the main text. */
+    detail?: string;
+    /** Sticker text fill color (defaults to hot pink). */
+    color?: string;
+    /** "lower" = chest/torso level for mirror selfies (keeps text off
+     * the face); "upper" = upper-middle for person-free aesthetic
+     * shots. Defaults to "lower" — face-safe is the safe default. */
+    placement?: "upper" | "lower";
+  }
+): Promise<Buffer> {
+  const kind = opts?.kind ?? "REASON";
+  const fontPath = await ensureFontFile("Bold");
+  const color = opts?.color ?? SELFIE_TEXT_COLORS[0];
+  const placement = opts?.placement ?? "lower";
+
+  // TikTok-sticker treatment: colored fill with a thick white outline.
+  // Pango has no stroke, so the outline is the same text composited at
+  // 8 offsets underneath the colored fill (same trick as the shadow
+  // layers elsewhere in this file — no SVG, Lambda-safe).
+  // Phase 1: render each block and measure it; positions come later so
+  // the whole stack can be anchored as one unit.
+  type StickerBlock = {
+    shadow: Buffer;
+    outline: Buffer;
+    main: Buffer;
+    width: number;
+    height: number;
+    strokeW: number;
+  };
+  const renderStickerBlock = async (
+    lines: string[],
+    fontSize: number,
+    fill: string,
+    outlineColor = "#FFFFFF"
+  ): Promise<StickerBlock> => {
+    const body = lines.map((l) => escapePango(l)).join("\n");
+    const strokeW = Math.max(3, Math.round(fontSize / 14));
+    const pad = strokeW + 6;
+    const maxTextW = OUTPUT_W - PADDING_X * 2;
+    const outlineMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${outlineColor}">${body}</span>`;
+    const fillMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${fill}">${body}</span>`;
+    const outline = await renderMarkup(outlineMarkup, fontPath, maxTextW, 10, pad);
+    const main = await renderMarkup(fillMarkup, fontPath, maxTextW, 10, pad);
+    // Soft drop shadow so the sticker reads on bright mirrors too.
+    const shadowMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="#333333">${body}</span>`;
+    const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, 10, pad);
+    const blurredShadow = await sharp(shadow.buffer).blur(7).png().toBuffer();
+    return {
+      shadow: blurredShadow,
+      outline: outline.buffer,
+      main: main.buffer,
+      width: main.width,
+      height: main.height,
+      strokeW,
+    };
+  };
+
+  const blocks: StickerBlock[] = [];
+  const mainText = stripUnrenderable(text);
+  const mainSize = kind === "COVER" ? 58 : 48;
+  blocks.push(
+    await renderStickerBlock(wordWrap(mainText, kind === "COVER" ? 18 : 22), mainSize, color)
+  );
+
+  const detail = opts?.detail ? stripUnrenderable(opts.detail) : "";
+  if (detail) {
+    // White fill needs a DARK outline — a white-on-white outline smears
+    // the small type into an illegible blob (seen on the 2026-08-25
+    // example run). Dark outline keeps it crisp at this size.
+    blocks.push(await renderStickerBlock(wordWrap(detail, 28), 34, "#FFFFFF", "#2A2A2A"));
+  }
+
+  // Phase 2: anchor the whole stack. "upper" sits below the top 15%
+  // platform chrome; "lower" centers around 58% of frame height —
+  // chest/torso on a mirror selfie, clear of the face (upper ~40%) and
+  // the bottom 15% caption/music chrome.
+  const GAP = 18;
+  const totalH = blocks.reduce((s, b) => s + b.height, 0) + GAP * (blocks.length - 1);
+  let cursorY: number;
+  if (placement === "upper") {
+    cursorY = Math.round(OUTPUT_H * (kind === "COVER" ? 0.2 : 0.22));
+  } else {
+    cursorY = Math.round(OUTPUT_H * 0.58 - totalH / 2);
+    // Clamp: never above 42% (face territory), never past 82% (chrome).
+    cursorY = Math.max(Math.round(OUTPUT_H * 0.42), cursorY);
+    cursorY = Math.min(Math.round(OUTPUT_H * 0.82) - totalH, cursorY);
+  }
+
+  const composites: import("sharp").OverlayOptions[] = [];
+  for (const b of blocks) {
+    const left = Math.round((OUTPUT_W - b.width) / 2);
+    composites.push({ input: b.shadow, top: cursorY + 6, left: left + 4 });
+    for (const [dx, dy] of [
+      [-b.strokeW, 0], [b.strokeW, 0], [0, -b.strokeW], [0, b.strokeW],
+      [-b.strokeW, -b.strokeW], [b.strokeW, -b.strokeW], [-b.strokeW, b.strokeW], [b.strokeW, b.strokeW],
+    ]) {
+      composites.push({ input: b.outline, top: cursorY + dy, left: left + dx });
+    }
+    composites.push({ input: b.main, top: cursorY, left });
+    cursorY += b.height + GAP;
+  }
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: OUTPUT_H,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer();
+}
+
+/**
+ * Render the MOODY discipline-carousel text as a transparent 1080x1920
+ * PNG (2026-08-28, per Keenan — cloned from the "TRUST THE PROCESS"
+ * reference): clean white sentence-case type, centered dead-middle of
+ * the frame, paragraphs separated by blank lines, a soft blurred shadow
+ * for legibility on the dim photography. Deliberately NOT the branded
+ * overlay — no accent color, no badge, no bar.
+ *
+ * COVER: the short title, uppercase, bold, letter-spaced.
+ * ITEM: the numbered name ("4. Reset day.") + its paragraphs, all one
+ * uniform size like the reference.
+ * QUOTE (2026-08-28 PM): one short devastating line in Playfair Display
+ * Medium Italic — a premium editorial serif (per Keenan: "italicized and
+ * fancier... stand out and feel premium") — used by the quote-loop
+ * videos and the hard-questions slides, where a single line carries the
+ * frame.
+ */
+export async function renderMoodyTextOverlay(
+  paragraphs: string[],
+  // SIGN (2026-08-28 night, per Keenan: "bold, confident lettering", no
+  // italics): the single-image sign post — COVER's bold uppercase
+  // treatment, sized down and wrapped wider so a full 8-16-word line
+  // reads as a block instead of a skinny tower.
+  kind: "COVER" | "ITEM" | "QUOTE" | "SIGN",
+  // Text tone (2026-08-30, per Keenan: "make the ripple posts be
+  // lighter schemes") — Ripple lanes shoot LIGHT airy scenes, so their
+  // text renders dark charcoal with a soft light halo; BWK keeps white
+  // text on dark scenes.
+  tone: "white" | "dark" = "white"
+): Promise<Buffer> {
+  const fontPath = await ensureFontFile(
+    kind === "ITEM" ? "Medium" : kind === "QUOTE" ? "QuoteSerif" : "Bold"
+  );
+
+  const fontSize =
+    kind === "COVER" ? 72 : kind === "SIGN" ? 60 : kind === "QUOTE" ? 58 : 42;
+  const wrapChars =
+    kind === "COVER" ? 14 : kind === "SIGN" ? 18 : kind === "QUOTE" ? 22 : 30;
+  const font =
+    kind === "ITEM"
+      ? "Poppins Medium"
+      : kind === "QUOTE"
+        ? "Playfair Display Medium Italic"
+        : "Poppins Bold";
+
+  const uppercase = kind === "COVER" || kind === "SIGN";
+  const body = paragraphs
+    .map((p) =>
+      wordWrap(stripUnrenderable(uppercase ? p.toUpperCase() : p), wrapChars)
+        .map((l) => escapePango(l))
+        .join("\n")
+    )
+    .join("\n\n"); // blank line = paragraph gap (Pango honors empty lines)
+
+  const spacing = uppercase ? 16 : kind === "QUOTE" ? 18 : 14;
+  const letterSpacing = uppercase ? ` letter_spacing="3072"` : "";
+  const mainColor = tone === "dark" ? "#2B2622" : "#FFFFFF";
+  const shadowColor = tone === "dark" ? "#FFFFFF" : "#000000";
+  const mainMarkup = `<span font_desc="${font} ${fontSize}" foreground="${mainColor}"${letterSpacing}>${body}</span>`;
+  const shadowMarkup = `<span font_desc="${font} ${fontSize}" foreground="${shadowColor}"${letterSpacing}>${body}</span>`;
+
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+  const main = await renderMarkup(mainMarkup, fontPath, maxTextW, spacing, 8);
+  const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, spacing, 8);
+  const blurredShadow = await sharp(shadow.buffer).blur(9).png().toBuffer();
+
+  const top = Math.round((OUTPUT_H - main.height) / 2);
+  const left = Math.round((OUTPUT_W - main.width) / 2);
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: OUTPUT_H,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      { input: blurredShadow, top: top + 4, left: left + 2 },
+      { input: main.buffer, top, left },
+    ])
     .png()
     .toBuffer();
 }
@@ -568,7 +808,7 @@ export async function composeCTASlide(
     try {
       const tmpLockup = "/tmp/ripple-lockup-cream.png";
       if (!fs.existsSync(tmpLockup)) {
-        const res = await fetch("https://getacuity.io/ripple-lockup-cream.png");
+        const res = await fetch("https://goripple.io/ripple-lockup-cream.png");
         if (res.ok) {
           fs.writeFileSync(tmpLockup, Buffer.from(await res.arrayBuffer()));
         }

@@ -8,7 +8,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { MONTHLY_PRICE_CENTS, formatDollars } from "@/lib/pricing";
+import { displayMonthly } from "@/lib/pricing";
 import { keenanSignature, trialButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
@@ -27,7 +27,7 @@ function branchLine(v: TrialVars): string {
   return BRANCH_SUMMARIES[branch ?? "overload"] ?? BRANCH_SUMMARIES.overload;
 }
 
-const PRICE = formatDollars(MONTHLY_PRICE_CENTS);
+const PRICE = displayMonthly();
 
 
 export const recoverySignupNoCheckout: TrialEmailTemplate = {

@@ -34,14 +34,148 @@ export const VISUAL_DNA = [
  * the image must contain ZERO text. The standard VISUAL_DNA cannot be used
  * because it actively instructs the model to render blended typography.
  */
+// 2026-08-24, per Keenan: the old NOTEXT DNA forced "one woman mid-activity"
+// on every animated slide, so every clip became a push-in on a woman while
+// the static pipeline got rich scene storytelling. This version carries the
+// static VISUAL_DNA's detail richness and lets the per-slide scene direction
+// (written by the topic model) decide the subject — woman OR object scene.
 export const VISUAL_DNA_NOTEXT = [
   "This is a premium editorial illustration for a wellness brand — polished, high-class, magazine quality. A single scene, NOT an infographic, NOT a layout, NOT a poster.",
-  "ILLUSTRATION: Rendered strictly in the STYLE LOCK art style stated above — never any other style. One diverse woman ~35-50, natural expression, mid-activity. Muted warm tones. The scene, setting, activity, camera angle, and supporting props must all be DIFFERENT from any other illustration in the series — make this scene distinctly its own.",
-  "COMPOSITION: The woman's face and head sit in the LOWER HALF of the frame — never in the top 45%. The entire top 45% stays visually calm and uncluttered — soft background only (a large multi-line text headline will be overlaid there later, and it must never cover her face).",
+  "ILLUSTRATION: Rendered strictly in the STYLE LOCK art style stated above — never any other style. Rich, intentional details that tell this scene's story — plants, candles, mugs, books, blank sticky notes, phones, blankets, keys, everyday domestic objects — whatever THIS scene calls for. Muted warm tones.",
+  "SUBJECT: Follow the scene direction above exactly. When it centers a woman, she is diverse, ~35-50, natural expression, caught mid-moment. When it centers objects or a symbolic still life, there is NO person in the frame — the objects carry the feeling. Never substitute a generic woman-in-a-room when the scene direction says otherwise.",
+  "VARIETY: The scene, setting, subject, camera angle, and supporting props must all be DIFFERENT from any other illustration in the series — make this scene distinctly its own.",
+  "COMPOSITION: The visual center of interest — any face, and anything important — sits in the LOWER HALF of the frame, never in the top 45%. The entire top 45% stays visually calm and uncluttered — soft background only (a large multi-line text headline will be overlaid there later, and it must never cover the subject).",
   "QUALITY: Like a full-page illustration from a premium wellness magazine. Clean, intentional, sophisticated. Not cluttered, not cheap, not templated.",
   "9:16 portrait format.",
   "IMPORTANT: This image contains absolutely NO text of any kind. No words, no letters, no numbers, no typography, no captions, no labels, no lists, no logos, no watermarks, no writing on any object. Pure illustration only.",
 ].join("\n");
+
+// ─── Selfie slideshow (2026-08-25, per Keenan) ────────────────────────────────
+// A realistic first-person "this is how i ..." photo slideshow: one
+// consistent, believable woman taking mirror selfies. The whole point is
+// that it does NOT look AI-generated or branded — it must read like a
+// real person's photo dump. Captions are burned on afterwards by
+// compose.ts (renderSelfieCaptionOverlay), so images stay text-free.
+
+/**
+ * The fixed persona for the selfie avatar. Kept in code (not the topic
+ * model) so every post features the same recognizable woman. Slide 1 of
+ * the previous selfie post is also passed as an image reference at
+ * generation time, which does the heavy lifting for identity — this
+ * text is the fallback description and the guardrail.
+ */
+export const SELFIE_PERSONA =
+  "The SAME woman appears in every photo of this series: mid-40s, shoulder-length brown hair with natural greying strands, average realistic body. Her face is NEVER visible — her raised phone completely covers it in every photo, so her identity reads through her hair, build, and everyday clothes (soft sweatshirts, tees, leggings, jeans — nothing styled or aspirational). ONLY her identity repeats across the series — her pose, outfit, framing, room, and lighting are DIFFERENT in every photo, like a real camera roll.";
+
+/**
+ * Pose/framing directives rotated across selfie covers (2026-08-28, per
+ * Keenan: the phone must COVER her face in every selfie, only ONE
+ * selfie per slideshow). Every entry is a mirror selfie with the raised
+ * phone hiding her face — identity persists through hair, build, and
+ * clothes plus the previous cover's raw as an image reference. Variance
+ * lives in framing, posture, room, and light, never in showing her
+ * face.
+ */
+export const SELFIE_POSE_VARIANTS = [
+  "FULL-LENGTH from several steps back — whole body and feet visible in a floor mirror, phone raised directly in front of her face and fully covering it, weight on one hip",
+  "close waist-up shot, phone held up square over her face so it's completely hidden, elbow out, shoulders relaxed",
+  "sitting cross-legged on the floor in front of the mirror, phone raised in one hand covering her whole face, back slightly rounded",
+  "leaning a shoulder against the wall next to the mirror, body at a three-quarter angle, phone up over her face hiding it, free hand in a pocket",
+  "caught mid-motion fixing her hair with the free hand, phone raised in front of her face and blocking it, slightly imperfect candid framing",
+  "dim room with the phone FLASH ON — harsh flash bloom in the mirror washing out the phone that covers her face, cooler color cast",
+  "standing off-center with lots of room in frame, phone angled up in front of her face so none of it shows, other hand hanging loose",
+  "sitting on the edge of her bed facing the mirror, elbows resting on her knees, phone lifted in both hands directly in front of her face",
+  "raising her mug toward the mirror in a small cheers gesture with her free hand, phone held over her face hiding it completely",
+  "free hand giving a little shrug — palm turned up, phone raised square in front of her face so it's fully covered",
+] as const;
+
+/**
+ * How many leading SELFIE_POSE_VARIANTS entries are cover-eligible.
+ * Every pose is now a phone-over-face mirror selfie (2026-08-28), so
+ * the whole pool qualifies.
+ */
+export const SELFIE_COVER_POSE_COUNT = SELFIE_POSE_VARIANTS.length;
+
+/**
+ * Realism DNA for the selfie slideshow. Everything here fights
+ * gpt-image-2's default polish — the output must look like an amateur
+ * phone photo, not a portrait session.
+ */
+export const SELFIE_VISUAL_DNA = [
+  "This is a REAL amateur smartphone photo of a real woman — a mirror selfie, an ordinary photo from her own camera roll, posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
+  "PHOTOGRAPHY: shot on a phone camera. Natural imperfect framing, slightly off-center, honest angles. Natural light only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
+  "SETTING: her real, lived-in world — a slightly cluttered home (counters, a towel on a hook, cables, door frames, normal furniture). Authentic and unglamorous, never staged or magazine-styled.",
+  "THE MIRROR IS A LITTLE DIRTY: light smudges, a few fingerprints, specks of dust, maybe a faint streak catching the light — the way a real, lived-with mirror actually looks. Subtle and realistic, not filthy.",
+  "HER FACE IS COVERED: her raised phone is directly in front of her face and completely hides it — no eyes, nose, or mouth visible. Her identity reads through her hair, build, and everyday clothes, never her face.",
+  "VARIANCE: real people never take the same selfie twice. This photo must have its own distinct posture, camera distance, angle, outfit, room, and light compared to her other posts.",
+  "9:16 vertical portrait, exactly like a phone photo.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, phone-screen UI, logos, or watermarks. The phone screen faces away or is dark.",
+].join("\n");
+
+/**
+ * DNA for the AESTHETIC slides mixed into the selfie slideshow
+ * (2026-08-25, per Keenan: "hyper realistic aesthetic images in there
+ * as well… super pleasing to the eye"). Still a believable phone photo
+ * — but the beautiful kind a real woman would proudly post: golden
+ * light, cozy textures, satisfying composition. NO people (the avatar
+ * only ever appears in the mirror-selfie slides, so her identity
+ * never drifts).
+ */
+export const SELFIE_AESTHETIC_DNA = [
+  "This is a hyper-realistic, beautiful phone photo — the kind of aesthetic shot a real woman posts in a photo dump. Genuinely pleasing to the eye: warm natural light, soft golden tones, cozy real textures, satisfying composition.",
+  "PHOTOGRAPHY: shot on a modern phone camera. True-to-life detail and realistic depth — crisp subject, naturally soft background. Golden-hour window light, warm lamplight, or soft morning light. Real materials: steam, linen, wood grain, ceramic, condensation, page texture. It must still read as a photograph, never as a render or illustration.",
+  "SUBJECT: first-person / POV or still-life only — her coffee, her journal, her walk, her window, her candle, her unmade bed in morning light. NO people, NO faces, NO mirrors — at most her own hand holding something, photographed from her point of view.",
+  "SETTING: her real, lived-in world — same warm home and everyday life as the rest of the series. Beautiful but honest, never staged like a magazine or hotel.",
+  "VARIANCE: every aesthetic photo in the series must look different from the others — its own subject, room, time of day, light temperature, camera angle, and distance. Mix it up: some shots are close and intimate (steam curling off a mug, a pen on a page), some are wide (a whole sunlit corner of a room, the view down the hallway), some are looking down at her feet or hands, some are out a window. Never repeat the same composition, surface, or golden-hour treatment twice.",
+  "9:16 vertical portrait, exactly like a phone photo.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
+].join("\n");
+
+// ─── Daily carousel visual styles (2026-08-28, per Keenan) ───────────────────
+// The 6 UTC (negative) and 8 UTC (positive) carousels are fully STATIC —
+// no AI animation, JUST image gen — and rotate between four looks:
+// 1. aesthetic   — hyper-realistic phone photos, NO people (reuses the
+//                  selfie lane's aesthetic DNA)
+// 2. avatar      — Pixar-style 3D animated woman acting out each slide
+// 3. illustrated — animated-film illustration scenes, NO people
+// 4. nature      — hyper-realistic nature photography, NO people
+
+export const CAROUSEL_AVATAR_DNA = [
+  "Soft 3D animated illustration in the style of a modern Pixar/DreamWorks film — one warm, expressive animated scene. Never a photograph.",
+  "CHARACTER: ONE relatable animated woman in her 40s — soft rounded features, believable tiredness and warmth, everyday clothes (sweatshirt, cardigan, jeans). She is mid-moment, physically acting out this slide's exact feeling with her posture, face, and hands. The SAME character appears on every slide of this carousel — identical hair, build, and outfit each time.",
+  "WORLD: a cozy, lived-in animated home — warm cinematic lighting, rounded shapes, rich color, gentle depth of field, small honest details (mugs, laundry, lamps).",
+  "9:16 vertical portrait composition.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
+].join("\n");
+
+export const CAROUSEL_ILLUSTRATED_DNA = [
+  "Beautiful stylized illustration in the style of a modern animated film's background art — painterly, warm, richly textured, atmospheric. Never a photograph.",
+  "NO people, NO faces, NO characters, NO silhouettes anywhere. The feeling lives entirely in the scene: rooms, objects, weather, and light — a lamp-lit kitchen at night, rain on an attic window, steam rising from a kettle.",
+  "Warm light, soft painterly edges, storybook depth — the kind of frame you'd pause an animated movie on because it's beautiful.",
+  "9:16 vertical portrait composition.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, logos, or watermarks.",
+].join("\n");
+
+export const CAROUSEL_NATURE_DNA = [
+  "Breathtaking hyper-realistic nature photography — shot on a full-frame camera, rich natural color grading, immense depth and atmosphere. It must read as a real photograph, never a render or illustration.",
+  "NO people, NO animals in focus, NO buildings or man-made objects. Pure natural scenes: ocean waves, forest light, mountain ridges, storm clouds, golden fields, fog over water, falling snow.",
+  "The scene's weather, season, and light carry the slide's exact feeling — heavy skies for heavy lines, clearing light for hopeful ones.",
+  "9:16 vertical portrait composition.",
+  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, logos, or watermarks.",
+].join("\n");
+
+export const CAROUSEL_VISUAL_STYLES = {
+  aesthetic: SELFIE_AESTHETIC_DNA,
+  avatar: CAROUSEL_AVATAR_DNA,
+  illustrated: CAROUSEL_ILLUSTRATED_DNA,
+  nature: CAROUSEL_NATURE_DNA,
+} as const;
+
+export type CarouselVisualStyle = keyof typeof CAROUSEL_VISUAL_STYLES;
+
+export const CAROUSEL_VISUAL_STYLE_KEYS = Object.keys(
+  CAROUSEL_VISUAL_STYLES
+) as CarouselVisualStyle[];
 
 /**
  * Rotating scene settings for the text-free (animated) pipeline. One is

@@ -2,21 +2,24 @@ import { inngest } from "@/inngest/client";
 
 /**
  * AMBIENT calm video — event "content-factory/ambient.video" (2026-08-18,
- * per Keenan). The 4th daily post: one catchy soothing image → one
- * low-movement Higgsfield clip looped to the voiceover's length → a
- * soothing ElevenLabs read of a short lesson/story → script-true captions.
- * Modeled on the wakingupapp format (calm sky + quiet truth + captions).
+ * per Keenan). The daily calm post: one catchy soothing image → one
+ * low-movement Higgsfield clip looped to the script's read length.
+ * Modeled on the wakingupapp format (calm sky + quiet truth).
  *
- * Pipeline: Claude writes a ~40s calm script + scene concept → gpt-image-2
- * renders ONE photoreal soothing 9:16 image (no text, no people) →
- * Higgsfield animates it (5s ambient drift, 2 attempts) → ElevenLabs
- * voices the whole script in one continuous calm read → the clip is
- * looped with crossfades to the audio's length → captions estimated from
- * the SCRIPT text (never re-transcribed) → mux (audio-only retry) →
- * storyVideoUrl/storyVoiced persisted → emailed.
+ * TTS RESTORED 2026-08-28, per Keenan (3-posts-per-day restructure): the
+ * ambient post ships fully voiced with the pre-designated female
+ * ElevenLabs voice (see ambient-video.ts). No burned captions — he adds
+ * captions when posting.
  *
- * Fallback: if TTS fails, ships the looped clip at ~40s with script
- * captions only (doubles as a teleprompter for a self-recorded read).
+ * Pipeline: Claude writes a 45-80 word calm script + scene concept →
+ * gpt-image-2 renders ONE photoreal soothing 9:16 image (no text, no
+ * people) → Higgsfield animates it (5s ambient drift, 2 attempts) →
+ * ElevenLabs voices the tagged vocalScript in one continuous calm read →
+ * the clip is looped with crossfades to the audio's length → mux →
+ * storyVideoUrl persisted (storyVoiced=true) → emailed.
+ *
+ * Fallback: if TTS fails, ships the silent looped clip at the script's
+ * estimated read length with a self-voice email (the 2026-08-24 flow).
  */
 export const carouselAmbientVideoFn = inngest.createFunction(
   {
@@ -238,7 +241,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
           "@/lib/content-factory/carousel-generate"
         );
         // ambientTtsText uses the tagged vocalScript for v3 delivery;
-        // the stored script (email, captions, admin) stays clean.
+        // the stored script (email, admin) stays clean.
         const { audio, engine } = await generateVoiceover(
           ambientTtsText(script),
           undefined,
@@ -257,20 +260,17 @@ export const carouselAmbientVideoFn = inngest.createFunction(
         return { url: null, durationSec: 0, engine: null, error: msg };
       }
     });
+    const voiced = Boolean(tts.url);
 
-    // ── Step 7: loop the clip to length + captions + mux ──────────────
-    // Voiced: loop to the audio's length (+1s of quiet tail). Silent
-    // fallback: loop to ~25s (2026-08-19, per Keenan: calm posts should
-    // run 20-30s) with script captions as a teleprompter.
-    const TAIL_SEC = 1.0;
-    const targetSec = tts.url ? tts.durationSec + TAIL_SEC : 25;
-
+    // ── Step 7: loop the clip to length ───────────────────────────────
+    // Voiced: loop to the audio's length (+1s of quiet tail). TTS-failed
+    // fallback: loop to the script's estimated slow-read length so a
+    // self-recorded read still fits (the 2026-08-24 silent flow).
     // Looping and muxing are SEPARATE steps (2026-08-18): each is a full
     // x264 encode of the whole runtime, and both in one step blew
-    // Vercel's 300s function limit on every attempt. Splitting gives
-    // each encode its own serverless invocation.
+    // Vercel's 300s function limit on every attempt.
     const looped = await step.run("loop-clip", async () => {
-      const { loopClipToDuration } = await import(
+      const { loopClipToDuration, estimateAmbientReadSeconds } = await import(
         "@/lib/content-factory/ambient-video"
       );
       const { probeMediaDuration } = await import(
@@ -281,12 +281,16 @@ export const carouselAmbientVideoFn = inngest.createFunction(
       );
       const clipRes = await fetch(clipUrl!);
       if (!clipRes.ok) throw new Error(`clip re-download failed (${clipRes.status})`);
+      const TAIL_SEC = 1.0;
+      const targetSec = tts.url
+        ? tts.durationSec + TAIL_SEC
+        : estimateAmbientReadSeconds(script.script);
       const buf = await loopClipToDuration(
         Buffer.from(await clipRes.arrayBuffer()),
         targetSec
       );
-      // The loop ends at a copy boundary, not at targetSec (clean loop,
-      // 2026-08-19) — report the real length for captions and the email.
+      // The loop ends at a copy boundary, not exactly at target (clean
+      // loop, 2026-08-19) — report the real length for the email.
       const durationSec = await probeMediaDuration(buf, "mp4");
       const url = await uploadImage(
         buf,
@@ -296,56 +300,46 @@ export const carouselAmbientVideoFn = inngest.createFunction(
       return { url, durationSec };
     });
 
+    // ── Step 8: mux the voiceover in (voiced runs only) ───────────────
+    // NO burned captions either way (2026-08-24, per Keenan: he adds
+    // captions when posting) — the mux only adds the audio track. On the
+    // TTS-failed fallback the looped clip IS the final video.
     const finalized = await step.run("mux-video", async () => {
-      const { muxNarration, estimateCaptionChunks } = await import(
-        "@/lib/content-factory/story-video"
-      );
       const { uploadImage } = await import(
         "@/lib/content-factory/carousel-generate"
       );
+      if (!tts.url) {
+        // Silent fallback — republish the looped clip at the final path.
+        const loopedRes = await fetch(looped.url);
+        if (!loopedRes.ok) {
+          throw new Error(`looped clip re-download failed (${loopedRes.status})`);
+        }
+        const url = await uploadImage(
+          Buffer.from(await loopedRes.arrayBuffer()),
+          `${basePath}/ambient-video.mp4`,
+          "video/mp4"
+        );
+        return { url, durationSec: looped.durationSec };
+      }
+      const { muxNarration } = await import("@/lib/content-factory/story-video");
       const loopedRes = await fetch(looped.url);
       if (!loopedRes.ok) {
         throw new Error(`looped clip re-download failed (${loopedRes.status})`);
       }
-      const loopedBuf = Buffer.from(await loopedRes.arrayBuffer());
-
-      let audioBuf: Buffer | null = null;
-      if (tts.url) {
-        const audioRes = await fetch(tts.url);
-        if (!audioRes.ok) throw new Error(`voiceover re-download failed (${audioRes.status})`);
-        audioBuf = Buffer.from(await audioRes.arrayBuffer());
+      const audioRes = await fetch(tts.url);
+      if (!audioRes.ok) {
+        throw new Error(`voiceover re-download failed (${audioRes.status})`);
       }
-      // NO captions on voiced ambient videos (2026-08-18, per Keenan:
-      // the estimated timings didn't line up with the voiceover — he
-      // adds captions manually when posting). The silent fallback keeps
-      // script captions as a teleprompter, where exact sync is moot.
-      const captions = tts.url
-        ? []
-        : estimateCaptionChunks(script.script, looped.durationSec);
-
-      // Captioned mux first; retry without captions so a caption problem
-      // can never ship a silent/broken video (2026-08-14 drawtext incident).
-      let muxed: Buffer;
-      let captioned = captions.length > 0;
-      let muxError: string | null = null;
-      try {
-        muxed = await muxNarration(loopedBuf, audioBuf, captioned ? captions : undefined);
-      } catch (muxErr) {
-        muxError = muxErr instanceof Error ? muxErr.message : String(muxErr);
-        console.error(
-          `[ambient-video] Captioned mux failed — retrying without captions: ${muxError}`
-        );
-        if (!audioBuf) throw muxErr; // silent AND captionless = nothing to ship
-        muxed = await muxNarration(loopedBuf, audioBuf, undefined);
-        captioned = false;
-      }
+      const muxed = await muxNarration(
+        Buffer.from(await loopedRes.arrayBuffer()),
+        Buffer.from(await audioRes.arrayBuffer()),
+        undefined
+      );
       const url = await uploadImage(muxed, `${basePath}/ambient-video.mp4`, "video/mp4");
-      return { url, captioned, durationSec: looped.durationSec, error: muxError };
+      return { url, durationSec: looped.durationSec };
     });
 
-    const voiced = Boolean(tts.url);
-
-    // ── Step 8: persist ───────────────────────────────────────────────
+    // ── Step 9: persist ───────────────────────────────────────────────
     await step.run("persist-result", async () => {
       try {
         const { prisma } = await import("@/lib/prisma");
@@ -360,7 +354,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
       }
     });
 
-    // ── Step 9: email the finished video ──────────────────────────────
+    // ── Step 10: email the finished video ─────────────────────────────
     await step.run("email-ambient-video", async () => {
       try {
         const { sendStoryVideoEmail } = await import("@/lib/content-factory/email");
@@ -369,11 +363,12 @@ export const carouselAmbientVideoFn = inngest.createFunction(
           totalScenes: 1,
           narration: script.script,
           silent: !voiced,
-          captioned: finalized.captioned,
-          captionsByHand: voiced, // voiced ambient ships caption-free by design
+          selfVoice: !voiced, // TTS failed → script-led self-record email
+          captioned: false,
+          captionsByHand: true, // no burned captions by design
           calm: true, // 🌙 subject — distinguishable from story-video emails
           durationSec: finalized.durationSec,
-          voiceoverError: tts.error ?? finalized.error,
+          voiceoverError: tts.error,
           voiceEngine: tts.engine,
         });
       } catch (err) {
@@ -384,7 +379,7 @@ export const carouselAmbientVideoFn = inngest.createFunction(
     });
 
     logger.info(
-      `[ambient-video] Post ${postId}: calm video complete (${finalized.durationSec.toFixed(1)}s${voiced ? `, voiced via ${tts.engine}` : ", silent"})`
+      `[ambient-video] Post ${postId}: calm video complete (${finalized.durationSec.toFixed(1)}s${voiced ? `, voiced via ${tts.engine}` : ", silent — TTS failed, self-voice fallback"})`
     );
     return {
       ambientVideo: true,

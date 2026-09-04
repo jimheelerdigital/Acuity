@@ -3,13 +3,16 @@
  *
  * Voiceover (ElevenLabs with OpenAI TTS fallback), ffmpeg utilities
  * (probe, still clips, fit/loop, concat, crossfade stitch, narration
- * mux) and caption chunk estimation — used by the calm (ambient) and
- * calm-story pipelines and by the carousel compilation email.
+ * mux) and caption chunk estimation — used by the calm (ambient)
+ * pipeline and by the carousel compilation email.
  *
  * HISTORY: this file originally held the 30s illustrated STORY pipeline's
  * script generation too. The story format was eliminated 2026-08-20 (per
  * Keenan: "we can't get it to work properly, it looks terrible") and
- * replaced by the calm-story branch (see calm-story.ts).
+ * replaced by the calm-story branch — which was itself removed 2026-08-24
+ * (never worked properly, wasted money). The TTS/mux helpers are unused
+ * since then (calm videos are self-voiced by Keenan) but kept as the
+ * shared toolbox.
  *
  * VOICEOVER NOTE: the Higgsfield *platform* API has no text-to-speech
  * endpoint (verified against their full OpenAPI spec 2026-08-11 — only
@@ -657,6 +660,129 @@ export async function stitchClipsWithCrossfade(
     }
     console.log(
       `[story-video] Crossfade-stitched ${clips.length} clips (xfade=${xf.toFixed(2)}s${opts?.maxrate ? `, maxrate=${opts.maxrate}` : ""}): ${out.length} bytes`
+    );
+    return out;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Build a MATHEMATICALLY perfect loop from one clip (2026-08-28, per
+ * Keenan: quote loops "must actually loop" — prompt-level "start and end
+ * on the same image" asks were never honored by the i2v model).
+ *
+ * The trick: crossfade the clip INTO ITSELF (xfade A→A with
+ * offset = d−f), then trim the result to [f, d]. The trimmed segment
+ * S(t) = X(t+f) runs d−f seconds; its first frame is A(f) and its last
+ * frame is the fully-dissolved blend at X(d) — also exactly A(f). First
+ * frame == last frame, so back-to-back copies of the segment play as one
+ * endless shot regardless of what the model generated. The quote overlay
+ * PNG (full-frame 1080x1920) is burned in the same encode pass, then the
+ * segment is concatenated to itself LOSSLESSLY (concat demuxer, stream
+ * copy) until the total lands in [minSec, maxSec].
+ */
+export async function seamlessLoopWithOverlay(
+  clip: Buffer,
+  opts: {
+    minSec: number;
+    maxSec: number;
+    /** Dissolve length at the loop point (default 1.2s). */
+    crossfadeSec?: number;
+    /** Full-frame 1080x1920 transparent PNG burned onto every frame. */
+    overlayPng?: Buffer;
+    /** Bitrate cap, e.g. "5M" (Supabase 50MB / email 28MB caps). */
+    maxrate?: string;
+  }
+): Promise<Buffer> {
+  const bin = ffmpegPath();
+  if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "seamless-loop-"));
+  try {
+    const inPath = path.join(dir, "in.mp4");
+    const segPath = path.join(dir, "seg.mp4");
+    const outPath = path.join(dir, "out.mp4");
+    fs.writeFileSync(inPath, clip);
+
+    const d = await probeFileDuration(bin, inPath);
+    if (d <= 2) throw new Error(`Clip is only ${d.toFixed(2)}s — too short to loop`);
+    // The dissolve can't eat the whole clip; keep at least 2/3 of it.
+    const f = Math.min(opts.crossfadeSec ?? 1.2, d / 3);
+
+    const overlayPath = path.join(dir, "overlay.png");
+    if (opts.overlayPng) fs.writeFileSync(overlayPath, opts.overlayPng);
+
+    const norm = "scale=1080:1920:flags=lanczos,fps=30,setsar=1,settb=AVTB";
+    let filter =
+      `[0:v]${norm}[a];[1:v]${norm}[b];` +
+      `[a][b]xfade=transition=fade:duration=${f.toFixed(3)}:offset=${(d - f).toFixed(3)}[x];` +
+      `[x]trim=start=${f.toFixed(3)}:end=${d.toFixed(3)},setpts=PTS-STARTPTS[lp]`;
+    if (opts.overlayPng) {
+      filter += `;[lp][2:v]overlay=0:0:format=auto[v]`;
+    } else {
+      filter += `;[lp]null[v]`;
+    }
+
+    await runFfmpeg(bin, [
+      "-y", "-loglevel", "warning",
+      "-i", inPath,
+      "-i", inPath,
+      ...(opts.overlayPng ? ["-i", overlayPath] : []),
+      "-filter_complex", filter,
+      "-map", "[v]",
+      "-an",
+      "-c:v", "libx264",
+      "-preset", "fast",
+      "-crf", "18",
+      ...(opts.maxrate
+        ? ["-maxrate", opts.maxrate, "-bufsize", `${parseInt(opts.maxrate, 10) * 2}M`]
+        : []),
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      segPath,
+    ]);
+
+    const segSec = await probeFileDuration(bin, segPath);
+    const mid = (opts.minSec + opts.maxSec) / 2;
+    let copies = Math.max(1, Math.round(mid / segSec));
+    if (copies * segSec < opts.minSec) copies += 1;
+    while (copies > 1 && copies * segSec > opts.maxSec && (copies - 1) * segSec >= opts.minSec) {
+      copies -= 1;
+    }
+
+    if (copies === 1) {
+      const out = fs.readFileSync(segPath);
+      if (out.length < 100_000) {
+        throw new Error(`Loop segment is suspiciously small (${out.length} bytes)`);
+      }
+      return out;
+    }
+
+    // Lossless repetition: every copy starts on a keyframe (fresh encode),
+    // so the concat demuxer stream-copies with zero quality loss and zero
+    // seam — the segment's first and last frames are identical by
+    // construction.
+    const listPath = path.join(dir, "list.txt");
+    fs.writeFileSync(
+      listPath,
+      Array.from({ length: copies }, () => `file '${segPath}'`).join("\n")
+    );
+    await runFfmpeg(bin, [
+      "-y", "-loglevel", "warning",
+      "-f", "concat",
+      "-safe", "0",
+      "-i", listPath,
+      "-c", "copy",
+      "-movflags", "+faststart",
+      outPath,
+    ]);
+    const out = fs.readFileSync(outPath);
+    if (out.length < 100_000) {
+      throw new Error(`Seamless loop produced a suspiciously small file (${out.length} bytes)`);
+    }
+    console.log(
+      `[story-video] Seamless loop: ${d.toFixed(1)}s clip → ${segSec.toFixed(1)}s segment × ${copies} = ${(segSec * copies).toFixed(1)}s (${out.length} bytes)`
     );
     return out;
   } finally {

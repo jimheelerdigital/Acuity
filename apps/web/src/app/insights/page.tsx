@@ -115,6 +115,30 @@ export default async function InsightsPage() {
             </Link>
           </div>
 
+          <div data-stagger>
+            <Link href="/insights/knows" className="group block">
+              <HeroCard variant="primary" padding={6}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+                      Memory
+                    </p>
+                    <h2 className="mt-3 font-display text-xl font-semibold text-acuity-text">
+                      What Ripple knows about you
+                    </h2>
+                    <p className="mt-1 text-[15px] leading-relaxed text-acuity-text-sec">
+                      The people it remembers, the goals it&rsquo;s
+                      tracking, and what keeps coming back around.
+                    </p>
+                  </div>
+                  <span className="mt-1 text-acuity-text-ter transition group-hover:text-acuity-primary">
+                    &rarr;
+                  </span>
+                </div>
+              </HeroCard>
+            </Link>
+          </div>
+
           {/* People moved to sidebar-primary 2026-05-25 — same
               treatment as Life Matrix + Theme Map. Hub stays focused
               on the long-tail analytical destinations (Ask + State

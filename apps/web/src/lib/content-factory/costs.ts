@@ -37,8 +37,11 @@ export type CostFormat = "PHOTO" | "VIDEO" | "STORY" | "AMBIENT";
  *
  * - PHOTO:   images only
  * - VIDEO:   every slide is also animated (one clip per slide)
- * - STORY:   every scene slide is animated + one voiceover
- * - AMBIENT: one image, one clip, one voiceover
+ * - STORY:   every scene slide is animated + one voiceover (format dead
+ *            since 2026-08-24 — kept for historical posts)
+ * - AMBIENT: one image, one clip, one voiceover (TTS restored
+ *            2026-08-28; slightly overcounts the 08-24→08-28 silent-era
+ *            posts).
  */
 export function estimatePostCostCents(post: {
   format: string;

@@ -73,22 +73,37 @@ Not "soon". Immediately. Here is why:
 
 `prisma db push` reconciles the DATABASE TO THE SCHEMA. If `schema.prisma` doesn't know about something that exists in prod, push does not ignore it — **it drops it.** So an undeclared column is a live landmine for the next person who runs `db push` from any branch.
 
-This has fired twice:
+This has fired three times:
 - **2026-08-16** — a push from a stale branch would have dropped 13 `CarouselPost` columns including 5 populated `storyVideoUrl` values. Caught by a manual diff, before running.
 - **2026-08-19** — a push from a branch predating `RevenueCatEvent` **did drop that table**, and added `CarouselPost.format` (populated on all 120 rows), `storyVoiced`, and the `CarouselFormat` enum. Caught only by noticing the table had vanished.
+- **2026-08-21** — a push **from main** would have issued 10 destructive statements: `DROP TABLE Habit`, `DROP TABLE HabitCheck`, `DROP TABLE InsightEvidence`, plus `User.v10Day2PushSentAt`, `UserReminder.kind`/`habitId`, and four `UserInsight` correction columns. Caught by the guard.
 
-Neither was recklessness. The command is silently destructive when the schema lags, and nothing was checking.
+Neither of the first two was recklessness. The command is silently destructive when the schema lags, and nothing was checking.
+
+**The third had a DIFFERENT cause, and the rule above did not cover it.** Nothing was added by raw SQL that time. Schema was pushed to prod **from feature branches** (`feat/onboarding-v10`), and `main` never declared any of it. So `main`'s schema silently fell *behind production* while every individual push looked correct from the branch it ran on.
+
+### 🔴 Corollary — `db:push` runs from `main` ONLY
+
+**Never run `npm run db:push` from a feature branch.** A branch push writes schema that only that branch declares. The moment it merges — or does not — `main` is behind production, and the next `db:push` from `main` proposes dropping whatever the branch added.
+
+The workflow is:
+1. Land the schema change on `main` (merge the branch first).
+2. Run `npm run db:push` **from `main`**.
+3. Never from anywhere else, however small the change.
+
+If a branch genuinely needs its schema in a shared environment to be testable, that is a signal the branch should merge behind a flag — not a reason to push from it. Dark-but-merged is safer than live-but-stranded.
 
 **Guardrail (added 2026-08-19):** `scripts/check-destructive-diff.ts` fails on any `DROP TABLE` / `DROP COLUMN` / `DROP TYPE` / column-type rewrite.
 - `npm run db:push` runs it first and aborts on failure. **Use this, never bare `prisma db push`.**
 - A `pre-push` hook runs it when `schema.prisma` differs from `origin/main`.
 - `.github/workflows/schema-destructive-check.yml` re-checks on PRs (needs the `DIRECT_URL` repo secret).
+- **CI should also run the guard against `main` on a schedule, not only on PRs.** The 2026-08-21 drift was invisible to PR checks: every branch PR was internally consistent, and the divergence existed only between `main` and production. A PR-triggered check cannot see a gap that no PR introduces. A scheduled run comparing `main`'s schema to prod is what catches it — and it should fail loudly, because a clean result is the only proof `main` can safely push.
 - Deliberate drops: `ALLOW_DESTRUCTIVE_SCHEMA_DIFF=1`. Destruction should be a decision, never an accident.
 
 If the guard fires, the fix is almost always **add the missing thing to `schema.prisma`** so the diff goes additive — not to force the push through.
 
 ### Manual step categories to always check
-- npx prisma db push (required after any schema change — Keenan must run from home network, work Mac blocks Supabase ports). **Run `npm run db:push`, which is guarded — not bare `prisma db push`.**
+- npx prisma db push (required after any schema change — Keenan must run from home network, work Mac blocks Supabase ports). **Run `npm run db:push`, which is guarded — not bare `prisma db push`. From `main` ONLY, never a feature branch (see the corollary above).**
 - New env vars in Vercel (specify which ones and who adds them)
 - Vercel redeploy trigger (usually automatic on push, but required after env var changes)
 - Inngest app resync (usually automatic on next GET to /api/inngest, but flag if manual resync is needed)

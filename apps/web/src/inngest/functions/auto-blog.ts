@@ -12,6 +12,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { displayMonthly } from "@/lib/pricing";
 
 // ─── Personas for internal linking ──────────────────────────────────────────
 
@@ -804,7 +805,7 @@ export const autoBlogPruneFn = inngest.createFunction(
             const { getResendClient } = await import("@/lib/resend");
             const resend = getResendClient();
             await resend.emails.send({
-              from: process.env.EMAIL_FROM ?? "noreply@getacuity.io",
+              from: process.env.EMAIL_FROM ?? "noreply@goripple.io",
               to: alertEmail,
               subject: "Blog Pruner: Auth Failure — cannot run",
               html: `<p>The blog pruner failed its auth pre-check:</p><p><strong>${authError}</strong></p><p>Fix: ensure GA4_SERVICE_ACCOUNT_KEY is set in Vercel env vars with valid JSON containing client_email and private_key. The service account must be added as Owner in Google Search Console for sc-domain:getacuity.io.</p>`,
@@ -1128,7 +1129,7 @@ export const autoBlogPruneFn = inngest.createFunction(
           const resend = getResendClient();
           const overflow = evaluationResult.trimCandidates.slice(pruneCap);
           await resend.emails.send({
-            from: process.env.EMAIL_FROM ?? "noreply@getacuity.io",
+            from: process.env.EMAIL_FROM ?? "noreply@goripple.io",
             to: process.env.ALERT_EMAIL ?? "keenan@getacuity.io",
             subject: `Blog Pruner: ${overflow.length} additional posts need review`,
             html: `<p>The blog pruner hit its 5-post cap. These ${overflow.length} posts would also be trimmed:</p>
@@ -1244,7 +1245,7 @@ PRODUCT CONTEXT:
 - Weekly report every Sunday: 400-word narrative of the user's week
 - Life Matrix: 6 life domains tracked over time
 - Monthly memoir PDF
-- Pricing: $4.99/month after 7-day free trial, no card required
+- Pricing: ${displayMonthly()}/month after 7-day free trial, no card required
 - First 100 users are Founding Members (${spotsLeft} spots left)
 
 VOICE RULES:

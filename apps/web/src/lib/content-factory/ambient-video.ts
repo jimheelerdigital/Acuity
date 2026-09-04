@@ -1,27 +1,27 @@
 /**
  * Content Factory — AMBIENT calm video pipeline (2026-08-18, per Keenan).
  *
- * The 4th daily post format, modeled on the wakingupapp pattern that
- * performs well: ONE catchy, soothing image (sky, clouds, water, light —
- * no people) turned into a low-movement looping video, with a soothing
- * voiceover telling a short story or lesson and script-true captions
- * burned over the video.
+ * The daily calm post, modeled on the wakingupapp pattern that performs
+ * well: ONE catchy, soothing image (sky, clouds, water, light — no
+ * people) turned into a low-movement looping video.
+ *
+ * TTS voiceover RESTORED 2026-08-28, per Keenan (3-posts-per-day
+ * restructure): the ambient post ships fully voiced again with a
+ * pre-designated female ElevenLabs voice — self-recording (the
+ * 2026-08-24 arrangement) is dead. The voice is hard-wired below;
+ * AMBIENT_ELEVENLABS_VOICE_ID still overrides it.
  *
  * Pipeline (see carousel-ambient-video.ts):
- * 1. Claude writes a calm 15-45s lesson/story script + the scene concept
+ * 1. Claude writes a calm 45-80 word script + the scene concept
  * 2. gpt-image-2 renders one photoreal soothing 9:16 image (no text)
  * 3. Higgsfield animates it (5s, ambient drift only)
- * 4. The clip is looped with crossfades to the voiceover's length
- * 5. ElevenLabs voices the whole script in one continuous calm read
- *    (random pick between Vanessa and Hope, Keenan's chosen calm voices;
- *    AMBIENT_ELEVENLABS_VOICE_ID forces one — Higgsfield's platform API
- *    has no TTS endpoint, so a Higgsfield-app voice can't be called here)
- * 6. Captions come straight from the script text (estimateCaptionChunks)
- *    and are muxed in as timed PNG overlays
+ * 4. ElevenLabs voices the script (v3, tagged vocalScript delivery)
+ * 5. The clip is looped with crossfades to the voiceover's length and
+ *    the audio is muxed in (no burned captions — Keenan adds those when
+ *    posting). If TTS fails, falls back to the silent self-voice video.
  *
  * Env knobs:
- * - AMBIENT_ELEVENLABS_VOICE_ID — force a single calm voice (optional;
- *   default alternates Vanessa/Hope)
+ * - AMBIENT_ELEVENLABS_VOICE_ID — override the hard-wired voice
  * - HIGGSFIELD_AMBIENT_CLIP_DURATION — seconds per source clip (default 5)
  */
 
@@ -55,43 +55,49 @@ export interface AmbientScript {
   /**
    * The same script with ElevenLabs v3 audio tags ([softly], [sighs]...)
    * placed by the scriptwriter for delivery (2026-08-19, per Keenan: the
-   * read needed more tone and inflection). TTS-only — email/captions/admin
-   * always show the clean `script`.
+   * read needed more tone and inflection; restored 2026-08-28 with the
+   * TTS revival). TTS-only — email/captions/admin always show the clean
+   * `script`.
    */
   vocalScript?: string;
-  /** What the single image shows — a serene scene, no people, no text. */
+  /**
+   * What the single image shows — a serene scene, no people, no text.
+   * Since 2026-08-28 PM (per Keenan: "it should just be background...
+   * less is more"): a SIMPLE full-frame hyper-real nature scene with ONE
+   * natural motion (waves, clouds, rain, snow) — no window/frame/interior
+   * vantages (the i2v model hallucinated furniture into them).
+   */
   visual: string;
   /** The ambient movement for the i2v prompt (clouds drift, light shifts...). */
   motion: string;
-  /** 1-2 caption lines that tee up the video, same voice. */
+  /** Legacy fallback for the caption question. */
   captionHook?: string;
-  /** One question inviting viewers to share their version. */
+  /** Fallback for the caption question. */
   commentPrompt?: string;
   /**
-   * Full LLM-written post caption body (2026-08-20, per Keenan: captions
-   * must read personal, never AI). Everything above the hashtags.
+   * ONE thought-provoking question (2026-08-28, per Keenan: question +
+   * a few hashtags is the entire caption, all posts).
    */
   caption?: string;
 }
 
 const buildAmbientSystemPrompt = (
   branch: PainBranch
-) => `You are a scriptwriter for calm, contemplative short-form vertical videos. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover, with the words appearing as captions.
+) => `You are a scriptwriter for calm, contemplative short-form vertical videos. Each video is ONE serene looping scene (sky, clouds, water, light — no people) with a soothing female voiceover.
 
 ${SCRIPT_STYLE_GUIDE}
 
 ${painBranchBlock(branch)}
 
-THE FORMAT (why it works): a beautiful, quiet scene + a low, warm voice + a thought that lands. Success is her sending the video to a friend, tagging her sister, saving it for a hard day, and following the account. Pick the most universally relatable version of every idea — moments most women this age have actually lived, not niche or clever ones.
+THE FORMAT (why it works, 2026-08-28, per Keenan: "much more generic and high level... a relaxing meditative post that people want to listen along to"): a beautiful, quiet scene + a low, warm voice + a thought almost anyone can relate to. It should feel like a guided breath — something she puts on, listens along to, and replays because it soothes her. GENERIC and HIGH-LEVEL always beats specific and clever here: universal experiences most women this age have lived, never niche scenarios.
 
-STRUCTURE — every script lands all five beats, in this order:
-1. HOOK (first line): names a private, specific emotional truth — it must make her stop mid-scroll and think "wait — that's me." NO poetic fragments, NO scene-setting, NO openers that need context she doesn't have yet.
-2. SCENE (the middle): AT LEAST 2-3 distinct, concrete moments from her real life. Every line adds a NEW specific detail or pushes the idea one step further — no line may just restate the previous one. She should NEVER have to work to decode a metaphor.
-3. TRUTH: the deeper emotional insight underneath the moments.
-4. REFRAME: show her she is not broken, dramatic, lazy, or failing.
-5. FOLLOWER CTA (last line): one soft audience-building ask from the approved family, in the same quiet voice.
+STRUCTURE — every script lands these four beats, in this order:
+1. HOOK (first line): names a private but UNIVERSAL emotional truth — she stops mid-scroll and thinks "that's me," without needing any specific scenario to apply. NO poetic fragments, NO scene-setting, NO openers that need context.
+2. UNFOLDING (the middle): the idea opens up slowly and gently, one breath at a time — broad, recognizable strokes (the tiredness with no single cause, the mind that won't go quiet, always holding it together). No decoding, no cleverness, nothing she has to work for.
+3. TRUTH: the deeper emotional insight underneath — still high-level and universal.
+4. SETTLING CLOSE (last line): a soft landing — permission, release, an exhale. NO call to action of ANY kind: never tell her to follow, share, save, send, or comment. The script just ends, gently.
 
-SUBSTANCE TEST (2026-08-19, per Keenan): by the end she should have RECOGNIZED something specific she hadn't put into words — a real observation with insight, not a vibe. If you removed the middle lines and nothing was lost, the script has no substance. Rewrite it.
+MEDITATIVE TEST: read it at half speed. It should feel calming to LISTEN to — unhurried, warm, like being talked down from the day. If any line feels like content, cleverness, or a lecture instead of a breath, rewrite it.
 
 COHERENCE TEST: one idea per script. If a stranger heard it once at half-attention, could she repeat the point back in one sentence? If not, rewrite it.
 
@@ -101,29 +107,38 @@ SCRIPT RULES:
 - WRITE THE WAY A REAL PERSON TALKS, not the way copy is written (2026-08-19, per Keenan: scripts sounded robotic and generic). Use contractions always ("you're", "it's", "didn't"). Sentence fragments are good. A line can be two words. Trailing thoughts with an em-dash — like this — are good.
 - BUILD IN THE PAUSES: use ellipses ("...") where she would actually stop and breathe mid-thought, at least 3-4 times across the script. The TTS reads punctuation literally — a period is a beat, an ellipsis is a real pause, a paragraph break is a long one.
 - The test: read it out loud. If it sounds like a caption or an inspirational quote, rewrite it. If it sounds like something a tired friend would say to you at 10pm in her kitchen, keep it.
-- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). The ONLY call to action is the single soft follower CTA that ends the script — never a product CTA.
+- No hashtags, no emojis, no advice-verbs ("try", "start", "practice", "remember to"). NO call to action of any kind — no follow, share, save, send, or comment asks, and never a product CTA. The script ends on the settling close.
 
-VISUAL RULES ("visual" — the single image the whole video lives on):
-- A breathtaking, SOOTHING natural scene with strong visual pull, catchy enough to stop a scroll on the first frame. VARY the scene type boldly across posts — be creative, we are testing what works (2026-08-20, per Keenan). Rotate among (and invent beyond): storm clouds rolling at golden hour, rain running down a window at dusk, ocean waves rolling in under moonlight, a near-still scene where only the light changes (a candle, a sunbeam crossing a room, city lights at night), fog moving over a lake, snow falling past a streetlight.
-- The scene must be built around ONE repeatable motion (the same clip plays the whole video) — pick scenes whose movement is naturally cyclical or constant.
-- NO people, NO animals in focus, NO text or typography of any kind.
+VISUAL RULES ("visual" — the single image the whole video lives on; 2026-08-28 PM, per Keenan: "it should just be background, look hyper realistic, and flow properly. less is more, simple movements... minimal movement, calming"):
+- PURE full-frame nature background. NO windows, NO rooms, NO porches, NO furniture, NO man-made framing device of any kind — those vantages made the video AI invent objects. Just nature, edge to edge.
+- LESS IS MORE: the scene is SIMPLE — one subject, one weather condition, one light. A wide calm view with very few distinct elements. If the scene needs a second sentence to describe, it's too busy.
+- Rotate among simple scenes like these (and invent equally simple ones):
+  • ocean waves rolling gently toward an empty shore
+  • clouds drifting slowly over a mountain range
+  • rain falling on a still lake
+  • snow falling softly in a quiet pine forest
+  • mist drifting across a green valley at dawn
+  • slow clouds moving across a pastel dusk sky
+- HYPER-REALISTIC: it must look like real footage a nature cinematographer shot — true-to-life color and light, never painterly, never fantasy, never oversaturated.
+- Breathtaking and SOOTHING, catchy enough to stop a scroll on the first frame. VARY the scene boldly across posts.
+- NO people, NO animals in focus, NO buildings, NO text or typography of any kind.
 - Composed for a vertical 9:16 frame with calm space in the middle third (captions sit there).
-- One sentence, concrete and specific about light, color, and weather.
+- One sentence, concrete and specific about the subject, light, color, and weather.
 
-MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole video, so this MUST read as one continuous shot, 2026-08-20, per Keenan):
-- ONE constant, even, endless movement: clouds rolling steadily by, rain sliding down the glass, waves rolling in, light breathing slowly, fog drifting at a constant pace.
-- The movement must have no beginning, middle, or end — the same rate and direction the entire time, so any moment looks like any other moment.
-- The lighting, colors, and framing stay IDENTICAL from first frame to last. Nothing enters or leaves the frame. No people appear. No camera movement at all.
-- Under 20 words, present tense.
+MOTION RULES ("motion" — how the scene moves; the clip is looped for the whole video, so this MUST read as one continuous shot):
+- ONE simple natural movement, and nothing else: waves rolling, clouds drifting, rain falling, snow falling, mist sliding. MINIMAL — barely more than a photograph. Slow, gentle, calming.
+- The movement runs at ONE constant, even, endless rate — no beginning, middle, or end, so any moment looks like any other moment and the clip can START and END on the same image.
+- The lighting, colors, and framing stay IDENTICAL from first frame to last. Nothing enters or leaves the frame. Nothing new appears. No people. No camera movement at all.
+- Under 15 words, present tense, naming the one thing that moves.
 
 ALSO OUTPUT:
 - "title": a short scroll-stopping title, max 60 characters, in the same quiet voice
-- "caption": the FULL post caption (everything except hashtags — those are added automatically). Written in the voice of a real woman who runs the page — she's in the audience herself. Text-message tone, lowercase-leaning, contractions always, no marketing words, at most one emoji. KEEP IT SHORT: exactly 2 lines, blank line between them. Line 1 is a question or personal aside that stops the scroll on its own, under 12 words (it's the only line visible before "...more"). Line 2 is one share/save ask in her voice ("send this to the friend who never stops moving"). NEVER retell, quote, or summarize the video's script — the video says it; the caption doesn't repeat it. The test: would a real person paste this from her Notes app? No "comment below" phrasing ever.
-- "commentPrompt": the same first-line question on its own (fallback field).
-- "captionHook": 1-2 of the personal lines on their own (fallback field).
+- "caption": ONE thought-provoking question in the voice of a real woman who runs the page — under 15 words, lowercase-leaning, text-message tone, contractions (hashtags are added automatically; the question IS the whole caption). It should make someone stop and answer honestly in their head ("when's the last time your mind was actually quiet?"). NEVER retell or summarize the video's script, NEVER a share/send/save ask, NEVER "comment below", NEVER mention any app or product. At most one emoji, only if natural.
+- "commentPrompt": the same question on its own (fallback field).
+- "captionHook": the same question again (legacy fallback field).
 - "vocalScript": the EXACT same script text turned into a fully directed vocal PERFORMANCE using ElevenLabs v3 audio tags. This is where the read becomes hyper-realistic — direct it like a voice actor's marked-up script:
   • Use 5-10 tags across the read, one wherever the delivery should shift. Allowed tags: [softly], [warmly], [gently], [quietly], [whispers], [sighs], [exhales], [tired], [tender], [hesitates], [pause], [long pause].
-  • Start with [softly] or [warmly]. Change the emotional register as the script moves — e.g. [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the CTA.
+  • Start with [softly] or [warmly]. Change the emotional register as the script moves — e.g. [tired] on the heavy beat, [whispers] on the most private line, [warmly] on the reframe, [gently] on the settling close.
   • Add [pause] or [long pause] where a real person would actually stop — before the truth lands, after the hardest line. You may also add extra "..." beyond the clean script's for micro-hesitations.
   • Put [sighs] or [exhales] where a tired woman would audibly breathe — at most twice, where it's earned.
   • Tags and ellipses direct delivery only — the WORDS must stay identical to "script". Never all-caps, never exclamation marks.
@@ -132,7 +147,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
 {
   "theme": "5-10 word label for this concept (used to avoid future repeats)",
   "title": "...",
-  "caption": "the full post caption, in her voice, no hashtags",
+  "caption": "one thought-provoking question in her voice, no hashtags",
   "captionHook": "...",
   "commentPrompt": "...",
   "script": "the full 40-80 word narration",
@@ -269,10 +284,11 @@ Return ONLY valid JSON.`;
  */
 export function buildAmbientImagePrompt(script: Pick<AmbientScript, "visual">): string {
   return [
-    `Breathtaking photorealistic cinematic photograph: ${script.visual}`,
-    "Shot on a full-frame camera, rich natural color grading, soft gradients, immense depth and atmosphere. Serene, calming, awe-inspiring.",
+    `Breathtaking hyper-realistic nature photograph: ${script.visual}`,
+    "Pure full-frame nature, edge to edge — a simple, uncluttered scene with very few elements. No windows, rooms, furniture, buildings, or man-made objects of any kind.",
+    "Shot on a full-frame camera by a nature cinematographer: true-to-life natural color and light, soft gradients, immense depth and atmosphere. Serene, calming, awe-inspiring — indistinguishable from a real photograph.",
     "Vertical 9:16 composition with a calm, uncluttered middle third of the frame.",
-    "NO people, NO animals, NO buildings in focus unless the scene requires distant lights.",
+    "NO people, NO animals in focus.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
 }
@@ -284,11 +300,12 @@ export function buildAmbientImagePrompt(script: Pick<AmbientScript, "visual">): 
  */
 export function buildAmbientVideoPrompt(script: Pick<AmbientScript, "motion">): string {
   return [
-    `The scene breathes in slow motion: ${script.motion}.`,
-    "One single continuous movement at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
-    "The movement at the last frame matches the first frame exactly.",
-    "Fixed, locked camera. The lighting, colors, framing, and every object stay identical from first frame to last.",
-    "Crisp, sharp, high-definition cinematic footage with steady soft lighting and clean detail throughout.",
+    `Subtle, minimal ambient motion — one gentle natural movement only: ${script.motion}.`,
+    "The movement is slow and barely perceptible, like a living photograph. It runs at a perfectly constant speed and direction from the first frame to the last — any moment of the clip looks like any other moment, with no beginning and no ending, so it plays as an endless loop.",
+    "The clip starts and ends on the SAME image: the last frame is identical to the first frame.",
+    "The scene itself NEVER changes: the exact same landscape, the exact same composition, the exact same objects from first frame to last. Nothing new appears, nothing leaves, nothing transforms.",
+    "Fixed, locked, completely static camera — no pan, no zoom, no drift, no push-in.",
+    "Hyper-realistic, crisp, high-definition nature footage with steady soft lighting and clean detail throughout.",
   ].join(" ");
 }
 
@@ -339,38 +356,41 @@ export async function loopClipToDuration(clip: Buffer, targetSec: number): Promi
 }
 
 /**
- * Voice history (per Keenan):
- * - 2026-08-19: Vanessa (8DzKSPdgEQPaK5vKG0Rs) dropped ("meh"), Hope
- *   (WAhoMTNdLdMoq1j3wf3I) chosen.
- * - 2026-08-21: Hope rejected too ("still sounds like absolute shit")
- *   even on the restored good-post config → switched to Aria, an
- *   expressive middle-aged American female premade voice, with the
- *   script carrying much heavier v3 performance tags (hyper-realistic
- *   delivery lives in the script, not the settings).
- * AMBIENT_ELEVENLABS_VOICE_ID still forces any voice if set.
+ * How long the looped video should run when TTS FAILS and the post falls
+ * back to the silent self-voice video. A slow calm read paces ~2
+ * words/sec with the written-in pauses, so 45-80 words → roughly 22-40s.
+ * Floor of 20s so a short script still gets a postable video; +3s of
+ * breathing room at the tail.
  */
-const AMBIENT_VOICES = [
-  "9BWtsMINqrJLrRacOk9x", // Aria - expressive, husky, middle-aged American female
-];
+export function estimateAmbientReadSeconds(script: string): number {
+  const words = script.split(/\s+/).filter(Boolean).length || 1;
+  return Math.max(20, Math.round((words / 2.0) * 10) / 10) + 3;
+}
+
+/**
+ * The pre-designated female ambient voice (2026-08-28, per Keenan — he
+ * supplied this exact voice ID with the TTS revival). Voice history
+ * before the 2026-08-24 removal: Vanessa ("meh") → Hope ("still sounds
+ * like absolute shit") → Aria ("someone from the bayou") → Rachel.
+ * AMBIENT_ELEVENLABS_VOICE_ID still overrides for auditioning.
+ */
+const AMBIENT_VOICE_ID = "OZxMHsGaBmV5pjMIDIn0";
 
 /**
  * Voice settings for the calm read (2026-08-21): eleven_v3 at stability
  * 0.0 Creative — the most expressive, tag-responsive mode — because the
- * realism now comes from the scriptwriter's inline audio tags and
- * written-in pauses, not from the settings. elevenLabsVoiceover falls
- * back to eleven_multilingual_v2 (tags stripped) if a v3 call fails.
+ * realism comes from the scriptwriter's inline audio tags and written-in
+ * pauses, not from the settings. elevenLabsVoiceover falls back to
+ * eleven_multilingual_v2 (tags stripped) if a v3 call fails.
  */
 export function ambientVoiceoverOptions(): VoiceoverOptions {
   return {
-    voiceId:
-      process.env.AMBIENT_ELEVENLABS_VOICE_ID ||
-      AMBIENT_VOICES[Math.floor(Math.random() * AMBIENT_VOICES.length)],
+    voiceId: process.env.AMBIENT_ELEVENLABS_VOICE_ID || AMBIENT_VOICE_ID,
     modelId: "eleven_v3",
     voiceSettings: {
       // v3 stability is effectively discrete: 0.0 Creative / 0.5 Natural /
-      // 1.0 Robust. 0.5 still sounded flat to Keenan (2026-08-19, "meh")
-      // — 0.0 Creative is the most emotional, expressive delivery.
-      // Verified live on Hope with inline tags (HTTP 200).
+      // 1.0 Robust. 0.5 sounded flat (2026-08-19, "meh") — 0.0 Creative
+      // is the most emotional, expressive delivery.
       stability: 0.0,
       similarity_boost: 0.8,
       style: 0.5,
@@ -383,12 +403,12 @@ export function ambientVoiceoverOptions(): VoiceoverOptions {
 }
 
 /**
- * The text actually sent to TTS (2026-08-19): the scriptwriter's
- * vocalScript carries eleven_v3 audio tags ([softly], [sighs]...) placed
- * where the delivery should shift; without one, a leading [softly] still
- * sets the register. The stored script stays clean — email, captions,
- * and the admin UI never see tags. If TTS falls back to
- * eleven_multilingual_v2 the tags are stripped there, not spoken.
+ * The text actually sent to TTS: the scriptwriter's vocalScript carries
+ * eleven_v3 audio tags ([softly], [sighs]...) placed where the delivery
+ * should shift; without one, a leading [softly] still sets the register.
+ * The stored script stays clean — email, captions, and the admin UI
+ * never see tags. If TTS falls back to eleven_multilingual_v2 the tags
+ * are stripped there, not spoken.
  */
 export function ambientTtsText(
   script: Pick<AmbientScript, "script" | "vocalScript">

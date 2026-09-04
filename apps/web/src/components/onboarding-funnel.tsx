@@ -2,15 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import {
-  ANNUAL_PRICE_CENTS,
-  ANNUAL_PRICE_DOLLARS,
-  MONTHLY_PRICE_CENTS,
-  MONTHLY_PRICE_DOLLARS,
-  PRICING,
-  formatDollars,
-  planValueDollars,
-} from "@/lib/pricing";
+import { ANNUAL_PRICE_CENTS, ANNUAL_PRICE_DOLLARS, MONTHLY_PRICE_DOLLARS, PRICING, displayAnnual, displayMonthly, formatDollars, planValueDollars } from "@/lib/pricing";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
@@ -2253,8 +2245,8 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   // drives the reassurance line under the lock-in button so it always matches
   // the checkout the user is about to enter.
   const afterTrialPrice = selectedPlan === "yearly"
-    ? `${formatDollars(ANNUAL_PRICE_CENTS)}/yr`
-    : `${formatDollars(MONTHLY_PRICE_CENTS)}/mo`;
+    ? `${displayAnnual()}/yr`
+    : `${displayMonthly()}/mo`;
   // Branch-matched social-proof pool for the "What our users say" popup.
   const testimonialPool = getPaywallTestimonialPool(branch);
   const [testimonialsOpen, setTestimonialsOpen] = useState(false);
@@ -2377,7 +2369,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               {/* Founding rate — lands after slash */}
               <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
                 style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 600ms cubic-bezier(0.34,1.56,0.64,1) forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
-                {formatDollars(MONTHLY_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/mo</span>
+                {displayMonthly()}<span className="text-sm font-normal text-zinc-400">/mo</span>
               </p>
               {/* Badge — appears after rate lands */}
               <span className={`inline-block mt-2 rounded-full bg-acuity-primary text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm ${slashPhase >= 3 ? "" : "opacity-0"}`}
@@ -2405,7 +2397,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               {/* Founding rate — lands after slash */}
               <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
                 style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 600ms cubic-bezier(0.34,1.56,0.64,1) 200ms forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
-                {formatDollars(ANNUAL_PRICE_CENTS)}<span className="text-sm font-normal text-zinc-400">/yr</span>
+                {displayAnnual()}<span className="text-sm font-normal text-zinc-400">/yr</span>
               </p>
               {/* Badge — appears after rate lands */}
               <span className={`inline-block mt-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[10px] font-bold ${slashPhase >= 3 ? "" : "opacity-0"}`}
@@ -2588,7 +2580,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
     return () => clearInterval(interval);
   }, []);
 
-  const planPrice = selectedPlan === "yearly" ? formatDollars(ANNUAL_PRICE_CENTS) + "/yr" : formatDollars(MONTHLY_PRICE_CENTS) + "/mo";
+  const planPrice = selectedPlan === "yearly" ? displayAnnual() + "/yr" : displayMonthly() + "/mo";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">

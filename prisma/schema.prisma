@@ -869,8 +869,7 @@ model Entry {
   // Read by `apps/web/scripts/theme-distribution.ts` for cohort
   // comparison reports.
   themePromptVersion String?
-  InsightEvidence    InsightEvidence[]
-  insightEvidence       InsightEvidence[]
+  insightEvidence    InsightEvidence[]
 
   @@index([userId, createdAt])
   // Backfill scanner hot path — find all FREE-tier-only entries
@@ -1643,8 +1642,7 @@ model UserInsight {
   /// convention (Entry.status, UserInsight.severity) for cross-Postgres
   /// compatibility and to avoid a migration on every added value.
   correctionState String?
-  InsightEvidence InsightEvidence[]
-  evidence InsightEvidence[]
+  evidence        InsightEvidence[]
 
   @@index([userId, createdAt])
   @@index([userId, correctionState])
@@ -2839,4 +2837,130 @@ model InsightEvidence {
   @@unique([insightId, entryId])
   @@index([insightId])
   @@index([entryId])
+}
+
+// ─── Niche Research Lab (2026-08-24, reworked 2026-08-25) ───────────────────
+// Fully-automatic niche research for the Content Factory. Claude infers the
+// niche from our own posted carousels (NicheProfile), Apify scrapes those
+// hashtags on Instagram AND TikTok nightly, and the admin surfaces: today's
+// viral posts (with drafted comments — manual engagement only), suggested
+// accounts to track, suggested carousel topics (generated ONLY on demand),
+// ranked hashtags, and a weekly strategy memo. Nothing feeds auto-generation.
+
+enum NichePlatform {
+  INSTAGRAM
+  TIKTOK
+}
+
+// Singleton (one row). Auto-inferred weekly by Claude from our own posted
+// carousel headlines/captions — Keenan never has to define the niche.
+model NicheProfile {
+  id             String   @id @default("singleton")
+  description    String   @db.Text // plain-English niche summary
+  igHashtags     String[] // search tags for Instagram, without #
+  tiktokHashtags String[] // search tags for TikTok, without #
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+}
+
+model NicheAccount {
+  id            String        @id @default(cuid())
+  platform      NichePlatform @default(INSTAGRAM)
+  handle        String        // without @
+  displayName   String?
+  notes         String?       @db.Text // why we track them / what to emulate
+  followers     Int?
+  active        Boolean       @default(true)  // inactive accounts are kept but not scraped
+  discovered    Boolean       @default(false) // true = surfaced by the discovery crawl, false = added by Keenan
+  addedAt       DateTime      @default(now())
+  lastScrapedAt DateTime?
+  posts         NichePost[]
+
+  @@unique([platform, handle])
+}
+
+model NichePost {
+  id              String        @id @default(cuid())
+  // Optional: hashtag-discovered posts have no tracked account, only an
+  // authorHandle. Tracked-account scrapes fill accountId.
+  accountId       String?
+  account         NicheAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  authorHandle    String?       // without @; set for hashtag-discovered posts
+  platform        NichePlatform
+  externalId      String        // IG shortcode / TikTok video id
+  url             String
+  caption         String?       @db.Text
+  hashtags        String[]
+  mediaType       String?       // Image | Video | Sidecar (carousel)
+  thumbnailUrl    String?
+  views           Int?
+  likes           Int?
+  comments        Int?
+  postedAt        DateTime
+  scrapedAt       DateTime      @default(now())
+  // Overperformance vs the account's own recent baseline (1.0 = average).
+  // Only computable for tracked accounts.
+  engagementRatio Float?
+  // Virality vs the median of the hashtag sample it was scraped with
+  // (1.0 = typical). Powers the daily "viral in your niche" feed.
+  viralScore      Float?
+  // Engagement queue (manual — never auto-posted): Claude-drafted comment
+  // in Keenan's voice, and when Keenan marked it engaged from the admin.
+  suggestedComment String?      @db.Text
+  engagedAt        DateTime?
+
+  @@unique([platform, externalId])
+  @@index([postedAt(sort: Desc)])
+  @@index([engagementRatio(sort: Desc)])
+  @@index([viralScore(sort: Desc)])
+}
+
+enum NicheSuggestionStatus {
+  SUGGESTED
+  GENERATED
+  DISMISSED
+}
+
+// Carousel topic suggestions drafted nightly from that day's viral posts.
+// NEVER auto-generated: Keenan reviews them in the admin and presses
+// Generate, which fires the one-off pipeline with this topic mandated.
+model NicheTopicSuggestion {
+  id              String                @id @default(cuid())
+  headline        String
+  angle           String                @db.Text // why this should land, per the viral evidence
+  sourceSummary   String?               @db.Text // which viral posts inspired it
+  status          NicheSuggestionStatus @default(SUGGESTED)
+  carouselPostId  String?               // set once generated
+  createdAt       DateTime              @default(now())
+
+  @@index([status, createdAt(sort: Desc)])
+}
+
+// Hashtag performance research: median reach of recent top posts per tag,
+// refreshed by the discovery crawl. Suggested sets are ranked by score.
+model NicheHashtag {
+  id            String        @id @default(cuid())
+  platform      NichePlatform @default(INSTAGRAM)
+  tag           String        // without #
+  postCount     Int?          // how many posts use the tag (size of the pool)
+  medianViews   Int?          // median plays/views of recent top posts sampled
+  medianLikes   Int?
+  score         Float?        // computed rank score for suggestion ordering
+  lastCheckedAt DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@unique([platform, tag])
+  @@index([score(sort: Desc)])
+}
+
+// Weekly Claude strategy memo: what's overperforming in the niche, suggested
+// new post types/formats, and what to double down on. Shown in the admin.
+model NicheMemo {
+  id        String   @id @default(cuid())
+  weekOf    DateTime // Monday of the analyzed week (unique per week)
+  content   String   @db.Text // markdown memo
+  createdAt DateTime @default(now())
+
+  @@unique([weekOf])
+  @@index([createdAt(sort: Desc)])
 }

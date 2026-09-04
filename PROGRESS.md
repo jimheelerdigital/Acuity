@@ -56,6 +56,1273 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 - Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
 
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+## [2026-09-02] — The phone app can now be built at the new prices, without pausing the RevenueCat trial run
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 0b6aee38
+
+### In plain English (for Keenan)
+There's now a build recipe called `pricing` that produces an app showing the new $9.99 / $89.99 prices. It's the same recipe as the RevenueCat observer build with one switch flipped, so the behind-the-scenes RevenueCat trial run we started keeps going uninterrupted — we don't have to choose between the two.
+
+Nothing changes for existing subscribers: grandfathering is automatic, so everyone already paying stays at $4.99 / $39.99 forever. Only brand-new buyers on this build see the new prices. And nothing ships to anyone until Jimmy actually runs the build and submits it — this is the recipe, not the release.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/eas.json`:
+  - new **build** profile `pricing` — `extends: "observer"`, sole literal env `EXPO_PUBLIC_NEW_PRICING: "1"`
+  - new **submit** profile `pricing` — `extends: "production"` (submit profiles do NOT inherit from build profiles, and no `observer` submit profile exists)
+- `apps/mobile/app.json` — `version` 1.4.1 → **1.5.0**
+- `apps/web/src/lib/evidence/rc-observer-build.test.ts` — now resolves `extends` chains; new `pricing` block; 34 tests
+- Untouched: web, `packages/shared`, mobile purchase code, every other RC flag
+
+### Manual steps needed
+- [ ] Jimmy: `eas build --profile pricing --platform all`, then `eas submit --profile pricing`
+- [ ] Jimmy: the build lands on the **`rc-observer` OTA channel** (inherited). Runtime version follows appVersion, so 1.5.0 binaries are already segregated from the 1.4.x observer builds — but be aware the channel name is shared
+- [ ] Nobody: no env var, no schema, no server change. The server already maps the v2 product ids to PRO
+
+### Notes
+- **Verified that EAS actually merges `env` through `extends`, rather than assuming it.** This was the one fact the whole approach rests on: if `env` did not inherit, a `pricing` profile declaring only `NEW_PRICING` would silently ship WITHOUT the RC keys and kill the soak. `npx eas-cli@23.2.0 config --profile pricing` resolves all six inherited vars plus the new one, so the minimal profile is correct and re-listing them would just be a second copy to drift.
+- **The existing test was reading the LITERAL env block, not the resolved one.** With `pricing` declaring only `NEW_PRICING`, the old "every other profile resolves to disabled" assertion would have passed for `pricing` — while the shipped binary has `RC_OBSERVER=1`. The suite would have been asserting something false about the build. `resolvedEnv()` / `resolvedChannel()` now walk the `extends` chain the way EAS does.
+- **The account-wide "no profile sets NEW_PRICING" assertion had to be narrowed, not deleted.** It is now: SOURCE_OF_TRUTH and SDK_PURCHASES stay unset on EVERY profile (resolved), NEW_PRICING is set on `pricing` and *nowhere else* (asserted as an exact list, so a leak into `production` fails), and observer/observer-internal/production are each named explicitly as staying on legacy.
+- **`pricing` was added to `OBSERVER_PROFILES` deliberately** — it configures the SDK in observer mode, so it should be held to every observer expectation. The one exception is the NEW_PRICING assertion, which moved out of the shared block with a comment saying why.
+- **A submit profile was needed.** `eas submit --profile pricing` on a missing profile fails with "Missing submit profile in eas.json"; with the new one it gets past resolution to the archive prompt. That contrast is how the profile was verified without running a real submission.
+- Baselines: web tsc **161 before, 161 after**; mobile tsc **19 before, 19 after** — both measured by stashing. (The brief said 163; main has drifted to 161. That is five briefs running with a stale tsc number.) Tests **724/724** across 43 files; the RC evidence file went 22 → 34. Six mutations of `eas.json` each fail between 1 and 7 tests.
+
+## [2026-09-01] — Ripple posts split 50/50 between light and dark looks
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Ripple posts are no longer all light and airy. Each post now flips a coin: half come out in the current bright, soft look with dark charcoal text, and half come out in the original dark look — warm candlelight, lamplit rooms, rain on night windows — with white text. Every Ripple lane (questions, free things, nobody-tells-you, memento mori, delete-after-reading) rolls its own coin per post, so a given day's mix varies naturally. The selfie posts are untouched (they're real-photo style, not scenery). BWK stays all-dark as before.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new `WomenScheme` ("light" | "dark") with `WOMEN_SCENE_BRIEFS` + `WOMEN_PROMPT_HEADER` records (dark brief restores the pre-2026-08-30 warm-dim quiet-luxury scenes); questions/free/nobody/forbidden/memento-women system prompts converted from consts to `build*SystemPrompt(scheme)` builders; their generators (`generateQuestionsTopic`, `generateFreeTopic`, `generateNobodyTopic`, `generateForbiddenTopic`, `generateMementoTopic`) take a `scheme: WomenScheme = "light"` param; `buildMoodyImagePrompt` takes a third `womenScheme` param — light keeps the airy style + "SOFT and LIGHT" exposure line, dark uses a warm-low-light style + "DIM and shadowed" exposure line
+- apps/web/src/inngest/functions/carousel-daily.ts: 50/50 scheme rolled INSIDE the generate-moody-topic step (memoized across Inngest replays, same pattern as the avatar roll) and returned on the topic; `textTone` now derived from `moody.scheme` after the step (light→dark text, dark/null→white); both `buildMoodyImagePrompt` calls pass the scheme
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide text tone now reads the STORED imagePrompt markers ("SOFT and LIGHT"→dark, "DIM and shadowed"→white) with the LIGHT_LANES table demoted to a fallback for pre-marker slides — lanes no longer imply a tone
+- No schema changes; cron string unchanged (dispatch-only) — no Inngest resync needed
+
+### Manual steps needed
+None — deploy is automatic on push. Tomorrow's 5-8 UTC runs pick this up automatically.
+
+### Notes
+- The scheme roll must live inside the Inngest step (like the avatar roll) — a roll outside would re-randomize on replay and could give a light topic dark imagery mid-generation.
+- The prompt-marker tone detection also fixes the 2026-09-01 gotcha noted below: recomposing a historical pre-kill dark memento/forbidden slide now correctly picks white text from its stored prompt instead of lane-guessing dark.
+- Selfie is exempt by construction — it early-returns before the moody-family branch and never touches buildMoodyImagePrompt.
+
+## [2026-09-01] — BWK images people-free (generic-man bug), aura killed, memento + delete-after-reading back on Ripple
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The "avatar in every post" problem wasn't the avatar — the database showed your reference photo was only being attached at the capped rate. The real bug: the image instructions always ALLOWED "a lone man" in BWK scenes, so the AI painted a random generic guy into nearly every image, which looks identical to the avatar being everywhere. Now BWK images are people-free by default — empty gyms, glowing laptops, storm ridges with nobody in them — and a man only appears in the ~1-in-12 posts that win the avatar roll (and then it's actually you, on the cover). Also per your ask: the single-image "aura" post type (FINISH WHAT THEY LAUGHED AT) is gone, and two lanes are back on Ripple — the "DO THE MATH" memento-mori life-math posts and the "DELETE THIS AFTER READING" posts, both retuned to Ripple's light, airy look with dark text.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: SCENE_BRIEF.men + inline SCENES in memento-men/year/protocol prompts rewritten people-free ("NO people EVER — write every scene EMPTY"); buildMoodyImagePrompt men branch now hard-overrides to an empty location; MOODY_AVATAR_PROMPT gains an "EXCEPTION to the no-people rule" block that re-introduces the lone man for ≤8% winners; sceneFeaturesAvatar deleted (no longer needed); MEMENTO_SYSTEM_PROMPTS.women + FORBIDDEN_SYSTEM_PROMPT retuned from dark/white-text to LIGHT airy/dark-charcoal (Ripple identity); forbidden gets randomized 4-6 slide counts; AURA generator marked dead-dormant
+- apps/web/src/inngest/functions/carousel-daily.ts: aura branch deleted; CAROUSEL_LANES −aura +memento +forbidden; HOUR_LANES now 5:[moody-men,memento-men], 6:[year,memento], 7:[questions,selfie,forbidden], 8:[free,nobody,protocol]; topic-select adds generateMementoTopic("women")/generateForbiddenTopic branches; avatar roll simplified — winner always puts the avatar on the COVER (scenes are people-free, so no scene-text detection)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide avatar detection keys off the "reference photo" phrase (survives prompt-wording changes; historical posts still match) with an index-cut strip fallback; LIGHT_LANES +memento +forbidden
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: aura button (🏔️) replaced with memento (⏳) + forbidden (🤫); generateBucket union updated
+- apps/web/src/app/api/admin/carousels/route.ts: bucket comment updated with the 2026-09-01 lane history
+- No schema changes; cron string unchanged (dispatch-only) — no Inngest resync needed
+
+### Manual steps needed
+None — deploy is automatic on push; today's BWK posts were regenerated via the admin trigger as part of this session (Keenan: "resend todays BWK posts").
+
+### Notes
+- Root cause was subtle: the ≤8% gate on the reference photo worked perfectly (0 of today's 9 posts attached it), but a standing "At most ONE person: a lone man, luxury-styled..." line in the base image prompt invited a GENERIC man into ~every BWK image. Gating the reference is not gating the figure. The rule now: people appear in BWK imagery ONLY via the avatar-winner exception block.
+- Historical memento/forbidden posts (pre-kill) were dark scenes; they're now in LIGHT_LANES, so recomposing one of those old slides would render dark text on a dark image. Accepted — new posts are what matter.
+- Aura's generator stays dormant in moody-carousel.ts (dormant-not-deleted pattern) so historical aura posts can still be recomposed/emailed.
+
+## [2026-08-31] — Way more variance across all posts, avatar back at 5-10% max
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every lane now has a much bigger world to draw from — new scene families straight from your two TRUST THE PROCESS references (the dark bedroom looking out over a city skyline at night, the black stone house on the cliff in sea fog), plus an explicit instruction that the example scenes are inspiration, not a menu, so the AI invents new locations every day instead of cycling the same gym/laptop/linen shots. Post length now varies too (4-7 slides on the men's carousels, 4-6 on the women's), and the "don't repeat" instruction got much stronger: a new post can't re-teach the same info under a different title. Your avatar is back, but hard-capped — roughly 1 in 12 posts (under your 10% max) gets you on exactly one slide; everything else renders a generic figure.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts:
+  - SCENE_BRIEF.men + .women widened with new families (night-vantage penthouse/skyline interiors, brutalist-coastal cliff scenes for men; balcony/garden/lake/market scenes for women) + "inspiration, not a menu — invent new locations" directives
+  - Inline SCENES in memento (both), year, protocol, aura, free prompts widened the same way
+  - avoidBlock() rewritten: recent titles now framed as covered TERRITORY — new post must differ in substance (ideas/subjects/numbers/structure), not just wording. Hits every moody-family lane + aura
+  - buildMoodyImagePrompt adds a vantage-variance line (low/through-glass/elevated/one-point perspective) while keeping the grade on theme
+  - Slide-count variance: generateMoodyTopic + generateYearTopic 4-7 items; generateQuestionsTopic, generateFreeTopic, generateNobodyTopic 4-6 (prompts changed from "Exactly 5 items" to request-driven counts)
+  - sceneFeaturesAvatar re-documented as scene DETECTOR only — never a frequency gate
+- apps/web/src/lib/content-factory/carousel-generate.ts:
+  - New generateMoodyImage(prompt, withAvatar) — attaches the avatar reference + MOODY_AVATAR_PROMPT only when the caller's roll won; returns the final prompt for slide storage
+  - recomposeSlide MOODY_LANES branch: prompts carrying the "reference photo" marker re-attach the avatar reference on edit again (falls back to stripping if the reference file is missing)
+- apps/web/src/inngest/functions/carousel-daily.ts:
+  - AVATAR_POST_PROBABILITY = 0.08 (Keenan: "5-10% of generated posts, max"). One roll per BWK post inside the topic step (Inngest-memoized); winner puts the avatar on the FIRST slide whose scene features the lone man. Aura rolls the same gate
+  - Cover/item/aura image steps use generateMoodyImage
+- apps/web/src/lib/content-factory/generate-topic.ts: SELFIE_SYSTEM_PROMPT gets cross-post shot-world variety (street/park/car/garden/porch, not always the coffee-journal-bedroom set); selfie avoid-list strengthened to substance level
+- apps/web/src/app/api/admin/carousels/route.ts: history comment updated (avatar revived same day behind ≤8% cap)
+- No schema changes, no cron change → no Inngest resync needed
+
+### Manual steps needed
+None (the avatar reference is already at content-factory/reference/bwk-avatar.jpg — the earlier "delete it?" question is now moot, it's in use again).
+
+### Notes
+- The avatar frequency gate is now an explicit per-post probability, NOT scene-text matching — the 2026-08-31 "avatar in every post" failure came from gating on a `man|figure|silhouette` regex that matched nearly every BWK scene. sceneFeaturesAvatar survives only to pick WHICH slide gets the reference after a post wins the roll. If a winning post has no lone-man scene, it simply gets no avatar (keeps the true rate ≤8%).
+- The roll lives INSIDE the generate-topic step so Inngest memoizes it — a roll outside step.run would re-randomize on every replay and could produce avatar on some slides but not others.
+- Protocol keeps its existing 5-7 step variance; memento keeps 3-9. Cover text treatment (bold ALL CAPS) intentionally untouched — Keenan locked "make everything consistent" when killing the italic.
+
+---
+
+## [2026-08-31] — Selfie topics must be big universal problems, not quirky micro-habits
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `content: selfie topic prompt` commit)
+
+### In plain English (for Keenan)
+The selfie slideshow's topic writer was told "specific beats general," which is how it landed on "this is how i stopped eating lunch standing up." That instruction is reversed: the cover problem now has to be something millions of women 40-50 would instantly recognize (running on empty, snapping at everyone, doom-scrolling at midnight), with a hard test — "would a million tired women say 'that's me'?" — and your lunch example baked in as the named failure to avoid. The specific little moments still show up, but inside the slides, never as the headline.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: rewrote THE PROBLEM + HEADLINE sections of `SELFIE_SYSTEM_PROMPT` — universal-problem test, explicit ban on niche micro-habit topics with the real failure quoted as a BAD example, "specificity belongs in steps/details" rule (aligns the selfie lane with the existing mass-appeal headline rule from generateTopic)
+- Prompt-only change — no code paths, schema, or cron touched
+
+### Manual steps needed
+None.
+
+### Notes
+- Root cause: the selfie prompt predates the 2026-08-28 "simple broad mass-appeal headlines" directive and was never updated when that rule landed in generateTopic's SYSTEM_PROMPT — lesson: when a headline rule lands, sweep ALL topic generators, not just the main one
+- tsc from apps/web: exactly 199 errors (baseline)
+
+## [2026-08-31] — Avatar retired across all lanes; "Two Versions of You" killed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): retire avatar, kill versions` commit)
+
+### In plain English (for Keenan)
+Your likeness no longer appears in any generated post — every scene with a person now uses a generic figure, same as before the avatar experiment. The overnight run had put you in far more posts than intended, so the whole avatar system is switched off, not just dialed down. The "two versions of you" carousel (last night's "SAME DAY. TWO MEN.") is also gone. Nightly output is now 9 posts: 5 Build With Key, 4 Ripple.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: removed all `getAvatarReference`/`sceneFeaturesAvatar`/`MOODY_AVATAR_PROMPT` usage from the aura branch and the moody-family cover/item steps (plain `generateImage` again); `CAROUSEL_LANES` 10 → 9 (versions removed); `HOUR_LANES[6]` = year only; versions removed from imageAudience/topic routing; header updated
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: recomposeSlide no longer fetches the avatar — it strips the `MOODY_AVATAR_PROMPT` block from historical prompts before regenerating (so the model isn't told to match a photo that isn't attached); `getAvatarReference` itself stays, dormant
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: ⚖️ button + union entry removed
+- `apps/web/src/app/api/admin/carousels/route.ts`: doc comment
+- Dormant-not-deleted: `generateVersionsTopic`, `sceneFeaturesAvatar`, `MOODY_AVATAR_PROMPT` remain in moody-carousel.ts; recomposeSlide MOODY_LANES and email BWK_LANES keep versions for historical posts
+- Cron string unchanged — no Inngest resync needed
+
+### Manual steps needed
+- [ ] Decide whether to delete the avatar photo from Supabase storage (`content-factory/reference/bwk-avatar.jpg` — it's in a PUBLIC bucket and nothing references it anymore) (Keenan)
+
+### Notes
+- Root cause of "avatar in every post": aura/protocol/versions covers all triggered the reference path last night, and `sceneFeaturesAvatar`'s regex (`man|figure|silhouette`) matched nearly every BWK scene the topic generator wrote — so item slides used it too. The scene-text regex was too broad a gate for a "use sparingly" feature
+- Lone-man SCENES are unchanged — the grind/elements scene DNA stays; only the identity transfer is gone
+- Editing a historical avatar post now produces a generic man in the same scene — expected and accepted
+
+## [2026-08-30] — Killed two more lanes: "This Is Your Sign" and "You're Not Behind"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): kill sign and behind lanes` commit)
+
+### In plain English (for Keenan)
+The nightly "THIS IS YOUR SIGN TO..." single image (Ripple) and the "YOU'RE NOT BEHIND" timeline-lies carousel (the one that produced "SOMEONE ELSE'S SCHEDULE" — Build With Key) no longer generate. Nightly output is now 10 posts: 6 Build With Key, 4 Ripple. Their admin buttons are gone too. Old posts of both types stay in the library and can still be edited or resent.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: removed the dedicated SIGN branch and behind's moody-family routing (imageAudience/numbered/topic-select); `CAROUSEL_LANES` 12 → 10; `HOUR_LANES` now 6 UTC = year+versions, 7 UTC = questions+selfie; header comment updated. Cron string unchanged — no Inngest resync needed
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: removed 🪧 (sign) and 🐢 (behind) buttons + union entries
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment
+- Dormant-not-deleted: `generateSignTopic`/`generateBehindTopic` stay in moody-carousel.ts; recomposeSlide's MOODY_LANES/LIGHT_LANES keep both so historical posts still re-render correctly; email.ts BWK_LANES keeps behind so historical resends label [BUILD WITH KEY]
+
+### Manual steps needed
+None — cron expression unchanged, Inngest picks up HOUR_LANES at runtime.
+
+### Notes
+- "someone elses schedule" was identified via DB lookup: the 2026-08-30 behind post's headline was literally "SOMEONE ELSE'S SCHEDULE" — the kill applies to the whole behind lane, not just that post
+- AURA still uses the "SIGN" overlay *treatment* (bold uppercase line) — that render kind is alive; only the sign *lane* is dead
+- tsc from apps/web: exactly 199 errors (baseline)
+
+## [2026-08-30] — The selfie photo slideshow is back in the Ripple nightly rotation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): revive selfie lane` commit)
+
+### In plain English (for Keenan)
+The realistic selfie slideshow (mirror selfie cover with the phone covering her face, followed by aesthetic point-of-view shots with TikTok-style sticker captions) is back in the nightly lineup, exactly as it worked before it was cut on Aug 28. It generates at 2am Central alongside the questions and sign posts, lands in your inbox tagged [RIPPLE], and keeps using the same woman across posts — each new cover is generated from the last one so she stays recognizable. That's now 12 posts per night: 7 Build With Key, 5 Ripple. There's also a new 🤳 button on the admin page to fire one on demand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: selfie branch restored verbatim from the pre-kill version (`git show baa957fc~1`) — topic + identity-anchor step, deterministic slug-hashed sticker color and pose, text-free raws saved per slide (`rawImageUrl`), mirror steps referencing the cover raw via `generateImageWithReference`; only change is dropping the branch's own `today`/`dateStr` declaration (now declared once before all branches). `CAROUSEL_LANES` 11 → 12; `HOUR_LANES[7]` = questions + sign + selfie (3/3/3/3 across the four hours); header comment updated
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: `generateBucket` union + 🤳 button
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment
+- `email.ts` untouched — selfie is not in BWK_LANES, so [RIPPLE] subject is automatic
+- Cron string unchanged (`0 5,6,7,8`) — HOUR_LANES is runtime data, no Inngest resync needed
+- All support code survived the 2026-08-28 kill and needed no changes: `generateSelfieTopic`, `buildSelfieImagePrompt`, `renderSelfieCaptionOverlay`, `SELFIE_TEXT_COLORS`, `SELFIE_POSE_VARIANTS`/`SELFIE_COVER_POSE_COUNT`, `buildCaption`
+
+### Manual steps needed
+None — cron expression unchanged, Inngest picks up HOUR_LANES at runtime.
+
+### Notes
+- Identity anchor chain resumes automatically: the newest selfie post with a raw cover (from before the kill) seeds the next post's cover, so the avatar carries over across the gap
+- Verified gap, unchanged from pre-kill: `recomposeSlide` has no selfie path — edit-text on a selfie slide falls through to the legacy baked-text path (regenerates the image, loses the sticker style and identity anchor). The raws exist precisely to make caption re-renders cheap; if Keenan ever edits a selfie caption, wire a raw-based `renderSelfieCaptionOverlay` path into recomposeSlide first
+- tsc from apps/web: exactly 199 errors (baseline)
+
+## [2026-08-30] — Three new Build With Key formats: AURA, TWO VERSIONS OF YOU, and 30-DAY PROTOCOL
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): aura/versions/protocol lanes` commit)
+
+### In plain English (for Keenan)
+Build With Key now gets three more posts every night, all built around your persona. AURA is a single striking image — you mid-element (storm ridge, cliff edge, cold plunge) with one bold line like "NOBODY'S COMING." TWO VERSIONS OF YOU is a carousel contrasting the man who kept the promise with the one who didn't, ending on "Choose." 30-DAY PROTOCOL is a numbered, save-worthy protocol people can start tonight — exact times, counts, and rules, not vague motivation. That's 11 posts per night: 7 Build With Key, 4 Ripple, all in your inbox by morning.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: new `generateAuraTopic` (mirrors generateSignTopic — 2-8 word line + persona scene, purpose "aura-image-topic"), `generateVersionsTopic` + `generateProtocolTopic` (via generateMoodyFamilyTopic; protocol is numbered with 5-7 items via minItems/maxItems)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: lanes 8 → 11; new dedicated `aura` branch (single COVER, SIGN overlay in white, avatar reference ALWAYS used); `versions`/`protocol` join the moody-family path as men/BWK (protocol numbered); caption chain simplified to `buildMoodyCaption(imageAudience, slug)`; hour map now 5: moody-men+memento-men+aura, 6: year+behind+versions, 7: questions+sign, 8: free+nobody+protocol — **cron string unchanged** (`0 5,6,7,8`), so no Inngest resync needed
+- `apps/web/src/lib/content-factory/email.ts`: BWK_LANES adds aura/versions/protocol
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: recomposeSlide MOODY_LANES adds the three; aura re-renders in SIGN kind
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🏔️/⚖️/📋 buttons + union; `apps/web/src/app/api/admin/carousels/route.ts` doc comment updated
+- No schema changes (lane is a free string column)
+
+### Manual steps needed
+None — cron expression unchanged, Inngest picks up HOUR_LANES at runtime.
+
+### Notes
+- AURA always uses the avatar reference (its scenes are persona-by-definition); versions/protocol use it only when the scene features the lone man, same as other BWK lanes
+- Volume check: 11 posts/night is above the 4-6/day capacity Keenan previously stated — he explicitly requested all three additions, so this is deliberate
+- If protocol posts feel too listicle, the knob is PROTOCOL_SYSTEM_PROMPT's theme rotation, not the item count
+
+## [2026-08-30] — Keenan is now the Build With Key avatar — his likeness appears in scenes that call for a person
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): BWK avatar persona` commit)
+
+### In plain English (for Keenan)
+When a Build With Key scene features the lone man, that man is now generated from your reference photo — same build, hair, and skin tone, restyled to fit the scene in luxury wardrobe (dark knits and a watch, a suit, training gear, or black expedition gear on a mountain). Your face stays hidden most of the time — from behind, silhouette, shadow, sunglasses, or goggles — with a visible face allowed only rarely. Scenes that don't need a person stay empty; the AI only adds you when it enhances the post. "Living the elements" scenes (storm ridge climbs, cliff edges in rain, cold plunges) are now part of the scene vocabulary too.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: new `sceneFeaturesAvatar(scene)` (person-word regex) + `MOODY_AVATAR_PROMPT` (identity-transfer block; the phrase "reference photo" doubles as the recompose marker); SCENE_BRIEF.men + memento-men/YEAR SCENES gain elements/adventure scenes, luxury wardrobe options, and the face-usually-hidden/rarely-visible policy (replaces yesterday's face-NEVER rule); buildMoodyImagePrompt men's person line updated to match
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: new `getAvatarReference()` — downloads `reference/bwk-avatar.jpg` from the content-factory bucket, module-cached, returns null on miss (graceful fallback to plain generation); `recomposeSlide` uses the reference when a stored imagePrompt contains the marker
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cover + item steps route men's-audience scenes through `generateImageWithReference` (gpt-image-2 edit endpoint, 1024x1536) when `sceneFeaturesAvatar` hits and the reference exists
+- Keenan's photo uploaded to Supabase storage at `content-factory/reference/bwk-avatar.jpg` (one-off script, deleted after)
+- No schema or cron changes
+
+### Manual steps needed
+None.
+
+### Notes
+- The content-factory bucket is PUBLIC, so the raw reference photo is technically reachable at its storage URL — flagged to Keenan; move to a private bucket if that ever matters
+- Edit endpoint tops out at 1024x1536 (vs 1024x1792 generate); composeSlideWithOverlay cover-crops to 1080x1920 either way
+- If identity drifts (different-looking man across slides), the fix is strengthening MOODY_AVATAR_PROMPT, not lowering the reference
+- Ripple/women lanes are untouched — people-free stays absolute there
+
+## [2026-08-30] — Build With Key scenes can now show a lone man grinding late at night
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): lone-man grind scenes` commit)
+
+### In plain English (for Keenan)
+Based on the TikTok screenshot you shared (the dark living room with a guy working on his laptop at night), Build With Key posts can now include a solitary man in the scene — working at a glowing laptop in a near-black room, at a desk lit only by a screen, or training alone in a dark gym. He's always alone, always seen from behind or in silhouette, and his face is never shown. Ripple stays people-free.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts` only:
+  - `SCENE_BRIEF.men` adds "lived-in late-night grind scenes" (lone man + laptop glow, screen-lit desk, hooded figure in dark gym) with the always-alone / from-behind / face-never-visible rule
+  - Inline SCENES pools for memento-men and YEAR get the same additions (behind + moody-men inherit via `SCENE_BRIEF["men"]`)
+  - `buildMoodyImagePrompt`: the hard "NO people" line is now branched — men's audience allows "at most ONE person... from behind or in silhouette, face NEVER visible" and lets screens glow without readable content; women/universal keep the full ban
+- No schema changes, no cron changes
+
+### Manual steps needed
+None — no cron/trigger changes (deploy auto-syncs the same Inngest function).
+
+### Notes
+- Dead men's lanes (missed-men, quote loop) keep their old people-free SCENES — dormant, untouched
+- If gpt-image-2 renders a visible face despite the prompt, tighten the buildMoodyImagePrompt person line first (it's the last-word constraint), not the lane SCENES
+
+## [2026-08-30] — Ripple posts go light and airy with dark text; three more lanes killed (8 lanes total)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): lighter Ripple schemes` commit)
+
+### In plain English (for Keenan)
+The Ripple account's posts now use bright, airy photography — morning light, cream and blush tones — with dark charcoal lettering instead of the dark moody scenes with white text. Build With Key keeps its dark motivational look. Three formats are retired: "Rules I Let Go Of," the women's "count what remains" posts (Finite Act Now), and the women's discipline posts (Hold Your Own). That leaves 8 nightly posts: 4 dark ones for Build With Key and 4 light feminine ones for Ripple, all still in your inbox by morning.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/compose.ts`: `renderMoodyTextOverlay` gains a `tone: "white" | "dark"` param — dark = #2B2622 text with white blurred halo (for light scenes), white = existing white-with-black-shadow
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `SCENE_BRIEF.women` and `buildMoodyImagePrompt`'s women branch rewritten for LIGHT airy scenes (bright even exposure so dark text reads); SIGN/FREE scene pools and QUESTIONS/FREE/NOBODY system-prompt intros lightened to match
+- `apps/web/src/inngest/functions/carousel-daily.ts`: lanes trimmed 11 → 8 (`rules`, `memento` (women), `moody-women` removed); cron `0 5,6,7,8 * * *` (was 5-10); hour map re-packed to 2 lanes/hour; topic-select branches and fallback (`rules` → `questions`) updated; new `textTone` (`imageAudience === "women" ? "dark" : "white"`) passed to all COVER/ITEM/SIGN overlay calls
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `recomposeSlide` passes `tone: "dark"` for the light lanes (questions/sign/free/nobody) so admin text edits re-render correctly
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🔓/🕯️/⏳ generate buttons removed; empty-state button now queues `questions`
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment updated to the 8 lanes
+- Dead-lane prompts left dormant in moody-carousel.ts (standard revival pattern); no schema changes
+
+### Manual steps needed
+- [x] Inngest resync after deploy (cron changed) — Claude Code runs `curl -X PUT goripple.io/api/inngest` post-deploy
+
+### Notes
+- Old posts in dead lanes still render/edit fine — recomposeSlide's MOODY_LANES set keeps all historical lane names, and only the 4 live Ripple lanes get dark text on edit
+- First light-scheme Ripple posts land tonight at 7-8 UTC; if dark text struggles on any scene the knob is the halo blur/opacity in compose.ts, not reverting the scenes
+- This push also carries the italic-serif retirement commit below (held to bundle into one Vercel build)
+
+## [2026-08-30] — Killed the italic serif font — every post now uses the same consistent lettering
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `style(content-factory): retire italic serif` commit)
+
+### In plain English (for Keenan)
+The fancy italicized serif lettering (used on the hard-questions slides) is gone. Every slide on every post now uses the same clean font family as the rest of the lineup, so the whole feed looks consistent.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `itemKind` is now always `"ITEM"` — the `questions → "QUOTE"` (Playfair Display Medium Italic) special case is removed; questions slides render in Poppins Medium 42 like every other lane
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `recomposeSlide`'s moody-kind mapping drops the questions→QUOTE branch to match
+- `compose.ts`'s QUOTE render branch left dormant (only the dead quote-loop references it), same pattern as other retired formats
+- No schema changes
+
+### Manual steps needed
+None — no cron/trigger changes.
+
+### Notes
+- Tonight's questions post (7 UTC) is the first with the consistent font
+- If a question line looks too small at ITEM size, the fix is bumping ITEM sizing globally, not reviving QUOTE
+
+## [2026-08-30] — Memento mori posts now use whole-life numbers and vary from 4 to 10 slides
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): life-scale memento math` commit)
+
+### In plain English (for Keenan)
+The memento mori posts on both accounts now go for the biggest numbers — the whole-life kind, like "At 30, you have about 2,500 weekends left. On average." — instead of smaller this-year math. Saying "until you die" or "before they're gone" inside the slides is now allowed (still never on the cover). And the posts vary in length: anywhere from 4 to 10 slides per post, picked randomly each night, since more scrolls means better engagement.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`:
+  - `MEMENTO_SYSTEM_PROMPTS` (both audiences) rewritten from "time-math" to "LIFE-MATH": first line of each slide must be an age-anchored, average-lifespan-scale number ("GO BIG: reframe her/his whole remaining life"); death naming allowed in slides, banned on covers; rhythm variance encouraged (some slides number+command only)
+  - `generateMementoTopic` picks a random item count 3-9 per run (+cover = 4-10 slides) and injects it into the user prompt
+  - `generateMoodyFamilyTopic` gains optional `minItems`/`maxItems` (defaults 4/6 — all other lanes unchanged); `max_tokens` 1200 → 2000 so 9-item posts don't clip
+- No schema changes; carousel-daily already loops `moody.items.length`, so variable counts flow through untouched
+
+### Manual steps needed
+None — no cron/trigger changes, so no Inngest resync needed.
+
+### Notes
+- The example numbers in the prompts use honest arithmetic (US average lifespan ~78: at 30 → ~2,500 weekends, at 45 → ~1,700), with "about/on average" hedges required — the prompts ban invented statistics
+- Only the memento lanes vary length for now; the other 9 lanes keep their fixed formats
+
+## [2026-08-29] — Fixed text editing on the new-style posts (edits were producing blank images)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `fix(content-factory): edit-text on moody posts` commit)
+
+### In plain English (for Keenan)
+Editing the text on any of the current post formats was silently producing an image with no text on it at all. Found while making your requested change to "THE QUIET AUDIT" — the edit came back as a beautiful empty scene. Fixed, so text edits now re-render properly with the same fonts and styling as the original.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `recomposeSlide` (the edit-text action) was calling legacy `composeSlide`, which since the gpt-image-2 switch is resize-only (text baked into the AI image on legacy lanes). Moody-family posts render text via `renderMoodyTextOverlay` + `composeSlideWithOverlay` — so every edit on a moody post shipped a text-free scene. Added a `MOODY_LANES` branch (all 11 live + 6 dead moody lanes) that regenerates the scene from `slide.imagePrompt` and re-renders the Pango overlay with the correct kind (sign→SIGN, cover→COVER, questions items→QUOTE, else ITEM)
+- No schema changes
+
+### Manual steps needed
+None
+
+### Notes
+- Overlay kind is derived from `carouselPost.lane` + `slide.kind` — matches the daily pipeline's mapping exactly
+- Legacy lanes (topic in `CAROUSEL_TOPICS` / one-offs) keep the old regenerate-with-baked-text path
+
+## [2026-08-29] — Trimmed to 11 lanes with two locked visual identities: Ripple feminine, BWK dark & motivational
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): 11 lanes, split visual identities` commit)
+
+### In plain English (for Keenan)
+The nightly lineup is now 11 posts with two unmistakable looks. Every Ripple post gets soft, aesthetically pleasing feminine imagery — silk, candlelight, flowers, warm dim rooms — while every Build With Key post gets dark, dominant, highly motivational imagery — brutalist towers, storm light, empty gyms under one cold light — with the writing pushed to make him want to stand up and train. Six formats are gone: late bloomers, unsent texts, what ___ taught me, forbidden truths, and missed connections on both accounts. Generation now runs midnight–5am Central, so everything's still in your inbox well before 7am.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `SCENE_BRIEF` rewritten both sides (women = feminine soft-luxury low-light scenes, men = dark dominant power imagery); `AUDIENCE_BRIEF.men` adds the HIGHLY MOTIVATIONAL voice directive; `buildMoodyImagePrompt` style strings split the same way; inline SCENES feminized in `MEMENTO_SYSTEM_PROMPTS.women`, `FREE_SYSTEM_PROMPT`, `SIGN_SYSTEM_PROMPT`
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `CAROUSEL_LANES` cut from 17 → 11 (dropped missed, missed-men, forbidden, bloomers, taught, unsent); cron `0 5,6,7,8,9,10 * * *` with a new 6-hour `HOUR_LANES` map; caption chain simplified (no missed/bloomers branches); topic-select branches for dead lanes removed
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: bucket union trimmed to 11; 🫂 📵 🤫 🌱 📖 📩 buttons removed
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment → 11-lane roster
+- Dead-lane generators (`generateMissedTopic`, `buildMissedCaption`, `generateBloomersTopic`, `generateTaughtTopic`, `generateForbiddenTopic`, `generateUnsentTopic`) left dormant in moody-carousel.ts, not deleted — same pattern as quote-loop/ambient
+- `email.ts` untouched: `BWK_LANES` keeps `missed-men` so historical posts resend with the right label
+- No schema changes
+
+### Manual steps needed
+- [ ] Eyeball the new-look samples (feminine Ripple vs dark BWK) triggered after this deploy (Keenan)
+- [ ] Confirm tomorrow morning (2026-08-30) all 11 posts arrived by ~7am Central with the new visuals (Keenan)
+
+### Notes
+- Cron expression CHANGED again — Inngest resync (`curl -X PUT https://goripple.io/api/inngest`) after deploy is mandatory, done as part of this ship
+- BWK is now 4 lanes (moody-men, memento-men, year, behind); Ripple is 7 (moody-women, rules, memento, questions, sign, free, nobody)
+- Women's scenes stay DIM despite the softer aesthetic — white overlay text must stay readable
+
+## [2026-08-28] — Men vs women split: 5 Build With Key lanes, calm video killed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): BWK/Ripple lane split` commit)
+
+### In plain English (for Keenan)
+The daily lineup now splits cleanly between your two TikTok accounts. Build With Key gets five men-targeted posts every night: the moody discipline carousel, a new men's version of the missed-connection math (the cost of the grind — group chats gone quiet, mentors never asked, calls to dad), a new men's memento mori (Mondays left, peak training years), One Year From Now rewritten in the mentor command voice (training sessions, money, something built), and You're Not Behind rewritten to dismantle the internet's timelines ("Millionaire by 25." "Founder by 22." "Shredded by summer."). Ripple keeps everything else, and its memento mori was retuned to hit the women's clock — aging parents, summers while the kids still come home, Saturdays before the house empties. The calm ambient video is dead. That's 17 posts a night, all in your inbox by ~7am Central, each subject starting with the right account label.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `YEAR_SYSTEM_PROMPT` + `BEHIND_SYSTEM_PROMPT` rewritten to the men's audience (command voice, stark scenes, men's subjects/domains); `generateMementoTopic(audience, headlines)` now audience-parametrized via `MEMENTO_SYSTEM_PROMPTS` (women variant retuned to women 40-50, men variant new — slugPrefix/purpose `memento-men`); `generateMissedTopic(audience, headlines)` likewise via `MISSED_SYSTEM_PROMPTS` ("universal" | "men", men slugPrefix `missed-men`)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: 17-lane `CAROUSEL_LANES` (removed `ambient`, added `missed-men` + `memento-men`); cron now `0 3,4,5,6,7,8,9,10,11 * * *` (9 hours, 10pm–6am CDT); new `HOUR_LANES` map (11 UTC runs one lane); ambient delegation branch deleted — nothing sends `content-factory/ambient.video` anymore (fn dormant like quote-loop); `imageAudience` men for the 5 BWK lanes; caption wiring: memento-men → `buildMementoCaption`, missed-men → `buildMissedCaption`, year/behind → `buildMoodyCaption("men")`
+- `apps/web/src/lib/content-factory/email.ts`: `accountLabel` now keys off a `BWK_LANES` set — moody-men, missed-men, memento-men, year, behind → `[BUILD WITH KEY]`; everything else `[RIPPLE]`
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🌙 ambient button removed; 📵 missed-men + ⌛ memento-men buttons added; bucket union + titles updated; ambient ETA special-case removed
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily doc comment updated to the 17-lane roster
+- No schema changes (lane is a plain string column)
+
+### Manual steps needed
+- [ ] Eyeball the 4 sample emails (missed-men, memento-men, year, behind) — check the men's voice and the [BUILD WITH KEY] prefixes (Keenan)
+- [ ] Confirm tomorrow morning (2026-08-29) all 17 posts arrived by ~7am Central (Keenan)
+
+### Notes
+- Cron expression CHANGED again — Inngest resync (`curl -X PUT https://goripple.io/api/inngest`) after deploy is mandatory, done as part of this ship
+- `year` and `behind` keep their lane names (no data migration) but flipped audience — old posts under those lanes were women/universal voiced; dedupe headlines carry over harmlessly
+- carousel-ambient-video.ts (and its ElevenLabs voiceover path) is dormant, not deleted — event-triggered only, nothing sends the event
+
+## [2026-08-28] — 8 new daily formats, quote loop killed, everything lands overnight with account labels
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): 8 new lanes, overnight schedule` commit)
+
+### In plain English (for Keenan)
+Three big changes. First: eight brand-new daily post formats, all in the proven dark moody style — Late Bloomers (real famous people who started late, like Vera Wang at 40), What ___ Taught Me (the teacher rotates daily: grief, silence, the quiet house), This Is Your Sign (a single static image with one bold permission-giving line — this replaces the animated quote loop videos, which are gone), One Year From Now (forward-pointing time math), Things That Are Still Free, You're Not Behind (timeline lies dismantled), Nobody Tells You (rotating life season), and Unsent Texts (messages typed and deleted, in the fancy serif). Second: ALL 16 daily posts now generate overnight, two per hour, so your entire day of content is waiting in your inbox by about 6:30am Central. Third: every email subject now starts with the TikTok account it belongs to — [BUILD WITH KEY] for the men's post, [RIPPLE] for everything else — so you can sort your inbox at a glance. Eight samples of the new formats are generating now.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: seven new carousel topic generators (`generateBloomersTopic`, `generateTaughtTopic`, `generateYearTopic`, `generateFreeTopic`, `generateBehindTopic`, `generateNobodyTopic`, `generateUnsentTopic`) + `buildUniversalCaption` + `generateSignTopic` (single-line, own Claude call/log, returns `SignTopic {slug, line, scene}`)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: rewritten as a dispatcher/worker — cron is now `0 4,5,6,7,8,9,10,11 * * *` (11pm–6am CDT) and each cron run FANS OUT two lanes as `content-factory/daily.generate` events; generation only happens on event runs. 16-lane `CAROUSEL_LANES` const + `HOUR_LANES` map. quote-women/quote-men branches deleted (the quote-loop Inngest fn stays registered but nothing triggers it). New `sign` branch: one image, `SIGN` overlay kind, single-COVER post (lane "sign"). Bloomers dedupes on person names pulled from recent slide overlayText, not just titles
+- `apps/web/src/lib/content-factory/compose.ts`: `renderMoodyTextOverlay` gained a `"SIGN"` kind — Poppins Bold 60pt, uppercase, wrap 18 chars (COVER's treatment sized for a full sentence)
+- `apps/web/src/lib/content-factory/email.ts`: new `accountLabel(lane)` — every subject line (static carousel, stitched video, story/calm/quote video) now leads with `[BUILD WITH KEY]` (moody-men only) or `[RIPPLE]`; replaces the old `[Ripple Content]` prefix. `PostRow` + the story-email select gained `lane`
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: quote buttons removed; 8 new buttons (🌱 bloomers, 📖 taught, 🪧 sign, 📅 year, 🕊️ free, 🐢 behind, 🤐 nobody, 📩 unsent); bucket union updated
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily bucket doc comment updated
+- No schema changes (lane is a plain string column)
+
+### Manual steps needed
+- [ ] Eyeball the 8 sample emails and check each new format + the [RIPPLE]/[BUILD WITH KEY] subject prefixes (Keenan)
+- [ ] Confirm tomorrow morning (2026-08-29) that all 16 posts arrived by ~7am Central (Keenan)
+
+### Notes
+- Cron expression CHANGED — the Inngest resync (`curl -X PUT https://goripple.io/api/inngest`) after deploy is mandatory, done as part of this ship
+- The cron→event fan-out means each lane runs as its own Inngest run with independent retries; two lanes generate in parallel per hour
+- Late Bloomers is the one lane with a factual-accuracy risk (real people, real ages) — the prompt hard-requires widely documented figures and tells the model to pick a person it is certain about; worth spot-checking the first few
+- The old quote-loop pipeline (quote-loop.ts, carouselQuoteLoopFn) is dormant, not deleted — nothing sends `content-factory/quote.loop` anymore
+
+## [2026-08-28] — Old negative/positive/selfie posts replaced with three new moody formats
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `feat(content-factory): Replace negative/positive/selfie lanes` commit)
+
+### In plain English (for Keenan)
+The three daily slots that were still making the old-style posts now make new posts in the proven dark moody aesthetic instead. The 1am Central slot (formerly the negative animated post) now makes "Rules I broke to get my life back" — a numbered carousel of small quiet rebellions, written for the women funnel. The 3am slot (formerly the positive animated post) now makes "Missed-connection math" — a universal carousel with lines like "You'll walk past about 80,000 strangers in your life. One of them would have been your best friend. You were looking at your phone." The 7am slot (formerly the selfie slideshow) now makes "Delete this after reading" — five forbidden one-liners in the fancy italic serif, for the women funnel. Same schedule, same 10 emails a day — three of them just got much better. Three samples of the new formats are being generated now so you can see them tonight.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: three new topic generators — `generateRulesTopic`, `generateMissedTopic` (+ `buildMissedCaption`, hashtag-only), `generateForbiddenTopic` — all riding the shared `generateMoodyFamilyTopic` core with their own system prompts
+- `apps/web/src/inngest/functions/carousel-daily.ts`: fully rewritten — `DailyBucket` is now `rules | missed | ambient | forbidden | moody-women | moody-men | quote-women | quote-men | memento | questions`; the selfie branch and the entire old style-rotation/`generateTopic` tail are DELETED; the moody-family pipeline is now the unconditional catch-all. Per-lane config: rules = numbered + women imagery; missed = universal imagery + own caption; forbidden = QUOTE overlay kind (Playfair serif, one line per slide) + women imagery. Fallback bucket for unknown event data is `rules`
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 🎬/✨/🤳 buttons replaced with 🔓 rules / 🫂 missed / 🤫 forbidden; `generateBucket` union updated; empty-state button now queues `rules`
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily bucket doc comment updated
+- Cron expression unchanged (`0 6,8,10,12,14,16,18,19,20,21 * * *`) — only the hour→bucket mapping changed, so no new Inngest trigger, but resync anyway after deploy
+- Old lane libraries (`generate-topic.ts`, selfie libs, `caption.ts`) left intact — `carousel-one-off` and other functions still reference them
+
+### Manual steps needed
+- [ ] Eyeball the three sample emails (rules, missed, forbidden) and confirm the formats look right (Keenan)
+- [ ] Forbidden sample doubles as the Playfair serif prod check from the previous entry (Keenan)
+
+### Notes
+- These lanes replace the last non-moody daily formats; every daily lane except ambient is now moody-family. The negative/positive 4-style static rotation and the selfie slideshow pipeline are dead as daily lanes.
+- "missed" saves with `format: "PHOTO"`, `lane: "missed"` like the other moody carousels; recent-headline dedupe filters by lane, so each new lane starts with a clean slate.
+
+## [2026-08-28] — Quote videos get a premium italic serif
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see `style(content-factory): Premium serif italic` commit)
+
+### In plain English (for Keenan)
+The line burned onto the looping quote videos now renders in an elegant italic serif (Playfair Display) instead of the plain bold sans-serif everything else uses — bigger, fancier, and premium-feeling, like a magazine pull-quote. The five question slides in the hard-questions carousel use the same typeface, since a single line carries those frames too.
+
+### Technical changes (for Jimmy)
+- `apps/web/public/fonts/PlayfairDisplay-MediumItalic.ttf`: new font asset (OFL license, static instance from Google Fonts)
+- `apps/web/src/lib/content-factory/compose.ts`: `ensureFontFile` accepts a `"QuoteSerif"` variant mapping to the new file; `renderMoodyTextOverlay` QUOTE kind now uses `Playfair Display Medium Italic 58` (was Poppins Bold 54), wrap width 22 chars
+- No pipeline, cron, or schema changes — pure rendering change; Inngest resync not needed
+
+### Manual steps needed
+- [ ] Eyeball the next quote-loop / questions email to confirm the serif actually rendered in prod (Keenan) — if the text looks like a generic italic sans, the font didn't load and Claude Code should investigate
+
+### Notes
+- Local font verification is IMPOSSIBLE on the dev Mac: its fontconfig is broken ("Cannot load default config file") and sharp/Pango silently falls back to Helvetica — even Poppins never actually rendered locally. Prod Lambda is the only faithful renderer; Poppins works there via the same `fontfile` mechanism, and the new font's internal family/subfamily names ("Playfair Display" / "Medium Italic") were verified against the Pango font_desc.
+- The font downloads via the same 3-tier path as Poppins: /tmp cache → bundled public/fonts → CDN (goripple.io/fonts/…, live after this deploy).
+
+## [2026-08-28] — Three new daily post formats: looping quote videos, memento mori, hard questions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d7148163
+
+### In plain English (for Keenan)
+The content factory now makes three new kinds of posts every day, all in the same dark moody style as the carousels you said were our best work so far. First: a quote video — one devastating line sitting on a dark cinematic scene (rain on glass, a candle, steam from a cup) that loops perfectly, so viewers can't tell where it starts or ends and just sit with the line. One goes to each funnel daily (women at 1pm Central, men at 2pm). The loop is now guaranteed by video math on our side, not by hoping the AI video model cooperates. Second: a memento mori carousel — time-math slides like "about 15 more visits with your parents" ending in a short command — one universal post daily at 3pm Central. Third: a hard-questions carousel for the women funnel — five questions, no answers — daily at 4pm Central. That takes you from 6 to 10 emailed posts per day. The quote videos are silent on purpose: add a trending calm sound when you post them.
+
+### Technical changes (for Jimmy)
+- New file `apps/web/src/lib/content-factory/quote-loop.ts`: quote+scene concept generation (Claude), i2v prompt builder, env knobs `HIGGSFIELD_QUOTE_VIDEO_MODEL` (better-model override, falls back to `HIGGSFIELD_VIDEO_MODEL`) and `HIGGSFIELD_QUOTE_CLIP_DURATION` (default 10s)
+- New Inngest function `carousel-quote-loop` (`apps/web/src/inngest/functions/carousel-quote-loop.ts`), event `content-factory/quote.loop` with `data.audience` — concept → gpt-image-2 scene → Higgsfield clip (2 attempts, 2nd drops to 5s) → seamless loop + quote burn → email
+- `story-video.ts`: new `seamlessLoopWithOverlay()` — crossfades the clip into itself (xfade) then trims so the first and last frames are pixel-identical by construction, burns the text overlay in the same encode, stream-copy concats to 12-18s
+- `moody-carousel.ts`: refactored to a shared `generateMoodyFamilyTopic` core; added `generateMementoTopic` (universal audience, no numbered names), `generateQuestionsTopic` (single-line items), `buildMementoCaption`, universal image style; `AUDIENCE_BRIEF`/`SCENE_BRIEF` exported
+- `compose.ts`: `renderMoodyTextOverlay` gained a `QUOTE` kind (54pt bold, sentence case, wider wrap) used by quote videos and question slides
+- `animate-cover.ts`: `submitCoverVideo` accepts a per-call `model` override
+- `email.ts`: `sendStoryVideoEmail` quote framing (🖤 subject, loop explanation, no voiceover script)
+- `carousel-daily.ts`: cron is now `0 6,8,10,12,14,16,18,19,20,21 * * *`; hours 18/19 delegate to the quote-loop event, 20 = memento, 21 = questions (both ride the generalized moody branch)
+- Registered in `/api/inngest`; admin carousels page has 4 new trigger buttons (🖤 🗿 ⏳ ❓); `/api/admin/carousels` docs updated
+- No schema change: quote posts reuse format `AMBIENT` + lanes `quote-women`/`quote-men`; memento/questions use `PHOTO` + lanes `memento`/`questions`
+
+### Manual steps needed
+- [ ] Inngest resync after deploy — `curl -X PUT https://goripple.io/api/inngest` (Claude Code runs it this session; re-run if the new cron hours don't show in Inngest Cloud)
+- [ ] Optional: set `HIGGSFIELD_QUOTE_VIDEO_MODEL` in Vercel to a better Higgsfield model for the quote lane (Keenan/Jimmy — without it, quote clips use the same model as ambient)
+
+### Notes
+- The seamless loop is enforced by ffmpeg, not the model: xfade(A→A, offset=d−f) then trim [f, d] yields a segment whose first frame equals its last frame exactly, so lossless `-c copy` concat loops with zero visible seam regardless of what Higgsfield outputs. Prompt-level "make it loop" instructions were never honored — this is why.
+- Quote scenes are constrained to exactly ONE repeatable natural motion with a locked camera (the ambient-lane hallucination lesson) — calmer motion also hides the self-dissolve at the loop point.
+- Quote posts encode 12-18s at maxrate 5M (Supabase 50MB lesson). Attempt 2 drops the source clip to the proven 5s in case the chosen model rejects 10s durations.
+- tsc baseline unchanged at 199 pre-existing errors — no new errors from this change.
+
+## [2026-08-28] — A page that shows you everything Ripple has picked up about you
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 535a34e7
+
+### In plain English (for Keenan)
+There's a new page that reads your file back to you: how long Ripple has been listening, the people you keep mentioning and whether those relationships sound warm or strained, the goals it's heard you talk about, the subjects that keep coming back, and a short written summary of each part of your life. All of it was already being collected quietly in the background — this is the first place a user can actually see it.
+
+If someone is brand new and has only recorded once or twice, they get an encouraging "still getting to know you" note instead of a page of empty boxes. It sits behind the same Pro gate as the Life Matrix, and it only ever shows a person their own words back. Nothing new is recorded or analysed to build it.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/lifemap-memory-payload.ts` — pure `buildMemoryPayload(memory)`, `daysSince()`, `axisMeta()`, `axisToLifeArea()`, and the `MEMORY_AXES` order
+- `apps/web/src/app/api/lifemap/route.ts` — `memory` block now built by `buildMemoryPayload`. Adds the 10 `*Summary` prose strings + the canonical 10-axis `*Mentions` counts. Every pre-existing field kept. 60s `private` cache header unchanged
+- New `apps/web/src/app/insights/what-ripple-knows.tsx` — client view (header line, People, Goals, Themes, per-axis summaries, two distinct empty states)
+- New `apps/web/src/app/insights/knows/page.tsx` — gated server page, `/insights/knows`
+- `apps/web/src/app/insights/page.tsx` — hub `HeroCard` linking to it
+- New `apps/web/src/lib/lifemap-memory-payload.test.ts` — 17 tests
+- No schema change, no migration, no Inngest function, no writes
+
+### Manual steps needed
+- [ ] Nobody: no env var, no `db push`, no redeploy beyond the normal push-to-deploy
+- [ ] Keenan (optional): read the page copy on a real account and tell us if the register is right — it's written to §7 of the design system ("remembers", never "insights")
+
+### Notes
+- **The gate is reused, not invented.** `/insights/knows` mirrors `/life-matrix` exactly: session → `ProLockedCard surfaceId="life_matrix_locked"` → `LockedFeatureCard unlockKey="lifeMatrix"`. Both ids are closed unions in `@acuity/shared`; a new one would have meant editing shared and maintaining a second gate over identical data behind an identical PRO boundary.
+- **No gate inside the component, deliberately.** `life-map.tsx` carries a comment about a previous in-component gate keyed on `memory.totalEntries` causing false-locks when `UserMemory` hadn't been seeded (the App Store reviewer account hit it). The parent page decides; the component renders.
+- **The payload builder exists so the response shape is testable.** The route needs Prisma + a session, so it can't be invoked in the web vitest env. Extracting a pure builder means the added fields and — more importantly — the *unremoved* ones are asserted directly rather than by regex over source.
+- **Backward compatibility is the real risk here, not the new fields.** Mobile binaries already on the App Store read this block and ship on Apple's schedule, not ours. A test pins all 11 pre-existing keys including the dormant V1 counts (`healthMentions`, `relationshipsMentions`, `financesMentions`, `personalMentions`, `otherMentions`), which is why the builder still emits them.
+- **`daysSince` floors at 1, not 0.** "Learning about you for 0 days" reads as broken on the day someone starts. Also clamps a clock-skewed future `firstEntryDate` to 1 rather than a negative.
+- **Two empty states, not one.** Under 3 entries = "still getting to know you" (the user hasn't recorded enough). At 3+ with nothing extracted = "hasn't finished reading them back yet" (the user has done their part, Inngest hasn't caught up). Collapsing these would tell someone to record more when the queue is the thing that's behind.
+- **Sentiment renders as `warm` / `steady` / `strained`, not the raw `positive|neutral|negative`.** Design system §7.1 — observational, not clinical. The raw values are what `lib/memory.ts` writes.
+- Baselines: web tsc **150 before, 150 after** — identical error sets, verified by stashing and diffing, not assumed. (The 152 in the brief and the 153 in older entries are both stale; main has drifted to 150.) Tests **712/712** across 43 files (695 + 17 new). `npx next build` exits 0 with `/insights/knows` registered at 4.45 kB.
+## [2026-08-28] — Moody discipline carousels: two new daily audience funnels
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d48e343b
+
+### In plain English (for Keenan)
+Two new daily posts now generate automatically, cloned from the "TRUST THE PROCESS" reference you sent: dark, moody photo carousels with clean white text centered on each image (cover title + 5 numbered slides like "4. Reset day."). One funnel speaks to your core audience (women 40-50 — quiet discipline, protecting peace, softer warm-dim visuals) and one to your second market (young aspiring men — discipline/trust-the-process, stark dark architecture). Captions are hashtags only, like the reference. You'll now get 6 emails a day instead of 4 — the women's post at 9am, the men's at 11am Central.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/moody-carousel.ts: generateMoodyTopic (Claude claude-sonnet-4-6, per-audience system prompts, ClaudeCallLog purpose "moody-carousel-topic-{audience}"), buildMoodyImagePrompt, buildMoodyCaption (hashtag-only, per-funnel pools)
+- apps/web/src/lib/content-factory/compose.ts: NEW renderMoodyTextOverlay(paragraphs, "COVER"|"ITEM") — centered white Poppins block, blank-line paragraph gaps, blurred drop shadow; cover uppercase Bold 72 letter-spaced, items Medium 42
+- apps/web/src/inngest/functions/carousel-daily.ts: cron `0 6,8,10,12,14,16 * * *`; DailyBucket adds "moody-women" | "moody-men" (hours 14/16 UTC); new branch: topic → cover → 5 item slides (gpt-image-2, text composited with sharp) → CarouselPost format PHOTO, lane = bucket name → sendCarouselEmail
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 🕯️ (moody-women) and 🏛️ (moody-men) generate buttons
+- No schema changes; ~48¢/post in image cost (6 slides × 8¢)
+
+### Manual steps needed
+- [x] Inngest resync after deploy (cron change) — done via `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- Decisions (Keenan, via Q&A): daily automatic from day one; captions clone the reference (pure discovery hashtags, NO question — deliberate exception to the question+tags rule that governs every other lane); women's funnel gets a softer warm-dim variant of the dark look; both funnels are audience-growth only, no product CTA.
+- Overlay verified locally on a dark test background before shipping (item + cover renders matched the reference rhythm).
+- Image prompts demand every frame be DIM enough for centered white text — even the women's warmer scenes.
+
+---
+
+## [2026-08-28] — Calm video rebuilt as simple full-frame nature loops
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ec1e371b
+
+### In plain English (for Keenan)
+The calm video no longer uses the window/room framing — today's video flickered because the AI kept inventing furniture and a balcony into the scene between loops. Now it's just a pure hyper-realistic nature background with one gentle motion (waves rolling, clouds drifting, rain or snow falling). Simple scenes give the AI nothing to hallucinate on, so the loop should finally flow.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/ambient-video.ts: rewrote VISUAL RULES (bans windows/rooms/porches/man-made framing; one-subject full-frame nature scenes; hyper-real), MOTION RULES (one barely-perceptible movement, under 15 words), buildAmbientImagePrompt (pure nature edge-to-edge, no man-made objects), and buildAmbientVideoPrompt (adds "scene NEVER changes, nothing new appears, nothing transforms" + locked static camera)
+- Prompt-only; loop/crossfade mechanics, ElevenLabs TTS, and the Inngest pipeline are untouched
+
+### Manual steps needed
+None
+
+### Notes
+- Root cause of today's bad video (calm-2026-08-28): frame extraction showed the i2v model hallucinated a balcony, railing, table, and cabinet into the window-vantage image on some clips, so the crossfaded loop ping-ponged between the real scene and the invented one.
+- This supersedes the same-morning stationary-frame/window vantage design (34092c6d) — complex framing devices give i2v models surfaces to invent on; minimal single-subject scenes are what they handle best.
+
+---
+
+## [2026-08-28] — Carousel headlines banned from trailing filler words
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** ae8b1942
+
+### In plain English (for Keenan)
+Carousel headlines will no longer end with padding words like "today" — the AI is now told "5 ways to reset your mind" is the target shape, using your exact example. Shorter, cleaner covers.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: added a NO FILLER WORDS rule (bans trailing "today", "right now", "in your life", etc.) under the SIMPLICITY TEST in buildSystemPrompt
+- Prompt-only change; no signatures, schema, or code paths touched
+
+### Manual steps needed
+None
+
+### Notes
+- Triggered by today's nature positive cover reading "6 ways to reset your mind today" — Keenan: "eliminate the 'today'. '5 ways to reset your mind' would've been perfect."
+- Applies from the next generation onward; already-generated posts are unchanged.
+
+---
+
+## [2026-08-28] — Carousel text centered mid-frame, cover question removed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b0a06196
+
+### In plain English (for Keenan)
+On the negative and positive carousels, all the burned-on text (the headline, the numbered items, and their supporting lines) now sits centered in the middle of the image instead of near the top. The cover also no longer asks a question like "Which one hits the hardest?" — it's just the headline.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: `renderSlideTextOverlay` pre-renders the badge/main/detail/bar pieces, measures the total block height, and vertically centers the whole block; the `subline` parameter (bottom-anchored engagement question) is deleted, so `detail` is now the 5th parameter
+- apps/web/src/inngest/functions/carousel-daily.ts: cover overlay call drops `coverEngagementLine`; reason call updated for the new signature
+- apps/web/src/lib/content-factory/caption.ts: `coverEngagementLine`, `ENGAGEMENT_LINE_FAMILIES`, and `ENGAGEMENT_LINES_DEFAULT` deleted (no remaining references)
+- animate-cover's legacy fallback re-render (3-arg call) still compiles; old animated posts burn their STORED overlay PNGs, so their look is untouched
+
+### Manual steps needed
+None.
+
+### Notes
+- The two static carousels triggered earlier today (avatar + nature styles) went out with the OLD top-anchored layout and cover question — fresh ones were re-triggered after this deploy so Keenan sees the centered/no-question version.
+- Centering applies wherever `renderSlideTextOverlay` renders fresh (daily lanes + the legacy no-stored-overlay fallback); selfie-slideshow text placement is a different function (`renderSelfieCaptionOverlay`) and is unchanged.
+
+## [2026-08-28] — Static daily carousels with 4 rotating looks; seamless ambient loops
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 34092c6d
+
+### In plain English (for Keenan)
+The negative and positive daily carousels are no longer animated — they're pure image posts now, which also makes them arrive in ~3-5 minutes instead of ~10-15. Each day they rotate through four looks: hyper-real photos with no people, a Pixar-style animated woman acting out each slide, animated-movie illustration scenes, and hyper-real nature photography — and the two posts never wear the same look on the same day. The calm video now always frames a still foreground (a window, a cliff edge, a porch, a forest canopy) with the only movement far off in the distance, and the clip starts and ends on the exact same image, so the loop plays as one constant scene instead of visibly restarting.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/brand.ts: new `CAROUSEL_VISUAL_STYLES` map (`aesthetic` reuses SELFIE_AESTHETIC_DNA; new `CAROUSEL_AVATAR_DNA`, `CAROUSEL_ILLUSTRATED_DNA`, `CAROUSEL_NATURE_DNA`) + `CarouselVisualStyle` type
+- apps/web/src/lib/content-factory/generate-topic.ts: `SYSTEM_PROMPT` → `buildSystemPrompt(visualStyle)` with a per-style `SCENE_DIRECTION` block; all motion direction removed from the carousel prompt (slides are static stills); `generateTopic` gains a `visualStyle` option (defaults to `aesthetic`, so one-off/Niche Lab callers are unaffected)
+- apps/web/src/lib/content-factory/carousel-generate.ts: new `buildCarouselImagePrompt({ style, scene, slideText, headline })`
+- apps/web/src/inngest/functions/carousel-daily.ts: day-deterministic style rotation (`dayIndex % 4`, positive bucket offset +2 so the pair differs daily; `event.data.visualStyle` override for admin testing); posts save as `format: "PHOTO"` with `lane` = the visual style; the `content-factory/cover.animate` enqueue is deleted — the deliver step calls `sendCarouselEmail` directly; the text-free `-notext.jpg` raws and overlay PNG persist uploads are dropped (they only existed for the animate pipeline)
+- apps/web/src/lib/content-factory/ambient-video.ts: VISUAL RULES rewritten around stationary-frame vantages (window/canopy/cliff/porch/overlook/arch/lakeshore/city window) with distant-only motion; MOTION RULES require the distant element alone to move; `buildAmbientImagePrompt` adds a stable-foreground composition line; `buildAmbientVideoPrompt` demands a perfectly still near frame and identical first/last frames
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: video/positive queue eta text now ~3-5 min
+- No Prisma schema, cron, or event-shape changes
+
+### Manual steps needed
+None — deploy is automatic on push; no Inngest resync needed (no trigger changes).
+
+### Notes
+- "Just image gen" was explicit from Keenan ("to be clear, no more ai animation on the positive/negative. JUST image gen.") — the animate function itself is untouched and still serves the one-off admin flow.
+- Style rotation is deterministic from `event.ts` (stable across Inngest retries), so a retried run picks the same style. On 2026-08-28 the rotation lands on avatar (negative) + nature (positive).
+- This deliberately reinstates illustration/avatar styles for the daily carousels, reversing the 2026-08-28-morning "strictly aesthetic" rule — per Keenan's 4-style directive the same day.
+- Higgsfield context for the ambient loop ask: clips cap at ~10s per render (we generate 5s, 2 credits ≈ 10¢); looping is free ffmpeg stitching, so the seamless-loop fix lives in the image/video prompts, not longer renders.
+
+## [2026-08-28] — One-selfie slideshows, meditative ambient scripts, question-only captions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 54e127c1
+
+### In plain English (for Keenan)
+Three changes you asked for, all live. (1) The selfie slideshow now has exactly ONE selfie — the cover — with her phone covering her face and a realistically slightly-dirty mirror (smudges, fingerprints, a faint streak); every other slide is an aesthetic no-people shot. (2) The calm ambient video scripts are now generic and high-level — relaxing, meditative, listen-along, things almost anyone relates to — and they never tell people to follow; the script just ends softly. (3) Captions on EVERY post are now just one thought-provoking question plus 3-4 hashtags. No more "send this to…" lines, no "which one are you doing first", no bio plug on any post.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: SELFIE_POSE_VARIANTS rewritten to 10 all-mirror phone-covering-face poses (front-camera + facing-away entries removed); SELFIE_COVER_POSE_COUNT = pool length; SELFIE_PERSONA + SELFIE_VISUAL_DNA now demand a hidden face and a lightly dirty mirror
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SELFIE_SYSTEM_PROMPT — cover is the only selfie, all step shots aesthetic; the exactly-2-selfies enforcement loop and MIRROR_FALLBACK_SCENE deleted (parse now forces every step aesthetic); both topic prompts replace captionOpen/captionClose with a single `captionQuestion`
+- `apps/web/src/lib/content-factory/topics.ts`: CarouselTopic.captionOpen/captionClose → captionQuestion
+- `apps/web/src/lib/content-factory/caption.ts`: buildCaption + buildAmbientCaption rewritten — one question + hashtags, nothing else; ripple bio plug (CLOSING_LINE), comment CTAs, and share-line pools deleted; pickHashtags now returns 3-4 tags (1 mega + 2-3 niche, slug-rotated) instead of 5
+- `apps/web/src/lib/content-factory/ambient-video.ts`: system prompt restructured to 4 beats (hook → unfolding → truth → settling close), generic/high-level meditative direction, NO CTA of any kind; caption field is now the single question
+- `apps/web/src/lib/content-factory/script-style-guide.ts`: closing-CTA family removed (never tell people to follow); hooks/grounding sections redirected from hyper-specific to universal/high-level
+- `apps/web/src/inngest/functions/carousel-daily.ts`, `carousel-one-off.ts`, `scripts/run-selfie-example.ts`: callers updated for captionQuestion; plug option gone
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: selfie reference prompt takes identity from hair/build (face always hidden)
+- No schema changes, no cron/trigger changes (prompt + code only → no Inngest resync needed)
+
+### Manual steps needed
+- [ ] Review the re-sent selfie + ambient test posts in email (Keenan)
+
+### Notes
+- Keenan's caption rule is global and emphatic ("this goes for all posts"): ONE thought-provoking question + 3-4 hashtags, nothing else — no plug even on carousel posts, reversing the 2026-08-20 bio-plug line.
+- The selfie avatar's face is now NEVER visible (reverses the 2026-08-26 face-visible cover-pose rule). Identity persistence now rides on hair/build/clothes + the reference image chain.
+- Ambient scripts reversed direction: the 2026-08-19 "substance/specificity" push is replaced by generic, high-level, meditative listen-along — and the follower CTA is banned outright.
+
+## [2026-08-28] — Daily content restructured to 4 lanes: photoreal carousels, voiced ambient, selfie
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b8da14ee
+
+### In plain English (for Keenan)
+The daily content factory now produces exactly 4 posts overnight: a negative animated carousel at 6 UTC ("5 signs you're burnt out"), a positive one at 8 UTC ("5 ways to have a better day"), the ambient calm video at 10 UTC — now with the female AI voiceover restored — and the selfie slideshow at 12 UTC, unchanged. The old 4 UTC cartoon-style photo carousel is gone. The two animated carousels switched from illustration to strictly aesthetic, realistic phone-photo scenes — cozy home moments, objects, and light, with no people in them (Keenan's call: the avatar only appears in the selfie lane). Headlines across all lanes now follow the "simple and broad" rule — "6 signs you're falling behind", never "6 signs you've made yourself the easiest person to disappoint".
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cron `0 6,8,10,12 * * *` (photo bucket removed from DailyBucket, hour map, and all branches; legacy `animated` event flag dropped — unknown buckets fall back to "video"). Animated lanes now generate strictly aesthetic photoreal images via `buildSelfieImagePrompt({ shot: "aesthetic" })` with the topic model's per-slide scene (no avatar, no reference/edit calls — an avatar-day variant was built mid-session and removed per Keenan). Format is always `VIDEO`; `colorScheme.prompt` no longer feeds the artwork (accent kept for text overlays).
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SYSTEM_PROMPT headline rules replaced with the SIMPLE/BROAD/mass-appeal rule (good/bad examples + simplicity test); VISUAL DIRECTION rewritten for photoreal no-people scenes with object/light-only motion; resonance archetype block no longer suggests over-specific framings.
+- `apps/web/src/lib/content-factory/ambient-video.ts`: ElevenLabs TTS restored (removed 2026-08-24) — `vocalScript` back in the script prompt/parse, `ambientVoiceoverOptions()` hard-wired to voice `OZxMHsGaBmV5pjMIDIn0` (env override `AMBIENT_ELEVENLABS_VOICE_ID`), `ambientTtsText()` guarantees a leading [softly] tag.
+- `apps/web/src/inngest/functions/carousel-ambient-video.ts`: new `tts-script` step (eleven_v3 → multilingual_v2 → OpenAI fallback chain via `generateVoiceover`); loop length follows real voiceover duration + 1s; mux step burns NO captions (Keenan captions by hand); falls back to the silent pipeline if TTS fails; persists `storyVoiced`.
+- `apps/web/src/lib/content-factory/costs.ts`: AMBIENT estimate includes TTS again.
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: 📷 photo generate buttons removed (header + empty state now queue "video"); bucket union narrowed.
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily no longer forwards the legacy `animated` flag.
+- Verified: `tsc` clean in all touched files (the two pre-existing CarouselTopic errors in carousel-daily disappeared with `buildImagePrompt` removal); vitest 695/695 passing.
+
+### Manual steps needed
+- [ ] Confirm `ELEVENLABS_API_KEY` is set in Vercel (Keenan — it is NOT in the local env; without it every ambient video silently falls back to OpenAI TTS or silent)
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` and confirm `modified: true` (cron change won't take effect until resync)
+- [ ] Review the 4 manually-triggered test posts emailed right after this deploy, then watch the first overnight cron cycle (Keenan)
+
+### Notes
+- Keenan explicitly wants the animated carousels STRICTLY aesthetic — no people, no avatar, ever. The avatar lives only in the 12 UTC selfie lane. Don't re-add an avatar mix without him asking.
+- The topic model writes people-free scenes with object/light-only motion; `sceneHasWoman()` in animate-cover will therefore rarely fire on these lanes, which is correct.
+- Ambient voiceover has no burned captions on either path — deliberate, Keenan captions manually.
+- If manual "photo" generation is ever triggered from an old client, it falls back to the negative video lane rather than erroring.
+
+---
+
+## [2026-08-28] — Fixed: the daily selfie slideshow was never running
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** none (operational fix + push of 88ae0deb/884318a8)
+
+### In plain English (for Keenan)
+The daily selfie slideshow post was never actually being scheduled — the code was live, but the scheduler (Inngest) was still holding the OLD daily timetable from before the selfie slot existed, so the noon slot simply never fired. The other four daily posts kept arriving normally, which is why only the selfie posts were missing. The schedule has been re-registered and the noon slot now exists; the first automated selfie post arrives at the next 12:00 UTC run. If you want one today, the admin carousels page has a "Generate selfie slideshow now" button — that runs in production with a fresh AI-written topic.
+
+### Technical changes (for Jimmy)
+- No code changes. Root cause: the cron expression on `carouselDailyCronFn` changed from `0 4,6,8,10 * * *` to `0 4,6,8,10,12 * * *` when the selfie bucket landed (2026-08-25), but Inngest never picked up the new trigger — Vercel deploys were NOT auto-syncing the app. DB confirmed: buckets 4/6/8/10 ran on 8-27 and 8-28, hour 12 never fired, zero cron-created `lane="selfie"` posts ever existed
+- Fix: `curl -X PUT https://goripple.io/api/inngest` → `{"message":"Successfully registered","modified":true}` — `modified:true` confirms the stale config
+- Also pushed the held facing-away/outdoor pose commits (rebased onto Jimmy's e858a28c): 88ae0deb + 884318a8, so the first real cron run uses the final pose rules
+
+### Manual steps needed
+- [ ] Verify tomorrow's 12:00 UTC selfie post arrives by email (Keenan)
+- [ ] Optional: trigger today's post via admin → content-factory → carousels → "Generate selfie slideshow now" (Keenan)
+- [ ] Still open: local `ANTHROPIC_API_KEY` is 401 — local example runs use the hardcoded fallback topic (Keenan or Jimmy)
+
+### Notes
+- GOTCHA for future cron changes: changing an Inngest function's cron expression (or adding functions) does NOT reliably reach Inngest on Vercel deploy in this app. After any trigger change, run `curl -X PUT https://goripple.io/api/inngest` and confirm `modified:true` (a no-op sync returns `modified:false`). A PR-time code review can't catch this — it's invisible until the slot silently doesn't fire
+- This matches the 2026-08-18 note "Inngest did not auto-register new functions until we triggered a redeploy" — but this time even redeploys didn't sync it; the explicit PUT did
+
+## [2026-08-27] — RevenueCat can start watching real purchases, without changing anything a customer sees
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 0d284056
+
+### In plain English (for Keenan)
+We're moving our subscription plumbing over to RevenueCat eventually, and the safe first step is to let it *watch* real purchases without letting it *control* anything. This sets up a special build that does exactly that. RevenueCat sees every subscription that happens and builds up its own records, while the app keeps working exactly as it does today — same $4.99 / $39.99 prices, same checkout, same source of truth. If someone installed this build, they could not tell the difference.
+
+Nothing about pricing changed. Nothing about who gets Pro access changed. This is a separate test build, not the one in the App Store.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/eas.json` — added `EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY` (both PUBLIC, safe to commit) to the **`observer`** and **`observer-internal`** profiles, which already carried `EXPO_PUBLIC_RC_OBSERVER=1`. **`production` deliberately untouched.**
+- `apps/mobile/app.json` — `version` 1.4.0 → **1.4.1**, `ios.buildNumber` 45 → 46
+- `packages/shared/src/revenuecat.ts` — new pure `rcConfigureMode(flags)` → `"disabled" | "observer" | "purchases"` and `rcUnsafePurchaseConfig(flags)`
+- `apps/mobile/lib/revenuecat/index.ts` — `configureRevenueCat` now branches on those helpers instead of inline flag checks (behaviour-identical); StoreKit comment updated with the verification result
+- `apps/web/src/lib/evidence/rc-observer-build.test.ts` — new, 22 tests reading the real `eas.json`
+- `docs/REVENUECAT_MIGRATION.md` §6.2 — StoreKit open decision marked resolved
+
+### Manual steps needed
+- [ ] Jimmy: build it — `eas build --profile observer --platform all` (or `observer-internal` for an internal-distribution APK/ad-hoc build first)
+- [ ] Jimmy: confirm in the RevenueCat dashboard that transactions start appearing after a test purchase on the observer build
+- [ ] Jimmy: `EXPO_PUBLIC_FACEBOOK_APP_ID` / `_CLIENT_TOKEN` must exist as EAS Secrets or `app.config.ts` drops the Meta SDK plugin — unrelated to RC but it affects any new build
+- [ ] Nobody: no env change in Vercel, no schema change, no App Store submission
+
+### Notes
+- **`production` was deliberately not given the RC keys.** The `observer` profile already `extends` it, and the ask was for an observer build. Putting RC keys in `production` would ship them in the public App Store binary for no benefit — with `RC_OBSERVER` unset, `configureRevenueCat` returns `"disabled"` before the key is ever read and the native module is never imported. A test asserts `production` resolves to `disabled`.
+- **The mode decision was extracted to `@acuity/shared` so the test asserts the real branch.** `configureRevenueCat` lives in the Expo app and imports `react-native`, so it cannot run in the web vitest env. Testing a copy of its `if` conditions would pass while the real code drifted. `rcConfigureMode` is now the single expression both use.
+- **The test reads the real `eas.json`, not a fixture**, and was mutation-checked: removing the iOS key fails 1 test, setting `EXPO_PUBLIC_RC_SOURCE_OF_TRUTH` fails 3, and leaking `EXPO_PUBLIC_RC_OBSERVER` into `production` fails 2.
+- **A flag alone would have observed nothing.** `configureRevenueCat` returns `"no-key"` and never loads the native module without a platform key — so the pre-existing `observer` profile (flag set, no keys) was a build that looked enabled and did nothing. That is the actual gap this closes.
+- **StoreKit 2 confirmed, closing migration-doc decision #2.** `react-native-iap@15.3.1`'s podspec says *"React Native IAP uses StoreKit 2 via OpenIAP, which requires iOS 15+"* and pins `:ios => '15.0'`. RC would mis-parse transactions if this were wrong, so the observer data would have been quietly incorrect.
+- **`appVersionSource: "remote"` + `autoIncrement: true`** means EAS assigns the real build number server-side; the `app.json` bump is for local consistency. `runtimeVersion` follows `appVersion`, so 1.4.1 correctly starts a new OTA lineage.
+- Baselines: web tsc **152**, mobile tsc **19** — both verified equal to clean `main` by stashing, not assumed. (The 153 quoted in earlier entries is stale; main has since drifted to 152.) Tests **695/695** across 42 files (673 + 22 new).
+- `npx prisma generate` is required after pulling main's Niche Lab schema, or web tsc reports 190 phantom errors from a stale client.
+## [2026-08-26] — Her photos can now face away from the camera or be outdoors
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a89d1e3d
+
+### In plain English (for Keenan)
+The "photo of her" slide in a selfie slideshow no longer has to be a selfie at all — it can now be a candid shot where she's facing away from the camera (standing at the window, walking down a tree-lined street, sitting on the porch steps) or a shot of her out in nature. Five of these joined the pose rotation. One guardrail: the COVER always shows her face, because the cover photo is what keeps her looking like the same person across every post — if it were a from-behind shot, her face could drift over time. A fresh example ("this is how i started going outside more") was emailed to you: the cover is a casual front-camera selfie on the stairs, and the walk slide is her from behind on a sunlit street.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_POSE_VARIANTS` 14 → 19 (from-behind at the kitchen window, walking away down a tree-lined path, porch steps from behind, shoreline/field three-quarter from behind, park bench from the side); new export `SELFIE_COVER_POSE_COUNT = 14` — the face-visible prefix; `SELFIE_VISUAL_DNA` now describes three shot kinds (mirror / front-camera / facing-away, each with explicit phone-and-mirror visibility rules) and allows outdoor settings
+- `apps/web/src/lib/content-factory/generate-topic.ts`: "mirror" step-type description in `SELFIE_SYSTEM_PROMPT` now includes facing-away and in-nature scene options
+- `apps/web/src/inngest/functions/carousel-daily.ts` + `apps/web/scripts/run-selfie-example.ts`: `poseBase` is now `hash % SELFIE_COVER_POSE_COUNT` (cover can never draw a facing-away pose); step slides offset from it into the full 19-entry pool
+- Runner fallback topic replaced with "how-i-started-going-outside-more", whose slug hash deterministically lands cover pose 13 (front-camera stairs) and step pose 15 (from-behind walk) to demo both new kinds
+
+### Manual steps needed
+- [ ] Push to deploy — 12 UTC cron uses the previous pose pool until this lands on Vercel (Keenan)
+- [ ] Still open: local `ANTHROPIC_API_KEY` is 401 (root `.env` + `apps/web/.env.local`) — local runs use the hand-written fallback topic (Keenan or Jimmy)
+
+### Notes
+- Facing-away shots keep identity through hair, build, and clothes — the reference image still passes her identity even when the face isn't visible, but the anchor CHAIN must stay face-visible, hence the cover restriction
+- The step pose formula `(poseBase + i + 1) % 19` can't collide with the cover's index for any realistic slide count, since poseBase < 14
+- Baselines held: no new tsc errors, 673/673 tests green
+
+## [2026-08-26] — Selfie slideshows: more poses, exactly 2 selfies, no more ripple plug
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e61f2cad
+
+### In plain English (for Keenan)
+Three changes from your review: (1) the pose pool doubled — she can now be seated on the bed or stairs, take a regular arm's-length selfie with no mirror at all, or be caught in a gesture (raising her mug, shrugging, mid-laugh) — so the selfies feel even less repeatable. (2) Every slideshow now has exactly TWO photos of her — the cover plus one step — and everything else is the aesthetic shots, which now also have their own variance rule so no two look alike. (3) The caption no longer plugs ripple or asks for follows — these posts exist purely to earn views, likes, and follows on their own. A fresh example was generated with all of this and emailed to you (cover = mug-cheers in the bedroom mirror, step selfie = mid-laugh close-up in the apron).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_POSE_VARIANTS` 7 → 14 (seated-on-bed, arm's-length front-camera NO-mirror ×2, sitting-on-stairs, mug-cheers, shrug, mid-laugh); `SELFIE_VISUAL_DNA` now describes both mirror and front-camera selfies (front-camera = no mirror, phone not visible); VARIANCE line added to `SELFIE_AESTHETIC_DNA` (distinct subject/room/time/light/angle/distance per photo)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SELFIE LIMIT is now EXACTLY 2 selfies total (one "mirror" step); post-parse enforcement caps mirror steps at 1 and inserts the fallback mirror mid-deck when the model returns none; aesthetic scenes may not repeat an object/surface; captionClose rule bans "follow me"/product mentions
+- `apps/web/src/lib/content-factory/caption.ts`: `buildCaption(topic, { plug: false })` omits the ripple bio CLOSING_LINE (default unchanged for animated carousels)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: pose directive line now states it OVERRIDES any mirror setup implied by the scene (needed for the NO-mirror pose variants, since topic scenes say "mirror selfie…")
+- `apps/web/src/inngest/functions/carousel-daily.ts` + `apps/web/scripts/run-selfie-example.ts`: selfie `buildCaption` calls pass `{ plug: false }`; runner fallback topic now 2 selfies (last step became an aesthetic POV shot)
+
+### Manual steps needed
+- [ ] Push to deploy — 12 UTC cron runs the old rules (2-3 selfies, plugged caption) until this lands on Vercel (Keenan says "push it")
+- [ ] Still open: local `ANTHROPIC_API_KEY` is 401 (root `.env` + `apps/web/.env.local`) — local runs use the hand-written fallback topic (Keenan or Jimmy)
+
+### Notes
+- Verified on the emailed example: exactly 2 selfies (cover mug-cheers gesture, step mid-laugh close-up — both clearly different poses, same woman), new slippers-POV aesthetic shot distinct from the paperback shot, caption is open + soft ask + hashtags only, no plug
+- Animated-carousel captions still carry the ripple plug — `plug: false` is opt-in and only the selfie lane uses it
+- Baselines held: no new tsc errors (pre-existing adlab/niche-* and carousel-daily CarouselTopic errors only), 673/673 tests green
+
+## [2026-08-26] — Every selfie in a slideshow now looks like its own photo
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dc89b776
+
+### In plain English (for Keenan)
+The selfies were all coming out as the exact same shot — same pose, same framing, same room, phone in front of her face every time — which screamed AI. Now each selfie in a slideshow gets its own look: one might be a full-length shot in the floor mirror, the next a close-up with flash on, another leaning against a wall. Different rooms, outfits, and angles — but always the same woman. It reads like a real camera roll instead of one photo copied five times. A fresh example ("this is how i got my evenings back") was generated with the new rules and emailed to you.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_PERSONA` reworded — only her identity repeats; pose/outfit/framing/room/lighting must differ per photo. New `SELFIE_POSE_VARIANTS` export (7 pose/framing directives: full-length floor mirror, close waist-up, sitting on floor, wall-lean three-quarter, candid mid-motion, flash-on deadpan, off-center wide). VARIANCE rule added to `SELFIE_VISUAL_DNA`
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `buildSelfieImagePrompt` gains `pose?: string`; the reference-image line now demands identity-ONLY transfer ("take NOTHING else… do NOT copy its pose, framing, outfit, room, or lighting") — the .edit endpoint was cloning the reference's whole composition, which was the root cause
+- `apps/web/src/inngest/functions/carousel-daily.ts` + `apps/web/scripts/run-selfie-example.ts`: slug-hash `poseBase` rotates through `SELFIE_POSE_VARIANTS`; cover uses `poseBase`, step i uses `(poseBase + i + 1) % len` so no two slides in a post share a pose
+
+### Manual steps needed
+- [ ] Push to deploy — the 12 UTC cron runs old no-variance prompts until this lands on Vercel (Keenan says "push it"; commits e678cf83 + 77894146 also still unpushed)
+- [ ] Still open: update `ANTHROPIC_API_KEY` in root `.env` + `apps/web/.env.local` — local key is 401, local runs use the hand-written fallback topic (Keenan or Jimmy)
+
+### Notes
+- Verified visually on the emailed example: cover = waist-up wall-lean in flannel/bedroom, step 2 = close-up flash-on in hallway with apron + hair up, step 4 = full-length floor-mirror in cardigan with mug — three clearly different photos, same woman. Identity chain to the 2026-08-25 post held
+- Pose selection is deterministic per slug (same `((hash<<5)-hash+c)|0` hash as sticker color), so cron retries reproduce the same poses. Gotcha: normalize with `Math.abs(hash) % len` FIRST, then offset — `Math.abs(hash + i + 1)` can fold negatives back onto the cover's index
+- Baselines held: no new tsc errors in touched files, 673/673 tests green (from `apps/web`, never repo root)
+
+## [2026-08-26] — Selfie slideshows now show 2-3 selfies max, spaced out with aesthetic shots
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** e678cf83
+
+### In plain English (for Keenan)
+The daily selfie slideshow now follows the mix you asked for: each post has two or three photos of the woman herself (the cover is always one of them) and everything else is the beautiful aesthetic shots — the coffee, the kettle, the phone face-down. Two selfies never appear back-to-back; there's always an aesthetic slide between them, so swiping through feels like a real photo dump instead of a selfie reel. Today's post ("this is how i stopped snapping at everyone i love") was generated with these rules and emailed to you.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: SELFIE LIMIT hard rule added to `SELFIE_SYSTEM_PROMPT` (1-2 mirror steps only, first step always aesthetic, no adjacent mirrors) plus deterministic post-parse enforcement in `generateSelfieTopic` — walks `stepShots`, flips rule-breaking mirror steps to aesthetic (fallback scene), caps mirror steps at 2, guarantees at least 1 so the avatar appears beyond the cover. Unknown/missing shot types now default to aesthetic (was mirror)
+- `apps/web/scripts/run-selfie-example.ts`: new compliant fallback topic (cover + steps aesthetic/mirror/aesthetic/mirror = 3 selfies, none adjacent); used for today's emailed post because the local Anthropic key is still 401
+
+### Manual steps needed
+- [ ] Still open from 2026-08-25: update `ANTHROPIC_API_KEY` in root `.env` + `apps/web/.env.local` — local key returns 401, so locally-run slideshows use the script's hand-written fallback topic instead of Claude (Keenan or Jimmy)
+- [ ] Push to deploy — until this lands on Vercel, the daily 12 UTC cron still runs yesterday's shot-mix rules (Keenan says "push it")
+
+### Notes
+- Enforcement is code, not just prompt: the model CAN return a bad mix and it will be silently corrected. When a mirror step gets flipped to aesthetic its scene is replaced with a generic aesthetic fallback (the original scene described her, which conflicts with the person-free aesthetic DNA)
+- Identity chaining held across days: today's cover referenced the 2026-08-25 post's raw cover and produced the same woman in a new kitchen scene
+- Baselines held: no new tsc errors in touched files, 673/673 tests green. (Reminder: run tsc/vitest from `apps/web`, not repo root — root runs resolve no `@/` aliases and explode into 16k phantom errors)
+
+## [2026-08-25] — One carousel email: stitched video + caption only
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** aac65fb2
+
+### In plain English (for Keenan)
+Animated carousels now arrive as a single email containing just the finished, fully clipped video (tap and hold → Save Video) and the caption to copy. No more second email, no more per-slide download buttons or slide images cluttering the inbox. Static image carousels are unchanged — one email with the slides attached.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: `sendCarouselEmail` now short-circuits to a new `sendStitchedVideoEmail(post, dateStr, videoSlides, videoBuffers)` when any slide has a `videoUrl`; the old main-email video buttons/links and the entire follow-up "Carousel video" email are removed
+- Stitch logic is unchanged and just relocated: every non-CTA slide in order, 4s still clips for slides whose animation failed, crossfade stitch with 0.4s fade-to-black fallback, uploaded as `slides-compilation.mp4`, attached when ≤28MB else force-download link
+- Per-slide clip links now appear ONLY if the stitch itself fails (degraded fallback)
+- Also tightened a pre-existing loose Resend payload cast that tripped tsc
+
+### Manual steps needed
+None
+
+### Notes
+- The one-off pipeline (cover-only animation) also flows through this: cover clip + still clips of the reason slides get stitched into the single MP4, so even those posts send one email now.
+- If every video fetch fails, the code falls through to the static image email so the post is never silently undelivered.
+
+## [2026-08-25] — Niche Lab reworked: zero setup, daily viral feed, suggestions only
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4db5a7ca
+
+### In plain English (for Keenan)
+The Niche Lab now runs itself. It figures out your niche automatically from the carousels you've already posted (nothing to seed), then every night pulls the posts going viral in that niche TODAY — on both Instagram and TikTok — with a ready-to-paste comment for each. It also suggests accounts worth tracking and 3 carousel topics per day, but nothing it finds ever changes the automatic daily posts: a suggested topic only becomes a carousel when you press "Generate this carousel" in the dashboard.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: new `NicheProfile` singleton (description, igHashtags[], tiktokHashtags[]), new `NicheTopicSuggestion` model + `NicheSuggestionStatus` enum, `NichePost.accountId` now optional with new `authorHandle` and indexed `viralScore` columns
+- apps/web/src/lib/content-factory/niche-research.ts: `scrapeTikTokHashtags()` (clockworks~tiktok-scraper, override via `APIFY_TIKTOK_ACTOR`), `inferNiche()` (Claude reads last 40 posted carousels → niche description + 10-14 hashtags per platform), `webUrl` on hashtag samples
+- apps/web/src/inngest/functions/niche-research-nightly.ts: rewritten — ensure/infer profile → viral IG + TikTok ingestion (viralScore = engagement ÷ per-tag median, accountless posts allowed) → tracked-account scrape → drafted comments → 3 topic suggestions/day (deduped, capped at 9 pending)
+- apps/web/src/inngest/functions/niche-discovery.ts: bootstraps hashtags from NicheProfile (works with zero tracked accounts), scores hashtags and suggests creators on BOTH platforms
+- apps/web/src/inngest/functions/niche-strategy-memo.ts: handles accountless viral posts (viralScore/authorHandle fallbacks)
+- apps/web/src/inngest/functions/carousel-daily.ts + lib/content-factory/generate-topic.ts: niche auto-influence removed; `generateTopic` gains a `mandate` opt
+- apps/web/src/inngest/functions/carousel-one-off.ts: accepts `{suggestionId, headline, angle}`, marks the suggestion GENERATED with the post id
+- apps/web/src/app/api/admin/niche/route.ts + admin/content-factory/niche/page.tsx: rebuilt — profile card w/ Re-detect, suggested topics (Generate/Dismiss), viral feed (48h/7d/30d), account suggestions (Track/Ignore), memo, hashtags, tracked accounts
+
+### Manual steps needed
+- [ ] `npm run db:push` from main on home network — covers NicheProfile/NicheTopicSuggestion/NichePost changes AND the earlier AMBIENT enum (Keenan)
+- [ ] Add `APIFY_TOKEN` in Vercel (Keenan) — lab skips gracefully until set
+- [ ] Optional Vercel overrides: `APIFY_TIKTOK_ACTOR`, `APIFY_IG_ACTOR`, `APIFY_IG_HASHTAG_ACTOR` (Keenan, only if actor defaults misbehave)
+
+### Notes
+- Nothing needs seeding: the niche is inferred from our own posted carousels and re-inferred weekly (or via the Re-detect button). Tracked accounts are now optional flavor, not a prerequisite.
+- viralScore (vs the hashtag sample's median) exists because hashtag-discovered posts have no account baseline; engagementRatio still applies to tracked accounts. Feed orders by viralScore desc, then engagementRatio desc.
+- Daily posts deliberately ignore niche data (Keenan's call, 2026-08-25) — suggestions are the only bridge, via the existing one-off pipeline with a `mandate` on generateTopic.
+- Pre-existing CarouselTopic type errors in carousel-daily.ts and carousel-one-off.ts (missing `style` in a literal) are on origin/main too — not introduced here.
+## [2026-08-25] — A fifth daily content type: a realistic "mirror selfie" slideshow from one consistent woman
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c0e8e9cf
+
+### In plain English (for Keenan)
+The content factory now makes a fifth post every day: a swipeable photo slideshow that looks like a real woman in her 40s posted it herself. The cover is her taking a mirror selfie with a hook like "this is how i stopped running on empty," and each following slide is one thing she did about it — some slides are her again (same woman, different room and outfit), others are beautiful aesthetic shots like her coffee on a windowsill. The text is burned onto the images in the pink/pastel sticker style from the viral posts you sent, it never covers her face, and the small supporting lines are now crisp and readable. It runs automatically at 7am Central each day and emails you the finished post, same as the others. You already have the corrected example in your inbox.
+
+### Technical changes (for Jimmy)
+- New daily bucket "selfie" in `apps/web/src/inngest/functions/carousel-daily.ts` — cron widened to `0 4,6,8,10,12 * * *` (12 UTC = selfie). Cover + 4-6 step slides; mirror steps are generated with gpt-image-2's edit endpoint using the cover's text-free raw as an identity reference, and each new post's cover references the *previous* selfie post's cover, so the same woman persists across posts indefinitely
+- `apps/web/src/lib/content-factory/brand.ts`: `SELFIE_PERSONA` (fixed character description), `SELFIE_VISUAL_DNA` (amateur phone mirror-selfie realism, no text in image), `SELFIE_AESTHETIC_DNA` (person-free hyper-real POV shots)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: `generateSelfieTopic()` — first-person Claude prompt returning steps, per-step shot plan (mirror vs aesthetic), and scene direction
+- `apps/web/src/lib/content-factory/compose.ts`: `renderSelfieCaptionOverlay()` — TikTok sticker text (colored fill + white outline via 8-offset Pango composites, no SVG so Lambda-safe), `SELFIE_TEXT_COLORS` rotated per slug, emoji stripping. Placement is two-phase (measure, then anchor): mirror slides put the block at chest level ("lower"), aesthetic slides upper-middle
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `buildSelfieImagePrompt()`
+- Admin: 🤳 manual trigger on `admin/content-factory/carousels` page + route docblock
+- `apps/web/scripts/run-selfie-example.ts`: local end-to-end runner (server-only shim + env loader pattern); deletes any same-slug/same-day post before re-creating to dodge the `(topicSlug, generatedFor)` unique constraint on re-runs
+- **No schema change.** Posts save as `format: "PHOTO"` + `lane: "selfie"` because the prod db push is still pending — a new `CarouselFormat` enum value would fail at the DB level until that lands
+- Step slides now upload their text-free raws (`rawImageUrl`) so caption fixes can be re-rendered without paying for image regeneration
+
+### Manual steps needed
+- [ ] Update `ANTHROPIC_API_KEY` in the repo-root `.env` AND `apps/web/.env.local` — the key on disk returns 401 (invalid/revoked). Vercel's key works fine, so prod topic generation is unaffected; this only blocks local scripts (Keenan or Jimmy)
+- [ ] Watch the first automatic selfie run (12:00 UTC / 7am Central tomorrow) land in email — it will chain identity off today's example post (Keenan)
+
+### Notes
+- The local Anthropic key being dead meant today's emailed example used a hand-written fallback topic inside the runner script; the Claude topic path is exercised in prod only. The fallback lives in the script, not the pipeline
+- First example run surfaced two visual bugs Keenan flagged: (1) the small white detail line was rendered with a *white* outline — 8 white-on-white offsets smear into an illegible blob; it now uses a dark `#2A2A2A` outline. (2) Text at 20-22% frame height sat on her face; mirror slides now anchor at ~58% (chest), clamped to 42%-82% to clear the bottom platform chrome
+- Identity chaining verified working: run 2 pulled run 1's cover as reference and produced the same woman in a different hallway/outfit
+- Storage paths are slug-scoped, so re-running the same topic on the same day overwrites images in place — that's how the emailed example got corrected without regenerating the DB row
+- `sendCarouselEmail` is idempotent via `emailedAt`; pass `{ force: true }` to re-send
+- Baselines held: tsc errors all pre-existing (compose.ts `sharp` namespace ×2, carousel-daily CarouselTopic ×2), 673/673 tests green
+
+## [2026-08-24] — Half the old-domain cleanup shipped; the other half is blocked on a missing DNS record
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** e6bc1e77
+
+### In plain English (for Keenan)
+The app used to be called Acuity and lived at getacuity.io. It's Ripple at goripple.io now, but the old address was still wired into a few places that actually do things — not just old notes. We moved the ones that are safe to move today.
+
+We also found and fixed a real bug: when someone signs up on the website and taps the "verify your email" link on their phone, that link was supposed to open the Ripple app directly. It wasn't, because the app was still only listening for the old getacuity.io address. It now listens for both. This needs a new app build before customers see the fix.
+
+The rest is stuck on something outside the code. goripple.io can *send* email but cannot *receive* any — there's no mailbox behind it. So every "contact us" link, every support address, and every email from Keenan that invites a reply has to keep using the old getacuity.io address for now, or replies would bounce into nowhere. That's one DNS change away from being fixable, and it's on Jimmy's list below. The old domain is paid up until April 2027, so nothing is about to break.
+
+### Technical changes (for Jimmy)
+**Migrated (a — live/functional, verified safe):**
+- `apps/web/src/lib/content-factory/compose.ts`: font CDN fetch + `ripple-lockup-cream.png` fetch → `goripple.io` (both confirmed HTTP 200 on the new host before changing)
+- `apps/web/src/lib/calendar/oauth.ts`: last-resort `redirectUri()` base → `https://goripple.io`; doc comment now lists both registered URIs
+- Internal founder-alert senders → `hello@goripple.io` / `noreply@goripple.io`: `rls-audit.ts`, `entitlement-reconcile-nightly.ts`, `entitlement-drift-monitor.ts`, `stripe-webhook-health.ts`, `lib/founder-notifications.ts`, `api/admin/adlab/cron/route.ts`, `inngest/functions/auto-blog.ts` (2 × `from` only)
+- `apps/mobile/app.json` + `ios/Acuity/Acuity.entitlements` + `android/app/src/main/AndroidManifest.xml`: **added** `goripple.io` applinks/intent-filters alongside `getacuity.io`
+
+**Deliberately NOT migrated (see Notes):** all `mailto:`, all `replyTo:`, Keenan's conversational senders, `auto-blog.ts:1133` `to:`, `sc-domain:getacuity.io`, and every historical doc.
+
+### Manual steps needed
+- [ ] Jimmy: **add MX records to goripple.io** — it currently has none. This is the single blocker for migrating the remaining ~37 reply-capable/inbound addresses. Until then they must stay on getacuity.io
+- [ ] Jimmy: add an **SPF TXT record** to goripple.io (`v=spf1 include:amazonses.com ~all` or Resend's current value). DKIM + DMARC are present; SPF is missing. Not blocking — DMARC is `aspf=r` so DKIM alignment alone passes — but it weakens deliverability
+- [ ] Jimmy: **App Store Connect → App Store Server Notifications URL** is `https://getacuity.io/api/iap/notifications` → change to `https://goripple.io/api/iap/notifications`. Cannot be changed from code
+- [ ] Jimmy: **mobile rebuild required** for the deep-link fix to reach users — config changes alone do nothing to installed binaries
+- [ ] Jimmy: **Google Search Console** — decide whether to create a `sc-domain:goripple.io` property and add the service account. Until it exists, leaving the code on `sc-domain:getacuity.io` is correct
+- [ ] Jimmy: check **Stripe / RevenueCat / Vercel** dashboards for any remaining getacuity.io callback URLs (Stripe webhook was already confirmed on goripple.io)
+
+### Notes
+- **The decisive fact was DNS, not the code.** `dig MX goripple.io` returns nothing. `dig MX getacuity.io` returns `smtp.google.com`. So goripple.io can send but cannot receive. That splits "email addresses" into two risk classes the original sweep brief treated as one: a `from:` on a no-reply alert is safe to move, a `replyTo:` or a `mailto:` a user is invited to click is not — it would bounce.
+- **goripple.io IS already set up in Resend**: `resend._domainkey` DKIM record present and `send.goripple.io` has the `feedback-smtp.us-east-1.amazonses.com` MX. Its DMARC is `p=quarantine; aspf=r`, so DKIM alignment alone satisfies DMARC even without SPF. That is why the founder-alert senders were safe to flip.
+- **getacuity.io is not lapsing.** Registry expiry `2027-04-10`, and it currently serves the same Vercel app (HTTP 200, not a redirect). This is hygiene with runway, which is why the risky half was left rather than forced.
+- **The deep-link gap was a real live bug, not just staleness.** Verify links are built with `publicOrigin(req)`, so a goripple.io signup produced a goripple.io link while the app claimed only `applinks:getacuity.io`. Both domains serve an identical AASA listing `ZNF9ZJ4NVX.com.heelerdigital.acuity`, so claiming both is safe. Domains were **added, not swapped** — associated domains are baked into the installed binary, so removing the old one would strand links already sitting in inboxes.
+- **`waitlist-reactivation.ts` was deliberately left** even though it looks like the other `EMAIL_FROM` constants: it sends to `w.email` / `current.email` (real users), not to founders. Same reason as the other reply-capable senders.
+- **`auto-blog.ts` `to: keenan@getacuity.io` was left** while its two `from:` lines moved — the recipient has to be a mailbox that exists.
+- Baselines held: web tsc 153, mobile tsc 19 (both pre-existing and unchanged), 673/673 tests green across 41 files.
+## [2026-08-24] — Niche Lab: competitor research that feeds the content factory
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0b0fff0b
+
+### In plain English (for Keenan)
+There's a new "Niche lab" page in the admin. You add Instagram accounts in your niche, and every night the system pulls their recent posts and figures out which ones broke out (did way better than that account normally does). Those breakout posts now quietly inspire your daily carousel topics. Every Monday morning you get an emailed strategy memo — what's working in the niche, what to double down on, what to test this week. Every Sunday it also discovers NEW accounts worth tracking and ranks the best hashtags by real engagement. There's also an engagement queue: it drafts a thoughtful comment for each breakout post, but YOU copy and post it yourself — nothing is ever auto-liked or auto-commented, so there's no ban risk.
+
+### Technical changes (for Jimmy)
+- Prisma (root schema): new `NichePlatform` enum (INSTAGRAM/TIKTOK) + models `NicheAccount` (unique platform+handle, active/discovered flags), `NichePost` (unique platform+externalId, hashtags[], engagementRatio, suggestedComment, engagedAt), `NicheHashtag` (unique platform+tag, medians + score), `NicheMemo` (weekOf unique)
+- New `apps/web/src/lib/content-factory/niche-research.ts`: Apify wrappers — `scrapeInstagramProfiles` (`apify~instagram-profile-scraper`, overridable via `APIFY_IG_ACTOR`) and `scrapeHashtagPosts` (`apify~instagram-hashtag-scraper`, `APIFY_IG_HASHTAG_ACTOR`), both via run-sync-get-dataset-items; `computeEngagementRatios` = (likes+comments) vs the account's own median (needs ≥3 posts)
+- New Inngest fns (registered in `api/inngest/route.ts`): `niche-research-nightly` (cron 2 UTC + event `content-factory/niche.scrape`; scrapes in batches of 10, upserts posts without clobbering suggestedComment/engagedAt, recomputes ratios over last 60d, drafts comments for ratio ≥1.3 posts in one `callClaude` call); `niche-strategy-memo` (Mon 11 UTC + `niche.memo`; compares our 30d metrics vs top 25 niche posts, Claude memo → NicheMemo upsert → Resend email); `niche-discovery` (Sun 2 UTC + `niche.discover`; top 10 niche hashtags weighted by ratio → hashtag sampling → NicheHashtag scores + creators appearing ≥2× become `discovered: true, active: false` accounts)
+- New `apps/web/src/app/api/admin/niche/route.ts`: GET (accounts, top posts w/ ?days filter, memo, engagement queue, hashtags, apifyConfigured) + POST actions add-account / toggle-active / update-notes / delete-account / mark-engaged / scrape-now / memo-now / discover-now
+- New `apps/web/src/app/admin/content-factory/niche/page.tsx` + "Niche lab" link in admin-dashboard.tsx
+- `generate-topic.ts`: new optional `nicheInspiration` input rendered as a NICHE INTELLIGENCE prompt block (extract the appeal, never copy); `carousel-daily.ts` feeds it the top 8 posts with ratio ≥1.5 from the last 30d
+
+### Manual steps needed
+- [ ] `npx prisma db push` from home network — covers BOTH the new Niche models AND the still-pending AMBIENT enum from 2026-08-18 (Keenan)
+- [ ] Create an Apify account, get a token, add `APIFY_TOKEN` to Vercel env vars + redeploy (~$5–30/mo depending on account count) (Keenan)
+- [ ] After deploy: add 5–15 tracked accounts at /admin/content-factory/niche and hit "Scrape now" (Keenan)
+
+### Notes
+- Auto-like/auto-comment was explicitly cut per Keenan (IG ToS/ban risk). The engagement queue is copy-paste only by design — keep it that way
+- Apify actor response field names (`latestPosts`, `queryTag`, `likesCount`, etc.) are best-effort against Apify docs; watch the first real nightly run and adjust the mappers in niche-research.ts if the shapes differ
+- Engagement ratio is normalized per-account (vs that account's own median) so a small account's viral post outranks a big account's average one — that's the "what should WE emulate" signal
+- Cron order matters: scrape 2 UTC → metrics refresh 3 UTC → generation 4/6/8/10 UTC, so topic generation always sees fresh niche data
+- Pre-existing type errors in carousel-daily.ts (CarouselTopic at lines 240/355) are NOT from this change — verified identical on clean main via git stash
+- GrowthOS (Jimmy's repo) was reviewed as architectural reference only; its research layer is YouTube-specific, so nothing was ported directly
+
+## [2026-08-24] — Animated carousels stop being "slow zoom on a woman" — scenes and motion now act out each slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1e4a753f
+
+### In plain English (for Keenan)
+Every animated slide used to be the same video: a woman in a room, camera slowly pushing in while she does a small facial gesture. That's because the animated pipeline forced "one woman mid-activity" into every image and "push in toward her" into every video, while the static photo posts got much richer scene instructions. Now the AI directs a specific scene for each slide — sometimes a woman caught in a real moment (sitting in the parked car, phone glowing at 2am), sometimes no person at all (an overflowing mug, a phone buried under sticky notes, one candle in a dark kitchen) — and writes the motion to match what that slide is actually saying, so the animation IS the message. The camera also varies now (push in, pull back, side drift, rise, near-still) instead of always zooming in. The animated posts get the same rich image scripting the static posts already had.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: topic JSON gains a per-slide `scene` (cover + each reason) with subject-variety rules (woman-in-moment OR object scene, all scenes distinct); `motion` is now a standalone present-tense sentence animating that scene; `max_tokens` 1000 → 2500 (the added fields were going to truncate the JSON)
+- `apps/web/src/lib/content-factory/brand.ts`: `VISUAL_DNA_NOTEXT` rebuilt — carries the static `VISUAL_DNA`'s rich-detail language, subject follows the scene direction ("never substitute a generic woman-in-a-room"), top-45% overlay safe zone kept
+- `apps/web/src/lib/content-factory/animate-cover.ts`: new `buildSceneVideoPrompt` for text-free clips (bespoke motion leads; posture/lips-closed pin applied only when the scene has a person; 5 rotating camera moves seeded by slide order); `SlideEmotion.scene` added; `door`/`window` removed from `UNSAFE_MOTION_PATTERN` (scenes legitimately contain them now; locomotion/speech bans stay); pool-fallback grammar fix ("She her jaw sets…")
+- `apps/web/src/inngest/functions/carousel-daily.ts`: animated runs pass the model's scene as `sceneHint` ("Scene direction (follow exactly): …"); rotating `SCENE_SETTINGS`/`COVER_TREATMENTS` remain the fallback
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: in the noText branch, the character mood-expression line is skipped when the scene has no person (it was inviting gpt-image-2 to add a woman)
+- Photo bucket and baked-text animation paths (admin animate on photo posts) unchanged; no schema change
+
+### Manual steps needed
+- [ ] Keenan: eyeball the next 6 UTC and 8 UTC posts — if object-only scenes render badly in toon3d or motion drifts, say so and we tighten the scene rules
+
+### Notes
+- The core insight: the video model executes whatever subject the image gives it. Fixing variance had to start at image generation (scene direction), not at the video prompt
+- The lessons baked into v9–v15 (model executes any verb/noun; positive-only phrasing) are preserved: motions may only move what's already in the scene, nothing enters/leaves, no camera directions from the LLM
+- Fallback chain if the model omits scene/motion: old rotating room settings for the image, mood pool or a noun-free ambient line for the video — so legacy posts and admin re-animates behave exactly as before
+
+## [2026-08-24] — A second animated carousel every day, this one positive and actionable
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 70a39d7a
+
+### In plain English (for Keenan)
+You now get two animated carousels every night instead of one, and they're a deliberate pair: the existing 1am Central one is always the negative "that's me" recognition post ("7 reasons you're stuck in a rut"), and a new 3am Central one is always the positive, practical post ("7 ways to break out of a slump") where every item is something she could actually do today. Everything else about the positive post is identical — same audience, same look, same captions and hashtags, same stitched video in your email. There's also a new ✨ button on the admin carousels page to generate a positive one on demand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cron restored to `0 4,6,8,10 * * *`; new `"positive"` bucket at 8 UTC (the slot the calm-story removal freed) reusing the full VIDEO pipeline (format VIDEO, 6-reason cap, animate-all, same email path); `generateTopic` now receives `archetype: "resonance"` for the 6 UTC video bucket and `"actionable"` for the 8 UTC positive bucket
+- `apps/web/src/lib/content-factory/generate-topic.ts`: new `archetype` option on `generateTopic` injects a mandatory prompt block overriding the model's random RESONANCE/ACTIONABLE alternation; the actionable block requires every item to be tangible ("a concrete thing she could actually do today"), never preachy
+- `apps/web/src/app/admin/content-factory/carousels/page.tsx`: `generateBucket` accepts `"positive"`; new ✨ top-bar button
+- `apps/web/src/app/api/admin/carousels/route.ts`: generate-daily docblock mentions the positive bucket
+- No schema change — positive posts are `format: VIDEO` rows, indistinguishable from the negative animated posts in the DB
+
+### Manual steps needed
+- [ ] None — Inngest picks up the new cron slot on the next auto-sync after deploy (flag if 8 UTC doesn't fire tomorrow; a manual resync at /api/inngest fixes it) (Keenan to watch email)
+
+### Notes
+- The two runs share the 30-day headline de-dupe list, and the 8 UTC run's avoid-list already includes the post generated at 6 UTC the same night, so the pair can't collide on topic
+- The archetypes were already defined in the topic prompt (RESONANCE vs ACTIONABLE, alternating randomly) — this change just makes the choice deterministic per bucket rather than adding a new content system
+- Photo bucket (4 UTC) keeps the model's own alternation, so it still varies day to day
+
+## [2026-08-24] — Calm story videos are gone; the daily calm post is now silent, with a script for Keenan to voice
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 925c89ff
+
+### In plain English (for Keenan)
+The multi-scene calm story video (the 3am Central one) never worked properly and was costing money every night, so it's gone completely. The regular calm post stays, but it no longer has an AI voiceover or burned-in captions — it arrives as a clean silent loop, and the email now leads with the script so you can record it in your own voice when you post. The scripts still follow the locked style guide: viral, audience-building, and never about Ripple, journaling, or downloading anything.
+
+### Technical changes (for Jimmy)
+- Deleted `apps/web/src/inngest/functions/carousel-calm-story.ts` and `apps/web/src/lib/content-factory/calm-story.ts`; unregistered from `/api/inngest`
+- `carousel-daily.ts`: calmstory bucket removed (its 8 UTC slot was re-used by the positive carousel in the follow-up commit)
+- `carousel-ambient-video.ts` + `lib/content-factory/ambient-video.ts`: ElevenLabs TTS and ffmpeg mux steps removed; the clip now loops to the script's estimated slow-read length (`estimateAmbientReadSeconds`: ~2 words/sec, 20s floor, +3s tail); `vocalScript` field and ambient voice config deleted; post persists `storyVoiced: false`
+- `lib/content-factory/email.ts`: `calmStory` flag removed; new `selfVoice` option renders a script-first "🎙️ Your voiceover script" block and a calm subject line (no more ⚠️ SILENT warning subject for these)
+- `lib/content-factory/costs.ts`: AMBIENT estimate no longer counts TTS
+- Admin: `generate-story` action and both calm-story buttons removed
+- No schema change; STORY/format enums untouched (historical posts still render in admin)
+
+### Manual steps needed
+- [ ] None — the 8 UTC calm-story cron disappears on the next Inngest sync after deploy
+
+### Notes
+- The script ban on journaling/app/product mentions needed no new code — `script-style-guide.ts` HARD BANS already enforce it and were verified intact
+- No burned captions on the silent calm video was deliberate (locked rule: Keenan adds captions himself when posting; burned text would fight his self-recorded voiceover)
+- `story-video.ts` TTS/mux helpers are now unused by the calm path but kept — they're shared toolbox code
+- AMBIENT cost estimates for posts generated before this change will undercount (they did include TTS) — noted in `costs.ts`
+
+## [2026-08-24] — The daily "Stripe is broken" emails were false alarms; they now only fire when Stripe says so
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** cc9f101c
+
+### In plain English (for Keenan)
+The alert emails warning that "the Stripe webhook is DOWN" were wrong — payments have been flowing fine the whole time. The alert was set up to shout whenever a whole day passed with no Stripe activity, which made sense for a busy app but not for ours: with around fifteen subscribers, going a day or two with nobody signing up, renewing or cancelling is completely normal. It had cried wolf roughly 28 times in the last three months, and zero of those were real. Now the alert asks Stripe directly whether anything actually failed, and only emails when Stripe confirms it. A quiet week is treated as a quiet week.
+
+Separately, we checked whether some renewals were quietly failing to collect. They are not. Nine unpaid $4.99 invoices are sitting in Stripe as unfinished drafts, but every one belongs to a customer whose card already failed months ago and who Stripe has already given up on — we were never going to collect that money, and the app has correctly had all of them on the free plan the whole time. No customer is getting paid access they haven't paid for, and no money is being left on the table.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/stripe-webhook-health.ts` — the judgement, split out of the cron the way `lib/entitlement-drift.ts` is:
+  - `assessWebhookHealth()` — pure, deterministic (`now` injected)
+  - `collectWebhookHealthSignals()` — live reads: `stripe.webhookEndpoints.list()`, `stripe.events.list()` (all + `delivery_success:false`), and a `StripeEvent` id lookup
+  - Finding kinds: `endpoint_missing` | `endpoint_disabled` | `endpoint_url_mismatch` | `delivery_failure` | `ingestion_gap` | `quiet_with_stripe_activity`
+  - Constants: `LOOKBACK_MS` 72h, `DELIVERY_GRACE_MS` 60m, `QUIET_THRESHOLD_MS` 72h
+- New `apps/web/src/lib/stripe-webhook-health.test.ts` — 17 tests, incl. a regression test reproducing the exact live state (35.8h quiet, endpoint enabled, Stripe idle) that the old rule would have emailed on
+- `apps/web/src/inngest/functions/stripe-webhook-health.ts` reduced to transport: assess → log → alert only when `healthy === false`. Same cron (`0 */6 * * *`), same Slack + Resend recipients, no new env. Alert copy now names the specific finding instead of "no events in >24h"; findings are HTML-escaped into the email
+- `docs/incidents/2026-06-12-stripe-webhook-down.md` — Prevention §1 rewritten; new "Follow-up: the monitor was crying wolf (2026-08-24)" section with the measured evidence
+- No schema change. No new env var. Nothing in the live payment path was touched
+
+### Manual steps needed
+- [ ] Jimmy: after merge, watch the first `stripe-webhook-health-check` run in the Inngest dashboard — it should return `ok: true` with a `Healthy — …` summary rather than emailing
+- [ ] Jimmy (optional, Stripe dashboard, no code): 12 subscriptions sit in `unpaid` and are never cancelled, so each accrues a new draft invoice every cycle forever. Switching the Billing → Retries end-behaviour from "leave unpaid / mark uncollectible" to "cancel subscription" stops the accrual. Reporting hygiene only — zero revenue impact, and it does not affect any paying customer
+- [ ] Nobody: the draft invoices themselves need no action and were deliberately not modified
+
+### Notes
+- **Why the old check was wrong, measured not guessed.** Over the 90 days to 2026-08-24 the `StripeEvent` ledger had **13 quiet gaps longer than 24h, longest 53.5h**, which the 6h cron would have turned into **~28 alert emails**, all false. At the time of the fix the ledger's last event was 35.8h old — i.e. it was mid-false-alarm — while the endpoint was `enabled` at the apex URL and the latest renewal was PAID. **Gaps longer than 72h: zero.** That is where the retained fallback threshold came from.
+- **The real cost was not the noise.** An alert wrong 28/28 times gets filtered, and then the next genuine outage is as invisible as the 2026-04-24 one that ran 7 weeks. Fixing the monitor restores detection we had lost.
+- **`delivery_success` is account-wide, not per-endpoint.** An event Stripe reports undelivered that IS in our ledger is excluded from the finding — that failure would belong to some other destination. Irrelevant with one endpoint; correct if a second is ever added.
+- **Subscribed event types are read from the live endpoint's `enabled_events`**, not a hard-coded list, so adding a type in the Stripe dashboard cannot leave the gap check blind to it. The constant is a fallback only.
+- **`delivery_success` is absent from the newest Stripe API versions** but supported by the `apiVersion: "2024-06-20"` pinned in `lib/stripe.ts`. Re-verify that parameter before bumping the pin. All three live calls (`webhookEndpoints.list`, both `events.list` forms, `autoPagingToArray`) were smoke-tested against a real Stripe account before commit.
+- **A Stripe *read* failure does not email.** It logs via `safeLog` → Sentry. Inferring an outage from an unreadable Stripe is the same mistake the old check made; an unreadable Stripe is an ops problem, not a billing incident.
+- **Draft-invoice investigation (no code change).** All 9 drafts are `subscription_cycle`, `auto_advance:false`, `attempted:false`, and every one belongs to a subscription in Stripe status **`unpaid`** — not `active`. That is documented Stripe behaviour: once dunning is exhausted and the subscription goes `unpaid`, Stripe stops auto-finalising new cycle invoices. It is not the "draft for ~1h then auto-finalise" window; the oldest has sat in draft since 2026-07-25, **30 days**. `auto_advance` appears nowhere in this repo and we make no `stripe.invoices.*` calls at all, so nothing of ours set it.
+- **No entitlement leak from those subs.** All 12 `unpaid` subscriptions map to users who are `FREE` in our DB. The one exception, emily101infante@gmail.com, is `PRO` via `subscriptionSource: apple` — she resubscribed through the App Store after her Stripe card failed; the stale `stripeSubscriptionId` is a leftover, not a grant. The webhook is demonstrably doing its job here: each user's `updatedAt` lands within seconds of the cycle-rollover event that keeps them FREE.
+- **Uncollected total is $44.91** across the 9 drafts — money that was never collectible, from customers whose cards had already failed up to 9 times each.
+
+## [2026-08-23] — The new $9.99/$89.99 products are wired in (still switched off)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 28b702f7
+
+### In plain English (for Keenan)
+The higher-priced subscription products now exist for real in Apple, Google, Stripe and RevenueCat, and the app finally knows their exact ids. Nothing changed for any customer: the price switch is still off, so every page still says $4.99 / $39.99 and every card is still charged $4.99 / $39.99. This was the last piece of setup that had to happen *before* we can raise prices — it does not raise them. Flipping the actual switch is a separate, deliberate decision, and the existing 17 subscribers stay at the old price permanently when we do.
+
+### Technical changes (for Jimmy)
+- `packages/shared/src/pricing-plans.ts`:
+  - `PLACEHOLDER_V2_PRODUCT_IDS` `true` → `false`
+  - V2 Stripe Price ids filled in: monthly `price_1U7bBOD9XJakJqj51IdGWDVN` ($9.99/mo), annual `price_1U7bBRD9XJakJqj5uhZY4rgc` ($89.99/yr) — both were `null` with a TODO
+  - New optional `PlanProducts.googleBasePlan`; set on V2 only (`monthly-autorenew`, `annual-yearly`). Nothing reads it — Play prices a base plan, not a product, and RC needs the value, so it now lives with the SKU instead of only in a runbook. Left off LEGACY rather than guessing its base plan ids.
+  - Apple + Google product ids needed no change: the "placeholder" strings were already the exact ids the products were created with
+- New `apps/web/src/lib/evidence/v2-product-ids.test.ts` (14 tests) — pins the real ids AND the behaviour-neutrality: tier resolution, paywall copy, checkout Price ids, and a source scan proving `PLACEHOLDER_V2_PRODUCT_IDS` has no consumer
+- `docs/REVENUECAT_STAGE2_RUNBOOK.md` §1/§2: product tables are now a record of what exists, with the real Stripe Price ids and Play base plan ids
+- `docs/REVENUECAT_MIGRATION.md` §6.4: the "V2 ids are placeholders" open decision is marked resolved
+- Untouched on purpose: `newPricingEnabled`, `RC_SOURCE_OF_TRUTH`, `RC_OBSERVER`, both IAP receipt allow-lists
+
+### Manual steps needed
+- [ ] Jimmy: set `STRIPE_PRICE_MONTHLY_V2` / `STRIPE_PRICE_YEARLY_V2` in Vercel Production (ids above) + redeploy. Not urgent — nothing reads them until `newPricingEnabled` flips — but env should win over the catalog before that day, not on it.
+- [ ] Jimmy: confirm the RevenueCat `default` offering is attached to the v2 products and `grandfathered` to the legacy ones (runbook §1), since the products now exist to attach
+
+### Notes
+- **Why flipping `PLACEHOLDER_V2_PRODUCT_IDS` is safe:** it has no consumers. A repo-wide scan of `apps/web/src`, `apps/mobile` and `packages/shared/src` finds the identifier only in its own declaration. It is a comment with a type, not a gate. The new evidence test asserts that scan comes back empty, so if anyone ever gates a code path on it, the flip stops being free and the test says so.
+- **The one real risk of this commit was reachability**, not correctness: a live $9.99 Price id entering the catalog and becoming something a checkout session could be created with. It cannot — `PRICING.monthly/annual.stripeId` is pinned to `LEGACY_TIER` (env `STRIPE_PRICE_MONTHLY`/`_YEARLY` wins), and both checkout routes read only that. Asserted in the test.
+- **Both Stripe Prices were verified live against the Acuity account**, not taken on trust: `price_1U7bBO…` = 999/month, `price_1U7bBR…` = 8999/year, both active and both on `prod_UOdmMmo6Qxesni` — the *same* Product as the legacy $4.99/$39.99 Prices, which is what keeps Stripe reporting from splitting across two products.
+- **The receipt allow-lists (`apple-iap.ts`, `google-iap.ts`) were deliberately NOT widened** to the v2 SKUs. Opening a verification gate is a separate decision from cataloguing an id — widening it now would honour a v2 receipt before the products are meant to be purchasable. A test pins them closed so the omission reads as intent, not oversight.
+- Baselines held: web tsc 153 errors, mobile tsc 19 (both pre-existing and unchanged), 656/656 tests green across 40 files.
+
+## [2026-08-21] — Long recordings stopped failing, app renamed to Ripple, and a schema landmine defused
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three things shipped and one disaster was caught.
+
+Recordings longer than about four minutes were silently failing to upload — the user got an error with no explanation and nothing appeared in our logs. Audio was being sent through our own servers, and our hosting provider rejects anything over 4.5MB before it ever reaches our code. Recordings now go straight from the phone to storage, so that ceiling is gone entirely. While we were there, the website's 2-minute limit was raised to 5 minutes to match the app.
+
+The app is now called Ripple everywhere a user can see — the name under the icon, the notification titles, the permission pop-ups, and the app icon itself.
+
+The icon is its own story. The Ripple icon had existed since July on a branch nobody merged, so the app kept shipping the old purple Acuity diamond. Version 1.4.0 went to TestFlight with a Ripple splash screen behind an Acuity icon before we caught it.
+
+Finally, we found that our database schema description had fallen behind the real database. If anyone had run a routine schema update, it would have silently deleted three tables of live customer data. Nothing was lost — the safety check caught it — and the gap is now closed.
+
+### Technical changes (for Jimmy)
+**413 upload fix (direct-to-storage)**
+- New `apps/web/src/app/api/record/upload-url/route.ts` — issues Supabase signed upload URLs; server derives the object path so a client can never name another user's folder
+- `/api/record`, `/api/try-recording`, `/api/mobile/try-recording` all dual-accept JSON metadata and legacy multipart for one release
+- `lib/audio.ts::verifyStoredAudio()` — the metadata POST is a claim, not proof; existence and size are re-read from the bucket
+- `lib/pipeline.ts`: `processEntry` takes `audioBuffer` OR `audioPath`, and persists `audioPath` so entry deletion still finds the object
+- Mobile + web upload helpers; converted every recorder call site
+- Bitrate stopgap first: 64 kbps mono (`lib/audio-recording-options.ts`)
+
+**5-minute cap**
+- `MAX_SECONDS` 120 → 300 in debrief-shared, record-sheet, record-button, first-debrief-flow
+- Privacy page copy updated to match; `?all=1` added to `/api/entries` (capped at 2000, reports truncation) so "Export all" cannot silently mean "export 30"
+
+**Ripple rename**
+- Display name, all three notification titles, iOS permission strings, 123 lines of in-app copy
+- `rename-denylist.test.ts` — 9 cases guarding bundle id, product ids, `acuity://` scheme, session token, `acuity.*` storage keys, buckets, `@acuity/shared`
+
+**Icon recovery**
+- `icon.png` / `adaptive-icon.png` recovered from `d2783585` on `fix/mobile-ripple-rebrand`
+- Also found: `expo-notifications` accent was still `#7C3AED` (Acuity purple); favicon was the diamond and the branch had never fixed it either; `adaptiveIcon.backgroundColor` was an Acuity dark
+
+**Schema reconciliation**
+- Back-declared from `feat/onboarding-v10`: `Habit`, `HabitCheck`, `InsightEvidence`, `RevenueCatEvent`, `User.v10Day2PushSentAt`, `User.appleSignedTransactionJws`, `UserReminder.kind`/`habitId`, four `UserInsight` correction columns, `TrySession.audioPath` → nullable, two indexes
+- Guard went from **10 destructive statements** to "Schema and database agree — nothing to apply"
+
+### Manual steps needed
+- [ ] Jimmy: submit 1.4.0 build 98 for App Store review (needs App Store Connect; no API key is configured, so it cannot be done from code)
+- [ ] Jimmy: merge `chore/db-push-guardrail` and `docs/progress-1-4-0`
+- [ ] Jimmy: `DIRECT_URL` must be set as a GitHub repo secret for the new scheduled schema check to actually run
+- [ ] Jimmy: RevenueCat Stage 2 when ready — see `docs/REVENUECAT_STAGE2_RUNBOOK.md`
+
+### Notes
+- **The 413 was invisible for a reason.** Vercel rejects oversized bodies at the edge, before any handler runs, so there was no server-side log to find. Production evidence was in the bucket: largest object 4.28MB, 112 files at 4.0–4.5MB, zero above.
+- **Three bugs were caught by tests I wrote while building, not by review.** "Export all" exported 30; `yamlScalar` didn't quote double quotes; task due dates shifted a day for anyone behind UTC because a calendar date was run through local-time conversion.
+- **The splash needed fixing twice.** The first attempt matched `backgroundColor` to a pixel sampled from the artwork — but the asset still had its own baked background, so on any non-1242×2436 device that field painted 89.2% of the screen in the wrong shade. The real fix was a transparent canvas: no image background means no seam is possible.
+- **Branch drift caused two separate incidents today** — the stranded icon and the schema gap. Both looked like different problems and had one cause: work that lived only on an unmerged branch while main moved on. The `db:push`-from-main-only rule closes the schema half; the icon half was only caught because Jimmy looked at his phone.
+- **Six tests were permanently red on main** and had been for months, asserting a PAST_DUE grace window removed in June and a 14-day trial that is now 7. Both were deliberate product changes never carried into the tests. A permanently red suite trains everyone to ignore it, which is how a real failure gets missed.
+
+---
+
+## [2026-08-22] — Calm voice swapped again: Aria out, Rachel in
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Aria came out with a southern drawl ("someone from the bayou"), so the calm and calm-story videos now speak with Rachel — the most widely used calm, neutral-American female narrator in ElevenLabs' library. Everything else about the read stays: the expressive v3 model and the script's full performance direction (tags for softening, whispering, tiredness, pauses, breaths).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/ambient-video.ts`: AMBIENT_VOICES → Rachel (21m00Tcm4TlvDq8ikWAM); voice-history comment extended (Vanessa → Hope → Aria → Rachel)
+- No settings or prompt changes; AMBIENT_ELEVENLABS_VOICE_ID env override still available
+
+### Manual steps needed
+- [ ] Keenan: judge the fresh test posts (calm-story + regular calm) triggered after this deploy; remaining premade candidate if Rachel misses: Sarah (EXAVITQu4vr4xnSDxMaL, soft) — or pick a voice by ear in the ElevenLabs voice library and give Claude the ID (Keenan)
+
+### Notes
+- Voice picks are still blind: the prod ElevenLabs API key is Vercel-sensitive, so the account's voice list can't be browsed from here. If Rachel also misses, the fastest correct path is Keenan previewing voices in the ElevenLabs UI and handing over a voice ID — one env var or one-line change from there.
+
 ## [2026-08-21] — Carousel topics now read Jim's growthos research engine
 
 **Requested by:** Keenan
@@ -74,7 +1341,7 @@ The daily carousel's topic brain is now linked to Jim's social research engine (
 ### Manual steps needed
 - [ ] Jim: seed growthos with a Ripple workspace + niche (women 40–50, mental load) and run the research pipeline — the DB is 100% empty today, every table 0 rows (Jim)
 - [ ] Jim: `GRANT SELECT ON public.learning_insights TO service_role;` in growthos Supabase, or the learnings feed stays invisible to the connector (Jim)
-- [ ] Add GROWTHOS_SUPABASE_URL + GROWTHOS_SUPABASE_SERVICE_KEY to Acuity's Vercel env (values = growthos-staging's SUPABASE_URL and service role key) + redeploy — Claude can run this via CLI on Keenan's go-ahead (Keenan)
+- [x] Add GROWTHOS_SUPABASE_URL + GROWTHOS_SUPABASE_SERVICE_KEY to Acuity's Vercel env + redeploy — DONE 2026-08-22 (Keenan go-ahead; added via CLI as sensitive prod vars, redeployed + aliased to goripple.io). The link is live and dormant until Jim seeds growthos.
 - [ ] Jimmy review flag: this puts growthos's service-role key (full read/write on Jim's DB) into Acuity's env. Safer long-term: Jim creates a read-only Postgres role/key for cross-project access (Jimmy/Jim)
 - [ ] Jim: add `keypicksem` as read collaborator on jimheelerdigital/growthos so future integration work can read the code (currently 404s) (Jim)
 

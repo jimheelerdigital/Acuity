@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  ANNUAL_PRICE_CENTS,
-  MONTHLY_PRICE_CENTS,
-  formatDollars,
-} from "@/lib/pricing";
+import { displayAnnual, displayMonthly } from "@/lib/pricing";
 
 export const metadata = {
   title: "Terms of Service — Ripple",
@@ -142,8 +138,8 @@ export default function TermsPage() {
                 <strong className="text-acuity-text">Subscription.</strong>{" "}
                 When you subscribe, you authorise us (via Stripe on
                 the web, or Apple via in-app purchase on iOS) to
-                charge you {formatDollars(MONTHLY_PRICE_CENTS)} per month or{" "}
-                {formatDollars(ANNUAL_PRICE_CENTS)} per year, depending
+                charge you {displayMonthly()} per month or{" "}
+                {displayAnnual()} per year, depending
                 on the plan you select. The subscription renews
                 automatically at the end of each billing period until
                 you cancel.
