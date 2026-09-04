@@ -18,6 +18,8 @@ import {
   PROCESSING_SLIDES,
   SLIDE_MS,
 } from "./_components/processing-slides";
+import V10Processing from "./_v10/processing";
+import { V10Switch } from "./_v10/route-switch";
 
 /**
  * Screen 11 — Processing slideshow. Slice 9 (2026-05-26).
@@ -59,7 +61,7 @@ const SKIP_AVAILABLE_AT_SLIDE = 1; // user can skip starting on slide 2
 const EASE_CUBIC_OUT = Easing.bezier(0.215, 0.61, 0.355, 1);
 const PURPLE = "#7C5CFC";
 
-export default function ProcessingScreen() {
+function ProcessingScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -426,4 +428,15 @@ export default function ProcessingScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. ONBOARDING_V10 decides which flow renders here.
+ *
+ * Flag OFF renders ProcessingScreen exactly as before — same component, same
+ * behaviour, one boolean read added. Flag ON renders the v10 screen at this
+ * same route, so the live Meta-ad deep links keep working either way.
+ */
+export default function ProcessingRoute() {
+  return <V10Switch v10={<V10Processing />} legacy={<ProcessingScreen />} />;
 }

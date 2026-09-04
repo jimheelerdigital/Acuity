@@ -31,11 +31,19 @@ import { MoodIcon } from "@/components/mood-icon";
 import { ProgressionChecklist } from "@/components/progression-checklist";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { ProLockedCard } from "@/components/pro-locked-card";
+import {
+  V10FreeBanner,
+  V10PinnedCard,
+  V10TrialCard,
+} from "@/components/home/v10-home-cards";
+import { showsLegacyTrialBanner } from "@/lib/onboarding-v10/home-state";
 import { RecommendedActivity } from "@/components/recommended-activity";
 import { TourTarget } from "@/components/tour/TourTarget";
 import { useTourTrigger } from "@/hooks/use-tour-trigger";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import { TodayHabits } from "@/components/home/today-habits";
+import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { api } from "@/lib/api";
 import { cachedGet, getCached, isStale } from "@/lib/cache";
@@ -246,9 +254,15 @@ export default function DashboardTab() {
     [router]
   );
 
+  const { interceptRecord } = useSaveWall();
   const handleRecordPress = useCallback(
-    () => router.push("/record"),
-    [router]
+    () => {
+      // Guests get the save wall instead of the recorder — their debrief
+      // is unclaimed and a second one would be unreconcilable.
+      if (interceptRecord()) return;
+      router.push("/record");
+    },
+    [router, interceptRecord]
   );
 
   const handleWeeklyInsightPress = useCallback(
@@ -278,6 +292,23 @@ export default function DashboardTab() {
         </AttachStep>
 
         <View style={{ height: 16 }} />
+
+        {/* v10 Screen 9 surfaces. Driven by real state (debrief count,
+            subscription status), NOT by which onboarding the user saw —
+            the pinned card is about where someone is, not how they got
+            here. Each renders null when it doesn't apply, so this costs
+            nothing for users none of them match. */}
+        <V10TrialCard />
+        <V10FreeBanner />
+        {/* Lifetime count, not entries.length: /api/entries takes 30, so a
+            page length would make the card reappear for anyone whose list
+            happened to be short. */}
+        <V10PinnedCard entryCount={user?.totalRecordings ?? 0} />
+
+        {/* Today's habits. Renders null when the flag is off or nothing is
+            due, so Home is unchanged for everyone not using habits. */}
+        <TodayHabits />
+
         <TrialBanner />
 
         {/* Tonight CTA — gradient mic card, → /record */}
@@ -522,6 +553,20 @@ function TrialBanner() {
   const { user } = useAuth();
   const { tokens } = useTheme();
   if (!user) return null;
+
+  // Yield to V10TrialCard for natively-purchased trials. Both cards
+  // describe the same trial, and only one of them is permitted to name a
+  // price — see lib/onboarding-v10/home-state.ts::showsLegacyTrialBanner.
+  if (
+    !showsLegacyTrialBanner({
+      subscriptionStatus: user.subscriptionStatus ?? "FREE",
+      trialEndsAt: user.trialEndsAt ?? null,
+      subscriptionSource: user.subscriptionSource ?? null,
+      localizedPrice: null,
+    })
+  ) {
+    return null;
+  }
 
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const POST_EXPIRY_DAYS = 14;

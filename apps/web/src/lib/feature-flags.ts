@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Entitlement } from "@/lib/entitlements";
+import { resolveEntitlement } from "@/lib/entitlements/resolve";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -137,14 +139,48 @@ function rolloutBucket(userId: string, flagKey: string): number {
   return (hash >>> 0) % 100;
 }
 
-function tierMatches(
-  subscriptionStatus: string | null | undefined,
+/**
+ * Does this user's tier satisfy the flag's `requiredTier`?
+ *
+ * ── Why this reads the entitlement, not the raw status ───────────────
+ * This function used to compare `subscriptionStatus === "PRO"` directly,
+ * which made it a SECOND, independent entitlement authority that disagreed
+ * with the first. `entitlementsFor` grants an active TRIAL the full paid
+ * feature set (canExtractEntries, canGenerateNewLifeAudit, canSyncCalendar,
+ * …), but a `requiredTier: "PRO"` flag rejected those same trial users. So
+ * a feature gated by the paywall was available on trial, and the identical
+ * feature gated by a flag was not — with nothing in either file explaining
+ * the split.
+ *
+ * Routing the PRO branch through `canExtractEntries` — which is true for
+ * exactly PRO and active-TRIAL — makes flag gating and paywall gating give
+ * the same answer, from the same resolver.
+ *
+ * ⚠️ THIS CHANGES LIVE BEHAVIOR. See docs/EVIDENCE_RECEIPTS_NOTES.md.
+ *
+ * The FREE branch is deliberately UNCHANGED and still reads the raw status.
+ * "FREE tier" flags target users who aren't paying — typically upgrade
+ * nudges — and trial users are a prime audience for those. Re-deriving it
+ * from the entitlement would have silently flipped TRIAL out of that
+ * audience (and PAST_DUE into it), which is an unrelated product decision
+ * this change has no business making.
+ */
+export function tierMatches(
+  resolved:
+    | { entitlement: Entitlement; state: { subscriptionStatus: string } }
+    | null
+    | undefined,
   requiredTier: string | null
 ): boolean {
   if (!requiredTier) return true;
-  const status = (subscriptionStatus ?? "").toUpperCase();
-  if (requiredTier === "PRO") return status === "PRO";
+  if (!resolved) return false;
+
+  if (requiredTier === "PRO") {
+    // PRO + active TRIAL. Same predicate the paywall uses.
+    return resolved.entitlement.canExtractEntries;
+  }
   if (requiredTier === "FREE") {
+    const status = (resolved.state.subscriptionStatus ?? "").toUpperCase();
     return status === "FREE" || status === "TRIAL" || status === "";
   }
   return false;
@@ -166,11 +202,10 @@ export async function isEnabled(
 
   if (flag.requiredTier) {
     if (!userId) return false;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { subscriptionStatus: true },
-    });
-    if (!tierMatches(user?.subscriptionStatus, flag.requiredTier)) return false;
+    // Single entitlement authority: same resolver the paywall reads, so a
+    // flag-gated feature and a paywall-gated one can no longer disagree.
+    const resolved = await resolveEntitlement(userId);
+    if (!tierMatches(resolved, flag.requiredTier)) return false;
   }
 
   if (flag.rolloutPercentage >= 100) return true;

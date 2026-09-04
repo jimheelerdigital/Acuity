@@ -14,6 +14,7 @@ import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
 import { ScreenTestimonial } from "./_components/screen-testimonial";
+import { useV10RedirectIfEnabled } from "./_v10/route-switch";
 
 /**
  * Screen 6 — Diagnostic Q5 ("What would change if you could finally
@@ -36,7 +37,7 @@ const TESTIMONIAL = {
   name: "Marcus T.",
 };
 
-export default function Q5Screen() {
+function Q5Screen() {
   const router = useRouter();
   const { palette } = useTheme();
   const { q5, setQ5 } = useOnboardingState();
@@ -100,4 +101,21 @@ export default function Q5Screen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. This screen exists ONLY in the legacy flow — v10
+ * collapses the eleven pre-record screens into two, so there is no v10
+ * equivalent.
+ *
+ * Flag OFF renders Q5Screen exactly as before. Flag ON redirects to the
+ * start of the v10 flow rather than rendering a screen from a funnel the
+ * user is not in, which is what a stale deep link or a back-swipe would
+ * otherwise land on. The file is kept intact so flag OFF restores the
+ * previous flow with nothing missing (spec §9).
+ */
+export default function Q5Route() {
+  const redirecting = useV10RedirectIfEnabled();
+  if (redirecting) return null;
+  return <Q5Screen />;
 }

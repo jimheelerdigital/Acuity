@@ -62,7 +62,13 @@ export type OnboardingEventName =
   // v1.3.3 Issue B — review gate
   | "review_gate_shown"
   | "review_gate_confirmed"
-  | "review_gate_dismissed";
+  | "review_gate_dismissed"
+  // Onboarding v10 (2026-08-19). Template literal rather than 23 listed
+  // names: the exact set is owned by lib/onboarding-v10/analytics.ts, whose
+  // `V10Event` union is the closed, authoritative list. Duplicating it here
+  // would just be two lists to keep in sync. The server accepts these by the
+  // matching `^v10_[a-z0-9_]+$` prefix rule.
+  | `v10_${string}`;
 
 export interface TrackOptions {
   /** Single-select answer key, signup method, error code, etc. */

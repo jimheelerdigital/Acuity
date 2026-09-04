@@ -95,4 +95,15 @@ regexes = [
   # Note: AWS's documented test key AKIAIOSFODNN7EXAMPLE is NOT allowlisted —
   # we want the hook to block it (that's how we verify the hook works).
   '''(?i)(your[_-]?(?:api[_-]?)?key[_-]?here|example[_-]?key|placeholder|changeme|xxxxxxxxxxxx)''',
+
+  # Client-side storage key NAMES, e.g.
+  #   const PLAN_DECISION_KEY = "ripple.v10.plan_decision"
+  # These are AsyncStorage/localStorage namespaces, not credentials. The
+  # generic-api-key rule fires on them because the constant is named *_KEY
+  # and the value is long enough to look entropic.
+  #
+  # Deliberately anchored to our two namespace prefixes and to all-lowercase
+  # dotted segments. A real key — base64, hex, or a vendor prefix — cannot
+  # match this shape, so the allowlist can't shadow an actual secret.
+  '''^(?:ripple|acuity)(?:\.[a-z0-9_]+){1,4}$''',
 ]

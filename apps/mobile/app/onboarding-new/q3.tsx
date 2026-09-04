@@ -13,6 +13,7 @@ import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { DiagnosticCard } from "./_components/diagnostic-card";
 import { ScreenTestimonial } from "./_components/screen-testimonial";
+import { useV10RedirectIfEnabled } from "./_v10/route-switch";
 
 const TESTIMONIAL = {
   quote:
@@ -30,7 +31,7 @@ const TESTIMONIAL = {
  * shipped here so the nav doesn't crash during the QA window).
  */
 
-export default function Q3Screen() {
+function Q3Screen() {
   const router = useRouter();
   const { palette } = useTheme();
   const { q3, toggleQ3 } = useOnboardingState();
@@ -143,4 +144,21 @@ export default function Q3Screen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. This screen exists ONLY in the legacy flow — v10
+ * collapses the eleven pre-record screens into two, so there is no v10
+ * equivalent.
+ *
+ * Flag OFF renders Q3Screen exactly as before. Flag ON redirects to the
+ * start of the v10 flow rather than rendering a screen from a funnel the
+ * user is not in, which is what a stale deep link or a back-swipe would
+ * otherwise land on. The file is kept intact so flag OFF restores the
+ * previous flow with nothing missing (spec §9).
+ */
+export default function Q3Route() {
+  const redirecting = useV10RedirectIfEnabled();
+  if (redirecting) return null;
+  return <Q3Screen />;
 }

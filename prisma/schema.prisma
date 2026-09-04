@@ -869,7 +869,7 @@ model Entry {
   // Read by `apps/web/scripts/theme-distribution.ts` for cohort
   // comparison reports.
   themePromptVersion String?
-  InsightEvidence    InsightEvidence[]
+  insightEvidence    InsightEvidence[]
 
   @@index([userId, createdAt])
   // Backfill scanner hot path — find all FREE-tier-only entries
@@ -1642,7 +1642,7 @@ model UserInsight {
   /// convention (Entry.status, UserInsight.severity) for cross-Postgres
   /// compatibility and to avoid a migration on every added value.
   correctionState String?
-  InsightEvidence InsightEvidence[]
+  evidence        InsightEvidence[]
 
   @@index([userId, createdAt])
   @@index([userId, correctionState])

@@ -16,6 +16,7 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { ScreenTestimonial } from "./_components/screen-testimonial";
+import { useV10RedirectIfEnabled } from "./_v10/route-switch";
 
 /**
  * Screen 7 — Failed Solution bridge. Dark atmospheric pivot,
@@ -57,7 +58,7 @@ const TESTIMONIAL = {
   name: "Sarah K.",
 };
 
-export default function BridgeScreen() {
+function BridgeScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   // Forced dark — symmetric with pain.tsx. Independent of user theme.
@@ -223,4 +224,21 @@ export default function BridgeScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. This screen exists ONLY in the legacy flow — v10
+ * collapses the eleven pre-record screens into two, so there is no v10
+ * equivalent.
+ *
+ * Flag OFF renders BridgeScreen exactly as before. Flag ON redirects to the
+ * start of the v10 flow rather than rendering a screen from a funnel the
+ * user is not in, which is what a stale deep link or a back-swipe would
+ * otherwise land on. The file is kept intact so flag OFF restores the
+ * previous flow with nothing missing (spec §9).
+ */
+export default function BridgeRoute() {
+  const redirecting = useV10RedirectIfEnabled();
+  if (redirecting) return null;
+  return <BridgeScreen />;
 }
