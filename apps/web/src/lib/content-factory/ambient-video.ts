@@ -27,6 +27,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { VoiceoverOptions } from "./story-video";
+import { humanizePass } from "./humanizer";
 import {
   SCRIPT_STYLE_GUIDE,
   pickPainBranch,
@@ -209,10 +210,55 @@ Return ONLY valid JSON.`;
     const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
 
-    const script = typeof parsed.script === "string" ? parsed.script.trim() : "";
+    let script = typeof parsed.script === "string" ? parsed.script.trim() : "";
     const visual = typeof parsed.visual === "string" ? parsed.visual.trim() : "";
     if (script.split(/\s+/).length < 30 || !visual) {
       throw new Error("Ambient script returned an unusable script/visual");
+    }
+
+    let rawTitle =
+      typeof parsed.title === "string" && parsed.title.trim()
+        ? parsed.title.trim().slice(0, 80)
+        : script.split(/[.!?]/)[0].slice(0, 60);
+    let rawCaption =
+      typeof parsed.caption === "string" && parsed.caption.trim()
+        ? parsed.caption.trim()
+        : undefined;
+
+    // HUMANIZER approval gate (2026-09-04, per Keenan: every social post
+    // runs through it before generation). Gates the spoken script plus
+    // the written title/caption; visual/motion are video directions and
+    // never gated. Runs BEFORE the vocalScript word-lock check below, so
+    // a rewritten script drops the tagged read instead of shipping words
+    // that differ from the audio. NOTE: HUMAN_VOICE_RULES is deliberately
+    // NOT appended to this lane's system prompt — its spoken-style rules
+    // (ellipsis pauses, em-dash trailing thoughts as TTS direction)
+    // conflict; the gate pass is the enforcement here. Fails open.
+    try {
+      const gated = await humanizePass<{
+        title: string;
+        caption: string;
+        script: string;
+      }>({
+        purpose: "humanize:ambient-script",
+        voice:
+          "A tired friend talking to you at 10pm in her kitchen — intimate, unhurried, contractions, sentence fragments, ellipsis pauses kept exactly where they are.",
+        payload: { title: rawTitle, caption: rawCaption ?? "", script },
+      });
+      if (
+        typeof gated.script === "string" &&
+        gated.script.trim().split(/\s+/).length >= 30
+      ) {
+        script = gated.script.trim();
+      }
+      if (typeof gated.title === "string" && gated.title.trim()) {
+        rawTitle = gated.title.trim().slice(0, 80);
+      }
+      if (rawCaption && typeof gated.caption === "string" && gated.caption.trim()) {
+        rawCaption = gated.caption.trim();
+      }
+    } catch {
+      console.warn("[ambient-video] humanizer gate failed — shipping ungated copy");
     }
 
     // vocalScript must be the same words (tags aside) — if the model
@@ -234,10 +280,7 @@ Return ONLY valid JSON.`;
       }
     }
 
-    const title =
-      typeof parsed.title === "string" && parsed.title.trim()
-        ? parsed.title.trim().slice(0, 80)
-        : script.split(/[.!?]/)[0].slice(0, 60);
+    const title = rawTitle;
     return {
       theme:
         typeof parsed.theme === "string" && parsed.theme.trim()
@@ -255,10 +298,7 @@ Return ONLY valid JSON.`;
         typeof parsed.captionHook === "string" ? parsed.captionHook.trim() : undefined,
       commentPrompt:
         typeof parsed.commentPrompt === "string" ? parsed.commentPrompt.trim() : undefined,
-      caption:
-        typeof parsed.caption === "string" && parsed.caption.trim()
-          ? parsed.caption.trim()
-          : undefined,
+      caption: rawCaption,
     };
   } catch (err) {
     await prisma.claudeCallLog.create({

@@ -534,7 +534,8 @@ Return ONLY valid JSON, no other text.`;
       // 2026-08-24: raised from 1000 — per-slide "scene" directions added
       // ~500 output tokens and were getting the JSON truncated mid-array.
       max_tokens: 2500,
-      system: buildSystemPrompt(opts?.visualStyle ?? "aesthetic"),
+      // HUMAN_VOICE_RULES appended 2026-09-04 (humanizer prevention layer).
+      system: `${buildSystemPrompt(opts?.visualStyle ?? "aesthetic")}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -608,20 +609,64 @@ Return ONLY valid JSON, no other text.`;
       typeof rawDetails[i] === "string" ? (rawDetails[i] as string).trim() : ""
     );
 
+    // HUMANIZER approval gate (2026-09-04, per Keenan: every social post
+    // runs through it before generation). Reader-facing strings only —
+    // scene/motion/mood directions never go through. Fails open.
+    let gatedHeadline: string = parsed.headline;
+    let gatedReasons = reasons;
+    let gatedDetails = details;
+    let gatedCaptionQuestion =
+      typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
+        ? parsed.captionQuestion.trim()
+        : undefined;
+    try {
+      const gated = await humanizePass<{
+        headline: string;
+        reasons: string[];
+        details: string[];
+        captionQuestion: string;
+      }>({
+        purpose: "humanize:carousel-topic",
+        voice: extractVoice(buildSystemPrompt(opts?.visualStyle ?? "aesthetic")),
+        payload: {
+          headline: parsed.headline,
+          reasons,
+          details,
+          captionQuestion: gatedCaptionQuestion ?? "",
+        },
+      });
+      const okStrings = (arr: unknown, len: number, allowEmpty: boolean) =>
+        Array.isArray(arr) &&
+        arr.length === len &&
+        arr.every((s) => typeof s === "string" && (allowEmpty || s.trim()));
+      if (
+        typeof gated.headline === "string" &&
+        gated.headline.trim() &&
+        okStrings(gated.reasons, reasons.length, false) &&
+        okStrings(gated.details, details.length, true)
+      ) {
+        gatedHeadline = gated.headline.trim();
+        gatedReasons = gated.reasons.map((s) => s.trim());
+        gatedDetails = gated.details.map((s) => s.trim());
+        if (gatedCaptionQuestion && typeof gated.captionQuestion === "string" && gated.captionQuestion.trim()) {
+          gatedCaptionQuestion = gated.captionQuestion.trim();
+        }
+      }
+    } catch {
+      console.warn("[generate-topic] humanizer gate failed — shipping ungated copy");
+    }
+
     return {
       slug,
-      headline: parsed.headline,
+      headline: gatedHeadline,
       style: parsed.style === "hook" ? "hook" : "listicle",
       lane,
-      reasons,
-      details,
+      reasons: gatedReasons,
+      details: gatedDetails,
       mood,
       coverEmotion: parseEmotion(parsed.cover),
       reasonEmotions,
-      captionQuestion:
-        typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
-          ? parsed.captionQuestion.trim()
-          : undefined,
+      captionQuestion: gatedCaptionQuestion,
     };
   } catch (err) {
     const durationMs = Date.now() - start;

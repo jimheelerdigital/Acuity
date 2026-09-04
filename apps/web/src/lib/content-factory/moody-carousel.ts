@@ -1313,7 +1313,7 @@ export async function generateSignTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 400,
-      system: SIGN_SYSTEM_PROMPT,
+      system: `${SIGN_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -1354,6 +1354,22 @@ export async function generateSignTopic(
       throw new Error(`sign-image-topic unusable: line="${line}"`);
     }
 
+    // HUMANIZER approval gate (2026-09-04, per Keenan: every social post
+    // runs through it before generation). Line only — scene is image
+    // direction and never gated. Fails open.
+    let gatedLine = line;
+    try {
+      const gated = await humanizePass<{ line: string }>({
+        purpose: "humanize:sign-topic",
+        voice: extractVoice(SIGN_SYSTEM_PROMPT),
+        payload: { line },
+      });
+      const gl = (gated.line ?? "").trim();
+      if (gl.toUpperCase().startsWith("THIS IS YOUR SIGN")) gatedLine = gl;
+    } catch {
+      console.warn("[sign-topic] humanizer gate failed — shipping ungated copy");
+    }
+
     const slug = line
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -1361,7 +1377,7 @@ export async function generateSignTopic(
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
-    return { slug: `sign-${slug}`, line, scene };
+    return { slug: `sign-${slug}`, line: gatedLine, scene };
   } catch (err) {
     await prisma.claudeCallLog.create({
       data: {
@@ -1412,7 +1428,7 @@ export async function generateAuraTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 400,
-      system: AURA_SYSTEM_PROMPT,
+      system: `${AURA_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -1453,6 +1469,20 @@ export async function generateAuraTopic(
       throw new Error(`aura-image-topic unusable: line="${line}"`);
     }
 
+    // HUMANIZER approval gate (2026-09-04) — line only, fails open.
+    let gatedLine = line;
+    try {
+      const gated = await humanizePass<{ line: string }>({
+        purpose: "humanize:aura-topic",
+        voice: extractVoice(AURA_SYSTEM_PROMPT),
+        payload: { line },
+      });
+      const gl = (gated.line ?? "").trim();
+      if (gl && gl.split(/\s+/).length <= 10) gatedLine = gl;
+    } catch {
+      console.warn("[aura-topic] humanizer gate failed — shipping ungated copy");
+    }
+
     const slug = line
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -1460,7 +1490,7 @@ export async function generateAuraTopic(
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
-    return { slug: `aura-${slug}`, line, scene };
+    return { slug: `aura-${slug}`, line: gatedLine, scene };
   } catch (err) {
     await prisma.claudeCallLog.create({
       data: {

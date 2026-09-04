@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-04] — The humanizer gate now covers every social generator, including dormant and admin-triggered ones
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Per your directive that every social media post runs through the humanizer before generation: an audit found the nightly lanes were covered but several older paths were not — the admin "generate one carousel" button, the retired sign/aura/quote-video/calm-video formats (still revivable), and the old X/TikTok/Instagram/ad-copy generator behind the admin content dashboard. All of them are now wired the same way: the anti-AI-writing rules ride on the generation prompt, and the finished copy passes through the full humanizer approval gate before it's accepted. Nothing in the system can produce a social post that skips the gate anymore — including anything we revive later.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: generateTopic (admin one-off negative/positive carousels) — HUMAN_VOICE_RULES on the system prompt + humanizePass on headline/reasons/details/captionQuestion with shape validation, fail-open
+- apps/web/src/lib/content-factory/moody-carousel.ts: generateSignTopic + generateAuraTopic (dormant single-line lanes) — rules + gate on the line; scene never gated
+- apps/web/src/lib/content-factory/quote-loop.ts: generateQuoteConcept — rules + gate on the quote (4-20 word re-check)
+- apps/web/src/lib/content-factory/ambient-video.ts: generateAmbientScript — gate on title/caption/script, run BEFORE the vocalScript word-lock so a rewritten script drops the tagged read instead of drifting from the audio. HUMAN_VOICE_RULES deliberately NOT appended to this lane's prompt (its spoken-style rules use ellipsis/em-dash pause direction, which conflicts); the gate pass is the enforcement
+- apps/web/src/lib/content-factory/generate.ts: HUMAN_VOICE_RULES appended to BRAND_SYSTEM_PROMPT (covers blog too); new gateSocialPieces() helper; gate wired into generateTwitterPosts, generateTikTokScripts, generateAdCopy, generateInstagramPost (caption+hook; imagePrompt/hashtags untouched)
+- Already gated in the previous commit: all 5 moody-family nightly lanes (shared builder — versions delegates there too), selfie, both phone-quote lanes
+- NOT gated: generateBlogPost body (1,400+ word HTML exceeds the gate's output budget and it's not a social post — the prevention rules now ride on its prompt), blog/niche-research/strategy-memo callClaude users (not social posts)
+
+### Manual steps needed
+None — deploy is automatic on push.
+
+### Notes
+- Every gate call fails open with a console.warn + ClaudeCallLog failure row — a gate outage degrades copy quality, never kills a run
+- Slugs everywhere derive from the pre-gate text so filenames/dedupe keys stay stable
+- Dormant lanes were gated on purpose: reviving a lane must not silently reopen an ungated path
+
 ## [2026-09-04] — Human-voice approval gate, title sense-check, and a real phone-screen quote slide
 
 **Requested by:** Keenan
