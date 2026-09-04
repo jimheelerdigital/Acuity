@@ -112,13 +112,14 @@ async function renderMarkup(
   fontPath: string | null,
   maxWidth: number,
   lineSpacing: number,
-  padding = 0
+  padding = 0,
+  align: "centre" | "left" = "centre"
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const textOpts: Record<string, unknown> = {
     text: markup,
     width: maxWidth,
     rgba: true,
-    align: "centre",
+    align,
     spacing: Math.round(lineSpacing),
   };
   if (fontPath) {
@@ -652,34 +653,100 @@ export async function renderMoodyTextOverlay(
  * (2026-09-03, per Keenan's reference screenshots: "the next slide is a
  * phone screen with a quote about something important").
  *
- * The slide IS the phone screen — no photography, no gpt-image-2. The
- * quote is deterministic text composed here so it can never be
- * misspelled by an image model. Two variants:
- * - "women" (Ripple): soft light-blue notes-app screen, near-black
- *   typed text — cloned from the reference.
- * - "men" (BWK): near-black screen, off-white text — same layout in
- *   the BWK dark identity.
+ * 2026-09-04 REDESIGN, per Keenan ("IT's supposed to look like text
+ * written out on a phone screen... not just a blank ass image"): the
+ * slide now renders full Notes-app chrome — status bar (time, signal,
+ * wifi, battery), a "< Notes" back row with action dots, a small
+ * centered date line, and the quote typed LEFT-ALIGNED near the top
+ * like a real note. All deterministic (no gpt-image-2 — the quote can
+ * never be misspelled). Two variants:
+ * - "women" (Ripple): soft light-blue notes screen, near-black text.
+ * - "men" (BWK): true iOS-dark notes screen (#1C1C1E), gold accent.
  */
 export async function renderPhoneQuoteSlide(
   quote: string,
   variant: "women" | "men"
 ): Promise<Buffer> {
-  const fontPath = await ensureFontFile("Medium");
-  const bg =
-    variant === "women"
-      ? { r: 0xd9, g: 0xea, b: 0xf7 }
-      : { r: 0x12, g: 0x14, b: 0x16 };
-  const textColor = variant === "women" ? "#1C2733" : "#F2F2F0";
+  const fontMedium = await ensureFontFile("Medium");
+  const fontBold = await ensureFontFile("Bold");
+  const isWomen = variant === "women";
 
-  const lines = wordWrap(stripUnrenderable(quote), 24);
-  const markup = `<span font_desc="Poppins Medium 54" foreground="${textColor}">${lines
+  const bg = isWomen
+    ? { r: 0xd9, g: 0xea, b: 0xf7 }
+    : { r: 0x1c, g: 0x1c, b: 0x1e };
+  const textColor = isWomen ? "#1C2733" : "#F2F2F0";
+  const chrome = isWomen ? "#1C2733" : "#F2F2F0"; // status-bar glyphs
+  const accent = isWomen ? "#3D6186" : "#E5B84C"; // back label + actions
+  const subtle = isWomen ? "#5C7288" : "#98989E"; // date line
+
+  // ── Status-bar + nav chrome (shapes only — no SVG text, so no
+  // system-font dependency in the serverless runtime) ──
+  const chromeSvg = `<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
+  <!-- signal bars -->
+  <rect x="806" y="58" width="10" height="12" rx="3" fill="${chrome}"/>
+  <rect x="822" y="52" width="10" height="18" rx="3" fill="${chrome}"/>
+  <rect x="838" y="46" width="10" height="24" rx="3" fill="${chrome}"/>
+  <rect x="854" y="40" width="10" height="30" rx="3" fill="${chrome}"/>
+  <!-- wifi -->
+  <path d="M 888 52 A 30 30 0 0 1 928 52" stroke="${chrome}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M 896 61 A 18 18 0 0 1 920 61" stroke="${chrome}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <circle cx="908" cy="70" r="5" fill="${chrome}"/>
+  <!-- battery -->
+  <rect x="948" y="42" width="58" height="28" rx="9" stroke="${chrome}" stroke-width="4" fill="none"/>
+  <rect x="954" y="48" width="34" height="16" rx="4" fill="${chrome}"/>
+  <path d="M 1010 50 Q 1016 56 1010 62" stroke="${chrome}" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- back chevron -->
+  <path d="M 92 132 L 64 162 L 92 192" stroke="${accent}" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- action dots (ellipsis in circle) -->
+  <circle cx="1002" cy="162" r="30" stroke="${accent}" stroke-width="5" fill="none"/>
+  <circle cx="988" cy="162" r="4.5" fill="${accent}"/>
+  <circle cx="1002" cy="162" r="4.5" fill="${accent}"/>
+  <circle cx="1016" cy="162" r="4.5" fill="${accent}"/>
+</svg>`;
+
+  // ── Text pieces (Pango pipeline, same as every slide) ──
+  const timePiece = await renderMarkup(
+    `<span font_desc="Poppins Bold 34" foreground="${chrome}">9:41</span>`,
+    fontBold,
+    200,
+    0,
+    4,
+    "left"
+  );
+  const notesPiece = await renderMarkup(
+    `<span font_desc="Poppins Medium 40" foreground="${accent}">Notes</span>`,
+    fontMedium,
+    300,
+    0,
+    4,
+    "left"
+  );
+  const now = new Date();
+  const dateLine = `${now.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })} at 9:41 PM`;
+  const datePiece = await renderMarkup(
+    `<span font_desc="Poppins Medium 28" foreground="${subtle}">${escapePango(dateLine)}</span>`,
+    fontMedium,
+    600,
+    0,
+    4
+  );
+
+  const quoteLines = wordWrap(stripUnrenderable(quote), 28);
+  const quoteMarkup = `<span font_desc="Poppins Medium 52" foreground="${textColor}">${quoteLines
     .map((l) => escapePango(l))
     .join("\n")}</span>`;
-  const maxTextW = OUTPUT_W - PADDING_X * 2;
-  const main = await renderMarkup(markup, fontPath, maxTextW, 22, 8);
-
-  const top = Math.round((OUTPUT_H - main.height) / 2);
-  const left = Math.round((OUTPUT_W - main.width) / 2);
+  const quotePiece = await renderMarkup(
+    quoteMarkup,
+    fontMedium,
+    OUTPUT_W - 96 * 2,
+    26,
+    8,
+    "left"
+  );
 
   return sharp({
     create: {
@@ -689,7 +756,17 @@ export async function renderPhoneQuoteSlide(
       background: bg,
     },
   })
-    .composite([{ input: main.buffer, top, left }])
+    .composite([
+      { input: Buffer.from(chromeSvg), top: 0, left: 0 },
+      { input: timePiece.buffer, top: 38, left: 96 },
+      { input: notesPiece.buffer, top: 138, left: 110 },
+      {
+        input: datePiece.buffer,
+        top: 268,
+        left: Math.round((OUTPUT_W - datePiece.width) / 2),
+      },
+      { input: quotePiece.buffer, top: 400, left: 96 },
+    ])
     .jpeg({ quality: 90 })
     .toBuffer();
 }

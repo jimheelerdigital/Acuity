@@ -23,6 +23,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -103,7 +104,7 @@ Chaos outside = chaos inside.
 Bring order back."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act ("EARN YOUR SILENCE", "HOLD THE LINE") or a direct prompt to engage what's inside ("READ THESE SLOWLY", "ANSWER THIS FIRST..."). Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act ("EARN YOUR SILENCE", "HOLD THE LINE") or a direct prompt to engage what's inside ("READ THESE SLOWLY", "ANSWER THIS FIRST..."). Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix the example phrases; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item:
   - "name": 1-3 words + period ("Reset day.", "Go quiet.").
   - "lines": 2-3 short paragraphs. First expands the item concretely in one sentence (can use lists: "room, car, digital files, notes"). Optional middle line: a compressed truth, equations welcome ("Chaos outside = chaos inside."). Last line: a 2-5 word command ("Bring order back.").
@@ -146,7 +147,9 @@ async function generateMoodyFamilyTopic(opts: {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 2000,
-      system: opts.system,
+      // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
+      // humanizer gate still runs on the output below.
+      system: `${opts.system}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: opts.user }],
     });
 
@@ -204,11 +207,60 @@ async function generateMoodyFamilyTopic(opts: {
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
+    const finalItems = items.slice(0, opts.maxItems ?? 6);
+
+    // Humanizer approval gate (2026-09-04, per Keenan: "every single
+    // script must pass through this first in order to be approved
+    // content"). Reader-facing text only — scenes never go through.
+    // Fails open: on gate error the prompt-side-ruled copy ships.
+    let gatedTitle = title;
+    let gatedItems = finalItems;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${opts.purpose}`,
+        voice: extractVoice(opts.system),
+        payload: {
+          title,
+          items: finalItems.map((it) => ({ name: it.name, lines: it.lines })),
+        },
+      });
+      if (
+        typeof gated.title === "string" &&
+        gated.title.trim() &&
+        Array.isArray(gated.items) &&
+        gated.items.length === finalItems.length
+      ) {
+        gatedTitle = gated.title.trim();
+        gatedItems = finalItems.map((it, i) => {
+          const g = gated.items[i];
+          const gLines =
+            Array.isArray(g?.lines) &&
+            g.lines.length === it.lines.length &&
+            g.lines.every((l) => typeof l === "string" && l.trim())
+              ? g.lines.map((l) => l.trim())
+              : it.lines;
+          return {
+            ...it,
+            name:
+              typeof g?.name === "string" && g.name.trim()
+                ? g.name.trim()
+                : it.name,
+            lines: gLines,
+          };
+        });
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${opts.purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
     return {
       slug: `${opts.slugPrefix}-${slug}`,
-      title,
+      title: gatedTitle,
       coverScene: (parsed.coverScene ?? "").trim() || items[0].scene,
-      items: items.slice(0, opts.maxItems ?? 6),
+      items: gatedItems,
     };
   } catch (err) {
     await prisma.claudeCallLog.create({
@@ -461,7 +513,7 @@ That's the whole number. Not this year's.
 Stop giving them away."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides ("DO THE MATH", "COUNT THESE HONESTLY...", "LOOK AT THE CLOCK"). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides ("DO THE MATH", "COUNT THESE HONESTLY...", "LOOK AT THE CLOCK"). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix the example phrases; if a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
   - First line: ONE life-scale number — anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
@@ -577,7 +629,7 @@ VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wis
 ${WOMEN_SCENE_BRIEFS[scheme]}
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER THESE HONESTLY...", "READ THESE SLOWLY", "BE HONEST NOW", "DON'T LOOK AWAY"). Not itself a question. A trailing "..." is allowed when it baits the swipe.
+- "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER THESE HONESTLY...", "READ THESE SLOWLY", "DON'T LOOK AWAY"). Not itself a question. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must clearly set up questions to answer. Do NOT stitch together or remix the example phrases; "DON'T LIE NOW" is the kind of garbled title that gets a post killed — if a title reads odd or random without the slides, it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the question. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise.
 - Each question hits a DIFFERENT nerve: identity, resentment, time, what she's postponing, what she'd never admit. Never two questions on the same nerve.
 - The questions must be answerable only by the reader — never rhetorical, never yes-obvious.
@@ -1487,7 +1539,7 @@ Same hour every day. Phone in another room.
 Thirty hours in a month. Most people give it zero."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. Must contain "30 DAYS" and land as a direct challenge the reader has to answer ("DO THIS FOR 30 DAYS", "30 DAYS. EARN IT."). 2-6 words, works in ALL CAPS. Never a passive label.
+- "title": the cover text — short, sweet, and impossible to scroll past. Must contain "30 DAYS" and land as a direct challenge the reader has to answer ("DO THIS FOR 30 DAYS", "30 DAYS. EARN IT."). 2-6 words, works in ALL CAPS. Never a passive label. SENSE CHECK (non-negotiable): the title must make instant, obvious sense on its own — a natural phrase a real person would actually say. If it reads odd or garbled out of context, it is WRONG — write a different one.
 - Each protocol needs a THEME for the month (sleep + training + focus, money discipline, physical hardening, digital detox, building a skill, going quiet, cutting the circle, morning ownership) — vary it post to post, invent new themes, and NEVER reuse a theme from the recent-posts list.
 - Each item: "name" = the step, 2-5 words ("One hour on the skill."). "lines" = 2-3 short paragraphs: the exact rule (specific time/count/limit), then why it compounds over 30 days.
 - Each item's "scene": one concrete sentence for the photograph, per SCENES above.
@@ -1569,7 +1621,7 @@ export async function generatePhoneQuoteTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1000,
-      system: PHONE_QUOTE_SYSTEM[audience],
+      system: `${PHONE_QUOTE_SYSTEM[audience]}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -1621,11 +1673,41 @@ export async function generatePhoneQuoteTopic(
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
+    // Humanizer approval gate (2026-09-04) — hook + quote only, never
+    // the coverScene image direction. Fails open on error.
+    let gatedHook = hook;
+    let gatedQuote = quote;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${purpose}`,
+        voice: extractVoice(PHONE_QUOTE_SYSTEM[audience]),
+        payload: { hook, quote },
+      });
+      const gw =
+        typeof gated.quote === "string"
+          ? gated.quote.trim().split(/\s+/).length
+          : 0;
+      if (
+        typeof gated.hook === "string" &&
+        gated.hook.trim() &&
+        gw >= 10 &&
+        gw <= 60
+      ) {
+        gatedHook = gated.hook.trim();
+        gatedQuote = gated.quote.trim();
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
     return {
       slug: `${audience === "men" ? "phone-quote-men" : "phone-quote"}-${slug}`,
-      hook,
+      hook: gatedHook,
       coverScene,
-      quote,
+      quote: gatedQuote,
     };
   } catch (err) {
     await prisma.claudeCallLog.create({

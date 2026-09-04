@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-04] — Human-voice approval gate, title sense-check, and a real phone-screen quote slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three quality fixes from today's escalations. First, every piece of post copy (titles, slide text, hooks, quotes, captions) now passes through a final "humanizer" approval gate before it's accepted: a checker armed with the full library of known AI-writing tells (em dashes, "It's not X, it's Y", fake-deep one-liners, forced groups of three, chatbot filler, and ~20 more) that rewrites anything that sounds like a bot wrote it. Second, cover titles now have a hard sense-check rule so a garbled title like "DON'T LIE NOW" can never ship — the title must read as a natural phrase a real person would say, on its own, instantly. Third, the phone-quote lane's second slide is no longer text floating on a blank background: it's now a pixel-perfect fake iOS Notes screenshot (status bar, "< Notes" back button, date line, the quote typed out) — light blue for the women's account, dark with gold for the men's. The phone-quote format is locked exactly as you specified: slide 1 = your hook line on a fresh photo, slide 2 = the quote on the Notes screen, every single time, no variance. The Notes screen is drawn by our own code, not the image AI, so the quote can never be misspelled or garbled.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/humanizer.ts: `HUMAN_VOICE_RULES` (prevention block appended to every live topic-gen system prompt), `HUMANIZER_PATTERNS` (26 prose patterns vendored from github.com/blader/humanizer SKILL.md, MIT), `humanizePass<T>()` (post-validation Claude call on reader-facing strings only — same-shape JSON back, ClaudeCallLog bookkeeping, throws after logging), `extractVoice()`
+- apps/web/src/lib/content-factory/moody-carousel.ts: SENSE CHECK clause added to all 4 live title rules (shared moody builder, memento-women, questions, protocol); removed "BE HONEST NOW" from the questions examples (it seeded the "DON'T LIE NOW" remix); generateMoodyFamilyTopic + generatePhoneQuoteTopic now append HUMAN_VOICE_RULES to system prompts and run humanizePass on title/items and hook/quote with strict merge-back validation (shape, lengths, non-empty; quote re-checked 10-60 words). Gate FAILS OPEN — on error the pre-gate copy ships and the failure is logged, so the overnight run never dies
+- apps/web/src/lib/content-factory/generate-topic.ts: same gate wiring for the selfie lane (headline/steps/details/captionQuestion)
+- apps/web/src/lib/content-factory/compose.ts: renderPhoneQuoteSlide fully rewritten as an iOS Notes screenshot — SVG shapes for chrome (status bar, chevron, ellipsis; no SVG text, avoids serverless font issues), Pango-rendered text pieces (9:41, "Notes", date line, left-aligned quote); women #D9EAF7/#1C2733/#3D6186, men #1C1C1E/#F2F2F0/#E5B84C. renderMarkup gained an `align` param ("centre" | "left")
+- No schema, cron, or Inngest changes; slide-2 marker prompt unchanged so recomposeSlide still re-renders programmatically
+
+### Manual steps needed
+None — deploy is automatic on push. Tonight's 5-8 UTC runs pick everything up.
+
+### Notes
+- The humanizer gate adds one extra claude-sonnet call per post (~1-2¢) — negligible next to the 25¢/image spend
+- Scenes/coverScene image directions NEVER go through the gate (churn there wastes image money and can break markers); only reader-facing strings do
+- The "DON'T LIE NOW" garble happened because the model remixed example title phrases; the fix is both the sense-check rule AND removing the seed example — when a title rule changes, sweep every live lane's system prompt
+- Slide-2 renders verified visually before commit (/tmp/pq-women.jpg, /tmp/pq-men.jpg both read as genuine Notes screenshots)
+- Keenan floated alternate quote surfaces (billboard, sign, car bluetooth screen, "bat signal"); Notes screen chosen because it's the only deterministic one — AI-generated surfaces would risk garbled quote text, the exact failure class this batch fixes. A deterministic car-screen variant is buildable if he wants rotation later
+
 ## [2026-09-02] — The phone app can now be built at the new prices, without pausing the RevenueCat trial run
 
 **Requested by:** Jimmy

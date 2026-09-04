@@ -16,6 +16,7 @@ import {
 } from "./brand";
 import type { SlideEmotion } from "./animate-cover";
 import { fetchGrowthosResearch, growthosResearchBlock } from "./growthos-research";
+import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 
 const anthropic = new Anthropic();
 
@@ -288,7 +289,9 @@ export async function generateSelfieTopic(
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 2000,
-      system: SELFIE_SYSTEM_PROMPT,
+      // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
+      // humanizer gate still runs on the output below.
+      system: `${SELFIE_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -351,21 +354,69 @@ export async function generateSelfieTopic(
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
+    // Humanizer approval gate (2026-09-04, per Keenan: "every single
+    // script must pass through this first in order to be approved
+    // content"). Reader-facing text only — shots/scenes never go
+    // through. Fails open on error.
+    let gatedHeadline = parsed.headline as string;
+    let gatedSteps = steps;
+    let gatedDetails = details;
+    let gatedCaptionQuestion =
+      typeof parsed.captionQuestion === "string"
+        ? (parsed.captionQuestion as string)
+        : undefined;
+    try {
+      const gated = await humanizePass({
+        purpose: "humanize:selfie-topic",
+        voice: extractVoice(SELFIE_SYSTEM_PROMPT),
+        payload: {
+          headline: gatedHeadline,
+          steps,
+          details,
+          captionQuestion: gatedCaptionQuestion ?? "",
+        },
+      });
+      if (
+        typeof gated.headline === "string" &&
+        gated.headline.trim() &&
+        Array.isArray(gated.steps) &&
+        gated.steps.length === steps.length &&
+        gated.steps.every((s) => typeof s === "string" && s.trim()) &&
+        Array.isArray(gated.details) &&
+        gated.details.length === details.length
+      ) {
+        gatedHeadline = gated.headline.trim();
+        gatedSteps = gated.steps.map((s) => s.trim());
+        gatedDetails = details.map((d, i) =>
+          typeof gated.details[i] === "string" ? gated.details[i].trim() : d
+        );
+        if (
+          gatedCaptionQuestion &&
+          typeof gated.captionQuestion === "string" &&
+          gated.captionQuestion.trim()
+        ) {
+          gatedCaptionQuestion = gated.captionQuestion.trim();
+        }
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for selfie-topic — shipping ungated copy:`,
+        err
+      );
+    }
+
     return {
       slug,
-      headline: parsed.headline,
-      steps,
-      details,
+      headline: gatedHeadline,
+      steps: gatedSteps,
+      details: gatedDetails,
       mood: isMood(parsed.mood) ? parsed.mood : undefined,
       coverScene:
         typeof parsed.cover?.scene === "string" && parsed.cover.scene.trim()
           ? parsed.cover.scene.trim()
           : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone raised covering her whole face, mirror lightly smudged",
       stepShots,
-      captionQuestion:
-        typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
-          ? parsed.captionQuestion.trim()
-          : undefined,
+      captionQuestion: gatedCaptionQuestion?.trim() || undefined,
     };
   } catch (err) {
     const durationMs = Date.now() - start;
