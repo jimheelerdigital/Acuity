@@ -93,6 +93,12 @@
         "EXPO_PUBLIC_NEW_PRICING": "1"
       }
     },
+    "v10-pricing": {
+      "extends": "pricing",
+      "env": {
+        "EXPO_PUBLIC_ONBOARDING_V10": "true"
+      }
+    },
     "testflight-async": {
       "extends": "production",
       "channel": "v133-async-validation",

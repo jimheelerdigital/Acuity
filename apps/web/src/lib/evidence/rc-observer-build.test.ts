@@ -95,7 +95,16 @@ function flagsForProfile(profile: string) {
 }
 
 /** Profiles that intentionally configure the RC SDK in observer mode. */
-const OBSERVER_PROFILES = ["observer", "observer-internal", "pricing"] as const;
+const OBSERVER_PROFILES = [
+  "observer",
+  "observer-internal",
+  "pricing",
+  // Extends `pricing`, so it inherits the soak as well as new pricing.
+  "v10-pricing",
+] as const;
+
+/** Profiles that intentionally ship V2 prices. Exact list — see below. */
+const NEW_PRICING_PROFILES = ["pricing", "v10-pricing"];
 
 describe.each(OBSERVER_PROFILES)("eas.json %s profile", (profile) => {
   const env = () => resolvedEnv(profile);
@@ -176,11 +185,24 @@ describe("no EAS profile can advance the RC migration past observer", () => {
     }
   });
 
-  it("new pricing is set on `pricing` and NOWHERE else", () => {
+  it("new pricing is set ONLY on the profiles built to carry it", () => {
+    // Deliberately an exact list, not a subset check: a leak into
+    // production/observer/v10 must fail here. `v10-pricing` is on the list
+    // because it extends `pricing` on purpose, for QA that needs both the
+    // v10 flow and V2 prices in one binary.
     const withPricing = Object.keys(eas.build).filter(
       (n) => resolvedEnv(n).EXPO_PUBLIC_NEW_PRICING !== undefined
     );
-    expect(withPricing).toEqual(["pricing"]);
+    expect(withPricing.sort()).toEqual([...NEW_PRICING_PROFILES].sort());
+  });
+
+  it("the v10 onboarding flag stays off everywhere except its own profiles", () => {
+    const withV10 = Object.keys(eas.build).filter(
+      (n) => resolvedEnv(n).EXPO_PUBLIC_ONBOARDING_V10 !== undefined
+    );
+    expect(withV10.sort()).toEqual(["v10", "v10-pricing"]);
+    // The store build must never carry it.
+    expect(resolvedEnv("production").EXPO_PUBLIC_ONBOARDING_V10).toBeUndefined();
   });
 
   it("observer, observer-internal and production stay on legacy pricing", () => {
@@ -229,6 +251,36 @@ describe("the `pricing` profile — new pricing WITHOUT disturbing the soak", ()
     };
     expect(easFull.submit?.pricing).toBeDefined();
     expect(easFull.submit?.pricing?.extends).toBe("production");
+  });
+});
+
+describe("the `v10-pricing` profile — both flags in one QA binary", () => {
+  const env = () => resolvedEnv("v10-pricing");
+
+  it("extends `pricing` and declares only the v10 flag", () => {
+    expect(eas.build["v10-pricing"]?.extends).toBe("pricing");
+    expect(Object.keys(eas.build["v10-pricing"]?.env ?? {})).toEqual([
+      "EXPO_PUBLIC_ONBOARDING_V10",
+    ]);
+  });
+
+  it("carries BOTH flags — the combination no other profile had", () => {
+    // This pairing is what makes the parser split reachable, so it is also
+    // what the single-parser fix has to hold up under. See
+    // lib/evidence/new-pricing-flag-parity.test.ts.
+    expect(env().EXPO_PUBLIC_ONBOARDING_V10).toBe("true");
+    expect(env().EXPO_PUBLIC_NEW_PRICING).toBe("1");
+  });
+
+  it("still keeps the observer soak running", () => {
+    expect(env().EXPO_PUBLIC_RC_OBSERVER).toBe("1");
+    expect(rcConfigureMode(flagsForProfile("v10-pricing"))).toBe("observer");
+  });
+
+  it("advances no other RC stage", () => {
+    expect(env().EXPO_PUBLIC_RC_SOURCE_OF_TRUTH).toBeUndefined();
+    expect(env().EXPO_PUBLIC_RC_SDK_PURCHASES).toBeUndefined();
+    expect(rcUnsafePurchaseConfig(flagsForProfile("v10-pricing"))).toBe(false);
   });
 });
 
