@@ -335,6 +335,10 @@ export function buildMoodyImagePrompt(
     // images that are hyper realistic").
     "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. TACK-SHARP and high-resolution — crisp, clear, and perfectly focused on the subject; never blurry, hazy, murky, soft, or low-quality. Physically believable optics: honest exposure, natural depth of field, at most a faint touch of grain, light behaving the way it actually does. It must be INDISTINGUISHABLE from a real photograph someone took.",
     "Absolutely NOT a 3D render, NOT CGI, NOT digital art, NOT an illustration, NOT a matte painting, and NOT the oversaturated too-perfect AI look — no plastic surfaces, no impossible glow, no fake-clean geometry.",
+    // Fine-detail mandate (2026-09-04, per Keenan's blurred-leaves
+    // example: "look how blurred the leaves are... better attention to
+    // detail").
+    "ATTENTION TO DETAIL: every element in the frame is fully resolved with fine, true texture — individual leaves on trees, fabric weave, wood and stone grain, distant buildings all crisply defined. NO mushy, smeared, half-melted, or painterly areas ANYWHERE in the frame, including the background and edges. Any background softness must be genuine optical depth of field, never smear.",
     "Vertical 9:16 composition, calm and uncluttered in the middle of the frame.",
     // Variance directive (2026-08-31, per Keenan: "create a ton of
     // variance between posts and image generations while keeping the

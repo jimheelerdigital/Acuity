@@ -412,6 +412,10 @@ export async function generateImage(prompt: string): Promise<Buffer> {
     prompt,
     n: 1,
     size: "1024x1792", // 9:16 portrait — native TikTok carousel dimensions
+    // 2026-09-04, per Keenan's TRUST THE PROCESS reference: "images
+    // need to be this level of quality" — pin max fidelity instead of
+    // the model's default tier. ~3x cost per image (see estimateImageCost).
+    quality: "high",
   });
 
   const b64 = response.data?.[0]?.b64_json;
@@ -440,6 +444,8 @@ export async function generateImageWithReference(
     // The edit endpoint's tallest portrait size (1024x1792 is
     // generate-only); composeSlide cover-crops to 1080x1920 downstream.
     size: "1024x1536",
+    // Max fidelity (2026-09-04) — same mandate as generateImage.
+    quality: "high",
   });
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("gpt-image-2 edit returned no image data");
@@ -473,9 +479,9 @@ export async function generateMoodyImage(
   return { buffer: await generateImage(prompt), prompt };
 }
 
-/** gpt-image-2 at 1024x1536 costs ~$0.04-0.08 per image. Estimate conservatively. */
+/** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. */
 function estimateImageCost(): number {
-  return 8; // 8 cents per image
+  return 25; // 25 cents per image at quality "high"
 }
 
 /** Minimal topic for slides whose post's topicSlug isn't in CAROUSEL_TOPICS (e.g. AI-generated topics). */

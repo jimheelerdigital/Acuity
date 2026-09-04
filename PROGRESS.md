@@ -38,6 +38,29 @@ Nothing changes for existing subscribers: grandfathering is automatic, so everyo
 - **`pricing` was added to `OBSERVER_PROFILES` deliberately** — it configures the SDK in observer mode, so it should be held to every observer expectation. The one exception is the NEW_PRICING assertion, which moved out of the shared block with a comment saying why.
 - **A submit profile was needed.** `eas submit --profile pricing` on a missing profile fails with "Missing submit profile in eas.json"; with the new one it gets past resolution to the archive prompt. That contrast is how the profile was verified without running a real submission.
 - Baselines: web tsc **161 before, 161 after**; mobile tsc **19 before, 19 after** — both measured by stashing. (The brief said 163; main has drifted to 161. That is five briefs running with a stale tsc number.) Tests **724/724** across 43 files; the RC evidence file went 22 → 34. Six mutations of `eas.json` each fail between 1 and 7 tests.
+## [2026-09-04] — Image generation bumped to maximum quality with a fine-detail mandate
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every generated image now runs at the image model's maximum quality tier instead of its default — this is the single biggest lever for the fidelity you flagged (the TRUST THE PROCESS reference level, and the blurred leaves on the bench photo). On top of that, every image instruction now carries an explicit attention-to-detail rule: individual leaves, fabric weave, wood grain, and background elements must all be fully resolved — no mushy, smeared, or half-melted areas anywhere in the frame, on any lane (scenery, selfies, and aesthetic shots alike). Heads up on cost: max quality is roughly 3x the per-image price — about 25¢ per image instead of 8¢, so a full 9-post day lands around $10-12 in image spend instead of ~$3-4.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/carousel-generate.ts: `quality: "high"` pinned on both gpt-image-2 calls (images.generate at 1024x1792 and images.edit at 1024x1536); estimateImageCost 8¢ → 25¢ with updated comment
+- apps/web/src/lib/content-factory/moody-carousel.ts: buildMoodyImagePrompt gains an ATTENTION TO DETAIL line (fully resolved fine texture everywhere; background softness must be optical depth of field, never smear) — covers all scenery lanes + phone-quote covers + quote loop
+- apps/web/src/lib/content-factory/brand.ts: same ATTENTION TO DETAIL line added to SELFIE_VISUAL_DNA (mirror selfies) and SELFIE_AESTHETIC_DNA (aesthetic/POV shots — the blurred-leaves bench image was this lane)
+- No schema, cron, or Inngest changes
+
+### Manual steps needed
+None — deploy is automatic on push. Tonight's 5-8 UTC runs pick it up.
+
+### Notes
+- The quality param was previously unset, so gpt-image-2 was serving its default tier — the mushy foliage is a classic sub-max-tier artifact; the prompt-side detail mandate alone would not have fixed it.
+- Cost math: ~45 images/day at 25¢ ≈ $11/day ≈ $340/month, up from ~$3.60/day. Flagged to Keenan in the PR of record (this entry); dial back to default tier by removing the two `quality` lines if spend becomes a problem.
+- The admin cost estimator (estimateImageCost) was updated in the same commit so dashboard numbers stay honest.
+
 ## [2026-09-03] — Content factory rebuilt around the winning posts: 9 posts/day, new HOLD THE LINE and phone-quote lanes
 
 **Requested by:** Keenan
