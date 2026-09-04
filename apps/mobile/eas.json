@@ -114,6 +114,9 @@
     "pricing": {
       "extends": "production"
     },
+    "v10-pricing": {
+      "extends": "pricing"
+    },
     "preview": {
       "ios": {
         "appleId": "jim@heelerdigital.com",

@@ -282,6 +282,22 @@ describe("the `v10-pricing` profile — both flags in one QA binary", () => {
     expect(env().EXPO_PUBLIC_RC_SDK_PURCHASES).toBeUndefined();
     expect(rcUnsafePurchaseConfig(flagsForProfile("v10-pricing"))).toBe(false);
   });
+
+  it("has a matching submit profile — submit does not inherit from build", () => {
+    // Build and submit are separate namespaces in eas.json. A build
+    // profile without a submit counterpart fails at `eas submit` with
+    // "Missing submit profile", which is a bad thing to discover with a
+    // finished QA binary in hand. Chains to `production` via `pricing`,
+    // so it picks up the same App Store Connect config.
+    const easFull = JSON.parse(readFileSync(EAS_PATH, "utf8")) as {
+      submit?: Record<string, { extends?: string }>;
+    };
+    expect(easFull.submit?.["v10-pricing"]).toBeDefined();
+    expect(easFull.submit?.["v10-pricing"]?.extends).toBe("pricing");
+    // ...and the parent must itself resolve, or the chain dead-ends.
+    expect(easFull.submit?.pricing?.extends).toBe("production");
+    expect(easFull.submit?.production).toBeDefined();
+  });
 });
 
 describe("rcConfigureMode — the branch configureRevenueCat takes", () => {
