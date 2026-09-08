@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-08] — BWK image variety expanded to 18 families with unlimited scene invention
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d3bdfdad
+
+### In plain English (for Keenan)
+Per your "unlimited amounts — every post should be a unique image": the scene system doesn't pick from a fixed list — the AI writes a brand-new scene description for every single image, so the library is infinite. What changed: BWK now rotates 18 different visual worlds instead of 9 (added: the forge, empty fight gyms, candlelit monasteries, night stadium tracks, motorcycles/cars in the dark, hourglasses and clocks, desert roads, frozen lakes, and dark libraries), the wildlife family opens to the entire animal kingdom instead of five examples, and every scene instruction now carries a hard rule: the examples are seeds only — invent something never used before, every slide, every post.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts only
+- MEN_COVER_FAMILIES 9 → 18 (forge, combat gym, monastery, night track, machines, time still-life, desert, frozen world, war room)
+- Apex wildlife brief broadened to the full animal kingdom + never-reuse-a-recent-animal rule
+- SCENE_BRIEF.men + PROTOCOL_SYSTEM_PROMPT: new families added compactly; closing "inspiration, not a menu" line upgraded to an UNLIMITED LIBRARY RULE (invent fresh subject/location/season/weather/time/vantage per slide, never verbatim, never repeat recent)
+- rollMenCoverRule: rolled family's cover must be a never-before-used scene inside that family
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — pushed and deployed this session; BWK example triggered for Keenan's review
+
+### Notes
+- Scene uniqueness is enforced by prompt mandate, not a DB check — the model doesn't see recent scene text (avoidBlock covers titles/substance only). If near-duplicate images still appear, the next lever is plumbing recent coverScene/imagePrompt strings into the avoid block
+- Women's briefs already carry an "inspiration, not a menu — invent new" clause; extend the stronger UNLIMITED LIBRARY wording there if Keenan flags Ripple repetition
+
 ## [2026-09-08] — Five new photo styles: statues, wildlife, and luxury objects for BWK; letters and quiet rooms for Ripple
 
 **Requested by:** Keenan
