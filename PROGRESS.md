@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-08] — Quote slides now live inside real scenes: texts, car screens, billboards, signs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4d59d00e
+
+### In plain English (for Keenan)
+You said the drawn phone looked "way too generic" — so the quote slide is now built into the environment, the way you asked. The AI photographs a real scene that contains a blank glowing screen — a phone in someone's hand, an open flip phone, a car dashboard display, a billboard on a street, or a letterboard sign outside a shop (it rotates randomly, warm cozy scenes for Ripple, dark moody ones for BWK) — and our code finds that blank screen in the photo and types the quote onto it. A phone in a hand shows a real incoming text from a friend, complete with the message bubble and typing bar. The words are still drawn by our own code, never by the AI, so they can never be misspelled. If the AI botches the screen (tilted, missing), the system retries once, then quietly falls back to the previous phone look so the daily post always ships.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: detectBrightRect (270×480 grayscale downsample, luminance ≥228 threshold, largest connected component, validates ≥3% frame area, ≥0.82 bbox fill ratio, rejects blown-out frames — tilted/absent screens return null); renderSurfaceOverlay renders per-surface content at 1080-wide design res then downscales into the detected rect (iMessage thread w/ bottom-pinned incoming bubble + input bar, light for women / iOS-dark for men; flip-phone green-LCD SMS; car infotainment w/ brand accent; billboard; letterboard sign in caps); composeQuoteSurfaceSlide ties it together with per-surface aspect validation (SURFACE_ASPECT) and 2% overscan
+- apps/web/src/lib/content-factory/moody-carousel.ts: QUOTE_SURFACES/rollQuoteSurface/buildQuoteSurfacePrompt — per-surface per-audience scene pools; prompt demands a pure-white blank screen, straight-on with edges parallel to frame, the brightest thing in the photo, no other bright areas, no text anywhere
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen rolls a surface, generates the scene, composites; detection failure regenerates the scene once, then falls back to renderPhoneQuoteSlide (drawn phone over the last scene, or flat with none). New marker "PHONE-QUOTE SURFACE (variant/surface)"; raw scene still stored as rawImageUrl
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide branch for the SURFACE marker — re-fetches the raw scene, re-detects the screen, re-composites the edited quote; falls back to drawn phone if detection or the fetch fails. Old "PHONE-QUOTE NOTE SCREEN" slides keep their existing branch
+
+### Manual steps needed
+- [ ] Keenan says "push it" — remember the push must include `npx vercel deploy --prod --yes` from the repo root (git auto-deploy is still broken) (Keenan)
+- [ ] After deploy, trigger fresh examples for both phone-quote lanes so Keenan can judge the new look on real posts (Claude Code, on "push it")
+
+### Notes
+- Tested end-to-end with two real gpt-image-2 scenes (~50¢): hand-held iPhone in lamp-lit bedroom (women) and car dashboard at night (men) — detection landed first try on both, results at /tmp/qsurf-real/. All 5 surfaces × 2 variants also pass on synthetic scenes; no-screen and 25°-tilted-screen negatives correctly return null
+- The threshold approach depends on the prompt keeping the screen the ONLY bright area — if real runs show detection failing (falling back to the drawn phone), the retry+fallback chain means posts still ship, and the failure logs as "Quote-surface screen not detected"
+- Billboard/sign shrink the font to fit 20–45-word quotes; sign renders in caps (letterboards are caps), billboard keeps lowercase
+- tsc holds the 246-line pre-existing baseline; the two "Cannot find namespace 'sharp'" compose.ts errors in it are pre-existing, only line numbers shifted
+
 ## [2026-09-08] — The quote slide is now a real phone photographed in a scene
 
 **Requested by:** Keenan
@@ -23,7 +48,7 @@ The phone-quote lane's second slide is no longer a full-screen Notes page — it
 - apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide's PHONE-QUOTE marker branch fetches slide.rawImageUrl (if present) and re-composites the same backdrop on text edits; falls back to full-bleed if the fetch fails or no raw exists
 
 ### Manual steps needed
-- [ ] Keenan says "push it" — FOUR commits are now queued locally (sense-check + Notes screen, humanizer skill, gate coverage, this one); nothing is live until pushed
+- [x] Keenan says "push it" — pushed + manually deployed via `npx vercel deploy --prod --yes` on 2026-09-08 (git auto-deploy found broken; see deploy notes in scripts/deploy-main.sh)
 
 ### Notes
 - The marker prefix "PHONE-QUOTE NOTE SCREEN" is unchanged, so recomposeSlide still catches old and new slides alike; old slides have no rawImageUrl and correctly re-render full-bleed
