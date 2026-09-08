@@ -11,6 +11,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useTheme } from "@/contexts/theme-context";
+
+import { FunnelCta } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -240,7 +242,7 @@ export default function V10Reveal() {
                       style={{
                         fontFamily: tokens.fontSans,
                         fontSize: 14,
-                        color: tokens.textTer,
+                        color: tokens.textSec,
                       }}
                     >
                       Dismiss
@@ -274,7 +276,7 @@ export default function V10Reveal() {
                   fontFamily: tokens.fontSans,
                   fontSize: 15,
                   lineHeight: 22,
-                  color: tokens.textTer,
+                  color: tokens.textSec,
                 }}
               >
                 {data.themes.slice(0, 3).join(" · ")}
@@ -408,33 +410,21 @@ export default function V10Reveal() {
             fontFamily: tokens.fontSans,
             fontSize: 14,
             lineHeight: 21,
-            color: tokens.textTer,
+            color: tokens.textSec,
             marginBottom: 32,
           }}
         >
           {V10_COMPOUNDING_FOOTER}
         </Text>
 
-        <Pressable
+        <FunnelCta
+          label="Keep building my Ripple"
           onPress={() => {
             trackV10("v10_keep_building_tapped", { branch });
             router.push("/onboarding-new/paywall");
           }}
-          accessibilityRole="button"
-          style={({ pressed }) => ({
-            backgroundColor: tokens.primary,
-            borderRadius: 999,
-            paddingVertical: 18,
-            alignItems: "center",
-            transform: [{ scale: pressed ? 0.99 : 1 }],
-          })}
-        >
-          <Text
-            style={{ fontFamily: tokens.fontDisplay, fontSize: 17, color: "#ffffff" }}
-          >
-            Keep building my Ripple
-          </Text>
-        </Pressable>
+          tokens={tokens}
+        />
       </ScrollView>
     </SafeAreaView>
   );

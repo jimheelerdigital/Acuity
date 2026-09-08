@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
+
+import { FunnelCta } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import {
@@ -245,28 +247,7 @@ export default function V10Paywall() {
         </View>
 
         {/* ── Z6 CTA ─────────────────────────────────────────────── */}
-        <Pressable
-          onPress={onPurchase}
-          accessibilityRole="button"
-          accessibilityLabel={cta.label}
-          style={({ pressed }) => ({
-            backgroundColor: tokens.primary,
-            borderRadius: 999,
-            paddingVertical: 18,
-            alignItems: "center",
-            transform: [{ scale: pressed ? 0.99 : 1 }],
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: tokens.fontDisplay,
-              fontSize: 17,
-              color: "#ffffff",
-            }}
-          >
-            {cta.label}
-          </Text>
-        </Pressable>
+        <FunnelCta label={cta.label} onPress={onPurchase} tokens={tokens} />
         <Text
           style={{
             fontFamily: tokens.fontSans,

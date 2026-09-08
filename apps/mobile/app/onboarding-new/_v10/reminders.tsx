@@ -5,6 +5,8 @@ import { router } from "expo-router";
 
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+
+import { FunnelCta } from "./_ui";
 import { api } from "@/lib/api";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
@@ -167,29 +169,12 @@ export default function V10Reminders() {
         ) : null}
 
         {selected ? (
-          <Pressable
+          <FunnelCta
+            label={shouldPromptForPush(selected) ? "Sounds good" : "Continue"}
             onPress={onConfirm}
-            disabled={busy}
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              backgroundColor: tokens.primary,
-              borderRadius: 999,
-              paddingVertical: 18,
-              alignItems: "center",
-              opacity: busy ? 0.6 : 1,
-              transform: [{ scale: pressed ? 0.99 : 1 }],
-            })}
-          >
-            <Text
-              style={{
-                fontFamily: tokens.fontDisplay,
-                fontSize: 17,
-                color: "#ffffff",
-              }}
-            >
-              {shouldPromptForPush(selected) ? "Sounds good" : "Continue"}
-            </Text>
-          </Pressable>
+            tokens={tokens}
+            busy={busy}
+          />
         ) : null}
       </ScrollView>
     </SafeAreaView>

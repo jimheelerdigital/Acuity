@@ -14,6 +14,8 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
+
+import { CoralScreen, FunnelCta, coralType } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -47,6 +49,7 @@ export default function V10Mirror() {
   // Dark per spec §1 (screens 1-2 dark, 3+ light), regardless of the user's
   // saved appearance preference.
   const tokens = makeAcuityTokens({ dark: true, accent: palette });
+  const ct = coralType(tokens);
 
   const [branch, setBranch] = useState<V10Branch>("open");
   const [showDisclosure, setShowDisclosure] = useState(false);
@@ -108,7 +111,8 @@ export default function V10Mirror() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -122,26 +126,12 @@ export default function V10Mirror() {
         {/* Branch line — large, the "mirror" moment. */}
         <Text
           accessibilityRole="header"
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 28,
-            lineHeight: 38,
-            color: tokens.text,
-            marginBottom: 28,
-          }}
+          style={{ ...ct.h1, marginBottom: 28 }}
         >
           {V10_BRANCHES[branch].mirror}
         </Text>
 
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 17,
-            lineHeight: 26,
-            color: tokens.textSec,
-            marginBottom: 40,
-          }}
-        >
+        <Text style={{ ...ct.lead, marginBottom: 40 }}>
           {V10_UNIVERSAL_LINE}
         </Text>
 
@@ -155,35 +145,20 @@ export default function V10Mirror() {
             }}
           />
         ) : (
-          /* The CTA is the first light element on a dark screen — spec §4. */
-          <Pressable
+          /* The CTA is the first light element on the screen — spec §4.
+             `onCoral` because this one sits on the coral gradient, whose
+             lower stop is the same primaryLo the button is normally
+             filled with. */
+          <FunnelCta
+            label={V10_START_CTA}
             onPress={onStart}
-            disabled={requesting}
-            accessibilityRole="button"
-            accessibilityLabel={V10_START_CTA}
-            style={({ pressed }) => ({
-              backgroundColor: tokens.primary,
-              opacity: requesting ? 0.7 : 1,
-              borderRadius: 999,
-              paddingVertical: 18,
-              alignItems: "center",
-              transform: [{ scale: pressed ? 0.99 : 1 }],
-            })}
-          >
-            <Text
-              style={{
-                fontFamily: tokens.fontDisplay,
-                fontSize: 17,
-                // No on-primary token in the palette; #ffffff is the CTA label
-                // convention across onboarding-new (10 call sites).
-                color: "#ffffff",
-              }}
-            >
-              {V10_START_CTA}
-            </Text>
-          </Pressable>
+            tokens={tokens}
+            busy={requesting}
+            onCoral
+          />
         )}
       </ScrollView>
+      </SafeAreaView>
 
       <AiDisclosureSheet
         visible={showDisclosure}
@@ -191,7 +166,7 @@ export default function V10Mirror() {
         onAccept={() => void onDisclosureAccepted()}
         onDismiss={() => setShowDisclosure(false)}
       />
-    </SafeAreaView>
+    </CoralScreen>
   );
 }
 
@@ -266,30 +241,12 @@ function AiDisclosureSheet({
             for themes and reflections.
           </Text>
 
-          <Pressable
+          <FunnelCta
+            label="Got it"
             onPress={onAccept}
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              marginTop: 28,
-              backgroundColor: tokens.primary,
-              borderRadius: 999,
-              paddingVertical: 16,
-              alignItems: "center",
-              transform: [{ scale: pressed ? 0.99 : 1 }],
-            })}
-          >
-            <Text
-              style={{
-                fontFamily: tokens.fontDisplay,
-                fontSize: 16,
-                // No on-primary token in the palette; #ffffff is the CTA label
-                // convention across onboarding-new (10 call sites).
-                color: "#ffffff",
-              }}
-            >
-              Got it
-            </Text>
-          </Pressable>
+            tokens={tokens}
+            style={{ marginTop: 28 }}
+          />
         </View>
       </View>
     </Modal>
@@ -397,30 +354,14 @@ function MicDeniedPanel({
         </Text>
       )}
 
-      <Pressable
+      <FunnelCta
+        label="Send my debrief"
         onPress={() => void submit()}
+        tokens={tokens}
         disabled={!canSubmit}
-        accessibilityRole="button"
-        style={({ pressed }) => ({
-          marginTop: 16,
-          backgroundColor: tokens.primary,
-          opacity: canSubmit ? 1 : 0.5,
-          borderRadius: 999,
-          paddingVertical: 18,
-          alignItems: "center",
-          transform: [{ scale: pressed ? 0.99 : 1 }],
-        })}
-      >
-        {submitting ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <Text
-            style={{ fontFamily: tokens.fontDisplay, fontSize: 17, color: "#ffffff" }}
-          >
-            Send my debrief
-          </Text>
-        )}
-      </Pressable>
+        busy={submitting}
+        style={{ marginTop: 16 }}
+      />
 
       <Pressable onPress={onRetry} accessibilityRole="button" style={{ marginTop: 14 }}>
         <Text

@@ -5,6 +5,8 @@ import { router } from "expo-router";
 
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+
+import { FunnelCta } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
 import { signUpWithPassword, useGoogleSignIn } from "@/lib/auth";
@@ -303,7 +305,7 @@ export default function V10Save() {
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 14,
-              color: tokens.textTer,
+              color: tokens.textSec,
               textDecorationLine: "underline",
             }}
           >
@@ -330,6 +332,20 @@ function AuthButton({
   tokens: Tokens;
   primary?: boolean;
 }) {
+  // The primary variant IS the funnel CTA — delegate rather than keep a
+  // second coral-button implementation that can drift from it.
+  if (primary) {
+    return (
+      <FunnelCta
+        label={label}
+        onPress={onPress}
+        tokens={tokens}
+        disabled={disabled}
+      />
+    );
+  }
+
+  // Secondary: outlined, transparent fill, text in the primary text token.
   return (
     <Pressable
       onPress={onPress}
@@ -337,10 +353,10 @@ function AuthButton({
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => ({
-        backgroundColor: primary ? tokens.primary : "transparent",
-        borderWidth: primary ? 0 : 1,
+        backgroundColor: "transparent",
+        borderWidth: 1,
         borderColor: tokens.line,
-        borderRadius: 999,
+        borderRadius: tokens.radius.pill,
         paddingVertical: 16,
         alignItems: "center",
         opacity: disabled ? 0.5 : 1,
@@ -351,7 +367,7 @@ function AuthButton({
         style={{
           fontFamily: tokens.fontDisplay,
           fontSize: 16,
-          color: primary ? "#ffffff" : tokens.text,
+          color: tokens.text,
         }}
       >
         {label}

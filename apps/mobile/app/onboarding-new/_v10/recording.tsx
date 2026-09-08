@@ -11,6 +11,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useTheme } from "@/contexts/theme-context";
+
+import { FunnelCta } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -233,7 +235,7 @@ export default function V10Recording() {
             fontFamily: tokens.fontSans,
             fontSize: 14,
             lineHeight: 21,
-            color: tokens.textTer,
+            color: tokens.textSec,
             marginTop: 16,
           }}
         >
@@ -322,30 +324,15 @@ export default function V10Recording() {
           })}
         </View>
 
-        <Pressable
+        <FunnelCta
+          label="Stop"
+          busyLabel="Saving…"
+          busy={stopping}
           onPress={() => void handleStop()}
-          disabled={stopping}
-          accessibilityRole="button"
+          tokens={tokens}
+          size="lg"
           accessibilityLabel="Stop recording"
-          style={({ pressed }) => ({
-            backgroundColor: tokens.primary,
-            opacity: stopping ? 0.7 : 1,
-            borderRadius: 999,
-            paddingVertical: 20,
-            alignItems: "center",
-            transform: [{ scale: pressed ? 0.99 : 1 }],
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: tokens.fontDisplay,
-              fontSize: 18,
-              color: "#ffffff",
-            }}
-          >
-            {stopping ? "Saving…" : "Stop"}
-          </Text>
-        </Pressable>
+        />
       </View>
     </SafeAreaView>
   );

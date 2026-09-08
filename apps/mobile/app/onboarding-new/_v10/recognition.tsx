@@ -5,9 +5,10 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
+
+import { CoralScreen, coralCardStyle, coralType } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
-  V10_BRANCHES,
   V10_BRANCH_ORDER,
   V10_RECOGNITION_HEADLINE,
   type V10Branch,
@@ -20,7 +21,26 @@ import {
 } from "@/lib/onboarding-v10/state";
 
 /**
- * Screen 1 — Recognition (dark).
+ * Plain-language card labels, replacing the one-word titles ("The loop",
+ * "The load", …) that read as cryptic. Each is the self-explanatory line
+ * a user recognizes themselves in — effectively the branch's existing
+ * `support` sentence promoted to lead, so the card no longer needs a
+ * second line under it.
+ *
+ * Keys are unchanged: this is a DISPLAY override only, and every
+ * downstream branch string still comes from lib/onboarding-v10/branches.ts.
+ */
+const V10_CARD_LABEL: Record<V10Branch, string> = {
+  rumination: "I keep replaying the same things",
+  overload: "Everyone's list lives in my head",
+  patterns: "Same problems, same week, again",
+  stuck: "Busy all day, nothing actually moves",
+  mask: "Holding it together for everyone else",
+  open: "I just need to talk it out",
+};
+
+/**
+ * Screen 1 — Recognition (coral).
  *
  * Six cards. Tap stores the branch and AUTO-ADVANCES: spec §4 is explicit
  * that there is no Continue button and no logo. Both matter —
@@ -37,9 +57,12 @@ import {
  */
 export default function V10Recognition() {
   const { palette } = useTheme();
-  // Screens 1-2 are dark per spec §1, regardless of the user's saved
-  // appearance preference — same override the legacy pain screen uses.
+  // Screens 1-2 ignore the user's saved appearance preference by design.
+  // They are now the coral marketing surface rather than the dark one;
+  // `dark: true` is kept so the token set's own contrast assumptions match
+  // a dark backdrop, which the coral gradient is closer to than cream.
   const tokens = makeAcuityTokens({ dark: true, accent: palette });
+  const ct = coralType(tokens);
 
   useEffect(() => {
     void markV10Started();
@@ -65,7 +88,8 @@ export default function V10Recognition() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -78,56 +102,24 @@ export default function V10Recognition() {
       >
         <Text
           accessibilityRole="header"
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 30,
-            lineHeight: 38,
-            color: tokens.text,
-            marginBottom: 32,
-          }}
+          style={{ ...ct.h1, marginBottom: 32 }}
         >
           {V10_RECOGNITION_HEADLINE}
         </Text>
 
         <View style={{ gap: 12 }}>
           {V10_BRANCH_ORDER.map((key) => {
-            const b = V10_BRANCHES[key];
             return (
               <Pressable
                 key={key}
                 onPress={() => choose(key)}
                 accessibilityRole="button"
-                accessibilityLabel={`${b.card}. ${b.support}`}
-                style={({ pressed }) => ({
-                  backgroundColor: pressed ? tokens.cardBgRaised : tokens.cardBg,
-                  borderColor: tokens.line,
-                  borderWidth: 1,
-                  borderRadius: 16,
-                  paddingVertical: 18,
-                  paddingHorizontal: 20,
-                  transform: [{ scale: pressed ? 0.99 : 1 }],
-                })}
+                accessibilityLabel={V10_CARD_LABEL[key]}
+                style={({ pressed }) => coralCardStyle(tokens, { pressed })}
               >
-                <Text
-                  style={{
-                    fontFamily: tokens.fontDisplay,
-                    fontSize: 18,
-                    color: tokens.text,
-                    marginBottom: 4,
-                  }}
-                >
-                  {b.card}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 15,
-                    lineHeight: 21,
-                    color: tokens.textSec,
-                  }}
-                >
-                  {b.support}
-                </Text>
+                {/* One line, not two: the plain label already says what the
+                    old `support` sentence said. */}
+                <Text style={ct.cardTitle}>{V10_CARD_LABEL[key]}</Text>
               </Pressable>
             );
           })}
@@ -149,18 +141,13 @@ export default function V10Recognition() {
           accessibilityRole="button"
           style={{ paddingVertical: 18, alignItems: "center" }}
         >
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 14,
-              color: tokens.textTer,
-            }}
-          >
+          <Text style={ct.muted}>
             Already have an account?{" "}
             <Text style={{ textDecorationLine: "underline" }}>Sign in</Text>
           </Text>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CoralScreen>
   );
 }

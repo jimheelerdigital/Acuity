@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
+
+import { FunnelCta } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { uploadDebrief } from "@/lib/onboarding-v10/upload";
@@ -208,29 +210,13 @@ export default function V10Processing() {
               {failed.message}
             </Text>
 
+            {/* Retries the SAME audio — never asks her to say it again. */}
             {failed.retryable && (
-              <Pressable
+              <FunnelCta
+                label="Try again"
                 onPress={() => void run()}
-                accessibilityRole="button"
-                style={({ pressed }) => ({
-                  backgroundColor: tokens.primary,
-                  borderRadius: 999,
-                  paddingVertical: 18,
-                  alignItems: "center",
-                  transform: [{ scale: pressed ? 0.99 : 1 }],
-                })}
-              >
-                {/* Retries the SAME audio — never asks her to say it again. */}
-                <Text
-                  style={{
-                    fontFamily: tokens.fontDisplay,
-                    fontSize: 17,
-                    color: "#ffffff",
-                  }}
-                >
-                  Try again
-                </Text>
-              </Pressable>
+                tokens={tokens}
+              />
             )}
           </View>
         )}
