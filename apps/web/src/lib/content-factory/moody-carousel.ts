@@ -4,9 +4,10 @@
  * Cloned from a reference format that performs ("TRUST THE PROCESS"
  * style): a ~6-slide photo carousel of dark, moody, hyper-realistic
  * architecture/interior photography with clean white text centered
- * mid-frame. Cover = short commanding title; each item slide = a
- * numbered name ("4. Reset day.") + 2-3 short punchy paragraphs ending
- * on a command ("Bring order back.").
+ * mid-frame. Cover = short commanding title; each item slide = a short
+ * name ("Reset day.") + 2-3 short punchy paragraphs ending on a
+ * command ("Bring order back."). No numbering on slides (2026-09-08,
+ * per Keenan — he omits slides when hand-posting).
  *
  * TWO FUNNELS, same skeleton, different soul (both audience-growth
  * only — NO product CTA anywhere):
@@ -95,7 +96,7 @@ ${opts?.theme ? `\n${opts.theme}\n` : ""}
 ${SCENE_BRIEF[audience]}
 ${opts?.coverRule ? `\n${opts.coverRule}\n` : ""}
 FORMAT — study this real slide and match its rhythm exactly:
-"4. Reset day.
+"Reset day.
 
 Clean your space, organize your room, car, digital files, notes.
 
@@ -449,8 +450,8 @@ export async function generateMoodyTopic(
 
 /** HOLD THE LINE lane (2026-09-03, per Keenan: "hold the line got a
  *  lot of views with the skyscraper start image"). Endurance family,
- *  numbered "N. Name." items like moody-men. Covers rotate families
- *  since 2026-09-08 (skyscraper is one of six, not the default). */
+ *  "Name." items like moody-men. Covers rotate families since
+ *  2026-09-08 (skyscraper is one family, not the default). */
 export async function generateLineTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
@@ -1675,7 +1676,7 @@ export async function generateVersionsTopic(
 // Per Keenan: "add ... 30 days". A concrete numbered protocol — the
 // save-bait format: people bookmark protocols, not motivation.
 
-const PROTOCOL_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: 30-DAY PROTOCOL — a concrete, numbered daily protocol a man can start tonight and run for 30 days. Not motivation — instructions.
+const PROTOCOL_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: 30-DAY PROTOCOL — a concrete daily protocol a man can start tonight and run for 30 days. Not motivation — instructions.
 
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE protocols. Every step must be concrete enough to schedule: a time, a count, a limit, a rule — never vague advice like "work harder" or "stay focused".
 VOICE: calm command energy. Imperative mood. Short declarative sentences. A mentor issuing orders, not a poet. Never bro-slang, never yelling.
@@ -1683,7 +1684,7 @@ VOICE: calm command energy. Imperative mood. Short declarative sentences. A ment
 SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a glowing laptop open in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table, a dark bedroom with floor-to-ceiling glass over a night skyline, a stone stairway climbing into fog — AND stoic statue scenes (a marble statue rain-soaked in darkness or under one hard spotlight; sculpture, not a person) — AND apex wildlife scenes (ONE lone wild animal from anywhere in the animal kingdom, in a vast moody landscape) — AND old-money still-lifes (a heavy watch on dark leather, a chessboard under a low lamp) — AND the forge, combat gyms, candlelit monasteries, empty night tracks, dark machines, time still-lifes (an hourglass, a clock at 4:57), desert roads, frozen lakes, and war-room studies. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY of humans (a statue or a lone wild animal only in its own family's scenes); the still-glowing laptop, the unused gym, the face-down phone do the work. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within this DNA; never render an example verbatim, never repeat a recent post's scene.
 
 FORMAT — each slide reads like this (match the rhythm):
-"5. One hour on the skill.
+"One hour on the skill.
 
 Same hour every day. Phone in another room.
 
@@ -1709,7 +1710,7 @@ export async function generateProtocolTopic(
     // 2026-09-08: rolled cover-family rule appended so protocol covers
     // rotate too instead of drifting toward buildings.
     system: `${PROTOCOL_SYSTEM_PROMPT}\n\n${rollMenCoverRule()}`,
-    user: `Write one new 30-day protocol with 5, 6, or 7 numbered steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new 30-day protocol with 5, 6, or 7 steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
     minLines: 2,

@@ -718,9 +718,12 @@ export const carouselDailyCronFn = inngest.createFunction(
       bucket === "moody-men" || bucket === "line" || bucket === "protocol"
         ? "men"
         : "women";
-    // Lanes whose items carry an "N. Name." header (discipline,
-    // hold-the-line, protocol steps).
-    const numbered =
+    // Lanes whose items carry a "Name." header (discipline,
+    // hold-the-line, protocol steps). NO numbers on the header
+    // (2026-09-08, per Keenan: he curates each post by hand and
+    // sometimes omits a slide or two — "1-7" numbering breaks the
+    // moment one is dropped).
+    const named =
       bucket === "moody-men" ||
       bucket === "line" ||
       bucket === "protocol";
@@ -845,9 +848,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           await import("@/lib/content-factory/compose");
 
         const item = moody.items[i];
-        const paragraphs = numbered
-          ? [`${i + 1}. ${item.name}`, ...item.lines]
-          : item.lines;
+        const paragraphs = named ? [item.name, ...item.lines] : item.lines;
         // Avatar only when this post won the ≤8% roll AND this is the
         // chosen slide (2026-08-31 cap).
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
