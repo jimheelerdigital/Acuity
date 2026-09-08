@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-08] — Slides no longer show numbers, so Keenan can drop any slide before posting
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4b132b58
+
+### In plain English (for Keenan)
+Slides used to be numbered ("1. ... 2. ... 3. ...") on the discipline, hold-the-line, and protocol posts. Since you review every post and sometimes cut a slide or two before posting, the numbering would expose the gap. Now slides just show the short bold header ("Reset day.") and the text — you can drop any slide and the post still reads clean. The numbered list in your email stays, since that helps you pick which slides to cut.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: `numbered` flag → `named`; item header renders `item.name` without the `${i + 1}. ` prefix (moody-men, line, protocol — other lanes never had headers/numbers)
+- apps/web/src/lib/content-factory/moody-carousel.ts: FORMAT examples in the moody builder + PROTOCOL_SYSTEM_PROMPT un-numbered ("Reset day.", "One hour on the skill."); protocol user prompt says "steps" not "numbered steps"
+- email.ts slide numbering intentionally untouched (it's Keenan's navigation, not post content)
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — live from the next generation
+
+### Notes
+- Historical posts keep their baked-in numbers; recomposeSlide edits on old slides re-render the stored overlayText as-is (numbers included) — expected
+- If a future lane wants numbering back, it's one flag in carousel-daily.ts
+
 ## [2026-09-08] — BWK image variety expanded to 18 families with unlimited scene invention
 
 **Requested by:** Keenan
