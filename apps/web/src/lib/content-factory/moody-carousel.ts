@@ -1898,7 +1898,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
       ],
     },
     screenWord: "screen",
-    sizeHint: "roughly one third",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — the phone is held CLOSE to the camera",
     orientation: "TALL and vertical (portrait, like a phone screen)",
   },
   flip: {
@@ -1913,7 +1914,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
       ],
     },
     screenWord: "inner display",
-    sizeHint: "roughly one quarter",
+    sizeHint:
+      "at least half of the frame's width — an EXTREME close-up where the open phone fills the frame and the inner display dominates it",
     orientation: "roughly SQUARE or slightly tall",
   },
   car: {
@@ -1928,7 +1930,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
       ],
     },
     screenWord: "screen",
-    sizeHint: "roughly one third",
+    sizeHint:
+      "at least two thirds of the frame's width — shot CLOSE so the dashboard screen dominates the composition",
     orientation: "WIDE and horizontal (landscape, like a dashboard display)",
   },
   billboard: {
@@ -1943,7 +1946,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
       ],
     },
     screenWord: "face",
-    sizeHint: "between one third and one half",
+    sizeHint:
+      "at least two thirds of the frame's width — shot from close below so the billboard dominates the composition",
     orientation: "WIDE and horizontal (landscape, like a billboard)",
   },
   sign: {
@@ -1958,7 +1962,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
       ],
     },
     screenWord: "face",
-    sizeHint: "roughly one third",
+    sizeHint:
+      "at least two thirds of the frame's width — shot CLOSE so the sign face dominates the composition",
     orientation: "roughly SQUARE or slightly tall",
   },
 };
@@ -1979,5 +1984,5 @@ export function buildQuoteSurfacePrompt(
     audience === "men"
       ? "Desaturated, near-monochrome, cool dark tones"
       : "Warm, dim, intimate amber tones";
-  return `A real photograph, vertical 9:16: ${scene}. The ${spec.screenWord} is completely BLANK — a uniformly bright, pure WHITE glowing rectangle with absolutely NOTHING on it: no text, no icons, no interface, no image, no reflections, no smudges, no gradient. The blank white ${spec.screenWord} faces the camera PERFECTLY straight-on and level — zero tilt, zero rotation, zero perspective angle; its four edges run exactly parallel to the edges of the photo. It is ${spec.orientation} and fills ${spec.sizeHint} of the frame. The blank white ${spec.screenWord} is by FAR the brightest thing in the photo — everything else is dim and moody, and there are NO other bright lights, white surfaces, or glowing areas anywhere. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the ${spec.screenWord} stays tack sharp. NO text, NO words, NO letters, NO numbers, NO logos anywhere in the image.`;
+  return `A real photograph, vertical 9:16: ${scene}. The ${spec.screenWord} is completely BLANK — a uniformly bright, pure WHITE glowing rectangle with absolutely NOTHING on it: no text, no icons, no interface, no image, no reflections, no smudges, no gradient. The blank white ${spec.screenWord} faces the camera PERFECTLY straight-on and level — zero tilt, zero rotation, zero perspective angle; its four edges run exactly parallel to the edges of the photo. It is ${spec.orientation}. CLOSE-UP COMPOSITION (critical): the ${spec.screenWord} must be LARGE — it fills ${spec.sizeHint}. Never a wide shot where the ${spec.screenWord} is small in the frame. The blank white ${spec.screenWord} is by FAR the brightest thing in the photo — everything else is dim and moody, and there are NO other bright lights, white surfaces, or glowing areas anywhere. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the ${spec.screenWord} stays tack sharp. NO text, NO words, NO letters, NO numbers, NO logos anywhere in the image.`;
 }

@@ -1008,13 +1008,20 @@ const SURFACE_FRIEND: Record<"women" | "men", string> = {
 
 /** Expected h/w of the detected screen per surface — a landscape rect
  * claiming to be a hand-held iPhone means detection grabbed something
- * else, so reject and fall back. */
-const SURFACE_ASPECT: Record<QuoteSurface, { min: number; max: number }> = {
-  imessage: { min: 1.3, max: 2.6 },
-  flip: { min: 0.7, max: 1.8 },
-  car: { min: 0.25, max: 0.9 },
-  billboard: { min: 0.2, max: 0.9 },
-  sign: { min: 0.5, max: 1.6 },
+ * else, so reject and fall back. minWFrac (2026-09-08, per Keenan
+ * "you can't even read it now. it should take up almost the whole
+ * page") is the minimum rect width as a fraction of frame width — a
+ * screen smaller than this renders unreadable text, so treat it as a
+ * detection failure and let the retry/fallback chain fire. */
+const SURFACE_ASPECT: Record<
+  QuoteSurface,
+  { min: number; max: number; minWFrac: number }
+> = {
+  imessage: { min: 1.3, max: 2.6, minWFrac: 0.5 },
+  flip: { min: 0.7, max: 1.8, minWFrac: 0.45 },
+  car: { min: 0.25, max: 0.9, minWFrac: 0.6 },
+  billboard: { min: 0.2, max: 0.9, minWFrac: 0.6 },
+  sign: { min: 0.5, max: 1.6, minWFrac: 0.5 },
 };
 
 /**
@@ -1308,6 +1315,8 @@ export async function composeQuoteSurfaceSlide(
   const aspect = rect.h / rect.w;
   const bounds = SURFACE_ASPECT[surface];
   if (aspect < bounds.min || aspect > bounds.max) return null;
+  // Too small to read at feed size — reject so the scene regenerates.
+  if (rect.w < OUTPUT_W * bounds.minWFrac) return null;
 
   // Slight overscan so threshold fuzz at the screen edge is covered.
   const ox = Math.round(rect.w * 0.02);
