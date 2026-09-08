@@ -1794,3 +1794,136 @@ export function buildPhoneQuoteBgPrompt(audience: MoodyAudience): string {
       : "warm, dim, intimate amber tones";
   return `A real photograph, vertical 9:16: ${scene}. The ENTIRE scene is softly OUT of focus with gentle bokeh — shallow depth of field, as if the camera is focused on a phone held close in the foreground (the phone itself is NOT in the shot). ${palette}, DIM overall, moody available light, authentic photographic grain. NO people, NO hands, NO phones, NO screens, NO text, NO words, NO letters anywhere in the image.`;
 }
+
+// ─── Quote surfaces (2026-09-08) ────────────────────────────────────────────
+// Per Keenan (rejecting the drawn-phone composite as "way too generic"):
+// "it should be a phone screen in a hand that looks like a true text
+// message from a friend coming in, or text on a flip phone as a text
+// message, or a car digital screen with words on it... you can also put
+// it on a billboard, or on a sign." The AI photographs the scene WITH a
+// blank glowing white screen in it; compose.ts finds that screen
+// (detectBrightRect) and composites the deterministic text — the quote
+// still never touches gpt-image-2.
+
+export const QUOTE_SURFACES = [
+  "imessage",
+  "flip",
+  "car",
+  "billboard",
+  "sign",
+] as const;
+export type QuoteSurface = (typeof QUOTE_SURFACES)[number];
+
+export function rollQuoteSurface(): QuoteSurface {
+  return QUOTE_SURFACES[Math.floor(Math.random() * QUOTE_SURFACES.length)];
+}
+
+interface SurfaceSpec {
+  /** What holds the blank screen, per audience. */
+  scenes: Record<MoodyAudience, string[]>;
+  /** What we call the blank area in the prompt ("screen" / "face"). */
+  screenWord: string;
+  /** How much of the frame the blank area should fill. */
+  sizeHint: string;
+  /** Orientation demand matching compose.ts SURFACE_ASPECT validation. */
+  orientation: string;
+}
+
+const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
+  imessage: {
+    scenes: {
+      women: [
+        "a woman's hand holding an iPhone in a dim lamp-lit bedroom at night, soft knit blanket blurred behind",
+        "a woman's hands cradling an iPhone at a kitchen table at night, a steaming mug of tea blurred beside it",
+        "a woman's hand holding an iPhone in a warm dim living room at night, fairy lights blurred into bokeh behind",
+      ],
+      men: [
+        "a man's hand holding an iPhone at a dark desk at night, a single lamp glowing behind",
+        "a man's hand holding an iPhone in a parked car at night, city lights blurred through the windshield",
+        "a man's hand holding an iPhone in front of a floor-to-ceiling window over a night city skyline, lights blurred into bokeh",
+      ],
+    },
+    screenWord: "screen",
+    sizeHint: "roughly one third",
+    orientation: "TALL and vertical (portrait, like a phone screen)",
+  },
+  flip: {
+    scenes: {
+      women: [
+        "a woman's hand holding an OPEN classic early-2000s flip phone in a warm lamp-lit room at night",
+        "a woman's hand holding an OPEN classic flip phone at a cafe table, warm dim evening light",
+      ],
+      men: [
+        "a man's hand holding an OPEN classic early-2000s flip phone at a dark desk at night, single lamp",
+        "a man's hand holding an OPEN classic flip phone at a dark bar counter at night, moody low light",
+      ],
+    },
+    screenWord: "inner display",
+    sizeHint: "roughly one quarter",
+    orientation: "roughly SQUARE or slightly tall",
+  },
+  car: {
+    scenes: {
+      women: [
+        "the interior of a car at night seen from the driver's seat, the center dashboard infotainment screen, warm streetlight bokeh blurred through the windshield",
+        "a car interior at night in soft rain, the center dashboard screen, warm blurred city lights beyond the glass",
+      ],
+      men: [
+        "the interior of a black car at night seen from the driver's seat, the center dashboard infotainment screen, cold city lights blurred through the windshield",
+        "a dark car interior at night parked on an empty street, the center dashboard screen, distant streetlights dissolved into bokeh",
+      ],
+    },
+    screenWord: "screen",
+    sizeHint: "roughly one third",
+    orientation: "WIDE and horizontal (landscape, like a dashboard display)",
+  },
+  billboard: {
+    scenes: {
+      women: [
+        "a city street at dusk with one large blank billboard mounted on a building, warm golden-hour glow, street details blurred below",
+        "an empty two-lane road at dusk with one large roadside billboard against a deep blue twilight sky",
+      ],
+      men: [
+        "a dark downtown street at night with one large blank billboard on a building, cold desaturated tones, wet asphalt reflections",
+        "a highway shoulder at night with one large billboard lit against the black sky, desaturated and moody",
+      ],
+    },
+    screenWord: "face",
+    sizeHint: "between one third and one half",
+    orientation: "WIDE and horizontal (landscape, like a billboard)",
+  },
+  sign: {
+    scenes: {
+      women: [
+        "a sidewalk outside a small cafe at dusk, one letterboard sign standing on the pavement, warm string lights blurred behind",
+        "the front of a cozy shop at dusk, one blank sign face beside the door, warm dim evening light",
+      ],
+      men: [
+        "a dark city sidewalk at night, one letterboard sign standing outside a bar, cold moody low light",
+        "an empty street corner at night, one blank sign face lit by a single streetlight, desaturated tones",
+      ],
+    },
+    screenWord: "face",
+    sizeHint: "roughly one third",
+    orientation: "roughly SQUARE or slightly tall",
+  },
+};
+
+/**
+ * Prompt for a scene photo CONTAINING a blank glowing white surface.
+ * The blank area must be pure white, straight-on, and the brightest
+ * thing in the frame — that's what detectBrightRect keys on.
+ */
+export function buildQuoteSurfacePrompt(
+  audience: MoodyAudience,
+  surface: QuoteSurface
+): string {
+  const spec = QUOTE_SURFACE_SPECS[surface];
+  const scenes = spec.scenes[audience];
+  const scene = scenes[Math.floor(Math.random() * scenes.length)];
+  const palette =
+    audience === "men"
+      ? "Desaturated, near-monochrome, cool dark tones"
+      : "Warm, dim, intimate amber tones";
+  return `A real photograph, vertical 9:16: ${scene}. The ${spec.screenWord} is completely BLANK — a uniformly bright, pure WHITE glowing rectangle with absolutely NOTHING on it: no text, no icons, no interface, no image, no reflections, no smudges, no gradient. The blank white ${spec.screenWord} faces the camera PERFECTLY straight-on and level — zero tilt, zero rotation, zero perspective angle; its four edges run exactly parallel to the edges of the photo. It is ${spec.orientation} and fills ${spec.sizeHint} of the frame. The blank white ${spec.screenWord} is by FAR the brightest thing in the photo — everything else is dim and moody, and there are NO other bright lights, white surfaces, or glowing areas anywhere. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the ${spec.screenWord} stays tack sharp. NO text, NO words, NO letters, NO numbers, NO logos anywhere in the image.`;
+}

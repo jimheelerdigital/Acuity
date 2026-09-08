@@ -12,6 +12,7 @@
 import sharp from "sharp";
 import * as fs from "fs";
 import * as path from "path";
+import type { QuoteSurface } from "./moody-carousel";
 
 const OUTPUT_W = 1080;
 const OUTPUT_H = 1920; // 9:16 TikTok native
@@ -855,6 +856,473 @@ export async function renderPhoneQuoteSlide(
     ])
     .jpeg({ quality: 90 })
     .toBuffer();
+}
+
+// ─── Quote-surface system (2026-09-08) ──────────────────────────────────────
+// Per Keenan (rejecting the drawn-phone mockup as "way too generic... it
+// needs to be more built into the environment"): the AI now photographs a
+// real scene CONTAINING a blank glowing white screen — a phone in a hand,
+// a flip phone, a car dashboard display, a billboard, a sign — and our
+// code finds that blank screen and composites the deterministic text onto
+// it. The quote text still NEVER touches the image model.
+
+export interface BrightRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Find the blank glowing screen in a 1080x1920 scene photo.
+ *
+ * Downsamples to 270x480 grayscale, thresholds bright pixels, takes the
+ * largest connected component, and validates that it's a clean solid
+ * rectangle (high bbox fill ratio, sane size). Returns null when no
+ * convincing screen exists — callers fall back to the drawn-phone or
+ * flat render.
+ */
+export async function detectBrightRect(
+  frame: Buffer
+): Promise<BrightRect | null> {
+  const DW = 270;
+  const DH = 480;
+  const T = 228; // luminance threshold — prompt demands a pure-white screen
+  const { data } = await sharp(frame)
+    .resize(DW, DH, { fit: "fill" })
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const seen = new Uint8Array(DW * DH);
+  let best: {
+    area: number;
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  } | null = null;
+
+  for (let i = 0; i < DW * DH; i++) {
+    if (seen[i] || data[i] < T) continue;
+    let area = 0;
+    let minX = DW,
+      maxX = 0,
+      minY = DH,
+      maxY = 0;
+    const stack = [i];
+    seen[i] = 1;
+    while (stack.length) {
+      const p = stack.pop()!;
+      const px = p % DW;
+      const py = (p / DW) | 0;
+      area++;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+      if (px > 0 && !seen[p - 1] && data[p - 1] >= T) {
+        seen[p - 1] = 1;
+        stack.push(p - 1);
+      }
+      if (px < DW - 1 && !seen[p + 1] && data[p + 1] >= T) {
+        seen[p + 1] = 1;
+        stack.push(p + 1);
+      }
+      if (py > 0 && !seen[p - DW] && data[p - DW] >= T) {
+        seen[p - DW] = 1;
+        stack.push(p - DW);
+      }
+      if (py < DH - 1 && !seen[p + DW] && data[p + DW] >= T) {
+        seen[p + DW] = 1;
+        stack.push(p + DW);
+      }
+    }
+    if (!best || area > best.area) best = { area, minX, maxX, minY, maxY };
+  }
+
+  if (!best) return null;
+  const bw = best.maxX - best.minX + 1;
+  const bh = best.maxY - best.minY + 1;
+  // Must be big enough to hold legible text…
+  if (best.area < DW * DH * 0.03) return null;
+  if (bw < DW * 0.2 || bh < DH * 0.06) return null;
+  // …a clean solid rectangle (not a lamp / bloom / diagonal screen)…
+  if (best.area / (bw * bh) < 0.82) return null;
+  // …and not a blown-out whole frame (failed generation).
+  if (bw > DW * 0.96 && bh > DH * 0.96) return null;
+
+  const sx = OUTPUT_W / DW;
+  const sy = OUTPUT_H / DH;
+  return {
+    x: Math.round(best.minX * sx),
+    y: Math.round(best.minY * sy),
+    w: Math.round(bw * sx),
+    h: Math.round(bh * sy),
+  };
+}
+
+/**
+ * Render wrapped quote text, shrinking the font until it fits maxH.
+ */
+async function fitQuoteText(opts: {
+  text: string;
+  font: "Bold" | "Medium";
+  color: string;
+  maxW: number;
+  maxH: number;
+  startSize: number;
+  minSize: number;
+  align: "centre" | "left";
+  /** Extra line spacing multiplier (letterboard signs breathe more). */
+  lineSpacingFactor?: number;
+}): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const fontPath = await ensureFontFile(opts.font);
+  const family = opts.font === "Bold" ? "Poppins Bold" : "Poppins Medium";
+  const lsf = opts.lineSpacingFactor ?? 0.45;
+  let last: { buffer: Buffer; width: number; height: number } | null = null;
+  for (let size = opts.startSize; size >= opts.minSize; size -= 4) {
+    const wrapChars = Math.max(8, Math.floor(opts.maxW / (size * 0.6)));
+    const lines = wordWrap(opts.text, wrapChars);
+    const markup = `<span font_desc="${family} ${size}" foreground="${opts.color}">${lines
+      .map((l) => escapePango(l))
+      .join("\n")}</span>`;
+    last = await renderMarkup(
+      markup,
+      fontPath,
+      opts.maxW,
+      Math.round(size * lsf),
+      6,
+      opts.align
+    );
+    if (last.height <= opts.maxH) return last;
+  }
+  return last!; // smallest size — may slightly overflow, better than throwing
+}
+
+/** The "friend" whose message is coming in on phone surfaces. */
+const SURFACE_FRIEND: Record<"women" | "men", string> = {
+  women: "Jess",
+  men: "Marcus",
+};
+
+/** Expected h/w of the detected screen per surface — a landscape rect
+ * claiming to be a hand-held iPhone means detection grabbed something
+ * else, so reject and fall back. */
+const SURFACE_ASPECT: Record<QuoteSurface, { min: number; max: number }> = {
+  imessage: { min: 1.3, max: 2.6 },
+  flip: { min: 0.7, max: 1.8 },
+  car: { min: 0.25, max: 0.9 },
+  billboard: { min: 0.2, max: 0.9 },
+  sign: { min: 0.5, max: 1.6 },
+};
+
+/**
+ * Render the deterministic screen content for a surface, sized exactly
+ * to the detected rect (w×h at full resolution). Designed at 1080-wide
+ * and downscaled so type stays crisp.
+ */
+export async function renderSurfaceOverlay(
+  quote: string,
+  variant: "women" | "men",
+  surface: QuoteSurface,
+  w: number,
+  h: number
+): Promise<Buffer> {
+  const clean = stripUnrenderable(quote);
+  const DW = 1080;
+  const DH = Math.max(200, Math.round((DW * h) / w));
+  const isWomen = variant === "women";
+  const friend = SURFACE_FRIEND[variant];
+  const fontMedium = await ensureFontFile("Medium");
+  let design: Buffer;
+
+  if (surface === "imessage") {
+    // An iMessage thread with ONE incoming bubble — "a true text message
+    // from a friend coming in" (Keenan, 2026-09-08). Light for women,
+    // iOS dark mode for men.
+    const bg = isWomen
+      ? { r: 0xff, g: 0xff, b: 0xff }
+      : { r: 0x00, g: 0x00, b: 0x00 };
+    const headerFill = isWomen ? "#F6F6F8" : "#101012";
+    const bubbleFill = isWomen ? "#E9E9EB" : "#26262A";
+    const textColor = isWomen ? "#0B0B0D" : "#F2F2F0";
+    const subtle = isWomen ? "#8E8E93" : "#98989E";
+    const s = Math.min(1, DH / 2100); // compact chrome on squat screens
+    const headerH = Math.round(340 * s);
+
+    const avatar = await circlePng(Math.round(150 * s), {
+      r: 0xa9,
+      g: 0xab,
+      b: 0xb2,
+    });
+    const chromeSvg = `<svg width="${DW}" height="${DH}" viewBox="0 0 ${DW} ${DH}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="${DW}" height="${headerH}" fill="${headerFill}"/>
+  <rect x="0" y="${headerH - 2}" width="${DW}" height="2" fill="${isWomen ? "#D8D8DC" : "#2A2A2E"}" opacity="0.8"/>
+  <path d="M ${Math.round(70 * s)} ${Math.round(140 * s)} L ${Math.round(38 * s)} ${Math.round(175 * s)} L ${Math.round(70 * s)} ${Math.round(210 * s)}" stroke="#0A84FF" stroke-width="${Math.max(4, Math.round(9 * s))}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+    const namePiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(20, Math.round(32 * s))}" foreground="${textColor}">${escapePango(friend)}</span>`,
+      fontMedium,
+      500,
+      0,
+      4
+    );
+    const datePiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(16, Math.round(26 * s))}" foreground="${subtle}">Today 9:41 PM</span>`,
+      fontMedium,
+      500,
+      0,
+      4
+    );
+    const placeholderPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(16, Math.round(28 * s))}" foreground="${subtle}">iMessage</span>`,
+      fontMedium,
+      400,
+      0,
+      4,
+      "left"
+    );
+    // Real threads pin the newest message to the BOTTOM, just above the
+    // input bar — not floating at the top of an empty screen.
+    const inputH = Math.round(88 * s);
+    const inputTop = DH - inputH - Math.round(44 * s);
+    const padX = 44;
+    const padY = 38;
+    const quotePiece = await fitQuoteText({
+      text: clean,
+      font: "Medium",
+      color: textColor,
+      maxW: Math.round(DW * 0.62),
+      maxH: inputTop - headerH - padY * 2 - Math.round(160 * s),
+      startSize: 46,
+      minSize: 24,
+      align: "left",
+    });
+    const bubbleW = quotePiece.width + padX * 2;
+    const bubbleH = quotePiece.height + padY * 2;
+    const bubbleTop = inputTop - Math.round(40 * s) - bubbleH;
+    const bubbleSvg = `<svg width="${bubbleW}" height="${bubbleH}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${bubbleW}" height="${bubbleH}" rx="44" fill="${bubbleFill}"/></svg>`;
+    const plusD = Math.round(72 * s);
+    const inputSvg = `<svg width="${DW}" height="${inputH + 20}" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="${36 + plusD / 2}" cy="${inputH / 2}" r="${plusD / 2}" fill="${bubbleFill}"/>
+  <path d="M ${36 + plusD / 2 - plusD * 0.22} ${inputH / 2} h ${plusD * 0.44} M ${36 + plusD / 2} ${inputH / 2 - plusD * 0.22} v ${plusD * 0.44}" stroke="${subtle}" stroke-width="${Math.max(3, Math.round(6 * s))}" stroke-linecap="round"/>
+  <rect x="${36 + plusD + 28}" y="0" width="${DW - 36 - plusD - 28 - 36}" height="${inputH}" rx="${inputH / 2}" fill="none" stroke="${isWomen ? "#C7C7CC" : "#3A3A3E"}" stroke-width="3"/>
+</svg>`;
+
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite([
+        { input: Buffer.from(chromeSvg), top: 0, left: 0 },
+        {
+          input: avatar,
+          top: Math.round(60 * s),
+          left: Math.round((DW - 150 * s) / 2),
+        },
+        {
+          input: namePiece.buffer,
+          top: Math.round(230 * s),
+          left: Math.round((DW - namePiece.width) / 2),
+        },
+        {
+          input: datePiece.buffer,
+          top: bubbleTop - datePiece.height - Math.round(28 * s),
+          left: Math.round((DW - datePiece.width) / 2),
+        },
+        { input: Buffer.from(bubbleSvg), top: bubbleTop, left: 48 },
+        {
+          input: quotePiece.buffer,
+          top: bubbleTop + padY,
+          left: 48 + padX,
+        },
+        { input: Buffer.from(inputSvg), top: inputTop, left: 0 },
+        {
+          input: placeholderPiece.buffer,
+          top: inputTop + Math.round((inputH - placeholderPiece.height) / 2),
+          left: 36 + plusD + 28 + 36,
+        },
+      ])
+      .png()
+      .toBuffer();
+  } else if (surface === "flip") {
+    // Classic backlit-LCD flip-phone SMS. Same look both brands —
+    // flip phones don't do dark mode.
+    const bg = { r: 0xc6, g: 0xd6, b: 0x9b };
+    const stripFill = "#8FA768";
+    const textColor = "#222E10";
+    const stripH = Math.round(DH * 0.13);
+    const stripSvg = `<svg width="${DW}" height="${DH}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${DW}" height="${stripH}" fill="${stripFill}"/></svg>`;
+    const headerPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium 34" foreground="#1A230C">1 New Message</span>`,
+      fontMedium,
+      700,
+      0,
+      4,
+      "left"
+    );
+    const fromPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium 32" foreground="${textColor}">From: ${escapePango(friend)}</span>`,
+      fontMedium,
+      700,
+      0,
+      4,
+      "left"
+    );
+    const bodyTop = stripH + 110;
+    const quotePiece = await fitQuoteText({
+      text: clean,
+      font: "Medium",
+      color: textColor,
+      maxW: DW - 96,
+      maxH: DH - bodyTop - 50,
+      startSize: 46,
+      minSize: 24,
+      align: "left",
+    });
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite([
+        { input: Buffer.from(stripSvg), top: 0, left: 0 },
+        {
+          input: headerPiece.buffer,
+          top: Math.max(8, Math.round((stripH - headerPiece.height) / 2)),
+          left: 44,
+        },
+        { input: fromPiece.buffer, top: stripH + 30, left: 44 },
+        { input: quotePiece.buffer, top: bodyTop, left: 48 },
+      ])
+      .png()
+      .toBuffer();
+  } else if (surface === "car") {
+    // Car infotainment message display — near-black, brand accent.
+    const bg = { r: 0x0a, g: 0x0d, b: 0x12 };
+    const accent = isWomen ? "#9CC7F2" : "#E5B84C";
+    const s = Math.min(1, DH / 640);
+    const headerPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(20, Math.round(34 * s))}" foreground="${accent}">Messages  ·  ${escapePango(friend)}</span>`,
+      fontMedium,
+      800,
+      0,
+      4,
+      "left"
+    );
+    const ruleTop = Math.round(110 * s);
+    const ruleSvg = `<svg width="${DW}" height="8" xmlns="http://www.w3.org/2000/svg"><rect x="44" y="0" width="${DW - 88}" height="3" fill="${accent}" opacity="0.5"/></svg>`;
+    const bodyTop = ruleTop + Math.round(40 * s);
+    const quotePiece = await fitQuoteText({
+      text: clean,
+      font: "Medium",
+      color: "#E8ECF0",
+      maxW: DW - 96,
+      maxH: DH - bodyTop - 40,
+      startSize: 48,
+      minSize: 24,
+      align: "left",
+    });
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite([
+        { input: headerPiece.buffer, top: Math.round(40 * s), left: 44 },
+        { input: Buffer.from(ruleSvg), top: ruleTop, left: 0 },
+        { input: quotePiece.buffer, top: bodyTop, left: 48 },
+      ])
+      .png()
+      .toBuffer();
+  } else {
+    // billboard / sign — big centered type on a bright face. Signs are
+    // letterboards, so they read in caps with airy line spacing.
+    const isSign = surface === "sign";
+    const bg = { r: 0xf4, g: 0xf1, b: 0xe9 };
+    const text = isSign ? clean.toUpperCase() : clean;
+    const quotePiece = await fitQuoteText({
+      text,
+      font: "Bold",
+      color: "#17181A",
+      maxW: DW - 160,
+      maxH: DH - 140,
+      startSize: isSign ? 56 : 64,
+      minSize: 26,
+      align: "centre",
+      lineSpacingFactor: isSign ? 0.8 : 0.45,
+    });
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite([
+        {
+          input: quotePiece.buffer,
+          top: Math.max(40, Math.round((DH - quotePiece.height) / 2)),
+          left: Math.round((DW - quotePiece.width) / 2),
+        },
+      ])
+      .png()
+      .toBuffer();
+  }
+
+  // Downscale onto the detected rect; round the corners for device
+  // screens so the photo's own screen corners still peek through as glow.
+  const rx =
+    surface === "imessage"
+      ? Math.round(w * 0.12)
+      : surface === "flip" || surface === "car"
+        ? Math.round(Math.min(w, h) * 0.05)
+        : 0;
+  const resized = sharp(design).resize(w, h, { fit: "fill" });
+  if (rx > 0) {
+    const mask = Buffer.from(
+      `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${w}" height="${h}" rx="${rx}" fill="#ffffff"/></svg>`
+    );
+    return resized
+      .ensureAlpha()
+      .composite([{ input: mask, blend: "dest-in" }])
+      .png()
+      .toBuffer();
+  }
+  return resized.png().toBuffer();
+}
+
+/**
+ * Full quote-surface pipeline: normalize the AI scene to 1080x1920,
+ * find the blank glowing screen, validate its shape for the surface,
+ * and composite the deterministic screen content onto it.
+ *
+ * Returns null when no usable screen is found (caller falls back to
+ * the drawn-phone render, then flat).
+ */
+export async function composeQuoteSurfaceSlide(
+  quote: string,
+  variant: "women" | "men",
+  surface: QuoteSurface,
+  scene: Buffer
+): Promise<{ jpeg: Buffer; rect: BrightRect } | null> {
+  const frame = await sharp(scene)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .png()
+    .toBuffer();
+  const rect = await detectBrightRect(frame);
+  if (!rect) return null;
+
+  const aspect = rect.h / rect.w;
+  const bounds = SURFACE_ASPECT[surface];
+  if (aspect < bounds.min || aspect > bounds.max) return null;
+
+  // Slight overscan so threshold fuzz at the screen edge is covered.
+  const ox = Math.round(rect.w * 0.02);
+  const oy = Math.round(rect.h * 0.02);
+  const x = Math.max(0, rect.x - ox);
+  const y = Math.max(0, rect.y - oy);
+  const w = Math.min(OUTPUT_W - x, rect.w + ox * 2);
+  const h = Math.min(OUTPUT_H - y, rect.h + oy * 2);
+
+  const overlay = await renderSurfaceOverlay(quote, variant, surface, w, h);
+  const jpeg = await sharp(frame)
+    .composite([{ input: overlay, top: y, left: x }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+  return { jpeg, rect: { x, y, w, h } };
 }
 
 /**

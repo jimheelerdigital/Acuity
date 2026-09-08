@@ -11,6 +11,7 @@ import OpenAI from "openai";
 import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
+import type { QuoteSurface } from "./moody-carousel";
 import { buildCaption } from "./caption";
 
 let _openai: OpenAI | null = null;
@@ -589,6 +590,42 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
 
   if (slide.kind === "CTA") {
     composed = await composeCTASlide(newText);
+  } else if (slide.imagePrompt.startsWith("PHONE-QUOTE SURFACE")) {
+    // Quote-surface slides (2026-09-08): the raw scene photo contains a
+    // blank glowing screen — re-detect it and composite the edited quote.
+    // If the raw scene is gone or detection fails, fall back to the
+    // drawn-phone render so the edit still ships.
+    const { composeQuoteSurfaceSlide, renderPhoneQuoteSlide } = await import(
+      "./compose"
+    );
+    const surfaceMatch = slide.imagePrompt.match(
+      /^PHONE-QUOTE SURFACE \((?:women|men)\/([a-z]+)\)/
+    );
+    const surface = (surfaceMatch?.[1] ?? "imessage") as QuoteSurface;
+    const pqVariant =
+      slide.carouselPost.lane === "phone-quote-men" ? "men" : "women";
+    let scene: Buffer | undefined;
+    if (slide.rawImageUrl) {
+      try {
+        const res = await fetch(slide.rawImageUrl);
+        if (res.ok) scene = Buffer.from(await res.arrayBuffer());
+      } catch {
+        // Fall through to the drawn-phone fallback.
+      }
+    }
+    let surfaceComposed: Buffer | null = null;
+    if (scene) {
+      const result = await composeQuoteSurfaceSlide(
+        newText,
+        pqVariant,
+        surface,
+        scene
+      );
+      if (result) surfaceComposed = result.jpeg;
+    }
+    composed =
+      surfaceComposed ??
+      (await renderPhoneQuoteSlide(newText, pqVariant, scene));
   } else if (slide.imagePrompt.startsWith("PHONE-QUOTE NOTE SCREEN")) {
     // Phone-quote NOTE slides (2026-09-03) are composed programmatically
     // — the quote text never touches an image model. Editing one just

@@ -554,47 +554,82 @@ export const carouselDailyCronFn = inngest.createFunction(
         return { imageUrl, overlayText: pq.hook, imagePrompt: prompt };
       });
 
-      // Slide 1: a drawn iPhone showing the Notes screen, composited
-      // over an AI-generated out-of-focus backdrop (2026-09-08, per
-      // Keenan: "put the quotes onto some sort of screen and bake it
-      // into the image"). The quote text itself NEVER touches the
-      // image model — the phone + screen are drawn by compose.ts. If
-      // the backdrop generation fails, fail open to the full-bleed
+      // Slide 1: the quote "built into the environment" (2026-09-08,
+      // per Keenan — the drawn-phone mockup was "way too generic"). A
+      // rotating surface — iPhone in a hand, flip phone, car dashboard
+      // screen, billboard, sidewalk sign — is photographed by the AI
+      // with a BLANK glowing white screen; compose.ts detects that
+      // screen and composites the deterministic text onto it. The
+      // quote NEVER touches the image model. Fallback chain: detect
+      // fails → regenerate the scene once → drawn-phone composite →
       // flat Notes screen.
       const pqQuote = await step.run("compose-phone-quote-screen", async () => {
         const { generateMoodyImage, uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
-        const { buildPhoneQuoteBgPrompt } = await import(
+        const { rollQuoteSurface, buildQuoteSurfacePrompt } = await import(
           "@/lib/content-factory/moody-carousel"
         );
-        const { renderPhoneQuoteSlide } = await import(
-          "@/lib/content-factory/compose"
-        );
+        const { composeQuoteSurfaceSlide, renderPhoneQuoteSlide } =
+          await import("@/lib/content-factory/compose");
 
-        let background: Buffer | undefined;
-        let rawImageUrl: string | null = null;
-        try {
-          const { buffer: bgBuffer } = await generateMoodyImage(
-            buildPhoneQuoteBgPrompt(variant),
-            false
-          );
-          background = bgBuffer;
-          rawImageUrl = await uploadImage(
-            bgBuffer,
-            `carousels/${dateStr}/${slug}/slide-1-quote-raw.jpg`
-          );
-        } catch (err) {
-          logger.warn(
-            `[carousel-cron] Phone-quote backdrop failed — falling back to flat Notes screen: ${err instanceof Error ? err.message : err}`
-          );
+        const surface = rollQuoteSurface();
+        let composed: Buffer | null = null;
+        let scene: Buffer | undefined;
+        let imagePrompt = "";
+
+        for (let attempt = 1; attempt <= 2 && !composed; attempt++) {
+          try {
+            const { buffer } = await generateMoodyImage(
+              buildQuoteSurfacePrompt(variant, surface),
+              false
+            );
+            scene = buffer;
+            const result = await composeQuoteSurfaceSlide(
+              pq.quote,
+              variant,
+              surface,
+              buffer
+            );
+            if (result) {
+              composed = result.jpeg;
+              imagePrompt = `PHONE-QUOTE SURFACE (${variant}/${surface}) — real scene photographed with a blank glowing screen; quote composited deterministically by composeQuoteSurfaceSlide. Text never touches the image model.`;
+            } else {
+              logger.warn(
+                `[carousel-cron] Quote-surface screen not detected (${surface}, attempt ${attempt})`
+              );
+            }
+          } catch (err) {
+            logger.warn(
+              `[carousel-cron] Quote-surface scene generation failed (attempt ${attempt}): ${err instanceof Error ? err.message : err}`
+            );
+          }
         }
 
-        const composed = await renderPhoneQuoteSlide(
-          pq.quote,
-          variant,
-          background
-        );
+        if (!composed) {
+          // Drawn-phone fallback (previous format) reusing the last
+          // scene as backdrop when we have one — the drawn phone covers
+          // the center. No scene at all → full-bleed flat Notes screen.
+          composed = await renderPhoneQuoteSlide(pq.quote, variant, scene);
+          imagePrompt = `PHONE-QUOTE NOTE SCREEN (${variant}) — Notes screen drawn programmatically by renderPhoneQuoteSlide${scene ? " on a phone composited over an AI backdrop" : "; no image model involved"}.`;
+        }
+
+        // Raw scene (no text) — recomposeSlide re-detects the screen in
+        // it when the quote is edited.
+        let rawImageUrl: string | null = null;
+        if (scene) {
+          try {
+            rawImageUrl = await uploadImage(
+              scene,
+              `carousels/${dateStr}/${slug}/slide-1-quote-raw.jpg`
+            );
+          } catch (err) {
+            logger.warn(
+              `[carousel-cron] Raw quote scene upload failed (non-fatal): ${err instanceof Error ? err.message : err}`
+            );
+          }
+        }
+
         const imageUrl = await uploadImage(
           composed,
           `carousels/${dateStr}/${slug}/slide-1-quote.jpg`
@@ -605,7 +640,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           imageUrl,
           rawImageUrl,
           overlayText: pq.quote,
-          imagePrompt: `PHONE-QUOTE NOTE SCREEN (${variant}) — Notes screen drawn programmatically by renderPhoneQuoteSlide${rawImageUrl ? " on a phone composited over an AI backdrop" : "; no image model involved"}.`,
+          imagePrompt,
         };
       });
 
