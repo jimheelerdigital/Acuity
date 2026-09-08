@@ -305,7 +305,53 @@ const SILENCE_THEME = `THEME — every post belongs to the SILENCE family: movin
 
 const LINE_THEME = `THEME — every post belongs to the HOLD THE LINE family: endurance, standards that do not move, staying when it gets hard, refusing to break the streak, holding position when motivation dies. Rotate the angle every post — holding the morning line, standards under pressure, the days nobody claps, finishing what the first week started, never negotiating with yourself — so no two posts repeat, but every post is unmistakably a hold-the-line post. Titles live in the family too ("HOLD THE LINE" energy) without repeating a recent title.`;
 
-const LINE_COVER_RULE = `COVER SCENE RULE: "coverScene" MUST come from the storm-skyscraper family — a lone dark skyscraper or brutalist tower against a storm sky: rain streaking the frame, black clouds, night or blue-hour storm light, a single lit floor or window glowing cold. Vary the building, the storm, and the vantage every post (from the street looking up, across the skyline, from a facing rooftop, the tower half-lost in fog). Item scenes follow the normal SCENES brief with bold variety.`;
+// BWK cover-scene rotation (2026-09-08, per Keenan: "almost every BWK
+// picture is starting with a building... do not make this the cover
+// photo every time. we need more variance."). Covers roll a family per
+// post instead of defaulting to architecture. Supersedes the
+// 2026-09-03 storm-skyscraper cover lock on the line lane — the
+// skyscraper stays in rotation as ONE family, not the only one. The
+// roll happens at topic-generation time, which runs inside a memoized
+// Inngest step, so replays keep the same family.
+const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
+  {
+    name: "storm-architecture",
+    brief:
+      "a lone dark skyscraper or brutalist tower against a storm sky — rain streaking the frame, black clouds, night or blue-hour storm light, a single lit floor or window glowing cold. Vary the building, the storm, and the vantage (street looking up, across the skyline, a facing rooftop, the tower half-lost in fog).",
+  },
+  {
+    name: "late-night grind still-life",
+    brief:
+      "an empty work scene mid-grind — a glowing laptop open in a near-black room, a desk lit by a single screen before dawn, a barbell resting under one cold light in an empty gym, a notebook under a lone desk lamp. NO buildings, NO skyline — the still-glowing gear does the work.",
+  },
+  {
+    name: "raw elements",
+    brief:
+      "cold nature with ZERO architecture — a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog, black pines under low cloud. No buildings, no city lights anywhere in frame.",
+  },
+  {
+    name: "night-vantage interior",
+    brief:
+      "a dark minimalist interior looking OUT — a near-black bedroom or penthouse with floor-to-ceiling glass onto a rain-blurred night skyline, or an empty black car interior on a night highway with distant lights ahead. The frame is the interior; the city is only a glow beyond the glass.",
+  },
+  {
+    name: "empty night streets",
+    brief:
+      "street level, not towers — rain hammering black pavement under a lone streetlight, an empty crosswalk at 3am, a deserted highway lane at night, wet asphalt reflecting a single cold light. Ground-level and empty; no skyline dominating the frame.",
+  },
+  {
+    name: "brutalist coast",
+    brief:
+      "sea, stone, and fog — a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk. Coastal and austere; no city anywhere.",
+  },
+];
+
+/** Roll one cover-scene family and return the injectable rule string. */
+function rollMenCoverRule(): string {
+  const fam =
+    MEN_COVER_FAMILIES[Math.floor(Math.random() * MEN_COVER_FAMILIES.length)];
+  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} Item scenes follow the normal SCENES brief with bold variety.`;
+}
 
 /** Generate one moody-carousel topic for the given audience funnel.
  *  Slide count varies 4-7 items per post (2026-08-31, per Keenan:
@@ -320,7 +366,9 @@ export async function generateMoodyTopic(
     purpose: `moody-carousel-topic-${audience}`,
     system: buildMoodySystemPrompt(
       audience,
-      audience === "men" ? { theme: SILENCE_THEME } : undefined
+      audience === "men"
+        ? { theme: SILENCE_THEME, coverRule: rollMenCoverRule() }
+        : undefined
     ),
     user: `Write one new post for the ${audience === "men" ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: `moody-${audience}`,
@@ -333,7 +381,8 @@ export async function generateMoodyTopic(
 
 /** HOLD THE LINE lane (2026-09-03, per Keenan: "hold the line got a
  *  lot of views with the skyscraper start image"). Endurance family,
- *  numbered "N. Name." items like moody-men, storm-skyscraper covers. */
+ *  numbered "N. Name." items like moody-men. Covers rotate families
+ *  since 2026-09-08 (skyscraper is one of six, not the default). */
 export async function generateLineTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
@@ -342,7 +391,8 @@ export async function generateLineTopic(
     purpose: "line-carousel-topic",
     system: buildMoodySystemPrompt("men", {
       theme: LINE_THEME,
-      coverRule: LINE_COVER_RULE,
+      // 2026-09-08: rotates families instead of always storm-skyscraper.
+      coverRule: rollMenCoverRule(),
     }),
     user: `Write one new hold-the-line post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "line",
@@ -1585,7 +1635,9 @@ export async function generateProtocolTopic(
 ): Promise<MoodyTopic> {
   return generateMoodyFamilyTopic({
     purpose: "protocol-carousel-topic",
-    system: PROTOCOL_SYSTEM_PROMPT,
+    // 2026-09-08: rolled cover-family rule appended so protocol covers
+    // rotate too instead of drifting toward buildings.
+    system: `${PROTOCOL_SYSTEM_PROMPT}\n\n${rollMenCoverRule()}`,
     user: `Write one new 30-day protocol with 5, 6, or 7 numbered steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
@@ -1631,7 +1683,7 @@ OUTPUT (strict JSON, no markdown):
 
 - "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "read this before you quit...", "someone sent me this at 2am..."). Vary the framing every post — never reuse a recent hook's framing.
 - "quote": 20-45 words. Motivational and developmental — discipline, patience, building in silence, becoming the man who keeps his word, delayed gratification, standards. It must read like something a man would screenshot and set as his lock screen: calm command energy, plain declarative words, second person welcome, never bro-slang, never yelling. NO attribution, NO quotation marks, NO emojis, NO hashtags.
-- "coverScene": one concrete sentence for the photograph — a night-city vantage: a dark balcony over a glittering skyline, floor-to-ceiling glass at night with rain, an empty rooftop at blue hour, a lone lit window across a dark street, a black car interior facing distant city lights. DIM, desaturated, NO people. Vary the vantage every post.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, desaturated, NO people. Vary the location every post.
 - Never mention any app, product, journaling, therapy, or AI.
 
 OUTPUT (strict JSON, no markdown):
@@ -1651,7 +1703,9 @@ export async function generatePhoneQuoteTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1000,
-      system: `${PHONE_QUOTE_SYSTEM[audience]}\n\n${HUMAN_VOICE_RULES}`,
+      // Men's covers rotate scene families (2026-09-08) — the rolled
+      // rule replaces the old fixed night-city-vantage bullet.
+      system: `${PHONE_QUOTE_SYSTEM[audience]}${audience === "men" ? `\n\n${rollMenCoverRule()}` : ""}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
