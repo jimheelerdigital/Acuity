@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { getToken } from "@/lib/auth";
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
+import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
 import { hasAppHistoryFromKeys } from "./entry-routing";
 import { isV10Guest, wasV10Dismissed, wasV10Offered } from "./state";
 
@@ -49,6 +50,34 @@ export function useColdStartFacts(): {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      // ─── ⚠️ QA-ONLY OVERRIDE — see lib/qa/force-v10.ts ──────────────
+      // Report the facts a brand-new install would have, so
+      // decideColdStartRoute returns "v10" on a device that has history.
+      // Skips the storage reads entirely: their answers cannot matter,
+      // and not reading them keeps this block free of side effects.
+      //
+      // decideColdStartRoute itself is untouched — it still receives an
+      // honest ColdStartFacts and applies its real logic. Only what we
+      // hand it changes, so the function under test is the one that
+      // ships. signedIn/onboardingCompleted are not ours to set; they
+      // come from `user` in app/_layout.tsx and fall out false because
+      // auth-context ignores the stored session under the same flag.
+      if (isQaForceV10()) {
+        warnIfQaForceV10Active();
+        if (!cancelled) {
+          setFacts({
+            v10Enabled: true,
+            isGuest: false,
+            v10Offered: false,
+            v10Dismissed: false,
+            hasAppHistory: false,
+          });
+          setReady(true);
+        }
+        return;
+      }
+      // ─── end QA-only override ──────────────────────────────────────
+
       const v10Enabled = isOnboardingV10Enabled();
 
       // Flag off ⇒ none of the rest can change the outcome, so skip the

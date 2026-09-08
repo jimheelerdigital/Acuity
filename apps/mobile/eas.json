@@ -99,6 +99,12 @@
         "EXPO_PUBLIC_ONBOARDING_V10": "true"
       }
     },
+    "v10-qa": {
+      "extends": "v10-pricing",
+      "env": {
+        "EXPO_PUBLIC_QA_FORCE_V10": "true"
+      }
+    },
     "v10-sim": {
       "extends": "v10-pricing",
       "distribution": "internal",
@@ -123,6 +129,9 @@
     },
     "v10-pricing": {
       "extends": "pricing"
+    },
+    "v10-qa": {
+      "extends": "v10-pricing"
     },
     "preview": {
       "ios": {
