@@ -663,9 +663,17 @@ export async function renderMoodyTextOverlay(
  * - "women" (Ripple): soft light-blue notes screen, near-black text.
  * - "men" (BWK): true iOS-dark notes screen (#1C1C1E), gold accent.
  */
-export async function renderPhoneQuoteSlide(
+async function renderNotesScreenNative(
   quote: string,
-  variant: "women" | "men"
+  variant: "women" | "men",
+  nativeH: number,
+  opts: {
+    /** Draw the Dynamic Island cutout (only when the screen is shown as
+     * a physical phone in a photo — real screenshots don't include it). */
+    withIsland: boolean;
+    quoteFontSize: number;
+    wrapChars: number;
+  }
 ): Promise<Buffer> {
   const fontMedium = await ensureFontFile("Medium");
   const fontBold = await ensureFontFile("Bold");
@@ -681,7 +689,8 @@ export async function renderPhoneQuoteSlide(
 
   // ── Status-bar + nav chrome (shapes only — no SVG text, so no
   // system-font dependency in the serverless runtime) ──
-  const chromeSvg = `<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
+  const chromeSvg = `<svg width="${OUTPUT_W}" height="${nativeH}" viewBox="0 0 ${OUTPUT_W} ${nativeH}" xmlns="http://www.w3.org/2000/svg">
+  ${opts.withIsland ? `<rect x="415" y="24" width="250" height="76" rx="38" fill="#000000"/>` : ""}
   <!-- signal bars -->
   <rect x="806" y="58" width="10" height="12" rx="3" fill="${chrome}"/>
   <rect x="822" y="52" width="10" height="18" rx="3" fill="${chrome}"/>
@@ -735,15 +744,15 @@ export async function renderPhoneQuoteSlide(
     4
   );
 
-  const quoteLines = wordWrap(stripUnrenderable(quote), 28);
-  const quoteMarkup = `<span font_desc="Poppins Medium 52" foreground="${textColor}">${quoteLines
+  const quoteLines = wordWrap(stripUnrenderable(quote), opts.wrapChars);
+  const quoteMarkup = `<span font_desc="Poppins Medium ${opts.quoteFontSize}" foreground="${textColor}">${quoteLines
     .map((l) => escapePango(l))
     .join("\n")}</span>`;
   const quotePiece = await renderMarkup(
     quoteMarkup,
     fontMedium,
     OUTPUT_W - 96 * 2,
-    26,
+    Math.round(opts.quoteFontSize / 2),
     8,
     "left"
   );
@@ -751,7 +760,7 @@ export async function renderPhoneQuoteSlide(
   return sharp({
     create: {
       width: OUTPUT_W,
-      height: OUTPUT_H,
+      height: nativeH,
       channels: 3,
       background: bg,
     },
@@ -766,6 +775,83 @@ export async function renderPhoneQuoteSlide(
         left: Math.round((OUTPUT_W - datePiece.width) / 2),
       },
       { input: quotePiece.buffer, top: 400, left: 96 },
+    ])
+    .png()
+    .toBuffer();
+}
+
+export async function renderPhoneQuoteSlide(
+  quote: string,
+  variant: "women" | "men",
+  /**
+   * 2026-09-08, per Keenan ("you need to put the quotes onto some sort
+   * of screen and bake it into the image"): when a background photo is
+   * supplied, the Notes screen renders on a realistic drawn iPhone
+   * composited over it — the quote is visibly ON a device inside a
+   * photograph, and the text still never touches the image model.
+   * Without a background (old posts recomposing, or the background
+   * generation failed), falls back to the full-bleed screenshot.
+   */
+  background?: Buffer
+): Promise<Buffer> {
+  if (!background) {
+    const screen = await renderNotesScreenNative(quote, variant, OUTPUT_H, {
+      withIsland: false,
+      quoteFontSize: 52,
+      wrapChars: 28,
+    });
+    return sharp(screen).jpeg({ quality: 90 }).toBuffer();
+  }
+
+  // ── Phone-in-scene geometry (1080x1920 canvas) ──
+  const PHONE_W = 700;
+  const PHONE_H = 1466;
+  const BEZEL = 22;
+  const PHONE_R = 110;
+  const SCREEN_W = PHONE_W - BEZEL * 2; // 656
+  const SCREEN_H = PHONE_H - BEZEL * 2; // 1422 (≈9:19.5, real iPhone aspect)
+  const phoneLeft = Math.round((OUTPUT_W - PHONE_W) / 2);
+  const phoneTop = Math.round((OUTPUT_H - PHONE_H) / 2);
+
+  // Render the screen at native 1080-wide resolution (bigger quote type
+  // so it stays legible after the downscale), then resize onto the phone.
+  const nativeH = Math.round((OUTPUT_W * SCREEN_H) / SCREEN_W);
+  const screenNative = await renderNotesScreenNative(quote, variant, nativeH, {
+    withIsland: true,
+    quoteFontSize: 66,
+    wrapChars: 24,
+  });
+  const screenR = PHONE_R - BEZEL;
+  const screenMask = Buffer.from(
+    `<svg width="${SCREEN_W}" height="${SCREEN_H}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${SCREEN_W}" height="${SCREEN_H}" rx="${screenR}" fill="#ffffff"/></svg>`
+  );
+  const screen = await sharp(screenNative)
+    .resize(SCREEN_W, SCREEN_H)
+    .ensureAlpha()
+    .composite([{ input: screenMask, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  // Drop shadow + phone body + side buttons — drawn shapes, no fonts.
+  const phoneSvg = Buffer.from(`<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="ps" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+  </defs>
+  <rect x="${phoneLeft + 6}" y="${phoneTop + 30}" width="${PHONE_W}" height="${PHONE_H}" rx="${PHONE_R}" fill="#000000" opacity="0.55" filter="url(#ps)"/>
+  <rect x="${phoneLeft - 6}" y="${phoneTop + 340}" width="6" height="110" rx="3" fill="#2A2A2E"/>
+  <rect x="${phoneLeft - 6}" y="${phoneTop + 490}" width="6" height="110" rx="3" fill="#2A2A2E"/>
+  <rect x="${phoneLeft + PHONE_W}" y="${phoneTop + 420}" width="6" height="170" rx="3" fill="#2A2A2E"/>
+  <rect x="${phoneLeft}" y="${phoneTop}" width="${PHONE_W}" height="${PHONE_H}" rx="${PHONE_R}" fill="#0B0B0D"/>
+  <rect x="${phoneLeft + 2}" y="${phoneTop + 2}" width="${PHONE_W - 4}" height="${PHONE_H - 4}" rx="${PHONE_R - 2}" fill="none" stroke="#3A3A3E" stroke-width="3"/>
+</svg>`);
+
+  return sharp(background)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .composite([
+      { input: phoneSvg, top: 0, left: 0 },
+      { input: screen, top: phoneTop + BEZEL, left: phoneLeft + BEZEL },
     ])
     .jpeg({ quality: 90 })
     .toBuffer();

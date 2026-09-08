@@ -554,15 +554,47 @@ export const carouselDailyCronFn = inngest.createFunction(
         return { imageUrl, overlayText: pq.hook, imagePrompt: prompt };
       });
 
-      // Slide 1: the notes-app quote screen — no image model.
+      // Slide 1: a drawn iPhone showing the Notes screen, composited
+      // over an AI-generated out-of-focus backdrop (2026-09-08, per
+      // Keenan: "put the quotes onto some sort of screen and bake it
+      // into the image"). The quote text itself NEVER touches the
+      // image model — the phone + screen are drawn by compose.ts. If
+      // the backdrop generation fails, fail open to the full-bleed
+      // flat Notes screen.
       const pqQuote = await step.run("compose-phone-quote-screen", async () => {
-        const { uploadImage } = await import(
+        const { generateMoodyImage, uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
+        );
+        const { buildPhoneQuoteBgPrompt } = await import(
+          "@/lib/content-factory/moody-carousel"
         );
         const { renderPhoneQuoteSlide } = await import(
           "@/lib/content-factory/compose"
         );
-        const composed = await renderPhoneQuoteSlide(pq.quote, variant);
+
+        let background: Buffer | undefined;
+        let rawImageUrl: string | null = null;
+        try {
+          const { buffer: bgBuffer } = await generateMoodyImage(
+            buildPhoneQuoteBgPrompt(variant),
+            false
+          );
+          background = bgBuffer;
+          rawImageUrl = await uploadImage(
+            bgBuffer,
+            `carousels/${dateStr}/${slug}/slide-1-quote-raw.jpg`
+          );
+        } catch (err) {
+          logger.warn(
+            `[carousel-cron] Phone-quote backdrop failed — falling back to flat Notes screen: ${err instanceof Error ? err.message : err}`
+          );
+        }
+
+        const composed = await renderPhoneQuoteSlide(
+          pq.quote,
+          variant,
+          background
+        );
         const imageUrl = await uploadImage(
           composed,
           `carousels/${dateStr}/${slug}/slide-1-quote.jpg`
@@ -571,8 +603,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         // re-render the screen instead of calling an image model.
         return {
           imageUrl,
+          rawImageUrl,
           overlayText: pq.quote,
-          imagePrompt: `PHONE-QUOTE NOTE SCREEN (${variant}) — composed programmatically by renderPhoneQuoteSlide; no image model involved.`,
+          imagePrompt: `PHONE-QUOTE NOTE SCREEN (${variant}) — Notes screen drawn programmatically by renderPhoneQuoteSlide${rawImageUrl ? " on a phone composited over an AI backdrop" : "; no image model involved"}.`,
         };
       });
 
@@ -611,6 +644,9 @@ export const carouselDailyCronFn = inngest.createFunction(
                   overlayText: pqQuote.overlayText,
                   imagePrompt: pqQuote.imagePrompt,
                   imageUrl: pqQuote.imageUrl,
+                  // Raw backdrop (no phone/text) — recomposeSlide
+                  // re-uses it when the quote is edited.
+                  rawImageUrl: pqQuote.rawImageUrl,
                 },
               ],
             },
@@ -621,7 +657,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           "@/lib/content-factory/email"
         );
         await sendCarouselEmail(post.id);
-        return { postId: post.id, slideCount: 2, estimatedCostCents: 8 + 2 };
+        // Two gpt-image-2 calls (cover + quote backdrop) at ~25¢ each,
+        // plus ~2¢ of Claude tokens.
+        return { postId: post.id, slideCount: 2, estimatedCostCents: 52 };
       });
 
       logger.info(

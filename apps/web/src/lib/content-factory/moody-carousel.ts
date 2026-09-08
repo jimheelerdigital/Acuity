@@ -1755,3 +1755,42 @@ export async function generatePhoneQuoteTopic(
     throw err;
   }
 }
+
+// Background scenes for the phone-in-photo quote slide (2026-09-08, per
+// Keenan: "you need to put the quotes onto some sort of screen and bake
+// it into the image"). The AI generates ONLY a text-free out-of-focus
+// backdrop — the iPhone and Notes screen are drawn programmatically in
+// compose.ts, so the quote text never touches gpt-image-2.
+const PHONE_QUOTE_BG_SCENES: Record<MoodyAudience, string[]> = {
+  women: [
+    "a lamp-lit bedroom at night, warm amber glow on rumpled linen bedding",
+    "a dim living room at night, one warm floor lamp beside a soft armchair with a knit throw",
+    "a kitchen counter at night lit by a single warm under-cabinet light, a mug of tea steaming",
+    "a rain-streaked window at night from inside a warm dim room, soft golden lamplight reflected in the glass",
+    "a candlelit bathroom at night, warm flames blurred into soft glowing orbs",
+    "a lit porch at dusk, a string of warm fairy lights blurred against deep blue twilight",
+  ],
+  men: [
+    "a dark desk at night lit by a single lamp, a closed notebook and a black coffee cup",
+    "floor-to-ceiling glass at night over a glittering city skyline, lights blurred into bokeh",
+    "a dark balcony at night facing distant city lights dissolved into soft glowing points",
+    "a black car interior at night, dashboard glow and distant streetlights blurred through the windshield",
+    "an empty gym at night with one cold overhead light on, everything else in darkness",
+    "a dark bedroom at night, a single lone lit window visible across the street through the glass",
+  ],
+};
+
+/**
+ * Prompt for the AI-generated backdrop behind the drawn phone. The whole
+ * scene is softly OUT of focus — as if the camera focused on a phone held
+ * in the foreground (which our code composites in afterward).
+ */
+export function buildPhoneQuoteBgPrompt(audience: MoodyAudience): string {
+  const scenes = PHONE_QUOTE_BG_SCENES[audience];
+  const scene = scenes[Math.floor(Math.random() * scenes.length)];
+  const palette =
+    audience === "men"
+      ? "desaturated, near-monochrome, cool dark tones"
+      : "warm, dim, intimate amber tones";
+  return `A real photograph, vertical 9:16: ${scene}. The ENTIRE scene is softly OUT of focus with gentle bokeh — shallow depth of field, as if the camera is focused on a phone held close in the foreground (the phone itself is NOT in the shot). ${palette}, DIM overall, moody available light, authentic photographic grain. NO people, NO hands, NO phones, NO screens, NO text, NO words, NO letters anywhere in the image.`;
+}

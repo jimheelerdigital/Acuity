@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-08] — The quote slide is now a real phone photographed in a scene
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The phone-quote lane's second slide is no longer a full-screen Notes page — it's now a photo: a realistic iPhone sitting in a dim, softly blurred scene (warm lamp-lit rooms for Ripple, dark city/desk scenes for BWK), with the Notes screen and your quote showing on the phone's display. The quote is baked into the image. The scene behind the phone is AI-generated, but the phone itself and every word on its screen are drawn by our own code — so the quote can never be misspelled or garbled. If the background generation ever fails mid-run, the post falls back to the old full-screen Notes look instead of dying. Note: the previous Notes-screen redesign from the 4th never went live — those commits were held awaiting your "push it," so production ran the old flat renderer all weekend. This commit joins that queue.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: renderPhoneQuoteSlide split into renderNotesScreenNative (parametrized Notes-screen PNG at native width, optional Dynamic Island, tunable quote size/wrap) + a new signature renderPhoneQuoteSlide(quote, variant, background?). No background = legacy full-bleed screen (fallback + old-post recompose). With background = drawn iPhone (SVG body/buttons/shadow/Dynamic Island, 700×1466 at 190,227) with the screen rendered at native res (66pt quote, wrap 24) then downscaled to 656×1422 and rounded-corner-masked (dest-in, rx 88), composited over the cover-resized backdrop
+- apps/web/src/lib/content-factory/moody-carousel.ts: new buildPhoneQuoteBgPrompt(audience) — per-variant scene pools (women: warm dim interiors; men: dark desk/city-night), prompt demands a real photograph fully OUT of focus with bokeh (as if focused on a foreground phone not in shot), 9:16, NO people/hands/phones/screens/text
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen step now generates the backdrop via generateMoodyImage (quality high, ~25¢), uploads the raw to slide-1-quote-raw.jpg, passes it to renderPhoneQuoteSlide; try/catch fails open to the flat render. Slide-1 create stores rawImageUrl; estimatedCostCents corrected 10 → 52 (two images + Claude tokens)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide's PHONE-QUOTE marker branch fetches slide.rawImageUrl (if present) and re-composites the same backdrop on text edits; falls back to full-bleed if the fetch fails or no raw exists
+
+### Manual steps needed
+- [ ] Keenan says "push it" — FOUR commits are now queued locally (sense-check + Notes screen, humanizer skill, gate coverage, this one); nothing is live until pushed
+
+### Notes
+- The marker prefix "PHONE-QUOTE NOTE SCREEN" is unchanged, so recomposeSlide still catches old and new slides alike; old slides have no rawImageUrl and correctly re-render full-bleed
+- Screen text renders at 1080-wide native then downscales 0.607× — quote bumped to 66pt/wrap-24 so it stays legible at final size; Dynamic Island only appears in phone mode (full-bleed mimics a screenshot, which never shows the island)
+- Verified visually before commit: /tmp/pq-women-phone.jpg, /tmp/pq-men-phone.jpg (phone-in-scene, both variants), /tmp/pq-women-flat.jpg (fallback) — tsc holds the 246-line pre-existing baseline
+- The backdrop prompt bans phones/screens/text in the AI image — the only phone in frame is ours, so there's no double-phone risk
+
 ## [2026-09-04] — The humanizer gate now covers every social generator, including dormant and admin-triggered ones
 
 **Requested by:** Keenan

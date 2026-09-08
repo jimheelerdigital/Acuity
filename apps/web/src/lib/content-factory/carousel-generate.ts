@@ -591,12 +591,24 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     composed = await composeCTASlide(newText);
   } else if (slide.imagePrompt.startsWith("PHONE-QUOTE NOTE SCREEN")) {
     // Phone-quote NOTE slides (2026-09-03) are composed programmatically
-    // — the slide IS the notes-app screen, no image model involved.
-    // Editing one just re-renders the screen with the new quote text.
+    // — the quote text never touches an image model. Editing one just
+    // re-renders the Notes screen with the new quote text. If the slide
+    // stored a raw backdrop (phone-in-photo format, 2026-09-08), re-use
+    // it so the edit keeps the same scene; otherwise render full-bleed.
     const { renderPhoneQuoteSlide } = await import("./compose");
+    let background: Buffer | undefined;
+    if (slide.rawImageUrl) {
+      try {
+        const res = await fetch(slide.rawImageUrl);
+        if (res.ok) background = Buffer.from(await res.arrayBuffer());
+      } catch {
+        // Fall through to full-bleed render.
+      }
+    }
     composed = await renderPhoneQuoteSlide(
       newText,
-      slide.carouselPost.lane === "phone-quote-men" ? "men" : "women"
+      slide.carouselPost.lane === "phone-quote-men" ? "men" : "women",
+      background
     );
   } else if (MOODY_LANES.has(slide.carouselPost.lane ?? "")) {
     // Regenerate the scene from the stored prompt (scenes are text-free),
