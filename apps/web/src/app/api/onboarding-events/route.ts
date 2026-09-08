@@ -24,6 +24,19 @@ export const runtime = "nodejs";
 // Non-funnel events still require explicit listing below.
 const FUNNEL_EVENT_RE = /^funnel_[a-z0-9_]+$/;
 
+/**
+ * Onboarding v10 events (2026-08-19), accepted by prefix for the same reason
+ * as funnel_* — the v10 flow emits ~23 event names and will add more, and a
+ * manual allowlist would drift.
+ *
+ * This rule is load-bearing rather than cosmetic: the mobile emitter
+ * swallows all errors so analytics can never break the flow
+ * (apps/mobile/lib/onboarding-events.ts). A rejected event is therefore
+ * SILENT — without this prefix, every v10_* event would 400 and disappear,
+ * and spec §7's "every event proven with a DB row" would quietly be false.
+ */
+const V10_EVENT_RE = /^v10_[a-z0-9_]+$/;
+
 const VALID_NON_FUNNEL_EVENTS = new Set([
   // Post-signup onboarding
   "onboarding_recording_screen_viewed",
@@ -70,7 +83,12 @@ export async function POST(req: NextRequest) {
   }
 
   const event = body.event;
-  if (!event || (!FUNNEL_EVENT_RE.test(event) && !VALID_NON_FUNNEL_EVENTS.has(event))) {
+  if (
+    !event ||
+    (!FUNNEL_EVENT_RE.test(event) &&
+      !V10_EVENT_RE.test(event) &&
+      !VALID_NON_FUNNEL_EVENTS.has(event))
+  ) {
     return new Response(null, { status: 400 });
   }
 

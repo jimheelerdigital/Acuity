@@ -25,6 +25,9 @@ import { api } from "@/lib/api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { displayMonthly } from "@/lib/pricing";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
+import { isOnboardingV10Enabled } from "@/lib/feature-flags";
+import V10Paywall from "./_v10/paywall";
+import { V10Switch } from "./_v10/route-switch";
 
 /**
  * Screen 14 — Paywall. Slice 12 (2026-05-26).
@@ -95,6 +98,14 @@ function q2ToDuration(q2: Q2Answer | null): string {
   }
 }
 
+/**
+ * v10 subline. Says nothing about how long she has struggled and promises no
+ * day-based unlock — both of those were in the legacy copy and neither is
+ * supported by anything we know.
+ */
+const COST_SUBLINE_V10 =
+  "Ripple connects what changes \u2014 and what keeps repeating \u2014 each time you come back.";
+
 const COST_HEADLINES: Record<PaywallBranch, string> = {
   blur: "Every week you wait is another week you won\u2019t remember.",
   patterns: "The cycle ran last week. It\u2019s running right now. It\u2019ll run next week too \u2014 unless you see it.",
@@ -132,7 +143,7 @@ const CARDS: TimelineCard[] = [
   },
 ];
 
-export default function PaywallScreen() {
+function PaywallScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -143,10 +154,20 @@ export default function PaywallScreen() {
   const inflightRef = useRef(false);
 
   const branch = q1ToBranch(q1);
-  const duration = q2ToDuration(q2);
-  const costHeadline = branch === "graveyard"
-    ? `You\u2019ve already spent ${duration} trying to fix this. How much longer?`
-    : COST_HEADLINES[branch];
+
+  // v10 never asks q1-q5, so q2 is always null here and q2ToDuration would
+  // return its "a long time" default — i.e. the paywall would tell her how
+  // long she has been struggling based on a question she was never asked.
+  // That is invented personalization, which spec §1 bans, so on the v10 path
+  // the duration copy is dropped entirely rather than filled with a guess.
+  // The legacy path is untouched: flag OFF still collects q2 and reads
+  // exactly as before.
+  const v10 = isOnboardingV10Enabled();
+  const duration = v10 ? null : q2ToDuration(q2);
+  const costHeadline =
+    branch === "graveyard" && duration
+      ? `You\u2019ve already spent ${duration} trying to fix this. How much longer?`
+      : COST_HEADLINES[branch];
 
   // Compute the funnel metadata up front — used in both the
   // paywall_viewed mount event and any subsequent trial_started
@@ -355,8 +376,13 @@ export default function PaywallScreen() {
               marginTop: 12,
             }}
           >
-            You&apos;ve been carrying this for {duration}. Ripple shows you the
-            pattern in 7 days.
+            {/* Omitted on the v10 path: the duration is invented (see above),
+                and "the pattern in 7 days" is a time-based threshold the
+                product does not actually gate on. Legacy copy unchanged
+                except for the Ripple rename, which main applied. */}
+            {duration
+              ? `You\u2019ve been carrying this for ${duration}. Ripple shows you the pattern in 7 days.`
+              : COST_SUBLINE_V10}
           </Text>
 
           {/* ── Trial framing ── */}
@@ -600,4 +626,13 @@ function computeTrialDaysRemaining(
   const end = new Date(trialEndsAt).getTime();
   if (!Number.isFinite(end)) return null;
   return Math.max(0, Math.round((end - Date.now()) / 86400_000));
+}
+
+/**
+ * Route entry. Flag ON renders v10 Screen 6; flag OFF renders the legacy
+ * slice-12 paywall byte-for-byte unchanged (spec §9: "Remote flag OFF
+ * restores previous flow without data loss").
+ */
+export default function PaywallRoute() {
+  return <V10Switch v10={<V10Paywall />} legacy={<PaywallScreen />} />;
 }

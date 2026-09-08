@@ -42,7 +42,12 @@ export const cleanupTrySessionsFn = inngest.createFunction(
 
     // Delete audio files from Supabase Storage
     const { supabase } = await import("@/lib/supabase.server");
-    const paths = expired.map((s: { audioPath: string }) => s.audioPath).filter(Boolean);
+    // audioPath is null for typed debriefs (no recording ever existed).
+    // The existing .filter(Boolean) already handled that at runtime; the
+    // type now matches reality too.
+    const paths = expired
+      .map((s: { audioPath: string | null }) => s.audioPath)
+      .filter((p): p is string => Boolean(p));
     if (paths.length > 0) {
       const { error } = await supabase.storage
         .from(TRY_STORAGE_BUCKET)

@@ -33,6 +33,7 @@ import {
   recordActive,
 } from "@/lib/session-expiry";
 import { tokenBridge } from "@/lib/token-bridge";
+import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
 
 export type DeleteAccountResult =
   | { ok: true }
@@ -112,6 +113,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const refresh = useCallback(async () => {
     try {
+      // ─── ⚠️ QA-ONLY OVERRIDE — see lib/qa/force-v10.ts ──────────────
+      // Ignore the stored session for THIS LAUNCH so the anonymous v10
+      // flow runs on a device that is really signed in. Nothing is
+      // deleted: SecureStore is not read and not cleared, so a normal
+      // build signs straight back in.
+      //
+      // Gated on !initialRefreshDone so it applies to the cold launch
+      // only. Without that, the AppState-driven warm refresh would wipe
+      // the user seconds after they signed in DURING the QA run, which
+      // is the flow being tested. `return` inside try still hits the
+      // finally that sets initialRefreshDone + clears loading.
+      if (isQaForceV10() && !initialRefreshDone.current) {
+        warnIfQaForceV10Active();
+        setUser(null);
+        tokenBridge.set(null); // in-memory only — SecureStore untouched
+        return;
+      }
+      // ─── end QA-only override ──────────────────────────────────────
+
       const token = await getToken();
       if (!token) {
         // Cold launch only: a null token at the very first refresh
@@ -233,7 +253,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           idleThresholdMs: IDLE_EXPIRY_MS,
         });
 
-        if (decision.action === "clear-stale") {
+        // ⚠️ QA-ONLY: `clear-stale` calls clearSession(), which wipes
+        // SecureStore. Under the QA override the session must be ignored
+        // but NOT destroyed, so the idle-expiry branch is skipped. On a
+        // normal build this is unreachable and behaviour is unchanged.
+        if (decision.action === "clear-stale" && !isQaForceV10()) {
           // Idle expiry — keychain token is older than the threshold.
           // clearSession() wipes SecureStore + memoryToken; refresh()
           // below will then route to sign-in.
@@ -356,6 +380,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.multiRemove([
       "acuity.tour.completed",
       "acuity.tour.forceReplay",
+      // v10 guest state, same shared-device reasoning: whoever uses this
+      // device next is not the previous person's guest. Leaving it set
+      // would let a signed-out stranger stay inside the tabs holding
+      // someone else's unclaimed debrief.
+      "ripple.v10.guest",
+      // Funnel-attempt markers. A deliberate sign-out means the next cold
+      // launch should offer sign-in, not resume a half-finished funnel —
+      // and `dismissed` must go too, or v10 could never be offered again
+      // on this device.
+      "ripple.v10.offered",
+      "ripple.v10.dismissed",
     ]).catch(() => {});
     // Reset IAP recovery debounce so a subsequent sign-in (possibly
     // by a different user on the same device) gets a fresh recovery

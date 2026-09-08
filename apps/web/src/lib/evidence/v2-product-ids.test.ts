@@ -117,8 +117,16 @@ describe("PLACEHOLDER_V2_PRODUCT_IDS cannot change behaviour", () => {
       ...walk(join(REPO, "packages/shared/src")),
     ].filter((f) => !f.endsWith(join("packages", "shared", "src", "pricing-plans.ts")));
 
+    // Comments are stripped first. A prose cross-reference ("see
+    // pricing-plans.ts::PLACEHOLDER_V2_PRODUCT_IDS") is documentation, not
+    // a consumer, and flagging it would train the next person to delete
+    // the useful comment instead of the dangerous read. What this test
+    // exists to catch is a CODE path gated on the flag.
+    const stripComments = (src: string) =>
+      src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+
     const readers = files.filter((f) => {
-      const src = readFileSync(f, "utf8");
+      const src = stripComments(readFileSync(f, "utf8"));
       if (!src.includes("PLACEHOLDER_V2_PRODUCT_IDS")) return false;
       // This test file mentions it only to assert on it.
       return f !== __filename;

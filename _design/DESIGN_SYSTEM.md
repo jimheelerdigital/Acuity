@@ -21,7 +21,7 @@ When in doubt: pick the quieter, more restrained option. The brand fails by bein
 
 ## 1. Brand vision
 
-Acuity is a **shutdown ritual** — a nightly voice-journaling app that turns the chaos at the end of someone's day into a 60-second debrief and, every Sunday morning, a 400-word story of the week. The visual language has to feel **atmospheric, refined, restrained, premium-but-warm** — closer to a private notebook in a dim room than to a wellness app. Dark mode is the primary mode. Glow is reserved for the ceremonial moments (mic, orb, primary CTA). Everything else uses soft shadows and hairlines. The product should feel like the difference between staring at a phone and lighting a candle.
+Ripple is an **AI-powered voice self-reflection app** — you say what's taking up space in your head, any time of day, and it comes back as a debrief: the tasks, themes and patterns pulled out of your own words, plus a weekly view of what changed and what keeps repeating. It's a **mirror, not a coach** — it reflects, it doesn't advise. The visual language has to feel **atmospheric, refined, restrained, premium-but-warm** — closer to a private notebook in a dim room than to a wellness app. Dark mode is the primary mode. Glow is reserved for the ceremonial moments (mic, orb, primary CTA). Everything else uses soft shadows and hairlines. The product should feel like the difference between staring at a phone and lighting a candle.
 
 ---
 
@@ -478,8 +478,10 @@ Acuity copy is governed by the **sales-copy rubric** in `docs/acuity-positioning
 
 ### 7.2 Acquisition vs. in-product register
 
-- **Acquisition** (ads, landing, App Store, waitlist): primary term is **"brain dump"**. Maya's friend's voice.
-- **In-product** (onboarding, daily app, push, weekly reports, memoirs): primary term is **"daily debrief"**. The voice of a product the user has chosen.
+- **Acquisition** (ads, landing, App Store, waitlist): primary term is **"debrief"**. A friend's voice, not a marketer's.
+- **In-product** (onboarding, daily app, push, weekly reports, memoirs): primary term is **"debrief"**. The voice of a product the user has chosen.
+
+> Updated 2026-08-20. This section previously mandated **"brain dump"** for acquisition and **"daily debrief"** in-product. Both are now banned: `docs/acuity-positioning.md` bans "brain dump" outright, and the v10 onboarding spec §1 bans any fixed-cadence framing ("daily", "nightly"). The word is **debrief**, everywhere, with no cadence attached.
 
 Don't mix registers.
 
@@ -496,7 +498,10 @@ Hard bans across every customer-facing surface:
 
 ### 7.4 Conditional bans
 
-- **"Journaling" / "journal"** — banned in all acquisition copy. Acuity's category is the shutdown ritual, not journaling. Allowed only inside a user quote or where SEO intent demands it.
+- **"Journaling" / "journal"** — banned in all acquisition copy. Ripple's category is voice self-reflection, not journaling. Allowed only inside a user quote or where SEO intent demands it.
+- **"Brain dump"** — banned everywhere. Was previously the mandated acquisition term; see 7.2.
+- **"Nightly" / "bedtime" / "shutdown ritual" / any fixed time of day** — banned. Ripple records any time of day, and v10 §1 bans ritual framing of the mechanism.
+- **Recording-duration claims** ("60-second", "90-second") — banned. There is no minimum and no countdown.
 - **"AI"** — discouraged. Use only when it earns trust (FAQ, naming Whisper + Claude). Never above the fold.
 
 ### 7.5 Harry Dry's three rules — every sentence must pass
@@ -509,7 +514,7 @@ If any test fails, rewrite.
 
 ### 7.6 Acuity-specific positioning rules
 
-- **Category** — shutdown ritual. Not journal. Not mood tracker. Not wellness app.
+- **Category** — voice self-reflection. Not journal. Not mood tracker. Not wellness app. (Was "shutdown ritual" — retired 2026-08-20 as ritual/time-of-day framing.)
 - **Hero driver is the weekly report**, not the daily recording. Daily recording is the input; weekly report is the output worth paying for.
 - **Memory is the product, not intelligence.** "Remembers" and "memory" are approved; "insights" and "intelligence" are discouraged.
 - **Never promise therapeutic outcomes.** Acuity is not a medical device. "What happens the other 167 hours of the week" is the approved framing around therapy.

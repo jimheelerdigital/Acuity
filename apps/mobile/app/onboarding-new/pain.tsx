@@ -16,6 +16,8 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { ScreenTestimonial } from "./_components/screen-testimonial";
+import V10Recognition from "./_v10/recognition";
+import { V10Switch } from "./_v10/route-switch";
 
 const TESTIMONIAL = {
   quote:
@@ -57,7 +59,7 @@ const FADE_UP_OFFSET = 12;
 
 const EASE_CUBIC_OUT = Easing.bezier(0.215, 0.61, 0.355, 1);
 
-export default function PainScreen() {
+function PainScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   // Force dark tokens for this screen — independent of the user's
@@ -229,4 +231,15 @@ export default function PainScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. ONBOARDING_V10 decides which flow renders here.
+ *
+ * Flag OFF renders PainScreen exactly as before — same component, same
+ * behaviour, one boolean read added. Flag ON renders the v10 screen at this
+ * same route, so the live Meta-ad deep links keep working either way.
+ */
+export default function PainRoute() {
+  return <V10Switch v10={<V10Recognition />} legacy={<PainScreen />} />;
 }

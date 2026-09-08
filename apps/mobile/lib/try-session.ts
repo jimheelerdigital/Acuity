@@ -207,6 +207,37 @@ export async function submitTryRecording(
   return body;
 }
 
+/**
+ * Submit a TYPED debrief (mic-denied fallback, spec §4).
+ *
+ * Mirrors submitTryRecording exactly — same session/extraction persistence,
+ * same response shape — but posts JSON to /api/mobile/try-debrief-text,
+ * which skips Whisper because the text IS the transcript.
+ *
+ * Kept alongside its audio sibling so both intake paths store the result
+ * identically; Screen 5 then renders either one with no branching.
+ */
+export async function submitTryDebriefText(
+  text: string
+): Promise<TryRecordingResponse> {
+  const anonDeviceId = await getOrCreateAnonDeviceId();
+
+  const res = await fetch(`${apiBaseUrl()}/api/mobile/try-debrief-text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, anonDeviceId }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `try-debrief-text failed (${res.status}): ${body.slice(0, 200)}`
+    );
+  }
+  const body = (await res.json()) as TryRecordingResponse;
+  await setStoredTrySession(body.sessionToken, body.expiresAt);
+  await setStoredTryExtraction(body.extraction);
+  return body;
+}
 // ─── RFC 4122 v4 UUID (Math.random-backed) ─────────────────────────
 // Cryptographic randomness isn't required here — the value is a
 // stable analytics key, not a security boundary. Inline implementation

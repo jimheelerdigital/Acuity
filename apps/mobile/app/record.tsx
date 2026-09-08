@@ -31,6 +31,7 @@ import {
   AudioTooLargeError,
   uploadAudioDirect,
 } from "@/lib/direct-upload";
+import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
@@ -133,6 +134,15 @@ export default function RecordScreen() {
     typeof params.dimensionKey === "string" && params.dimensionKey.length > 0
       ? params.dimensionKey
       : null;
+  // Third and last mic entry point. Home and the tab bar intercept before
+  // navigating, but this route is reachable directly — a deep link, a
+  // notification, or a future caller that forgets to check. Guarding here
+  // means the wall cannot be routed around.
+  const { interceptRecord } = useSaveWall();
+  useEffect(() => {
+    if (interceptRecord()) router.back();
+  }, [interceptRecord]);
+
   const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
   // Guards the autostart against React StrictMode's double-invoke and any

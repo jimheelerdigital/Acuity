@@ -17,6 +17,8 @@ import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { ScreenTestimonial } from "./_components/screen-testimonial";
 import { getPersonalizedPromise } from "./_components/promise-lookup";
+import V10Mirror from "./_v10/mirror";
+import { V10Switch } from "./_v10/route-switch";
 
 /**
  * Screen 8 — Personalized Promise. Slice 6 v1.2 onboarding-v2.
@@ -61,7 +63,7 @@ const TESTIMONIAL = {
   name: "Marcus T.",
 };
 
-export default function PromiseScreen() {
+function PromiseScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -285,4 +287,15 @@ export default function PromiseScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. ONBOARDING_V10 decides which flow renders here.
+ *
+ * Flag OFF renders PromiseScreen exactly as before — same component, same
+ * behaviour, one boolean read added. Flag ON renders the v10 screen at this
+ * same route, so the live Meta-ad deep links keep working either way.
+ */
+export default function PromiseRoute() {
+  return <V10Switch v10={<V10Mirror />} legacy={<PromiseScreen />} />;
 }

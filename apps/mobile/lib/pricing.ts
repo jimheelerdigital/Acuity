@@ -41,8 +41,29 @@ export const ANNUAL_PRICE_CENTS = LEGACY_TIER.annualCents;
 // Behaviour today: newPricingEnabled is false, so this resolves LEGACY_TIER
 // and every display stays $4.99 / $39.99.
 
-function newPricingEnabled(): boolean {
-  // Static member access — Metro only inlines EXPO_PUBLIC_* that way.
+/**
+ * THE parser for EXPO_PUBLIC_NEW_PRICING. Exported so there is exactly one
+ * implementation on mobile — `lib/feature-flags.ts::isNewPricingEnabled`
+ * delegates here rather than re-reading the env var.
+ *
+ * Why that matters: this file and feature-flags.ts previously each parsed
+ * the var, and they disagreed. feature-flags accepted only the literal
+ * "true", while the `pricing` EAS profile sets "1". A build with both the
+ * v10 and pricing flags on would therefore have shown V2 prices in the app
+ * and LEGACY prices on the v10 paywall — the exact "page quotes a different
+ * number than the store charges" failure this module exists to prevent.
+ *
+ * Accepts 1 / true / on / yes (trimmed, case-insensitive); everything else,
+ * including a malformed value, is OFF. Fail-closed is deliberate on a
+ * billing flag.
+ *
+ * Static member access is required — Metro only inlines EXPO_PUBLIC_* for
+ * static property reads. A dynamic `process.env[key]` lookup resolves to
+ * undefined in a release bundle, which reads as "flag off" and is silently
+ * unflippable. That is why this read lives in one place rather than being
+ * passed around as a value.
+ */
+export function newPricingEnabled(): boolean {
   const raw = process.env.EXPO_PUBLIC_NEW_PRICING;
   if (typeof raw !== "string") return false;
   const v = raw.trim().toLowerCase();

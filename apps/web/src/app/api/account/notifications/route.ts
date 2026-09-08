@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   // clients use /api/account/reminders directly.
   try {
     const primary = await prisma.userReminder.findFirst({
-      where: { userId },
+      where: { userId, kind: "debrief" },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     });
     if (primary) {

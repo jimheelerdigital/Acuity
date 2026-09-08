@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { useTheme } from "@/contexts/theme-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
+import { useV10RedirectIfEnabled } from "./_v10/route-switch";
 
 /**
  * Pre-auth AI subprocessor disclosure. Lands between /commitment and
@@ -25,7 +26,7 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
  * The full consent / decline / delete flow lives in the post-auth
  * shell after sign-in.
  */
-export default function DisclosureScreen() {
+function DisclosureScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   // The pre-auth funnel forces light mode for atmospheric consistency
@@ -167,4 +168,21 @@ export default function DisclosureScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. This screen exists ONLY in the legacy flow — v10
+ * collapses the eleven pre-record screens into two, so there is no v10
+ * equivalent.
+ *
+ * Flag OFF renders DisclosureScreen exactly as before. Flag ON redirects to the
+ * start of the v10 flow rather than rendering a screen from a funnel the
+ * user is not in, which is what a stale deep link or a back-swipe would
+ * otherwise land on. The file is kept intact so flag OFF restores the
+ * previous flow with nothing missing (spec §9).
+ */
+export default function DisclosureRoute() {
+  const redirecting = useV10RedirectIfEnabled();
+  if (redirecting) return null;
+  return <DisclosureScreen />;
 }

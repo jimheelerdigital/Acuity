@@ -17,6 +17,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { useOnboardingState, type Q1Answer } from "@/contexts/onboarding-context";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
+import { useV10RedirectIfEnabled } from "./_v10/route-switch";
 
 /**
  * Screen 8.5 — Mechanism ("Here's how it works"). Inserted between
@@ -256,7 +257,7 @@ function WeekDot({ index, label, delay, reduceMotion, tokens }: {
 
 // ─── Main screen ────────────────────────────────────────────────────
 
-export default function HowItWorksScreen() {
+function HowItWorksScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -470,4 +471,21 @@ export default function HowItWorksScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. This screen exists ONLY in the legacy flow — v10
+ * collapses the eleven pre-record screens into two, so there is no v10
+ * equivalent.
+ *
+ * Flag OFF renders HowItWorksScreen exactly as before. Flag ON redirects to the
+ * start of the v10 flow rather than rendering a screen from a funnel the
+ * user is not in, which is what a stale deep link or a back-swipe would
+ * otherwise land on. The file is kept intact so flag OFF restores the
+ * previous flow with nothing missing (spec §9).
+ */
+export default function HowItWorksRoute() {
+  const redirecting = useV10RedirectIfEnabled();
+  if (redirecting) return null;
+  return <HowItWorksScreen />;
 }
