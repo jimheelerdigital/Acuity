@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-08] — BWK cover photos now rotate scene families instead of always opening on a building
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3b61f64b
+
+### In plain English (for Keenan)
+You flagged that almost every BWK post was starting with a building. That happened because one lane was literally locked to skyscraper covers (from when the skyscraper post did big numbers) and the AI's scene instructions listed buildings first, so it kept defaulting there. Now every BWK cover rolls one of six looks per post — storm skyscraper, late-night grind (glowing laptop / empty gym), raw nature (no buildings at all), dark bedroom or car looking out at night, empty rain-soaked streets, and a moody coastline. The skyscraper still shows up, but as one in six instead of nearly every post. Ripple's covers are untouched.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new MEN_COVER_FAMILIES (6 families) + rollMenCoverRule() — returns a "COVER SCENE RULE" string injected into topic-generation system prompts
+- Wired into all 4 live BWK lanes: generateMoodyTopic (men), generateLineTopic (replaces the deleted LINE_COVER_RULE skyscraper lock), generateProtocolTopic (rule appended to PROTOCOL_SYSTEM_PROMPT at call time), generatePhoneQuoteTopic (men only — the fixed night-city coverScene bullet now defers to the appended rule)
+- Rolls happen at topic-generation time inside memoized Inngest steps, so replays keep the same family
+- No schema, route, or config changes; tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] Included in the queued "push it" (3 commits now: 4d59d00e, 3a9916b4, 3b61f64b + docs) — deploy via `npx vercel deploy --prod --yes` from repo root (Keenan says go, Claude runs it)
+
+### Notes
+- This supersedes the 2026-09-03 "storm-skyscraper covers" lock on the line lane. Keenan's instruction was "do not make this the cover photo every time" — not "never buildings" — so storm-architecture stays in the rotation at ~1/6
+- The men's SCENE_BRIEF still leads with architecture for ITEM slides; only covers are steered. If item slides also skew building-heavy later, the same rotation approach can extend there
+- Women's lanes (moody-women, phone-quote) deliberately untouched — the complaint was BWK-specific
+
 ## [2026-09-08] — Quote slides now live inside real scenes: texts, car screens, billboards, signs
 
 **Requested by:** Keenan
