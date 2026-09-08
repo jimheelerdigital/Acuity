@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-08] — Quote screens must now fill most of the frame so the text is readable
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f3494cbb
+
+### In plain English (for Keenan)
+You flagged a flip-phone quote post where the phone was small in a wide shot and the quote was too tiny to read. Two fixes: the AI is now told to shoot every quote scene as a close-up where the screen dominates the picture ("never a wide shot"), and our code now measures the screen it finds — if it's too small to hold readable text, it throws the scene away and generates a new one instead of shipping an unreadable post.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: QUOTE_SURFACE_SPECS sizeHints rewritten (was "roughly one third"/"one quarter" → "at least two thirds of the frame's width", flip demands an extreme close-up); buildQuoteSurfacePrompt gains a "CLOSE-UP COMPOSITION (critical)" clause banning wide shots
+- apps/web/src/lib/content-factory/compose.ts: SURFACE_ASPECT entries gain minWFrac (imessage 0.5, flip 0.45, car 0.6, billboard 0.6, sign 0.5); composeQuoteSurfaceSlide rejects detected rects narrower than minWFrac × frame width → returns null → carousel-daily's regenerate-once-then-fallback chain fires
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — deployed and fresh examples re-triggered in this session
+
+### Notes
+- The bad slide passed the old floor (rect ≥20% of frame width) because that floor was a detection-sanity check, not a readability check. minWFrac is the readability floor
+- If real runs show frequent fallback-to-drawn-phone (meaning gpt-image-2 ignores the close-up demand), the next lever is raising the retry count or tightening scene descriptions per surface
+
 ## [2026-09-08] — BWK cover photos now rotate scene families instead of always opening on a building
 
 **Requested by:** Keenan
