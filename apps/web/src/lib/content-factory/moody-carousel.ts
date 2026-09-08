@@ -81,7 +81,7 @@ const WOMEN_PROMPT_HEADER: Record<WomenScheme, string> = {
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND late-night grind still-lifes: a glowing laptop open on a couch in a near-black minimalist living room, a desk lit by a single screen in an empty room, a barbell resting under one cold light in an empty gym — AND raw-elements landscapes: a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog — AND night-vantage interior scenes: a dark minimalist bedroom or penthouse seen from the bed or a low couch, floor-to-ceiling glass filling the frame with a glittering city skyline at night (rain-blurred, fog-wrapped, or snow-dusted variants), an empty black car interior on a night highway with distant city lights ahead — AND brutalist-coastal scenes: a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk — AND stoic statue scenes: a marble or stone statue photographed dramatically (rain-soaked in darkness, a single hard spotlight, half-lost in shadow, cracked with age, snow settling on the shoulders) — the statue is sculpture, not a person, and is allowed — AND apex wildlife scenes: one lone wild animal in a vast moody landscape — a wolf in falling snow, a lion in rain, an eagle over fog, a bull in dust at dusk, a stag on a dark ridgeline — cinematic, desaturated, the animal small or dominant but always alone — AND old-money still-lifes: quiet-wealth object photography — a heavy watch on dark leather, a chessboard mid-game under a low lamp, a fountain pen on a closed ledger, cufflinks on black marble, a wool overcoat on a wooden valet stand in lamplight. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. NO people EVER — write every scene EMPTY of humans (a statue or a lone wild animal is allowed ONLY in its own family's scenes). The empty location does the work: the still-glowing laptop, the unused gym, the storm nobody is standing in. These families are INSPIRATION, not a menu — invent new locations with the same DNA (night city, cold nature, austere architecture, late-night interiors, sea fog, weathered statuary, lone wildlife, quiet-wealth objects) and vary the vantage, weather, and time of night boldly so no two posts look alike.`,
+  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND late-night grind still-lifes: a glowing laptop open on a couch in a near-black minimalist living room, a desk lit by a single screen in an empty room, a barbell resting under one cold light in an empty gym — AND raw-elements landscapes: a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog — AND night-vantage interior scenes: a dark minimalist bedroom or penthouse seen from the bed or a low couch, floor-to-ceiling glass filling the frame with a glittering city skyline at night (rain-blurred, fog-wrapped, or snow-dusted variants), an empty black car interior on a night highway with distant city lights ahead — AND brutalist-coastal scenes: a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk — AND stoic statue scenes: a marble or stone statue photographed dramatically (rain-soaked in darkness, a single hard spotlight, half-lost in shadow, cracked with age, snow settling on the shoulders) — the statue is sculpture, not a person, and is allowed — AND apex wildlife scenes: one lone wild animal in a vast moody landscape — a wolf in falling snow, a lion in rain, an eagle over fog, a bull in dust at dusk, a stag on a dark ridgeline — cinematic, desaturated, the animal small or dominant but always alone — AND old-money still-lifes: quiet-wealth object photography — a heavy watch on dark leather, a chessboard mid-game under a low lamp, a fountain pen on a closed ledger, cufflinks on black marble, a wool overcoat on a wooden valet stand in lamplight — AND further families in the same DNA: the forge (sparks and glowing steel in a black workshop), combat gyms (a heavy bag under one cold light, an empty ring at night), monastery stillness (candlelit stone corridors, a zen garden at dusk in mist), empty night tracks and stadium tunnels, dark machines (a motorcycle in night rain, a car under a half-pulled cover in a dim garage), time still-lifes (an hourglass half-run in lamplight, a wall clock at 4:57 in a dark room), desert emptiness (a lone road into dusk, dunes under storm light), frozen worlds (a frozen lake at blue hour, a snow-buried cabin with one lit window), and war-room studies (a banker's lamp over open books at night, maps spread on a dark desk). Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. NO people EVER — write every scene EMPTY of humans (a statue or a lone wild animal is allowed ONLY in its own family's scenes). The empty location does the work: the still-glowing laptop, the unused gym, the storm nobody is standing in. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within this DNA, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
   women: WOMEN_SCENE_BRIEFS.light,
 };
 
@@ -355,20 +355,70 @@ const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
   {
     name: "apex wildlife",
     brief:
-      "one lone wild animal in a vast moody landscape — a wolf in falling snow, a lion in rain, an eagle over fog, a bull in dust at dusk, a stag on a dark ridgeline. Cinematic and desaturated; the animal is always alone, no people, no buildings.",
+      "one lone wild animal in a vast moody landscape — draw from the ENTIRE animal kingdom (wolf, lion, stag, eagle, bear, panther, falcon, bison, ram, elk, orca breaching a grey sea, a hawk on a dead branch, a fox in snowfall, a horse alone on a storm plain — and beyond), in any wild environment and weather. Cinematic and desaturated; the animal is always alone, no people, no buildings. NEVER reuse an animal from a recent post.",
   },
   {
     name: "old-money still-life",
     brief:
       "quiet-wealth object photography — a heavy watch on dark leather, a chessboard mid-game under a low lamp, a fountain pen on a closed ledger, cufflinks on black marble, a wool overcoat on a wooden valet stand in lamplight. Intimate, dim, tactile; no people.",
   },
+  // Nine more families (2026-09-08, per Keenan: "I want a TON of
+  // different variance of these...").
+  {
+    name: "the forge",
+    brief:
+      "glowing embers and steel in a black workshop — sparks falling in darkness, a hammer resting on an anvil lit only by forge-light, red-hot metal cooling in the dark. Industrial, elemental; no people.",
+  },
+  {
+    name: "combat gym",
+    brief:
+      "an empty fight gym at night — a heavy bag hanging under one cold light, an empty boxing ring in a dark hall, wraps and gloves resting on a bench, a speed bag in shadow. The gear waits; nobody is there.",
+  },
+  {
+    name: "monastery",
+    brief:
+      "monk-mode stillness — a stone monastery corridor lit by candles, a single candle in a bare stone cell, a zen rock garden at dusk in mist, a temple gate in fog. Austere, silent, ancient; no people.",
+  },
+  {
+    name: "night track",
+    brief:
+      "an empty stadium or track — a running track vanishing into pre-dawn fog, a dark stadium tunnel with a slit of light at the end, empty bleachers under a night sky, a painted starting line in cold light. Nobody is running yet.",
+  },
+  {
+    name: "machines",
+    brief:
+      "dark mechanical power — a motorcycle standing in night rain, a car under a half-pulled cover in a dim garage, engine metal and cockpit dials glowing faintly in blackness. Metal, rain, low light; no people.",
+  },
+  {
+    name: "time still-life",
+    brief:
+      "time made visible — an hourglass half-run in lamplight, a pocket watch open on dark wood, a wall clock reading 4:57 in a dark room, a calendar page curling in shadow. Quiet, ticking, relentless.",
+  },
+  {
+    name: "desert",
+    brief:
+      "vast dry emptiness — a lone road running straight into desert dusk, dunes under storm light, cracked earth stretching to the horizon at blue hour, a dark mesa in fading light. Huge, indifferent, empty.",
+  },
+  {
+    name: "frozen world",
+    brief:
+      "deep winter — a frozen lake at blue hour, a snow-buried cabin with one lit window, black pines sagging under snow, ice sheeting a dark shoreline. Silent, cold, beautiful and hostile.",
+  },
+  {
+    name: "war room",
+    brief:
+      "a dark study built for work — a green banker's lamp over open books in a wood-panelled library, maps and notes spread across a desk at night, shelves of worn spines in half-light. Focused, old, serious; no people.",
+  },
 ];
 
-/** Roll one cover-scene family and return the injectable rule string. */
+/** Roll one cover-scene family and return the injectable rule string.
+ *  The family constrains the DNA; the scene itself must be INVENTED
+ *  fresh (2026-09-08, per Keenan: "unlimited amounts actually. every
+ *  post should be a unique image"). */
 function rollMenCoverRule(): string {
   const fam =
     MEN_COVER_FAMILIES[Math.floor(Math.random() * MEN_COVER_FAMILIES.length)];
-  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} Item scenes follow the normal SCENES brief with bold variety.`;
+  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
 }
 
 /** Generate one moody-carousel topic for the given audience funnel.
@@ -1630,7 +1680,7 @@ const PROTOCOL_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE protocols. Every step must be concrete enough to schedule: a time, a count, a limit, a rule — never vague advice like "work harder" or "stay focused".
 VOICE: calm command energy. Imperative mood. Short declarative sentences. A mentor issuing orders, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a glowing laptop open in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table, a dark bedroom with floor-to-ceiling glass over a night skyline, a stone stairway climbing into fog — AND stoic statue scenes (a marble statue rain-soaked in darkness or under one hard spotlight; sculpture, not a person) — AND apex wildlife scenes (one lone wild animal in a vast moody landscape: a wolf in snow, a lion in rain, a stag on a dark ridge) — AND old-money still-lifes (a heavy watch on dark leather, a chessboard under a low lamp, a fountain pen on a closed ledger). Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY of humans (a statue or a lone wild animal only in its own family's scenes); the still-glowing laptop, the unused gym, the face-down phone do the work. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
+SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a glowing laptop open in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table, a dark bedroom with floor-to-ceiling glass over a night skyline, a stone stairway climbing into fog — AND stoic statue scenes (a marble statue rain-soaked in darkness or under one hard spotlight; sculpture, not a person) — AND apex wildlife scenes (ONE lone wild animal from anywhere in the animal kingdom, in a vast moody landscape) — AND old-money still-lifes (a heavy watch on dark leather, a chessboard under a low lamp) — AND the forge, combat gyms, candlelit monasteries, empty night tracks, dark machines, time still-lifes (an hourglass, a clock at 4:57), desert roads, frozen lakes, and war-room studies. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY of humans (a statue or a lone wild animal only in its own family's scenes); the still-glowing laptop, the unused gym, the face-down phone do the work. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within this DNA; never render an example verbatim, never repeat a recent post's scene.
 
 FORMAT — each slide reads like this (match the rhythm):
 "5. One hour on the skill.
