@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-08] — Five new photo styles: statues, wildlife, and luxury objects for BWK; letters and quiet rooms for Ripple
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1c1f681e
+
+### In plain English (for Keenan)
+Per your ask for way more picture variety: BWK posts can now open on and use dramatic stoic statues (rain-soaked marble, hard spotlight), lone apex animals (a wolf in snow, a lion in rain, a stag on a ridge), and old-money still-lifes (a watch on leather, a chessboard, a fountain pen on a ledger) — alongside the existing buildings, gyms, nature, and streets. Ripple posts can now use letter-writing scenes (blank stationery and a pen in lamplight — the paper is always blank so nothing can be misspelled) and quiet-house rooms that carry emotional weight (the kitchen after everyone's asleep, a made bed in a kid's old room, a porch light left on). These are new looks inside the existing daily posts, not new lanes — your posting volume doesn't change.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts only; no schema/route/config changes
+- SCENE_BRIEF.men + PROTOCOL_SYSTEM_PROMPT SCENES: 3 new families (stoic statue, apex wildlife, old-money still-life); MEN_COVER_FAMILIES 6 → 9 so they rotate as covers across all 4 BWK lanes
+- WOMEN_SCENE_BRIEFS light+dark (drives questions + the shared women builder), MEMENTO_WOMEN_SCENES light+dark, phone-quote women coverScene bullet: letter-writing still-lifes + quiet-house scenes
+- buildMoodyImagePrompt men branch: was "NO people, NO animals ... render EMPTY"; now statues and ONE lone wild animal are allowed only when the scene text explicitly names one — conditional, not standing (2026-09-01 lone-man lesson)
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — variety shows up in the next overnight run
+
+### Notes
+- Statues technically depict human figures — the conditional carve-out phrasing matters. If a generic statue starts leaking into non-statue scenes, tighten the carve-out first, don't remove the family
+- Letter scenes always describe BLANK stationery; the global "no text anywhere" image rule stays the backstop
+- Dormant lanes (memento-men, year, etc.) intentionally not updated
+
 ## [2026-09-08] — Quote screens must now fill most of the frame so the text is readable
 
 **Requested by:** Keenan
