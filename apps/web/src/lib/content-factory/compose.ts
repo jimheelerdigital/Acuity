@@ -1326,9 +1326,41 @@ export async function composeQuoteSurfaceSlide(
   const w = Math.min(OUTPUT_W - x, rect.w + ox * 2);
   const h = Math.min(OUTPUT_H - y, rect.h + oy * 2);
 
-  const overlay = await renderSurfaceOverlay(quote, variant, surface, w, h);
+  // Photographic blending (2026-09-09, per Keenan: "it needs to
+  // completely blend in like it's part of the picture"). An opaque
+  // paste throws away the natural lighting the AI painted onto the
+  // blank panel — flat sterile rectangle, obviously composited. The
+  // mockup technique instead: keep the photo's own panel and MULTIPLY
+  // our content into it, so its lighting gradients, color cast, glow
+  // falloff, and edge shading modulate our render. Plus a touch of
+  // blur (vector-crisp type doesn't exist in photos) and gaussian
+  // grain matched to photographic noise.
+  const region = await sharp(frame)
+    .extract({ left: x, top: y, width: w, height: h })
+    .toBuffer();
+  const overlayRaw = await renderSurfaceOverlay(quote, variant, surface, w, h);
+  const overlay = await sharp(overlayRaw).blur(0.6).png().toBuffer();
+  const grain = await sharp({
+    create: {
+      width: w,
+      height: h,
+      channels: 3,
+      background: { r: 128, g: 128, b: 128 },
+      noise: { type: "gaussian", mean: 128, sigma: 6 },
+    },
+  })
+    .png()
+    .toBuffer();
+  const lit = await sharp(region)
+    .composite([
+      { input: overlay, blend: "multiply" },
+      { input: grain, blend: "soft-light" },
+    ])
+    .png()
+    .toBuffer();
+
   const jpeg = await sharp(frame)
-    .composite([{ input: overlay, top: y, left: x }])
+    .composite([{ input: lit, top: y, left: x }])
     .jpeg({ quality: 90 })
     .toBuffer();
   return { jpeg, rect: { x, y, w, h } };
