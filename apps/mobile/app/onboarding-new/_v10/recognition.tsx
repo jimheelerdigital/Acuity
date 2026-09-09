@@ -6,7 +6,7 @@ import { router } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { CoralScreen, coralCardStyle, coralType } from "./_ui";
+import { CoralScreen, FunnelProgress, coralCardStyle, coralType } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCH_ORDER,
@@ -90,6 +90,7 @@ export default function V10Recognition() {
   return (
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
+      <FunnelProgress step={1} total={5} tokens={tokens} />
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,

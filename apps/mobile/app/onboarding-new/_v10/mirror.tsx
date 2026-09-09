@@ -15,7 +15,7 @@ import { router } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { CoralScreen, FunnelCta, coralType } from "./_ui";
+import { CoralScreen, FunnelCta, FunnelProgress, coralType } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -113,6 +113,7 @@ export default function V10Mirror() {
   return (
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
+      <FunnelProgress step={2} total={5} tokens={tokens} />
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,

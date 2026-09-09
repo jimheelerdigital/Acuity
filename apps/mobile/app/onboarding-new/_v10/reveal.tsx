@@ -12,7 +12,14 @@ import Animated, {
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { CoralScreen, FunnelCta, RippleWordmark, coralLabel, coralWhiteCard } from "./_ui";
+import {
+  CoralScreen,
+  FunnelCta,
+  FunnelProgress,
+  RippleWordmark,
+  coralLabel,
+  coralWhiteCard,
+} from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -158,8 +165,9 @@ export default function V10Reveal() {
   return (
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
+      <FunnelProgress step={5} total={5} tokens={tokens} />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
         {/* First appearance of the wordmark in the entire flow. */}

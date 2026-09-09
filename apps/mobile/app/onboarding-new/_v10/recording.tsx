@@ -14,7 +14,7 @@ import Animated, {
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { CoralScreen, FunnelCta, coralChipStyle } from "./_ui";
+import { CoralScreen, FunnelCta, FunnelProgress, coralChipStyle } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -192,7 +192,8 @@ export default function V10Recording() {
   return (
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 28 }}>
+      <FunnelProgress step={3} total={5} tokens={tokens} />
+      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 28 }}>
         <Animated.View style={listeningStyle}>
           <Text
             style={{

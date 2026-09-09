@@ -442,3 +442,60 @@ export function coralChipStyle(
     paddingVertical: 9,
   };
 }
+
+
+/**
+ * Funnel progress across the five pre-paywall steps (recognition → reveal).
+ * Segments fill white on the coral; the rest are translucent white. The
+ * label is the mono eyebrow. Paywall/save/reminders (the conversion tail
+ * after the value has landed) deliberately do NOT show this — progress
+ * belongs to the part of the flow that is building toward the reveal.
+ *
+ * Honest by construction: `step`/`total` are fixed positions in the route
+ * order, not a timer or a guessed fraction.
+ */
+export function FunnelProgress({
+  step,
+  total,
+  tokens,
+  style,
+}: {
+  step: number;
+  total: number;
+  tokens: AcuityTokens;
+  style?: ViewStyle;
+}) {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: total, now: step }}
+      style={[{ paddingHorizontal: 24, paddingTop: 8 }, style]}
+    >
+      <View style={{ flexDirection: "row", gap: 5 }}>
+        {Array.from({ length: total }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              height: 4,
+              borderRadius: 3,
+              flex: 1,
+              backgroundColor: i < step ? "#ffffff" : "rgba(255,255,255,0.3)",
+            }}
+          />
+        ))}
+      </View>
+      <Text
+        style={{
+          fontFamily: tokens.fontMono,
+          fontSize: 10,
+          letterSpacing: 1.4,
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.8)",
+          marginTop: 8,
+        }}
+      >
+        Step {step} of {total}
+      </Text>
+    </View>
+  );
+}

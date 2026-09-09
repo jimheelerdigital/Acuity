@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { CoralScreen, FunnelCta, coralWhiteCard } from "./_ui";
+import { CoralScreen, FunnelCta, FunnelProgress, coralWhiteCard } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { uploadDebrief } from "@/lib/onboarding-v10/upload";
@@ -115,6 +115,7 @@ export default function V10Processing() {
   return (
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
+      <FunnelProgress step={4} total={5} tokens={tokens} />
       <View
         style={{
           flex: 1,
