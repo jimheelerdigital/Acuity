@@ -248,9 +248,15 @@ export function CoralScreen({
   style?: ViewStyle;
 }) {
   return (
-    <View style={[{ flex: 1, backgroundColor: tokens.primary }, style]}>
+    <View style={[{ flex: 1, backgroundColor: CORAL_SURFACE }, style]}>
       <LinearGradient
-        colors={[tokens.primaryHi, tokens.primary, tokens.primaryLo]}
+        // The TRUE brand coral (#ED9672, from app.json) — NOT tokens.primary.
+        // The OKLCH `primary` token resolves to #ff8a65, a much more
+        // saturated red-orange, and its `primaryLo` bottom (#e06b46) reads as
+        // burnt/too-dark. The marketing surface uses the real brand coral so
+        // it's the right orange. Gentle top-lift + whisper-deeper bottom for
+        // depth, all kept in the #ED9672 family (never the burnt token).
+        colors={[CORAL_SURFACE_HI, CORAL_SURFACE, CORAL_SURFACE_LO]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         // Decorative only — must never intercept touches, or the whole coral
@@ -262,6 +268,17 @@ export function CoralScreen({
     </View>
   );
 }
+
+/**
+ * The funnel's coral marketing surface. #ED9672 is the brand coral from
+ * app.json (splash + icon) — the real source of truth. It is NOT
+ * tokens.primary, which the OKLCH palette resolves to #ff8a65 (off-brand,
+ * too saturated/dark). These three keep the gradient inside the brand-coral
+ * family so the surface always reads as the right orange.
+ */
+const CORAL_SURFACE = "#ED9672";
+const CORAL_SURFACE_HI = "#F4AD8C";
+const CORAL_SURFACE_LO = "#E88B66";
 
 /**
  * Type scale for coral surfaces. Everything is white — the hard rule is
@@ -323,9 +340,9 @@ export function coralCardStyle(
 ): ViewStyle {
   return {
     backgroundColor: selected
-      ? "rgba(255,255,255,0.34)"
+      ? "#ffffff"
       : pressed
-        ? "rgba(255,255,255,0.26)"
+        ? "rgba(255,255,255,0.30)"
         : "rgba(255,255,255,0.18)",
     borderWidth: 1,
     borderColor: selected ? "#ffffff" : "rgba(255,255,255,0.9)",
