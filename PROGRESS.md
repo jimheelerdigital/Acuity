@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-09] — Quote-surface text now blends into the photo instead of looking pasted on
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b4bf572c
+
+### In plain English (for Keenan)
+The billboard/phone/car-dash quote images no longer look like a sticker slapped on top of the photo. The text now picks up the photo's own lighting — its gradients, glow, and color tint show through the panel — plus a hint of softness and film grain, so it reads like the words were actually photographed in the scene.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: `composeQuoteSurfaceSlide` no longer pastes the rendered overlay opaquely. It extracts the detected bright-panel region from the AI photo, multiplies the overlay into it (white ≈ passthrough, so the photo's painted lighting modulates our render), applies a 0.6px blur to the overlay (vector-crisp type doesn't exist in photos), and composites gaussian grain (sigma 6) with soft-light blend to match photographic noise, then puts the lit region back into the frame.
+- Applies to all five surfaces (imessage, flip, car, billboard, sign). The recompose path in carousel-generate.ts calls the same function, so it inherits the blend automatically.
+- sharp `create.noise` requires a `background` field in the type defs — set to mid-gray {128,128,128}.
+
+### Manual steps needed
+- [ ] Deploy required for tonight's 5–8 UTC generation run to use the blended compositing (Keenan says "push it")
+
+### Notes
+- Classic mockup-blending technique: multiply preserves dark content (text) while letting the panel's own bright lighting show through, which is physically how a printed/displayed surface behaves. Dark-mode phone UIs stay dark under multiply — correct, since dark screens don't reflect scene lighting much.
+- The overlay's rounded corners leave the original photo panel visible at the corners — this looks natural (the photo's own screen edge shows).
+- Verified with synthetic gradient-panel scenes for billboard + imessage: gradient carries through the composited content.
+
 ## [2026-09-08] — Slides no longer show numbers, so Keenan can drop any slide before posting
 
 **Requested by:** Keenan
