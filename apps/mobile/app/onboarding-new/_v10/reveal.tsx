@@ -182,7 +182,7 @@ export default function V10Reveal() {
             fontSize: 26,
             lineHeight: 34,
             color: "#ffffff",
-            marginBottom: 28,
+            marginBottom: 18,
           }}
         >
           Here's what Ripple heard.
@@ -283,7 +283,7 @@ export default function V10Reveal() {
         )}
 
         {/* ── SOMETHING WORTH NOTICING — hedged, or branch fallback ── */}
-        <View style={[coralWhiteCard(tokens), { marginBottom: 28 }]}>
+        <View style={[coralWhiteCard(tokens), { marginBottom: 16 }]}>
           <Text
             style={{
               fontFamily: tokens.fontMono,
@@ -314,7 +314,7 @@ export default function V10Reveal() {
             flexDirection: "row",
             alignItems: "center",
             gap: 10,
-            marginBottom: 32,
+            marginBottom: 18,
           }}
         >
           <Animated.View
@@ -382,7 +382,7 @@ export default function V10Reveal() {
             lineHeight: 21,
             color: "#ffffff",
             opacity: 0.9,
-            marginBottom: 32,
+            marginBottom: 18,
           }}
         >
           {V10_COMPOUNDING_FOOTER}
@@ -413,8 +413,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <View style={{ marginBottom: 28 }}>
-      <Text style={[coralLabel(tokens), { marginBottom: 10 }]}>{title}</Text>
+    <View style={{ marginBottom: 18 }}>
+      <Text style={[coralLabel(tokens), { marginBottom: 8 }]}>{title}</Text>
       {children}
     </View>
   );

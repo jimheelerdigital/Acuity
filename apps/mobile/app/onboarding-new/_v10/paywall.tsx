@@ -168,14 +168,14 @@ export default function V10Paywall() {
             lineHeight: 22,
             color: "#ffffff",
             opacity: 0.9,
-            marginBottom: 24,
+            marginBottom: 14,
           }}
         >
           {branch ? V10_BRANCHES[branch].paywallObservation : DEFAULT_OBSERVATION}
         </Text>
 
         {/* ── Z2 honest timeline ─────────────────────────────────── */}
-        <View style={{ gap: 6, marginBottom: 24 }}>
+        <View style={{ gap: 5, marginBottom: 16 }}>
           {timeline.map((line) => (
             <Text
               key={line}
@@ -193,7 +193,7 @@ export default function V10Paywall() {
         </View>
 
         {/* ── Z3 plans — annual pre-selected ─────────────────────── */}
-        <View style={{ gap: 10, marginBottom: 20 }}>
+        <View style={{ gap: 10, marginBottom: 14 }}>
           <PlanCard
             copy={copy.annual}
             selected={plan === "annual"}
@@ -209,7 +209,7 @@ export default function V10Paywall() {
         </View>
 
         {/* ── Z4 Free vs Ripple ──────────────────────────────────── */}
-        <View style={[coralWhiteCard(tokens, { padding: 14 }), { marginBottom: 20 }]}>
+        <View style={[coralWhiteCard(tokens, { padding: 14 }), { marginBottom: 14 }]}>
           <View style={{ flexDirection: "row", marginBottom: 8 }}>
             <Text style={{ flex: 1 }} />
             <ColHead label="Free" tokens={tokens} />
