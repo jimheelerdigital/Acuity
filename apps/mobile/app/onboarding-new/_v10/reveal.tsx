@@ -172,7 +172,7 @@ export default function V10Reveal() {
       >
         {/* First appearance of the wordmark in the entire flow. */}
         <View style={{ marginBottom: 14 }}>
-          <RippleWordmark tokens={tokens} size={22} textSize={18} />
+          <RippleWordmark height={22} />
         </View>
 
         <Text

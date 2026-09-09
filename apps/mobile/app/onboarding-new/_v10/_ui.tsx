@@ -1,8 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Circle, Ellipse } from "react-native-svg";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -379,42 +379,31 @@ export function coralCardStyle(
  * coral surface that is white. Spec §1 still bans the mark before the reveal,
  * so only reveal and save mount this.
  */
+/** Real brand lockup aspect ratio (assets/brand/ripple-lockup-white.png, 312×73). */
+const LOCKUP_RATIO = 312 / 73;
+
 export function RippleWordmark({
-  tokens,
-  size = 22,
-  tint = "#ffffff",
-  showText = true,
-  textSize = 19,
-  gap = 8,
+  height = 24,
+  tint,
 }: {
-  tokens: AcuityTokens;
-  size?: number;
+  /** Rendered height in px; width follows the real lockup's aspect ratio. */
+  height?: number;
+  /**
+   * The asset is already white (for the coral surface). Pass a colour only to
+   * re-tint it on a non-coral surface; omit on coral.
+   */
   tint?: string;
-  showText?: boolean;
-  textSize?: number;
-  gap?: number;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap }}>
-      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Ellipse cx={12} cy={15} rx={9} ry={3.2} stroke={tint} strokeWidth={1.6} />
-        <Ellipse cx={12} cy={13} rx={6} ry={2.2} stroke={tint} strokeWidth={1.6} />
-        <Ellipse cx={12} cy={11} rx={3} ry={1.3} stroke={tint} strokeWidth={1.6} />
-        <Circle cx={12} cy={8.5} r={1.2} fill={tint} />
-      </Svg>
-      {showText ? (
-        <Text
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: textSize,
-            color: tint,
-            letterSpacing: -0.2,
-          }}
-        >
-          ripple
-        </Text>
-      ) : null}
-    </View>
+    <Image
+      // The REAL brand lockup (droplet mark + wordmark), white on transparent —
+      // exported from marketing_handoff/ripple-lockup-white.png. Not a redrawn
+      // SVG.
+      source={require("../../../assets/brand/ripple-lockup-white.png")}
+      resizeMode="contain"
+      accessibilityLabel="Ripple"
+      style={{ height, width: height * LOCKUP_RATIO, tintColor: tint }}
+    />
   );
 }
 

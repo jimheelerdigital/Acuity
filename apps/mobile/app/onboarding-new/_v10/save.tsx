@@ -210,7 +210,7 @@ export default function V10Save() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ alignItems: "center", marginTop: 24, marginBottom: 20 }}>
-          <RippleWordmark tokens={tokens} size={32} textSize={26} gap={10} />
+          <RippleWordmark height={34} />
         </View>
 
         <Text
