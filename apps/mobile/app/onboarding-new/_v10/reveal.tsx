@@ -286,7 +286,8 @@ export default function V10Reveal() {
         <View style={[coralWhiteCard(tokens), { marginBottom: 16 }]}>
           <Text
             style={{
-              fontFamily: tokens.fontMono,
+              fontFamily: tokens.fontSans,
+              fontWeight: "700",
               fontSize: 11,
               letterSpacing: 0.6,
               textTransform: "uppercase",

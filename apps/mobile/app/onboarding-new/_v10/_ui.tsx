@@ -435,7 +435,8 @@ export function coralWhiteCard(
 /** Uppercase mono section label, white, for use directly on the coral. */
 export function coralLabel(tokens: AcuityTokens) {
   return {
-    fontFamily: tokens.fontMono,
+    fontFamily: tokens.fontSans,
+    fontWeight: "700" as const,
     fontSize: 11,
     letterSpacing: 1,
     textTransform: "uppercase" as const,
@@ -505,7 +506,8 @@ export function FunnelProgress({
       </View>
       <Text
         style={{
-          fontFamily: tokens.fontMono,
+          fontFamily: tokens.fontSans,
+          fontWeight: "700",
           fontSize: 10,
           letterSpacing: 1.4,
           textTransform: "uppercase",

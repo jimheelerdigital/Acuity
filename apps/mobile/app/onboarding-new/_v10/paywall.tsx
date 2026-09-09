@@ -374,7 +374,8 @@ function PlanCard({
     >
       <Text
         style={{
-          fontFamily: tokens.fontMono,
+          fontFamily: tokens.fontSans,
+          fontWeight: "700",
           fontSize: 11,
           letterSpacing: 0.8,
           textTransform: "uppercase",

@@ -197,7 +197,8 @@ export default function V10Recording() {
         <Animated.View style={listeningStyle}>
           <Text
             style={{
-              fontFamily: tokens.fontMono,
+              fontFamily: tokens.fontSans,
+              fontWeight: "700",
               fontSize: 12,
               letterSpacing: 1.4,
               textTransform: "uppercase",
@@ -297,11 +298,12 @@ export default function V10Recording() {
 
           <Text
             style={{
-              fontFamily: tokens.fontMono ?? tokens.fontSans,
+              fontFamily: tokens.fontDisplay,
               fontSize: 30,
               color: "#ffffff",
               textAlign: "center",
               marginTop: 20,
+              fontVariant: ["tabular-nums"],
             }}
           >
             {mmss}
