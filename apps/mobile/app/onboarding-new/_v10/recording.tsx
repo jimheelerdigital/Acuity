@@ -4,6 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path, Rect } from "react-native-svg";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,7 +14,7 @@ import Animated, {
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { FunnelCta } from "./_ui";
+import { CoralScreen, FunnelCta, coralChipStyle } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -188,17 +190,19 @@ export default function V10Recording() {
     : V10_RECORDING_PROMPT;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 32, paddingBottom: 28 }}>
         <Animated.View style={listeningStyle}>
           <Text
             style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 13,
-              letterSpacing: 1,
+              fontFamily: tokens.fontMono,
+              fontSize: 12,
+              letterSpacing: 1.4,
               textTransform: "uppercase",
-              color: tokens.textTer,
-              marginBottom: 20,
+              color: "#ffffff",
+              opacity: 0.82,
+              marginBottom: 16,
             }}
           >
             Listening…
@@ -211,7 +215,7 @@ export default function V10Recording() {
             fontFamily: tokens.fontDisplay,
             fontSize: 24,
             lineHeight: 32,
-            color: tokens.text,
+            color: "#ffffff",
           }}
         >
           {topPrompt}
@@ -223,7 +227,8 @@ export default function V10Recording() {
             fontFamily: tokens.fontSans,
             fontSize: 15,
             lineHeight: 22,
-            color: tokens.textSec,
+            color: "#ffffff",
+            opacity: 0.9,
             marginTop: 8,
           }}
         >
@@ -235,7 +240,8 @@ export default function V10Recording() {
             fontFamily: tokens.fontSans,
             fontSize: 14,
             lineHeight: 21,
-            color: tokens.textSec,
+            color: "#ffffff",
+            opacity: 0.82,
             marginTop: 16,
           }}
         >
@@ -243,15 +249,58 @@ export default function V10Recording() {
         </Text>
 
         <View style={{ flex: 1, justifyContent: "center" }}>
-          <Waveform level={level} tokens={tokens} />
+          {/* Orb — coral core + mic, scaled by REAL mic level (never a
+              decorative loop). The ring is a soft white bloom on the coral. */}
+          <View style={{ alignItems: "center", marginBottom: 4 }}>
+            <View
+              style={{
+                width: 150,
+                height: 150,
+                borderRadius: 75,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(255,255,255,0.14)",
+                shadowColor: "#ffffff",
+                shadowOffset: { width: 0, height: 0 },
+                shadowRadius: 26,
+                shadowOpacity: 0.5,
+                transform: [{ scale: 1 + Math.min(level, 1) * 0.06 }],
+              }}
+            >
+              <LinearGradient
+                colors={[tokens.primaryHi, tokens.primaryLo]}
+                start={{ x: 0.2, y: 0 }}
+                end={{ x: 0.8, y: 1 }}
+                style={{
+                  width: 98,
+                  height: 98,
+                  borderRadius: 49,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Svg width={34} height={34} viewBox="0 0 24 24" fill="none">
+                  <Rect x={9} y={3} width={6} height={12} rx={3} stroke="#ffffff" strokeWidth={1.8} />
+                  <Path
+                    d="M6 11a6 6 0 0 0 12 0M12 17v4"
+                    stroke="#ffffff"
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                  />
+                </Svg>
+              </LinearGradient>
+            </View>
+          </View>
+
+          <Waveform level={level} />
 
           <Text
             style={{
               fontFamily: tokens.fontMono ?? tokens.fontSans,
               fontSize: 30,
-              color: tokens.text,
+              color: "#ffffff",
               textAlign: "center",
-              marginTop: 24,
+              marginTop: 20,
             }}
           >
             {mmss}
@@ -264,7 +313,8 @@ export default function V10Recording() {
                 fontFamily: tokens.fontSans,
                 fontSize: 14,
                 lineHeight: 21,
-                color: tokens.textSec,
+                color: "#ffffff",
+                opacity: 0.9,
                 textAlign: "center",
                 marginTop: 12,
                 paddingHorizontal: 16,
@@ -277,9 +327,9 @@ export default function V10Recording() {
           {error && (
             <Text
               style={{
-                fontFamily: tokens.fontSans,
+                fontFamily: tokens.fontDisplay,
                 fontSize: 14,
-                color: tokens.bad,
+                color: "#ffffff",
                 textAlign: "center",
                 marginTop: 16,
               }}
@@ -301,20 +351,14 @@ export default function V10Recording() {
                   trackV10("v10_chip_tapped", { chip: chip.key, branch });
                 }}
                 accessibilityRole="button"
-                style={{
-                  borderWidth: 1,
-                  borderColor: active ? tokens.primary : tokens.line,
-                  backgroundColor: active ? tokens.cardBgTint : "transparent",
-                  borderRadius: 999,
-                  paddingHorizontal: 14,
-                  paddingVertical: 9,
-                }}
+                style={coralChipStyle({ selected: active })}
               >
                 <Text
                   style={{
                     fontFamily: tokens.fontSans,
                     fontSize: 14,
-                    color: active ? tokens.text : tokens.textSec,
+                    fontWeight: active ? "700" : "500",
+                    color: active ? tokens.primaryLo : "#ffffff",
                   }}
                 >
                   {chip.label}
@@ -331,10 +375,12 @@ export default function V10Recording() {
           onPress={() => void handleStop()}
           tokens={tokens}
           size="lg"
+          onCoral
           accessibilityLabel="Stop recording"
         />
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CoralScreen>
   );
 }
 
@@ -344,13 +390,7 @@ export default function V10Recording() {
  * while the mic is muted is exactly that: it would tell her she's being
  * heard when she isn't.
  */
-function Waveform({
-  level,
-  tokens,
-}: {
-  level: number;
-  tokens: ReturnType<typeof makeAcuityTokens>;
-}) {
+function Waveform({ level }: { level: number }) {
   const BARS = 24;
   return (
     <View
@@ -377,8 +417,8 @@ function Waveform({
               width: 3,
               height: h,
               borderRadius: 2,
-              backgroundColor: tokens.primary,
-              opacity: 0.35 + envelope * 0.65,
+              backgroundColor: "#ffffff",
+              opacity: 0.4 + envelope * 0.55,
             }}
           />
         );

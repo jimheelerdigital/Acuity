@@ -5,7 +5,7 @@ import { router } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { FunnelCta } from "./_ui";
+import { CoralScreen, FunnelCta, coralWhiteCard } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import {
@@ -138,7 +138,8 @@ export default function V10Paywall() {
   const selected = plan === "annual" ? copy.annual : copy.monthly;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 24,
@@ -153,7 +154,7 @@ export default function V10Paywall() {
             fontFamily: tokens.fontDisplay,
             fontSize: 26,
             lineHeight: 32,
-            color: tokens.text,
+            color: "#ffffff",
             marginBottom: 8,
           }}
         >
@@ -165,7 +166,8 @@ export default function V10Paywall() {
             fontStyle: "italic",
             fontSize: 15,
             lineHeight: 22,
-            color: tokens.textSec,
+            color: "#ffffff",
+            opacity: 0.9,
             marginBottom: 24,
           }}
         >
@@ -181,7 +183,8 @@ export default function V10Paywall() {
                 fontFamily: tokens.fontSans,
                 fontSize: 14,
                 lineHeight: 20,
-                color: tokens.textSec,
+                color: "#ffffff",
+                opacity: 0.85,
               }}
             >
               {line}
@@ -206,16 +209,7 @@ export default function V10Paywall() {
         </View>
 
         {/* ── Z4 Free vs Ripple ──────────────────────────────────── */}
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: tokens.line,
-            borderRadius: 14,
-            paddingVertical: 12,
-            paddingHorizontal: 16,
-            marginBottom: 20,
-          }}
-        >
+        <View style={[coralWhiteCard(tokens, { padding: 14 }), { marginBottom: 20 }]}>
           <View style={{ flexDirection: "row", marginBottom: 8 }}>
             <Text style={{ flex: 1 }} />
             <ColHead label="Free" tokens={tokens} />
@@ -247,13 +241,14 @@ export default function V10Paywall() {
         </View>
 
         {/* ── Z6 CTA ─────────────────────────────────────────────── */}
-        <FunnelCta label={cta.label} onPress={onPurchase} tokens={tokens} />
+        <FunnelCta label={cta.label} onPress={onPurchase} tokens={tokens} onCoral />
         <Text
           style={{
             fontFamily: tokens.fontSans,
             fontSize: 12,
             lineHeight: 18,
-            color: tokens.textTer,
+            color: "#ffffff",
+            opacity: 0.8,
             textAlign: "center",
             marginTop: 10,
           }}
@@ -271,7 +266,8 @@ export default function V10Paywall() {
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 14,
-              color: tokens.textTer,
+              color: "#ffffff",
+              opacity: 0.85,
               textDecorationLine: "underline",
             }}
           >
@@ -313,7 +309,8 @@ export default function V10Paywall() {
           {selected.productId.apple}
         </Text>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CoralScreen>
   );
 }
 
@@ -350,6 +347,12 @@ function PlanCard({
   onPress: () => void;
   tokens: Tokens;
 }) {
+  // On the coral surface a plan card is either the solid white "chosen"
+  // card (dark text) or a translucent white outline (white text). Same
+  // inversion the whole funnel uses — never dark text on coral.
+  const ink = selected ? tokens.text : "#ffffff";
+  const inkSub = selected ? tokens.textSec : "rgba(255,255,255,0.85)";
+  const inkTer = selected ? tokens.textTer : "rgba(255,255,255,0.7)";
   return (
     <Pressable
       onPress={onPress}
@@ -357,20 +360,25 @@ function PlanCard({
       accessibilityState={{ selected }}
       style={{
         borderWidth: selected ? 2 : 1,
-        borderColor: selected ? tokens.primary : tokens.line,
-        borderRadius: 14,
+        borderColor: selected ? tokens.primaryLo : "rgba(255,255,255,0.4)",
+        borderRadius: tokens.radius.md,
         paddingVertical: 14,
         paddingHorizontal: 16,
-        backgroundColor: selected ? tokens.bgInset : "transparent",
+        backgroundColor: selected ? "#ffffff" : "rgba(255,255,255,0.12)",
+        shadowColor: "#7a3d24",
+        shadowOffset: { width: 0, height: 8 },
+        shadowRadius: selected ? 18 : 0,
+        shadowOpacity: selected ? 0.18 : 0,
+        elevation: selected ? 5 : 0,
       }}
     >
       <Text
         style={{
-          fontFamily: tokens.fontSans,
+          fontFamily: tokens.fontMono,
           fontSize: 11,
           letterSpacing: 0.8,
           textTransform: "uppercase",
-          color: tokens.textTer,
+          color: selected ? tokens.primaryLo : inkTer,
           marginBottom: 4,
         }}
       >
@@ -382,7 +390,7 @@ function PlanCard({
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 14,
-              color: tokens.textTer,
+              color: inkTer,
               textDecorationLine: "line-through",
             }}
           >
@@ -393,7 +401,7 @@ function PlanCard({
           style={{
             fontFamily: tokens.fontDisplay,
             fontSize: 20,
-            color: tokens.text,
+            color: ink,
           }}
         >
           {copy.price}
@@ -403,7 +411,7 @@ function PlanCard({
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 14,
-              color: tokens.textSec,
+              color: inkSub,
             }}
           >
             {copy.subPrice}
@@ -414,7 +422,7 @@ function PlanCard({
         style={{
           fontFamily: tokens.fontSans,
           fontSize: 13,
-          color: tokens.textSec,
+          color: inkSub,
           marginTop: 2,
         }}
       >
@@ -474,7 +482,8 @@ function FooterLink({
         style={{
           fontFamily: tokens.fontSans,
           fontSize: 12,
-          color: tokens.textTer,
+          color: "#ffffff",
+          opacity: 0.8,
         }}
       >
         {label}
@@ -483,9 +492,12 @@ function FooterLink({
   );
 }
 
-function Dot({ tokens }: { tokens: Tokens }) {
+function Dot({ tokens: _tokens }: { tokens: Tokens }) {
   return (
-    <Text style={{ fontSize: 12, color: tokens.textTer }} accessibilityElementsHidden>
+    <Text
+      style={{ fontSize: 12, color: "#ffffff", opacity: 0.55 }}
+      accessibilityElementsHidden
+    >
       ·
     </Text>
   );

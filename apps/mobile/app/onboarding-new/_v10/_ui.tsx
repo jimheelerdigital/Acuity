@@ -1,4 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Circle, Ellipse } from "react-native-svg";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -326,5 +327,118 @@ export function coralCardStyle(
     paddingVertical: 18,
     paddingHorizontal: 20,
     transform: [{ scale: pressed ? 0.99 : 1 }],
+  };
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// Coral-forward content surfaces (screens 3–9)
+//
+// The whole funnel is the coral marketing surface now (not just the two
+// opening screens): every screen runs on CoralScreen. Sparse screens keep
+// white type directly on the coral (coralType); dense screens float the
+// content on WHITE cards so nothing that has to be read ever sits on the
+// coral itself. That is the rule the "Halloween" note protects — text on
+// coral is white or it lives on a white card, never dark-on-coral.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The Ripple droplet + wordmark. Concentric ripple rings under a drop —
+ * rendered as SVG so it is transparent on any surface and never a tile with
+ * a baked background. `tint` is the stroke/fill and the text colour; on the
+ * coral surface that is white. Spec §1 still bans the mark before the reveal,
+ * so only reveal and save mount this.
+ */
+export function RippleWordmark({
+  tokens,
+  size = 22,
+  tint = "#ffffff",
+  showText = true,
+  textSize = 19,
+  gap = 8,
+}: {
+  tokens: AcuityTokens;
+  size?: number;
+  tint?: string;
+  showText?: boolean;
+  textSize?: number;
+  gap?: number;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Ellipse cx={12} cy={15} rx={9} ry={3.2} stroke={tint} strokeWidth={1.6} />
+        <Ellipse cx={12} cy={13} rx={6} ry={2.2} stroke={tint} strokeWidth={1.6} />
+        <Ellipse cx={12} cy={11} rx={3} ry={1.3} stroke={tint} strokeWidth={1.6} />
+        <Circle cx={12} cy={8.5} r={1.2} fill={tint} />
+      </Svg>
+      {showText ? (
+        <Text
+          style={{
+            fontFamily: tokens.fontDisplay,
+            fontSize: textSize,
+            color: tint,
+            letterSpacing: -0.2,
+          }}
+        >
+          ripple
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Elevated white card for dense content on the coral surface. Inside it the
+ * normal light-mode tokens (dark text, hairline borders) are correct again,
+ * so a section's existing inner markup keeps working unchanged — only its
+ * container swaps to this. The shadow is a warm coral-shadow lift so the
+ * card reads as floating on the coral rather than punched out of it.
+ */
+export function coralWhiteCard(
+  tokens: AcuityTokens,
+  { padding = 16, tinted = false }: { padding?: number; tinted?: boolean } = {}
+): ViewStyle {
+  return {
+    backgroundColor: tinted ? "rgba(255,255,255,0.16)" : "#ffffff",
+    borderWidth: tinted ? 1 : 0,
+    borderColor: "rgba(255,255,255,0.34)",
+    borderRadius: tokens.radius.md,
+    padding,
+    shadowColor: "#7a3d24",
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 22,
+    shadowOpacity: tinted ? 0 : 0.18,
+    elevation: tinted ? 0 : 6,
+  };
+}
+
+/** Uppercase mono section label, white, for use directly on the coral. */
+export function coralLabel(tokens: AcuityTokens) {
+  return {
+    fontFamily: tokens.fontMono,
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: "uppercase" as const,
+    color: "#ffffff",
+    opacity: 0.85,
+  };
+}
+
+/**
+ * Pill chip on the coral surface (recording prompts). Selected fills solid
+ * white with a coral label; idle is a translucent white outline — the same
+ * inversion the choice cards use, so nothing on coral is ever dark-on-coral.
+ */
+export function coralChipStyle(
+  { selected = false }: { selected?: boolean } = {}
+): ViewStyle {
+  return {
+    borderWidth: 1,
+    borderColor: selected ? "#ffffff" : "rgba(255,255,255,0.4)",
+    backgroundColor: selected ? "#ffffff" : "rgba(255,255,255,0.12)",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   };
 }
