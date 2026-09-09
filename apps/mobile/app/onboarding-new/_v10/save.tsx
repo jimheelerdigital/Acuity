@@ -368,7 +368,9 @@ function AuthButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
-      style={({ pressed }) => ({
+      style={{
+        // Object style, not a function — RN 0.81.5 here drops Pressable
+        // function-styles (see FunnelCta note).
         backgroundColor: "rgba(255,255,255,0.12)",
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.4)",
@@ -376,8 +378,7 @@ function AuthButton({
         paddingVertical: 16,
         alignItems: "center",
         opacity: disabled ? 0.5 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
-      })}
+      }}
     >
       <Text
         style={{
@@ -417,7 +418,9 @@ function OAuthButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
-      style={({ pressed }) => ({
+      style={{
+        // Object style, not a function — RN 0.81.5 here drops Pressable
+        // function-styles (see FunnelCta note).
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
@@ -426,13 +429,12 @@ function OAuthButton({
         borderRadius: tokens.radius.pill,
         paddingVertical: 15,
         opacity: disabled ? 0.6 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
         shadowColor: "#7a3d24",
         shadowOffset: { width: 0, height: 8 },
         shadowRadius: 18,
         shadowOpacity: 0.16,
         elevation: 4,
-      })}
+      }}
     >
       {provider === "apple" ? <AppleLogo /> : <GoogleLogo />}
       <Text

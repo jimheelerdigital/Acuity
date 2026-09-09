@@ -105,16 +105,19 @@ export function FunnelCta({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: inactive, busy }}
-      style={({ pressed }) => ({
+      style={{
+        // ⚠️ OBJECT style, not a `({pressed}) => (...)` function. On RN
+        // 0.81.5 in this app a Pressable function-style silently does NOT
+        // apply (verified on-device: an object style renders, the identical
+        // function style renders nothing) — which is what made every CTA
+        // here white-on-white/invisible. Everything below is derived from
+        // props, so no press state is needed.
         backgroundColor: fill,
         borderRadius: tokens.radius.pill,
         paddingVertical: size === "lg" ? 20 : 18,
         alignItems: "center",
         justifyContent: "center",
-        // Disabled reads as flat-and-dimmed; pressed keeps full opacity so
-        // the press feels like a press rather than a fade.
         opacity: disabled ? 0.45 : busy ? 0.8 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
         // The glow, as RN shadow props. NOT a spread of tokens.glowPrimary —
         // see the note at the top of this file. On a coral surface a coral
         // glow is invisible, so the white pill gets a soft dark lift instead.
@@ -132,7 +135,7 @@ export function FunnelCta({
             : tokens.glowPrimary.opacity,
         elevation: inactive ? 0 : Math.round(tokens.glowPrimary.radius / 2),
         ...style,
-      })}
+      }}
     >
       {busy && !busyLabel ? (
         <ActivityIndicator color={labelColor} />
@@ -317,15 +320,22 @@ export function coralCardStyle(
 ): ViewStyle {
   return {
     backgroundColor: selected
-      ? "rgba(255,255,255,0.28)"
+      ? "rgba(255,255,255,0.34)"
       : pressed
-        ? "rgba(255,255,255,0.20)"
-        : "rgba(255,255,255,0.12)",
+        ? "rgba(255,255,255,0.26)"
+        : "rgba(255,255,255,0.18)",
     borderWidth: 1,
-    borderColor: selected ? "#ffffff" : "rgba(255,255,255,0.28)",
+    borderColor: selected ? "#ffffff" : "rgba(255,255,255,0.9)",
     borderRadius: tokens.radius.md,
     paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
+    // Soft warm lift so each option reads as a distinct card floating on
+    // the coral, not a line of text in a paragraph.
+    shadowColor: "#7a3d24",
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    shadowOpacity: 0.14,
+    elevation: 3,
     transform: [{ scale: pressed ? 0.99 : 1 }],
   };
 }

@@ -116,7 +116,10 @@ export default function V10Recognition() {
                 onPress={() => choose(key)}
                 accessibilityRole="button"
                 accessibilityLabel={V10_CARD_LABEL[key]}
-                style={({ pressed }) => coralCardStyle(tokens, { pressed })}
+                // OBJECT style, not a `({pressed}) => …` function: RN 0.81.5
+                // here silently drops Pressable function-styles, which is what
+                // made these cards render as a plain paragraph. See _ui.tsx.
+                style={coralCardStyle(tokens)}
               >
                 {/* One line, not two: the plain label already says what the
                     old `support` sentence said. */}
