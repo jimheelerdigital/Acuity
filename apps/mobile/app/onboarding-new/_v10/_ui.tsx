@@ -253,7 +253,10 @@ export function CoralScreen({
         colors={[tokens.primaryHi, tokens.primary, tokens.primaryLo]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
+        // Decorative only — must never intercept touches, or the whole coral
+        // screen becomes untappable (cards/CTAs stop responding). Set via
+        // style (the current RN API) rather than the deprecated prop.
+        style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
       />
       {children}
     </View>
