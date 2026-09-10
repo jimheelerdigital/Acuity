@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-09-10] — No more notebook shots, dramatic skies on buildings, timeline posts show real results
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 834c2663
+
+### In plain English (for Keenan)
+Three fixes from reviewing the new round. Notebook/pen/desk images are banned from BWK — object shots must be unmistakable luxury (cars, watches, private jets). Every building image must have a dramatic sky behind it: heavy cloud cover, cool cinematic lighting, or a sunset — never a plain empty sky. And the timeline posts changed format: the cover now reads exactly "100 DAYS OF DISCIPLINE..." (or whichever interval) and the slides show how much progress a man can actually make in that time — believable math and expected results for each area of life (body, bank account, skill, mind).
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: dramatic-sky mandate added to the dark-luxury architecture family brief and all three four-family SCENES blocks; dark-luxury objects family bans notebooks/journals/pens/books/desks/paperwork/stationery (fountain-pen-on-ledger seed removed; private jet + chess king added); PHONE_QUOTE_BG_SCENES men pool: desk-notebook backdrop → matte-black sports car; buildProtocolSystemPrompt rewritten — fixed title "${interval} OF DISCIPLINE...", slides are per-area expected results with plausible hedged math instead of protocol steps
+- Dormant lanes (bloomers, year, moody-men) still carry old notebook scene text — left as is; apply the four-family library if ever revived
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- Keenan flagged a "KEEP YOUR WORD." pen-on-ledger cover as the bad example — it came from the "fountain pen on a closed ledger" seed in the objects family. Seeds ARE the output; a bland seed will get rendered eventually.
+- Same session he called the price post ("COLLECT YOUR DEBTS.") the best generated so far and re-emphasized hyperrealism — the anti-render + quality-high mandates stay pinned.
+
 ## [2026-09-10] — Warrior images now demand powerful action poses
 
 **Requested by:** Keenan
