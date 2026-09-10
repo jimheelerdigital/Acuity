@@ -239,7 +239,8 @@
         }
       ],
       "./plugins/with-remove-ad-id.js",
-      "./plugins/with-folly-mobile-flag.js"
+      "./plugins/with-folly-mobile-flag.js",
+      "./plugins/with-app-intents.js"
     ],
     "experiments": {
       "typedRoutes": true
