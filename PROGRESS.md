@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-10] — BWK lineup reshuffle: memento mori in, two new lanes, rotating protocol
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f30e523d
+
+### In plain English (for Keenan)
+The BWK side of the nightly content run changed shape. The "earn your silence" posts are retired and replaced by men's memento mori time-math posts. "Hold the line" became "when no one's watching" — private discipline tests nobody sees. The protocol posts no longer always say 30 days: each one rolls 30 days, 100 days, 365 days, 2 years, or 5 years, and the cover is now a question like "if you locked in for 100 days, who would you be on the other side?" Two brand-new lanes were added on top: "pay the price" (each slide names the real cost of the life he wants, ending on "still want it?") and "prove it" (each slide turns a claim like "I want the money" into what today has to look like). BWK goes from 4 to 6 posts per night — 11 total across both accounts.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new WATCHING_THEME / PRICE_THEME / PROVE_THEME + generateWatchingTopic / generatePriceTopic / generateProveTopic (all via generateMoodyFamilyTopic, so humanizer gate + HUMAN_VOICE_RULES + BWK cover-family rotation come free); PROTOCOL_SYSTEM_PROMPT converted to buildProtocolSystemPrompt(interval) with a PROTOCOL_INTERVALS roll (5 values) inside generateProtocolTopic; question-style title rule (8-15 words, must name the interval, ends "?"); generateMementoTopic men path now appends rollMenCoverRule(); LINE_THEME/generateLineTopic and the moody-men path of generateMoodyTopic are dormant, not deleted
+- apps/web/src/inngest/functions/carousel-daily.ts: lanes are now memento-men / watching / protocol / price / prove / questions / memento / selfie / phone-quote / phone-quote-men; HOUR_LANES — 5: memento-men+selfie, 6: watching+questions+phone-quote, 7: protocol+selfie+phone-quote-men, 8: memento+price+prove; imageAudience + `named` flags updated (memento-men unnamed — numbers are the content)
+- email.ts BWK_LANES + carousel-generate.ts MOODY_LANES: added watching / price / prove (memento-men was already in both from its first life)
+- Admin: three new generate buttons (🕰️ memento-men, 👁️ watching, 🧾 price, 🎯 prove replace 🏛️/🌩️); route comment updated
+
+### Manual steps needed
+- [ ] Deploy (`vercel deploy --prod`) before tonight's 5-8 UTC run, then Inngest resync `curl -X PUT https://goripple.io/api/inngest` (Keenan says "push it") — without deploy the run still generates the old lineup
+
+### Notes
+- Interval + cover-family rolls both happen inside the memoized generate-moody-topic Inngest step, so replays keep the same values.
+- Protocol covers are now 8-15 word questions rendered in the COVER treatment (72px, 14-char wrap) — they render as a bigger text block than the old 2-6 word titles. If Keenan says covers look like a text wall, the SIGN treatment (60px, 18-char wrap) is the ready fallback.
+- PRICE's "Still want it?" final line and PROVE's claim-as-name (3-6 words) are prompt-mandated exceptions to the base moody rules; the parser accepts both (requireName only checks presence).
+- No schema changes — lane is a plain string column, no db push needed.
+
 ## [2026-09-09] — Quote-surface text now blends into the photo instead of looking pasted on
 
 **Requested by:** Keenan
