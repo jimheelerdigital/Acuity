@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-09-10] — Warrior images now demand powerful action poses
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b65f66d5
+
+### In plain English (for Keenan)
+The warrior images now have to show the warrior doing something powerful — striding alone into the storm, arms flexed in triumph, driving a sword into the frozen ground — never just standing there. The goal baked into the prompt: every frame should radiate strength, consistency, and drive, the kind of image that makes a man want to get to work. Distance, snow, and hidden-face rules stay.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: action-pose mandate ("reads in silhouette", "never standing idle") added to the epic-warrior family brief, all three four-family SCENES blocks (SCENE_BRIEF.men, MEMENTO_MEN_SYSTEM_PROMPT, buildProtocolSystemPrompt), and the buildMoodyImagePrompt warrior carve-out
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- Pose energy enforced at both the scene-writing layer and the render layer, same as the distance rule — one layer alone lets the image model regress to idle standing shots.
+
 ## [2026-09-10] — Knight images reworked into distant epic warriors
 
 **Requested by:** Keenan
