@@ -416,28 +416,39 @@ function buildMultiCoverRule(count: number, forcedFamily?: string): string {
 }
 
 /** Generate one moody-carousel topic for the given audience funnel.
- *  Slide count varies 4-7 items per post (2026-08-31, per Keenan:
- *  "create a ton of variance between posts"). The men's lane is
- *  theme-locked to the SILENCE family (2026-09-03). */
+ *  The men's lane is theme-locked to the SILENCE family (2026-09-03;
+ *  "STAY INVISIBLE." / "GUARD THE QUIET." energy). Went dormant the
+ *  morning of 2026-09-10 in the BWK reshuffle, then Keenan revived it
+ *  the same day IN the pick-list format: 3 candidate covers + 15 items
+ *  so he curates the good ones. `sceneFamily` pins the whole post to
+ *  one image family (themed one-offs). Women's path unchanged (4-7
+ *  items, single cover) — only the men's lane is live. */
 export async function generateMoodyTopic(
   audience: MoodyAudience,
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
-  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  const men = audience === "men";
+  const itemCount = men ? 15 : 4 + Math.floor(Math.random() * 4);
   return generateMoodyFamilyTopic({
     purpose: `moody-carousel-topic-${audience}`,
     system: buildMoodySystemPrompt(
       audience,
-      audience === "men"
-        ? { theme: SILENCE_THEME, coverRule: rollMenCoverRule() }
+      men
+        ? {
+            theme: SILENCE_THEME,
+            coverRule: buildMultiCoverRule(3, sceneFamily),
+          }
         : undefined
     ),
-    user: `Write one new post for the ${audience === "men" ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: `moody-${audience}`,
     requireName: true,
     minLines: 2,
-    minItems: 4,
-    maxItems: 7,
+    minItems: men ? 12 : 4,
+    maxItems: itemCount,
+    coverCount: men ? 3 : 1,
+    maxTokens: men ? 6000 : undefined,
   });
 }
 

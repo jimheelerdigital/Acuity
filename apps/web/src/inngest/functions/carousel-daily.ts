@@ -92,10 +92,11 @@ import { inngest } from "@/inngest/client";
  * PROTOCOL's interval now rotates (30/100/365 days, 2/5 years) with a
  * question cover; PRICE ("pay the price") and PROVE ("prove it")
  * added. Same day, later: PRICE and PROVE killed (dormant — generators
- * kept in moody-carousel.ts, lanes removed here), and memento-men /
- * watching / protocol became PICK-LIST lanes: 3 candidate covers + 15
- * item slides per post so Keenan curates the frames that land. BWK
- * 4/day, Ripple 5/day.
+ * kept in moody-carousel.ts, lanes removed here), MOODY-MEN revived
+ * ("bring back moody men lane"), and the core BWK lanes (memento-men /
+ * moody-men / watching / protocol) became PICK-LIST lanes: 3 candidate
+ * covers + 15 item slides per post so Keenan curates the frames that
+ * land. BWK 5/day, Ripple 5/day.
  *
  * Overnight schedule (CDT):
  * -  5 UTC (12am): MEMENTO-MEN — men's memento mori life-math (BWK)
@@ -107,18 +108,20 @@ import { inngest } from "@/inngest/client";
  *                  SELFIE #2 (Ripple) + PHONE-QUOTE-MEN (BWK,
  *                  2 slides)
  * -  8 UTC (3am):  MEMENTO — women's "DO THE MATH" life-math, dark
- *                  dusk-coast cover (Ripple, 4-10 slides)
+ *                  dusk-coast cover (Ripple, 4-10 slides) +
+ *                  MOODY-MEN — SILENCE family (BWK, pick-list)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
- * to: [BUILD WITH KEY] for memento-men / watching / protocol /
- * phone-quote-men, [RIPPLE] for everything else (handled in
+ * to: [BUILD WITH KEY] for memento-men / moody-men / watching /
+ * protocol / phone-quote-men, [RIPPLE] for everything else (handled in
  * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
   "memento-men",
+  "moody-men",
   "watching",
   "protocol",
   "questions",
@@ -136,7 +139,10 @@ const HOUR_LANES: Record<number, DailyBucket[]> = {
   5: ["memento-men", "selfie"],
   6: ["watching", "questions", "phone-quote"],
   7: ["protocol", "selfie", "phone-quote-men"],
-  8: ["memento"],
+  // moody-men revived 2026-09-10 (later same day) in the pick-list
+  // format; slotted at 8 UTC to balance the hours after price/prove
+  // died (its historical slot was 5, which already has two lanes).
+  8: ["memento", "moody-men"],
 };
 
 /**
@@ -732,7 +738,10 @@ export const carouselDailyCronFn = inngest.createFunction(
     // male-dominant dark power imagery; EVERY Ripple lane = soft
     // aesthetically-pleasing feminine photography.
     const imageAudience: "women" | "men" =
-      bucket === "memento-men" || bucket === "watching" || bucket === "protocol"
+      bucket === "memento-men" ||
+      bucket === "moody-men" ||
+      bucket === "watching" ||
+      bucket === "protocol"
         ? "men"
         : "women";
     // Lanes whose items carry a "Name." header (discipline tests,
@@ -741,7 +750,10 @@ export const carouselDailyCronFn = inngest.createFunction(
     // sometimes omits a slide or two — "1-7" numbering breaks the
     // moment one is dropped). Memento lanes carry no header — the
     // numbers ARE the content.
-    const named = bucket === "watching" || bucket === "protocol";
+    const named =
+      bucket === "moody-men" ||
+      bucket === "watching" ||
+      bucket === "protocol";
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -751,6 +763,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     const moody = await step.run("generate-moody-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
       const {
+        generateMoodyTopic,
         generateWatchingTopic,
         generateMementoTopic,
         generateQuestionsTopic,
@@ -782,9 +795,11 @@ export const carouselDailyCronFn = inngest.createFunction(
             ? await generateMementoTopic("men", headlines, "light", sceneFamily)
             : bucket === "questions"
               ? await generateQuestionsTopic(headlines, "dark")
-              : bucket === "watching"
-                ? await generateWatchingTopic(headlines, sceneFamily)
-                : await generateProtocolTopic(headlines, sceneFamily);
+              : bucket === "moody-men"
+                ? await generateMoodyTopic("men", headlines, sceneFamily)
+                : bucket === "watching"
+                  ? await generateWatchingTopic(headlines, sceneFamily)
+                  : await generateProtocolTopic(headlines, sceneFamily);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar

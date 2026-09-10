@@ -217,8 +217,8 @@ export async function POST(req: NextRequest) {
 
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
-      // images). `bucket`: "memento-men" | "watching" | "protocol" |
-      // "questions" | "memento" | "selfie" |
+      // images). `bucket`: "memento-men" | "moody-men" | "watching" |
+      // "protocol" | "questions" | "memento" | "selfie" |
       // "phone-quote" | "phone-quote-men"
       // (anything else falls back to "questions" — the
       // video/positive/quote-loop/ambient lanes died 2026-08-28;
@@ -234,9 +234,10 @@ export async function POST(req: NextRequest) {
       // phone-quote + phone-quote-men added, selfie runs 2x daily;
       // 2026-09-10 — moody-men and line went dormant, memento-men
       // revived, watching / price / prove added, protocol interval
-      // rotates; later that day price / prove went dormant and the
-      // memento-men / watching / protocol lanes became pick-lists:
-      // 3 candidate covers + 15 items per post).
+      // rotates; later that day price / prove went dormant, moody-men
+      // was revived, and the memento-men / moody-men / watching /
+      // protocol lanes became pick-lists: 3 candidate covers + 15
+      // items per post).
       const { inngest } = await import("@/inngest/client");
       await inngest.send({
         name: "content-factory/daily.generate",

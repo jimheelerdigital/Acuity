@@ -222,6 +222,7 @@ export default function CarouselReviewPage() {
   const generateBucket = async (
     bucket:
       | "memento-men"
+      | "moody-men"
       | "watching"
       | "memento"
       | "questions"
@@ -585,6 +586,14 @@ export default function CarouselReviewPage() {
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "👁️"}
+          </button>
+          <button
+            onClick={() => generateBucket("moody-men")}
+            disabled={generating}
+            title="Generate a SILENCE-family moody carousel (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🤫"}
           </button>
           <button
             onClick={() => generateBucket("questions")}
