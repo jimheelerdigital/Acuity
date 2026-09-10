@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-09-10] — Knight images reworked into distant epic warriors
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 70e2401c
+
+### In plain English (for Keenan)
+The first knight posts had the warriors too close to the camera and looked rough. The knight image family is now "epic warriors": any legendary warrior — knight, spartan, samurai, viking — in full silver or gold armor, always shot from a distance in a huge snowy, stormy landscape so the atmosphere and scale carry the image. Never a close-up, never a visible face.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: MEN_COVER_FAMILIES "medieval knight" → "epic warrior" (distance mandate, snow/storm atmosphere default, silver/gold/blackened-steel full armor, warrior variety); matching rewrites in the four-family SCENES text of SCENE_BRIEF.men, MEMENTO_MEN_SYSTEM_PROMPT, and buildProtocolSystemPrompt; buildMoodyImagePrompt carve-out enforces distant wide framing at the render layer too
+- Doc-comment sceneFamily examples in carousel-daily.ts and route.ts updated to "epic warrior" (the forced-family key changed with the rename)
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- The distance rule lives in BOTH the topic-prompt layer (scene text) and buildMoodyImagePrompt (render layer) — the first knight run showed the image model defaults to close-up hero framing unless the render prompt forbids it.
+- Themed one-off key is now "epic warrior" — {"action":"generate-daily","bucket":<men lane>,"sceneFamily":"epic warrior"}.
+
 ## [2026-09-10] — BWK image library v3: four scene families, anti-bland rule, knight posts
 
 **Requested by:** Keenan
