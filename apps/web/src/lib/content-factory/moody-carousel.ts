@@ -47,6 +47,11 @@ export interface MoodyTopic {
   /** Cover title — short, commanding ("TRUST THE PROCESS" energy). */
   title: string;
   coverScene: string;
+  /** Pick-list lanes (2026-09-10, per Keenan: "add 3 cover photos and
+   *  15 different images per lane. that way I can pick the ones that
+   *  actually make sense/are good") — multiple candidate cover scenes,
+   *  each rendered as its own COVER slide. coverScene = the first. */
+  coverScenes?: string[];
   items: MoodyItem[];
 }
 
@@ -82,7 +87,7 @@ const WOMEN_PROMPT_HEADER: Record<WomenScheme, string> = {
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic and a DRAMATIC SKY (every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it): a black-glass penthouse tower with its crown wrapped in storm cloud, a cliff mansion glowing above a storm sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads. The building shot low and dramatic, grand and expensive, never a flat distant skyline, never a plain empty sky. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes under lightning, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a matte-black supercar under one cold garage spotlight, rain beading on a midnight sports car, a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night. One hero object, deep shadow, tactile hyperreal detail — the object must be unmistakably LUXURY and dramatic, NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (4) EPIC WARRIORS — a lone armored warrior seen from a DISTANCE in an epic snowy atmosphere: a medieval knight, a spartan, a samurai, a viking, any legendary warrior in FULL armor (gleaming silver, burnished gold, or blackened steel), DOING something powerful — mid-stride walking alone into the storm, arms flexed in triumph with head raised to the sky, driving a sword into the frozen ground, climbing a ridgeline against the wind. The pose reads in silhouette and radiates STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to get to work. WIDE cinematic framing in an immense frozen landscape, NEVER close to the camera, never a close-up; falling snow and storm atmosphere do the work; face never visible (helmet on, visor down, or too distant to read). Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE distant armored warrior (face never visible) in warrior scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
+  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic and a DRAMATIC SKY (every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it): a black-glass penthouse tower with its crown wrapped in storm cloud, a cliff mansion glowing above a storm sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads. The building shot low and dramatic, grand and expensive, never a flat distant skyline, never a plain empty sky. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes under lightning, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a classic Ferrari gleaming under one cold garage spotlight, rain beading on an old-school Mercedes gullwing at night, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille in deep shadow, a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. One hero object, deep shadow, tactile hyperreal detail — the object must be unmistakably LUXURY and dramatic, NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (4) EPIC WARRIORS — a lone armored warrior seen from a DISTANCE in an epic snowy atmosphere: a medieval knight, a spartan, a samurai, a viking, any legendary warrior in FULL armor (gleaming silver, burnished gold, or blackened steel), DOING something powerful — mid-stride walking alone into the storm, arms flexed in triumph with head raised to the sky, driving a sword into the frozen ground, climbing a ridgeline against the wind. The pose reads in silhouette and radiates STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to get to work. WIDE cinematic framing in an immense frozen landscape, NEVER close to the camera, never a close-up; falling snow and storm atmosphere do the work; face never visible (helmet on, visor down, or too distant to read). Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE distant armored warrior (face never visible) in warrior scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
   women: WOMEN_SCENE_BRIEFS.light,
 };
 
@@ -141,13 +146,18 @@ async function generateMoodyFamilyTopic(opts: {
    *  vary length pass these; everything else keeps the 4-6 default. */
   minItems?: number;
   maxItems?: number;
+  /** Pick-list lanes (2026-09-10): number of candidate cover scenes to
+   *  request/accept. Default 1 (plain coverScene). */
+  coverCount?: number;
+  /** 15-item pick-list posts need more room than the 2000 default. */
+  maxTokens?: number;
 }): Promise<MoodyTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 2000,
+      max_tokens: opts.maxTokens ?? 2000,
       // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
       // humanizer gate still runs on the output below.
       system: `${opts.system}\n\n${HUMAN_VOICE_RULES}`,
@@ -178,6 +188,7 @@ async function generateMoodyFamilyTopic(opts: {
     const parsed = JSON.parse(jsonStr) as {
       title?: string;
       coverScene?: string;
+      coverScenes?: string[];
       items?: { name?: string; lines?: string[]; scene?: string }[];
     };
 
@@ -257,10 +268,22 @@ async function generateMoodyFamilyTopic(opts: {
       );
     }
 
+    // Pick-list lanes: accept up to coverCount candidate cover scenes.
+    const coverScenes = (parsed.coverScenes ?? [])
+      .filter((s): s is string => typeof s === "string" && !!s.trim())
+      .map((s) => s.trim())
+      .slice(0, opts.coverCount ?? 1);
+    const coverScene =
+      coverScenes[0] || (parsed.coverScene ?? "").trim() || items[0].scene;
+
     return {
       slug: `${opts.slugPrefix}-${slug}`,
       title: gatedTitle,
-      coverScene: (parsed.coverScene ?? "").trim() || items[0].scene,
+      coverScene,
+      coverScenes:
+        (opts.coverCount ?? 1) > 1 && coverScenes.length > 1
+          ? coverScenes
+          : undefined,
       items: gatedItems,
     };
   } catch (err) {
@@ -347,7 +370,7 @@ const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
   {
     name: "dark-luxury objects",
     brief:
-      "luxury items with a dark theme, shot like a high-end ad — a matte-black supercar under one cold spotlight in a dark garage, rain beading on a midnight sports car parked on a night street, a Swiss watch on black marble in low light, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night, a chess king in dramatic side light. ONE hero object, deep shadow, controlled highlights, tactile hyperreal detail. The object must be unmistakably LUXURY and dramatic — NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life.",
+      "luxury items with a dark theme, shot like a high-end ad — a classic Ferrari under one cold spotlight in a dark garage, rain beading on an old-school Mercedes gullwing parked on a night street, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille catching a single beam in deep shadow, a Swiss watch on black marble in low light, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night, a chess king in dramatic side light. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. ONE hero object, deep shadow, controlled highlights, tactile hyperreal detail. The object must be unmistakably LUXURY and dramatic — NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life.",
   },
   {
     name: "epic warrior",
@@ -374,6 +397,22 @@ function rollMenCoverRule(forcedFamily?: string): string {
     ? `FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${fam.name} family — the whole post lives in one visual world, with each slide a DIFFERENT freshly-invented scene inside it.`
     : `Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
   return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
+}
+
+/** Pick-list cover rule (2026-09-10, per Keenan: "add 3 cover photos
+ *  and 15 different images per lane. that way I can pick the ones that
+ *  actually make sense/are good"). Asks for `count` candidate cover
+ *  scenes — each from a DIFFERENT family so he gets real options — and
+ *  leaves item scenes on the normal four-family rotation. A forced
+ *  family (themed one-offs) locks everything to that family instead. */
+function buildMultiCoverRule(count: number, forcedFamily?: string): string {
+  const forced = forcedFamily
+    ? MEN_COVER_FAMILIES.find((f) => f.name === forcedFamily)
+    : undefined;
+  if (forced) {
+    return `COVER SCENE RULE: return "coverScenes" — an ARRAY of exactly ${count} cover scene sentences, EVERY one from the ${forced.name} family — ${forced.brief} Each of the ${count} is a COMPLETELY DIFFERENT freshly-invented scene inside the family. Also set "coverScene" to the first of them. FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${forced.name} family — the whole post lives in one visual world, each slide a DIFFERENT freshly-invented scene inside it.`;
+  }
+  return `COVER SCENE RULE: return "coverScenes" — an ARRAY of exactly ${count} cover scene sentences, each from a DIFFERENT one of the four SCENES families (never two covers from the same family). Every cover is a freshly-invented scene: the examples are SEEDS, not a menu — new subject, setting, season, weather, time, and vantage, never a scene from a recent post. Also set "coverScene" to the first of them. Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, spread across the families.`;
 }
 
 /** Generate one moody-carousel topic for the given audience funnel.
@@ -429,31 +468,34 @@ export async function generateLineTopic(
 
 /** WHEN NO ONE'S WATCHING lane (2026-09-10, per Keenan — replaces
  *  HOLD THE LINE). Private-discipline tests; "Name." items.
- *  `sceneFamily` pins the whole post to one image family (themed
- *  one-offs). */
+ *  Pick-list format (2026-09-10, later): 3 candidate covers + 15
+ *  items so Keenan curates the good ones. `sceneFamily` pins the
+ *  whole post to one image family (themed one-offs). */
 export async function generateWatchingTopic(
   recentHeadlines: string[],
   sceneFamily?: string
 ): Promise<MoodyTopic> {
-  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: "watching-carousel-topic",
     system: buildMoodySystemPrompt("men", {
       theme: WATCHING_THEME,
-      coverRule: rollMenCoverRule(sceneFamily),
+      coverRule: buildMultiCoverRule(3, sceneFamily),
     }),
-    user: `Write one new when-no-one's-watching post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new when-no-one's-watching post with exactly 15 items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "watching",
     requireName: true,
     minLines: 2,
-    minItems: 4,
-    maxItems: 7,
+    minItems: 12,
+    maxItems: 15,
+    coverCount: 3,
+    maxTokens: 6000,
   });
 }
 
-/** PAY THE PRICE lane (2026-09-10, per Keenan). Each slide names one
- *  real cost of the life he claims he wants; the final slide lands on
- *  "Still want it?". */
+/** PAY THE PRICE lane — DORMANT (2026-09-10, per Keenan: "get rid of
+ *  prove and price" — killed the same day it launched). Each slide
+ *  named one real cost of the life he claims he wants; the final slide
+ *  landed on "Still want it?". */
 export async function generatePriceTopic(
   recentHeadlines: string[],
   sceneFamily?: string
@@ -474,8 +516,9 @@ export async function generatePriceTopic(
   });
 }
 
-/** PROVE IT lane (2026-09-10, per Keenan). Each slide takes a claim
- *  men make and converts it into what today must look like. */
+/** PROVE IT lane — DORMANT (2026-09-10, per Keenan: "get rid of prove
+ *  and price" — killed the same day it launched). Each slide took a
+ *  claim men make and converted it into what today must look like. */
 export async function generateProveTopic(
   recentHeadlines: string[],
   sceneFamily?: string
@@ -683,7 +726,7 @@ const MEMENTO_MEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal pho
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a matte-black supercar under one cold spotlight, rain beading on a midnight sports car, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL silver-or-gold armor, seen from a DISTANCE in an epic snowy atmosphere, DOING something powerful — striding into the storm, arms flexed in triumph, sword driven into frozen ground — a pose that reads in silhouette and radiates strength and drive; wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL silver-or-gold armor, seen from a DISTANCE in an epic snowy atmosphere, DOING something powerful — striding into the storm, arms flexed in triumph, sword driven into frozen ground — a pose that reads in silhouette and radiates strength and drive; wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 30, you have about 2,500 weekends left. On average.
@@ -713,31 +756,33 @@ OUTPUT (strict JSON, no markdown):
 }`;
 
 /** Generate one memento mori topic for the given audience lane.
- *  Slide count varies per post (2026-08-29, per Keenan: "they can be
- *  4-10 slides long. the more scrolls the better engagement") — 3-9
- *  items + cover = 4-10 slides. `scheme` applies to women only. */
+ *  Women: slide count varies per post (2026-08-29) — 3-9 items.
+ *  Men (BWK): pick-list format (2026-09-10, later) — 3 candidate
+ *  covers + 15 items so Keenan curates the good ones.
+ *  `scheme` applies to women only. */
 export async function generateMementoTopic(
   audience: MoodyAudience,
   recentHeadlines: string[],
   scheme: WomenScheme = "light",
   sceneFamily?: string
 ): Promise<MoodyTopic> {
-  const itemCount = 3 + Math.floor(Math.random() * 7); // 3-9 items
+  const men = audience === "men";
+  const itemCount = men ? 15 : 3 + Math.floor(Math.random() * 7); // men 15, women 3-9
   return generateMoodyFamilyTopic({
-    purpose: audience === "men" ? "memento-men-carousel-topic" : "memento-carousel-topic",
-    system:
-      audience === "men"
-        ? // 2026-09-10 (memento-men revived into BWK): rolled
-          // cover-family rule appended so its covers rotate through
-          // the full BWK library like every live men's lane.
-          `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${rollMenCoverRule(sceneFamily)}`
-        : buildMementoWomenSystemPrompt(scheme),
+    purpose: men ? "memento-men-carousel-topic" : "memento-carousel-topic",
+    system: men
+      ? // 2026-09-10 (memento-men revived into BWK): multi-cover
+        // pick-list rule — 3 candidate covers across the families.
+        `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${buildMultiCoverRule(3, sceneFamily)}`
+      : buildMementoWomenSystemPrompt(scheme),
     user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
-    slugPrefix: audience === "men" ? "memento-men" : "memento",
+    slugPrefix: men ? "memento-men" : "memento",
     requireName: false,
     minLines: 2,
-    minItems: 3,
-    maxItems: 9,
+    minItems: men ? 12 : 3,
+    maxItems: itemCount,
+    coverCount: men ? 3 : 1,
+    maxTokens: men ? 6000 : undefined,
   });
 }
 
@@ -1723,7 +1768,7 @@ const buildProtocolSystemPrompt = (
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE posts that show them what the work actually buys. Every slide must name a real, expected result — accumulated hours, measurable body change, money stacked, skills built — never vague promises like "you'll be different" or "everything changes".
 VOICE: calm command energy. Short declarative sentences. A mentor stating what the math says, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a matte-black supercar under one cold spotlight, rain beading on a midnight sports car, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL silver-or-gold armor, seen from a DISTANCE in an epic snowy atmosphere, DOING something powerful — striding into the storm, arms flexed in triumph, sword driven into frozen ground — a pose that reads in silhouette and radiates strength and drive; wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within these families; never render an example verbatim, never repeat a recent post's scene.
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL silver-or-gold armor, seen from a DISTANCE in an epic snowy atmosphere, DOING something powerful — striding into the storm, arms flexed in triumph, sword driven into frozen ground — a pose that reads in silhouette and radiates strength and drive; wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within these families; never render an example verbatim, never repeat a recent post's scene.
 
 FORMAT — each slide reads like this (match the rhythm):
 "The skill.
@@ -1758,13 +1803,17 @@ export async function generateProtocolTopic(
     purpose: "protocol-carousel-topic",
     // 2026-09-08: rolled cover-family rule appended so protocol covers
     // rotate too instead of drifting toward buildings.
-    system: `${buildProtocolSystemPrompt(interval)}\n\n${rollMenCoverRule(sceneFamily)}`,
-    user: `Write one new "${interval} OF DISCIPLINE..." post with 5, 6, or 7 areas of expected progress.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    // 2026-09-10: pick-list format — 3 candidate covers + 15 areas so
+    // Keenan can curate the good frames instead of taking pot luck.
+    system: `${buildProtocolSystemPrompt(interval)}\n\n${buildMultiCoverRule(3, sceneFamily)}`,
+    user: `Write one new "${interval} OF DISCIPLINE..." post with exactly 15 areas of expected progress.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
     minLines: 2,
-    minItems: 5,
-    maxItems: 7,
+    minItems: 12,
+    maxItems: 15,
+    coverCount: 3,
+    maxTokens: 6000,
   });
 }
 
@@ -1946,7 +1995,7 @@ const PHONE_QUOTE_BG_SCENES: Record<MoodyAudience, string[]> = {
     "a lit porch at dusk, a string of warm fairy lights blurred against deep blue twilight",
   ],
   men: [
-    "a matte-black sports car at night under one cold light, body lines blurred into deep reflections",
+    "a classic Ferrari at night under one cold light, body lines blurred into deep reflections",
     "floor-to-ceiling glass at night over a glittering city skyline, lights blurred into bokeh",
     "a dark balcony at night facing distant city lights dissolved into soft glowing points",
     "a black car interior at night, dashboard glow and distant streetlights blurred through the windshield",

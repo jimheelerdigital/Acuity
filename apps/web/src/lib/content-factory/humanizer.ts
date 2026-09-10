@@ -108,7 +108,9 @@ export async function humanizePass<T>(opts: {
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 3000,
+      // 2026-09-10: 6000 to fit 15-item pick-list payloads (gate fails
+      // open on truncation, but a truncated pass skips real rewrites).
+      max_tokens: 6000,
       system: `You are the final approval gate for social-media copy. You receive strict JSON for one post. Find every string that shows an AI-writing pattern from the library below and rewrite it so a person could have written it. Leave clean strings EXACTLY as they are, byte for byte.
 
 HARD CONSTRAINTS:

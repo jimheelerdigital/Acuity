@@ -91,7 +91,11 @@ import { inngest } from "@/inngest/client";
  * by WATCHING ("when no one's watching" private-discipline tests);
  * PROTOCOL's interval now rotates (30/100/365 days, 2/5 years) with a
  * question cover; PRICE ("pay the price") and PROVE ("prove it")
- * added. BWK 6/day, Ripple 5/day.
+ * added. Same day, later: PRICE and PROVE killed (dormant — generators
+ * kept in moody-carousel.ts, lanes removed here), and memento-men /
+ * watching / protocol became PICK-LIST lanes: 3 candidate covers + 15
+ * item slides per post so Keenan curates the frames that land. BWK
+ * 4/day, Ripple 5/day.
  *
  * Overnight schedule (CDT):
  * -  5 UTC (12am): MEMENTO-MEN — men's memento mori life-math (BWK)
@@ -103,23 +107,20 @@ import { inngest } from "@/inngest/client";
  *                  SELFIE #2 (Ripple) + PHONE-QUOTE-MEN (BWK,
  *                  2 slides)
  * -  8 UTC (3am):  MEMENTO — women's "DO THE MATH" life-math, dark
- *                  dusk-coast cover (Ripple, 4-10 slides) + PRICE —
- *                  pay the price (BWK) + PROVE — prove it (BWK)
+ *                  dusk-coast cover (Ripple, 4-10 slides)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
- * to: [BUILD WITH KEY] for memento-men / watching / protocol / price /
- * prove / phone-quote-men, [RIPPLE] for everything else (handled in
+ * to: [BUILD WITH KEY] for memento-men / watching / protocol /
+ * phone-quote-men, [RIPPLE] for everything else (handled in
  * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
   "memento-men",
   "watching",
   "protocol",
-  "price",
-  "prove",
   "questions",
   "memento",
   "selfie",
@@ -135,7 +136,7 @@ const HOUR_LANES: Record<number, DailyBucket[]> = {
   5: ["memento-men", "selfie"],
   6: ["watching", "questions", "phone-quote"],
   7: ["protocol", "selfie", "phone-quote-men"],
-  8: ["memento", "price", "prove"],
+  8: ["memento"],
 };
 
 /**
@@ -731,11 +732,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // male-dominant dark power imagery; EVERY Ripple lane = soft
     // aesthetically-pleasing feminine photography.
     const imageAudience: "women" | "men" =
-      bucket === "memento-men" ||
-      bucket === "watching" ||
-      bucket === "protocol" ||
-      bucket === "price" ||
-      bucket === "prove"
+      bucket === "memento-men" || bucket === "watching" || bucket === "protocol"
         ? "men"
         : "women";
     // Lanes whose items carry a "Name." header (discipline tests,
@@ -744,11 +741,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // sometimes omits a slide or two — "1-7" numbering breaks the
     // moment one is dropped). Memento lanes carry no header — the
     // numbers ARE the content.
-    const named =
-      bucket === "watching" ||
-      bucket === "protocol" ||
-      bucket === "price" ||
-      bucket === "prove";
+    const named = bucket === "watching" || bucket === "protocol";
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -759,8 +752,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       const { prisma } = await import("@/lib/prisma");
       const {
         generateWatchingTopic,
-        generatePriceTopic,
-        generateProveTopic,
         generateMementoTopic,
         generateQuestionsTopic,
         generateProtocolTopic,
@@ -793,11 +784,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               ? await generateQuestionsTopic(headlines, "dark")
               : bucket === "watching"
                 ? await generateWatchingTopic(headlines, sceneFamily)
-                : bucket === "protocol"
-                  ? await generateProtocolTopic(headlines, sceneFamily)
-                  : bucket === "price"
-                    ? await generatePriceTopic(headlines, sceneFamily)
-                    : await generateProveTopic(headlines, sceneFamily);
+                : await generateProtocolTopic(headlines, sceneFamily);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar
@@ -829,34 +816,53 @@ export const carouselDailyCronFn = inngest.createFunction(
       await ensureBucket();
     });
 
-    const moodyCover = await step.run("generate-moody-cover", async () => {
-      const { generateMoodyImage, uploadImage } = await import(
-        "@/lib/content-factory/carousel-generate"
-      );
-      const { buildMoodyImagePrompt } = await import(
-        "@/lib/content-factory/moody-carousel"
-      );
-      const { composeSlideWithOverlay, renderMoodyTextOverlay } =
-        await import("@/lib/content-factory/compose");
+    // Pick-list lanes (2026-09-10) return up to 3 candidate cover
+    // scenes; everything else has exactly one. One COVER slide renders
+    // per scene so Keenan picks the frame that lands.
+    const coverScenes = moody.coverScenes?.length
+      ? moody.coverScenes
+      : [moody.coverScene];
 
-      // Avatar only when this post won the ≤8% roll AND the cover is
-      // the chosen slide (2026-08-31 cap).
-      const { buffer: rawBuffer, prompt } = await generateMoodyImage(
-        buildMoodyImagePrompt(imageAudience, moody.coverScene, moody.scheme ?? "light"),
-        moody.avatarSlideIndex === 0
-      );
-      const overlay = await renderMoodyTextOverlay(
-        [moody.title],
-        "COVER",
-        textTone
-      );
-      const composed = await composeSlideWithOverlay(rawBuffer, overlay);
-      const imageUrl = await uploadImage(
-        composed,
-        `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
-      );
-      return { imageUrl, overlayText: moody.title, imagePrompt: prompt };
-    });
+    const moodyCovers: {
+      imageUrl: string;
+      overlayText: string;
+      imagePrompt: string;
+    }[] = [];
+    for (let c = 0; c < coverScenes.length; c++) {
+      const cover = await step.run(`generate-moody-cover-${c}`, async () => {
+        const { generateMoodyImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMoodyImagePrompt } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+
+        // Avatar only when this post won the ≤8% roll AND the cover is
+        // the chosen slide (2026-08-31 cap) — first candidate only.
+        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+          buildMoodyImagePrompt(
+            imageAudience,
+            coverScenes[c],
+            moody.scheme ?? "light"
+          ),
+          moody.avatarSlideIndex === 0 && c === 0
+        );
+        const overlay = await renderMoodyTextOverlay(
+          [moody.title],
+          "COVER",
+          textTone
+        );
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${slug}/slide-cover-${c}.jpg`
+        );
+        return { imageUrl, overlayText: moody.title, imagePrompt: prompt };
+      });
+      moodyCovers.push(cover);
+    }
 
     const moodySlides: {
       imageUrl: string;
@@ -928,16 +934,18 @@ export const carouselDailyCronFn = inngest.createFunction(
           generatedFor: today,
           lane: bucket,
           slides: {
+            // Candidate covers first (orders 0..n-1), then items —
+            // Keenan keeps one cover and his pick of items.
             create: [
-              {
-                order: 0,
+              ...moodyCovers.map((cvr, i) => ({
+                order: i,
                 kind: "COVER" as const,
-                overlayText: moodyCover.overlayText,
-                imagePrompt: moodyCover.imagePrompt,
-                imageUrl: moodyCover.imageUrl,
-              },
+                overlayText: cvr.overlayText,
+                imagePrompt: cvr.imagePrompt,
+                imageUrl: cvr.imageUrl,
+              })),
               ...moodySlides.map((s, i) => ({
-                order: i + 1,
+                order: moodyCovers.length + i,
                 kind: "REASON" as const,
                 overlayText: s.overlayText,
                 imagePrompt: s.imagePrompt,
@@ -954,8 +962,9 @@ export const carouselDailyCronFn = inngest.createFunction(
       await sendCarouselEmail(post.id);
       return {
         postId: post.id,
-        slideCount: moodySlides.length + 1,
-        estimatedCostCents: (moodySlides.length + 1) * 8 + 2,
+        slideCount: moodySlides.length + moodyCovers.length,
+        estimatedCostCents:
+          (moodySlides.length + moodyCovers.length) * 8 + 2,
       };
     });
 
