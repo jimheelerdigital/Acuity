@@ -240,6 +240,10 @@ export async function POST(req: NextRequest) {
         name: "content-factory/daily.generate",
         data: {
           bucket: (body as { bucket?: string }).bucket,
+          // Optional themed one-off override (2026-09-10): lock a BWK
+          // post's cover + item scenes to one image family, e.g.
+          // "medieval knight".
+          sceneFamily: (body as { sceneFamily?: string }).sceneFamily,
         },
       });
       return NextResponse.json({ ok: true, queued: true });

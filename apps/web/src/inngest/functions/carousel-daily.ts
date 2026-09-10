@@ -189,6 +189,11 @@ export const carouselDailyCronFn = inngest.createFunction(
 
     // ── Resolve the bucket (event runs) ────────────────────────────
     const b = event.data?.bucket as string | undefined;
+    // Optional scene-family override for themed one-off BWK posts
+    // (2026-09-10, e.g. "medieval knight") — locks cover AND item
+    // scenes to one family via rollMenCoverRule's FAMILY LOCK.
+    const sceneFamily = (event.data as { sceneFamily?: string } | undefined)
+      ?.sceneFamily;
     const bucket: DailyBucket = (CAROUSEL_LANES as readonly string[]).includes(
       b ?? ""
     )
@@ -783,16 +788,16 @@ export const carouselDailyCronFn = inngest.createFunction(
         bucket === "memento"
           ? await generateMementoTopic("women", headlines, "dark")
           : bucket === "memento-men"
-            ? await generateMementoTopic("men", headlines)
+            ? await generateMementoTopic("men", headlines, "light", sceneFamily)
             : bucket === "questions"
               ? await generateQuestionsTopic(headlines, "dark")
               : bucket === "watching"
-                ? await generateWatchingTopic(headlines)
+                ? await generateWatchingTopic(headlines, sceneFamily)
                 : bucket === "protocol"
-                  ? await generateProtocolTopic(headlines)
+                  ? await generateProtocolTopic(headlines, sceneFamily)
                   : bucket === "price"
-                    ? await generatePriceTopic(headlines)
-                    : await generateProveTopic(headlines);
+                    ? await generatePriceTopic(headlines, sceneFamily)
+                    : await generateProveTopic(headlines, sceneFamily);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar

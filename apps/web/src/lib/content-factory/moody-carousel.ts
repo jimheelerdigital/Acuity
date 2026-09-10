@@ -82,7 +82,7 @@ const WOMEN_PROMPT_HEADER: Record<WomenScheme, string> = {
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND late-night grind still-lifes: a glowing laptop open on a couch in a near-black minimalist living room, a desk lit by a single screen in an empty room, a barbell resting under one cold light in an empty gym — AND raw-elements landscapes: a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog — AND night-vantage interior scenes: a dark minimalist bedroom or penthouse seen from the bed or a low couch, floor-to-ceiling glass filling the frame with a glittering city skyline at night (rain-blurred, fog-wrapped, or snow-dusted variants), an empty black car interior on a night highway with distant city lights ahead — AND brutalist-coastal scenes: a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk — AND stoic statue scenes: a marble or stone statue photographed dramatically (rain-soaked in darkness, a single hard spotlight, half-lost in shadow, cracked with age, snow settling on the shoulders) — the statue is sculpture, not a person, and is allowed — AND apex wildlife scenes: one lone wild animal in a vast moody landscape — a wolf in falling snow, a lion in rain, an eagle over fog, a bull in dust at dusk, a stag on a dark ridgeline — cinematic, desaturated, the animal small or dominant but always alone — AND old-money still-lifes: quiet-wealth object photography — a heavy watch on dark leather, a chessboard mid-game under a low lamp, a fountain pen on a closed ledger, cufflinks on black marble, a wool overcoat on a wooden valet stand in lamplight — AND further families in the same DNA: the forge (sparks and glowing steel in a black workshop), combat gyms (a heavy bag under one cold light, an empty ring at night), monastery stillness (candlelit stone corridors, a zen garden at dusk in mist), empty night tracks and stadium tunnels, dark machines (a motorcycle in night rain, a car under a half-pulled cover in a dim garage), time still-lifes (an hourglass half-run in lamplight, a wall clock at 4:57 in a dark room), desert emptiness (a lone road into dusk, dunes under storm light), frozen worlds (a frozen lake at blue hour, a snow-buried cabin with one lit window), and war-room studies (a banker's lamp over open books at night, maps spread on a dark desk). Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. NO people EVER — write every scene EMPTY of humans (a statue or a lone wild animal is allowed ONLY in its own family's scenes). The empty location does the work: the still-glowing laptop, the unused gym, the storm nobody is standing in. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within this DNA, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
+  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic: a black-glass penthouse tower at night with one lit floor, a modern cliff mansion glowing above a storm sea, a marble hotel entrance in near-darkness, a brutalist villa in hammering rain, a dark rooftop infinity pool reflecting the skyline. The building shot low and dramatic, grand and expensive, never a flat distant skyline. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes under lightning, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a matte-black supercar under one cold garage spotlight, rain beading on a midnight sports car, a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, leather gloves and an overcoat on a valet stand. One hero object, deep shadow, tactile hyperreal detail. (4) MEDIEVAL KNIGHTS — a knight in magnificent hyperreal armor: standing alone in a snowfield as flakes settle on scratched steel, on horseback in a frozen pass, battle-worn plate in a misty black forest, a sentinel in a torch-lit stone hall. The armor intricate and real; the visor DOWN or the face lost in shadow — armor, never a face. Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE knight in full armor (face never visible) in knight scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
   women: WOMEN_SCENE_BRIEFS.light,
 };
 
@@ -320,120 +320,60 @@ const PRICE_THEME = `THEME — every post belongs to the PAY THE PRICE family: n
 
 const PROVE_THEME = `THEME — every post belongs to the PROVE IT family: call-out energy. Every item takes a claim men love to make and turns it into what TODAY has to look like if the claim is true. EXCEPTION to the name rule: each item's "name" is the claim itself, 3-6 words ending with a period ("I want the money.", "I'm built different.", "I want the body.") — no quotation marks. The lines then convert the claim into one concrete, checkable action for today (a time, a count, a rule) and close on a short command with "prove it" energy ("Prove it before noon."). The unspoken thesis of every post: talk is free, the calendar doesn't lie. Rotate the claims every post — money, physique, discipline, skill, independence, focus — so no two posts repeat. Titles live in the family too ("PROVE IT." energy) without repeating a recent title.`;
 
-// BWK cover-scene rotation (2026-09-08, per Keenan: "almost every BWK
-// picture is starting with a building... do not make this the cover
-// photo every time. we need more variance."). Covers roll a family per
-// post instead of defaulting to architecture. Supersedes the
-// 2026-09-03 storm-skyscraper cover lock on the line lane — the
-// skyscraper stays in rotation as ONE family, not the only one. The
-// roll happens at topic-generation time, which runs inside a memoized
-// Inngest step, so replays keep the same family.
+// BWK image library v3 (2026-09-10, per Keenan: "these photos are all
+// too bland/boring... focus on these when building posts for BWK -
+// luxury buildings with dark aesthetic, super cool landscape scenes
+// with alpha animals, luxury items/cars/watches with dark theme, and
+// add a new photo type of similar aesthetic medieval knights in sick
+// armor hyper realistic snowy or other kinds of settings"). His
+// "bland" example was an empty flat marsh; his "good" example a wolf
+// commanding a frozen lake — the difference is a dramatic SUBJECT.
+// Supersedes the 18-family library from 2026-09-08: the rotation now
+// focuses on his FOUR chosen aesthetics. The UNLIMITED LIBRARY RULE
+// still stands — families are seeds, every image invented fresh. The
+// roll happens at topic-generation time, inside a memoized Inngest
+// step, so replays keep the same family.
 const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
   {
-    name: "storm-architecture",
+    name: "dark-luxury architecture",
     brief:
-      "a lone dark skyscraper or brutalist tower against a storm sky — rain streaking the frame, black clouds, night or blue-hour storm light, a single lit floor or window glowing cold. Vary the building, the storm, and the vantage (street looking up, across the skyline, a facing rooftop, the tower half-lost in fog).",
+      "luxury buildings with a dark aesthetic — a black-glass penthouse tower at night with a single lit floor, a modern cliff mansion glowing above a storm-lit sea, a marble hotel entrance in near-darkness with warm light spilling out, a brutalist villa in hammering rain, a skyscraper crown wrapped in storm cloud, a dark rooftop infinity pool reflecting the skyline. Grand, expensive, cinematic — the building is the SUBJECT, shot low and dramatic with real presence, never a flat distant skyline.",
   },
   {
-    name: "late-night grind still-life",
+    name: "alpha wildlife",
     brief:
-      "an empty work scene mid-grind — a glowing laptop open in a near-black room, a desk lit by a single screen before dawn, a barbell resting under one cold light in an empty gym, a notebook under a lone desk lamp. NO buildings, NO skyline — the still-glowing gear does the work.",
+      "ONE alpha animal commanding a super-cool landscape — a wolf standing on a cracked frozen lake beneath storm pines, a lion crossing black dunes under a lightning sky, a stag on a ridgeline in blowing snow, a golden eagle sweeping low over a fjord, a black panther on wet rock in night rain, a bison facing a whiteout. Draw from the ENTIRE animal kingdom; the animal is the clear HERO of the frame — close enough to feel its presence, the landscape epic around it. NEVER reuse an animal from a recent post.",
   },
   {
-    name: "raw elements",
+    name: "dark-luxury objects",
     brief:
-      "cold nature with ZERO architecture — a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog, black pines under low cloud. No buildings, no city lights anywhere in frame.",
+      "luxury items with a dark theme, shot like a high-end ad — a matte-black supercar under one cold spotlight in a dark garage, rain beading on a midnight sports car parked on a night street, a Swiss watch on black marble in low light, a signet ring beside a crystal tumbler in lamplight, leather gloves and a wool overcoat on a valet stand, a fountain pen on a closed ledger. ONE hero object, deep shadow, controlled highlights, tactile hyperreal detail.",
   },
   {
-    name: "night-vantage interior",
+    name: "medieval knight",
     brief:
-      "a dark minimalist interior looking OUT — a near-black bedroom or penthouse with floor-to-ceiling glass onto a rain-blurred night skyline, or an empty black car interior on a night highway with distant lights ahead. The frame is the interior; the city is only a glow beyond the glass.",
-  },
-  {
-    name: "empty night streets",
-    brief:
-      "street level, not towers — rain hammering black pavement under a lone streetlight, an empty crosswalk at 3am, a deserted highway lane at night, wet asphalt reflecting a single cold light. Ground-level and empty; no skyline dominating the frame.",
-  },
-  {
-    name: "brutalist coast",
-    brief:
-      "sea, stone, and fog — a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk. Coastal and austere; no city anywhere.",
-  },
-  // Three families added 2026-09-08 per Keenan: "add statues and apex
-  // and old money still-life photos to the carousel options for all
-  // different BWK posts."
-  {
-    name: "stoic statue",
-    brief:
-      "a marble or stone statue photographed dramatically — rain-soaked in darkness, lit by a single hard spotlight, half-lost in shadow, cracked with age, or with snow settling on its shoulders. The statue is sculpture, not a person. Vary the statue, the weather, and the light every post.",
-  },
-  {
-    name: "apex wildlife",
-    brief:
-      "one lone wild animal in a vast moody landscape — draw from the ENTIRE animal kingdom (wolf, lion, stag, eagle, bear, panther, falcon, bison, ram, elk, orca breaching a grey sea, a hawk on a dead branch, a fox in snowfall, a horse alone on a storm plain — and beyond), in any wild environment and weather. Cinematic and desaturated; the animal is always alone, no people, no buildings. NEVER reuse an animal from a recent post.",
-  },
-  {
-    name: "old-money still-life",
-    brief:
-      "quiet-wealth object photography — a heavy watch on dark leather, a chessboard mid-game under a low lamp, a fountain pen on a closed ledger, cufflinks on black marble, a wool overcoat on a wooden valet stand in lamplight. Intimate, dim, tactile; no people.",
-  },
-  // Nine more families (2026-09-08, per Keenan: "I want a TON of
-  // different variance of these...").
-  {
-    name: "the forge",
-    brief:
-      "glowing embers and steel in a black workshop — sparks falling in darkness, a hammer resting on an anvil lit only by forge-light, red-hot metal cooling in the dark. Industrial, elemental; no people.",
-  },
-  {
-    name: "combat gym",
-    brief:
-      "an empty fight gym at night — a heavy bag hanging under one cold light, an empty boxing ring in a dark hall, wraps and gloves resting on a bench, a speed bag in shadow. The gear waits; nobody is there.",
-  },
-  {
-    name: "monastery",
-    brief:
-      "monk-mode stillness — a stone monastery corridor lit by candles, a single candle in a bare stone cell, a zen rock garden at dusk in mist, a temple gate in fog. Austere, silent, ancient; no people.",
-  },
-  {
-    name: "night track",
-    brief:
-      "an empty stadium or track — a running track vanishing into pre-dawn fog, a dark stadium tunnel with a slit of light at the end, empty bleachers under a night sky, a painted starting line in cold light. Nobody is running yet.",
-  },
-  {
-    name: "machines",
-    brief:
-      "dark mechanical power — a motorcycle standing in night rain, a car under a half-pulled cover in a dim garage, engine metal and cockpit dials glowing faintly in blackness. Metal, rain, low light; no people.",
-  },
-  {
-    name: "time still-life",
-    brief:
-      "time made visible — an hourglass half-run in lamplight, a pocket watch open on dark wood, a wall clock reading 4:57 in a dark room, a calendar page curling in shadow. Quiet, ticking, relentless.",
-  },
-  {
-    name: "desert",
-    brief:
-      "vast dry emptiness — a lone road running straight into desert dusk, dunes under storm light, cracked earth stretching to the horizon at blue hour, a dark mesa in fading light. Huge, indifferent, empty.",
-  },
-  {
-    name: "frozen world",
-    brief:
-      "deep winter — a frozen lake at blue hour, a snow-buried cabin with one lit window, black pines sagging under snow, ice sheeting a dark shoreline. Silent, cold, beautiful and hostile.",
-  },
-  {
-    name: "war room",
-    brief:
-      "a dark study built for work — a green banker's lamp over open books in a wood-panelled library, maps and notes spread across a desk at night, shelves of worn spines in half-light. Focused, old, serious; no people.",
+      "a medieval knight in magnificent armor, hyperrealistic — a lone knight standing in a snowfield as flakes settle on scratched steel, a knight on horseback in a frozen mountain pass, battle-worn plate armor in a misty black forest, a knight silhouetted before a burning horizon, a sentinel in a torch-lit stone hall. The armor is intricate and REAL — weathered steel, engraving, leather straps, snow or rain beading on metal — and the visor is DOWN or the face lost in shadow, so the knight reads as armor, never as a face. Snow settings hit hardest, but vary: fog, night rain, ember light, castle stone.",
   },
 ];
 
 /** Roll one cover-scene family and return the injectable rule string.
  *  The family constrains the DNA; the scene itself must be INVENTED
  *  fresh (2026-09-08, per Keenan: "unlimited amounts actually. every
- *  post should be a unique image"). */
-function rollMenCoverRule(): string {
+ *  post should be a unique image"). Pass `forcedFamily` (a
+ *  MEN_COVER_FAMILIES name, e.g. "medieval knight") to pin the whole
+ *  post — cover AND item scenes — to one family for themed one-offs
+ *  (2026-09-10, per Keenan: "create a knight themed post"). */
+function rollMenCoverRule(forcedFamily?: string): string {
+  const forced = forcedFamily
+    ? MEN_COVER_FAMILIES.find((f) => f.name === forcedFamily)
+    : undefined;
   const fam =
+    forced ??
     MEN_COVER_FAMILIES[Math.floor(Math.random() * MEN_COVER_FAMILIES.length)];
-  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
+  const itemRule = forced
+    ? `FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${fam.name} family — the whole post lives in one visual world, with each slide a DIFFERENT freshly-invented scene inside it.`
+    : `Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
+  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
 }
 
 /** Generate one moody-carousel topic for the given audience funnel.
@@ -488,16 +428,19 @@ export async function generateLineTopic(
 }
 
 /** WHEN NO ONE'S WATCHING lane (2026-09-10, per Keenan — replaces
- *  HOLD THE LINE). Private-discipline tests; "Name." items. */
+ *  HOLD THE LINE). Private-discipline tests; "Name." items.
+ *  `sceneFamily` pins the whole post to one image family (themed
+ *  one-offs). */
 export async function generateWatchingTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: "watching-carousel-topic",
     system: buildMoodySystemPrompt("men", {
       theme: WATCHING_THEME,
-      coverRule: rollMenCoverRule(),
+      coverRule: rollMenCoverRule(sceneFamily),
     }),
     user: `Write one new when-no-one's-watching post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "watching",
@@ -512,14 +455,15 @@ export async function generateWatchingTopic(
  *  real cost of the life he claims he wants; the final slide lands on
  *  "Still want it?". */
 export async function generatePriceTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: "price-carousel-topic",
     system: buildMoodySystemPrompt("men", {
       theme: PRICE_THEME,
-      coverRule: rollMenCoverRule(),
+      coverRule: rollMenCoverRule(sceneFamily),
     }),
     user: `Write one new pay-the-price post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "price",
@@ -533,14 +477,15 @@ export async function generatePriceTopic(
 /** PROVE IT lane (2026-09-10, per Keenan). Each slide takes a claim
  *  men make and converts it into what today must look like. */
 export async function generateProveTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: "prove-carousel-topic",
     system: buildMoodySystemPrompt("men", {
       theme: PROVE_THEME,
-      coverRule: rollMenCoverRule(),
+      coverRule: rollMenCoverRule(sceneFamily),
     }),
     user: `Write one new prove-it post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "prove",
@@ -606,7 +551,7 @@ export function buildMoodyImagePrompt(
     // scene text naming one — never a standing allowance (the 2026-09-01
     // "lone man" lesson: standing allowances leak into every image).
     audience === "men"
-      ? "NO people — even if the scene description implies a person, render the location EMPTY of humans. A stone/marble/bronze STATUE is sculpture, not a person: render it ONLY when the scene explicitly describes one. ONE lone wild ANIMAL is allowed ONLY when the scene explicitly names one; otherwise NO animals. Screens may glow softly but show NO readable content."
+      ? "NO people — even if the scene description implies a person, render the location EMPTY of humans. A stone/marble/bronze STATUE is sculpture, not a person: render it ONLY when the scene explicitly describes one. ONE lone wild ANIMAL is allowed ONLY when the scene explicitly names one; otherwise NO animals. ONE medieval KNIGHT in full armor is allowed ONLY when the scene explicitly describes one — visor down or face fully hidden in shadow, hyperreal weathered armor, never a visible face. Screens may glow softly but show NO readable content."
       : "NO people, NO animals, NO screens with content.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
@@ -738,7 +683,7 @@ const MEMENTO_MEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal pho
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — an empty gym at night with a loaded barbell under one cold light, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass, a glowing laptop open on a couch in a near-black minimalist living room, a dark bedroom seen from the bed with floor-to-ceiling glass over a glittering night skyline, a stone walkway to a cliff edge in sea fog, a black car interior on an empty night highway. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY; the still-glowing laptop, the unused gym, the road nobody is on do the work. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (a black-glass penthouse tower with one lit floor, a cliff mansion above a storm sea, a marble entrance in near-darkness — the building shot low and dramatic, never a flat skyline), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a matte-black supercar under one cold spotlight, rain beading on a midnight sports car, a Swiss watch on black marble, an hourglass half-run in lamplight — one hero object, shot like a high-end ad), and medieval knights (a lone knight in intricate hyperreal armor — snowfield, frozen pass, misty forest, torch-lit hall — visor down or face lost in shadow, armor never a face). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the knight carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 30, you have about 2,500 weekends left. On average.
@@ -774,7 +719,8 @@ OUTPUT (strict JSON, no markdown):
 export async function generateMementoTopic(
   audience: MoodyAudience,
   recentHeadlines: string[],
-  scheme: WomenScheme = "light"
+  scheme: WomenScheme = "light",
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
   const itemCount = 3 + Math.floor(Math.random() * 7); // 3-9 items
   return generateMoodyFamilyTopic({
@@ -784,7 +730,7 @@ export async function generateMementoTopic(
         ? // 2026-09-10 (memento-men revived into BWK): rolled
           // cover-family rule appended so its covers rotate through
           // the full BWK library like every live men's lane.
-          `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${rollMenCoverRule()}`
+          `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${rollMenCoverRule(sceneFamily)}`
         : buildMementoWomenSystemPrompt(scheme),
     user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: audience === "men" ? "memento-men" : "memento",
@@ -1777,7 +1723,7 @@ const buildProtocolSystemPrompt = (
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE protocols. Every step must be concrete enough to schedule: a time, a count, a limit, a rule — never vague advice like "work harder" or "stay focused".
 VOICE: calm command energy. Imperative mood. Short declarative sentences. A mentor issuing orders, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a glowing laptop open in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table, a dark bedroom with floor-to-ceiling glass over a night skyline, a stone stairway climbing into fog — AND stoic statue scenes (a marble statue rain-soaked in darkness or under one hard spotlight; sculpture, not a person) — AND apex wildlife scenes (ONE lone wild animal from anywhere in the animal kingdom, in a vast moody landscape) — AND old-money still-lifes (a heavy watch on dark leather, a chessboard under a low lamp) — AND the forge, combat gyms, candlelit monasteries, empty night tracks, dark machines, time still-lifes (an hourglass, a clock at 4:57), desert roads, frozen lakes, and war-room studies. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY of humans (a statue or a lone wild animal only in its own family's scenes); the still-glowing laptop, the unused gym, the face-down phone do the work. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within this DNA; never render an example verbatim, never repeat a recent post's scene.
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (a black-glass penthouse tower with one lit floor, a cliff mansion above a storm sea, a marble entrance in near-darkness — the building shot low and dramatic, never a flat skyline), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a matte-black supercar under one cold spotlight, rain beading on a midnight sports car, a Swiss watch on black marble — one hero object, shot like a high-end ad), and medieval knights (a lone knight in intricate hyperreal armor — snowfield, frozen pass, misty forest, torch-lit hall — visor down or face lost in shadow, armor never a face). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the knight carve-out (face never visible) and the lone animal, each only in its own family's scenes. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within these families; never render an example verbatim, never repeat a recent post's scene.
 
 FORMAT — each slide reads like this (match the rhythm):
 "One hour on the skill.
@@ -1802,7 +1748,8 @@ OUTPUT (strict JSON, no markdown):
  *  ("if you locked in for 100 days, who would you be on the other
  *  side?" energy). */
 export async function generateProtocolTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
   const interval =
     PROTOCOL_INTERVALS[Math.floor(Math.random() * PROTOCOL_INTERVALS.length)];
@@ -1810,7 +1757,7 @@ export async function generateProtocolTopic(
     purpose: "protocol-carousel-topic",
     // 2026-09-08: rolled cover-family rule appended so protocol covers
     // rotate too instead of drifting toward buildings.
-    system: `${buildProtocolSystemPrompt(interval)}\n\n${rollMenCoverRule()}`,
+    system: `${buildProtocolSystemPrompt(interval)}\n\n${rollMenCoverRule(sceneFamily)}`,
     user: `Write one new ${interval.toLowerCase()} protocol with 5, 6, or 7 steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
