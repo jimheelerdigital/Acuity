@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-10] — BWK image library v3: four scene families, anti-bland rule, knight posts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1996c68e
+
+### In plain English (for Keenan)
+BWK photos were coming out bland — flat empty landscapes with nothing commanding the frame. Every BWK image now comes from exactly four families: dark-luxury architecture, super-cool landscapes with one alpha animal as the hero, dark-luxury objects (cars, watches), and a brand-new medieval-knight family (hyperreal weathered armor, visor down, face never visible). Every frame must have a clear dramatic subject — empty marsh covers are banned. There's also a new way to request a themed one-off post where every slide lives in one family, like an all-knight post.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: MEN_COVER_FAMILIES cut 18 → 4 (dark-luxury architecture / alpha wildlife / dark-luxury objects / medieval knight); SCENE_BRIEF.men, buildProtocolSystemPrompt, and MEMENTO_MEN_SYSTEM_PROMPT scenes rewritten to the four-family brief with an ANTI-BLAND RULE (every frame needs a dramatic subject; no empty flat landscapes); knight carve-out added to buildMoodyImagePrompt (rendered only when the scene explicitly describes one, face never visible — follows the 2026-09-01 lone-man lesson); rollMenCoverRule(forcedFamily?) — forced family = FAMILY LOCK on cover AND item scenes; sceneFamily? param on generateWatchingTopic / generateProtocolTopic / generatePriceTopic / generateProveTopic / generateMementoTopic
+- apps/web/src/inngest/functions/carousel-daily.ts: sceneFamily extracted from event data and threaded into the five men-lane generator calls
+- apps/web/src/app/api/admin/carousels/route.ts: generate-daily action passes sceneFamily through to the Inngest event
+
+### Manual steps needed
+- None (deployed with this session's batch; no schema change, no cron/trigger change so no Inngest resync)
+
+### Notes
+- Root cause of blandness: the old 18-family library and scene briefs permitted subject-less flat landscapes. The fix is fewer, stronger families plus an explicit anti-bland rule — the UNLIMITED LIBRARY RULE stays (families are seeds; every image is still freshly invented).
+- Knight = a person, which conflicts with "NO people EVER"; resolved as a conditional carve-out like the statue/animal ones — only when the scene describes a knight, and armor-only, never a face.
+- Themed one-offs: POST /api/admin/carousels {"action":"generate-daily","bucket":"watching","sceneFamily":"medieval knight"} — forced family locks item scenes too, so the whole post lives in one world.
+
 ## [2026-09-10] — BWK lineup reshuffle: memento mori in, two new lanes, rotating protocol
 
 **Requested by:** Keenan
