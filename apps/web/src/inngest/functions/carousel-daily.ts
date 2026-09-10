@@ -190,7 +190,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // ── Resolve the bucket (event runs) ────────────────────────────
     const b = event.data?.bucket as string | undefined;
     // Optional scene-family override for themed one-off BWK posts
-    // (2026-09-10, e.g. "medieval knight") — locks cover AND item
+    // (2026-09-10, e.g. "epic warrior") — locks cover AND item
     // scenes to one family via rollMenCoverRule's FAMILY LOCK.
     const sceneFamily = (event.data as { sceneFamily?: string } | undefined)
       ?.sceneFamily;
