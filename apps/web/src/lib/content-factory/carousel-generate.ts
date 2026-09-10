@@ -584,8 +584,8 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     "rules", "moody-women", "moody-men", "memento", "memento-men",
     "missed", "missed-men", "questions", "sign", "year", "free",
     "behind", "nobody", "bloomers", "taught", "forbidden", "unsent",
-    "aura", "versions", "protocol", "line", "phone-quote",
-    "phone-quote-men",
+    "aura", "versions", "protocol", "line", "watching", "price",
+    "prove", "phone-quote", "phone-quote-men",
   ]);
 
   if (slide.kind === "CTA") {

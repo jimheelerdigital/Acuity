@@ -221,8 +221,10 @@ export default function CarouselReviewPage() {
 
   const generateBucket = async (
     bucket:
-      | "moody-men"
-      | "line"
+      | "memento-men"
+      | "watching"
+      | "price"
+      | "prove"
       | "memento"
       | "questions"
       | "protocol"
@@ -571,20 +573,36 @@ export default function CarouselReviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => generateBucket("moody-men")}
+            onClick={() => generateBucket("memento-men")}
             disabled={generating}
-            title="Generate a moody discipline carousel (men funnel) now"
+            title="Generate a memento-mori life-math carousel (men / BWK) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🏛️"}
+            {generating ? "…" : "🕰️"}
           </button>
           <button
-            onClick={() => generateBucket("line")}
+            onClick={() => generateBucket("watching")}
             disabled={generating}
-            title="Generate a HOLD THE LINE carousel (men / BWK) now"
+            title="Generate a WHEN NO ONE'S WATCHING carousel (men / BWK) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
-            {generating ? "…" : "🌩️"}
+            {generating ? "…" : "👁️"}
+          </button>
+          <button
+            onClick={() => generateBucket("price")}
+            disabled={generating}
+            title="Generate a PAY THE PRICE carousel (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🧾"}
+          </button>
+          <button
+            onClick={() => generateBucket("prove")}
+            disabled={generating}
+            title="Generate a PROVE IT carousel (men / BWK) now"
+            className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
+          >
+            {generating ? "…" : "🎯"}
           </button>
           <button
             onClick={() => generateBucket("questions")}
@@ -621,7 +639,7 @@ export default function CarouselReviewPage() {
           <button
             onClick={() => generateBucket("protocol")}
             disabled={generating}
-            title="Generate a 30-day protocol carousel (men / BWK) now"
+            title="Generate a protocol carousel (men / BWK, rotating interval) now"
             className="min-h-[44px] rounded-acuity-pill bg-acuity-primary px-3 text-sm font-medium text-white active:opacity-80 disabled:opacity-50"
           >
             {generating ? "…" : "📋"}

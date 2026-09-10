@@ -40,8 +40,10 @@ function forceDownloadUrl(url: string, filename: string): string {
  * subject."). Build With Key = the men-targeted lanes (2026-08-28 late
  * night split, per Keenan): moody-men, missed-men, memento-men, year,
  * behind, plus the 2026-08-30 persona lanes aura / versions / protocol,
- * plus the 2026-09-03 winner lanes line / phone-quote-men. Dead lanes
- * stay listed so historical resends still label correctly.
+ * plus the 2026-09-03 winner lanes line / phone-quote-men, plus the
+ * 2026-09-10 discipline lanes watching / price / prove (memento-men
+ * revived the same day). Dead lanes stay listed so historical resends
+ * still label correctly.
  * Every other lane — women-funnel and universal — is Ripple.
  */
 const BWK_LANES = new Set([
@@ -54,6 +56,9 @@ const BWK_LANES = new Set([
   "versions",
   "protocol",
   "line",
+  "watching",
+  "price",
+  "prove",
   "phone-quote-men",
 ]);
 function accountLabel(lane: string | null | undefined): string {

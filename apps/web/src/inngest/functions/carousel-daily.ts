@@ -86,29 +86,40 @@ import { inngest } from "@/inngest/client";
  *   kept me up all night...") + a programmatically-composed notes-app
  *   quote screen. Total: BWK 4/day, Ripple 5/day.
  *
+ * 2026-09-10 BWK reshuffle (per Keenan): MOODY-MEN out, MEMENTO-MEN
+ * (memento mori life-math for men) revived in its slot; LINE replaced
+ * by WATCHING ("when no one's watching" private-discipline tests);
+ * PROTOCOL's interval now rotates (30/100/365 days, 2/5 years) with a
+ * question cover; PRICE ("pay the price") and PROVE ("prove it")
+ * added. BWK 6/day, Ripple 5/day.
+ *
  * Overnight schedule (CDT):
- * -  5 UTC (12am): MOODY-MEN — SILENCE-family discipline carousel
- *                  (BWK) + SELFIE #1 (Ripple)
- * -  6 UTC (1am):  LINE — HOLD THE LINE carousel, storm-skyscraper
- *                  cover (BWK) + QUESTIONS — hard questions, dark
- *                  (Ripple) + PHONE-QUOTE (Ripple, 2 slides)
- * -  7 UTC (2am):  PROTOCOL — "DO THIS FOR 30 DAYS" (BWK) + SELFIE
- *                  #2 (Ripple) + PHONE-QUOTE-MEN (BWK, 2 slides)
+ * -  5 UTC (12am): MEMENTO-MEN — men's memento mori life-math (BWK)
+ *                  + SELFIE #1 (Ripple)
+ * -  6 UTC (1am):  WATCHING — when no one's watching (BWK) +
+ *                  QUESTIONS — hard questions, dark (Ripple) +
+ *                  PHONE-QUOTE (Ripple, 2 slides)
+ * -  7 UTC (2am):  PROTOCOL — rotating-interval protocol (BWK) +
+ *                  SELFIE #2 (Ripple) + PHONE-QUOTE-MEN (BWK,
+ *                  2 slides)
  * -  8 UTC (3am):  MEMENTO — women's "DO THE MATH" life-math, dark
- *                  dusk-coast cover (Ripple, 4-10 slides)
+ *                  dusk-coast cover (Ripple, 4-10 slides) + PRICE —
+ *                  pay the price (BWK) + PROVE — prove it (BWK)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
- * to: [BUILD WITH KEY] for moody-men / line / protocol /
- * phone-quote-men, [RIPPLE] for everything else (handled in
+ * to: [BUILD WITH KEY] for memento-men / watching / protocol / price /
+ * prove / phone-quote-men, [RIPPLE] for everything else (handled in
  * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
-  "moody-men",
-  "line",
+  "memento-men",
+  "watching",
   "protocol",
+  "price",
+  "prove",
   "questions",
   "memento",
   "selfie",
@@ -121,10 +132,10 @@ type DailyBucket = (typeof CAROUSEL_LANES)[number];
  *  appears twice on purpose (2026-09-03: "give me 2x of those per
  *  day"). */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
-  5: ["moody-men", "selfie"],
-  6: ["line", "questions", "phone-quote"],
+  5: ["memento-men", "selfie"],
+  6: ["watching", "questions", "phone-quote"],
   7: ["protocol", "selfie", "phone-quote-men"],
-  8: ["memento"],
+  8: ["memento", "price", "prove"],
 };
 
 /**
@@ -715,18 +726,24 @@ export const carouselDailyCronFn = inngest.createFunction(
     // male-dominant dark power imagery; EVERY Ripple lane = soft
     // aesthetically-pleasing feminine photography.
     const imageAudience: "women" | "men" =
-      bucket === "moody-men" || bucket === "line" || bucket === "protocol"
+      bucket === "memento-men" ||
+      bucket === "watching" ||
+      bucket === "protocol" ||
+      bucket === "price" ||
+      bucket === "prove"
         ? "men"
         : "women";
-    // Lanes whose items carry a "Name." header (discipline,
-    // hold-the-line, protocol steps). NO numbers on the header
+    // Lanes whose items carry a "Name." header (discipline tests,
+    // protocol steps, prices, claims). NO numbers on the header
     // (2026-09-08, per Keenan: he curates each post by hand and
     // sometimes omits a slide or two — "1-7" numbering breaks the
-    // moment one is dropped).
+    // moment one is dropped). Memento lanes carry no header — the
+    // numbers ARE the content.
     const named =
-      bucket === "moody-men" ||
-      bucket === "line" ||
-      bucket === "protocol";
+      bucket === "watching" ||
+      bucket === "protocol" ||
+      bucket === "price" ||
+      bucket === "prove";
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -736,8 +753,9 @@ export const carouselDailyCronFn = inngest.createFunction(
     const moody = await step.run("generate-moody-topic", async () => {
       const { prisma } = await import("@/lib/prisma");
       const {
-        generateMoodyTopic,
-        generateLineTopic,
+        generateWatchingTopic,
+        generatePriceTopic,
+        generateProveTopic,
         generateMementoTopic,
         generateQuestionsTopic,
         generateProtocolTopic,
@@ -764,13 +782,17 @@ export const carouselDailyCronFn = inngest.createFunction(
       const topic =
         bucket === "memento"
           ? await generateMementoTopic("women", headlines, "dark")
-          : bucket === "questions"
-            ? await generateQuestionsTopic(headlines, "dark")
-            : bucket === "line"
-              ? await generateLineTopic(headlines)
-              : bucket === "protocol"
-                ? await generateProtocolTopic(headlines)
-                : await generateMoodyTopic("men", headlines);
+          : bucket === "memento-men"
+            ? await generateMementoTopic("men", headlines)
+            : bucket === "questions"
+              ? await generateQuestionsTopic(headlines, "dark")
+              : bucket === "watching"
+                ? await generateWatchingTopic(headlines)
+                : bucket === "protocol"
+                  ? await generateProtocolTopic(headlines)
+                  : bucket === "price"
+                    ? await generatePriceTopic(headlines)
+                    : await generateProveTopic(headlines);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar

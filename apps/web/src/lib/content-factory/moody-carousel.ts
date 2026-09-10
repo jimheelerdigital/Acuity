@@ -304,7 +304,21 @@ function avoidBlock(recentHeadlines: string[]): string {
 // format, unchanged).
 const SILENCE_THEME = `THEME — every post belongs to the SILENCE family: moving in silence, building in private, working unseen, no announcements, letting results speak. Rotate the angle every post — going quiet for a season, killing announcement culture, private standards nobody sees, disappearing to build, the quiet hours before the world wakes, winning without telling anyone — so no two posts repeat, but every post is unmistakably a silence post. Titles live in the family too ("EARN YOUR SILENCE" energy) without repeating a recent title.`;
 
+// DORMANT 2026-09-10 (per Keenan: "change 'hold the line' to a
+// new-style discipline line" — replaced by the WATCHING lane below).
+// Kept for revival, like every retired format.
 const LINE_THEME = `THEME — every post belongs to the HOLD THE LINE family: endurance, standards that do not move, staying when it gets hard, refusing to break the streak, holding position when motivation dies. Rotate the angle every post — holding the morning line, standards under pressure, the days nobody claps, finishing what the first week started, never negotiating with yourself — so no two posts repeat, but every post is unmistakably a hold-the-line post. Titles live in the family too ("HOLD THE LINE" energy) without repeating a recent title.`;
+
+// ─── Three discipline lanes (2026-09-10, per Keenan) ─────────────────
+// "replace [hold the line] with 2 [WHEN NO ONE'S WATCHING], and also
+// add 'pay the price' line, and a 'prove it' one too." All three are
+// moody-family men's lanes sharing the BWK visual DNA + cover-family
+// rotation; each has its own locked theme.
+const WATCHING_THEME = `THEME — every post belongs to the WHEN NO ONE'S WATCHING family: private discipline — what a man does when nobody would ever know either way. Every item is a private test: the bed made in an empty house, the workout that never gets posted, the alarm kept on a free morning, the food logged with no one checking, the promise kept to himself alone at midnight. The tension is always integrity vs audience — who he is when there is no camera, no story, no applause. Rotate the angle every post — the 5am hours nobody sees, standards kept in hotel rooms, what he does after everyone is asleep, the reps counted honestly when lying would be free — so no two posts repeat, but every post is unmistakably about the unwatched hours. Titles live in the family too ("WHEN NO ONE'S WATCHING..." energy) without repeating a recent title.`;
+
+const PRICE_THEME = `THEME — every post belongs to the PAY THE PRICE family: naming the REAL cost of the life he says he wants — the sleep, the comfort, the nights out declined, the friends who stop calling, the opinions ignored, the years of looking stupid before it works. Each item names ONE price in plain, unsentimental terms: what exactly gets paid, and what paying it buys. No romanticizing — it should read like an itemized bill. EXCEPTION to the last-line rule: the FINAL item's last line must be exactly "Still want it?" — the one place a command becomes a question. Rotate the goal every post — the body, the money, the freedom, the skill, the name — so no two posts repeat. Titles live in the family too ("PAY THE PRICE." energy) without repeating a recent title.`;
+
+const PROVE_THEME = `THEME — every post belongs to the PROVE IT family: call-out energy. Every item takes a claim men love to make and turns it into what TODAY has to look like if the claim is true. EXCEPTION to the name rule: each item's "name" is the claim itself, 3-6 words ending with a period ("I want the money.", "I'm built different.", "I want the body.") — no quotation marks. The lines then convert the claim into one concrete, checkable action for today (a time, a count, a rule) and close on a short command with "prove it" energy ("Prove it before noon."). The unspoken thesis of every post: talk is free, the calendar doesn't lie. Rotate the claims every post — money, physique, discipline, skill, independence, focus — so no two posts repeat. Titles live in the family too ("PROVE IT." energy) without repeating a recent title.`;
 
 // BWK cover-scene rotation (2026-09-08, per Keenan: "almost every BWK
 // picture is starting with a building... do not make this the cover
@@ -451,7 +465,8 @@ export async function generateMoodyTopic(
 /** HOLD THE LINE lane (2026-09-03, per Keenan: "hold the line got a
  *  lot of views with the skyscraper start image"). Endurance family,
  *  "Name." items like moody-men. Covers rotate families since
- *  2026-09-08 (skyscraper is one family, not the default). */
+ *  2026-09-08 (skyscraper is one family, not the default).
+ *  DORMANT 2026-09-10 — replaced by generateWatchingTopic. */
 export async function generateLineTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
@@ -465,6 +480,70 @@ export async function generateLineTopic(
     }),
     user: `Write one new hold-the-line post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "line",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: 7,
+  });
+}
+
+/** WHEN NO ONE'S WATCHING lane (2026-09-10, per Keenan — replaces
+ *  HOLD THE LINE). Private-discipline tests; "Name." items. */
+export async function generateWatchingTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: "watching-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: WATCHING_THEME,
+      coverRule: rollMenCoverRule(),
+    }),
+    user: `Write one new when-no-one's-watching post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "watching",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: 7,
+  });
+}
+
+/** PAY THE PRICE lane (2026-09-10, per Keenan). Each slide names one
+ *  real cost of the life he claims he wants; the final slide lands on
+ *  "Still want it?". */
+export async function generatePriceTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: "price-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: PRICE_THEME,
+      coverRule: rollMenCoverRule(),
+    }),
+    user: `Write one new pay-the-price post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "price",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: 7,
+  });
+}
+
+/** PROVE IT lane (2026-09-10, per Keenan). Each slide takes a claim
+ *  men make and converts it into what today must look like. */
+export async function generateProveTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: "prove-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: PROVE_THEME,
+      coverRule: rollMenCoverRule(),
+    }),
+    user: `Write one new prove-it post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "prove",
     requireName: true,
     minLines: 2,
     minItems: 4,
@@ -702,7 +781,10 @@ export async function generateMementoTopic(
     purpose: audience === "men" ? "memento-men-carousel-topic" : "memento-carousel-topic",
     system:
       audience === "men"
-        ? MEMENTO_MEN_SYSTEM_PROMPT
+        ? // 2026-09-10 (memento-men revived into BWK): rolled
+          // cover-family rule appended so its covers rotate through
+          // the full BWK library like every live men's lane.
+          `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${rollMenCoverRule()}`
         : buildMementoWomenSystemPrompt(scheme),
     user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: audience === "men" ? "memento-men" : "memento",
@@ -1676,7 +1758,21 @@ export async function generateVersionsTopic(
 // Per Keenan: "add ... 30 days". A concrete numbered protocol — the
 // save-bait format: people bookmark protocols, not motivation.
 
-const PROTOCOL_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: 30-DAY PROTOCOL — a concrete daily protocol a man can start tonight and run for 30 days. Not motivation — instructions.
+// Protocol interval rotation (2026-09-10, per Keenan: "change
+// 'protocol' interval... it can rotate between 30 days, 100 days, 365
+// days, 5 years, 2 years"). Rolled per post inside the memoized topic
+// step, same pattern as the cover-family roll.
+const PROTOCOL_INTERVALS = [
+  "30 DAYS",
+  "100 DAYS",
+  "365 DAYS",
+  "2 YEARS",
+  "5 YEARS",
+] as const;
+
+const buildProtocolSystemPrompt = (
+  interval: string
+) => `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: THE ${interval} PROTOCOL — a concrete daily protocol a man can start tonight and run for ${interval.toLowerCase()}. Not motivation — instructions.
 
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE protocols. Every step must be concrete enough to schedule: a time, a count, a limit, a rule — never vague advice like "work harder" or "stay focused".
 VOICE: calm command energy. Imperative mood. Short declarative sentences. A mentor issuing orders, not a poet. Never bro-slang, never yelling.
@@ -1691,9 +1787,9 @@ Same hour every day. Phone in another room.
 Thirty hours in a month. Most people give it zero."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. Must contain "30 DAYS" and land as a direct challenge the reader has to answer ("DO THIS FOR 30 DAYS", "30 DAYS. EARN IT."). 2-6 words, works in ALL CAPS. Never a passive label. SENSE CHECK (non-negotiable): the title must make instant, obvious sense on its own — a natural phrase a real person would actually say. If it reads odd or garbled out of context, it is WRONG — write a different one.
-- Each protocol needs a THEME for the month (sleep + training + focus, money discipline, physical hardening, digital detox, building a skill, going quiet, cutting the circle, morning ownership) — vary it post to post, invent new themes, and NEVER reuse a theme from the recent-posts list.
-- Each item: "name" = the step, 2-5 words ("One hour on the skill."). "lines" = 2-3 short paragraphs: the exact rule (specific time/count/limit), then why it compounds over 30 days.
+- "title": the cover text — a direct QUESTION that names the interval and makes him picture who he could become ("IF YOU LOCKED IN FOR ${interval}, WHO WOULD YOU BE ON THE OTHER SIDE?", "WHO ARE YOU AFTER ${interval} OF THIS?"). 8-15 words, works in ALL CAPS, MUST contain "${interval}" and end with "?". Never a passive label, never a plain command. Invent a fresh phrasing — do NOT copy the example questions verbatim. SENSE CHECK (non-negotiable): the title must make instant, obvious sense on its own — a natural question a real person would actually ask. If it reads odd or garbled out of context, it is WRONG — write a different one.
+- Each protocol needs a THEME for the run (sleep + training + focus, money discipline, physical hardening, digital detox, building a skill, going quiet, cutting the circle, morning ownership) — vary it post to post, invent new themes, and NEVER reuse a theme from the recent-posts list.
+- Each item: "name" = the step, 2-5 words ("One hour on the skill."). "lines" = 2-3 short paragraphs: the exact rule (specific time/count/limit), then why it compounds over ${interval.toLowerCase()} — scale the math to the interval (30 hours in a month; 1,800+ hours in 5 years).
 - Each item's "scene": one concrete sentence for the photograph, per SCENES above.
 - "coverScene": one scene sentence for the cover.
 - No emojis, no hashtags. Never mention any app, product, journaling, therapy, or AI.
@@ -1701,16 +1797,21 @@ RULES:
 OUTPUT (strict JSON, no markdown):
 { "title": "...", "coverScene": "...", "items": [{ "name": "...", "lines": ["...", "..."], "scene": "..." }] }`;
 
-/** Generate one 30-day protocol carousel (men / BWK funnel). */
+/** Generate one protocol carousel (men / BWK funnel). The interval
+ *  rotates per post (2026-09-10) and the cover is a question
+ *  ("if you locked in for 100 days, who would you be on the other
+ *  side?" energy). */
 export async function generateProtocolTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
+  const interval =
+    PROTOCOL_INTERVALS[Math.floor(Math.random() * PROTOCOL_INTERVALS.length)];
   return generateMoodyFamilyTopic({
     purpose: "protocol-carousel-topic",
     // 2026-09-08: rolled cover-family rule appended so protocol covers
     // rotate too instead of drifting toward buildings.
-    system: `${PROTOCOL_SYSTEM_PROMPT}\n\n${rollMenCoverRule()}`,
-    user: `Write one new 30-day protocol with 5, 6, or 7 steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    system: `${buildProtocolSystemPrompt(interval)}\n\n${rollMenCoverRule()}`,
+    user: `Write one new ${interval.toLowerCase()} protocol with 5, 6, or 7 steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
     minLines: 2,
