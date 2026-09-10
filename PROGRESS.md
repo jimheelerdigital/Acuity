@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-10] — BWK lanes become pick-lists, price/prove killed, classic cars in
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d2079491
+
+### In plain English (for Keenan)
+Three changes from the lane review. First, the price ("COLLECT YOUR DEBTS.") and prove lanes are dead — no more nightly posts from them. Second, the three core BWK lanes (memento mori, when-no-one's-watching, timeline) now come as pick-lists: each email delivers 3 candidate cover photos plus 15 item slides, so you pick the covers and slides that actually look good instead of getting whatever the machine chose. Third, the car images shift from Lambo-style supercars to luxury and classic cars — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — anything timeless and inspiring.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: MoodyTopic gains optional coverScenes[]; generateMoodyFamilyTopic gains coverCount/maxTokens opts and parses/slices coverScenes; new buildMultiCoverRule(count, forcedFamily?) — 3 covers each from a DIFFERENT family (or all one family when sceneFamily is forced); generateWatchingTopic / generateMementoTopic(men) / generateProtocolTopic converted to 3 covers + exactly-15 items (minItems 12 tolerance, maxTokens 6000); women's memento unchanged; generatePriceTopic/generateProveTopic doc-marked DORMANT; CAR RULE (rotate luxury/classic marques, modern supercars rarely) added to the objects family brief and all three SCENES blocks + PHONE_QUOTE_BG_SCENES
+- apps/web/src/inngest/functions/carousel-daily.ts: price/prove removed from CAROUSEL_LANES, HOUR_LANES (8 UTC now ["memento"]), imageAudience, named, and the topic dispatch; single generate-moody-cover step replaced by a loop over moody.coverScenes (step ids generate-moody-cover-N, files slide-cover-N.jpg, avatar roll only on first cover); save step writes covers as COVER slides at orders 0..n-1 with REASON items after; slideCount/estimatedCostCents count real covers
+- apps/web/src/lib/content-factory/humanizer.ts: max_tokens 3000 → 6000 (15-item payloads would truncate; the gate fails open on truncation but then skips real rewrites)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 🧾 price / 🎯 prove buttons and union members removed
+- apps/web/src/app/api/admin/carousels/route.ts: lane docs updated
+- email.ts BWK_LANES and carousel-generate.ts MOODY_LANES intentionally KEEP price/prove — today's historical posts still need correct email branding and captions
+
+### Manual steps needed
+- None (deployed with this batch; no cron/trigger changes, so no Inngest resync needed)
+
+### Notes
+- A pick-list post renders ~18 images (~$1.50/post at 8¢ estimate; real gpt-image cost ~25¢/image → ~$4.50). Three lanes nightly ≈ $13.50/day in image spend — Keenan asked for this trade to get curation control.
+- Pick-list covers each come from a DIFFERENT image family (unless a sceneFamily override forces one) so the 3 candidates are visually distinct, not three takes of the same idea.
+- "STAY INVISIBLE." / "GUARD THE QUIET." were moody-men posts — that lane died this morning, which answers Keenan's "which lane is that?" question.
+
 ## [2026-09-10] — No more notebook shots, dramatic skies on buildings, timeline posts show real results
 
 **Requested by:** Keenan
