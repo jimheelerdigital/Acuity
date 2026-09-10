@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-10] — Moody-men lane revived as a pick-list
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 816f996e
+
+### In plain English (for Keenan)
+The "moody men" lane (the STAY INVISIBLE. / GUARD THE QUIET. silence-themed posts) is back in the nightly rotation — it had been cut this morning. Like the other three core BWK lanes, it now arrives as a pick-list: 3 candidate cover photos plus 15 item slides so you curate the keepers. It generates at 3am CDT alongside the women's memento post, so BWK is now 5 posts a night, 10 total.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: generateMoodyTopic men path converted to pick-list (buildMultiCoverRule(3, sceneFamily), exactly 15 items, minItems 12, coverCount 3, maxTokens 6000, new optional sceneFamily param); women's path untouched
+- apps/web/src/inngest/functions/carousel-daily.ts: moody-men back in CAROUSEL_LANES, HOUR_LANES 8 UTC (["memento", "moody-men"]), imageAudience men-list, named flag, and the dispatch ternary
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 🤫 moody-men button + union member restored
+- apps/web/src/app/api/admin/carousels/route.ts: lane docs updated
+- email.ts BWK_LANES and carousel-generate.ts MOODY_LANES never dropped moody-men — no changes needed there
+
+### Manual steps needed
+- None (deployed with this batch; HOUR_LANES lives inside the function body, so no Inngest resync needed)
+
+### Notes
+- Slotted at 8 UTC instead of its historical 5 UTC slot to balance the hours (5 already carries memento-men + selfie; 8 only had memento after price/prove died).
+- The revived lane inherits everything shipped today automatically: four-family image library, anti-bland rule, classic-car rotation, and the SILENCE theme lock from 2026-09-03.
+
 ## [2026-09-10] — BWK lanes become pick-lists, price/prove killed, classic cars in
 
 **Requested by:** Keenan
