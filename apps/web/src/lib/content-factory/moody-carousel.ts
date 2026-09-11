@@ -87,7 +87,7 @@ const WOMEN_PROMPT_HEADER: Record<WomenScheme, string> = {
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic and a DRAMATIC SKY (every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it): a black-glass penthouse tower with its crown wrapped in storm cloud, a cliff mansion glowing above a storm sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads. The building shot low and dramatic, grand and expensive, never a flat distant skyline, never a plain empty sky. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes under lightning, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a classic Ferrari gleaming under one cold garage spotlight, rain beading on an old-school Mercedes gullwing at night, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille in deep shadow, a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. One hero object, deep shadow, tactile hyperreal detail — the object must be unmistakably LUXURY and dramatic, NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (4) EPIC WARRIORS — a lone armored warrior seen from a DISTANCE in an epic snowy atmosphere: a medieval knight, a spartan, a samurai, a viking, any legendary warrior in FULL armor (gleaming silver, burnished gold, or blackened steel), DOING something powerful — mid-stride walking alone into the storm, arms flexed in triumph with head raised to the sky, driving a sword into the frozen ground, climbing a ridgeline against the wind. The pose reads in silhouette and radiates STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to get to work. WIDE cinematic framing in an immense frozen landscape, NEVER close to the camera, never a close-up; falling snow and storm atmosphere do the work; face never visible (helmet on, visor down, or too distant to read). Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE distant armored warrior (face never visible) in warrior scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
+  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic and a DRAMATIC SKY (every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it): a black-glass penthouse tower with its crown wrapped in storm cloud, a cliff mansion glowing above a storm sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads. The building shot low and dramatic, grand and expensive, never a flat distant skyline, never a plain empty sky. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes at dusk, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; HYPER-REAL weather only — natural light a wildlife photographer could actually capture, NEVER lightning bolts, glowing skies, or painted-on effects; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a classic Ferrari gleaming under one cold garage spotlight, rain beading on an old-school Mercedes gullwing at night, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille in deep shadow, a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. One hero object, deep shadow, tactile hyperreal detail — the object must be unmistakably LUXURY and dramatic, NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (4) EPIC WARRIORS — a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS: a viking striding up a windswept grey beach with longships behind him, a samurai on a misty bamboo path in rain, a medieval knight leading his horse up a snowy mountain trail, a spartan climbing sun-bleached coastal rocks — every warrior type gets ITS OWN world matched to his culture, never one generic snowfield, and NEVER standing directly on ice or a frozen lake. FULL armor (gleaming silver, burnished gold, or blackened steel), DOING something powerful — mid-stride into the weather, arms flexed in triumph with head raised to the sky, driving a sword into the earth, climbing against the wind. The pose reads in silhouette and radiates STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to get to work. WIDE cinematic framing in an immense landscape, NEVER close to the camera, never a close-up; HYPER-REAL like a prestige-film still — real weather, real light, never a video-game render; face never visible (helmet on, visor down, or too distant to read). Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE distant armored warrior (face never visible) in warrior scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
   women: WOMEN_SCENE_BRIEFS.light,
 };
 
@@ -365,7 +365,7 @@ const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
   {
     name: "alpha wildlife",
     brief:
-      "ONE alpha animal commanding a super-cool landscape — a wolf standing on a cracked frozen lake beneath storm pines, a lion crossing black dunes under a lightning sky, a stag on a ridgeline in blowing snow, a golden eagle sweeping low over a fjord, a black panther on wet rock in night rain, a bison facing a whiteout. Draw from the ENTIRE animal kingdom; the animal is the clear HERO of the frame — close enough to feel its presence, the landscape epic around it. NEVER reuse an animal from a recent post.",
+      "ONE alpha animal commanding a super-cool landscape — a wolf standing on a cracked frozen lake beneath storm pines, a lion crossing black dunes at dusk, a stag on a ridgeline in blowing snow, a golden eagle sweeping low over a fjord, a black panther on wet rock in night rain, a bison facing a whiteout. Draw from the ENTIRE animal kingdom; the animal is the clear HERO of the frame — close enough to feel its presence, the landscape epic around it. HYPER-REALISM RULE (2026-09-11, per Keenan): this must look like a real wildlife photograph — natural light and physically plausible weather ONLY, the kind of frame a wildlife photographer could actually capture; NEVER lightning bolts, glowing skies, or any painted-on dramatic effect. Emotion comes from the animal and the realism, not from spectacle. NEVER reuse an animal from a recent post.",
   },
   {
     name: "dark-luxury objects",
@@ -375,7 +375,7 @@ const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
   {
     name: "epic warrior",
     brief:
-      "a lone armored warrior seen from a DISTANCE in an epic snowy atmosphere, hyperrealistic — a medieval knight, a spartan, a samurai, a viking, any legendary warrior in FULL armor (gleaming silver, burnished gold, or blackened steel). The warrior is DOING something powerful, never posing idle: mid-stride walking alone into the storm, fists clenched and arms flexed in triumph with head raised to the sky, driving a sword or spear into the frozen ground, climbing a ridgeline against the wind, standing braced as a blizzard breaks around him. The pose must read in silhouette and radiate STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to stand up and get to work. The shot is WIDE and cinematic: the warrior small-to-mid in an immense frozen landscape — a snowfield under a storm sky, a frozen mountain pass, a blizzard-swept ridgeline — NEVER close to the camera, NEVER a close-up or portrait framing. The atmosphere does the work: falling snow, blowing mist, storm light, scale. Face never visible — helmet on, visor down, or too distant to read.",
+      "a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS, hyperrealistic — a viking striding up a windswept grey beach with longships anchored behind him, a samurai walking a misty bamboo path in falling rain, a medieval knight leading his horse up a snowy mountain trail, a spartan climbing sun-bleached coastal rocks above a wine-dark sea, a crusader crossing wind-carved dunes at dusk. LANDSCAPE RULE (2026-09-11, per Keenan): every warrior type gets ITS OWN world — match the terrain to his culture and era, never default to one generic snowfield, and NEVER have him standing directly on ice or a frozen lake (a snowy path or ridgeline is fine). FULL armor (gleaming silver, burnished gold, or blackened steel). The warrior is DOING something powerful, never posing idle: mid-stride into the weather, fists clenched and arms flexed in triumph with head raised to the sky, driving a sword or spear into the earth, climbing against the wind. The pose must read in silhouette and radiate STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to stand up and get to work. The shot is WIDE and cinematic: the warrior small-to-mid in an immense landscape, NEVER close to the camera, NEVER a close-up or portrait framing. HYPER-REALISM RULE: this must read as a still from a prestige film — real weather physics, real light, real textures, never a video-game render or painted fantasy sky. Face never visible — helmet on, visor down, or too distant to read.",
   },
 ];
 
@@ -605,7 +605,7 @@ export function buildMoodyImagePrompt(
     // scene text naming one — never a standing allowance (the 2026-09-01
     // "lone man" lesson: standing allowances leak into every image).
     audience === "men"
-      ? "NO people — even if the scene description implies a person, render the location EMPTY of humans. A stone/marble/bronze STATUE is sculpture, not a person: render it ONLY when the scene explicitly describes one. ONE lone wild ANIMAL is allowed ONLY when the scene explicitly names one; otherwise NO animals. ONE armored WARRIOR (medieval knight, spartan, samurai, viking, or similar) is allowed ONLY when the scene explicitly describes one — always DISTANT in the frame (wide epic shot, never close to the camera, never a close-up), FULL hyperreal armor in silver, gold, or blackened steel, face never visible (helmet on, visor down, or too far to read), in a snowy or storm-swept epic atmosphere, caught in a POWERFUL ACTION pose that reads in silhouette (striding into the storm, arms flexed in triumph, sword driven into the ground) — heroic strength and drive, never standing idle. Screens may glow softly but show NO readable content."
+      ? "NO people — even if the scene description implies a person, render the location EMPTY of humans. A stone/marble/bronze STATUE is sculpture, not a person: render it ONLY when the scene explicitly describes one. ONE lone wild ANIMAL is allowed ONLY when the scene explicitly names one; otherwise NO animals. ONE armored WARRIOR (medieval knight, spartan, samurai, viking, or similar) is allowed ONLY when the scene explicitly describes one — always DISTANT in the frame (wide epic shot, never close to the camera, never a close-up), FULL hyperreal armor in silver, gold, or blackened steel, face never visible (helmet on, visor down, or too far to read), in the epic landscape the scene text describes — matched to his culture, NEVER standing directly on ice or a frozen lake — caught in a POWERFUL ACTION pose that reads in silhouette (striding into the weather, arms flexed in triumph, sword driven into the earth) — heroic strength and drive, never standing idle, rendered hyper-real like a prestige-film still, never a video-game look. Screens may glow softly but show NO readable content."
       : "NO people, NO animals, NO screens with content.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
@@ -737,7 +737,7 @@ const MEMENTO_MEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal pho
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL silver-or-gold armor, seen from a DISTANCE in an epic snowy atmosphere, DOING something powerful — striding into the storm, arms flexed in triumph, sword driven into frozen ground — a pose that reads in silhouette and radiates strength and drive; wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion crossing black dunes at dusk, a stag in blowing snow; the whole animal kingdom, never a recent post's animal; HYPER-REAL weather only — natural light a wildlife photographer could capture, NEVER lightning bolts or painted-on skies), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL armor, seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS — a viking on a windswept grey beach with longships behind, a samurai on a misty bamboo path in rain, a knight leading his horse up a snowy mountain trail, a spartan on sun-bleached coastal rocks; each warrior type gets ITS OWN world, never one generic snowfield, NEVER standing directly on ice or a frozen lake; DOING something powerful — striding into the weather, arms flexed in triumph, sword driven into the earth — a pose that reads in silhouette and radiates strength and drive; hyper-real like a prestige-film still, wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 30, you have about 2,500 weekends left. On average.
@@ -1779,7 +1779,7 @@ const buildProtocolSystemPrompt = (
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE posts that show them what the work actually buys. Every slide must name a real, expected result — accumulated hours, measurable body change, money stacked, skills built — never vague promises like "you'll be different" or "everything changes".
 VOICE: calm command energy. Short declarative sentences. A mentor stating what the math says, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion under lightning, a stag in blowing snow; the whole animal kingdom, never a recent post's animal), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL silver-or-gold armor, seen from a DISTANCE in an epic snowy atmosphere, DOING something powerful — striding into the storm, arms flexed in triumph, sword driven into frozen ground — a pose that reads in silhouette and radiates strength and drive; wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within these families; never render an example verbatim, never repeat a recent post's scene.
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion crossing black dunes at dusk, a stag in blowing snow; the whole animal kingdom, never a recent post's animal; HYPER-REAL weather only — natural light a wildlife photographer could capture, NEVER lightning bolts or painted-on skies), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL armor, seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS — a viking on a windswept grey beach with longships behind, a samurai on a misty bamboo path in rain, a knight leading his horse up a snowy mountain trail, a spartan on sun-bleached coastal rocks; each warrior type gets ITS OWN world, never one generic snowfield, NEVER standing directly on ice or a frozen lake; DOING something powerful — striding into the weather, arms flexed in triumph, sword driven into the earth — a pose that reads in silhouette and radiates strength and drive; hyper-real like a prestige-film still, wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within these families; never render an example verbatim, never repeat a recent post's scene.
 
 FORMAT — each slide reads like this (match the rhythm):
 "The skill.
@@ -2058,14 +2058,16 @@ export function rollQuoteSurface(): QuoteSurface {
 }
 
 interface SurfaceSpec {
-  /** What holds the blank screen, per audience. */
+  /** What holds the text, per audience. */
   scenes: Record<MoodyAudience, string[]>;
-  /** What we call the blank area in the prompt ("screen" / "face"). */
+  /** What we call the text-bearing area in the prompt ("screen" / "face"). */
   screenWord: string;
-  /** How much of the frame the blank area should fill. */
+  /** How much of the frame the text-bearing area should fill. */
   sizeHint: string;
-  /** Orientation demand matching compose.ts SURFACE_ASPECT validation. */
+  /** Orientation of the text-bearing area. */
   orientation: string;
+  /** How the letters physically exist on this surface (2026-09-11 baked-text pipeline). */
+  textMedium: string;
 }
 
 const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
@@ -2086,6 +2088,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     sizeHint:
       "at least two thirds of the frame's height and more than half its width — the phone is held CLOSE to the camera",
     orientation: "TALL and vertical (portrait, like a phone screen)",
+    textMedium:
+      "crisp dark lettering typed on the phone's softly glowing pale screen, like a note open on the phone",
   },
   flip: {
     scenes: {
@@ -2102,6 +2106,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     sizeHint:
       "at least half of the frame's width — an EXTREME close-up where the open phone fills the frame and the inner display dominates it",
     orientation: "roughly SQUARE or slightly tall",
+    textMedium:
+      "softly glowing early-2000s pixel-style text on the small backlit inner display",
   },
   car: {
     scenes: {
@@ -2118,6 +2124,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     sizeHint:
       "at least two thirds of the frame's width — shot CLOSE so the dashboard screen dominates the composition",
     orientation: "WIDE and horizontal (landscape, like a dashboard display)",
+    textMedium:
+      "glowing text on the dashboard media screen, displayed like a now-playing track title",
   },
   billboard: {
     scenes: {
@@ -2134,6 +2142,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     sizeHint:
       "at least two thirds of the frame's width — shot from close below so the billboard dominates the composition",
     orientation: "WIDE and horizontal (landscape, like a billboard)",
+    textMedium:
+      "large printed letters filling the billboard face, weathered slightly by sun and city air",
   },
   sign: {
     scenes: {
@@ -2150,6 +2160,8 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     sizeHint:
       "at least two thirds of the frame's width — shot CLOSE so the sign face dominates the composition",
     orientation: "roughly SQUARE or slightly tall",
+    textMedium:
+      "physical changeable black letterboard letters slotted into the sign's tracks, each letter casting its own tiny shadow",
   },
   poster: {
     scenes: {
@@ -2166,17 +2178,24 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     sizeHint:
       "at least two thirds of the frame's height and more than half its width — shot CLOSE so the poster dominates the composition",
     orientation: "TALL and vertical (portrait, like a poster)",
+    textMedium:
+      "elegant printed typography that is part of the poster's graphic design, ink on paper",
   },
 };
 
 /**
- * Prompt for a scene photo CONTAINING a blank glowing white surface.
- * The blank area must be pure white, straight-on, and the brightest
- * thing in the frame — that's what detectBrightRect keys on.
+ * Prompt for a scene photo where the quote is TYPESET DIRECTLY into the
+ * surface by gpt-image-2 (2026-09-11, per Keenan: the composited
+ * white-box look was "still not blending in. it should just be
+ * letters. the letters need to be BUILT IN to the poster, sign, phone
+ * screen... one cohesive picture without a blank white text box").
+ * The exact quote goes into the image prompt; verifyBakedQuote checks
+ * the rendered letters afterwards.
  */
-export function buildQuoteSurfacePrompt(
+export function buildBakedQuotePrompt(
   audience: MoodyAudience,
-  surface: QuoteSurface
+  surface: QuoteSurface,
+  quote: string
 ): string {
   const spec = QUOTE_SURFACE_SPECS[surface];
   const scenes = spec.scenes[audience];
@@ -2185,5 +2204,55 @@ export function buildQuoteSurfacePrompt(
     audience === "men"
       ? "Desaturated, near-monochrome, cool dark tones"
       : "Warm, dim, intimate amber tones";
-  return `A real photograph, vertical 9:16: ${scene}. The ${spec.screenWord} is completely BLANK — a uniformly bright, pure WHITE glowing rectangle with absolutely NOTHING on it: no text, no icons, no interface, no image, no reflections, no smudges, no gradient. The blank white ${spec.screenWord} faces the camera PERFECTLY straight-on and level — zero tilt, zero rotation, zero perspective angle; its four edges run exactly parallel to the edges of the photo. It is ${spec.orientation}. CLOSE-UP COMPOSITION (critical): the ${spec.screenWord} must be LARGE — it fills ${spec.sizeHint}. Never a wide shot where the ${spec.screenWord} is small in the frame. The blank white ${spec.screenWord} is by FAR the brightest thing in the photo — everything else is dim and moody, and there are NO other bright lights, white surfaces, or glowing areas anywhere. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the ${spec.screenWord} stays tack sharp. NO text, NO words, NO letters, NO numbers, NO logos anywhere in the image.`;
+  return `A real photograph, vertical 9:16: ${scene}. The ${spec.screenWord} displays this text and NOTHING else — rendered EXACTLY, word for word, all lowercase, every word spelled perfectly, no words added, no words missing:
+
+"${quote}"
+
+The text appears as ${spec.textMedium}. The letters are physically PART of the ${spec.screenWord} — they share its exact perspective, lighting, color cast, texture, and grain, photographed together in one shot. NEVER a flat white box, NEVER a pasted-on panel, NEVER an overlay or mockup look — one cohesive photograph. The text breaks over several lines with natural spacing and is large enough to read easily on a phone. COMPOSITION: the ${spec.screenWord} is ${spec.orientation} and fills ${spec.sizeHint}. A natural, slightly imperfect camera angle is good — this must feel like a candid photo someone actually took. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the text stays tack sharp and clearly legible against its background. NO other text, words, letters, numbers, or logos anywhere else in the image.`;
+}
+
+/**
+ * Vision QA for baked quote slides: gpt-image-2 renders short lowercase
+ * text well but can still typo, duplicate, or drop a word. Claude reads
+ * the final slide and confirms the rendered text matches word-for-word.
+ * Returns false on API failure — callers treat that as "unverified",
+ * never as a hard error.
+ */
+export async function verifyBakedQuote(
+  image: Buffer,
+  quote: string
+): Promise<boolean> {
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 10,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/jpeg",
+                data: image.toString("base64"),
+              },
+            },
+            {
+              type: "text",
+              text: `Does the main text displayed in this image read EXACTLY as follows — every word present, in order, spelled correctly, with no words added, duplicated, or missing?\n\n"${quote}"\n\nIgnore incidental device UI (clock, battery, signal bars) and line-break placement. Any garbled, misspelled, duplicated, or missing word means NO. Answer with ONLY the single word YES or NO.`,
+            },
+          ],
+        },
+      ],
+    });
+    const answer =
+      response.content[0]?.type === "text" ? response.content[0].text : "";
+    return /^\s*yes\b/i.test(answer);
+  } catch (err) {
+    console.warn(
+      `[carousel] Baked-quote verification call failed (treating as unverified): ${err instanceof Error ? err.message : err}`
+    );
+    return false;
+  }
 }

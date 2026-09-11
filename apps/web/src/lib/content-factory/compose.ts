@@ -1419,6 +1419,18 @@ export async function renderSurfaceOverlay(
  * Returns null when no usable screen is found (caller falls back to
  * the drawn-phone render, then flat).
  */
+/**
+ * Finish a baked quote slide (2026-09-11): the quote text is generated
+ * INTO the image by gpt-image-2, so no compositing is needed — just
+ * cover-resize to the slide canvas.
+ */
+export async function finalizeBakedQuoteSlide(scene: Buffer): Promise<Buffer> {
+  return sharp(scene)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
 export async function composeQuoteSurfaceSlide(
   quote: string,
   variant: "women" | "men",

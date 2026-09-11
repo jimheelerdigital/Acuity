@@ -590,6 +590,38 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
 
   if (slide.kind === "CTA") {
     composed = await composeCTASlide(newText);
+  } else if (slide.imagePrompt.startsWith("PHONE-QUOTE BAKED")) {
+    // Baked quote slides (2026-09-11): the text is generated INTO the
+    // image by gpt-image-2, so editing the quote regenerates the image
+    // on the same surface (fresh scene, ~$0.25). Two attempts with
+    // vision verification; the second attempt ships even unverified —
+    // the admin sees the result immediately and can edit again.
+    const { buildBakedQuotePrompt, verifyBakedQuote } = await import(
+      "./moody-carousel"
+    );
+    const { finalizeBakedQuoteSlide } = await import("./compose");
+    const bakedMatch = slide.imagePrompt.match(
+      /^PHONE-QUOTE BAKED \((women|men)\/([a-z]+)\)/
+    );
+    const bakedVariant = (bakedMatch?.[1] ??
+      (slide.carouselPost.lane === "phone-quote-men" ? "men" : "women")) as
+      | "women"
+      | "men";
+    const bakedSurface = (bakedMatch?.[2] ?? "poster") as QuoteSurface;
+    composed = await finalizeBakedQuoteSlide(
+      await generateImage(
+        buildBakedQuotePrompt(bakedVariant, bakedSurface, newText)
+      )
+    );
+    if (!(await verifyBakedQuote(composed, newText))) {
+      // One retry; the retry ships even unverified — the admin sees
+      // the result immediately and can edit again.
+      composed = await finalizeBakedQuoteSlide(
+        await generateImage(
+          buildBakedQuotePrompt(bakedVariant, bakedSurface, newText)
+        )
+      );
+    }
   } else if (slide.imagePrompt.startsWith("PHONE-QUOTE SURFACE")) {
     // Quote-surface slides (2026-09-08): the raw scene photo contains a
     // blank glowing screen — re-detect it and composite the edited quote.
