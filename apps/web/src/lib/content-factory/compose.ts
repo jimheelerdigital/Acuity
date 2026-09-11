@@ -1022,6 +1022,7 @@ const SURFACE_ASPECT: Record<
   car: { min: 0.25, max: 0.9, minWFrac: 0.6 },
   billboard: { min: 0.2, max: 0.9, minWFrac: 0.6 },
   sign: { min: 0.5, max: 1.6, minWFrac: 0.5 },
+  poster: { min: 1.1, max: 2.2, minWFrac: 0.45 },
 };
 
 /**
@@ -1203,39 +1204,158 @@ export async function renderSurfaceOverlay(
       .png()
       .toBuffer();
   } else if (surface === "car") {
-    // Car infotainment message display — near-black, brand accent.
-    const bg = { r: 0x0a, g: 0x0d, b: 0x12 };
-    const accent = isWomen ? "#9CC7F2" : "#E5B84C";
+    // Bluetooth Audio media screen (2026-09-10, cloned from Keenan's
+    // car-dash reference: "this is exactly what i'm looking for...
+    // where it blends right into the image"). The quote renders as the
+    // now-playing track text inside real dash chrome: red "Bluetooth
+    // Audio" header, Source button, blue Bluetooth badge, track
+    // progress times, RAND / RPT / pause / Sound buttons. Chrome is
+    // identical for both audiences — a real car UI has no brand skin;
+    // realism IS the blend.
+    const bg = { r: 0x07, g: 0x0a, b: 0x10 };
     const s = Math.min(1, DH / 640);
+    const px = (n: number) => Math.max(2, Math.round(n * s));
+    const headerRed = "#E0524D";
+    const chromeGrey = "#9AA3AE";
+    const trackWhite = "#EDF1F5";
+    const btBlue = "#3F7BD9";
+
     const headerPiece = await renderMarkup(
-      `<span font_desc="Poppins Medium ${Math.max(20, Math.round(34 * s))}" foreground="${accent}">Messages  ·  ${escapePango(friend)}</span>`,
+      `<span font_desc="Poppins Medium ${Math.max(18, px(32))}" foreground="${headerRed}">Bluetooth Audio</span>`,
       fontMedium,
-      800,
+      600,
       0,
       4,
       "left"
     );
-    const ruleTop = Math.round(110 * s);
-    const ruleSvg = `<svg width="${DW}" height="8" xmlns="http://www.w3.org/2000/svg"><rect x="44" y="0" width="${DW - 88}" height="3" fill="${accent}" opacity="0.5"/></svg>`;
-    const bodyTop = ruleTop + Math.round(40 * s);
+    const srcW = px(190);
+    const srcH = px(62);
+    const sourcePiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(15, px(26))}" foreground="${trackWhite}">Source</span>`,
+      fontMedium,
+      300,
+      0,
+      4
+    );
+
+    // Bottom button row: RAND · RPT · ⏸ · Sound.
+    const btnH = px(70);
+    const btnY = DH - btnH - px(22);
+    const btnDefs = [
+      { label: "RAND", w: px(170), x: 44 },
+      { label: "RPT", w: px(140), x: 44 + px(170) + px(20) },
+      { label: "", w: px(120), x: Math.round(DW / 2 - px(60)) }, // pause
+      { label: "Sound", w: px(190), x: DW - 44 - px(190) },
+    ];
+    const btnLabels = await Promise.all(
+      btnDefs.map((b) =>
+        b.label
+          ? renderMarkup(
+              `<span font_desc="Poppins Medium ${Math.max(14, px(24))}" foreground="${chromeGrey}">${b.label}</span>`,
+              fontMedium,
+              300,
+              0,
+              4
+            )
+          : Promise.resolve(null)
+      )
+    );
+
+    // Bluetooth badge box, left of the track text like the reference.
+    const btBox = Math.min(px(190), Math.round(DH * 0.34));
+    const btBoxY = Math.round(px(96) + (btnY - px(150) - px(96) - btBox) / 2);
+    const c = 44 + btBox / 2;
+    const gT = btBoxY + btBox * 0.18;
+    const gB = btBoxY + btBox * 0.82;
+    const gW = btBox * 0.2;
+    const gQ = (gB - gT) * 0.25;
+
+    // Track progress row: elapsed / bar / remaining.
+    const progY = btnY - px(76);
+    const elapsedPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(15, px(26))}" foreground="${chromeGrey}">1:52</span>`,
+      fontMedium,
+      200,
+      0,
+      4
+    );
+    const remainPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(15, px(26))}" foreground="${chromeGrey}">-0:42</span>`,
+      fontMedium,
+      200,
+      0,
+      4
+    );
+
+    const textLeft = 44 + btBox + px(44);
+    const textW = DW - textLeft - 44;
+    const textTop = px(100);
     const quotePiece = await fitQuoteText({
       text: clean,
       font: "Medium",
-      color: "#E8ECF0",
-      maxW: DW - 96,
-      maxH: DH - bodyTop - 40,
-      startSize: 48,
-      minSize: 24,
-      align: "left",
+      color: trackWhite,
+      maxW: textW,
+      maxH: progY - textTop - px(16),
+      startSize: 44,
+      minSize: 22,
+      align: "centre",
     });
+
+    const barX = textLeft + elapsedPiece.width + px(24);
+    const barW =
+      DW - 44 - remainPiece.width - px(24) - barX;
+    const chromeSvg = `<svg width="${DW}" height="${DH}" viewBox="0 0 ${DW} ${DH}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="${DW - 44 - srcW}" y="${px(20)}" width="${srcW}" height="${srcH}" rx="${px(8)}" fill="none" stroke="${chromeGrey}" stroke-width="${Math.max(2, px(3))}"/>
+  <rect x="0" y="${px(92)}" width="${DW}" height="${Math.max(2, px(3))}" fill="${chromeGrey}" opacity="0.35"/>
+  <rect x="44" y="${btBoxY}" width="${btBox}" height="${btBox}" rx="${px(10)}" fill="#101B30" stroke="${btBlue}" stroke-width="${Math.max(2, px(3))}" stroke-opacity="0.5"/>
+  <path d="M ${c} ${gT} L ${c} ${gB} L ${c + gW} ${gB - gQ} L ${c - gW} ${gT + gQ} M ${c} ${gT} L ${c + gW} ${gT + gQ} L ${c - gW} ${gB - gQ}" stroke="${btBlue}" stroke-width="${Math.max(3, px(7))}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="${barX}" y="${progY + px(10)}" width="${Math.max(40, barW)}" height="${Math.max(3, px(5))}" rx="${px(2)}" fill="${chromeGrey}" opacity="0.35"/>
+  <rect x="${barX}" y="${progY + px(10)}" width="${Math.max(28, Math.round(barW * 0.72))}" height="${Math.max(3, px(5))}" rx="${px(2)}" fill="${trackWhite}"/>
+  ${btnDefs
+    .map(
+      (b) =>
+        `<rect x="${b.x}" y="${btnY}" width="${b.w}" height="${btnH}" rx="${px(8)}" fill="none" stroke="${chromeGrey}" stroke-width="${Math.max(2, px(3))}" stroke-opacity="0.8"/>`
+    )
+    .join("\n  ")}
+  <rect x="${btnDefs[2].x + btnDefs[2].w / 2 - px(16)}" y="${btnY + px(18)}" width="${px(10)}" height="${btnH - px(36)}" fill="${trackWhite}"/>
+  <rect x="${btnDefs[2].x + btnDefs[2].w / 2 + px(6)}" y="${btnY + px(18)}" width="${px(10)}" height="${btnH - px(36)}" fill="${trackWhite}"/>
+</svg>`;
+
+    const composites: { input: Buffer; top: number; left: number }[] = [
+      { input: Buffer.from(chromeSvg), top: 0, left: 0 },
+      { input: headerPiece.buffer, top: px(26), left: 44 },
+      {
+        input: sourcePiece.buffer,
+        top: px(20) + Math.round((srcH - sourcePiece.height) / 2),
+        left: DW - 44 - srcW + Math.round((srcW - sourcePiece.width) / 2),
+      },
+      {
+        input: quotePiece.buffer,
+        top: textTop + Math.max(0, Math.round((progY - textTop - px(16) - quotePiece.height) / 2)),
+        left: textLeft + Math.round((textW - quotePiece.width) / 2),
+      },
+      { input: elapsedPiece.buffer, top: progY, left: textLeft },
+      {
+        input: remainPiece.buffer,
+        top: progY,
+        left: DW - 44 - remainPiece.width,
+      },
+    ];
+    btnDefs.forEach((b, i) => {
+      const lbl = btnLabels[i];
+      if (lbl) {
+        composites.push({
+          input: lbl.buffer,
+          top: btnY + Math.round((btnH - lbl.height) / 2),
+          left: b.x + Math.round((b.w - lbl.width) / 2),
+        });
+      }
+    });
+
     design = await sharp({
       create: { width: DW, height: DH, channels: 3, background: bg },
     })
-      .composite([
-        { input: headerPiece.buffer, top: Math.round(40 * s), left: 44 },
-        { input: Buffer.from(ruleSvg), top: ruleTop, left: 0 },
-        { input: quotePiece.buffer, top: bodyTop, left: 48 },
-      ])
+      .composite(composites)
       .png()
       .toBuffer();
   } else {

@@ -1854,7 +1854,7 @@ const PHONE_QUOTE_SYSTEM: Record<MoodyAudience, string> = {
   women: `You write 2-slide quote posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
 
 - "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "someone sent me this and i can't stop thinking about it...", "i found this at exactly the right moment..."). Vary the framing every post — never reuse a recent hook's framing.
-- "quote": 20-45 words. Motivational and developmental — self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. It must read like something a real person would screenshot and send a friend at 2am: warm, plain words, second person welcome, no clichés stacked on clichés. NO attribution, NO quotation marks, NO emojis, NO hashtags.
+- "quote": 15-40 words, ALL lowercase. Motivational and developmental — self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands the reader her power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or change; the last flips it into quiet permission or hope. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a real person would screenshot and send a friend at 2am: warm, plain words, second person welcome, no clichés stacked on clichés. NO attribution, NO quotation marks, NO emojis, NO hashtags.
 - "coverScene": one concrete sentence for the photograph — a quiet night interior in warm low light: a lamp-lit bedroom at night, tea by a dark rain-streaked window, a candlelit bath, a lit porch at dusk, a phone glowing face-up on dark bedding, blank stationery and a fountain pen in lamplight, the kitchen after everyone is asleep lit by one small light. DIM, warm, intimate, NO people. Vary the location every post.
 - Never mention any app, product, journaling, therapy, or AI.
 
@@ -1863,7 +1863,7 @@ OUTPUT (strict JSON, no markdown):
   men: `You write 2-slide quote posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
 
 - "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "read this before you quit...", "someone sent me this at 2am..."). Vary the framing every post — never reuse a recent hook's framing.
-- "quote": 20-45 words. Motivational and developmental — discipline, patience, building in silence, becoming the man who keeps his word, delayed gratification, standards. It must read like something a man would screenshot and set as his lock screen: calm command energy, plain declarative words, second person welcome, never bro-slang, never yelling. NO attribution, NO quotation marks, NO emojis, NO hashtags.
+- "quote": 15-40 words, ALL lowercase. Motivational and developmental — discipline, patience, building in silence, becoming the man who keeps his word, delayed gratification, standards. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands him his power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or the cost of waiting; the last flips it into quiet resolve or possibility. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a man would screenshot and set as his lock screen: calm command energy, plain declarative words, second person welcome, never bro-slang, never yelling. NO attribution, NO quotation marks, NO emojis, NO hashtags.
 - "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, desaturated, NO people. Vary the location every post.
 - Never mention any app, product, journaling, therapy, or AI.
 
@@ -2040,12 +2040,16 @@ export function buildPhoneQuoteBgPrompt(audience: MoodyAudience): string {
 // (detectBrightRect) and composites the deterministic text — the quote
 // still never touches gpt-image-2.
 
+// "poster" added 2026-09-10 (per Keenan, with a car-dash reference:
+// "whether it's a phone screen, a car dash (like pictured), a
+// billboard with signage, a poster, doesn't matter").
 export const QUOTE_SURFACES = [
   "imessage",
   "flip",
   "car",
   "billboard",
   "sign",
+  "poster",
 ] as const;
 export type QuoteSurface = (typeof QUOTE_SURFACES)[number];
 
@@ -2146,6 +2150,22 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     sizeHint:
       "at least two thirds of the frame's width — shot CLOSE so the sign face dominates the composition",
     orientation: "roughly SQUARE or slightly tall",
+  },
+  poster: {
+    scenes: {
+      women: [
+        "a framed poster hanging on a warm brick wall inside a dim cafe at night, one small lamp glowing nearby",
+        "a bus-stop poster case on a quiet street at dusk, warm golden streetlight, the sidewalk blurred around it",
+      ],
+      men: [
+        "a framed poster on a dark concrete wall in a moody hallway at night, lit by one cold overhead beam",
+        "a bus-stop poster case on an empty city street at night, wet asphalt reflections, desaturated tones",
+      ],
+    },
+    screenWord: "face",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — shot CLOSE so the poster dominates the composition",
+    orientation: "TALL and vertical (portrait, like a poster)",
   },
 };
 
