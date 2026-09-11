@@ -439,6 +439,7 @@ export default function ProfileTab() {
       <DeleteAccountModal
         visible={showDeleteModal}
         isPro={isPro}
+        subscriptionSource={subSource}
         daysRemaining={daysRemaining}
         onClose={() => setShowDeleteModal(false)}
         onDelete={deleteAccount}
