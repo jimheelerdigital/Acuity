@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-11] — Quote text is now generated INTO the image; warrior and wildlife realism rules
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 543cd0d8
+
+### In plain English (for Keenan)
+Three changes. (1) Quote posts no longer paste text onto a blank white panel — the AI image model now paints the letters directly into the poster, sign, phone screen, car dash, billboard, or flip phone, so the words share the photo's lighting, angle, and texture: one cohesive picture, no white box. A second AI then reads the finished image and confirms every word came out spelled right before it ships; if it can't confirm, the slide is flagged "PROOFREAD BEFORE POSTING" so you know to double-check it. (2) Warrior covers now get a landscape that matches who the warrior is — viking on a windswept beach, samurai on a misty bamboo path, knight leading his horse up a mountain trail — never the same generic snowfield, and nobody standing on ice. (3) Animal covers ban fake lightning and painted-looking skies — only weather a real wildlife photographer could capture.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: buildQuoteSurfacePrompt (blank-white-screen approach) replaced by buildBakedQuotePrompt — the exact quote goes into the gpt-image-2 prompt with a per-surface textMedium (letterboard letters, printed poster type, glowing dash text, etc.); new verifyBakedQuote runs a Claude vision pass (YES/NO word-for-word check); warrior + wildlife brief updates in all four layers (MEN_COVER_FAMILIES, SCENE_BRIEF.men, memento-men SCENES, protocol SCENES) plus the warrior carve-out in buildMoodyImagePrompt
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen step now bakes + verifies; chain is first surface x2 → backup surface x2 → best unverified attempt (marker says TEXT-UNVERIFIED / PROOFREAD BEFORE POSTING) → flat Notes only if every generation threw; rawImageUrl no longer stored (text is part of the image)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide gained a PHONE-QUOTE BAKED branch — editing a quote regenerates the image on the same surface with one verified retry (~$0.25/edit); historical PHONE-QUOTE SURFACE slides still use the old composite path
+- apps/web/src/lib/content-factory/compose.ts: new finalizeBakedQuoteSlide (cover-resize to 1080x1920 + jpeg); composeQuoteSurfaceSlide/detectBrightRect kept for editing historical slides
+
+### Manual steps needed
+- None (deployed with this push; no Inngest resync needed — step-body change only)
+
+### Notes
+- Driven by Keenan's screenshot of a shipped billboard slide: "it's still not blending in... the letters need to be BUILT IN to the poster, sign, phone screen... one cohesive picture without a blank white text box."
+- The verification step exists because gpt-image-2 renders short lowercase text well but can still typo or drop a word on 30-40-word quotes. Verified failures roll a fresh surface (different surfaces have very different text-render difficulty). Worst case cost: 4 images (~$1) before shipping the best unverified attempt.
+- Keenan hand-reviews every slide before posting, so shipping a best-effort unverified image (clearly flagged) beats shipping the flat Notes look he's moving away from.
+- The quote-surface composite pipeline (multiply blend, bright-rect detection, Bluetooth Audio chrome) built 2026-09-08→10 is now edit-path-only for historical slides.
+
 ## [2026-09-10] — Quote posts retry a second surface before ever shipping the old flat look
 
 **Requested by:** Keenan
