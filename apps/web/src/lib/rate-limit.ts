@@ -134,10 +134,18 @@ export const limiters = {
   goalReparent: buildLimiter("goal-reparent", 20, "1 m"),
   /**
    * Data-export creation. Each export materializes audio + JSON for
-   * every row in the user's tree — expensive. Spec calls for 1/7d.
-   * Enforced both here (defensive) and in the route handler (primary).
+   * every row in the user's tree — expensive.
+   *
+   * The 1-per-7-days POLICY is enforced by the route handler's DB check
+   * (primary), which correctly EXCLUDES failed exports so a user whose
+   * export fails can retry immediately. This Upstash limiter is only an
+   * anti-abuse guard on the expensive job, so it must NOT also be 1/7d:
+   * a sliding-window token is spent at request time regardless of
+   * outcome, so a 1/7d window here locked a user out for a full week
+   * after a FAILED export (the reported bug). A short window prevents
+   * hammering the job while letting failed exports be retried.
    */
-  dataExport: buildLimiter("data-export", 1, "7 d"),
+  dataExport: buildLimiter("data-export", 5, "1 h"),
   /**
    * Share-link generation on weekly reports. Not expensive but an
    * abuse target (link spam). 10/hr per user is fine.
