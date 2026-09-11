@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 87048a2f
+**Commit hash:** dc4a4cd3
 
 ### In plain English (for Keenan)
 All six quote surfaces (phone, flip phone, car dash, billboard, sign, poster) already blend the text into the photo the same way — that was confirmed. The one gap was the safety net: if the AI photo came back without a usable screen area twice in a row, the system shipped the old drawn-phone or flat Notes look, which doesn't blend. Now it rolls a different surface and tries twice more first, so a non-blended quote slide should almost never ship again.
