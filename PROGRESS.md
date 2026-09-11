@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-10] — Quote posts now blend into real surfaces like the car-dash reference
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 04cf05cc
+
+### In plain English (for Keenan)
+The quote posts (both Ripple and BWK) now match the car-dash TikTok you sent. The car version renders as a real Bluetooth Audio media screen — red "Bluetooth Audio" header, Source button, Bluetooth badge, track progress bar with times, RAND/RPT/pause/Sound buttons — with the quote sitting where the song title would be, so it blends right into the photo. A poster surface joined the rotation (framed poster on a wall, bus-stop poster case) alongside the phone, flip phone, billboard, and sign. And the quote wording itself now follows the reference style: all lowercase, a hard truth about time first, then a hopeful turn ("no matter your age..." energy).
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: renderSurfaceOverlay car branch rebuilt as Bluetooth Audio chrome — SVG shapes (Source button, Bluetooth badge + glyph, progress bar, button outlines, pause bars) + Pango text pieces; identical chrome for both audiences (real car UI has no brand skin); SURFACE_ASPECT gains poster (min 1.1, max 2.2, minWFrac 0.45)
+- apps/web/src/lib/content-factory/moody-carousel.ts: "poster" added to QUOTE_SURFACES + QUOTE_SURFACE_SPECS (tall orientation, per-audience scenes); both PHONE_QUOTE_SYSTEM quote rules retuned — 15-40 words, ALL lowercase, 2-4 sentence truth-then-turn structure, reference quote embedded as a banned-to-copy north star
+- Poster renders through the existing billboard/sign else-branch (centered dark type on a bright face) — no new render code needed
+- Verified locally via a temp tsx script: car overlay at 900x500 and 700x220, poster at 600x900 — all render correctly (script deleted after)
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- Keenan validated the 2026-09-09 blended-surface direction with this reference: "this is exactly what i'm looking for. posts like this where it blends right into the image."
+- The reference quote ("no matter your age, you'll always wish you started younger...") is embedded as a style example but marked NEVER copy — per the 2026-09-04 "DON'T LIE NOW" lesson, example phrases in prompts are remix fodder.
+- Track times are fixed at 1:52 / -0:42 (like iOS's canonical 9:41) — deterministic beats randomized for replay-stable Inngest steps.
+
 ## [2026-09-10] — Moody-men lane revived as a pick-list
 
 **Requested by:** Keenan
