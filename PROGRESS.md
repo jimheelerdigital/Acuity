@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-10] — Quote posts retry a second surface before ever shipping the old flat look
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 87048a2f
+
+### In plain English (for Keenan)
+All six quote surfaces (phone, flip phone, car dash, billboard, sign, poster) already blend the text into the photo the same way — that was confirmed. The one gap was the safety net: if the AI photo came back without a usable screen area twice in a row, the system shipped the old drawn-phone or flat Notes look, which doesn't blend. Now it rolls a different surface and tries twice more first, so a non-blended quote slide should almost never ship again.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen step now iterates [firstSurface, backupSurface] (backup rolled from QUOTE_SURFACES excluding the first) with 2 attempts each — up to 4 scene generations worst case (~32¢) before falling to renderPhoneQuoteSlide / flat Notes
+- Failure log lines now include the surface name for easier triage
+- No change to recomposeSlide (edit path reuses the stored raw scene + surface) or to the fallbacks themselves
+
+### Manual steps needed
+- None (deploys with this push; no Inngest resync needed — change is inside the step body, not cron config)
+
+### Notes
+- Motivated by Keenan's "they absolutely need to be in a similar style where it blends in" — the main blend path in composeQuoteSurfaceSlide was verified surface-agnostic (multiply + 0.6px blur + grain applied identically for all six surfaces); only the fallback chain could ship non-blended slides.
+- Different surfaces have very different detection difficulty (billboard vs flip phone), so a fresh surface is likelier to succeed than a third try of the same one.
+- Prod-DB spot-check of how often fallbacks actually fired failed from Keenan's work network (Supabase port 6543 blocked — known work-Mac issue); can re-run from home if we want the base rate.
+
 ## [2026-09-10] — Quote posts now blend into real surfaces like the car-dash reference
 
 **Requested by:** Keenan
