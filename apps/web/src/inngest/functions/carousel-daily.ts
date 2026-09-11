@@ -583,50 +583,56 @@ export const carouselDailyCronFn = inngest.createFunction(
       // screen, billboard, sidewalk sign — is photographed by the AI
       // with a BLANK glowing white screen; compose.ts detects that
       // screen and composites the deterministic text onto it. The
-      // quote NEVER touches the image model. Fallback chain: detect
-      // fails → regenerate the scene once → drawn-phone composite →
-      // flat Notes screen.
+      // quote NEVER touches the image model. Fallback chain (hardened
+      // 2026-09-10, per Keenan — non-blended slides should almost never
+      // ship): detect fails twice → roll a DIFFERENT surface and try
+      // twice more → drawn-phone composite → flat Notes screen.
       const pqQuote = await step.run("compose-phone-quote-screen", async () => {
         const { generateMoodyImage, uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
         );
-        const { rollQuoteSurface, buildQuoteSurfacePrompt } = await import(
-          "@/lib/content-factory/moody-carousel"
-        );
+        const { rollQuoteSurface, buildQuoteSurfacePrompt, QUOTE_SURFACES } =
+          await import("@/lib/content-factory/moody-carousel");
         const { composeQuoteSurfaceSlide, renderPhoneQuoteSlide } =
           await import("@/lib/content-factory/compose");
 
-        const surface = rollQuoteSurface();
+        const firstSurface = rollQuoteSurface();
+        const backupPool = QUOTE_SURFACES.filter((s) => s !== firstSurface);
+        const backupSurface =
+          backupPool[Math.floor(Math.random() * backupPool.length)];
         let composed: Buffer | null = null;
         let scene: Buffer | undefined;
         let imagePrompt = "";
 
-        for (let attempt = 1; attempt <= 2 && !composed; attempt++) {
-          try {
-            const { buffer } = await generateMoodyImage(
-              buildQuoteSurfacePrompt(variant, surface),
-              false
-            );
-            scene = buffer;
-            const result = await composeQuoteSurfaceSlide(
-              pq.quote,
-              variant,
-              surface,
-              buffer
-            );
-            if (result) {
-              composed = result.jpeg;
-              imagePrompt = `PHONE-QUOTE SURFACE (${variant}/${surface}) — real scene photographed with a blank glowing screen; quote composited deterministically by composeQuoteSurfaceSlide. Text never touches the image model.`;
-            } else {
+        for (const surface of [firstSurface, backupSurface]) {
+          for (let attempt = 1; attempt <= 2 && !composed; attempt++) {
+            try {
+              const { buffer } = await generateMoodyImage(
+                buildQuoteSurfacePrompt(variant, surface),
+                false
+              );
+              scene = buffer;
+              const result = await composeQuoteSurfaceSlide(
+                pq.quote,
+                variant,
+                surface,
+                buffer
+              );
+              if (result) {
+                composed = result.jpeg;
+                imagePrompt = `PHONE-QUOTE SURFACE (${variant}/${surface}) — real scene photographed with a blank glowing screen; quote composited deterministically by composeQuoteSurfaceSlide. Text never touches the image model.`;
+              } else {
+                logger.warn(
+                  `[carousel-cron] Quote-surface screen not detected (${surface}, attempt ${attempt})`
+                );
+              }
+            } catch (err) {
               logger.warn(
-                `[carousel-cron] Quote-surface screen not detected (${surface}, attempt ${attempt})`
+                `[carousel-cron] Quote-surface scene generation failed (${surface}, attempt ${attempt}): ${err instanceof Error ? err.message : err}`
               );
             }
-          } catch (err) {
-            logger.warn(
-              `[carousel-cron] Quote-surface scene generation failed (attempt ${attempt}): ${err instanceof Error ? err.message : err}`
-            );
           }
+          if (composed) break;
         }
 
         if (!composed) {
