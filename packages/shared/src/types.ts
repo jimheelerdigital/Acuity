@@ -142,8 +142,25 @@ export interface ExtractionResult {
    *  ProgressSuggestion rows with status=PENDING so the user can
    *  review and accept/dismiss before the goal's progress is changed. */
   progressSuggestions?: ExtractedProgressSuggestion[];
+  /** Habits the debrief evidenced the user actually did today. Populated
+   *  only when the user has active habits and ENABLE_HABITS is on; each
+   *  match is reconciled against the user's Habit rows by name and, when
+   *  matched, upserts a HabitCheck with source="DEBRIEF". Empty/absent
+   *  otherwise. */
+  habitCompletions?: HabitCompletionMatch[];
   /** Life area analysis for Life Matrix (may be absent for old entries) */
   lifeAreaMentions?: LifeAreaMentions;
+}
+
+/** One habit the extractor judged the user completed today, matched back
+ *  to a Habit row by name at persist time. `evidence` is a short verbatim
+ *  phrase from the transcript, stored for observability, not shown as a
+ *  receipt (habits aren't claims that need citing the way insights are). */
+export interface HabitCompletionMatch {
+  /** Must match one of the user's active habit names, case-insensitive. */
+  habitName: string;
+  /** Short quoted phrase from the transcript supporting the completion. */
+  evidence?: string;
 }
 
 /** Response from /api/record */
