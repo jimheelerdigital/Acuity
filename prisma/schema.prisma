@@ -870,6 +870,10 @@ model Entry {
   // comparison reports.
   themePromptVersion String?
   InsightEvidence    InsightEvidence[]
+  // Habit checks auto-created from this debrief (source="DEBRIEF"). SetNull
+  // on delete so removing an entry clears its auto-checks without touching
+  // the user's manual history.
+  habitChecks        HabitCheck[]
 
   @@index([userId, createdAt])
   // Backfill scanner hot path — find all FREE-tier-only entries
@@ -2796,10 +2800,24 @@ model HabitCheck {
   localDate String
   createdAt DateTime @default(now())
 
+  // Provenance: how this check came to exist.
+  //   "MANUAL"  — the user tapped the checkbox. Default, so every row
+  //               written before this column existed reads as MANUAL.
+  //   "DEBRIEF" — auto-created by the extraction pipeline when a nightly
+  //               debrief evidenced the habit. `entryId` points at the
+  //               source entry so the UI can show "checked from your
+  //               debrief" and the check clears if that entry is deleted.
+  source    String   @default("MANUAL")
+  entryId   String?
+  entry     Entry?   @relation(fields: [entryId], references: [id], onDelete: SetNull)
+
   // One check per habit per local day. Makes check-off idempotent at the
   // database level rather than relying on the client not double-tapping.
+  // A MANUAL tap and a DEBRIEF auto-check on the same day collapse to one
+  // row (upsert) — the day is either done or not, regardless of source.
   @@unique([habitId, localDate])
   @@index([userId, localDate])
+  @@index([entryId])
 }
 
 /// Provenance for a generated insight: which entries it was derived from,

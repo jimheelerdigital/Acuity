@@ -204,6 +204,12 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
       "rationale": "one short sentence quoting the transcript that justifies the update"
     }
   ],
+  "habitCompletions": [
+    {
+      "habitName": "verbatim copy of one of the user's tracked habits listed in the user message",
+      "evidence": "short quote from the transcript showing they did it today"
+    }
+  ],
   "lifeAreaMentions": {
     "career": { "mentioned": bool, "score": 1-10, "themes": [], "people": [], "goals": [], "sentiment": "positive"|"negative"|"neutral" },
     "money": { ... },
@@ -224,6 +230,7 @@ Guidelines:
 - Only include goals if the user expressed a clear medium-to-long term aspiration
 - subGoalSuggestions: populate ONLY when the user references HOW they'll pursue an existing goal the memory context mentions. parentGoalText must match the phrasing of one of the user's existing goals. suggestedAction is the concrete next step. Skip if unsure — orphan suggestions get dropped.
 - progressSuggestions: populate ONLY when the transcript contains concrete, quantifiable evidence of progress on an existing user goal from the memory context — e.g. "closed our first $100k deal" against a "close $1M" goal. goalText must match an existing goal. suggestedProgressPct is the new total percent (not a delta) — infer from the numeric relationship when possible (e.g. $100k of $1M → 10), otherwise leave conservative. rationale is one short sentence that QUOTES a phrase from the transcript. Do NOT invent progress or guess percentages without clear evidence. Skip if unsure — these get shown to the user for validation before anything is written, so precision beats enthusiasm.
+- habitCompletions: populate ONLY when the user message lists "Tracked habits" AND the transcript gives clear evidence the user actually DID that habit today. habitName MUST be copied verbatim from that list — never invent a habit or emit one that isn't listed. One entry per completed habit; omit habits not clearly done; return an empty array when no habits are listed or none were done. This directly checks off the user's habit tracker, so precision matters more than coverage — a missed habit is harmless, a wrong check erodes trust.
 ${themeGuideline}
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
 - moodScore should be a nuanced score that reflects the overall emotional tone
@@ -247,7 +254,12 @@ export async function extractFromTranscript(
   // the user's calendar window around the recording. Empty string =
   // no calendar connection or no events in window; both cases are
   // pass-through (block is interpolated as empty).
-  calendarContextBlock = ""
+  calendarContextBlock = "",
+  // Habit auto-check (2026-09): the user's active tracked-habit names.
+  // When non-empty, they're listed in the prompt so the model can report
+  // which the debrief evidenced; empty = feature off or no habits, and
+  // the habitCompletions field simply comes back empty.
+  habitNames: string[] = []
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Ripple:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
@@ -305,6 +317,14 @@ export async function extractFromTranscript(
       }\nAnchor wins/blockers/tasks/insights to this goal when they clearly belong to it, and reuse the goal's existing phrasing rather than inventing a new name.\n\n`
     : "";
 
+  // Tracked-habit list — mirrors the taskGroups pattern. Listed in the
+  // user message so the model can only ever check off a habit the user
+  // actually has; an empty list yields an empty habitCompletions array.
+  const habitsBlock =
+    habitNames.length > 0
+      ? `Tracked habits (the user is building these; in "habitCompletions" report only the ones the transcript shows they DID today, copying each name verbatim): ${habitNames.join(", ")}.\n\n`
+      : "";
+
   const systemPrompt = useDispositionalThemes
     ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT
     : LEGACY_EXTRACTION_SYSTEM_PROMPT;
@@ -316,7 +336,7 @@ export async function extractFromTranscript(
     messages: [
       {
         role: "user",
-        content: `${contextBlock}${goalBlock}${dimensionBlock}${taskGroupsBlock}${calendarContextBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
+        content: `${contextBlock}${goalBlock}${dimensionBlock}${taskGroupsBlock}${habitsBlock}${calendarContextBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
   });
@@ -480,6 +500,23 @@ export async function extractFromTranscript(
             rationale: s.rationale.slice(0, 500),
           }))
           .slice(0, 5)
+      : [],
+    habitCompletions: Array.isArray(parsed.habitCompletions)
+      ? parsed.habitCompletions
+          .filter(
+            (h): h is { habitName: string; evidence?: string } =>
+              !!h &&
+              typeof h === "object" &&
+              typeof (h as { habitName?: unknown }).habitName === "string"
+          )
+          .map((h) => ({
+            habitName: String(h.habitName).slice(0, 200),
+            evidence:
+              typeof (h as { evidence?: unknown }).evidence === "string"
+                ? String((h as { evidence: string }).evidence).slice(0, 300)
+                : undefined,
+          }))
+          .slice(0, 25)
       : [],
     lifeAreaMentions: validateLifeAreaMentions(parsed.lifeAreaMentions),
   };
@@ -704,7 +741,15 @@ export async function processEntry({
     });
     const taskGroupNames = taskGroups.map((g) => g.name);
 
-    // ── Extract with memory + goal + dimension + task groups ─────────────
+    // ── Active habits for auto-check (empty when flag off / none) ────────
+    const { habitsEnabled, fetchActiveHabits } = await import(
+      "./habits-autocheck"
+    );
+    const activeHabits = habitsEnabled()
+      ? await fetchActiveHabits(prisma, userId)
+      : [];
+
+    // ── Extract with memory + goal + dimension + task groups + habits ────
     const todayISO = new Date().toISOString().split("T")[0];
     const extraction = await extractFromTranscript(
       transcript,
@@ -712,7 +757,10 @@ export async function processEntry({
       memoryContext || undefined,
       goalContext,
       taskGroupNames,
-      dimensionContext ?? null
+      dimensionContext ?? null,
+      false,
+      "",
+      activeHabits.map((h) => h.name)
     );
 
     // ── Persist everything in one transaction ─────────────────────────────
@@ -865,6 +913,35 @@ export async function processEntry({
         "[pipeline] recording stats update failed (non-fatal):",
         err
       );
+    }
+
+    // ── Debrief → habit auto-check-off (non-fatal) ────────────────────────
+    // If the debrief evidenced any of the user's tracked habits, tick them
+    // for today. Best-effort: a failure here must not fail the entry.
+    if (
+      activeHabits.length > 0 &&
+      extraction.habitCompletions &&
+      extraction.habitCompletions.length > 0
+    ) {
+      try {
+        const { persistDebriefHabitChecks } = await import(
+          "./habits-autocheck"
+        );
+        const tzRow = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        });
+        await persistDebriefHabitChecks({
+          prisma,
+          userId,
+          entryId,
+          timezone: tzRow?.timezone ?? null,
+          matches: extraction.habitCompletions,
+          habits: activeHabits,
+        });
+      } catch (err) {
+        console.error("[pipeline] habit auto-check failed (non-fatal):", err);
+      }
     }
 
     // ── Post-transaction: update memory + life map (non-fatal) ────────────
