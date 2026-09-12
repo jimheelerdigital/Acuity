@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useQuickActionRouting } from "expo-quick-actions/router";
+
+import { setupQuickActions } from "@/lib/quick-actions";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Animated, Pressable, Text, View } from "react-native";
@@ -54,6 +57,15 @@ import { PROCESSING_STATUSES } from "./entries";
 export default function TabsLayout() {
   const { tokens, resolved } = useTheme();
   const isDark = resolved === "dark";
+
+  // Home-screen quick actions (long-press the app icon). Wired here in a
+  // SUB-layout per expo-quick-actions docs — never the root layout, which
+  // would try to navigate before auth resolves. Registers the items and
+  // routes taps via params.href.
+  useQuickActionRouting();
+  useEffect(() => {
+    void setupQuickActions();
+  }, []);
 
   return (
     <View style={{ flex: 1 }}>
