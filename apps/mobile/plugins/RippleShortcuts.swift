@@ -43,6 +43,23 @@ import UIKit
 /// apps/mobile/lib/record-deeplink.ts.
 private let recordAutostartURL = "acuity://record?autostart=1"
 
+/// Deep links for the other keystone intents. These map 1:1 to expo-router
+/// routes that already exist (apps/mobile/app/habits.tsx and
+/// apps/mobile/app/insights/ask.tsx), so opening them needs no new native
+/// target — the app's existing linking handles the navigation.
+private let habitsURL = "acuity://habits"
+private let askRippleURL = "acuity://insights/ask"
+
+/// Open a deep link on the main actor. Shared by every intent so the
+/// open-app-and-route behaviour stays identical across them.
+@available(iOS 16.0, *)
+@MainActor
+private func openRippleURL(_ raw: String) async {
+    if let url = URL(string: raw) {
+        await UIApplication.shared.open(url)
+    }
+}
+
 @available(iOS 16.0, *)
 struct StartDebriefIntent: AppIntent {
     /// Shown in the Shortcuts editor and Spotlight.
@@ -58,9 +75,43 @@ struct StartDebriefIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        if let url = URL(string: recordAutostartURL) {
-            await UIApplication.shared.open(url)
-        }
+        await openRippleURL(recordAutostartURL)
+        return .result()
+    }
+}
+
+@available(iOS 16.0, *)
+struct CheckHabitsIntent: AppIntent {
+    static var title: LocalizedStringResource = "Check My Habits"
+
+    static var description = IntentDescription(
+        "Opens Ripple's habit tracker so you can check off today's habits."
+    )
+
+    // Opening a screen, not the mic — but still foreground the app so the
+    // user lands on the habits list ready to tap.
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        await openRippleURL(habitsURL)
+        return .result()
+    }
+}
+
+@available(iOS 16.0, *)
+struct AskRippleIntent: AppIntent {
+    static var title: LocalizedStringResource = "Ask Ripple"
+
+    static var description = IntentDescription(
+        "Opens Ripple's Ask screen to query your past reflections."
+    )
+
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        await openRippleURL(askRippleURL)
         return .result()
     }
 }
@@ -74,10 +125,27 @@ struct RippleAppShortcuts: AppShortcutsProvider {
                 "Start a debrief in \(.applicationName)",
                 "Start a \(.applicationName) debrief",
                 "New debrief in \(.applicationName)",
-                "Record a debrief in \(.applicationName)",
             ],
             shortTitle: "Start a Debrief",
             systemImageName: "mic.fill"
+        )
+        AppShortcut(
+            intent: CheckHabitsIntent(),
+            phrases: [
+                "Check my habits in \(.applicationName)",
+                "Open habits in \(.applicationName)",
+            ],
+            shortTitle: "Check My Habits",
+            systemImageName: "checkmark.circle.fill"
+        )
+        AppShortcut(
+            intent: AskRippleIntent(),
+            phrases: [
+                "Ask \(.applicationName)",
+                "Ask my \(.applicationName)",
+            ],
+            shortTitle: "Ask Ripple",
+            systemImageName: "sparkles"
         )
     }
 }
