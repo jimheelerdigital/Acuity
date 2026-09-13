@@ -628,6 +628,15 @@ export const processEntryFn = inngest.createFunction(
       });
       const taskGroupNames = taskGroupRows.map((g) => g.name);
 
+      // Active habits for auto-check (empty when flag off / none). Listed
+      // in the prompt so the model can only tick a habit the user has.
+      const { habitsEnabled, fetchActiveHabits } = await import(
+        "@/lib/habits-autocheck"
+      );
+      const activeHabits = habitsEnabled()
+        ? await fetchActiveHabits(prisma, userId)
+        : [];
+
       const { extractFromTranscript } = await import("@/lib/pipeline");
       const todayISO = new Date().toISOString().split("T")[0];
       return extractFromTranscript(
@@ -638,7 +647,8 @@ export const processEntryFn = inngest.createFunction(
         taskGroupNames,
         entry.dimensionContext ?? null,
         useDispositional,
-        calendarContext.promptBlock
+        calendarContext.promptBlock,
+        activeHabits.map((h) => h.name)
       );
     });
 
@@ -806,6 +816,40 @@ export const processEntryFn = inngest.createFunction(
         }
       });
     });
+
+    // ── Debrief → habit auto-check-off (fail-soft) ────────────────────────
+    // Mirror of the block in apps/web/src/lib/pipeline.ts. If the debrief
+    // evidenced any tracked habits, tick them for the user's local today.
+    // Own step so a failure retries in isolation and never blocks the entry
+    // from completing.
+    if (extraction.habitCompletions && extraction.habitCompletions.length > 0) {
+      await step.run("auto-check-habits", async () => {
+        try {
+          const { habitsEnabled, fetchActiveHabits, persistDebriefHabitChecks } =
+            await import("@/lib/habits-autocheck");
+          if (!habitsEnabled()) return;
+          const habits = await fetchActiveHabits(prisma, userId);
+          if (habits.length === 0) return;
+          const u = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { timezone: true },
+          });
+          await persistDebriefHabitChecks({
+            prisma,
+            userId,
+            entryId,
+            timezone: u?.timezone ?? null,
+            matches: extraction.habitCompletions,
+            habits,
+          });
+        } catch (err) {
+          console.error(
+            "[process-entry] habit auto-check failed (non-fatal):",
+            err
+          );
+        }
+      });
+    }
 
     // Post-persist enrichment, parallelized. Four substeps —
     // link-calendar-events, extract-people, update-recording-stats,
