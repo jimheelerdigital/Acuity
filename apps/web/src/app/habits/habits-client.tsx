@@ -46,7 +46,17 @@ interface Habit extends HabitLike {
 interface HabitCheckRow {
   habitId: string;
   localDate: string;
+  /**
+   * "MANUAL" | "DEBRIEF". Optional because a response from a server
+   * predating source provenance omits it — an absent value is treated as
+   * manual, which is the safe direction: claiming the app auto-checked
+   * something it did not is worse than showing no marker.
+   */
+  source?: string;
 }
+
+/** The one value that means "the debrief pipeline checked this off". */
+const DEBRIEF_SOURCE = "DEBRIEF";
 
 /** Today's date in the BROWSER's zone — the calendar the user sees. */
 function todayLocalDate(now: Date = new Date()): string {
@@ -95,6 +105,27 @@ export function HabitsClient() {
     void load();
   }, [load]);
 
+  /**
+   * habitId → set of dates the DEBRIEF pipeline checked off.
+   *
+   * Kept separate from `checkedByHabit` deliberately: streak math must not
+   * care how a day was checked, so that map stays plain dates and this one
+   * carries the provenance the UI needs.
+   */
+  const debriefByHabit = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const c of checks) {
+      if (c.source !== DEBRIEF_SOURCE) continue;
+      let set = map.get(c.habitId);
+      if (!set) {
+        set = new Set<string>();
+        map.set(c.habitId, set);
+      }
+      set.add(c.localDate);
+    }
+    return map;
+  }, [checks]);
+
   /** habitId → set of checked local dates. Rebuilt only when checks change. */
   const checkedByHabit = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -118,7 +149,7 @@ export function HabitsClient() {
     // Reverted below if the write fails.
     setChecks((prev) =>
       checked
-        ? [...prev, { habitId: habit.id, localDate: today }]
+        ? [...prev, { habitId: habit.id, localDate: today, source: "MANUAL" }]
         : prev.filter((c) => !(c.habitId === habit.id && c.localDate === today))
     );
 
@@ -133,7 +164,7 @@ export function HabitsClient() {
       setChecks((prev) =>
         checked
           ? prev.filter((c) => !(c.habitId === habit.id && c.localDate === today))
-          : [...prev, { habitId: habit.id, localDate: today }]
+          : [...prev, { habitId: habit.id, localDate: today, source: "MANUAL" }]
       );
     } finally {
       setPending((p) => {
@@ -214,6 +245,8 @@ export function HabitsClient() {
             const doneToday = checked.has(today);
             const streak = currentStreak(habit, checked, today);
             const expectedToday = isExpectedOn(habit, today);
+            const fromDebrief =
+              debriefByHabit.get(habit.id)?.has(today) ?? false;
             const busy = pending.has(habit.id);
 
             return (
@@ -224,7 +257,9 @@ export function HabitsClient() {
                     onClick={() => void toggle(habit, !doneToday)}
                     disabled={busy}
                     aria-pressed={doneToday}
-                    aria-label={`${doneToday ? "Uncheck" : "Check off"} ${habit.name}`}
+                    aria-label={`${doneToday ? "Uncheck" : "Check off"} ${habit.name}${
+                      doneToday && fromDebrief ? ", checked from your debrief" : ""
+                    }`}
                     className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-acuity-pill border transition disabled:opacity-50"
                     style={{
                       backgroundColor: doneToday
@@ -246,6 +281,13 @@ export function HabitsClient() {
                     <p className="text-[16px] font-medium text-acuity-text">
                       {habit.name}
                     </p>
+                    {/* Provenance, on a done day only. A manual check tells
+                        the user nothing they did not just do themselves. */}
+                    {doneToday && fromDebrief && (
+                      <p className="mt-0.5 text-[12px] text-acuity-text-ter">
+                        ✓ from your debrief
+                      </p>
+                    )}
                     <p className="mt-1 text-[13px] text-acuity-text-ter">
                       {streak > 0
                         ? `${streak} day${streak === 1 ? "" : "s"} in a row`

@@ -20,10 +20,29 @@ export interface Habit extends HabitLike {
   createdAt: string;
 }
 
+/**
+ * How a check came to exist.
+ *
+ * "MANUAL" — the user tapped it.
+ * "DEBRIEF" — the extraction pipeline found evidence of the habit in a
+ *   debrief and checked it off for them.
+ *
+ * Widened to `string` rather than a union because the value crosses a
+ * network boundary from a server that may ship a new source before this
+ * client does; an unknown value must degrade to "not a debrief check",
+ * not crash the screen.
+ */
+export type HabitCheckSource = string;
+
 export interface HabitCheckRow {
   habitId: string;
   localDate: string;
+  /** Absent on responses from a server predating source provenance. */
+  source?: HabitCheckSource;
 }
+
+/** The one value that means "the app checked this off for you". */
+export const DEBRIEF_SOURCE = "DEBRIEF";
 
 export interface HabitsPayload {
   habits: Habit[];
@@ -70,6 +89,34 @@ export function checksByHabit(
 ): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
   for (const c of checks) {
+    let set = map.get(c.habitId);
+    if (!set) {
+      set = new Set();
+      map.set(c.habitId, set);
+    }
+    set.add(c.localDate);
+  }
+  return map;
+}
+
+/**
+ * Index ONLY the debrief-created checks, by habit.
+ *
+ * Deliberately separate from `checksByHabit`: streak math must not care
+ * how a day was checked, so that function keeps returning plain date sets
+ * and this one carries the provenance the UI needs. Merging them would
+ * put a display concern inside the streak path.
+ *
+ * A row with no `source` (older server, older cached payload) is treated
+ * as manual — the safe direction, since claiming the app auto-checked
+ * something it did not is worse than showing no marker.
+ */
+export function debriefChecksByHabit(
+  checks: HabitCheckRow[]
+): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const c of checks) {
+    if (c.source !== DEBRIEF_SOURCE) continue;
     let set = map.get(c.habitId);
     if (!set) {
       set = new Set();
