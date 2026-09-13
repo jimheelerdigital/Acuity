@@ -49,6 +49,10 @@ private let recordAutostartURL = "acuity://record?autostart=1"
 /// target — the app's existing linking handles the navigation.
 private let habitsURL = "acuity://habits"
 private let askRippleURL = "acuity://insights/ask"
+/// The Insights hub — `(tabs)/insights.tsx`. A route group in expo-router
+/// contributes nothing to the path, so `(tabs)/insights.tsx` is reachable at
+/// `/insights`, not `/(tabs)/insights`.
+private let insightsURL = "acuity://insights"
 
 /// Open a deep link on the main actor. Shared by every intent so the
 /// open-app-and-route behaviour stays identical across them.
@@ -117,6 +121,25 @@ struct AskRippleIntent: AppIntent {
 }
 
 @available(iOS 16.0, *)
+struct ReviewInsightsIntent: AppIntent {
+    static var title: LocalizedStringResource = "Review My Insights"
+
+    static var description = IntentDescription(
+        "Opens Ripple's Insights hub — patterns, themes and reports drawn from your debriefs."
+    )
+
+    // Read-only screen, but still foreground: there is nothing useful to
+    // return out of process, and the value is landing the user on the hub.
+    static var openAppWhenRun: Bool = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        await openRippleURL(insightsURL)
+        return .result()
+    }
+}
+
+@available(iOS 16.0, *)
 struct RippleAppShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -146,6 +169,16 @@ struct RippleAppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Ask Ripple",
             systemImageName: "sparkles"
+        )
+        AppShortcut(
+            intent: ReviewInsightsIntent(),
+            phrases: [
+                "Review my insights in \(.applicationName)",
+                "Open insights in \(.applicationName)",
+                "Show my \(.applicationName) insights",
+            ],
+            shortTitle: "Review My Insights",
+            systemImageName: "chart.line.uptrend.xyaxis"
         )
     }
 }
