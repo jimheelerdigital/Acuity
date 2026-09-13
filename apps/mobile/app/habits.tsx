@@ -16,6 +16,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { isHabitsEnabled } from "@/lib/feature-flags";
 import {
   checksByHabit,
+  debriefChecksByHabit,
   createHabit,
   fetchHabits,
   setHabitCheck,
@@ -67,6 +68,7 @@ export default function HabitsScreen() {
   }, [load]);
 
   const byHabit = useMemo(() => checksByHabit(checks), [checks]);
+  const debriefByHabit = useMemo(() => debriefChecksByHabit(checks), [checks]);
 
   const onCreate = useCallback(async () => {
     const trimmed = name.trim();
@@ -203,6 +205,7 @@ export default function HabitsScreen() {
           <View style={{ gap: 8 }}>
             {habits.map((habit) => {
               const done = byHabit.get(habit.id)?.has(today) ?? false;
+              const fromDebrief = debriefByHabit.get(habit.id)?.has(today) ?? false;
               const streak = streakFor(habit, byHabit, today);
               const dueToday = isExpectedOn(habit, today);
               const paused = isPaused(habit);
@@ -213,7 +216,11 @@ export default function HabitsScreen() {
                   disabled={!dueToday}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: done, disabled: !dueToday }}
-                  accessibilityLabel={habit.name}
+                  accessibilityLabel={
+                    done && fromDebrief
+                      ? `${habit.name}, checked from your debrief`
+                      : habit.name
+                  }
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -253,6 +260,20 @@ export default function HabitsScreen() {
                     >
                       {habit.name}
                     </Text>
+                    {/* Provenance, on a done day only — a manual check
+                        tells the user nothing they did not just do. */}
+                    {done && fromDebrief ? (
+                      <Text
+                        style={{
+                          fontFamily: tokens.fontSans,
+                          fontSize: 12,
+                          color: tokens.textTer,
+                          marginTop: 2,
+                        }}
+                      >
+                        ✓ from your debrief
+                      </Text>
+                    ) : null}
                     {/* Paused is named explicitly. A habit that silently
                         never appears reads as a bug. */}
                     {paused ? (

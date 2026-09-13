@@ -53,7 +53,12 @@ export async function GET(req: NextRequest) {
     }),
     prisma.habitCheck.findMany({
       where: { userId, createdAt: { gte: cutoff } },
-      select: { habitId: true, localDate: true },
+      // `source` rides along so the UI can distinguish a check the user
+      // tapped from one the debrief pipeline created. Without it both look
+      // identical and the auto-check reads as the app inventing data.
+      // `entryId` is NOT serialized: nothing renders it, and shipping a
+      // row id the client cannot resolve is surface area for no gain.
+      select: { habitId: true, localDate: true, source: true },
     }),
   ]);
 

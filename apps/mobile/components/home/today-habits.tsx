@@ -7,6 +7,7 @@ import { isHabitsEnabled } from "@/lib/feature-flags";
 import {
   checksByHabit,
   fetchHabits,
+  debriefChecksByHabit,
   setHabitCheck,
   streakFor,
   todayLocalDate,
@@ -58,6 +59,7 @@ export function TodayHabits() {
   }, []);
 
   const byHabit = useMemo(() => checksByHabit(checks), [checks]);
+  const debriefByHabit = useMemo(() => debriefChecksByHabit(checks), [checks]);
   const due = useMemo(() => habitsForToday(habits, today), [habits, today]);
 
   const toggle = useCallback(
@@ -107,6 +109,9 @@ export function TodayHabits() {
       <View style={{ gap: 8 }}>
         {due.map((habit) => {
           const done = byHabit.get(habit.id)?.has(today) ?? false;
+          // Auto-checked by the debrief pipeline rather than tapped. Shown
+          // so the check does not read as the app inventing a completion.
+          const fromDebrief = debriefByHabit.get(habit.id)?.has(today) ?? false;
           const streak = streakFor(habit, byHabit, today);
           return (
             <Pressable
@@ -114,7 +119,11 @@ export function TodayHabits() {
               onPress={() => void toggle(habit)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: done }}
-              accessibilityLabel={habit.name}
+              accessibilityLabel={
+                done && fromDebrief
+                  ? `${habit.name}, checked from your debrief`
+                  : habit.name
+              }
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
@@ -144,19 +153,36 @@ export function TodayHabits() {
                 ) : null}
               </View>
 
-              <Text
-                style={{
-                  flex: 1,
-                  fontFamily: tokens.fontSans,
-                  fontSize: 15,
-                  color: tokens.text,
-                  // Struck through rather than faded: done is an
-                  // accomplishment, not a de-emphasis.
-                  textDecorationLine: done ? "line-through" : "none",
-                }}
-              >
-                {habit.name}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 15,
+                    color: tokens.text,
+                    // Struck through rather than faded: done is an
+                    // accomplishment, not a de-emphasis.
+                    textDecorationLine: done ? "line-through" : "none",
+                  }}
+                >
+                  {habit.name}
+                </Text>
+                {/* Provenance. Only ever shown on a DONE day, and only when
+                    the pipeline created it — a manual check says nothing,
+                    because the user already knows they tapped it. */}
+                {done && fromDebrief ? (
+                  <Text
+                    style={{
+                      fontFamily: tokens.fontSans,
+                      fontSize: 12,
+                      lineHeight: 16,
+                      color: tokens.textTer,
+                      marginTop: 2,
+                    }}
+                  >
+                    ✓ from your debrief
+                  </Text>
+                ) : null}
+              </View>
 
               {/* Only once a streak actually exists. "0 days" is a
                   reminder of nothing. */}
