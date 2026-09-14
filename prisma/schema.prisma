@@ -1434,6 +1434,7 @@ model CarouselPost {
   shares         Int?
   metricsAt      DateTime? // When metrics were last entered/refreshed
   slides         CarouselSlide[]
+  socialPublishes SocialPublish[] // Auto-posting queue rows (2026-09-10)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -1476,6 +1477,40 @@ enum CarouselFormat {
   VIDEO // fully animated carousel video
   STORY // standalone 30s story video + voiceover
   AMBIENT // calm single-scene looped video + soothing lesson voiceover (2026-08-18)
+}
+
+// ─── Social Auto-Publishing (2026-09-10) ────────────────────────────────────
+// One row per (carousel post × platform × account). The social-publish cron
+// scans recent DRAFT photo carousels in auto-eligible lanes, enqueues rows
+// with staggered scheduledAt times, and publishes due rows via the Meta
+// Graph API. Entirely env-gated (SOCIAL_AUTOPUBLISH_ENABLED) so the cron
+// no-ops until creds exist and this table has been pushed.
+
+model SocialPublish {
+  id             String              @id @default(cuid())
+  carouselPostId String
+  carouselPost   CarouselPost        @relation(fields: [carouselPostId], references: [id], onDelete: Cascade)
+  platform       String // "instagram" | "facebook"
+  accountKey     String // "ripple" | "bwk" — which Meta account the row targets
+  status         SocialPublishStatus @default(PENDING)
+  attempts       Int                 @default(0)
+  externalId     String? // IG media ID / FB post ID after publish
+  permalink      String? // Public URL of the published post
+  error          String?             @db.Text // Last failure message
+  scheduledAt    DateTime // Staggered publish time (posts don't all fire at once)
+  postedAt       DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([carouselPostId, platform, accountKey])
+  @@index([status, scheduledAt])
+}
+
+enum SocialPublishStatus {
+  PENDING
+  POSTED
+  FAILED // gave up after max attempts — needs a look
+  SKIPPED // account not configured for this platform when it came due
 }
 
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
