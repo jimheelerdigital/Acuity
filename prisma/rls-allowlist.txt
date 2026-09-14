@@ -97,3 +97,33 @@ AdminSentEmail no-rls  # admin-only log of emails sent from admin dashboard
 InfrastructureCost no-rls # admin-only infrastructure cost entries for P&L dashboard
 CarouselPost no-rls      # admin-only content factory carousel posts, accessed via /api/admin/carousels
 CarouselSlide no-rls     # admin-only content factory carousel slide images, child of CarouselPost
+
+# ─── Habits (user data) — added 2026-09-14 ───────────────────
+# Per-user habit tracker. Has userId; accessed only via service-role
+# Prisma. After schema push, enable in prod:
+#   ALTER TABLE public."Habit" ENABLE ROW LEVEL SECURITY;
+#   ALTER TABLE public."HabitCheck" ENABLE ROW LEVEL SECURITY;
+Habit rls
+HabitCheck rls
+
+# InsightEvidence: transcript excerpts backing UserInsight. Holds user
+# content → rls (safe default), even though its sibling EntityMention is
+# no-rls; both are service-role-only. Flip to no-rls if you want parity.
+#   ALTER TABLE public."InsightEvidence" ENABLE ROW LEVEL SECURITY;
+InsightEvidence rls
+
+# RevenueCatEvent: IAP billing webhook ledger. Mirrors StripeEvent (rls);
+# service-role only.
+#   ALTER TABLE public."RevenueCatEvent" ENABLE ROW LEVEL SECURITY;
+RevenueCatEvent rls
+
+# ─── Niche Research Lab (admin-only operational) — added 2026-09-14 ──
+# Content Factory niche research: public IG/TikTok data, hashtags, memos.
+# Admin-only via /api/admin/* service-role Prisma; no user PII. Same
+# pattern as CarouselPost / AdLab* above.
+NicheProfile no-rls         # singleton, auto-inferred niche profile
+NicheAccount no-rls         # tracked public IG/TikTok accounts
+NichePost no-rls            # scraped public posts
+NicheTopicSuggestion no-rls # generated carousel topic suggestions
+NicheHashtag no-rls         # ranked hashtags
+NicheMemo no-rls            # weekly strategy memos
