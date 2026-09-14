@@ -7,11 +7,36 @@
 
 ---
 
-## [2026-09-14] — TikTok auto-drafts: slideshow videos now land in Keenan's TikTok inbox
+## [2026-09-14] — TikTok auto-drafts are photo slideshows (format split per platform)
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held with the other social-publish commits until "push it")
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+Locked in the per-platform format split: Instagram/Facebook get the music videos (content intact), TikTok gets photo slideshow drafts — because TikTok's photo mode is where its suggested/auto audio lives. Now EVERY auto-published post (not just memento/selfie) drops its slide images into your TikTok inbox as a ready-to-post photo draft; you open it, TikTok suggests a sound, you paste the caption and post. After the TikTok app audit passes, Phase 2 makes these fully hands-off with TikTok auto-adding music.
+
+### Technical changes (for Jimmy)
+- `tiktok-publish.ts`: replaced the video FILE_UPLOAD flow with `publishTikTokPhotoDraft` (POST /v2/post/publish/content/init/, post_mode MEDIA_UPLOAD, media_type PHOTO, PULL_FROM_URL, ≤35 images) + `proxiedImageUrl` helper
+- New public route `apps/web/src/app/api/content-factory/image/[...path]/route.ts` — streams content-factory bucket objects under goripple.io URLs (TikTok only pulls photos from the app's VERIFIED domain; Supabase's domain can't be verified). Bucket is already public, exposes nothing new
+- `social-publish-cron.ts`: tiktok rows now enqueue for ALL auto lanes; tiktok branch sends slide images (not reelUrl); render-reel step skipped for tiktok rows; one post-init status check (3s) surfaces PULL failures into the error column
+- Domain goripple.io verified in the TikTok dev portal via DNS TXT at GoDaddy (tiktok-developers-site-verification=SAOx…)
+
+### Manual steps needed
+- [ ] Finish TikTok app config: Direct Post toggle ON, sandbox target users (both usernames), copy client key/secret → Vercel `TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET` (Keenan)
+- [ ] After deploy: `goripple.io/api/integrations/tiktok/connect` (Ripple) and `?account=bwk` (BWK) while logged into admin (Keenan)
+- [ ] After first successful draft: record demo video + submit TikTok app review to unlock Phase 2 direct posting (Keenan + Claude)
+
+### Notes
+- TikTok `auto_add_music` exists ONLY for photo posts and only takes effect on DIRECT_POST (Phase 2). In draft mode the in-app editor suggests audio — which is what Keenan wants short-term anyway.
+- Photo posts accept ONLY PULL_FROM_URL (no file upload), hence the goripple.io image proxy. Video posts are the opposite (FILE_UPLOAD works, no domain requirement) — if TikTok video ever comes back, that flow was removed in this commit; see git history.
+- title in the draft init is capped at 90 chars (headline used, not caption).
+
+## [2026-09-14] — TikTok auto-drafts: slideshow videos now land in Keenan's TikTok inbox (SUPERSEDED same-day — TikTok switched to photo drafts, see entry above; SocialToken/OAuth details below still current)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f2d08080 + de61e4ed (held until "push it")
 
 ### In plain English (for Keenan)
 The memento and selfie slideshow videos that auto-post to Instagram and Facebook now ALSO get delivered straight into your TikTok inbox as ready-to-post drafts. You open TikTok, the video is waiting in your notifications, you add a trending sound and the caption from the content email, and hit post. No downloading, no uploading — the trending-audio choice stays 100% yours, which is where your TikTok wins come from. Direct auto-posting with TikTok's licensed music is a later phase (it requires TikTok to audit our app first).

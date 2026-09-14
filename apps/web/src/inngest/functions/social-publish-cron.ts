@@ -25,12 +25,15 @@ import { inngest } from "@/inngest/client";
  *    is empty or the render fails, the post falls back to the silent
  *    photo-carousel path — it always ships one way or the other.
  *
- * TIKTOK PHASE 1 (2026-09-14): reel-lane posts also enqueue a "tiktok"
- *    row. The same rendered MP4 is uploaded to Keenan's TikTok INBOX as
- *    a draft (Content Posting API, FILE_UPLOAD) — he adds trending audio
- *    + caption in the app and posts by hand, keeping his trending-sound
- *    edge. Needs TIKTOK_CLIENT_KEY/SECRET env vars + one-time OAuth at
+ * TIKTOK PHASE 1 (2026-09-14): every auto-lane post also enqueues a
+ *    "tiktok" row delivering the slide images to Keenan's TikTok INBOX
+ *    as a PHOTO draft (PULL_FROM_URL via the goripple.io image proxy —
+ *    TikTok only pulls from the app's verified domain). Per Keenan's
+ *    format split, TikTok never gets the MP4: photo mode is where
+ *    TikTok's suggested audio lives. He finishes each draft in-app.
+ *    Needs TIKTOK_CLIENT_KEY/SECRET env vars + one-time OAuth at
  *    /api/integrations/tiktok/connect (tokens live in SocialToken).
+ *    Phase 2 (post-audit): DIRECT_POST with auto_add_music.
  *
  * DARK BY DEFAULT: everything no-ops unless SOCIAL_AUTOPUBLISH_ENABLED=1.
  * That keeps this cron safe to deploy before the SocialPublish table is
@@ -100,7 +103,7 @@ export const socialPublishCronFn = inngest.createFunction(
         latestPending ? latestPending.scheduledAt.getTime() + STAGGER_MS : 0
       );
 
-      const { resolveAccount, laneWantsReel, BWK_LANES } = await import(
+      const { resolveAccount, BWK_LANES } = await import(
         "@/lib/content-factory/social-publish"
       );
       const rows = candidates.flatMap((post, i) => {
@@ -116,18 +119,18 @@ export const socialPublishCronFn = inngest.createFunction(
           ? "bwk"
           : "ripple";
         const scheduledAt = new Date(base + i * STAGGER_MS);
-        // TikTok Phase 1 (2026-09-14): reel lanes also get an inbox-draft
-        // row — the rendered slideshow MP4 lands in Keenan's TikTok inbox
-        // where he adds trending audio and posts by hand.
-        const platforms = laneWantsReel(post.lane)
-          ? (["instagram", "facebook", "tiktok"] as const)
-          : (["instagram", "facebook"] as const);
-        return platforms.map((platform) => ({
-          carouselPostId: post.id,
-          platform,
-          accountKey: platform === "tiktok" ? tiktokKey : accountKey,
-          scheduledAt,
-        }));
+        // TikTok Phase 1 (2026-09-14): EVERY auto-lane post also gets an
+        // inbox-draft row. Per Keenan's format split, TikTok always gets
+        // the PHOTO slideshow (suggested audio lives in photo mode) while
+        // IG/FB keep their video/carousel formats.
+        return (["instagram", "facebook", "tiktok"] as const).map(
+          (platform) => ({
+            carouselPostId: post.id,
+            platform,
+            accountKey: platform === "tiktok" ? tiktokKey : accountKey,
+            scheduledAt,
+          })
+        );
       });
       await prisma.socialPublish.createMany({
         data: rows,
@@ -171,7 +174,7 @@ export const socialPublishCronFn = inngest.createFunction(
       const { laneWantsReel } = await import(
         "@/lib/content-factory/social-publish"
       );
-      if (laneWantsReel(row.carouselPost.lane)) {
+      if (row.platform !== "tiktok" && laneWantsReel(row.carouselPost.lane)) {
         reelUrl = await step.run(
           `render-reel-${row.carouselPostId}`,
           async (): Promise<string | null> => {
@@ -264,16 +267,18 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
 
-        // ── TikTok: inbox draft of the rendered slideshow ────────────
-        // No caption/publish via API in phase 1 — Keenan finishes the
-        // post in the app (trending audio is the point). "POSTED" here
-        // means "delivered to the inbox"; carouselPost.status is left
-        // alone so his pasted tiktokUrl stays the posted signal.
+        // ── TikTok: photo-slideshow inbox draft ──────────────────────
+        // Per Keenan's format split: TikTok gets the slide IMAGES (photo
+        // mode is where TikTok's suggested audio lives), never the MP4.
+        // He finishes the post in the app — TikTok's editor suggests
+        // audio, he pastes the caption. "POSTED" here means "delivered
+        // to the inbox"; carouselPost.status is left alone so his pasted
+        // tiktokUrl stays the posted signal.
         if (row.platform === "tiktok") {
           const {
             tiktokConfigured,
             getTikTokAccessToken,
-            uploadTikTokInboxDraft,
+            publishTikTokPhotoDraft,
           } = await import("@/lib/content-factory/tiktok-publish");
 
           const skip = async (reason: string) => {
@@ -283,7 +288,6 @@ export const socialPublishCronFn = inngest.createFunction(
             });
             return false;
           };
-          if (!reelUrl) return skip("No reel rendered (music library empty or render failed)");
           if (!tiktokConfigured()) return skip("TIKTOK_CLIENT_KEY/SECRET not set");
 
           try {
@@ -293,12 +297,27 @@ export const socialPublishCronFn = inngest.createFunction(
                 "TikTok not connected — visit /api/integrations/tiktok/connect"
               );
             }
-            const videoRes = await fetch(reelUrl);
-            if (!videoRes.ok) {
-              throw new Error(`Reel download failed: HTTP ${videoRes.status}`);
+            const { publishId } = await publishTikTokPhotoDraft(
+              accessToken,
+              post.slides.map((s) => s.imageUrl),
+              post.headline ?? ""
+            );
+            // TikTok pulls the images async — one status check catches
+            // immediate rejections (bad URL, unverified domain) so they
+            // land in the error column instead of a silently absent draft.
+            await new Promise((r) => setTimeout(r, 3000));
+            const { fetchTikTokPublishStatus } = await import(
+              "@/lib/content-factory/tiktok-publish"
+            );
+            const check = await fetchTikTokPublishStatus(
+              accessToken,
+              publishId
+            ).catch(() => null);
+            if (check?.status === "FAILED") {
+              throw new Error(
+                `TikTok rejected the draft: ${check.failReason ?? "unknown reason"}`
+              );
             }
-            const video = Buffer.from(await videoRes.arrayBuffer());
-            const { publishId } = await uploadTikTokInboxDraft(accessToken, video);
 
             await prisma.socialPublish.update({
               where: { id: row.id },

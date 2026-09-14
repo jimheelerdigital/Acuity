@@ -3,16 +3,25 @@
  * "let's build the TikTok side out ... I've had a ton of success with
  * the TikTok side").
  *
- * PHASE 1 — INBOX DRAFTS. The cron uploads each rendered slideshow MP4
- * (the same file the IG Reel uses) to Keenan's TikTok INBOX as a draft
- * via the FILE_UPLOAD flow. He opens TikTok, the video is waiting in
- * notifications, he adds trending audio + the caption from the content
- * email, and posts. This deliberately keeps a human in the loop because
- * trending-sound selection is where his TikTok wins come from — and it
- * needs NO app audit (unaudited apps can upload drafts; direct posting
- * would be forced private until TikTok reviews the app).
+ * FORMAT SPLIT (2026-09-14, per Keenan): "tiktok = photo/slideshow
+ * carousels with suggested audio over. instagram/facebook = video to
+ * keep content intact." So TikTok gets PHOTO posts (up to 35 images),
+ * never the rendered MP4s — TikTok's photo mode is also the only place
+ * its auto/suggested music exists.
  *
- * PHASE 2 (later, post-audit): direct publish with auto_add_music.
+ * PHASE 1 — INBOX DRAFTS. The cron sends each post's slide images to
+ * Keenan's TikTok INBOX as a photo draft. He opens TikTok, the draft is
+ * waiting, TikTok suggests audio in the editor, he adds the caption
+ * from the content email and posts. Drafts need NO app audit (direct
+ * posting is forced private until TikTok reviews the app).
+ *
+ * PHASE 2 (post-audit): DIRECT_POST with auto_add_music=true — fully
+ * hands-off.
+ *
+ * URL RULE: photo posts only support PULL_FROM_URL, and TikTok only
+ * pulls from the app's VERIFIED domain (goripple.io). Slide images live
+ * on Supabase, so callers must pass URLs proxied through
+ * /api/content-factory/image/... — see proxiedImageUrl().
  *
  * TOKENS: TikTok access tokens live 24h and the refresh token ROTATES
  * on every refresh, so they live in the SocialToken table (not env).
@@ -26,8 +35,8 @@ const AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
 /** Scopes: user info for the "connected as" check, upload for drafts. */
 export const TIKTOK_SCOPES = "user.info.basic,video.upload";
 
-/** Inbox uploads cap at 64MB per chunk; our slideshows are a few MB. */
-const MAX_VIDEO_BYTES = 64 * 1024 * 1024;
+/** TikTok photo posts cap at 35 images. */
+export const TIKTOK_MAX_PHOTOS = 35;
 
 /** Refresh the access token when it has less than this long left. */
 const REFRESH_MARGIN_MS = 10 * 60_000;
@@ -167,71 +176,70 @@ export async function getTikTokAccessToken(
   }
 }
 
-interface InboxInitResponse {
-  data?: { publish_id?: string; upload_url?: string };
-  error?: { code?: string; message?: string };
+/**
+ * Rewrite a Supabase public-storage image URL to the goripple.io proxy
+ * (/api/content-factory/image/...) so TikTok's PULL_FROM_URL accepts it
+ * (it only pulls from the app's verified domain). Non-Supabase URLs are
+ * returned untouched.
+ */
+export function proxiedImageUrl(imageUrl: string): string {
+  const marker = "/storage/v1/object/public/content-factory/";
+  const idx = imageUrl.indexOf(marker);
+  if (idx === -1) return imageUrl;
+  const base = (
+    process.env.NEXTAUTH_URL ??
+    process.env.APP_URL ??
+    "https://goripple.io"
+  ).replace(/\/$/, "");
+  return `${base}/api/content-factory/image/${imageUrl.slice(idx + marker.length)}`;
 }
 
 /**
- * Upload an MP4 to the user's TikTok inbox as a draft. Single-chunk
- * FILE_UPLOAD (our slideshow reels are a few MB, well under the 64MB
- * single-chunk cap). Returns the publish_id TikTok assigns.
+ * Send a photo slideshow to the user's TikTok inbox as a draft
+ * (post_mode MEDIA_UPLOAD). TikTok pulls the images itself, the draft
+ * shows up in the app where TikTok's editor suggests audio. Returns
+ * the publish_id.
  */
-export async function uploadTikTokInboxDraft(
+export async function publishTikTokPhotoDraft(
   accessToken: string,
-  video: Buffer
+  imageUrls: string[],
+  title: string
 ): Promise<{ publishId: string }> {
-  if (video.length === 0) throw new Error("Empty video buffer");
-  if (video.length > MAX_VIDEO_BYTES) {
-    throw new Error(
-      `Video too large for single-chunk inbox upload (${video.length} bytes > 64MB)`
-    );
-  }
+  const photos = imageUrls.slice(0, TIKTOK_MAX_PHOTOS).map(proxiedImageUrl);
+  if (photos.length === 0) throw new Error("No images to publish");
 
-  const initRes = await fetch(`${OPEN_API}/post/publish/inbox/video/init/`, {
+  const initRes = await fetch(`${OPEN_API}/post/publish/content/init/`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      source_info: {
-        source: "FILE_UPLOAD",
-        video_size: video.length,
-        chunk_size: video.length,
-        total_chunk_count: 1,
+      post_info: {
+        title: title.slice(0, 90),
       },
+      source_info: {
+        source: "PULL_FROM_URL",
+        photo_images: photos,
+        photo_cover_index: 0,
+      },
+      post_mode: "MEDIA_UPLOAD",
+      media_type: "PHOTO",
     }),
   });
-  const init = (await initRes.json()) as InboxInitResponse;
+  const init = (await initRes.json()) as {
+    data?: { publish_id?: string };
+    error?: { code?: string; message?: string };
+  };
   if (
     !initRes.ok ||
     (init.error?.code && init.error.code !== "ok") ||
-    !init.data?.upload_url ||
-    !init.data.publish_id
+    !init.data?.publish_id
   ) {
     throw new Error(
-      `TikTok inbox init failed: ${init.error?.message ?? `HTTP ${initRes.status}`}`
+      `TikTok photo draft init failed: ${init.error?.message ?? `HTTP ${initRes.status}`}`
     );
   }
-
-  const putRes = await fetch(init.data.upload_url, {
-    method: "PUT",
-    headers: {
-      "content-type": "video/mp4",
-      "content-range": `bytes 0-${video.length - 1}/${video.length}`,
-    },
-    body: new Uint8Array(video),
-  });
-  if (!putRes.ok) {
-    throw new Error(
-      `TikTok video upload failed: HTTP ${putRes.status} ${await putRes
-        .text()
-        .then((t) => t.slice(0, 300))
-        .catch(() => "")}`
-    );
-  }
-
   return { publishId: init.data.publish_id };
 }
 
