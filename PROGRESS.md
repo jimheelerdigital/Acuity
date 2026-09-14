@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-09-11] — Carousels can now auto-post themselves to Instagram and Facebook
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 856219ff
+
+### In plain English (for Keenan)
+The first piece of full posting automation is built: a background job that takes the finished nightly carousels and posts them straight to Instagram (as a swipeable carousel) and the Facebook page (as a multi-photo post) — captions included — with zero monthly cost, using Meta's own free API instead of a $150/mo service. Posts trickle out 45 minutes apart instead of dumping all at once. When a post goes live on Instagram, its link is saved automatically, so the existing engagement tracker starts pulling views/likes/saves for it with no pasting needed. IMPORTANT: nothing posts yet — the whole system is switched off until you flip one setting, so tonight's content flows to your email exactly as before.
+
+### Technical changes (for Jimmy)
+- New Prisma model SocialPublish (carouselPostId, platform, accountKey, status PENDING/POSTED/FAILED/SKIPPED, attempts, externalId, permalink, error, scheduledAt, postedAt; unique on [carouselPostId, platform, accountKey]) + SocialPublishStatus enum; CarouselPost gains socialPublishes relation. Purely additive.
+- New apps/web/src/lib/content-factory/social-publish.ts: IG carousel publish (per-image containers with is_carousel_item → CAROUSEL container → poll status_code FINISHED → media_publish), FB Page publish (unpublished /photos then /feed with attached_media), account routing (BWK lanes prefer META_BWK_* creds, FALL BACK to Ripple until BWK accounts exist — Keenan's call), AUTO_LANES = questions/memento/selfie/phone-quote/phone-quote-men only (pick-list lanes are 18 images, over IG's 10-image cap, until the planned 1-cover+6-photo downsize).
+- New Inngest fn socialPublishCronFn (apps/web/src/inngest/functions/social-publish-cron.ts): cron */30 min + manual event content-factory/social.publish; scans last-3-days DRAFT PHOTO posts in AUTO_LANES with no queue rows, enqueues IG+FB rows staggered 45 min apart, publishes ≤3 due posts per run (300s step ceiling; IG container processing is slow), 3 attempts then FAILED. On IG success: post.status=POSTED + instagramUrl=permalink (feeds carousel-metrics-refresh).
+- Registered in apps/web/src/app/api/inngest/route.ts.
+- Env design: master switch SOCIAL_AUTOPUBLISH_ENABLED=1; Ripple reuses existing IG_ACCESS_TOKEN/IG_USER_ID (metrics cron creds) + new FB_PAGE_ID; optional META_BWK_ACCESS_TOKEN/META_BWK_IG_USER_ID/META_BWK_FB_PAGE_ID later.
+
+### Manual steps needed
+- [ ] NOT PUSHED YET — waiting on Keenan's "push it" (then manual `npx vercel deploy --prod --yes` from repo root, auto-deploy webhook still broken)
+- [ ] `npm run db:push` from main, from home network (new SocialPublish table) — Keenan
+- [ ] Inngest resync after deploy: `curl -X PUT https://goripple.io/api/inngest` (new cron) — whoever deploys
+- [ ] Add FB_PAGE_ID (Ripple Facebook Page ID) in Vercel prod env — Keenan
+- [ ] When ready to go live: set SOCIAL_AUTOPUBLISH_ENABLED=1 in Vercel + redeploy — Keenan (until then the cron no-ops every 30 min)
+- [ ] Verify the existing IG_ACCESS_TOKEN has publish scope (instagram_content_publish + pages_manage_posts). It was created for read-only metrics; if publishing 403s, regenerate the long-lived Page token with those scopes — Keenan (Claude can walk through it)
+
+### Notes
+- Keenan explicitly rejected Ayrshare ($150/mo) — direct Graph API is $0. He also accepts no-human-review posting ("i post literally everything regardless"), but the env gate still ships OFF so go-live is a deliberate flip.
+- Mixed-audience decision: BWK lanes will post to the Ripple pages as a fallback until dedicated BWK IG/FB accounts exist. I advised separate accounts long-term (per-account audience profiling suppresses reach when one page serves two markets); routing already supports it — just add the META_BWK_* vars.
+- Pick-list lanes stay manual until the 1-cover+6-photo downsize (agreed to flip AT go-live, not before — Keenan still curates the 3+15 pick-lists today).
+- The cron is safe to deploy before the table exists because the env gate returns before any prisma.socialPublish query.
+- TikTok is the next phase: Content Posting API is free, photo posts support auto_add_music, but public direct-post needs an app audit — stage 1 will be inbox drafts.
+- tsc baseline moved 246 → 208 (Jimmy's #52 cleanup); no errors from the new files.
+
 ## [2026-09-11] — Quote text is now generated INTO the image; warrior and wildlife realism rules
 
 **Requested by:** Keenan
