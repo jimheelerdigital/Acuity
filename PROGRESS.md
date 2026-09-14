@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-14] — Auto-posted memento and selfie posts become music Reels; Meta credentials are live
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3ccffce3
+
+### In plain English (for Keenan)
+Two things. (1) Music is now part of auto-posting: since Instagram's API flatly refuses to add music to photo carousels, the memento and selfie lanes get their slides turned into a short vertical video — each image holds a couple seconds with a subtle zoom and crossfade, and a random track from your music library plays underneath — posted as an Instagram Reel and a Facebook video. The other auto lanes (questions and both quote lanes) stay as swipeable silent carousels, and the engagement tracker will show which format performs better so we can move lanes between formats with evidence. If your music library is empty, posts fall back to the silent carousel — nothing ever gets stuck. (2) The Meta credentials are minted and verified: a permanent access token with full posting permission for ripplevoice and the Ripple Facebook page — this also finally turns on the nightly engagement tracker that had been silently skipping since August because the token was never added.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/content-factory/slideshow-reel.ts: ffmpeg-static slideshow renderer (zoompan Ken Burns per slide 2.5s, xfade 0.4s, 1080x1920@30fps, aac music bed with 1s fade-out, -stream_loop for short tracks, <100KB output guard) + pickMusicTrack listing content-factory/music/{ripple,bwk} storage folders (BWK borrows the Ripple library when its folder is empty; returns null when no tracks exist)
+- apps/web/src/lib/content-factory/social-publish.ts: REEL_LANES=["memento","selfie"] + laneWantsReel; publishIgReel (media_type=REELS container, 40×5s status poll vs 20×3s for images); publishFbVideo (/videos file_url upload, relative permalink_url normalized)
+- apps/web/src/inngest/functions/social-publish-cron.ts: render-reel-{postId} step before publishing (memoized across the post's IG+FB rows; deterministic storage path reels/{postId}.mp4 with HEAD-check so retries never re-render), publish step prefers the reel; all render failures return null → photo-carousel fallback, never a stuck queue row
+- No schema changes; no new Inngest functions (same cron)
+- Meta creds minted this session via Graph API Explorer + fb_exchange_token flow: PAGE-type token, expires_at 0 (permanent), all six scopes, content_publishing_limit verified. App "Ripple Post Publisher" (1585854059908402), page "Ripple: AI Voice Journal" (1060755850459621), IG ripplevoice (17841442686737449)
+
+### Manual steps needed
+- [ ] Add in Vercel prod: IG_ACCESS_TOKEN (permanent page token, given in session), IG_USER_ID=17841442686737449, FB_PAGE_ID=1060755850459621, SOCIAL_AUTOPUBLISH_ENABLED=1 — Keenan
+- [ ] Upload royalty-free MP3s to Supabase Storage → content-factory bucket → music/ripple/ (and optionally music/bwk/) — Keenan. Until tracks exist, memento/selfie fall back to silent carousels
+- [ ] Still awaiting "push it" → then npx vercel deploy --prod --yes from repo root + curl -X PUT https://goripple.io/api/inngest (new cron from the earlier commit)
+
+### Notes
+- Keenan: "i need music to be a part of this auto posting" → "build it hybrid". Music on IG via API is ONLY possible with video posts — no tool at any price can attach IG library/trending audio via API; that stays exclusive to hand-posting in the app.
+- Baked library music means no tappable audio attribution on the Reel. Accepted trade-off; TikTok phase gets real auto_add_music.
+- The SocialPublish table was created this session via the Supabase SQL editor (Keenan can't db:push for ~a week; schema.prisma already declared it, so no drift).
+- His first Graph Explorer token had all scopes but zero pages attached (the Pages step of the OAuth dialog was skipped) — /me/accounts returned [] even after the redo, but granular_scopes on debug_token showed the page grant, and hitting the page ID directly worked fine. If a future token "has no pages", check debug_token granular_scopes before re-doing the OAuth dance.
+- First app-secret paste was from the wrong Meta app (the ads one) — "The access token does not belong to application" is the tell.
+
 ## [2026-09-11] — Carousels can now auto-post themselves to Instagram and Facebook
 
 **Requested by:** Keenan
