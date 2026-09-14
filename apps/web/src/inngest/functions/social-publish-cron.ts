@@ -18,6 +18,13 @@ import { inngest } from "@/inngest/client";
  *    already treats as the "posted" signal — so engagement numbers start
  *    flowing automatically.
  *
+ * HYBRID FORMATS (2026-09-14): REEL_LANES posts get their slides rendered
+ *    into a slideshow MP4 with library music (see slideshow-reel.ts) in a
+ *    dedicated step (memoized per post, so the IG and FB rows share one
+ *    render), then publish as an IG Reel + FB video. If the music library
+ *    is empty or the render fails, the post falls back to the silent
+ *    photo-carousel path — it always ships one way or the other.
+ *
  * DARK BY DEFAULT: everything no-ops unless SOCIAL_AUTOPUBLISH_ENABLED=1.
  * That keeps this cron safe to deploy before the SocialPublish table is
  * pushed and before the Meta env vars exist.
@@ -123,18 +130,93 @@ export const socialPublishCronFn = inngest.createFunction(
         },
         orderBy: { scheduledAt: "asc" },
         take: MAX_POSTS_PER_RUN * 2, // IG + FB rows share a scheduledAt
-        select: { id: true, platform: true, accountKey: true, carouselPostId: true },
+        select: {
+          id: true,
+          platform: true,
+          accountKey: true,
+          carouselPostId: true,
+          carouselPost: { select: { lane: true } },
+        },
       });
     });
 
     let published = 0;
     for (const row of dueRows) {
+      // ── Reel lanes: render the slideshow video once per post ──────
+      // (step id keyed on the post, so the IG and FB rows memoize to
+      // the same render). null → fall back to the photo-carousel path.
+      let reelUrl: string | null = null;
+      const { laneWantsReel } = await import(
+        "@/lib/content-factory/social-publish"
+      );
+      if (laneWantsReel(row.carouselPost.lane)) {
+        reelUrl = await step.run(
+          `render-reel-${row.carouselPostId}`,
+          async (): Promise<string | null> => {
+            try {
+              const { prisma } = await import("@/lib/prisma");
+              const { supabase } = await import("@/lib/supabase.server");
+              const post = await prisma.carouselPost.findUnique({
+                where: { id: row.carouselPostId },
+                select: {
+                  lane: true,
+                  slides: {
+                    where: { kind: { not: "SCENE" } },
+                    orderBy: { order: "asc" },
+                    select: { imageUrl: true },
+                  },
+                },
+              });
+              if (!post || post.slides.length === 0) return null;
+
+              const storagePath = `reels/${row.carouselPostId}.mp4`;
+              const publicUrl = supabase.storage
+                .from("content-factory")
+                .getPublicUrl(storagePath).data.publicUrl;
+              // Already rendered (e.g. by a previous attempt)?
+              const head = await fetch(publicUrl, { method: "HEAD" });
+              if (head.ok) return publicUrl;
+
+              const { pickMusicTrack, renderSlideshowReel } = await import(
+                "@/lib/content-factory/slideshow-reel"
+              );
+              const music = await pickMusicTrack(post.lane);
+              if (!music) {
+                console.warn(
+                  `[social-publish] No music library tracks for lane ${post.lane} — publishing as photo carousel instead (upload MP3s to content-factory/music/ripple or music/bwk)`
+                );
+                return null;
+              }
+              const buf = await renderSlideshowReel(
+                post.slides.map((s) => s.imageUrl),
+                music
+              );
+              const { error } = await supabase.storage
+                .from("content-factory")
+                .upload(storagePath, buf, {
+                  contentType: "video/mp4",
+                  upsert: true,
+                });
+              if (error) throw new Error(`Reel upload failed: ${error.message}`);
+              return publicUrl;
+            } catch (err) {
+              console.error(
+                `[social-publish] Reel render failed for post ${row.carouselPostId} — falling back to photo carousel: ${err instanceof Error ? err.message : err}`
+              );
+              return null;
+            }
+          }
+        );
+      }
+
       const ok = await step.run(`publish-${row.platform}-${row.id}`, async () => {
         const { prisma } = await import("@/lib/prisma");
         const {
           resolveAccount,
           publishIgCarousel,
           publishFbPhotoPost,
+          publishIgReel,
+          publishFbVideo,
           IG_MAX_CAROUSEL_IMAGES,
         } = await import("@/lib/content-factory/social-publish");
 
@@ -178,8 +260,11 @@ export const socialPublishCronFn = inngest.createFunction(
 
         const imageUrls = post.slides.map((s) => s.imageUrl);
         try {
-          const result =
-            row.platform === "instagram"
+          const result = reelUrl
+            ? row.platform === "instagram"
+              ? await publishIgReel(account, reelUrl, post.caption)
+              : await publishFbVideo(account, reelUrl, post.caption)
+            : row.platform === "instagram"
               ? await publishIgCarousel(
                   account,
                   imageUrls.slice(0, IG_MAX_CAROUSEL_IMAGES),

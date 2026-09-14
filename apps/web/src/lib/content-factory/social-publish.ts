@@ -52,6 +52,20 @@ export const AUTO_LANES = [
   "phone-quote-men",
 ] as const;
 
+/**
+ * HYBRID format experiment (2026-09-14, per Keenan: "i need music to be
+ * a part of this auto posting" → "build it hybrid"). Lanes listed here
+ * publish as slideshow REELS with library music baked in (the only way
+ * the Graph API allows music); the rest stay silent swipeable photo
+ * carousels. The metrics loop decides which format wins per lane —
+ * flipping a lane is a one-line change here.
+ */
+export const REEL_LANES = ["memento", "selfie"] as const;
+
+export function laneWantsReel(lane: string | null): boolean {
+  return (REEL_LANES as readonly string[]).includes(lane ?? "");
+}
+
 export type SocialAccountKey = "ripple" | "bwk";
 export type SocialPlatform = "instagram" | "facebook";
 
@@ -148,9 +162,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 async function waitForContainer(
   containerId: string,
-  accessToken: string
+  accessToken: string,
+  attempts = 20,
+  intervalMs = 3000
 ): Promise<void> {
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < attempts; i++) {
     const json = await graphGet(
       containerId,
       { fields: "status_code" },
@@ -161,7 +177,7 @@ async function waitForContainer(
     if (status === "ERROR" || status === "EXPIRED") {
       throw new Error(`IG container ${containerId} status: ${status}`);
     }
-    await sleep(3000);
+    await sleep(intervalMs);
   }
   throw new Error(`IG container ${containerId} never reached FINISHED`);
 }
@@ -289,4 +305,83 @@ export async function publishFbPhotoPost(
   }
 
   return { externalId: postId, permalink };
+}
+
+/**
+ * Publish a rendered slideshow video as an Instagram REEL. Same
+ * container flow as carousels but with media_type=REELS; video
+ * processing is slower than images, so the status poll gets a bigger
+ * budget (40 × 5s ≈ 200s).
+ */
+export async function publishIgReel(
+  account: SocialAccount,
+  videoUrl: string,
+  caption: string
+): Promise<PublishResult> {
+  if (!account.igUserId) {
+    throw new Error(`IG user id not configured for account "${account.key}"`);
+  }
+  const container = await graphPost(
+    `${account.igUserId}/media`,
+    { media_type: "REELS", video_url: videoUrl, caption },
+    account.accessToken
+  );
+  const creationId = String(container.id);
+
+  await waitForContainer(creationId, account.accessToken, 40, 5000);
+
+  const published = await graphPost(
+    `${account.igUserId}/media_publish`,
+    { creation_id: creationId },
+    account.accessToken
+  );
+  const mediaId = String(published.id);
+
+  let permalink: string | null = null;
+  try {
+    const media = await graphGet(
+      mediaId,
+      { fields: "permalink" },
+      account.accessToken
+    );
+    permalink = (media.permalink as string | undefined) ?? null;
+  } catch {
+    // nice-to-have
+  }
+  return { externalId: mediaId, permalink };
+}
+
+/**
+ * Publish the same slideshow video to the Facebook Page as a video post
+ * (file_url upload — Meta fetches the MP4 from Supabase itself).
+ */
+export async function publishFbVideo(
+  account: SocialAccount,
+  videoUrl: string,
+  caption: string
+): Promise<PublishResult> {
+  if (!account.fbPageId) {
+    throw new Error(`FB page id not configured for account "${account.key}"`);
+  }
+  const post = await graphPost(
+    `${account.fbPageId}/videos`,
+    { file_url: videoUrl, description: caption },
+    account.accessToken
+  );
+  const videoId = String(post.id);
+
+  let permalink: string | null = null;
+  try {
+    const detail = await graphGet(
+      videoId,
+      { fields: "permalink_url" },
+      account.accessToken
+    );
+    const p = detail.permalink_url as string | undefined;
+    // Video permalink_url comes back relative ("/{page}/videos/{id}/").
+    permalink = p ? (p.startsWith("http") ? p : `https://www.facebook.com${p}`) : null;
+  } catch {
+    // nice-to-have
+  }
+  return { externalId: videoId, permalink };
 }
