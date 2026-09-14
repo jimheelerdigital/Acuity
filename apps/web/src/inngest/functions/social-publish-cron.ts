@@ -100,12 +100,21 @@ export const socialPublishCronFn = inngest.createFunction(
         latestPending ? latestPending.scheduledAt.getTime() + STAGGER_MS : 0
       );
 
-      const { resolveAccount, laneWantsReel } = await import(
+      const { resolveAccount, laneWantsReel, BWK_LANES } = await import(
         "@/lib/content-factory/social-publish"
       );
       const rows = candidates.flatMap((post, i) => {
         const account = resolveAccount(post.lane);
         const accountKey = account?.key ?? "ripple";
+        // TikTok accounts are keyed by BRAND lane, not by which Meta
+        // creds exist — the Meta-side "BWK falls back to Ripple until
+        // META_BWK_* is set" rule must not leak BWK drafts into the
+        // Ripple TikTok inbox.
+        const tiktokKey = (BWK_LANES as readonly string[]).includes(
+          post.lane ?? ""
+        )
+          ? "bwk"
+          : "ripple";
         const scheduledAt = new Date(base + i * STAGGER_MS);
         // TikTok Phase 1 (2026-09-14): reel lanes also get an inbox-draft
         // row — the rendered slideshow MP4 lands in Keenan's TikTok inbox
@@ -116,7 +125,7 @@ export const socialPublishCronFn = inngest.createFunction(
         return platforms.map((platform) => ({
           carouselPostId: post.id,
           platform,
-          accountKey,
+          accountKey: platform === "tiktok" ? tiktokKey : accountKey,
           scheduledAt,
         }));
       });

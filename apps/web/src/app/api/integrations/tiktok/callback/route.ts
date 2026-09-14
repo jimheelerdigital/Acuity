@@ -34,7 +34,10 @@ export async function GET(req: Request) {
 
   const jar = await cookies();
   const expectedState = jar.get("tiktok_oauth_state")?.value;
+  const accountKey =
+    jar.get("tiktok_oauth_account")?.value === "bwk" ? "bwk" : "ripple";
   jar.delete("tiktok_oauth_state");
+  jar.delete("tiktok_oauth_account");
   if (!code || !state || !expectedState || state !== expectedState) {
     return NextResponse.json(
       { error: "Missing or mismatched OAuth state — restart at /api/integrations/tiktok/connect" },
@@ -48,11 +51,11 @@ export async function GET(req: Request) {
 
   await prisma.socialToken.upsert({
     where: {
-      provider_accountKey: { provider: "tiktok", accountKey: "ripple" },
+      provider_accountKey: { provider: "tiktok", accountKey },
     },
     create: {
       provider: "tiktok",
-      accountKey: "ripple",
+      accountKey,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: tokens.expiresAt,
@@ -76,7 +79,7 @@ export async function GET(req: Request) {
   return new Response(
     `<html><body style="font-family:sans-serif;padding:40px">
       <h2>TikTok connected ✓</h2>
-      <p>Account: <strong>${safeName}</strong></p>
+      <p>Brand: <strong>${accountKey}</strong> — Account: <strong>${safeName}</strong></p>
       <p>Slideshow drafts will now land in this account's TikTok inbox
       whenever the auto-publish cron runs. You can close this tab.</p>
     </body></html>`,

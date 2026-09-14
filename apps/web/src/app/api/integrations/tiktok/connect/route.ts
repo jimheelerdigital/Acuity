@@ -15,6 +15,11 @@ export const dynamic = "force-dynamic";
  * this URL while logged into the dashboard, approves on TikTok, and the
  * callback stores the tokens in SocialToken. Re-visiting reconnects
  * (upsert), which is also the fix when a refresh token gets revoked.
+ *
+ * MULTI-BRAND: one TikTok dev app serves both brands. ?account=bwk
+ * stores the grant under accountKey "bwk" (default "ripple") — Keenan
+ * just logs into the BWK TikTok account in the browser first, then
+ * visits /connect?account=bwk.
  */
 export async function GET(req: Request) {
   const guard = await requireAdmin();
@@ -27,10 +32,19 @@ export async function GET(req: Request) {
     );
   }
 
+  const account =
+    new URL(req.url).searchParams.get("account") === "bwk" ? "bwk" : "ripple";
   const state = randomBytes(16).toString("hex");
   const redirectUri = `${new URL(req.url).origin}/api/integrations/tiktok/callback`;
 
   const jar = await cookies();
+  jar.set("tiktok_oauth_account", account, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/api/integrations/tiktok",
+  });
   jar.set("tiktok_oauth_state", state, {
     httpOnly: true,
     secure: true,
