@@ -25,6 +25,13 @@ import { inngest } from "@/inngest/client";
  *    is empty or the render fails, the post falls back to the silent
  *    photo-carousel path — it always ships one way or the other.
  *
+ * TIKTOK PHASE 1 (2026-09-14): reel-lane posts also enqueue a "tiktok"
+ *    row. The same rendered MP4 is uploaded to Keenan's TikTok INBOX as
+ *    a draft (Content Posting API, FILE_UPLOAD) — he adds trending audio
+ *    + caption in the app and posts by hand, keeping his trending-sound
+ *    edge. Needs TIKTOK_CLIENT_KEY/SECRET env vars + one-time OAuth at
+ *    /api/integrations/tiktok/connect (tokens live in SocialToken).
+ *
  * DARK BY DEFAULT: everything no-ops unless SOCIAL_AUTOPUBLISH_ENABLED=1.
  * That keeps this cron safe to deploy before the SocialPublish table is
  * pushed and before the Meta env vars exist.
@@ -93,14 +100,20 @@ export const socialPublishCronFn = inngest.createFunction(
         latestPending ? latestPending.scheduledAt.getTime() + STAGGER_MS : 0
       );
 
-      const { resolveAccount } = await import(
+      const { resolveAccount, laneWantsReel } = await import(
         "@/lib/content-factory/social-publish"
       );
       const rows = candidates.flatMap((post, i) => {
         const account = resolveAccount(post.lane);
         const accountKey = account?.key ?? "ripple";
         const scheduledAt = new Date(base + i * STAGGER_MS);
-        return (["instagram", "facebook"] as const).map((platform) => ({
+        // TikTok Phase 1 (2026-09-14): reel lanes also get an inbox-draft
+        // row — the rendered slideshow MP4 lands in Keenan's TikTok inbox
+        // where he adds trending audio and posts by hand.
+        const platforms = laneWantsReel(post.lane)
+          ? (["instagram", "facebook", "tiktok"] as const)
+          : (["instagram", "facebook"] as const);
+        return platforms.map((platform) => ({
           carouselPostId: post.id,
           platform,
           accountKey,
@@ -129,7 +142,7 @@ export const socialPublishCronFn = inngest.createFunction(
           attempts: { lt: MAX_ATTEMPTS },
         },
         orderBy: { scheduledAt: "asc" },
-        take: MAX_POSTS_PER_RUN * 2, // IG + FB rows share a scheduledAt
+        take: MAX_POSTS_PER_RUN * 3, // IG + FB (+ TikTok) rows share a scheduledAt
         select: {
           id: true,
           platform: true,
@@ -240,6 +253,75 @@ export const socialPublishCronFn = inngest.createFunction(
             data: { status: "FAILED", error: "Post or slides missing" },
           });
           return false;
+        }
+
+        // ── TikTok: inbox draft of the rendered slideshow ────────────
+        // No caption/publish via API in phase 1 — Keenan finishes the
+        // post in the app (trending audio is the point). "POSTED" here
+        // means "delivered to the inbox"; carouselPost.status is left
+        // alone so his pasted tiktokUrl stays the posted signal.
+        if (row.platform === "tiktok") {
+          const {
+            tiktokConfigured,
+            getTikTokAccessToken,
+            uploadTikTokInboxDraft,
+          } = await import("@/lib/content-factory/tiktok-publish");
+
+          const skip = async (reason: string) => {
+            await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: { status: "SKIPPED", error: reason },
+            });
+            return false;
+          };
+          if (!reelUrl) return skip("No reel rendered (music library empty or render failed)");
+          if (!tiktokConfigured()) return skip("TIKTOK_CLIENT_KEY/SECRET not set");
+
+          try {
+            const accessToken = await getTikTokAccessToken(row.accountKey);
+            if (!accessToken) {
+              return skip(
+                "TikTok not connected — visit /api/integrations/tiktok/connect"
+              );
+            }
+            const videoRes = await fetch(reelUrl);
+            if (!videoRes.ok) {
+              throw new Error(`Reel download failed: HTTP ${videoRes.status}`);
+            }
+            const video = Buffer.from(await videoRes.arrayBuffer());
+            const { publishId } = await uploadTikTokInboxDraft(accessToken, video);
+
+            await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: {
+                status: "POSTED",
+                externalId: publishId,
+                postedAt: new Date(),
+                attempts: { increment: 1 },
+                error: null,
+              },
+            });
+            console.log(
+              `[social-publish] TIKTOK INBOX DRAFT: "${post.headline}" → ${publishId}`
+            );
+            return true;
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            const updated = await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: { attempts: { increment: 1 }, error: message },
+            });
+            if (updated.attempts >= MAX_ATTEMPTS) {
+              await prisma.socialPublish.update({
+                where: { id: row.id },
+                data: { status: "FAILED" },
+              });
+            }
+            console.error(
+              `[social-publish] tiktok failed (attempt ${updated.attempts}) for "${post.headline}": ${message}`
+            );
+            return false;
+          }
         }
 
         const account = resolveAccount(post.lane);

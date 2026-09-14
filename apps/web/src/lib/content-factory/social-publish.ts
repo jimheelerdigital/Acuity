@@ -67,7 +67,7 @@ export function laneWantsReel(lane: string | null): boolean {
 }
 
 export type SocialAccountKey = "ripple" | "bwk";
-export type SocialPlatform = "instagram" | "facebook";
+export type SocialPlatform = "instagram" | "facebook" | "tiktok";
 
 export interface SocialAccount {
   key: SocialAccountKey;

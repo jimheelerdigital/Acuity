@@ -1513,6 +1513,27 @@ enum SocialPublishStatus {
   SKIPPED // account not configured for this platform when it came due
 }
 
+// OAuth tokens for social platforms whose tokens expire and rotate
+// (TikTok: access token lives 24h, refresh token rotates on every
+// refresh — so env vars can't hold them). One row per provider+account.
+// Created/updated by /api/integrations/tiktok/callback and refreshed
+// in-place by the social-publish cron.
+model SocialToken {
+  id           String    @id @default(cuid())
+  provider     String // "tiktok"
+  accountKey   String    @default("ripple") // matches SocialPublish.accountKey
+  accessToken  String    @db.Text
+  refreshToken String    @db.Text
+  expiresAt    DateTime // access token expiry (refresh when close)
+  openId       String? // provider-side user id (TikTok open_id)
+  displayName  String? // for the "connected as X" confirmation
+  lastError    String?   @db.Text // last refresh/publish auth failure
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([provider, accountKey])
+}
+
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
 
 model BlogTopicQueue {

@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-09-14] — TikTok auto-drafts: slideshow videos now land in Keenan's TikTok inbox
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held with the other social-publish commits until "push it")
+
+### In plain English (for Keenan)
+The memento and selfie slideshow videos that auto-post to Instagram and Facebook now ALSO get delivered straight into your TikTok inbox as ready-to-post drafts. You open TikTok, the video is waiting in your notifications, you add a trending sound and the caption from the content email, and hit post. No downloading, no uploading — the trending-audio choice stays 100% yours, which is where your TikTok wins come from. Direct auto-posting with TikTok's licensed music is a later phase (it requires TikTok to audit our app first).
+
+### Technical changes (for Jimmy)
+- New Prisma model `SocialToken` (provider, accountKey, accessToken, refreshToken, expiresAt, openId, displayName, lastError; @@unique([provider, accountKey])) — TikTok access tokens live 24h and refresh tokens ROTATE on every refresh, so they must persist in the DB, not env
+- New `apps/web/src/lib/content-factory/tiktok-publish.ts` — OAuth code exchange + refresh-with-rotation, single-chunk FILE_UPLOAD inbox draft flow (`/v2/post/publish/inbox/video/init/` → PUT upload_url with Content-Range), status fetch
+- New routes `apps/web/src/app/api/integrations/tiktok/connect/route.ts` + `callback/route.ts` — admin-gated (requireAdmin) one-time OAuth; state cookie CSRF check; upserts SocialToken
+- `social-publish-cron.ts`: reel-lane posts (REEL_LANES = memento, selfie) now enqueue a third row `platform: "tiktok"`; publish branch uploads the already-rendered reel MP4 (memoized render step shared with IG/FB) as an inbox draft; row POSTED = "delivered to inbox", carouselPost.status untouched (pasted tiktokUrl remains the posted signal); no reel → SKIPPED
+- `social-publish.ts`: SocialPlatform type extended with "tiktok"; load-due `take` bumped to MAX_POSTS_PER_RUN * 3
+- No SocialPublish schema change needed — platform was already a plain TEXT column
+- New env vars: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`
+
+### Manual steps needed
+- [ ] Run the SocialToken SQL in the Supabase SQL editor (Keenan — SQL provided in chat; enable RLS like SocialPublish)
+- [ ] Create the TikTok developer app at developers.tiktok.com, add Login Kit + Content Posting API, set redirect URI `https://goripple.io/api/integrations/tiktok/callback` (Keenan, walkthrough in chat)
+- [ ] Add `TIKTOK_CLIENT_KEY` + `TIKTOK_CLIENT_SECRET` to Vercel (Keenan)
+- [ ] After deploy: visit `https://goripple.io/api/integrations/tiktok/connect` while logged into the admin dashboard and approve (Keenan)
+- [ ] Say "push it" → push, `npx vercel deploy --prod --yes`, `curl -X PUT https://goripple.io/api/inngest`
+
+### Notes
+- Phase 1 is INBOX DRAFTS on purpose: unaudited TikTok apps can upload drafts, but API *direct* posts are forced to private visibility until the app passes TikTok's audit. Drafts also preserve Keenan's manual trending-sound selection, which he credits for his TikTok traction. Phase 2 (post-audit) = direct publish with auto_add_music.
+- Inbox uploads take NO caption via API — the caption still arrives in the content email, Keenan pastes it in the app.
+- While the TikTok app is in sandbox/unaudited mode, only "target users" added in the developer portal can authorize — Keenan must add his own TikTok account as a target user before connecting.
+- TikTok refresh tokens rotate: every refresh must store the returned refresh_token or the connection dies within 24h. getTikTokAccessToken handles this; lastError on SocialToken flags a broken connection (fix = re-visit /connect).
+- schema.prisma already declares SocialToken, so next week's `npm run db:push` from main reconciles cleanly (same pattern as SocialPublish).
+
 ## [2026-09-14] — Auto-posted memento and selfie posts become music Reels; Meta credentials are live
 
 **Requested by:** Keenan
