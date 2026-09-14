@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -6,7 +6,7 @@ import { router } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { CoralScreen, coralCardStyle, coralType } from "./_ui";
+import { CoralScreen, FunnelProgress, coralCardStyle, coralType } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCH_ORDER,
@@ -69,13 +69,21 @@ export default function V10Recognition() {
     trackV10("v10_recognition_viewed");
   }, []);
 
+  const [selected, setSelected] = useState<V10Branch | null>(null);
+  const navigatedRef = useRef(false);
+
   const choose = (branch: V10Branch) => {
-    // Light haptic on selection — the screen has no other confirmation,
-    // since it advances immediately.
+    // Ignore repeat taps during the confirmation flash.
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    // Fill the chosen card white (the confirmation the mockup shows), then
+    // advance a beat later so the selection is actually seen rather than the
+    // screen jumping instantly.
+    setSelected(branch);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     void setV10Branch(branch);
     trackV10("v10_branch_selected", { branch });
-    router.push("/onboarding-new/promise");
+    setTimeout(() => router.push("/onboarding-new/promise"), 240);
   };
 
   const onSignIn = useCallback(async () => {
@@ -90,6 +98,7 @@ export default function V10Recognition() {
   return (
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
+      <FunnelProgress step={1} total={5} tokens={tokens} />
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -109,17 +118,50 @@ export default function V10Recognition() {
 
         <View style={{ gap: 12 }}>
           {V10_BRANCH_ORDER.map((key) => {
+            const isSelected = selected === key;
             return (
               <Pressable
                 key={key}
                 onPress={() => choose(key)}
                 accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
                 accessibilityLabel={V10_CARD_LABEL[key]}
-                style={({ pressed }) => coralCardStyle(tokens, { pressed })}
+                // OBJECT style, not a `({pressed}) => …` function: RN 0.81.5
+                // here silently drops Pressable function-styles, which is what
+                // made these cards render as a plain paragraph. See _ui.tsx.
+                style={coralCardStyle(tokens, { selected: isSelected })}
               >
-                {/* One line, not two: the plain label already says what the
-                    old `support` sentence said. */}
-                <Text style={ct.cardTitle}>{V10_CARD_LABEL[key]}</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  {/* One line, not two: the plain label already says what the
+                      old `support` sentence said. Selected flips to coral
+                      text on the now-white card. */}
+                  <Text
+                    style={[
+                      ct.cardTitle,
+                      isSelected && { color: tokens.primaryLo, fontFamily: tokens.fontDisplay },
+                    ]}
+                  >
+                    {V10_CARD_LABEL[key]}
+                  </Text>
+                  {isSelected ? (
+                    <Text
+                      style={{
+                        color: tokens.primaryLo,
+                        fontFamily: tokens.fontDisplay,
+                        fontSize: 16,
+                        marginLeft: 10,
+                      }}
+                    >
+                      ✓
+                    </Text>
+                  ) : null}
+                </View>
               </Pressable>
             );
           })}

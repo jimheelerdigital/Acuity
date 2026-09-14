@@ -12,7 +12,14 @@ import Animated, {
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { FunnelCta } from "./_ui";
+import {
+  CoralScreen,
+  FunnelCta,
+  FunnelProgress,
+  RippleWordmark,
+  coralLabel,
+  coralWhiteCard,
+} from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import {
   V10_BRANCHES,
@@ -156,23 +163,17 @@ export default function V10Reveal() {
     .filter(({ index }) => !dismissed.has(index));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
+      <FunnelProgress step={5} total={5} tokens={tokens} />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
         {/* First appearance of the wordmark in the entire flow. */}
-        <Text
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 15,
-            letterSpacing: 0.5,
-            color: tokens.textTer,
-            marginBottom: 8,
-          }}
-        >
-          ripple
-        </Text>
+        <View style={{ marginBottom: 14 }}>
+          <RippleWordmark height={22} />
+        </View>
 
         <Text
           accessibilityRole="header"
@@ -180,8 +181,8 @@ export default function V10Reveal() {
             fontFamily: tokens.fontDisplay,
             fontSize: 26,
             lineHeight: 34,
-            color: tokens.text,
-            marginBottom: 28,
+            color: "#ffffff",
+            marginBottom: 18,
           }}
         >
           Here's what Ripple heard.
@@ -189,17 +190,11 @@ export default function V10Reveal() {
 
         {/* ── TASKS — never auto-added ─────────────────────────────── */}
         {visibleTasks.length > 0 && (
-          <Section title="Tasks" tokens={tokens}>
+          <Section title="A few things to do" tokens={tokens}>
             {visibleTasks.map(({ task, index }) => (
               <View
                 key={`${task.title}-${index}`}
-                style={{
-                  borderWidth: 1,
-                  borderColor: tokens.line,
-                  borderRadius: 14,
-                  padding: 14,
-                  marginBottom: 10,
-                }}
+                style={[coralWhiteCard(tokens, { padding: 14 }), { marginBottom: 10 }]}
               >
                 <Text
                   style={{
@@ -225,9 +220,9 @@ export default function V10Reveal() {
                   >
                     <Text
                       style={{
-                        fontFamily: tokens.fontSans,
+                        fontFamily: tokens.fontDisplay,
                         fontSize: 14,
-                        color: added.has(index) ? tokens.good : tokens.primary,
+                        color: added.has(index) ? tokens.good : tokens.primaryLo,
                       }}
                     >
                       {added.has(index) ? "✓ Added" : "Add"}
@@ -257,56 +252,50 @@ export default function V10Reveal() {
         {/* ── WHAT SEEMS TO MATTER — echoes the transcript ─────────── */}
         {(data.pullQuote || data.themes.length > 0) && (
           <Section title="What seems to matter" tokens={tokens}>
-            {data.pullQuote && (
-              <Text
-                style={{
-                  fontFamily: tokens.fontSans,
-                  fontSize: 16,
-                  lineHeight: 24,
-                  color: tokens.textSec,
-                  marginBottom: data.themes.length > 0 ? 12 : 0,
-                }}
-              >
-                {data.pullQuote}
-              </Text>
-            )}
-            {data.themes.length > 0 && (
-              <Text
-                style={{
-                  fontFamily: tokens.fontSans,
-                  fontSize: 15,
-                  lineHeight: 22,
-                  color: tokens.textSec,
-                }}
-              >
-                {data.themes.slice(0, 3).join(" · ")}
-              </Text>
-            )}
+            <View style={coralWhiteCard(tokens)}>
+              {data.pullQuote && (
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 16,
+                    lineHeight: 24,
+                    color: tokens.textSec,
+                    marginBottom: data.themes.length > 0 ? 12 : 0,
+                  }}
+                >
+                  {data.pullQuote}
+                </Text>
+              )}
+              {data.themes.length > 0 && (
+                <Text
+                  style={{
+                    fontFamily: tokens.fontSans,
+                    fontSize: 15,
+                    lineHeight: 22,
+                    color: tokens.textSec,
+                  }}
+                >
+                  {data.themes.slice(0, 3).join(" · ")}
+                </Text>
+              )}
+            </View>
           </Section>
         )}
 
         {/* ── SOMETHING WORTH NOTICING — hedged, or branch fallback ── */}
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: tokens.line,
-            backgroundColor: tokens.cardBgTint,
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 28,
-          }}
-        >
+        <View style={[coralWhiteCard(tokens), { marginBottom: 16 }]}>
           <Text
             style={{
               fontFamily: tokens.fontSans,
-              fontSize: 12,
-              letterSpacing: 1,
+              fontWeight: "700",
+              fontSize: 11,
+              letterSpacing: 0.6,
               textTransform: "uppercase",
-              color: tokens.textTer,
+              color: tokens.primaryLo,
               marginBottom: 8,
             }}
           >
-            Something worth noticing
+            Ripple noticed
           </Text>
           <Text
             style={{
@@ -326,7 +315,7 @@ export default function V10Reveal() {
             flexDirection: "row",
             alignItems: "center",
             gap: 10,
-            marginBottom: 32,
+            marginBottom: 18,
           }}
         >
           <Animated.View
@@ -335,7 +324,7 @@ export default function V10Reveal() {
                 width: 10,
                 height: 10,
                 borderRadius: 5,
-                backgroundColor: tokens.primary,
+                backgroundColor: "#ffffff",
               },
               pulseStyle,
             ]}
@@ -344,7 +333,8 @@ export default function V10Reveal() {
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 15,
-              color: tokens.textSec,
+              color: "#ffffff",
+              opacity: 0.92,
             }}
           >
             First debrief complete
@@ -352,32 +342,13 @@ export default function V10Reveal() {
         </View>
 
         {/* ── WHAT RIPPLE CAN SEE FROM MORE ───────────────────────── */}
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 12,
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            color: tokens.textTer,
-            marginBottom: 12,
-          }}
-        >
+        <Text style={[coralLabel(tokens), { marginBottom: 12 }]}>
           {V10_COMPOUNDING_HEADING}
         </Text>
 
         <View style={{ gap: 10, marginBottom: 16 }}>
           {V10_COMPOUNDING_CARDS.map((card) => (
-            <View
-              key={card.key}
-              style={{
-                borderWidth: 1,
-                borderColor: tokens.line,
-                borderRadius: 14,
-                paddingVertical: 14,
-                paddingHorizontal: 16,
-                backgroundColor: tokens.bgInset,
-              }}
-            >
+            <View key={card.key} style={coralWhiteCard(tokens, { padding: 14 })}>
               <Text
                 style={{
                   fontFamily: tokens.fontDisplay,
@@ -410,8 +381,9 @@ export default function V10Reveal() {
             fontFamily: tokens.fontSans,
             fontSize: 14,
             lineHeight: 21,
-            color: tokens.textSec,
-            marginBottom: 32,
+            color: "#ffffff",
+            opacity: 0.9,
+            marginBottom: 18,
           }}
         >
           {V10_COMPOUNDING_FOOTER}
@@ -424,9 +396,11 @@ export default function V10Reveal() {
             router.push("/onboarding-new/paywall");
           }}
           tokens={tokens}
+          onCoral
         />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CoralScreen>
   );
 }
 
@@ -440,19 +414,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <View style={{ marginBottom: 28 }}>
-      <Text
-        style={{
-          fontFamily: tokens.fontSans,
-          fontSize: 12,
-          letterSpacing: 1,
-          textTransform: "uppercase",
-          color: tokens.textTer,
-          marginBottom: 10,
-        }}
-      >
-        {title}
-      </Text>
+    <View style={{ marginBottom: 18 }}>
+      <Text style={[coralLabel(tokens), { marginBottom: 8 }]}>{title}</Text>
       {children}
     </View>
   );

@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 
-import { FunnelCta } from "./_ui";
+import { CoralScreen, FunnelCta } from "./_ui";
 import { api } from "@/lib/api";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
@@ -108,14 +108,15 @@ export default function V10Reminders() {
   const showPrimer = selected !== null && shouldPromptForPush(selected);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32 }}>
         <Text
           style={{
             fontFamily: tokens.fontDisplay,
             fontSize: 26,
             lineHeight: 32,
-            color: tokens.text,
+            color: "#ffffff",
             marginBottom: 24,
           }}
         >
@@ -133,18 +134,24 @@ export default function V10Reminders() {
                 accessibilityState={{ selected: isSelected }}
                 style={{
                   borderWidth: isSelected ? 2 : 1,
-                  borderColor: isSelected ? tokens.primary : tokens.line,
-                  borderRadius: 14,
+                  borderColor: isSelected ? tokens.primaryLo : "rgba(255,255,255,0.4)",
+                  borderRadius: tokens.radius.md,
                   paddingVertical: 16,
                   paddingHorizontal: 18,
-                  backgroundColor: isSelected ? tokens.bgInset : "transparent",
+                  backgroundColor: isSelected ? "#ffffff" : "rgba(255,255,255,0.12)",
+                  shadowColor: "#7a3d24",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowRadius: isSelected ? 18 : 0,
+                  shadowOpacity: isSelected ? 0.18 : 0,
+                  elevation: isSelected ? 5 : 0,
                 }}
               >
                 <Text
                   style={{
                     fontFamily: tokens.fontSans,
                     fontSize: 16,
-                    color: tokens.text,
+                    fontWeight: isSelected ? "700" : "500",
+                    color: isSelected ? tokens.text : "#ffffff",
                   }}
                 >
                   {slot.label}
@@ -160,7 +167,8 @@ export default function V10Reminders() {
               fontFamily: tokens.fontSans,
               fontSize: 15,
               lineHeight: 22,
-              color: tokens.textSec,
+              color: "#ffffff",
+              opacity: 0.9,
               marginBottom: 20,
             }}
           >
@@ -174,9 +182,11 @@ export default function V10Reminders() {
             onPress={onConfirm}
             tokens={tokens}
             busy={busy}
+            onCoral
           />
         ) : null}
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CoralScreen>
   );
 }

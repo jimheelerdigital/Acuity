@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import Svg, { Path } from "react-native-svg";
 
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 
-import { FunnelCta } from "./_ui";
+import { CoralScreen, FunnelCta, RippleWordmark } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
 import { signUpWithPassword, useGoogleSignIn } from "@/lib/auth";
@@ -202,17 +203,23 @@ export default function V10Save() {
   const copy = COPY[paidState];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={{ alignItems: "center", marginTop: 24, marginBottom: 20 }}>
+          <RippleWordmark height={34} />
+        </View>
+
         <Text
           style={{
             fontFamily: tokens.fontDisplay,
             fontSize: 26,
             lineHeight: 32,
-            color: tokens.text,
+            color: "#ffffff",
+            textAlign: "center",
             marginBottom: 8,
           }}
         >
@@ -223,7 +230,9 @@ export default function V10Save() {
             fontFamily: tokens.fontSans,
             fontSize: 16,
             lineHeight: 24,
-            color: tokens.textSec,
+            color: "#ffffff",
+            opacity: 0.9,
+            textAlign: "center",
             marginBottom: 28,
           }}
         >
@@ -233,9 +242,10 @@ export default function V10Save() {
         {error ? (
           <Text
             style={{
-              fontFamily: tokens.fontSans,
+              fontFamily: tokens.fontDisplay,
               fontSize: 14,
-              color: tokens.bad,
+              color: "#ffffff",
+              textAlign: "center",
               marginBottom: 12,
             }}
           >
@@ -245,15 +255,16 @@ export default function V10Save() {
 
         <View style={{ gap: 10 }}>
           {appleAvailable ? (
-            <AuthButton
+            <OAuthButton
+              provider="apple"
               label="Continue with Apple"
               onPress={onApple}
               disabled={busy}
               tokens={tokens}
-              primary
             />
           ) : null}
-          <AuthButton
+          <OAuthButton
+            provider="google"
             label="Continue with Google"
             onPress={onGoogle}
             disabled={busy || !googleReady}
@@ -295,6 +306,8 @@ export default function V10Save() {
           )}
         </View>
 
+        <View style={{ flex: 1, minHeight: 24 }} />
+
         <Pressable
           onPress={onLater}
           accessibilityRole="button"
@@ -305,7 +318,8 @@ export default function V10Save() {
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 14,
-              color: tokens.textSec,
+              color: "#ffffff",
+              opacity: 0.85,
               textDecorationLine: "underline",
             }}
           >
@@ -313,7 +327,8 @@ export default function V10Save() {
           </Text>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CoralScreen>
   );
 }
 
@@ -341,38 +356,131 @@ function AuthButton({
         onPress={onPress}
         tokens={tokens}
         disabled={disabled}
+        onCoral
       />
     );
   }
 
-  // Secondary: outlined, transparent fill, text in the primary text token.
+  // Secondary on coral: translucent white outline with a white label.
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
-      style={({ pressed }) => ({
-        backgroundColor: "transparent",
+      style={{
+        // Object style, not a function — RN 0.81.5 here drops Pressable
+        // function-styles (see FunnelCta note).
+        backgroundColor: "rgba(255,255,255,0.12)",
         borderWidth: 1,
-        borderColor: tokens.line,
+        borderColor: "rgba(255,255,255,0.4)",
         borderRadius: tokens.radius.pill,
         paddingVertical: 16,
         alignItems: "center",
         opacity: disabled ? 0.5 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
-      })}
+      }}
     >
       <Text
         style={{
           fontFamily: tokens.fontDisplay,
           fontSize: 16,
-          color: tokens.text,
+          color: "#ffffff",
         }}
       >
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+/**
+ * Branded OAuth button on the coral surface: a white pill with the real
+ * provider logo and a dark label — Apple's black mark, Google's four-colour
+ * "G". These are the actual brand buttons App Review expects, not a coral
+ * CTA with a word on it, and they read as tappable white cards on the coral.
+ */
+function OAuthButton({
+  provider,
+  label,
+  onPress,
+  disabled,
+  tokens,
+}: {
+  provider: "apple" | "google";
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  tokens: Tokens;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      style={{
+        // Object style, not a function — RN 0.81.5 here drops Pressable
+        // function-styles (see FunnelCta note).
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        backgroundColor: "#ffffff",
+        borderRadius: tokens.radius.pill,
+        paddingVertical: 15,
+        opacity: disabled ? 0.6 : 1,
+        shadowColor: "#7a3d24",
+        shadowOffset: { width: 0, height: 8 },
+        shadowRadius: 18,
+        shadowOpacity: 0.16,
+        elevation: 4,
+      }}
+    >
+      {provider === "apple" ? <AppleLogo /> : <GoogleLogo />}
+      <Text
+        style={{
+          fontFamily: tokens.fontDisplay,
+          fontSize: 15,
+          color: "#1f1f1f",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function AppleLogo() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24">
+      <Path
+        fill="#000000"
+        d="M16.4 12.9c0-2 1.6-2.9 1.7-3-1-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7s-1.6-.7-2.6-.7c-1.3 0-2.6.8-3.2 2-1.4 2.4-.4 6 1 8 .7.9 1.4 2 2.5 1.9 1-.04 1.4-.6 2.6-.6s1.5.6 2.6.6 1.7-.9 2.4-1.8c.7-1 1-2 1-2.1-.1 0-1.9-.7-1.9-2.8zM14.5 6.3c.5-.7.9-1.6.8-2.5-.8 0-1.7.5-2.3 1.2-.5.6-1 1.5-.8 2.4.9 0 1.7-.4 2.3-1.1z"
+      />
+    </Svg>
+  );
+}
+
+function GoogleLogo() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24">
+      <Path
+        fill="#4285F4"
+        d="M22.5 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-2 3.2-4.8 3.2-7.9z"
+      />
+      <Path
+        fill="#34A853"
+        d="M12 23c2.9 0 5.4-1 7.2-2.6l-3.6-2.7c-1 .7-2.3 1-3.6 1-2.8 0-5.1-1.9-6-4.4H2.3v2.8A11 11 0 0 0 12 23z"
+      />
+      <Path
+        fill="#FBBC05"
+        d="M6 14.3a6.6 6.6 0 0 1 0-4.2V7.3H2.3a11 11 0 0 0 0 9.8L6 14.3z"
+      />
+      <Path
+        fill="#EA4335"
+        d="M12 5.4c1.6 0 3 .5 4.1 1.6l3.1-3.1A11 11 0 0 0 2.3 7.3L6 10.1c.9-2.6 3.2-4.7 6-4.7z"
+      />
+    </Svg>
   );
 }
 
@@ -386,8 +494,8 @@ function Field({
       autoCapitalize="none"
       placeholderTextColor={tokens.textTer}
       style={{
-        borderWidth: 1,
-        borderColor: tokens.line,
+        backgroundColor: "#ffffff",
+        borderWidth: 0,
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,

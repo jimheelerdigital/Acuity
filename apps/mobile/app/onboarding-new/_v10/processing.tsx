@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 
 import { useTheme } from "@/contexts/theme-context";
 
-import { FunnelCta } from "./_ui";
+import { CoralScreen, FunnelCta, FunnelProgress, coralWhiteCard } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { uploadDebrief } from "@/lib/onboarding-v10/upload";
@@ -113,7 +113,9 @@ export default function V10Processing() {
   }, [failed]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <CoralScreen tokens={tokens}>
+      <SafeAreaView style={{ flex: 1 }}>
+      <FunnelProgress step={4} total={5} tokens={tokens} />
       <View
         style={{
           flex: 1,
@@ -128,7 +130,7 @@ export default function V10Processing() {
             fontFamily: tokens.fontDisplay,
             fontSize: 26,
             lineHeight: 34,
-            color: tokens.text,
+            color: "#ffffff",
             marginBottom: 36,
           }}
         >
@@ -150,15 +152,17 @@ export default function V10Processing() {
                       width: 10,
                       height: 10,
                       borderRadius: 5,
-                      backgroundColor: done || active ? tokens.primary : tokens.line,
-                      opacity: active ? 1 : done ? 0.6 : 1,
+                      backgroundColor:
+                        done || active ? "#ffffff" : "rgba(255,255,255,0.35)",
+                      opacity: active ? 1 : done ? 0.7 : 1,
                     }}
                   />
                   <Text
                     style={{
                       fontFamily: tokens.fontSans,
                       fontSize: 16,
-                      color: done || active ? tokens.text : tokens.textTer,
+                      color: "#ffffff",
+                      opacity: done || active ? 1 : 0.6,
                     }}
                   >
                     {label}
@@ -172,16 +176,7 @@ export default function V10Processing() {
         {/* >10s: stop pretending the wait is normal. Does NOT cancel the
             request — the debrief may still land. */}
         {slowWait && !failed && (
-          <View
-            style={{
-              marginTop: 32,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: tokens.line,
-              backgroundColor: tokens.bgInset,
-              padding: 16,
-            }}
-          >
+          <View style={[coralWhiteCard(tokens), { marginTop: 32 }]}>
             <Text
               style={{
                 fontFamily: tokens.fontSans,
@@ -203,7 +198,8 @@ export default function V10Processing() {
                 fontFamily: tokens.fontSans,
                 fontSize: 16,
                 lineHeight: 24,
-                color: tokens.textSec,
+                color: "#ffffff",
+                opacity: 0.92,
                 marginBottom: 24,
               }}
             >
@@ -216,11 +212,13 @@ export default function V10Processing() {
                 label="Try again"
                 onPress={() => void run()}
                 tokens={tokens}
+                onCoral
               />
             )}
           </View>
         )}
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </CoralScreen>
   );
 }

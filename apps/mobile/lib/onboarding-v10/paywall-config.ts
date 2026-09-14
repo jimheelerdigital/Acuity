@@ -105,10 +105,13 @@ export function buildPaywallCopy(
 
   const annual: PlanCopy = {
     interval: "annual",
-    eyebrow: `Best value · ${TRIAL_DAYS} days`,
+    eyebrow: "Best value",
     price: `${formatCents(annualCents)}/yr`,
     subPrice: `${formatCents(annualAsMonthlyCents)}/mo`,
-    note: `Save ${savingsPct}%`,
+    // Lead with the free trial — the card must tell the same story as the
+    // CTA ("Start my 7-day free trial") and the fine print, not a cryptic
+    // "· 7 days" with no trial language.
+    note: `${TRIAL_DAYS} days free, then ${formatCents(annualCents)}/yr · Save ${savingsPct}%`,
     strikeThrough: anchorAUsable
       ? `${formatCents(monthlyRunRate)}/yr`
       : null,

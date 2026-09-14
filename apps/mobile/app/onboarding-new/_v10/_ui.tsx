@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -104,16 +105,19 @@ export function FunnelCta({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: inactive, busy }}
-      style={({ pressed }) => ({
+      style={{
+        // ⚠️ OBJECT style, not a `({pressed}) => (...)` function. On RN
+        // 0.81.5 in this app a Pressable function-style silently does NOT
+        // apply (verified on-device: an object style renders, the identical
+        // function style renders nothing) — which is what made every CTA
+        // here white-on-white/invisible. Everything below is derived from
+        // props, so no press state is needed.
         backgroundColor: fill,
         borderRadius: tokens.radius.pill,
         paddingVertical: size === "lg" ? 20 : 18,
         alignItems: "center",
         justifyContent: "center",
-        // Disabled reads as flat-and-dimmed; pressed keeps full opacity so
-        // the press feels like a press rather than a fade.
         opacity: disabled ? 0.45 : busy ? 0.8 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
         // The glow, as RN shadow props. NOT a spread of tokens.glowPrimary —
         // see the note at the top of this file. On a coral surface a coral
         // glow is invisible, so the white pill gets a soft dark lift instead.
@@ -131,7 +135,7 @@ export function FunnelCta({
             : tokens.glowPrimary.opacity,
         elevation: inactive ? 0 : Math.round(tokens.glowPrimary.radius / 2),
         ...style,
-      })}
+      }}
     >
       {busy && !busyLabel ? (
         <ActivityIndicator color={labelColor} />
@@ -244,17 +248,37 @@ export function CoralScreen({
   style?: ViewStyle;
 }) {
   return (
-    <View style={[{ flex: 1, backgroundColor: tokens.primary }, style]}>
+    <View style={[{ flex: 1, backgroundColor: CORAL_SURFACE }, style]}>
       <LinearGradient
-        colors={[tokens.primaryHi, tokens.primary, tokens.primaryLo]}
+        // The TRUE brand coral (#ED9672, from app.json) — NOT tokens.primary.
+        // The OKLCH `primary` token resolves to #ff8a65, a much more
+        // saturated red-orange, and its `primaryLo` bottom (#e06b46) reads as
+        // burnt/too-dark. The marketing surface uses the real brand coral so
+        // it's the right orange. Gentle top-lift + whisper-deeper bottom for
+        // depth, all kept in the #ED9672 family (never the burnt token).
+        colors={[CORAL_SURFACE_HI, CORAL_SURFACE, CORAL_SURFACE_LO]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
+        // Decorative only — must never intercept touches, or the whole coral
+        // screen becomes untappable (cards/CTAs stop responding). Set via
+        // style (the current RN API) rather than the deprecated prop.
+        style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
       />
       {children}
     </View>
   );
 }
+
+/**
+ * The funnel's coral marketing surface. #ED9672 is the brand coral from
+ * app.json (splash + icon) — the real source of truth. It is NOT
+ * tokens.primary, which the OKLCH palette resolves to #ff8a65 (off-brand,
+ * too saturated/dark). These three keep the gradient inside the brand-coral
+ * family so the surface always reads as the right orange.
+ */
+const CORAL_SURFACE = "#ED9672";
+const CORAL_SURFACE_HI = "#F4AD8C";
+const CORAL_SURFACE_LO = "#E88B66";
 
 /**
  * Type scale for coral surfaces. Everything is white — the hard rule is
@@ -316,15 +340,183 @@ export function coralCardStyle(
 ): ViewStyle {
   return {
     backgroundColor: selected
-      ? "rgba(255,255,255,0.28)"
+      ? "#ffffff"
       : pressed
-        ? "rgba(255,255,255,0.20)"
-        : "rgba(255,255,255,0.12)",
+        ? "rgba(255,255,255,0.30)"
+        : "rgba(255,255,255,0.18)",
     borderWidth: 1,
-    borderColor: selected ? "#ffffff" : "rgba(255,255,255,0.28)",
+    borderColor: selected ? "#ffffff" : "rgba(255,255,255,0.9)",
     borderRadius: tokens.radius.md,
     paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
+    // Soft warm lift so each option reads as a distinct card floating on
+    // the coral, not a line of text in a paragraph.
+    shadowColor: "#7a3d24",
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    shadowOpacity: 0.14,
+    elevation: 3,
     transform: [{ scale: pressed ? 0.99 : 1 }],
   };
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// Coral-forward content surfaces (screens 3–9)
+//
+// The whole funnel is the coral marketing surface now (not just the two
+// opening screens): every screen runs on CoralScreen. Sparse screens keep
+// white type directly on the coral (coralType); dense screens float the
+// content on WHITE cards so nothing that has to be read ever sits on the
+// coral itself. That is the rule the "Halloween" note protects — text on
+// coral is white or it lives on a white card, never dark-on-coral.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The Ripple droplet + wordmark. Concentric ripple rings under a drop —
+ * rendered as SVG so it is transparent on any surface and never a tile with
+ * a baked background. `tint` is the stroke/fill and the text colour; on the
+ * coral surface that is white. Spec §1 still bans the mark before the reveal,
+ * so only reveal and save mount this.
+ */
+/** Real brand lockup aspect ratio (assets/brand/ripple-lockup-white.png, 312×73). */
+const LOCKUP_RATIO = 312 / 73;
+
+export function RippleWordmark({
+  height = 24,
+  tint,
+}: {
+  /** Rendered height in px; width follows the real lockup's aspect ratio. */
+  height?: number;
+  /**
+   * The asset is already white (for the coral surface). Pass a colour only to
+   * re-tint it on a non-coral surface; omit on coral.
+   */
+  tint?: string;
+}) {
+  return (
+    <Image
+      // The REAL brand lockup (droplet mark + wordmark), white on transparent —
+      // exported from marketing_handoff/ripple-lockup-white.png. Not a redrawn
+      // SVG.
+      source={require("../../../assets/brand/ripple-lockup-white.png")}
+      resizeMode="contain"
+      accessibilityLabel="Ripple"
+      style={{ height, width: height * LOCKUP_RATIO, tintColor: tint }}
+    />
+  );
+}
+
+/**
+ * Elevated white card for dense content on the coral surface. Inside it the
+ * normal light-mode tokens (dark text, hairline borders) are correct again,
+ * so a section's existing inner markup keeps working unchanged — only its
+ * container swaps to this. The shadow is a warm coral-shadow lift so the
+ * card reads as floating on the coral rather than punched out of it.
+ */
+export function coralWhiteCard(
+  tokens: AcuityTokens,
+  { padding = 16, tinted = false }: { padding?: number; tinted?: boolean } = {}
+): ViewStyle {
+  return {
+    backgroundColor: tinted ? "rgba(255,255,255,0.16)" : "#ffffff",
+    borderWidth: tinted ? 1 : 0,
+    borderColor: "rgba(255,255,255,0.34)",
+    borderRadius: tokens.radius.md,
+    padding,
+    shadowColor: "#7a3d24",
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 22,
+    shadowOpacity: tinted ? 0 : 0.18,
+    elevation: tinted ? 0 : 6,
+  };
+}
+
+/** Uppercase mono section label, white, for use directly on the coral. */
+export function coralLabel(tokens: AcuityTokens) {
+  return {
+    fontFamily: tokens.fontSans,
+    fontWeight: "700" as const,
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: "uppercase" as const,
+    color: "#ffffff",
+    opacity: 0.85,
+  };
+}
+
+/**
+ * Pill chip on the coral surface (recording prompts). Selected fills solid
+ * white with a coral label; idle is a translucent white outline — the same
+ * inversion the choice cards use, so nothing on coral is ever dark-on-coral.
+ */
+export function coralChipStyle(
+  { selected = false }: { selected?: boolean } = {}
+): ViewStyle {
+  return {
+    borderWidth: 1,
+    borderColor: selected ? "#ffffff" : "rgba(255,255,255,0.4)",
+    backgroundColor: selected ? "#ffffff" : "rgba(255,255,255,0.12)",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  };
+}
+
+
+/**
+ * Funnel progress across the five pre-paywall steps (recognition → reveal).
+ * Segments fill white on the coral; the rest are translucent white. The
+ * label is the mono eyebrow. Paywall/save/reminders (the conversion tail
+ * after the value has landed) deliberately do NOT show this — progress
+ * belongs to the part of the flow that is building toward the reveal.
+ *
+ * Honest by construction: `step`/`total` are fixed positions in the route
+ * order, not a timer or a guessed fraction.
+ */
+export function FunnelProgress({
+  step,
+  total,
+  tokens,
+  style,
+}: {
+  step: number;
+  total: number;
+  tokens: AcuityTokens;
+  style?: ViewStyle;
+}) {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: total, now: step }}
+      style={[{ paddingHorizontal: 24, paddingTop: 8 }, style]}
+    >
+      <View style={{ flexDirection: "row", gap: 5 }}>
+        {Array.from({ length: total }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              height: 4,
+              borderRadius: 3,
+              flex: 1,
+              backgroundColor: i < step ? "#ffffff" : "rgba(255,255,255,0.3)",
+            }}
+          />
+        ))}
+      </View>
+      <Text
+        style={{
+          fontFamily: tokens.fontSans,
+          fontWeight: "700",
+          fontSize: 10,
+          letterSpacing: 1.4,
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.8)",
+          marginTop: 8,
+        }}
+      >
+        Step {step} of {total}
+      </Text>
+    </View>
+  );
 }
