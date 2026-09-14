@@ -25,7 +25,7 @@ The first piece of full posting automation is built: a background job that takes
 
 ### Manual steps needed
 - [ ] NOT PUSHED YET — waiting on Keenan's "push it" (then manual `npx vercel deploy --prod --yes` from repo root, auto-deploy webhook still broken)
-- [ ] `npm run db:push` from main, from home network (new SocialPublish table) — Keenan
+- [ ] Create the SocialPublish table — Keenan can't run db:push for ~a week (until ~2026-09-18), so instead: paste the Prisma-generated SQL (in Notes below) into the Supabase SQL editor (web dashboard, works from any network). Purely additive; schema.prisma already declares it, so this is NOT out-of-band drift and next week's db:push will be a no-op for it — Keenan
 - [ ] Inngest resync after deploy: `curl -X PUT https://goripple.io/api/inngest` (new cron) — whoever deploys
 - [ ] Add FB_PAGE_ID (Ripple Facebook Page ID) in Vercel prod env — Keenan
 - [ ] When ready to go live: set SOCIAL_AUTOPUBLISH_ENABLED=1 in Vercel + redeploy — Keenan (until then the cron no-ops every 30 min)
@@ -38,6 +38,35 @@ The first piece of full posting automation is built: a background job that takes
 - The cron is safe to deploy before the table exists because the env gate returns before any prisma.socialPublish query.
 - TikTok is the next phase: Content Posting API is free, photo posts support auto_add_music, but public direct-post needs an app audit — stage 1 will be inbox drafts.
 - tsc baseline moved 246 → 208 (Jimmy's #52 cleanup); no errors from the new files.
+- SQL for the SocialPublish table (generated via `prisma migrate diff` between the pre/post-856219ff schemas — exactly what db:push would issue). Safe to paste in the Supabase SQL editor:
+
+```sql
+CREATE TYPE "SocialPublishStatus" AS ENUM ('PENDING', 'POSTED', 'FAILED', 'SKIPPED');
+
+CREATE TABLE "SocialPublish" (
+    "id" TEXT NOT NULL,
+    "carouselPostId" TEXT NOT NULL,
+    "platform" TEXT NOT NULL,
+    "accountKey" TEXT NOT NULL,
+    "status" "SocialPublishStatus" NOT NULL DEFAULT 'PENDING',
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "externalId" TEXT,
+    "permalink" TEXT,
+    "error" TEXT,
+    "scheduledAt" TIMESTAMP(3) NOT NULL,
+    "postedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SocialPublish_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "SocialPublish_status_scheduledAt_idx" ON "SocialPublish"("status", "scheduledAt");
+
+CREATE UNIQUE INDEX "SocialPublish_carouselPostId_platform_accountKey_key" ON "SocialPublish"("carouselPostId", "platform", "accountKey");
+
+ALTER TABLE "SocialPublish" ADD CONSTRAINT "SocialPublish_carouselPostId_fkey" FOREIGN KEY ("carouselPostId") REFERENCES "CarouselPost"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+```
 
 ## [2026-09-11] — Quote text is now generated INTO the image; warrior and wildlife realism rules
 
