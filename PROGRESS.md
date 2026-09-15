@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-14] — Phone-quote lanes doubled + 4 new lettering surfaces, blend rule hardened
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Both quote lanes now post twice a day (one more each for Ripple and BWK — 12 posts/day total), since they perform well and cost almost nothing to generate. Four new places the quote can appear were added for each brand: a glowing neon sign, an old cinema marquee, a sidewalk chalkboard, and a handwritten note on paper — each styled warm/cozy for Ripple and dark/moody for BWK. The rule that the lettering must look physically part of the scene was strengthened, and the last remaining fallback that could produce a "pasted-on" flat notes screen was removed entirely — a post now simply retries rather than ship a slide where the text doesn't blend.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: HOUR_LANES — phone-quote-men added to hour 5, phone-quote to hour 8 (12 posts/day); flat renderPhoneQuoteSlide fallback in compose-phone-quote-screen replaced with a throw (Inngest retries)
+- apps/web/src/lib/content-factory/moody-carousel.ts: QUOTE_SURFACES grew 6→10 (neon, marquee, chalkboard, paper) with per-audience scenes/textMedium specs; buildBakedQuotePrompt blend requirement hardened (inherits glow/reflections/wear, sits behind glare, follows curvature, "nothing would look added afterward")
+- apps/web/src/lib/content-factory/compose.ts: SURFACE_ASPECT entries for the 4 new surfaces (legacy composite path type-completeness only)
+
+### Manual steps needed
+None (deploy covers it; generation cron schedule unchanged).
+
+### Notes
+- renderPhoneQuoteSlide itself still exists — the legacy edit/recompose path in carousel-generate.ts still uses it for OLD posts whose stored prompts predate the baked pipeline. Only the daily generator's fallback was removed.
+- New surfaces are baked-text only; they fall into the generic else branch of the legacy renderSurfaceOverlay if ever edited through it.
+- Watch the first few paper/neon posts: handwriting and neon tubing are the two most typo-prone mediums for gpt-image-2; the vision verify pass + PROOFREAD flag covers it, but if a surface consistently fails verification, drop it from QUOTE_SURFACES (one line).
+
+---
+
 ## [2026-09-14] — BWK posts back to 1 cover + 4-7 slides; ALL lanes now auto-publish
 
 **Requested by:** Keenan

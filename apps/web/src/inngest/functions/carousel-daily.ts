@@ -134,15 +134,16 @@ type DailyBucket = (typeof CAROUSEL_LANES)[number];
 
 /** Which lanes each overnight cron hour fans out (UTC hour). Selfie
  *  appears twice on purpose (2026-09-03: "give me 2x of those per
- *  day"). */
+ *  day"). Phone-quote lanes appear twice since 2026-09-14 (per Keenan:
+ *  "add another phone quote men lane on BWK and on Ripple, they've
+ *  been doing well with minimal tokens") — 12 posts/day total. */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
-  5: ["memento-men", "selfie"],
+  5: ["memento-men", "selfie", "phone-quote-men"],
   6: ["watching", "questions", "phone-quote"],
   7: ["protocol", "selfie", "phone-quote-men"],
-  // moody-men revived 2026-09-10 (later same day) in the pick-list
-  // format; slotted at 8 UTC to balance the hours after price/prove
-  // died (its historical slot was 5, which already has two lanes).
-  8: ["memento", "moody-men"],
+  // moody-men revived 2026-09-10 (later same day); slotted at 8 UTC to
+  // balance the hours after price/prove died.
+  8: ["memento", "moody-men", "phone-quote"],
 };
 
 /**
@@ -582,13 +583,17 @@ export const carouselDailyCronFn = inngest.createFunction(
       // in. it should just be letters. the letters need to be BUILT IN
       // to the poster, sign, phone screen... one cohesive picture").
       // gpt-image-2 typesets the exact quote directly into a rotating
-      // surface — phone, flip phone, car dash, billboard, sign, poster
-      // — so the letters share the surface's perspective, lighting,
-      // and grain. A Claude vision pass verifies the rendered text
+      // surface (10 since 2026-09-14: phone, flip phone, car dash,
+      // billboard, sign, poster, neon, marquee, chalkboard, paper) so
+      // the letters share the surface's perspective, lighting, and
+      // grain. A Claude vision pass verifies the rendered text
       // word-for-word. Chain: first surface x2 → different backup
-      // surface x2 → best unverified attempt (Keenan proofreads every
-      // slide before posting anyway) → flat Notes render (kept only so
-      // a run never dies with zero output).
+      // surface x2 → best unverified attempt (flagged PROOFREAD).
+      // The flat Notes render fallback was REMOVED 2026-09-14 (per
+      // Keenan: lettering "MUST blend into the background and look
+      // like it's part of that screen for all of them") — if every
+      // image generation throws, the step throws and Inngest retries;
+      // no post beats a non-blended post now that lanes auto-publish.
       const pqQuote = await step.run("compose-phone-quote-screen", async () => {
         const { generateMoodyImage, uploadImage } = await import(
           "@/lib/content-factory/carousel-generate"
@@ -599,8 +604,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           verifyBakedQuote,
           QUOTE_SURFACES,
         } = await import("@/lib/content-factory/moody-carousel");
-        const { finalizeBakedQuoteSlide, renderPhoneQuoteSlide } =
-          await import("@/lib/content-factory/compose");
+        const { finalizeBakedQuoteSlide } = await import(
+          "@/lib/content-factory/compose"
+        );
 
         const firstSurface = rollQuoteSurface();
         const backupPool = QUOTE_SURFACES.filter((s) => s !== firstSurface);
@@ -642,10 +648,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           imagePrompt = `PHONE-QUOTE BAKED (${variant}/${candidateSurface}) TEXT-UNVERIFIED — vision pass could not confirm the rendered quote matches; PROOFREAD BEFORE POSTING. Edit regenerates the image.`;
         }
         if (!composed) {
-          // Every image generation threw — last-resort flat Notes
-          // render so the run still produces a post.
-          composed = await renderPhoneQuoteSlide(pq.quote, variant);
-          imagePrompt = `PHONE-QUOTE NOTE SCREEN (${variant}) — Notes screen drawn programmatically by renderPhoneQuoteSlide; no image model involved.`;
+          // Every image generation threw. No flat-render fallback
+          // (2026-09-14, per Keenan) — throw so Inngest retries.
+          throw new Error(
+            "Phone-quote baked image generation failed on all attempts"
+          );
         }
 
         const imageUrl = await uploadImage(

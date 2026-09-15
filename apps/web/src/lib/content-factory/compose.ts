@@ -1023,6 +1023,13 @@ const SURFACE_ASPECT: Record<
   billboard: { min: 0.2, max: 0.9, minWFrac: 0.6 },
   sign: { min: 0.5, max: 1.6, minWFrac: 0.5 },
   poster: { min: 1.1, max: 2.2, minWFrac: 0.45 },
+  // 2026-09-14 surfaces — baked-text only, listed here purely to keep
+  // the legacy composite path type-complete if one is ever edited
+  // through it.
+  neon: { min: 0.4, max: 1.3, minWFrac: 0.5 },
+  marquee: { min: 0.2, max: 0.9, minWFrac: 0.6 },
+  chalkboard: { min: 1.1, max: 2.2, minWFrac: 0.45 },
+  paper: { min: 1.1, max: 2.2, minWFrac: 0.45 },
 };
 
 /**

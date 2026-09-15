@@ -2021,6 +2021,10 @@ export function buildPhoneQuoteBgPrompt(audience: MoodyAudience): string {
 // "poster" added 2026-09-10 (per Keenan, with a car-dash reference:
 // "whether it's a phone screen, a car dash (like pictured), a
 // billboard with signage, a poster, doesn't matter").
+// neon/marquee/chalkboard/paper added 2026-09-14 (per Keenan: "the
+// signs where the lettering built in is doing the best" + "give me 4
+// more ideas for each" — four new built-in-lettering surfaces, each
+// with brand-flavored scenes).
 export const QUOTE_SURFACES = [
   "imessage",
   "flip",
@@ -2028,6 +2032,10 @@ export const QUOTE_SURFACES = [
   "billboard",
   "sign",
   "poster",
+  "neon",
+  "marquee",
+  "chalkboard",
+  "paper",
 ] as const;
 export type QuoteSurface = (typeof QUOTE_SURFACES)[number];
 
@@ -2159,6 +2167,78 @@ const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
     textMedium:
       "elegant printed typography that is part of the poster's graphic design, ink on paper",
   },
+  neon: {
+    scenes: {
+      women: [
+        "a warm blush-and-amber neon sign glowing on the exposed-brick wall of a dim cozy cafe at night, string lights blurred below",
+        "a soft warm-white neon sign mounted above a dresser in a dark bedroom, one small lamp glowing at the edge of frame",
+      ],
+      men: [
+        "a cold white neon sign on the bare concrete wall of an empty gym at night, everything else in darkness",
+        "a stark ice-blue neon sign glowing on the dark brick wall of an empty bar after close, wet-street light leaking through a window",
+      ],
+    },
+    screenWord: "sign",
+    sizeHint:
+      "at least two thirds of the frame's width — shot CLOSE so the glowing sign dominates the composition",
+    orientation: "roughly SQUARE or slightly wide",
+    textMedium:
+      "hand-bent glowing neon tubing forming every word, the tubes casting soft colored light and a faint halo onto the wall behind them",
+  },
+  marquee: {
+    scenes: {
+      women: [
+        "an old theater marquee at dusk on a small-town main street, rows of warm bulbs glowing against a deep blue twilight sky",
+        "a vintage cinema marquee at dusk, warm golden bulbs lit, the quiet street below blurred in golden-hour light",
+      ],
+      men: [
+        "a vintage cinema marquee at night on a dark empty street, cold bulbs lit, desaturated tones, wet asphalt reflections below",
+        "an old theater marquee at night against a black sky, stark white bulbs, the street below dissolved into darkness",
+      ],
+    },
+    screenWord: "board",
+    sizeHint:
+      "at least two thirds of the frame's width — shot from close below so the marquee dominates the composition",
+    orientation: "WIDE and horizontal (landscape, like a marquee board)",
+    textMedium:
+      "black changeable marquee letters slotted into the tracks of the backlit white board, lit by the surrounding rows of bulbs, a couple of letters sitting very slightly crooked",
+  },
+  chalkboard: {
+    scenes: {
+      women: [
+        "an A-frame chalkboard sign on the sidewalk outside a small flower shop at dusk, warm string lights blurred behind it",
+        "an A-frame chalkboard sign outside a cozy cafe at dusk, warm window glow spilling onto the pavement around it",
+      ],
+      men: [
+        "an A-frame chalkboard sign on a dark sidewalk outside a closed coffee shop at night, one streetlight, moody shadows",
+        "an A-frame chalkboard sign outside a dark gym entrance at night, cold light from a doorway, desaturated tones",
+      ],
+    },
+    screenWord: "board",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — shot CLOSE so the chalkboard dominates the composition",
+    orientation: "TALL and vertical (portrait, like an A-frame board)",
+    textMedium:
+      "hand-written white chalk lettering with real chalk texture — slightly dusty strokes, faint smudges, uneven pressure, written by a human hand",
+  },
+  paper: {
+    scenes: {
+      women: [
+        "a handwritten note on cream paper lying on a wooden nightstand in warm lamplight, a mug of tea blurred beside it",
+        "a handwritten note on soft ivory paper on rumpled linen bedding at night, warm dim lamp glow across it",
+      ],
+      men: [
+        "a handwritten note on white paper lying on a dark desk at night, lit by one cold desk lamp, a watch blurred beside it",
+        "a handwritten note on plain paper taped to a bathroom mirror's edge, dim cold light, the dark room blurred in the reflection",
+      ],
+    },
+    screenWord: "page",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — shot from directly above or a natural reading angle, CLOSE so the page dominates",
+    orientation: "TALL and vertical (portrait, like a sheet of paper)",
+    textMedium:
+      "legible handwritten ink lettering in a natural human hand — pen strokes pressed into the paper's fiber, ink weight varying slightly, imperfect but easy to read",
+  },
 };
 
 /**
@@ -2186,7 +2266,7 @@ export function buildBakedQuotePrompt(
 
 "${quote}"
 
-The text appears as ${spec.textMedium}. The letters are physically PART of the ${spec.screenWord} — they share its exact perspective, lighting, color cast, texture, and grain, photographed together in one shot. NEVER a flat white box, NEVER a pasted-on panel, NEVER an overlay or mockup look — one cohesive photograph. The text breaks over several lines with natural spacing and is large enough to read easily on a phone. COMPOSITION: the ${spec.screenWord} is ${spec.orientation} and fills ${spec.sizeHint}. A natural, slightly imperfect camera angle is good — this must feel like a candid photo someone actually took. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the text stays tack sharp and clearly legible against its background. NO other text, words, letters, numbers, or logos anywhere else in the image.`;
+The text appears as ${spec.textMedium}. The letters are physically PART of the ${spec.screenWord} — they share its exact perspective, lighting, color cast, texture, and grain, photographed together in one shot. The lettering MUST BLEND into the ${spec.screenWord} and its background: it inherits the surface's glow, reflections, wear, and material, sits behind any glare or shadow that falls across the surface, and follows the surface's curvature and angle precisely. If someone zoomed in, nothing about the letters would look added afterward. NEVER a flat white box, NEVER a pasted-on panel, NEVER an overlay, sticker, or mockup look — one cohesive photograph. The text breaks over several lines with natural spacing and is large enough to read easily on a phone. COMPOSITION: the ${spec.screenWord} is ${spec.orientation} and fills ${spec.sizeHint}. A natural, slightly imperfect camera angle is good — this must feel like a candid photo someone actually took. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the text stays tack sharp and clearly legible against its background. NO other text, words, letters, numbers, or logos anywhere else in the image.`;
 }
 
 /**
