@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-14] — Facebook metrics + a learning loop that feeds engagement back into topic generation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+The content factory now learns from its own results. Every night it pulls the real engagement numbers (views, likes, comments, shares — and saves on Instagram) for auto-published Facebook posts, alongside the Instagram numbers it was already pulling. Then, when it generates the next day's topics, each lane's generator is shown that lane's recent winners and flops — with the actual numbers — and is told to lean into what worked and avoid what flopped. Saves and shares count far more than views, because those are what the algorithms reward with reach. New lanes are unaffected until they have at least 4 posts with real numbers, so nothing changes until there's something to learn from.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: SocialPublish gained views/likes/comments/shares/saves (Int?) + metricsAt (DateTime?) — per-platform metrics live on the platform rows; CarouselPost columns stay IG-only. **Already pushed to prod from main via `npm run db:push` (guard passed: additive only), client regenerated.**
+- NEW apps/web/src/lib/content-factory/facebook-metrics.ts: fetchFbPostMetrics(externalId, accountKey) — feed posts (id contains "_") read reactions/comments/shares + post_impressions insight; videos/Reels read likes/comments + total_video_views; insights failures degrade to null (read_insights may not be granted). FB has no save metric.
+- apps/web/src/inngest/functions/carousel-metrics-refresh.ts: new "fetch-facebook" step refreshes every POSTED facebook SocialPublish row (externalId set, ≤90 days) nightly; IG metrics now also mirror onto the IG SocialPublish row; IG misconfiguration no longer blocks the FB step
+- NEW apps/web/src/lib/content-factory/performance.ts: getLaneFeedback(lane) — 45-day lookback, sums CarouselPost (IG) + SocialPublish platform rows (deduping the IG mirror row), score = views×0.01 + likes + comments×3 + saves×8 + shares×8, returns an AUDIENCE FEEDBACK prompt block (top-3 WORKING / bottom-3 NOT WORKING with real numbers) or null under 4 scored posts
+- apps/web/src/lib/content-factory/moody-carousel.ts: avoidBlock(recentHeadlines, feedback?) appends the feedback block; optional feedback param threaded through the 10 live generators (moody/watching/memento/questions/protocol/phone-quote/permission/discipline-real/letter/texts)
+- apps/web/src/lib/content-factory/generate-topic.ts: generateSelfieTopic(recentHeadlines, feedback?)
+- apps/web/src/inngest/functions/carousel-daily.ts: all 4 topic steps compute `await getLaneFeedback(bucket)` and pass it to their generator
+
+### Manual steps needed
+None — schema already pushed to prod, no new env vars, no cron/trigger changes (no Inngest resync needed).
+
+### Notes
+- Dormant generators (line/price/prove/rules/etc.) intentionally not threaded — they get feedback wiring if/when revived.
+- TikTok metrics remain blocked on app review; once live, a tiktok-metrics lib writes to the tiktok SocialPublish rows and the learning loop picks them up with zero changes (it already sums all platform rows).
+- The IG-mirror dedupe in performance.ts matches a SocialPublish row whose views/likes/saves equal the CarouselPost columns and skips exactly one such row — avoids double-counting without needing a platform filter that would break if hand-posted IG rows ever appear.
+- Weighting rationale: saves/shares are the strongest reach signals on IG/TikTok; a 500-view post with 40 saves outranks a 5000-view post nobody saved.
+
+---
+
 ## [2026-09-14] — BWK posts are TikTok-only until BWK gets Meta accounts
 
 **Requested by:** Keenan

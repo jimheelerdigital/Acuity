@@ -273,7 +273,8 @@ OUTPUT (strict JSON, no markdown):
  * with steps that fix the problem).
  */
 export async function generateSelfieTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  feedback?: string | null
 ): Promise<GeneratedSelfieTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -282,7 +283,9 @@ export async function generateSelfieTopic(
       ? `\n\nRECENT POSTS — this ground is already covered:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}\nYour post must be genuinely NEW against that list — a different problem, different steps, different rooms and shots. Not the same fix under a new headline.`
       : "";
 
-  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}\n\nReturn ONLY valid JSON, no other text.`;
+  // Learning loop (2026-09-14): real engagement numbers from
+  // performance.ts, so topics lean into what the audience rewards.
+  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}${feedback ?? ""}\n\nReturn ONLY valid JSON, no other text.`;
 
   const start = Date.now();
   try {

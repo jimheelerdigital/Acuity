@@ -1502,6 +1502,16 @@ model SocialPublish {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
+  // Per-platform engagement metrics (2026-09-14) — refreshed nightly by
+  // carousel-metrics-refresh. CarouselPost's columns stay IG-only; the
+  // learning loop sums these rows on top for cross-platform totals.
+  views     Int?
+  likes     Int?
+  comments  Int?
+  shares    Int?
+  saves     Int? // IG only — FB has no save metric
+  metricsAt DateTime?
+
   @@unique([carouselPostId, platform, accountKey])
   @@index([status, scheduledAt])
 }

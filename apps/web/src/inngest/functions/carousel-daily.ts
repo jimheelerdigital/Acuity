@@ -259,7 +259,14 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo } },
           select: { headline: true },
         });
-        const topic = await generateSelfieTopic(recent.map((p) => p.headline));
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback("selfie");
+        const topic = await generateSelfieTopic(
+          recent.map((p) => p.headline),
+          feedback
+        );
 
         // Same avatar across posts: the newest selfie post's text-free
         // cover becomes the identity reference for this post's cover.
@@ -568,11 +575,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
           select: { headline: true },
         });
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback(bucket);
         return bucket === "letter"
-          ? generateLetterTopic(recent.map((p) => p.headline))
+          ? generateLetterTopic(recent.map((p) => p.headline), feedback)
           : generatePhoneQuoteTopic(
               variant,
-              recent.map((p) => p.headline)
+              recent.map((p) => p.headline),
+              feedback
             );
       });
 
@@ -789,9 +801,14 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
           select: { headline: true },
         });
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback(bucket);
         return generateTextsTopic(
           textsLane,
-          recent.map((p) => p.headline)
+          recent.map((p) => p.headline),
+          feedback
         );
       });
 
@@ -1027,22 +1044,28 @@ export const carouselDailyCronFn = inngest.createFunction(
         | "light"
         | "dark"
         | null;
+      // Learning loop (2026-09-14): per-lane engagement feedback so
+      // topics lean into what this lane's audience actually rewards.
+      const { getLaneFeedback } = await import(
+        "@/lib/content-factory/performance"
+      );
+      const feedback = await getLaneFeedback(bucket);
       const topic =
         bucket === "memento"
-          ? await generateMementoTopic("women", headlines, "dark")
+          ? await generateMementoTopic("women", headlines, "dark", undefined, feedback)
           : bucket === "memento-men"
-            ? await generateMementoTopic("men", headlines, "light", sceneFamily)
+            ? await generateMementoTopic("men", headlines, "light", sceneFamily, feedback)
             : bucket === "questions"
-              ? await generateQuestionsTopic(headlines, "dark")
+              ? await generateQuestionsTopic(headlines, "dark", feedback)
               : bucket === "moody-men"
-                ? await generateMoodyTopic("men", headlines, sceneFamily)
+                ? await generateMoodyTopic("men", headlines, sceneFamily, feedback)
                 : bucket === "watching"
-                  ? await generateWatchingTopic(headlines, sceneFamily)
+                  ? await generateWatchingTopic(headlines, sceneFamily, feedback)
                   : bucket === "permission"
-                    ? await generatePermissionTopic(headlines)
+                    ? await generatePermissionTopic(headlines, feedback)
                     : bucket === "discipline-real"
-                      ? await generateDisciplineRealTopic(headlines, sceneFamily)
-                      : await generateProtocolTopic(headlines, sceneFamily);
+                      ? await generateDisciplineRealTopic(headlines, sceneFamily, feedback)
+                      : await generateProtocolTopic(headlines, sceneFamily, feedback);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar

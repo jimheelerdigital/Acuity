@@ -310,10 +310,19 @@ async function generateMoodyFamilyTopic(opts: {
  * TERRITORY already covered — the new post must differ in substance,
  * not just wording.
  */
-function avoidBlock(recentHeadlines: string[]): string {
-  return recentHeadlines.length > 0
-    ? `\n\nRECENT POSTS — this ground is already covered:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}\nYour post must be genuinely NEW against that list — not the same ideas under a different title. Do not re-teach the same points, reuse the same subjects or numbers, or mirror the same structure. Take an angle the list hasn't touched.`
-    : "";
+function avoidBlock(
+  recentHeadlines: string[],
+  feedback?: string | null
+): string {
+  const avoid =
+    recentHeadlines.length > 0
+      ? `\n\nRECENT POSTS — this ground is already covered:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}\nYour post must be genuinely NEW against that list — not the same ideas under a different title. Do not re-teach the same points, reuse the same subjects or numbers, or mirror the same structure. Take an angle the list hasn't touched.`
+      : "";
+  // Learning loop (2026-09-14, per Keenan: "it should take feedback on
+  // prior posts when building everything out") — real engagement numbers
+  // from performance.ts, appended after the avoid list so the model both
+  // avoids covered ground AND leans into what the audience rewards.
+  return avoid + (feedback ?? "");
 }
 
 // ─── BWK theme lock (2026-09-03, per Keenan) ─────────────────────────
@@ -410,7 +419,8 @@ function rollMenCoverRule(forcedFamily?: string): string {
 export async function generateMoodyTopic(
   audience: MoodyAudience,
   recentHeadlines: string[],
-  sceneFamily?: string
+  sceneFamily?: string,
+  feedback?: string | null
 ): Promise<MoodyTopic> {
   const men = audience === "men";
   const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
@@ -425,7 +435,7 @@ export async function generateMoodyTopic(
           }
         : undefined
     ),
-    user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: `moody-${audience}`,
     requireName: true,
     minLines: 2,
@@ -466,7 +476,8 @@ export async function generateLineTopic(
  *  whole post to one image family (themed one-offs). */
 export async function generateWatchingTopic(
   recentHeadlines: string[],
-  sceneFamily?: string
+  sceneFamily?: string,
+  feedback?: string | null
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
@@ -475,7 +486,7 @@ export async function generateWatchingTopic(
       theme: WATCHING_THEME,
       coverRule: rollMenCoverRule(sceneFamily),
     }),
-    user: `Write one new when-no-one's-watching post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new when-no-one's-watching post with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "watching",
     requireName: true,
     minLines: 2,
@@ -756,7 +767,8 @@ export async function generateMementoTopic(
   audience: MoodyAudience,
   recentHeadlines: string[],
   scheme: WomenScheme = "light",
-  sceneFamily?: string
+  sceneFamily?: string,
+  feedback?: string | null
 ): Promise<MoodyTopic> {
   const men = audience === "men";
   const itemCount = men
@@ -767,7 +779,7 @@ export async function generateMementoTopic(
     system: men
       ? `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${rollMenCoverRule(sceneFamily)}`
       : buildMementoWomenSystemPrompt(scheme),
-    user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: men ? "memento-men" : "memento",
     requireName: false,
     minLines: 2,
@@ -834,13 +846,14 @@ OUTPUT (strict JSON, no markdown):
  *  per post (2026-08-31 variance). */
 export async function generateQuestionsTopic(
   recentHeadlines: string[],
-  scheme: WomenScheme = "light"
+  scheme: WomenScheme = "light",
+  feedback?: string | null
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "questions-carousel-topic",
     system: buildQuestionsSystemPrompt(scheme),
-    user: `Write one new hard-questions post with exactly ${itemCount} questions.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new hard-questions post with exactly ${itemCount} questions.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "questions",
     requireName: false,
     minLines: 1,
@@ -1785,7 +1798,8 @@ OUTPUT (strict JSON, no markdown):
  *  later — replaced the question cover + protocol-steps format). */
 export async function generateProtocolTopic(
   recentHeadlines: string[],
-  sceneFamily?: string
+  sceneFamily?: string,
+  feedback?: string | null
 ): Promise<MoodyTopic> {
   const interval =
     PROTOCOL_INTERVALS[Math.floor(Math.random() * PROTOCOL_INTERVALS.length)];
@@ -1797,7 +1811,7 @@ export async function generateProtocolTopic(
     // 2026-09-14, per Keenan: pick-list retired — ONE cover + 4-7
     // areas so posts go out ready-made for auto-publish.
     system: `${buildProtocolSystemPrompt(interval)}\n\n${rollMenCoverRule(sceneFamily)}`,
-    user: `Write one new "${interval} OF DISCIPLINE..." post with exactly ${itemCount} areas of expected progress.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new "${interval} OF DISCIPLINE..." post with exactly ${itemCount} areas of expected progress.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
     minLines: 2,
@@ -1852,7 +1866,8 @@ OUTPUT (strict JSON, no markdown):
 /** Generate one phone-quote topic (2-slide format) for either funnel. */
 export async function generatePhoneQuoteTopic(
   audience: MoodyAudience,
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  feedback?: string | null
 ): Promise<PhoneQuoteTopic> {
   const { prisma } = await import("@/lib/prisma");
   const purpose =
@@ -1868,7 +1883,7 @@ export async function generatePhoneQuoteTopic(
       messages: [
         {
           role: "user",
-          content: `Write one new phone-quote post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+          content: `Write one new phone-quote post.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
         },
       ],
     });
@@ -2360,13 +2375,14 @@ OUTPUT (strict JSON, no markdown):
 /** Generate one permission-slips topic (women / Ripple). Single-line
  *  slides like questions; 4-6 permissions per post. */
 export async function generatePermissionTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  feedback?: string | null
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "permission-carousel-topic",
     system: PERMISSION_SYSTEM_PROMPT,
-    user: `Write one new permission-slips post with exactly ${itemCount} permissions.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new permission-slips post with exactly ${itemCount} permissions.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "permission",
     requireName: false,
     minLines: 1,
@@ -2386,7 +2402,8 @@ const DISCIPLINE_REAL_THEME = `THEME — every post belongs to the WHAT DISCIPLI
  *  Myth as the "Name." header, mundane truth in the lines. */
 export async function generateDisciplineRealTopic(
   recentHeadlines: string[],
-  sceneFamily?: string
+  sceneFamily?: string,
+  feedback?: string | null
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
@@ -2395,7 +2412,7 @@ export async function generateDisciplineRealTopic(
       theme: DISCIPLINE_REAL_THEME,
       coverRule: rollMenCoverRule(sceneFamily),
     }),
-    user: `Write one new what-discipline-actually-looks-like post with exactly ${itemCount} myth-vs-truth items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new what-discipline-actually-looks-like post with exactly ${itemCount} myth-vs-truth items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "discipline-real",
     requireName: true,
     minLines: 2,
@@ -2424,7 +2441,8 @@ OUTPUT (strict JSON, no markdown):
 
 /** Generate one unsent-letter topic (women / Ripple, 2-slide). */
 export async function generateLetterTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  feedback?: string | null
 ): Promise<PhoneQuoteTopic> {
   const { prisma } = await import("@/lib/prisma");
   const purpose = "letter-carousel-topic";
@@ -2437,7 +2455,7 @@ export async function generateLetterTopic(
       messages: [
         {
           role: "user",
-          content: `Write one new unsent-letter post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+          content: `Write one new unsent-letter post.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
         },
       ],
     });
@@ -2580,7 +2598,8 @@ OUTPUT (strict JSON, no markdown):
 /** Generate one text-message topic for either texts lane. */
 export async function generateTextsTopic(
   lane: TextsLane,
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  feedback?: string | null
 ): Promise<TextsTopic> {
   const { prisma } = await import("@/lib/prisma");
   const purpose = `${lane}-topic`;
@@ -2598,7 +2617,7 @@ export async function generateTextsTopic(
       messages: [
         {
           role: "user",
-          content: `Write one new post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+          content: `Write one new post.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
         },
       ],
     });
