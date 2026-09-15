@@ -169,6 +169,12 @@ export const socialPublishCronFn = inngest.createFunction(
     });
 
     let published = 0;
+    const successes: {
+      platform: string;
+      lane: string | null;
+      headline: string;
+      permalink: string | null;
+    }[] = [];
     for (const row of dueRows) {
       // ── Reel lanes: render the slideshow video once per post ──────
       // (step id keyed on the post, so the IG and FB rows memoize to
@@ -335,7 +341,7 @@ export const socialPublishCronFn = inngest.createFunction(
             console.log(
               `[social-publish] TIKTOK INBOX DRAFT: "${post.headline}" → ${publishId}`
             );
-            return true;
+            return { headline: post.headline ?? "", permalink: null };
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             const updated = await prisma.socialPublish.update({
@@ -412,7 +418,10 @@ export const socialPublishCronFn = inngest.createFunction(
           console.log(
             `[social-publish] POSTED ${row.platform}/${account.key}: "${post.headline}" → ${result.permalink ?? result.externalId}`
           );
-          return true;
+          return {
+            headline: post.headline ?? "",
+            permalink: result.permalink ?? null,
+          };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           const updated = await prisma.socialPublish.update({
@@ -434,7 +443,31 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
       });
-      if (ok) published++;
+      // typeof guard (not just truthiness): the tiktok skip() helper's
+      // inferred boolean return widens the step union to include `true`.
+      if (ok && typeof ok === "object") {
+        published++;
+        successes.push({
+          platform: row.platform,
+          lane: row.carouselPost.lane,
+          headline: ok.headline,
+          permalink: ok.permalink,
+        });
+      }
+    }
+
+    // ── 3. NOTIFY: one summary email per run covering every success ──
+    // (2026-09-14, per Keenan: "set up an email notification for every
+    // successful post generation on facebook, instagram, or draft sent
+    // to tiktok"). Failures never block the run — the email is FYI only.
+    if (successes.length > 0) {
+      await step.run("email-publish-summary", async () => {
+        const { sendPublishNotification } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendPublishNotification(successes);
+        return successes.length;
+      });
     }
 
     logger.info(

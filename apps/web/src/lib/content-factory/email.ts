@@ -68,6 +68,68 @@ function accountLabel(lane: string | null | undefined): string {
   return lane && BWK_LANES.has(lane) ? "[BUILD WITH KEY]" : "[RIPPLE]";
 }
 
+// ── Auto-publish notifications (2026-09-14, per Keenan: "set up an
+// email notification for every successful post generation on facebook,
+// instagram, or draft sent to tiktok") ───────────────────────────────
+// One email per cron run covering every success in that run — never one
+// email per platform row, which would be up to 9 emails per tick.
+
+export interface PublishSuccess {
+  platform: string; // instagram | facebook | tiktok
+  lane: string | null;
+  headline: string;
+  permalink: string | null; // null for TikTok inbox drafts
+}
+
+const PLATFORM_LABEL: Record<string, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok (inbox draft)",
+};
+
+export async function sendPublishNotification(
+  successes: PublishSuccess[]
+): Promise<void> {
+  if (successes.length === 0) return;
+  let resend: ReturnType<typeof getResendClient>;
+  try {
+    resend = getResendClient(); // throws when RESEND_API_KEY is unset
+  } catch {
+    console.warn("[publish-email] RESEND_API_KEY not set — skipping notification");
+    return;
+  }
+
+  const items = successes
+    .map((s) => {
+      const label = PLATFORM_LABEL[s.platform] ?? s.platform;
+      const link = s.permalink
+        ? `<a href="${s.permalink}">${s.permalink}</a>`
+        : s.platform === "tiktok"
+          ? "open the TikTok app inbox to finish and post it"
+          : "";
+      return `<li><strong>${label}</strong> ${accountLabel(s.lane)} — “${s.headline}”${link ? `<br/>${link}` : ""}</li>`;
+    })
+    .join("\n");
+
+  const counts = successes.reduce<Record<string, number>>((acc, s) => {
+    acc[s.platform] = (acc[s.platform] ?? 0) + 1;
+    return acc;
+  }, {});
+  const subjectBits = Object.entries(counts)
+    .map(([p, n]) => `${n} ${PLATFORM_LABEL[p] ?? p}`)
+    .join(", ");
+
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: TO_ADDRESS,
+    subject: `✅ Auto-published: ${subjectBits}`,
+    html: `<p>The auto-publisher just shipped:</p><ul>${items}</ul><p>Full history: <a href="${REVIEW_BASE_URL}/admin/content-factory/carousels">${REVIEW_BASE_URL}/admin/content-factory/carousels</a></p>`,
+  });
+  if (error) {
+    console.error(`[publish-email] Failed to send notification: ${error.message}`);
+  }
+}
+
 interface SlideRow {
   id: string;
   order: number;

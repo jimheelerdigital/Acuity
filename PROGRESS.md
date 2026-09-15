@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-14] — Email notification for every successful auto-publish
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Every time the auto-publisher successfully posts something — an Instagram post, a Facebook post, or a draft delivered to a TikTok inbox — you get an email listing exactly what went out: the platform, which brand (Ripple or Build With Key), the post headline, and a direct link to the live post (TikTok drafts say "open the TikTok app inbox" instead, since drafts have no public link yet). If one publishing run ships several things at once, they're bundled into one email instead of flooding your inbox.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: new exported sendPublishNotification(successes) — one Resend email per cron run, subject "✅ Auto-published: N Instagram, N Facebook, …", reuses FROM/TO/accountLabel; degrades to a console warn if RESEND_API_KEY is unset
+- apps/web/src/inngest/functions/social-publish-cron.ts: publish steps now return { headline, permalink } on success instead of true; successes collected across the run and sent via a new "email-publish-summary" step (only runs when something published). No trigger changes — no Inngest resync needed.
+
+### Manual steps needed
+None.
+
+### Notes
+- One digest per run (max ~9 platform events), not one email per platform row — consistent with the standing "one email per post" rule for content emails.
+- The `if (ok && typeof ok === "object")` guard exists because the tiktok skip() helper's inferred boolean return widens the step union to include `true`.
+- Same session, ops note: Keenan's go-live flag was typo'd in Vercel (`SOCIAL_AUTOPUBLISHED_ENABLED`) so autopublish silently stayed dark; fixed by adding the correct `SOCIAL_AUTOPUBLISH_ENABLED=1`, deleting the typo'd var, and force-redeploying. Auto-publishing has been LIVE since ~7:50pm PT 2026-09-14.
+
+---
+
 ## [2026-09-14] — Facebook metrics + a learning loop that feeds engagement back into topic generation
 
 **Requested by:** Keenan
