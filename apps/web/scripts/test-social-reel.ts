@@ -92,10 +92,11 @@ async function main() {
       .getPublicUrl(`music/ripple/${track.name}`).data.publicUrl;
     console.log(`Rendering reel with track: ${track.name}`);
 
-    const buf = await renderSlideshowReel(
+    const { buf, transition } = await renderSlideshowReel(
       post.slides.map((s) => s.imageUrl),
       musicUrl
     );
+    console.log(`Transition used: ${transition}`);
     let uploaded = false;
     for (let i = 0; i < 3 && !uploaded; i++) {
       const { error: upErr } = await supabase.storage

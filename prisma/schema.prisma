@@ -1420,6 +1420,7 @@ model CarouselPost {
   storyVideoUrl  String? // 30s narrated story video MP4 (Supabase Storage URL)
   storyVoiced    Boolean? // Whether the voiceover actually muxed (false = video shipped SILENT)
   storyTheme     String? // Short label of the standalone story concept (dedup for future scripts)
+  reelTransition String? // xfade transition used for the slideshow Reel render (2026-09-15) — lets the feedback loop rank transitions by engagement
   // Where Keenan posted this carousel (pasted once in the admin). The
   // daily metrics-refresh cron pulls engagement from the platform APIs
   // for any POSTED carousel with a link.

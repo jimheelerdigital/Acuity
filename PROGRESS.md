@@ -7,11 +7,39 @@
 
 ---
 
-## [2026-09-15] — Reels: 3.5s slides, no zoom, swipe transition
+## [2026-09-15] — Reel transitions now rotate randomly so we can learn which performs best; TikTok drafts are flowing
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Instead of every music Reel using the same slide transition, each new Reel now picks one of five styles at random (the smooth swipe, a crisp swipe, a circle reveal, a clock-sweep, and a sliced wipe). Which style each post used is saved with the post, so once engagement numbers come in we can see which transition audiences respond to and lock in the winner. Separately, TikTok is officially live: both accounts (Ripple + buildwithkey) are connected and all 37 queued drafts are being delivered to the TikTok inboxes today — the first two landed at 5:00pm ET.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: fixed TRANSITION const → exported REEL_TRANSITIONS pool (smoothleft, slideleft, circleopen, radial, hlslice); renderSlideshowReel picks one per render and now returns `{ buf, transition }` instead of a bare Buffer
+- apps/web/src/inngest/functions/social-publish-cron.ts: after a successful reel upload, persists the transition to CarouselPost.reelTransition
+- prisma/schema.prisma: new nullable column `CarouselPost.reelTransition` (TEXT) — **already added to prod** via raw ALTER (additive, IF NOT EXISTS) and back-declared in schema same session per the schema rule
+- apps/web/scripts/add-reel-transition-column.ts (one-off DDL runner), apps/web/scripts/requeue-tiktok-today.ts (one-off: verified both SocialToken rows, flipped 16 SKIPPED tiktok rows to PENDING, re-slotted all 37 at a 5-min stagger from 4:54pm ET)
+- apps/web/scripts/test-social-reel.ts: adjusted for the new render return type
+- All five transition names validated against the bundled ffmpeg-static binary before committing
+
+### Manual steps needed
+None. (No db push needed — column already live and declared.)
+
+### Notes
+- Ranking transitions: query POSTED reel posts grouped by reelTransition joined to SocialPublish metrics once ~4+ posts per transition exist; then shrink REEL_TRANSITIONS to the winner(s).
+- Cached reels at reels/{postId}.mp4 keep whatever transition they were rendered with; reelTransition is only written on fresh renders.
+- TikTok connect gotcha: the second OAuth connect initially used the plain /connect URL and silently overwrote the ripple token slot — the `?account=bwk` query param is what routes the grant to the BWK slot. The connected-page ✓ renders as mojibake (missing charset meta on the callback HTML) — cosmetic only.
+- Git gotcha (second dependency wipe today): rebasing with a temp commit that included the tracked node_modules symlink deletion replayed that deletion and deleted the real installed tree. Fixed with `npm install`; `git update-index --skip-worktree node_modules` now applied so git ignores the path entirely.
+
+---
+
+## [2026-09-15] — Reels: 3.5s slides, no zoom, swipe transition
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a6f511f5
 
 ### In plain English (for Keenan)
 Future music Reels hold each slide for 3.5 seconds (up from 3.3), the slow zoom-in effect is gone (slides are now perfectly still), and slides change with a smooth swipe — like someone flicking through a real carousel — instead of a plain fade.
@@ -33,7 +61,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** 1d5b4738
 
 ### In plain English (for Keenan)
 Auto-published posts no longer fire at whatever odd hour they were generated — every platform now has its own US prime-time window (Eastern Time). Instagram posts go out between 11am and 7pm ET, Facebook between 9am and 6pm ET, and TikTok drafts land in your inbox between 7 and 10am ET so you have the whole day to add audio and post them. Posts queued outside a window wait for the next opening; posts within a window keep a stagger so the accounts never dump everything at once. The ~43 posts already waiting in the queue were re-slotted into these windows too.

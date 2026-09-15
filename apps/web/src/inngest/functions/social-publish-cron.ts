@@ -237,7 +237,7 @@ export const socialPublishCronFn = inngest.createFunction(
                 );
                 return null;
               }
-              const buf = await renderSlideshowReel(
+              const { buf, transition } = await renderSlideshowReel(
                 post.slides.map((s) => s.imageUrl),
                 music
               );
@@ -248,6 +248,12 @@ export const socialPublishCronFn = inngest.createFunction(
                   upsert: true,
                 });
               if (error) throw new Error(`Reel upload failed: ${error.message}`);
+              // Record which transition this reel used so engagement
+              // metrics can rank transitions (2026-09-15, per Keenan).
+              await prisma.carouselPost.update({
+                where: { id: row.carouselPostId },
+                data: { reelTransition: transition },
+              });
               return publicUrl;
             } catch (err) {
               console.error(

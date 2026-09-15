@@ -5,10 +5,10 @@
  * Instagram's Graph API cannot attach music to photo carousels — music on
  * an API-published post is only possible when the post IS a video with
  * the audio baked in. So Reel-designated lanes get their slides rendered
- * into a 1080x1920 slideshow MP4 (static slides with a smooth swipe
- * transition — zoom removed 2026-09-15 per Keenan) with a library music
- * track muxed in, published as an IG Reel + FB video instead of a photo
- * carousel.
+ * into a 1080x1920 slideshow MP4 (static slides with a randomized
+ * transition from REEL_TRANSITIONS — zoom removed 2026-09-15 per Keenan)
+ * with a library music track muxed in, published as an IG Reel + FB
+ * video instead of a photo carousel.
  *
  * MUSIC LIBRARY: Keenan uploads royalty-free MP3s to the content-factory
  * bucket under music/ripple/ and music/bwk/ (Supabase dashboard →
@@ -28,10 +28,20 @@ import * as path from "path";
 const SLIDE_SEC = 3.5;
 /** Transition length between slides. */
 const XFADE_SEC = 0.4;
-/** xfade transition (2026-09-15, per Keenan: "add a better slide
- * transition that's more engaging" — smoothleft is a smooth directional
- * swipe that mimics a real carousel swipe gesture; was plain fade). */
-const TRANSITION = "smoothleft";
+/** xfade transition pool (2026-09-15, per Keenan: "play around with the
+ * different transitions so we can get valuable data in the feedback
+ * loop"). One is picked at random per render and recorded on
+ * CarouselPost.reelTransition so engagement metrics can rank them —
+ * once a winner emerges, shrink this list to it. All are directional /
+ * reveal styles that read as intentional motion (no plain fade). */
+export const REEL_TRANSITIONS = [
+  "smoothleft", // soft carousel-swipe (the 09-15 baseline)
+  "slideleft", // crisp hard swipe
+  "circleopen", // circular reveal from center
+  "radial", // clock-sweep reveal
+  "hlslice", // horizontal sliced wipe
+] as const;
+export type ReelTransition = (typeof REEL_TRANSITIONS)[number];
 const FPS = 30;
 
 /** Resolve the bundled ffmpeg binary path (null if unavailable). */
@@ -88,15 +98,16 @@ async function download(url: string, dest: string): Promise<void> {
 
 /**
  * Render slide images into a vertical slideshow MP4 with the music track
- * muxed in. Each slide holds SLIDE_SEC with a subtle zoom, slides
- * crossfade, audio fades out over the last second. Returns the MP4
- * buffer. Throws on any failure — callers fall back to the photo
- * carousel.
+ * muxed in. Each slide holds SLIDE_SEC, slides transition with a
+ * randomly-picked style from REEL_TRANSITIONS, audio fades out over the
+ * last second. Returns the MP4 buffer plus the transition used (callers
+ * persist it for the engagement feedback loop). Throws on any failure —
+ * callers fall back to the photo carousel.
  */
 export async function renderSlideshowReel(
   imageUrls: string[],
   musicUrl: string
-): Promise<Buffer> {
+): Promise<{ buf: Buffer; transition: ReelTransition }> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
   if (imageUrls.length === 0) throw new Error("No images to render");
@@ -114,6 +125,8 @@ export async function renderSlideshowReel(
 
     const n = imgPaths.length;
     const totalSec = n * SLIDE_SEC - (n - 1) * XFADE_SEC;
+    const transition =
+      REEL_TRANSITIONS[Math.floor(Math.random() * REEL_TRANSITIONS.length)];
 
     const args: string[] = ["-y", "-loglevel", "warning"];
     // Each still becomes a SLIDE_SEC-long video stream (-loop 1 -t) —
@@ -139,7 +152,7 @@ export async function renderSlideshowReel(
         const out = j === n - 2 ? "[vout]" : `[x${j}]`;
         const left = j === 0 ? "[v0]" : `[x${j - 1}]`;
         filters.push(
-          `${left}[v${j + 1}]xfade=transition=${TRANSITION}:duration=${XFADE_SEC}:offset=${offset}${out}`
+          `${left}[v${j + 1}]xfade=transition=${transition}:duration=${XFADE_SEC}:offset=${offset}${out}`
         );
       }
       videoLabel = "[vout]";
@@ -188,9 +201,9 @@ export async function renderSlideshowReel(
       );
     }
     console.log(
-      `[slideshow-reel] Rendered ${n} slides → ${totalSec.toFixed(1)}s, ${out.length} bytes`
+      `[slideshow-reel] Rendered ${n} slides → ${totalSec.toFixed(1)}s, ${out.length} bytes, transition=${transition}`
     );
-    return out;
+    return { buf: out, transition };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
