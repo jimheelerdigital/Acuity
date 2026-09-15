@@ -12,6 +12,7 @@
 import sharp from "sharp";
 import * as fs from "fs";
 import * as path from "path";
+import type { QuoteSurface } from "./moody-carousel";
 
 const OUTPUT_W = 1080;
 const OUTPUT_H = 1920; // 9:16 TikTok native
@@ -112,13 +113,14 @@ async function renderMarkup(
   fontPath: string | null,
   maxWidth: number,
   lineSpacing: number,
-  padding = 0
+  padding = 0,
+  align: "centre" | "left" = "centre"
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const textOpts: Record<string, unknown> = {
     text: markup,
     width: maxWidth,
     rgba: true,
-    align: "centre",
+    align,
     spacing: Math.round(lineSpacing),
   };
   if (fontPath) {
@@ -645,6 +647,862 @@ export async function renderMoodyTextOverlay(
     ])
     .png()
     .toBuffer();
+}
+
+/**
+ * Render the PHONE-QUOTE note-screen slide as a complete 1080x1920 JPEG
+ * (2026-09-03, per Keenan's reference screenshots: "the next slide is a
+ * phone screen with a quote about something important").
+ *
+ * 2026-09-04 REDESIGN, per Keenan ("IT's supposed to look like text
+ * written out on a phone screen... not just a blank ass image"): the
+ * slide now renders full Notes-app chrome — status bar (time, signal,
+ * wifi, battery), a "< Notes" back row with action dots, a small
+ * centered date line, and the quote typed LEFT-ALIGNED near the top
+ * like a real note. All deterministic (no gpt-image-2 — the quote can
+ * never be misspelled). Two variants:
+ * - "women" (Ripple): soft light-blue notes screen, near-black text.
+ * - "men" (BWK): true iOS-dark notes screen (#1C1C1E), gold accent.
+ */
+async function renderNotesScreenNative(
+  quote: string,
+  variant: "women" | "men",
+  nativeH: number,
+  opts: {
+    /** Draw the Dynamic Island cutout (only when the screen is shown as
+     * a physical phone in a photo — real screenshots don't include it). */
+    withIsland: boolean;
+    quoteFontSize: number;
+    wrapChars: number;
+  }
+): Promise<Buffer> {
+  const fontMedium = await ensureFontFile("Medium");
+  const fontBold = await ensureFontFile("Bold");
+  const isWomen = variant === "women";
+
+  const bg = isWomen
+    ? { r: 0xd9, g: 0xea, b: 0xf7 }
+    : { r: 0x1c, g: 0x1c, b: 0x1e };
+  const textColor = isWomen ? "#1C2733" : "#F2F2F0";
+  const chrome = isWomen ? "#1C2733" : "#F2F2F0"; // status-bar glyphs
+  const accent = isWomen ? "#3D6186" : "#E5B84C"; // back label + actions
+  const subtle = isWomen ? "#5C7288" : "#98989E"; // date line
+
+  // ── Status-bar + nav chrome (shapes only — no SVG text, so no
+  // system-font dependency in the serverless runtime) ──
+  const chromeSvg = `<svg width="${OUTPUT_W}" height="${nativeH}" viewBox="0 0 ${OUTPUT_W} ${nativeH}" xmlns="http://www.w3.org/2000/svg">
+  ${opts.withIsland ? `<rect x="415" y="24" width="250" height="76" rx="38" fill="#000000"/>` : ""}
+  <!-- signal bars -->
+  <rect x="806" y="58" width="10" height="12" rx="3" fill="${chrome}"/>
+  <rect x="822" y="52" width="10" height="18" rx="3" fill="${chrome}"/>
+  <rect x="838" y="46" width="10" height="24" rx="3" fill="${chrome}"/>
+  <rect x="854" y="40" width="10" height="30" rx="3" fill="${chrome}"/>
+  <!-- wifi -->
+  <path d="M 888 52 A 30 30 0 0 1 928 52" stroke="${chrome}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M 896 61 A 18 18 0 0 1 920 61" stroke="${chrome}" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <circle cx="908" cy="70" r="5" fill="${chrome}"/>
+  <!-- battery -->
+  <rect x="948" y="42" width="58" height="28" rx="9" stroke="${chrome}" stroke-width="4" fill="none"/>
+  <rect x="954" y="48" width="34" height="16" rx="4" fill="${chrome}"/>
+  <path d="M 1010 50 Q 1016 56 1010 62" stroke="${chrome}" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- back chevron -->
+  <path d="M 92 132 L 64 162 L 92 192" stroke="${accent}" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- action dots (ellipsis in circle) -->
+  <circle cx="1002" cy="162" r="30" stroke="${accent}" stroke-width="5" fill="none"/>
+  <circle cx="988" cy="162" r="4.5" fill="${accent}"/>
+  <circle cx="1002" cy="162" r="4.5" fill="${accent}"/>
+  <circle cx="1016" cy="162" r="4.5" fill="${accent}"/>
+</svg>`;
+
+  // ── Text pieces (Pango pipeline, same as every slide) ──
+  const timePiece = await renderMarkup(
+    `<span font_desc="Poppins Bold 34" foreground="${chrome}">9:41</span>`,
+    fontBold,
+    200,
+    0,
+    4,
+    "left"
+  );
+  const notesPiece = await renderMarkup(
+    `<span font_desc="Poppins Medium 40" foreground="${accent}">Notes</span>`,
+    fontMedium,
+    300,
+    0,
+    4,
+    "left"
+  );
+  const now = new Date();
+  const dateLine = `${now.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })} at 9:41 PM`;
+  const datePiece = await renderMarkup(
+    `<span font_desc="Poppins Medium 28" foreground="${subtle}">${escapePango(dateLine)}</span>`,
+    fontMedium,
+    600,
+    0,
+    4
+  );
+
+  const quoteLines = wordWrap(stripUnrenderable(quote), opts.wrapChars);
+  const quoteMarkup = `<span font_desc="Poppins Medium ${opts.quoteFontSize}" foreground="${textColor}">${quoteLines
+    .map((l) => escapePango(l))
+    .join("\n")}</span>`;
+  const quotePiece = await renderMarkup(
+    quoteMarkup,
+    fontMedium,
+    OUTPUT_W - 96 * 2,
+    Math.round(opts.quoteFontSize / 2),
+    8,
+    "left"
+  );
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: nativeH,
+      channels: 3,
+      background: bg,
+    },
+  })
+    .composite([
+      { input: Buffer.from(chromeSvg), top: 0, left: 0 },
+      { input: timePiece.buffer, top: 38, left: 96 },
+      { input: notesPiece.buffer, top: 138, left: 110 },
+      {
+        input: datePiece.buffer,
+        top: 268,
+        left: Math.round((OUTPUT_W - datePiece.width) / 2),
+      },
+      { input: quotePiece.buffer, top: 400, left: 96 },
+    ])
+    .png()
+    .toBuffer();
+}
+
+export async function renderPhoneQuoteSlide(
+  quote: string,
+  variant: "women" | "men",
+  /**
+   * 2026-09-08, per Keenan ("you need to put the quotes onto some sort
+   * of screen and bake it into the image"): when a background photo is
+   * supplied, the Notes screen renders on a realistic drawn iPhone
+   * composited over it — the quote is visibly ON a device inside a
+   * photograph, and the text still never touches the image model.
+   * Without a background (old posts recomposing, or the background
+   * generation failed), falls back to the full-bleed screenshot.
+   */
+  background?: Buffer
+): Promise<Buffer> {
+  if (!background) {
+    const screen = await renderNotesScreenNative(quote, variant, OUTPUT_H, {
+      withIsland: false,
+      quoteFontSize: 52,
+      wrapChars: 28,
+    });
+    return sharp(screen).jpeg({ quality: 90 }).toBuffer();
+  }
+
+  // ── Phone-in-scene geometry (1080x1920 canvas) ──
+  const PHONE_W = 700;
+  const PHONE_H = 1466;
+  const BEZEL = 22;
+  const PHONE_R = 110;
+  const SCREEN_W = PHONE_W - BEZEL * 2; // 656
+  const SCREEN_H = PHONE_H - BEZEL * 2; // 1422 (≈9:19.5, real iPhone aspect)
+  const phoneLeft = Math.round((OUTPUT_W - PHONE_W) / 2);
+  const phoneTop = Math.round((OUTPUT_H - PHONE_H) / 2);
+
+  // Render the screen at native 1080-wide resolution (bigger quote type
+  // so it stays legible after the downscale), then resize onto the phone.
+  const nativeH = Math.round((OUTPUT_W * SCREEN_H) / SCREEN_W);
+  const screenNative = await renderNotesScreenNative(quote, variant, nativeH, {
+    withIsland: true,
+    quoteFontSize: 66,
+    wrapChars: 24,
+  });
+  const screenR = PHONE_R - BEZEL;
+  const screenMask = Buffer.from(
+    `<svg width="${SCREEN_W}" height="${SCREEN_H}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${SCREEN_W}" height="${SCREEN_H}" rx="${screenR}" fill="#ffffff"/></svg>`
+  );
+  const screen = await sharp(screenNative)
+    .resize(SCREEN_W, SCREEN_H)
+    .ensureAlpha()
+    .composite([{ input: screenMask, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  // Drop shadow + phone body + side buttons — drawn shapes, no fonts.
+  const phoneSvg = Buffer.from(`<svg width="${OUTPUT_W}" height="${OUTPUT_H}" viewBox="0 0 ${OUTPUT_W} ${OUTPUT_H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="ps" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+  </defs>
+  <rect x="${phoneLeft + 6}" y="${phoneTop + 30}" width="${PHONE_W}" height="${PHONE_H}" rx="${PHONE_R}" fill="#000000" opacity="0.55" filter="url(#ps)"/>
+  <rect x="${phoneLeft - 6}" y="${phoneTop + 340}" width="6" height="110" rx="3" fill="#2A2A2E"/>
+  <rect x="${phoneLeft - 6}" y="${phoneTop + 490}" width="6" height="110" rx="3" fill="#2A2A2E"/>
+  <rect x="${phoneLeft + PHONE_W}" y="${phoneTop + 420}" width="6" height="170" rx="3" fill="#2A2A2E"/>
+  <rect x="${phoneLeft}" y="${phoneTop}" width="${PHONE_W}" height="${PHONE_H}" rx="${PHONE_R}" fill="#0B0B0D"/>
+  <rect x="${phoneLeft + 2}" y="${phoneTop + 2}" width="${PHONE_W - 4}" height="${PHONE_H - 4}" rx="${PHONE_R - 2}" fill="none" stroke="#3A3A3E" stroke-width="3"/>
+</svg>`);
+
+  return sharp(background)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .composite([
+      { input: phoneSvg, top: 0, left: 0 },
+      { input: screen, top: phoneTop + BEZEL, left: phoneLeft + BEZEL },
+    ])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+// ─── Quote-surface system (2026-09-08) ──────────────────────────────────────
+// Per Keenan (rejecting the drawn-phone mockup as "way too generic... it
+// needs to be more built into the environment"): the AI now photographs a
+// real scene CONTAINING a blank glowing white screen — a phone in a hand,
+// a flip phone, a car dashboard display, a billboard, a sign — and our
+// code finds that blank screen and composites the deterministic text onto
+// it. The quote text still NEVER touches the image model.
+
+export interface BrightRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Find the blank glowing screen in a 1080x1920 scene photo.
+ *
+ * Downsamples to 270x480 grayscale, thresholds bright pixels, takes the
+ * largest connected component, and validates that it's a clean solid
+ * rectangle (high bbox fill ratio, sane size). Returns null when no
+ * convincing screen exists — callers fall back to the drawn-phone or
+ * flat render.
+ */
+export async function detectBrightRect(
+  frame: Buffer
+): Promise<BrightRect | null> {
+  const DW = 270;
+  const DH = 480;
+  const T = 228; // luminance threshold — prompt demands a pure-white screen
+  const { data } = await sharp(frame)
+    .resize(DW, DH, { fit: "fill" })
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const seen = new Uint8Array(DW * DH);
+  let best: {
+    area: number;
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  } | null = null;
+
+  for (let i = 0; i < DW * DH; i++) {
+    if (seen[i] || data[i] < T) continue;
+    let area = 0;
+    let minX = DW,
+      maxX = 0,
+      minY = DH,
+      maxY = 0;
+    const stack = [i];
+    seen[i] = 1;
+    while (stack.length) {
+      const p = stack.pop()!;
+      const px = p % DW;
+      const py = (p / DW) | 0;
+      area++;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+      if (px > 0 && !seen[p - 1] && data[p - 1] >= T) {
+        seen[p - 1] = 1;
+        stack.push(p - 1);
+      }
+      if (px < DW - 1 && !seen[p + 1] && data[p + 1] >= T) {
+        seen[p + 1] = 1;
+        stack.push(p + 1);
+      }
+      if (py > 0 && !seen[p - DW] && data[p - DW] >= T) {
+        seen[p - DW] = 1;
+        stack.push(p - DW);
+      }
+      if (py < DH - 1 && !seen[p + DW] && data[p + DW] >= T) {
+        seen[p + DW] = 1;
+        stack.push(p + DW);
+      }
+    }
+    if (!best || area > best.area) best = { area, minX, maxX, minY, maxY };
+  }
+
+  if (!best) return null;
+  const bw = best.maxX - best.minX + 1;
+  const bh = best.maxY - best.minY + 1;
+  // Must be big enough to hold legible text…
+  if (best.area < DW * DH * 0.03) return null;
+  if (bw < DW * 0.2 || bh < DH * 0.06) return null;
+  // …a clean solid rectangle (not a lamp / bloom / diagonal screen)…
+  if (best.area / (bw * bh) < 0.82) return null;
+  // …and not a blown-out whole frame (failed generation).
+  if (bw > DW * 0.96 && bh > DH * 0.96) return null;
+
+  const sx = OUTPUT_W / DW;
+  const sy = OUTPUT_H / DH;
+  return {
+    x: Math.round(best.minX * sx),
+    y: Math.round(best.minY * sy),
+    w: Math.round(bw * sx),
+    h: Math.round(bh * sy),
+  };
+}
+
+/**
+ * Render wrapped quote text, shrinking the font until it fits maxH.
+ */
+async function fitQuoteText(opts: {
+  text: string;
+  font: "Bold" | "Medium";
+  color: string;
+  maxW: number;
+  maxH: number;
+  startSize: number;
+  minSize: number;
+  align: "centre" | "left";
+  /** Extra line spacing multiplier (letterboard signs breathe more). */
+  lineSpacingFactor?: number;
+}): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const fontPath = await ensureFontFile(opts.font);
+  const family = opts.font === "Bold" ? "Poppins Bold" : "Poppins Medium";
+  const lsf = opts.lineSpacingFactor ?? 0.45;
+  let last: { buffer: Buffer; width: number; height: number } | null = null;
+  for (let size = opts.startSize; size >= opts.minSize; size -= 4) {
+    const wrapChars = Math.max(8, Math.floor(opts.maxW / (size * 0.6)));
+    const lines = wordWrap(opts.text, wrapChars);
+    const markup = `<span font_desc="${family} ${size}" foreground="${opts.color}">${lines
+      .map((l) => escapePango(l))
+      .join("\n")}</span>`;
+    last = await renderMarkup(
+      markup,
+      fontPath,
+      opts.maxW,
+      Math.round(size * lsf),
+      6,
+      opts.align
+    );
+    if (last.height <= opts.maxH) return last;
+  }
+  return last!; // smallest size — may slightly overflow, better than throwing
+}
+
+/** The "friend" whose message is coming in on phone surfaces. */
+const SURFACE_FRIEND: Record<"women" | "men", string> = {
+  women: "Jess",
+  men: "Marcus",
+};
+
+/** Expected h/w of the detected screen per surface — a landscape rect
+ * claiming to be a hand-held iPhone means detection grabbed something
+ * else, so reject and fall back. minWFrac (2026-09-08, per Keenan
+ * "you can't even read it now. it should take up almost the whole
+ * page") is the minimum rect width as a fraction of frame width — a
+ * screen smaller than this renders unreadable text, so treat it as a
+ * detection failure and let the retry/fallback chain fire. */
+const SURFACE_ASPECT: Record<
+  QuoteSurface,
+  { min: number; max: number; minWFrac: number }
+> = {
+  imessage: { min: 1.3, max: 2.6, minWFrac: 0.5 },
+  flip: { min: 0.7, max: 1.8, minWFrac: 0.45 },
+  car: { min: 0.25, max: 0.9, minWFrac: 0.6 },
+  billboard: { min: 0.2, max: 0.9, minWFrac: 0.6 },
+  sign: { min: 0.5, max: 1.6, minWFrac: 0.5 },
+  poster: { min: 1.1, max: 2.2, minWFrac: 0.45 },
+  // 2026-09-14 surfaces — baked-text only, listed here purely to keep
+  // the legacy composite path type-complete if one is ever edited
+  // through it.
+  neon: { min: 0.4, max: 1.3, minWFrac: 0.5 },
+  marquee: { min: 0.2, max: 0.9, minWFrac: 0.6 },
+  chalkboard: { min: 1.1, max: 2.2, minWFrac: 0.45 },
+  paper: { min: 1.1, max: 2.2, minWFrac: 0.45 },
+};
+
+/**
+ * Render the deterministic screen content for a surface, sized exactly
+ * to the detected rect (w×h at full resolution). Designed at 1080-wide
+ * and downscaled so type stays crisp.
+ */
+export async function renderSurfaceOverlay(
+  quote: string,
+  variant: "women" | "men",
+  surface: QuoteSurface,
+  w: number,
+  h: number
+): Promise<Buffer> {
+  const clean = stripUnrenderable(quote);
+  const DW = 1080;
+  const DH = Math.max(200, Math.round((DW * h) / w));
+  const isWomen = variant === "women";
+  const friend = SURFACE_FRIEND[variant];
+  const fontMedium = await ensureFontFile("Medium");
+  let design: Buffer;
+
+  if (surface === "imessage") {
+    // An iMessage thread with ONE incoming bubble — "a true text message
+    // from a friend coming in" (Keenan, 2026-09-08). Light for women,
+    // iOS dark mode for men.
+    const bg = isWomen
+      ? { r: 0xff, g: 0xff, b: 0xff }
+      : { r: 0x00, g: 0x00, b: 0x00 };
+    const headerFill = isWomen ? "#F6F6F8" : "#101012";
+    const bubbleFill = isWomen ? "#E9E9EB" : "#26262A";
+    const textColor = isWomen ? "#0B0B0D" : "#F2F2F0";
+    const subtle = isWomen ? "#8E8E93" : "#98989E";
+    const s = Math.min(1, DH / 2100); // compact chrome on squat screens
+    const headerH = Math.round(340 * s);
+
+    const avatar = await circlePng(Math.round(150 * s), {
+      r: 0xa9,
+      g: 0xab,
+      b: 0xb2,
+    });
+    const chromeSvg = `<svg width="${DW}" height="${DH}" viewBox="0 0 ${DW} ${DH}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="${DW}" height="${headerH}" fill="${headerFill}"/>
+  <rect x="0" y="${headerH - 2}" width="${DW}" height="2" fill="${isWomen ? "#D8D8DC" : "#2A2A2E"}" opacity="0.8"/>
+  <path d="M ${Math.round(70 * s)} ${Math.round(140 * s)} L ${Math.round(38 * s)} ${Math.round(175 * s)} L ${Math.round(70 * s)} ${Math.round(210 * s)}" stroke="#0A84FF" stroke-width="${Math.max(4, Math.round(9 * s))}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+    const namePiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(20, Math.round(32 * s))}" foreground="${textColor}">${escapePango(friend)}</span>`,
+      fontMedium,
+      500,
+      0,
+      4
+    );
+    const datePiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(16, Math.round(26 * s))}" foreground="${subtle}">Today 9:41 PM</span>`,
+      fontMedium,
+      500,
+      0,
+      4
+    );
+    const placeholderPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(16, Math.round(28 * s))}" foreground="${subtle}">iMessage</span>`,
+      fontMedium,
+      400,
+      0,
+      4,
+      "left"
+    );
+    // Real threads pin the newest message to the BOTTOM, just above the
+    // input bar — not floating at the top of an empty screen.
+    const inputH = Math.round(88 * s);
+    const inputTop = DH - inputH - Math.round(44 * s);
+    const padX = 44;
+    const padY = 38;
+    const quotePiece = await fitQuoteText({
+      text: clean,
+      font: "Medium",
+      color: textColor,
+      maxW: Math.round(DW * 0.62),
+      maxH: inputTop - headerH - padY * 2 - Math.round(160 * s),
+      startSize: 46,
+      minSize: 24,
+      align: "left",
+    });
+    const bubbleW = quotePiece.width + padX * 2;
+    const bubbleH = quotePiece.height + padY * 2;
+    const bubbleTop = inputTop - Math.round(40 * s) - bubbleH;
+    const bubbleSvg = `<svg width="${bubbleW}" height="${bubbleH}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${bubbleW}" height="${bubbleH}" rx="44" fill="${bubbleFill}"/></svg>`;
+    const plusD = Math.round(72 * s);
+    const inputSvg = `<svg width="${DW}" height="${inputH + 20}" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="${36 + plusD / 2}" cy="${inputH / 2}" r="${plusD / 2}" fill="${bubbleFill}"/>
+  <path d="M ${36 + plusD / 2 - plusD * 0.22} ${inputH / 2} h ${plusD * 0.44} M ${36 + plusD / 2} ${inputH / 2 - plusD * 0.22} v ${plusD * 0.44}" stroke="${subtle}" stroke-width="${Math.max(3, Math.round(6 * s))}" stroke-linecap="round"/>
+  <rect x="${36 + plusD + 28}" y="0" width="${DW - 36 - plusD - 28 - 36}" height="${inputH}" rx="${inputH / 2}" fill="none" stroke="${isWomen ? "#C7C7CC" : "#3A3A3E"}" stroke-width="3"/>
+</svg>`;
+
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite([
+        { input: Buffer.from(chromeSvg), top: 0, left: 0 },
+        {
+          input: avatar,
+          top: Math.round(60 * s),
+          left: Math.round((DW - 150 * s) / 2),
+        },
+        {
+          input: namePiece.buffer,
+          top: Math.round(230 * s),
+          left: Math.round((DW - namePiece.width) / 2),
+        },
+        {
+          input: datePiece.buffer,
+          top: bubbleTop - datePiece.height - Math.round(28 * s),
+          left: Math.round((DW - datePiece.width) / 2),
+        },
+        { input: Buffer.from(bubbleSvg), top: bubbleTop, left: 48 },
+        {
+          input: quotePiece.buffer,
+          top: bubbleTop + padY,
+          left: 48 + padX,
+        },
+        { input: Buffer.from(inputSvg), top: inputTop, left: 0 },
+        {
+          input: placeholderPiece.buffer,
+          top: inputTop + Math.round((inputH - placeholderPiece.height) / 2),
+          left: 36 + plusD + 28 + 36,
+        },
+      ])
+      .png()
+      .toBuffer();
+  } else if (surface === "flip") {
+    // Classic backlit-LCD flip-phone SMS. Same look both brands —
+    // flip phones don't do dark mode.
+    const bg = { r: 0xc6, g: 0xd6, b: 0x9b };
+    const stripFill = "#8FA768";
+    const textColor = "#222E10";
+    const stripH = Math.round(DH * 0.13);
+    const stripSvg = `<svg width="${DW}" height="${DH}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${DW}" height="${stripH}" fill="${stripFill}"/></svg>`;
+    const headerPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium 34" foreground="#1A230C">1 New Message</span>`,
+      fontMedium,
+      700,
+      0,
+      4,
+      "left"
+    );
+    const fromPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium 32" foreground="${textColor}">From: ${escapePango(friend)}</span>`,
+      fontMedium,
+      700,
+      0,
+      4,
+      "left"
+    );
+    const bodyTop = stripH + 110;
+    const quotePiece = await fitQuoteText({
+      text: clean,
+      font: "Medium",
+      color: textColor,
+      maxW: DW - 96,
+      maxH: DH - bodyTop - 50,
+      startSize: 46,
+      minSize: 24,
+      align: "left",
+    });
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite([
+        { input: Buffer.from(stripSvg), top: 0, left: 0 },
+        {
+          input: headerPiece.buffer,
+          top: Math.max(8, Math.round((stripH - headerPiece.height) / 2)),
+          left: 44,
+        },
+        { input: fromPiece.buffer, top: stripH + 30, left: 44 },
+        { input: quotePiece.buffer, top: bodyTop, left: 48 },
+      ])
+      .png()
+      .toBuffer();
+  } else if (surface === "car") {
+    // Bluetooth Audio media screen (2026-09-10, cloned from Keenan's
+    // car-dash reference: "this is exactly what i'm looking for...
+    // where it blends right into the image"). The quote renders as the
+    // now-playing track text inside real dash chrome: red "Bluetooth
+    // Audio" header, Source button, blue Bluetooth badge, track
+    // progress times, RAND / RPT / pause / Sound buttons. Chrome is
+    // identical for both audiences — a real car UI has no brand skin;
+    // realism IS the blend.
+    const bg = { r: 0x07, g: 0x0a, b: 0x10 };
+    const s = Math.min(1, DH / 640);
+    const px = (n: number) => Math.max(2, Math.round(n * s));
+    const headerRed = "#E0524D";
+    const chromeGrey = "#9AA3AE";
+    const trackWhite = "#EDF1F5";
+    const btBlue = "#3F7BD9";
+
+    const headerPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(18, px(32))}" foreground="${headerRed}">Bluetooth Audio</span>`,
+      fontMedium,
+      600,
+      0,
+      4,
+      "left"
+    );
+    const srcW = px(190);
+    const srcH = px(62);
+    const sourcePiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(15, px(26))}" foreground="${trackWhite}">Source</span>`,
+      fontMedium,
+      300,
+      0,
+      4
+    );
+
+    // Bottom button row: RAND · RPT · ⏸ · Sound.
+    const btnH = px(70);
+    const btnY = DH - btnH - px(22);
+    const btnDefs = [
+      { label: "RAND", w: px(170), x: 44 },
+      { label: "RPT", w: px(140), x: 44 + px(170) + px(20) },
+      { label: "", w: px(120), x: Math.round(DW / 2 - px(60)) }, // pause
+      { label: "Sound", w: px(190), x: DW - 44 - px(190) },
+    ];
+    const btnLabels = await Promise.all(
+      btnDefs.map((b) =>
+        b.label
+          ? renderMarkup(
+              `<span font_desc="Poppins Medium ${Math.max(14, px(24))}" foreground="${chromeGrey}">${b.label}</span>`,
+              fontMedium,
+              300,
+              0,
+              4
+            )
+          : Promise.resolve(null)
+      )
+    );
+
+    // Bluetooth badge box, left of the track text like the reference.
+    const btBox = Math.min(px(190), Math.round(DH * 0.34));
+    const btBoxY = Math.round(px(96) + (btnY - px(150) - px(96) - btBox) / 2);
+    const c = 44 + btBox / 2;
+    const gT = btBoxY + btBox * 0.18;
+    const gB = btBoxY + btBox * 0.82;
+    const gW = btBox * 0.2;
+    const gQ = (gB - gT) * 0.25;
+
+    // Track progress row: elapsed / bar / remaining.
+    const progY = btnY - px(76);
+    const elapsedPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(15, px(26))}" foreground="${chromeGrey}">1:52</span>`,
+      fontMedium,
+      200,
+      0,
+      4
+    );
+    const remainPiece = await renderMarkup(
+      `<span font_desc="Poppins Medium ${Math.max(15, px(26))}" foreground="${chromeGrey}">-0:42</span>`,
+      fontMedium,
+      200,
+      0,
+      4
+    );
+
+    const textLeft = 44 + btBox + px(44);
+    const textW = DW - textLeft - 44;
+    const textTop = px(100);
+    const quotePiece = await fitQuoteText({
+      text: clean,
+      font: "Medium",
+      color: trackWhite,
+      maxW: textW,
+      maxH: progY - textTop - px(16),
+      startSize: 44,
+      minSize: 22,
+      align: "centre",
+    });
+
+    const barX = textLeft + elapsedPiece.width + px(24);
+    const barW =
+      DW - 44 - remainPiece.width - px(24) - barX;
+    const chromeSvg = `<svg width="${DW}" height="${DH}" viewBox="0 0 ${DW} ${DH}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="${DW - 44 - srcW}" y="${px(20)}" width="${srcW}" height="${srcH}" rx="${px(8)}" fill="none" stroke="${chromeGrey}" stroke-width="${Math.max(2, px(3))}"/>
+  <rect x="0" y="${px(92)}" width="${DW}" height="${Math.max(2, px(3))}" fill="${chromeGrey}" opacity="0.35"/>
+  <rect x="44" y="${btBoxY}" width="${btBox}" height="${btBox}" rx="${px(10)}" fill="#101B30" stroke="${btBlue}" stroke-width="${Math.max(2, px(3))}" stroke-opacity="0.5"/>
+  <path d="M ${c} ${gT} L ${c} ${gB} L ${c + gW} ${gB - gQ} L ${c - gW} ${gT + gQ} M ${c} ${gT} L ${c + gW} ${gT + gQ} L ${c - gW} ${gB - gQ}" stroke="${btBlue}" stroke-width="${Math.max(3, px(7))}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="${barX}" y="${progY + px(10)}" width="${Math.max(40, barW)}" height="${Math.max(3, px(5))}" rx="${px(2)}" fill="${chromeGrey}" opacity="0.35"/>
+  <rect x="${barX}" y="${progY + px(10)}" width="${Math.max(28, Math.round(barW * 0.72))}" height="${Math.max(3, px(5))}" rx="${px(2)}" fill="${trackWhite}"/>
+  ${btnDefs
+    .map(
+      (b) =>
+        `<rect x="${b.x}" y="${btnY}" width="${b.w}" height="${btnH}" rx="${px(8)}" fill="none" stroke="${chromeGrey}" stroke-width="${Math.max(2, px(3))}" stroke-opacity="0.8"/>`
+    )
+    .join("\n  ")}
+  <rect x="${btnDefs[2].x + btnDefs[2].w / 2 - px(16)}" y="${btnY + px(18)}" width="${px(10)}" height="${btnH - px(36)}" fill="${trackWhite}"/>
+  <rect x="${btnDefs[2].x + btnDefs[2].w / 2 + px(6)}" y="${btnY + px(18)}" width="${px(10)}" height="${btnH - px(36)}" fill="${trackWhite}"/>
+</svg>`;
+
+    const composites: { input: Buffer; top: number; left: number }[] = [
+      { input: Buffer.from(chromeSvg), top: 0, left: 0 },
+      { input: headerPiece.buffer, top: px(26), left: 44 },
+      {
+        input: sourcePiece.buffer,
+        top: px(20) + Math.round((srcH - sourcePiece.height) / 2),
+        left: DW - 44 - srcW + Math.round((srcW - sourcePiece.width) / 2),
+      },
+      {
+        input: quotePiece.buffer,
+        top: textTop + Math.max(0, Math.round((progY - textTop - px(16) - quotePiece.height) / 2)),
+        left: textLeft + Math.round((textW - quotePiece.width) / 2),
+      },
+      { input: elapsedPiece.buffer, top: progY, left: textLeft },
+      {
+        input: remainPiece.buffer,
+        top: progY,
+        left: DW - 44 - remainPiece.width,
+      },
+    ];
+    btnDefs.forEach((b, i) => {
+      const lbl = btnLabels[i];
+      if (lbl) {
+        composites.push({
+          input: lbl.buffer,
+          top: btnY + Math.round((btnH - lbl.height) / 2),
+          left: b.x + Math.round((b.w - lbl.width) / 2),
+        });
+      }
+    });
+
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite(composites)
+      .png()
+      .toBuffer();
+  } else {
+    // billboard / sign — big centered type on a bright face. Signs are
+    // letterboards, so they read in caps with airy line spacing.
+    const isSign = surface === "sign";
+    const bg = { r: 0xf4, g: 0xf1, b: 0xe9 };
+    const text = isSign ? clean.toUpperCase() : clean;
+    const quotePiece = await fitQuoteText({
+      text,
+      font: "Bold",
+      color: "#17181A",
+      maxW: DW - 160,
+      maxH: DH - 140,
+      startSize: isSign ? 56 : 64,
+      minSize: 26,
+      align: "centre",
+      lineSpacingFactor: isSign ? 0.8 : 0.45,
+    });
+    design = await sharp({
+      create: { width: DW, height: DH, channels: 3, background: bg },
+    })
+      .composite([
+        {
+          input: quotePiece.buffer,
+          top: Math.max(40, Math.round((DH - quotePiece.height) / 2)),
+          left: Math.round((DW - quotePiece.width) / 2),
+        },
+      ])
+      .png()
+      .toBuffer();
+  }
+
+  // Downscale onto the detected rect; round the corners for device
+  // screens so the photo's own screen corners still peek through as glow.
+  const rx =
+    surface === "imessage"
+      ? Math.round(w * 0.12)
+      : surface === "flip" || surface === "car"
+        ? Math.round(Math.min(w, h) * 0.05)
+        : 0;
+  const resized = sharp(design).resize(w, h, { fit: "fill" });
+  if (rx > 0) {
+    const mask = Buffer.from(
+      `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${w}" height="${h}" rx="${rx}" fill="#ffffff"/></svg>`
+    );
+    return resized
+      .ensureAlpha()
+      .composite([{ input: mask, blend: "dest-in" }])
+      .png()
+      .toBuffer();
+  }
+  return resized.png().toBuffer();
+}
+
+/**
+ * Full quote-surface pipeline: normalize the AI scene to 1080x1920,
+ * find the blank glowing screen, validate its shape for the surface,
+ * and composite the deterministic screen content onto it.
+ *
+ * Returns null when no usable screen is found (caller falls back to
+ * the drawn-phone render, then flat).
+ */
+/**
+ * Finish a baked quote slide (2026-09-11): the quote text is generated
+ * INTO the image by gpt-image-2, so no compositing is needed — just
+ * cover-resize to the slide canvas.
+ */
+export async function finalizeBakedQuoteSlide(scene: Buffer): Promise<Buffer> {
+  return sharp(scene)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+export async function composeQuoteSurfaceSlide(
+  quote: string,
+  variant: "women" | "men",
+  surface: QuoteSurface,
+  scene: Buffer
+): Promise<{ jpeg: Buffer; rect: BrightRect } | null> {
+  const frame = await sharp(scene)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .png()
+    .toBuffer();
+  const rect = await detectBrightRect(frame);
+  if (!rect) return null;
+
+  const aspect = rect.h / rect.w;
+  const bounds = SURFACE_ASPECT[surface];
+  if (aspect < bounds.min || aspect > bounds.max) return null;
+  // Too small to read at feed size — reject so the scene regenerates.
+  if (rect.w < OUTPUT_W * bounds.minWFrac) return null;
+
+  // Slight overscan so threshold fuzz at the screen edge is covered.
+  const ox = Math.round(rect.w * 0.02);
+  const oy = Math.round(rect.h * 0.02);
+  const x = Math.max(0, rect.x - ox);
+  const y = Math.max(0, rect.y - oy);
+  const w = Math.min(OUTPUT_W - x, rect.w + ox * 2);
+  const h = Math.min(OUTPUT_H - y, rect.h + oy * 2);
+
+  // Photographic blending (2026-09-09, per Keenan: "it needs to
+  // completely blend in like it's part of the picture"). An opaque
+  // paste throws away the natural lighting the AI painted onto the
+  // blank panel — flat sterile rectangle, obviously composited. The
+  // mockup technique instead: keep the photo's own panel and MULTIPLY
+  // our content into it, so its lighting gradients, color cast, glow
+  // falloff, and edge shading modulate our render. Plus a touch of
+  // blur (vector-crisp type doesn't exist in photos) and gaussian
+  // grain matched to photographic noise.
+  const region = await sharp(frame)
+    .extract({ left: x, top: y, width: w, height: h })
+    .toBuffer();
+  const overlayRaw = await renderSurfaceOverlay(quote, variant, surface, w, h);
+  const overlay = await sharp(overlayRaw).blur(0.6).png().toBuffer();
+  const grain = await sharp({
+    create: {
+      width: w,
+      height: h,
+      channels: 3,
+      background: { r: 128, g: 128, b: 128 },
+      noise: { type: "gaussian", mean: 128, sigma: 6 },
+    },
+  })
+    .png()
+    .toBuffer();
+  const lit = await sharp(region)
+    .composite([
+      { input: overlay, blend: "multiply" },
+      { input: grain, blend: "soft-light" },
+    ])
+    .png()
+    .toBuffer();
+
+  const jpeg = await sharp(frame)
+    .composite([{ input: lit, top: y, left: x }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+  return { jpeg, rect: { x, y, w, h } };
 }
 
 /**

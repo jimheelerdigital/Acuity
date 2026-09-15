@@ -11,6 +11,7 @@ import OpenAI from "openai";
 import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
+import type { QuoteSurface, TextsLane } from "./moody-carousel";
 import { buildCaption } from "./caption";
 
 let _openai: OpenAI | null = null;
@@ -341,6 +342,11 @@ export function buildSelfieImagePrompt(opts: {
   /** Pose/framing directive (one of SELFIE_POSE_VARIANTS) — forces
    * every mirror selfie in a post to look different (2026-08-26). */
   pose?: string;
+  /** Photography-style directive (one of SELFIE_STYLE_VARIANTS) —
+   * per-POST, so each day's two selfie posts read as different days
+   * (2026-09-03, per Keenan: "more variance and different picture
+   * styles"). */
+  style?: string;
 }): string {
   const context = `Context (convey through the photo only — subtly, shown not told): this photo belongs to a personal slideshow titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`;
 
@@ -348,8 +354,11 @@ export function buildSelfieImagePrompt(opts: {
     return [
       `Scene (follow exactly): ${opts.scene}`,
       context,
+      opts.style ?? "",
       SELFIE_AESTHETIC_DNA,
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
   }
 
   return [
@@ -362,6 +371,7 @@ export function buildSelfieImagePrompt(opts: {
       ? `Pose and framing (follow exactly — this OVERRIDES any camera or mirror setup implied by the scene): ${opts.pose}`
       : "",
     context,
+    opts.style ?? "",
     SELFIE_VISUAL_DNA,
   ]
     .filter(Boolean)
@@ -403,6 +413,10 @@ export async function generateImage(prompt: string): Promise<Buffer> {
     prompt,
     n: 1,
     size: "1024x1792", // 9:16 portrait — native TikTok carousel dimensions
+    // 2026-09-04, per Keenan's TRUST THE PROCESS reference: "images
+    // need to be this level of quality" — pin max fidelity instead of
+    // the model's default tier. ~3x cost per image (see estimateImageCost).
+    quality: "high",
   });
 
   const b64 = response.data?.[0]?.b64_json;
@@ -431,6 +445,8 @@ export async function generateImageWithReference(
     // The edit endpoint's tallest portrait size (1024x1792 is
     // generate-only); composeSlide cover-crops to 1080x1920 downstream.
     size: "1024x1536",
+    // Max fidelity (2026-09-04) — same mandate as generateImage.
+    quality: "high",
   });
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("gpt-image-2 edit returned no image data");
@@ -464,9 +480,9 @@ export async function generateMoodyImage(
   return { buffer: await generateImage(prompt), prompt };
 }
 
-/** gpt-image-2 at 1024x1536 costs ~$0.04-0.08 per image. Estimate conservatively. */
+/** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. */
 function estimateImageCost(): number {
-  return 8; // 8 cents per image
+  return 25; // 25 cents per image at quality "high"
 }
 
 /** Minimal topic for slides whose post's topicSlug isn't in CAROUSEL_TOPICS (e.g. AI-generated topics). */
@@ -568,11 +584,129 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     "rules", "moody-women", "moody-men", "memento", "memento-men",
     "missed", "missed-men", "questions", "sign", "year", "free",
     "behind", "nobody", "bloomers", "taught", "forbidden", "unsent",
-    "aura", "versions", "protocol",
+    "aura", "versions", "protocol", "line", "watching", "price",
+    "prove", "phone-quote", "phone-quote-men",
+    // Five lanes added 2026-09-14 night. letter/texts-* covers are moody
+    // overlays; their non-cover slides are BAKED and never reach this
+    // branch (caught by the prompt-prefix branches above).
+    "letter", "texts-younger", "future-texts", "permission", "discipline-real",
   ]);
 
   if (slide.kind === "CTA") {
     composed = await composeCTASlide(newText);
+  } else if (slide.imagePrompt.startsWith("PHONE-QUOTE BAKED")) {
+    // Baked quote slides (2026-09-11): the text is generated INTO the
+    // image by gpt-image-2, so editing the quote regenerates the image
+    // on the same surface (fresh scene, ~$0.25). Two attempts with
+    // vision verification; the second attempt ships even unverified —
+    // the admin sees the result immediately and can edit again.
+    const { buildBakedQuotePrompt, verifyBakedQuote } = await import(
+      "./moody-carousel"
+    );
+    const { finalizeBakedQuoteSlide } = await import("./compose");
+    const bakedMatch = slide.imagePrompt.match(
+      /^PHONE-QUOTE BAKED \((women|men)\/([a-z]+)\)/
+    );
+    const bakedVariant = (bakedMatch?.[1] ??
+      (slide.carouselPost.lane === "phone-quote-men" ? "men" : "women")) as
+      | "women"
+      | "men";
+    const bakedSurface = (bakedMatch?.[2] ?? "poster") as QuoteSurface;
+    composed = await finalizeBakedQuoteSlide(
+      await generateImage(
+        buildBakedQuotePrompt(bakedVariant, bakedSurface, newText)
+      )
+    );
+    if (!(await verifyBakedQuote(composed, newText))) {
+      // One retry; the retry ships even unverified — the admin sees
+      // the result immediately and can edit again.
+      composed = await finalizeBakedQuoteSlide(
+        await generateImage(
+          buildBakedQuotePrompt(bakedVariant, bakedSurface, newText)
+        )
+      );
+    }
+  } else if (slide.imagePrompt.startsWith("TEXTS BAKED")) {
+    // Texts-lane message slides (2026-09-14): the iMessage bubble is
+    // generated INTO the phone-in-hand photo by gpt-image-2, so editing
+    // the message regenerates the image (fresh scene, ~$0.25). Two
+    // attempts with vision verification; the second ships even
+    // unverified — the admin sees the result and can edit again.
+    const { buildBakedTextsPrompt, verifyBakedQuote } = await import(
+      "./moody-carousel"
+    );
+    const { finalizeBakedQuoteSlide } = await import("./compose");
+    const textsMatch = slide.imagePrompt.match(
+      /^TEXTS BAKED \((texts-younger|future-texts)\)/
+    );
+    const textsLane = (textsMatch?.[1] ??
+      slide.carouselPost.lane ??
+      "texts-younger") as TextsLane;
+    composed = await finalizeBakedQuoteSlide(
+      await generateImage(buildBakedTextsPrompt(textsLane, newText))
+    );
+    if (!(await verifyBakedQuote(composed, newText))) {
+      composed = await finalizeBakedQuoteSlide(
+        await generateImage(buildBakedTextsPrompt(textsLane, newText))
+      );
+    }
+  } else if (slide.imagePrompt.startsWith("PHONE-QUOTE SURFACE")) {
+    // Quote-surface slides (2026-09-08): the raw scene photo contains a
+    // blank glowing screen — re-detect it and composite the edited quote.
+    // If the raw scene is gone or detection fails, fall back to the
+    // drawn-phone render so the edit still ships.
+    const { composeQuoteSurfaceSlide, renderPhoneQuoteSlide } = await import(
+      "./compose"
+    );
+    const surfaceMatch = slide.imagePrompt.match(
+      /^PHONE-QUOTE SURFACE \((?:women|men)\/([a-z]+)\)/
+    );
+    const surface = (surfaceMatch?.[1] ?? "imessage") as QuoteSurface;
+    const pqVariant =
+      slide.carouselPost.lane === "phone-quote-men" ? "men" : "women";
+    let scene: Buffer | undefined;
+    if (slide.rawImageUrl) {
+      try {
+        const res = await fetch(slide.rawImageUrl);
+        if (res.ok) scene = Buffer.from(await res.arrayBuffer());
+      } catch {
+        // Fall through to the drawn-phone fallback.
+      }
+    }
+    let surfaceComposed: Buffer | null = null;
+    if (scene) {
+      const result = await composeQuoteSurfaceSlide(
+        newText,
+        pqVariant,
+        surface,
+        scene
+      );
+      if (result) surfaceComposed = result.jpeg;
+    }
+    composed =
+      surfaceComposed ??
+      (await renderPhoneQuoteSlide(newText, pqVariant, scene));
+  } else if (slide.imagePrompt.startsWith("PHONE-QUOTE NOTE SCREEN")) {
+    // Phone-quote NOTE slides (2026-09-03) are composed programmatically
+    // — the quote text never touches an image model. Editing one just
+    // re-renders the Notes screen with the new quote text. If the slide
+    // stored a raw backdrop (phone-in-photo format, 2026-09-08), re-use
+    // it so the edit keeps the same scene; otherwise render full-bleed.
+    const { renderPhoneQuoteSlide } = await import("./compose");
+    let background: Buffer | undefined;
+    if (slide.rawImageUrl) {
+      try {
+        const res = await fetch(slide.rawImageUrl);
+        if (res.ok) background = Buffer.from(await res.arrayBuffer());
+      } catch {
+        // Fall through to full-bleed render.
+      }
+    }
+    composed = await renderPhoneQuoteSlide(
+      newText,
+      slide.carouselPost.lane === "phone-quote-men" ? "men" : "women",
+      background
+    );
   } else if (MOODY_LANES.has(slide.carouselPost.lane ?? "")) {
     // Regenerate the scene from the stored prompt (scenes are text-free),
     // then re-render the overlay with the new text.
@@ -608,12 +742,21 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // consistent". All item slides re-render as ITEM, matching the
     // daily pipeline.
     const lane = slide.carouselPost.lane;
+    // Phone-quote COVERS carry a lowercase sentence-case hook ("this
+    // quote kept me up all night...") — ITEM treatment, never the
+    // uppercase COVER style.
     const moodyKind =
       lane === "sign" || lane === "aura"
         ? "SIGN"
-        : slide.kind === "COVER"
-          ? "COVER"
-          : "ITEM";
+        : lane === "phone-quote" ||
+            lane === "phone-quote-men" ||
+            lane === "letter" ||
+            lane === "texts-younger" ||
+            lane === "future-texts"
+          ? "ITEM"
+          : slide.kind === "COVER"
+            ? "COVER"
+            : "ITEM";
     // Text tone comes from the STORED image prompt, not the lane:
     // since 2026-09-01 every Ripple women-lane post rolls a 50/50
     // light/dark scheme, so a lane no longer implies a tone. The

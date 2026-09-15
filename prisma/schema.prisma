@@ -870,6 +870,10 @@ model Entry {
   // comparison reports.
   themePromptVersion String?
   insightEvidence    InsightEvidence[]
+  // Habit checks auto-created from this debrief (source="DEBRIEF"). SetNull
+  // on delete so removing an entry clears its auto-checks without touching
+  // the user's manual history.
+  habitChecks        HabitCheck[]
 
   @@index([userId, createdAt])
   // Backfill scanner hot path — find all FREE-tier-only entries
@@ -1430,6 +1434,7 @@ model CarouselPost {
   shares         Int?
   metricsAt      DateTime? // When metrics were last entered/refreshed
   slides         CarouselSlide[]
+  socialPublishes SocialPublish[] // Auto-posting queue rows (2026-09-10)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -1472,6 +1477,61 @@ enum CarouselFormat {
   VIDEO // fully animated carousel video
   STORY // standalone 30s story video + voiceover
   AMBIENT // calm single-scene looped video + soothing lesson voiceover (2026-08-18)
+}
+
+// ─── Social Auto-Publishing (2026-09-10) ────────────────────────────────────
+// One row per (carousel post × platform × account). The social-publish cron
+// scans recent DRAFT photo carousels in auto-eligible lanes, enqueues rows
+// with staggered scheduledAt times, and publishes due rows via the Meta
+// Graph API. Entirely env-gated (SOCIAL_AUTOPUBLISH_ENABLED) so the cron
+// no-ops until creds exist and this table has been pushed.
+
+model SocialPublish {
+  id             String              @id @default(cuid())
+  carouselPostId String
+  carouselPost   CarouselPost        @relation(fields: [carouselPostId], references: [id], onDelete: Cascade)
+  platform       String // "instagram" | "facebook"
+  accountKey     String // "ripple" | "bwk" — which Meta account the row targets
+  status         SocialPublishStatus @default(PENDING)
+  attempts       Int                 @default(0)
+  externalId     String? // IG media ID / FB post ID after publish
+  permalink      String? // Public URL of the published post
+  error          String?             @db.Text // Last failure message
+  scheduledAt    DateTime // Staggered publish time (posts don't all fire at once)
+  postedAt       DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([carouselPostId, platform, accountKey])
+  @@index([status, scheduledAt])
+}
+
+enum SocialPublishStatus {
+  PENDING
+  POSTED
+  FAILED // gave up after max attempts — needs a look
+  SKIPPED // account not configured for this platform when it came due
+}
+
+// OAuth tokens for social platforms whose tokens expire and rotate
+// (TikTok: access token lives 24h, refresh token rotates on every
+// refresh — so env vars can't hold them). One row per provider+account.
+// Created/updated by /api/integrations/tiktok/callback and refreshed
+// in-place by the social-publish cron.
+model SocialToken {
+  id           String    @id @default(cuid())
+  provider     String // "tiktok"
+  accountKey   String    @default("ripple") // matches SocialPublish.accountKey
+  accessToken  String    @db.Text
+  refreshToken String    @db.Text
+  expiresAt    DateTime // access token expiry (refresh when close)
+  openId       String? // provider-side user id (TikTok open_id)
+  displayName  String? // for the "connected as X" confirmation
+  lastError    String?   @db.Text // last refresh/publish auth failure
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([provider, accountKey])
 }
 
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
@@ -2796,10 +2856,24 @@ model HabitCheck {
   localDate String
   createdAt DateTime @default(now())
 
+  // Provenance: how this check came to exist.
+  //   "MANUAL"  — the user tapped the checkbox. Default, so every row
+  //               written before this column existed reads as MANUAL.
+  //   "DEBRIEF" — auto-created by the extraction pipeline when a nightly
+  //               debrief evidenced the habit. `entryId` points at the
+  //               source entry so the UI can show "checked from your
+  //               debrief" and the check clears if that entry is deleted.
+  source    String   @default("MANUAL")
+  entryId   String?
+  entry     Entry?   @relation(fields: [entryId], references: [id], onDelete: SetNull)
+
   // One check per habit per local day. Makes check-off idempotent at the
   // database level rather than relying on the client not double-tapping.
+  // A MANUAL tap and a DEBRIEF auto-check on the same day collapse to one
+  // row (upsert) — the day is either done or not, regardless of source.
   @@unique([habitId, localDate])
   @@index([userId, localDate])
+  @@index([entryId])
 }
 
 /// Provenance for a generated insight: which entries it was derived from,

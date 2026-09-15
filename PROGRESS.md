@@ -56,6 +56,690 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 - Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
 
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+## [2026-09-14] — Five new carousel lanes: 3 for Ripple, 2 for BWK (17 posts/day)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Five brand-new post formats now generate automatically every night, bringing the daily total from 12 to 17 posts. Ripple gets three: "texts to my younger self" (real-looking iMessage bubbles baked into cozy phone-in-hand photos), "permission slips" (one-line permissions like "you're allowed to rest before everything is done" over warm evening scenes that quietly match each line), and "the unsent letter" (a handwritten letter on paper, sibling of the phone-quote format). Build With Key gets two: "what discipline actually looks like" (each slide names a romanticized myth like "The 4am club." then shows the boring truth) and "texts from your future self" (a gray received bubble from "future me" baked into gritty dawn/gym/rooftop phone photos). Every text-in-photo slide is vision-checked for typos before it ships, and each scene is picked to emotionally match the words on it. All five lanes are eligible for auto-publishing the moment the switch flips.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new generators — generatePermissionTopic (PERMISSION_SCENES pool, 4-6 one-liners), generateDisciplineRealTopic (DISCIPLINE_REAL_THEME, myth-as-Name exception, men cover-family rotation), generateLetterTopic (returns PhoneQuoteTopic; 25-55-word lowercase letter, rotating recipient), generateTextsTopic + TextsLane/TextsTopic types + TEXTS_PHONE_SCENES (7 theme-matched phone-in-hand scenes per lane) + buildBakedTextsPrompt (sent-blue right bubble for texts-younger, received-gray left bubble for future-texts, full blend mandate); verifyBakedQuote now ignores incidental device UI (clock/battery/contact header)
+- apps/web/src/inngest/functions/carousel-daily.ts: CAROUSEL_LANES + HOUR_LANES grew to 17/day (hour 5 +texts-younger, 6 +discipline-real, 7 +permission, 8 +future-texts +letter); letter rides the phone-quote branch with surface pinned to "paper" (4 attempts, no surface swap); new texts branch — moody cover (hook as lowercase ITEM overlay) + per-message baked slides, 3 attempts each with vision verify, PROOFREAD flag on best unverified, throw if all fail (no flat fallback per the blend decree); permission/discipline-real route through the moody-family branch (discipline-real added to men-audience + named-lane sets)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide — new TEXTS BAKED prompt-prefix branch (regenerate + one verify retry, lane parsed from marker), 5 lanes added to MOODY_LANES, letter/texts lanes added to the ITEM moodyKind ternary (lowercase cover hooks)
+- apps/web/src/lib/content-factory/social-publish.ts: all 5 lanes added to AUTO_LANES (now 14); discipline-real + future-texts added to BWK_LANES (now 7 — keys Meta account fallback + TikTok "bwk" rows)
+- apps/web/src/lib/content-factory/email.ts: discipline-real + future-texts added to the BWK subject-prefix set
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: generateBucket union + 5 manual-generate buttons (💌 🎟️ ✉️ 🔁 📨)
+- No schema changes, no new env vars, no Inngest resync needed (cron/trigger definitions unchanged — HOUR_LANES is data)
+
+### Manual steps needed
+None (deploy covers it; first new-lane posts land in tonight's overnight run).
+
+### Notes
+- Lane named "letter" (slugPrefix "letter-"), NOT "unsent" — a dormant generateUnsentTopic from the dead 2026-08-29 unsent-texts lane already owns the "unsent" slug prefix.
+- letter reuses the phone-quote pipeline end-to-end (same topic shape, forced paper surface), so recomposeSlide's existing PHONE-QUOTE BAKED branch edits it with zero new code.
+- Texts message slides carry marker prompts `TEXTS BAKED (lane)` (+ ` TEXT-UNVERIFIED` when the vision check never passed) — the recompose branch and any future tooling key off that prefix.
+- Watch first future-texts posts: 1-2 slides is intentionally short (cover + one strong received text beats a padded carousel); if engagement wants more, raise the max in TEXTS_SYSTEM.
+- verifyBakedQuote's ignore-list tweak (device UI) applies to phone-quote lanes too — needed because texts scenes legitimately show a contact-name header ("younger me" / "future me").
+
+---
+
+## [2026-09-14] — Phone-quote lanes doubled + 4 new lettering surfaces, blend rule hardened
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Both quote lanes now post twice a day (one more each for Ripple and BWK — 12 posts/day total), since they perform well and cost almost nothing to generate. Four new places the quote can appear were added for each brand: a glowing neon sign, an old cinema marquee, a sidewalk chalkboard, and a handwritten note on paper — each styled warm/cozy for Ripple and dark/moody for BWK. The rule that the lettering must look physically part of the scene was strengthened, and the last remaining fallback that could produce a "pasted-on" flat notes screen was removed entirely — a post now simply retries rather than ship a slide where the text doesn't blend.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: HOUR_LANES — phone-quote-men added to hour 5, phone-quote to hour 8 (12 posts/day); flat renderPhoneQuoteSlide fallback in compose-phone-quote-screen replaced with a throw (Inngest retries)
+- apps/web/src/lib/content-factory/moody-carousel.ts: QUOTE_SURFACES grew 6→10 (neon, marquee, chalkboard, paper) with per-audience scenes/textMedium specs; buildBakedQuotePrompt blend requirement hardened (inherits glow/reflections/wear, sits behind glare, follows curvature, "nothing would look added afterward")
+- apps/web/src/lib/content-factory/compose.ts: SURFACE_ASPECT entries for the 4 new surfaces (legacy composite path type-completeness only)
+
+### Manual steps needed
+None (deploy covers it; generation cron schedule unchanged).
+
+### Notes
+- renderPhoneQuoteSlide itself still exists — the legacy edit/recompose path in carousel-generate.ts still uses it for OLD posts whose stored prompts predate the baked pipeline. Only the daily generator's fallback was removed.
+- New surfaces are baked-text only; they fall into the generic else branch of the legacy renderSurfaceOverlay if ever edited through it.
+- Watch the first few paper/neon posts: handwriting and neon tubing are the two most typo-prone mediums for gpt-image-2; the vision verify pass + PROOFREAD flag covers it, but if a surface consistently fails verification, drop it from QUOTE_SURFACES (one line).
+
+---
+
+## [2026-09-14] — BWK posts back to 1 cover + 4-7 slides; ALL lanes now auto-publish
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+The four BWK pick-list lanes (memento-men, moody-men, watching, protocol) no longer generate 3 candidate covers + 15 slides for you to curate — every post now comes out ready-made with one cover and 4-7 slides, just like the Ripple lanes. Because every post now fits Instagram's 10-image limit, ALL nine lanes were added to the auto-publish queue: once the switch is flipped, 10 posts a day (9 lanes, selfie twice) go out automatically to Instagram, Facebook, and TikTok, staggered 45 minutes apart.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: generateMoodyTopic, generateWatchingTopic, generateMementoTopic (men path), generateProtocolTopic all switched from `buildMultiCoverRule(3)` + 15 items to `rollMenCoverRule()` + 4-7 random items (minItems 4, coverCount/maxTokens overrides removed); buildMultiCoverRule deleted (unused; recoverable from git)
+- apps/web/src/lib/content-factory/social-publish.ts: AUTO_LANES expanded to all 9 lanes (added memento-men, moody-men, watching, protocol)
+- apps/web/src/inngest/functions/social-publish-cron.ts: docblock updated
+- prisma/rls-allowlist.txt: SocialPublish no-rls, SocialToken rls (fixes the RLS-coverage CI failure on main from the TikTok push)
+
+### Manual steps needed
+- [ ] Run in Supabase SQL editor: `ALTER TABLE public."SocialToken" ENABLE ROW LEVEL SECURITY;` (Keenan)
+- [ ] Sandbox TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET into Vercel, then connect both TikTok accounts (Keenan — carried over from TikTok entry)
+
+### Notes
+- The `coverScenes` plumbing (MoodyTopic.coverScenes, carousel-daily multi-cover loop, SlideKind COVER ordering) is left in place — it degrades to a single cover naturally and re-enables pick-lists with a one-line coverCount change if ever wanted again.
+- Daily output stays 10 posts/day (selfie ×2); with all lanes auto-publishing that's 10 posts × 3 platforms staggered 45 min apart — comfortably inside Keenan's "5-10 automated posts daily" target.
+- Auto-publish is still gated behind SOCIAL_AUTOPUBLISH_ENABLED=1 (not yet set in Vercel).
+
+---
+
+## [2026-09-14] — TikTok auto-drafts are photo slideshows (format split per platform)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+Locked in the per-platform format split: Instagram/Facebook get the music videos (content intact), TikTok gets photo slideshow drafts — because TikTok's photo mode is where its suggested/auto audio lives. Now EVERY auto-published post (not just memento/selfie) drops its slide images into your TikTok inbox as a ready-to-post photo draft; you open it, TikTok suggests a sound, you paste the caption and post. After the TikTok app audit passes, Phase 2 makes these fully hands-off with TikTok auto-adding music.
+
+### Technical changes (for Jimmy)
+- `tiktok-publish.ts`: replaced the video FILE_UPLOAD flow with `publishTikTokPhotoDraft` (POST /v2/post/publish/content/init/, post_mode MEDIA_UPLOAD, media_type PHOTO, PULL_FROM_URL, ≤35 images) + `proxiedImageUrl` helper
+- New public route `apps/web/src/app/api/content-factory/image/[...path]/route.ts` — streams content-factory bucket objects under goripple.io URLs (TikTok only pulls photos from the app's VERIFIED domain; Supabase's domain can't be verified). Bucket is already public, exposes nothing new
+- `social-publish-cron.ts`: tiktok rows now enqueue for ALL auto lanes; tiktok branch sends slide images (not reelUrl); render-reel step skipped for tiktok rows; one post-init status check (3s) surfaces PULL failures into the error column
+- Domain goripple.io verified in the TikTok dev portal via DNS TXT at GoDaddy (tiktok-developers-site-verification=SAOx…)
+
+### Manual steps needed
+- [ ] Finish TikTok app config: Direct Post toggle ON, sandbox target users (both usernames), copy client key/secret → Vercel `TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET` (Keenan)
+- [ ] After deploy: `goripple.io/api/integrations/tiktok/connect` (Ripple) and `?account=bwk` (BWK) while logged into admin (Keenan)
+- [ ] After first successful draft: record demo video + submit TikTok app review to unlock Phase 2 direct posting (Keenan + Claude)
+
+### Notes
+- TikTok `auto_add_music` exists ONLY for photo posts and only takes effect on DIRECT_POST (Phase 2). In draft mode the in-app editor suggests audio — which is what Keenan wants short-term anyway.
+- Photo posts accept ONLY PULL_FROM_URL (no file upload), hence the goripple.io image proxy. Video posts are the opposite (FILE_UPLOAD works, no domain requirement) — if TikTok video ever comes back, that flow was removed in this commit; see git history.
+- title in the draft init is capped at 90 chars (headline used, not caption).
+
+## [2026-09-14] — TikTok auto-drafts: slideshow videos now land in Keenan's TikTok inbox (SUPERSEDED same-day — TikTok switched to photo drafts, see entry above; SocialToken/OAuth details below still current)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f2d08080 + de61e4ed (held until "push it")
+
+### In plain English (for Keenan)
+The memento and selfie slideshow videos that auto-post to Instagram and Facebook now ALSO get delivered straight into your TikTok inbox as ready-to-post drafts. You open TikTok, the video is waiting in your notifications, you add a trending sound and the caption from the content email, and hit post. No downloading, no uploading — the trending-audio choice stays 100% yours, which is where your TikTok wins come from. Direct auto-posting with TikTok's licensed music is a later phase (it requires TikTok to audit our app first).
+
+### Technical changes (for Jimmy)
+- New Prisma model `SocialToken` (provider, accountKey, accessToken, refreshToken, expiresAt, openId, displayName, lastError; @@unique([provider, accountKey])) — TikTok access tokens live 24h and refresh tokens ROTATE on every refresh, so they must persist in the DB, not env
+- New `apps/web/src/lib/content-factory/tiktok-publish.ts` — OAuth code exchange + refresh-with-rotation, single-chunk FILE_UPLOAD inbox draft flow (`/v2/post/publish/inbox/video/init/` → PUT upload_url with Content-Range), status fetch
+- New routes `apps/web/src/app/api/integrations/tiktok/connect/route.ts` + `callback/route.ts` — admin-gated (requireAdmin) one-time OAuth; state cookie CSRF check; upserts SocialToken
+- `social-publish-cron.ts`: reel-lane posts (REEL_LANES = memento, selfie) now enqueue a third row `platform: "tiktok"`; publish branch uploads the already-rendered reel MP4 (memoized render step shared with IG/FB) as an inbox draft; row POSTED = "delivered to inbox", carouselPost.status untouched (pasted tiktokUrl remains the posted signal); no reel → SKIPPED
+- `social-publish.ts`: SocialPlatform type extended with "tiktok"; load-due `take` bumped to MAX_POSTS_PER_RUN * 3
+- No SocialPublish schema change needed — platform was already a plain TEXT column
+- New env vars: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`
+
+### Manual steps needed
+- [ ] Run the SocialToken SQL in the Supabase SQL editor (Keenan — SQL provided in chat; enable RLS like SocialPublish)
+- [ ] Create the TikTok developer app at developers.tiktok.com, add Login Kit + Content Posting API, set redirect URI `https://goripple.io/api/integrations/tiktok/callback` (Keenan, walkthrough in chat)
+- [ ] Add `TIKTOK_CLIENT_KEY` + `TIKTOK_CLIENT_SECRET` to Vercel (Keenan)
+- [ ] After deploy: visit `https://goripple.io/api/integrations/tiktok/connect` while logged into the admin dashboard and approve (Keenan)
+- [ ] Say "push it" → push, `npx vercel deploy --prod --yes`, `curl -X PUT https://goripple.io/api/inngest`
+
+### Notes
+- Phase 1 is INBOX DRAFTS on purpose: unaudited TikTok apps can upload drafts, but API *direct* posts are forced to private visibility until the app passes TikTok's audit. Drafts also preserve Keenan's manual trending-sound selection, which he credits for his TikTok traction. Phase 2 (post-audit) = direct publish with auto_add_music.
+- Inbox uploads take NO caption via API — the caption still arrives in the content email, Keenan pastes it in the app.
+- While the TikTok app is in sandbox/unaudited mode, only "target users" added in the developer portal can authorize — Keenan must add his own TikTok account as a target user before connecting.
+- TikTok refresh tokens rotate: every refresh must store the returned refresh_token or the connection dies within 24h. getTikTokAccessToken handles this; lastError on SocialToken flags a broken connection (fix = re-visit /connect).
+- schema.prisma already declares SocialToken, so next week's `npm run db:push` from main reconciles cleanly (same pattern as SocialPublish).
+
+## [2026-09-14] — Auto-posted memento and selfie posts become music Reels; Meta credentials are live
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3ccffce3
+
+### In plain English (for Keenan)
+Two things. (1) Music is now part of auto-posting: since Instagram's API flatly refuses to add music to photo carousels, the memento and selfie lanes get their slides turned into a short vertical video — each image holds a couple seconds with a subtle zoom and crossfade, and a random track from your music library plays underneath — posted as an Instagram Reel and a Facebook video. The other auto lanes (questions and both quote lanes) stay as swipeable silent carousels, and the engagement tracker will show which format performs better so we can move lanes between formats with evidence. If your music library is empty, posts fall back to the silent carousel — nothing ever gets stuck. (2) The Meta credentials are minted and verified: a permanent access token with full posting permission for ripplevoice and the Ripple Facebook page — this also finally turns on the nightly engagement tracker that had been silently skipping since August because the token was never added.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/content-factory/slideshow-reel.ts: ffmpeg-static slideshow renderer (zoompan Ken Burns per slide 2.5s, xfade 0.4s, 1080x1920@30fps, aac music bed with 1s fade-out, -stream_loop for short tracks, <100KB output guard) + pickMusicTrack listing content-factory/music/{ripple,bwk} storage folders (BWK borrows the Ripple library when its folder is empty; returns null when no tracks exist)
+- apps/web/src/lib/content-factory/social-publish.ts: REEL_LANES=["memento","selfie"] + laneWantsReel; publishIgReel (media_type=REELS container, 40×5s status poll vs 20×3s for images); publishFbVideo (/videos file_url upload, relative permalink_url normalized)
+- apps/web/src/inngest/functions/social-publish-cron.ts: render-reel-{postId} step before publishing (memoized across the post's IG+FB rows; deterministic storage path reels/{postId}.mp4 with HEAD-check so retries never re-render), publish step prefers the reel; all render failures return null → photo-carousel fallback, never a stuck queue row
+- No schema changes; no new Inngest functions (same cron)
+- Meta creds minted this session via Graph API Explorer + fb_exchange_token flow: PAGE-type token, expires_at 0 (permanent), all six scopes, content_publishing_limit verified. App "Ripple Post Publisher" (1585854059908402), page "Ripple: AI Voice Journal" (1060755850459621), IG ripplevoice (17841442686737449)
+
+### Manual steps needed
+- [ ] Add in Vercel prod: IG_ACCESS_TOKEN (permanent page token, given in session), IG_USER_ID=17841442686737449, FB_PAGE_ID=1060755850459621, SOCIAL_AUTOPUBLISH_ENABLED=1 — Keenan
+- [ ] Upload royalty-free MP3s to Supabase Storage → content-factory bucket → music/ripple/ (and optionally music/bwk/) — Keenan. Until tracks exist, memento/selfie fall back to silent carousels
+- [ ] Still awaiting "push it" → then npx vercel deploy --prod --yes from repo root + curl -X PUT https://goripple.io/api/inngest (new cron from the earlier commit)
+
+### Notes
+- Keenan: "i need music to be a part of this auto posting" → "build it hybrid". Music on IG via API is ONLY possible with video posts — no tool at any price can attach IG library/trending audio via API; that stays exclusive to hand-posting in the app.
+- Baked library music means no tappable audio attribution on the Reel. Accepted trade-off; TikTok phase gets real auto_add_music.
+- The SocialPublish table was created this session via the Supabase SQL editor (Keenan can't db:push for ~a week; schema.prisma already declared it, so no drift).
+- His first Graph Explorer token had all scopes but zero pages attached (the Pages step of the OAuth dialog was skipped) — /me/accounts returned [] even after the redo, but granular_scopes on debug_token showed the page grant, and hitting the page ID directly worked fine. If a future token "has no pages", check debug_token granular_scopes before re-doing the OAuth dance.
+- First app-secret paste was from the wrong Meta app (the ads one) — "The access token does not belong to application" is the tell.
+
+## [2026-09-11] — Carousels can now auto-post themselves to Instagram and Facebook
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 856219ff
+
+### In plain English (for Keenan)
+The first piece of full posting automation is built: a background job that takes the finished nightly carousels and posts them straight to Instagram (as a swipeable carousel) and the Facebook page (as a multi-photo post) — captions included — with zero monthly cost, using Meta's own free API instead of a $150/mo service. Posts trickle out 45 minutes apart instead of dumping all at once. When a post goes live on Instagram, its link is saved automatically, so the existing engagement tracker starts pulling views/likes/saves for it with no pasting needed. IMPORTANT: nothing posts yet — the whole system is switched off until you flip one setting, so tonight's content flows to your email exactly as before.
+
+### Technical changes (for Jimmy)
+- New Prisma model SocialPublish (carouselPostId, platform, accountKey, status PENDING/POSTED/FAILED/SKIPPED, attempts, externalId, permalink, error, scheduledAt, postedAt; unique on [carouselPostId, platform, accountKey]) + SocialPublishStatus enum; CarouselPost gains socialPublishes relation. Purely additive.
+- New apps/web/src/lib/content-factory/social-publish.ts: IG carousel publish (per-image containers with is_carousel_item → CAROUSEL container → poll status_code FINISHED → media_publish), FB Page publish (unpublished /photos then /feed with attached_media), account routing (BWK lanes prefer META_BWK_* creds, FALL BACK to Ripple until BWK accounts exist — Keenan's call), AUTO_LANES = questions/memento/selfie/phone-quote/phone-quote-men only (pick-list lanes are 18 images, over IG's 10-image cap, until the planned 1-cover+6-photo downsize).
+- New Inngest fn socialPublishCronFn (apps/web/src/inngest/functions/social-publish-cron.ts): cron */30 min + manual event content-factory/social.publish; scans last-3-days DRAFT PHOTO posts in AUTO_LANES with no queue rows, enqueues IG+FB rows staggered 45 min apart, publishes ≤3 due posts per run (300s step ceiling; IG container processing is slow), 3 attempts then FAILED. On IG success: post.status=POSTED + instagramUrl=permalink (feeds carousel-metrics-refresh).
+- Registered in apps/web/src/app/api/inngest/route.ts.
+- Env design: master switch SOCIAL_AUTOPUBLISH_ENABLED=1; Ripple reuses existing IG_ACCESS_TOKEN/IG_USER_ID (metrics cron creds) + new FB_PAGE_ID; optional META_BWK_ACCESS_TOKEN/META_BWK_IG_USER_ID/META_BWK_FB_PAGE_ID later.
+
+### Manual steps needed
+- [ ] NOT PUSHED YET — waiting on Keenan's "push it" (then manual `npx vercel deploy --prod --yes` from repo root, auto-deploy webhook still broken)
+- [ ] Create the SocialPublish table — Keenan can't run db:push for ~a week (until ~2026-09-18), so instead: paste the Prisma-generated SQL (in Notes below) into the Supabase SQL editor (web dashboard, works from any network). Purely additive; schema.prisma already declares it, so this is NOT out-of-band drift and next week's db:push will be a no-op for it — Keenan
+- [ ] Inngest resync after deploy: `curl -X PUT https://goripple.io/api/inngest` (new cron) — whoever deploys
+- [ ] Add FB_PAGE_ID (Ripple Facebook Page ID) in Vercel prod env — Keenan
+- [ ] When ready to go live: set SOCIAL_AUTOPUBLISH_ENABLED=1 in Vercel + redeploy — Keenan (until then the cron no-ops every 30 min)
+- [ ] Verify the existing IG_ACCESS_TOKEN has publish scope (instagram_content_publish + pages_manage_posts). It was created for read-only metrics; if publishing 403s, regenerate the long-lived Page token with those scopes — Keenan (Claude can walk through it)
+
+### Notes
+- Keenan explicitly rejected Ayrshare ($150/mo) — direct Graph API is $0. He also accepts no-human-review posting ("i post literally everything regardless"), but the env gate still ships OFF so go-live is a deliberate flip.
+- Mixed-audience decision: BWK lanes will post to the Ripple pages as a fallback until dedicated BWK IG/FB accounts exist. I advised separate accounts long-term (per-account audience profiling suppresses reach when one page serves two markets); routing already supports it — just add the META_BWK_* vars.
+- Pick-list lanes stay manual until the 1-cover+6-photo downsize (agreed to flip AT go-live, not before — Keenan still curates the 3+15 pick-lists today).
+- The cron is safe to deploy before the table exists because the env gate returns before any prisma.socialPublish query.
+- TikTok is the next phase: Content Posting API is free, photo posts support auto_add_music, but public direct-post needs an app audit — stage 1 will be inbox drafts.
+- tsc baseline moved 246 → 208 (Jimmy's #52 cleanup); no errors from the new files.
+- SQL for the SocialPublish table (generated via `prisma migrate diff` between the pre/post-856219ff schemas — exactly what db:push would issue). Safe to paste in the Supabase SQL editor:
+
+```sql
+CREATE TYPE "SocialPublishStatus" AS ENUM ('PENDING', 'POSTED', 'FAILED', 'SKIPPED');
+
+CREATE TABLE "SocialPublish" (
+    "id" TEXT NOT NULL,
+    "carouselPostId" TEXT NOT NULL,
+    "platform" TEXT NOT NULL,
+    "accountKey" TEXT NOT NULL,
+    "status" "SocialPublishStatus" NOT NULL DEFAULT 'PENDING',
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "externalId" TEXT,
+    "permalink" TEXT,
+    "error" TEXT,
+    "scheduledAt" TIMESTAMP(3) NOT NULL,
+    "postedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SocialPublish_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "SocialPublish_status_scheduledAt_idx" ON "SocialPublish"("status", "scheduledAt");
+
+CREATE UNIQUE INDEX "SocialPublish_carouselPostId_platform_accountKey_key" ON "SocialPublish"("carouselPostId", "platform", "accountKey");
+
+ALTER TABLE "SocialPublish" ADD CONSTRAINT "SocialPublish_carouselPostId_fkey" FOREIGN KEY ("carouselPostId") REFERENCES "CarouselPost"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+## [2026-09-11] — Quote text is now generated INTO the image; warrior and wildlife realism rules
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 543cd0d8
+
+### In plain English (for Keenan)
+Three changes. (1) Quote posts no longer paste text onto a blank white panel — the AI image model now paints the letters directly into the poster, sign, phone screen, car dash, billboard, or flip phone, so the words share the photo's lighting, angle, and texture: one cohesive picture, no white box. A second AI then reads the finished image and confirms every word came out spelled right before it ships; if it can't confirm, the slide is flagged "PROOFREAD BEFORE POSTING" so you know to double-check it. (2) Warrior covers now get a landscape that matches who the warrior is — viking on a windswept beach, samurai on a misty bamboo path, knight leading his horse up a mountain trail — never the same generic snowfield, and nobody standing on ice. (3) Animal covers ban fake lightning and painted-looking skies — only weather a real wildlife photographer could capture.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: buildQuoteSurfacePrompt (blank-white-screen approach) replaced by buildBakedQuotePrompt — the exact quote goes into the gpt-image-2 prompt with a per-surface textMedium (letterboard letters, printed poster type, glowing dash text, etc.); new verifyBakedQuote runs a Claude vision pass (YES/NO word-for-word check); warrior + wildlife brief updates in all four layers (MEN_COVER_FAMILIES, SCENE_BRIEF.men, memento-men SCENES, protocol SCENES) plus the warrior carve-out in buildMoodyImagePrompt
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen step now bakes + verifies; chain is first surface x2 → backup surface x2 → best unverified attempt (marker says TEXT-UNVERIFIED / PROOFREAD BEFORE POSTING) → flat Notes only if every generation threw; rawImageUrl no longer stored (text is part of the image)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide gained a PHONE-QUOTE BAKED branch — editing a quote regenerates the image on the same surface with one verified retry (~$0.25/edit); historical PHONE-QUOTE SURFACE slides still use the old composite path
+- apps/web/src/lib/content-factory/compose.ts: new finalizeBakedQuoteSlide (cover-resize to 1080x1920 + jpeg); composeQuoteSurfaceSlide/detectBrightRect kept for editing historical slides
+
+### Manual steps needed
+- None (deployed with this push; no Inngest resync needed — step-body change only)
+
+### Notes
+- Driven by Keenan's screenshot of a shipped billboard slide: "it's still not blending in... the letters need to be BUILT IN to the poster, sign, phone screen... one cohesive picture without a blank white text box."
+- The verification step exists because gpt-image-2 renders short lowercase text well but can still typo or drop a word on 30-40-word quotes. Verified failures roll a fresh surface (different surfaces have very different text-render difficulty). Worst case cost: 4 images (~$1) before shipping the best unverified attempt.
+- Keenan hand-reviews every slide before posting, so shipping a best-effort unverified image (clearly flagged) beats shipping the flat Notes look he's moving away from.
+- The quote-surface composite pipeline (multiply blend, bright-rect detection, Bluetooth Audio chrome) built 2026-09-08→10 is now edit-path-only for historical slides.
+
+## [2026-09-10] — Quote posts retry a second surface before ever shipping the old flat look
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dc4a4cd3
+
+### In plain English (for Keenan)
+All six quote surfaces (phone, flip phone, car dash, billboard, sign, poster) already blend the text into the photo the same way — that was confirmed. The one gap was the safety net: if the AI photo came back without a usable screen area twice in a row, the system shipped the old drawn-phone or flat Notes look, which doesn't blend. Now it rolls a different surface and tries twice more first, so a non-blended quote slide should almost never ship again.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen step now iterates [firstSurface, backupSurface] (backup rolled from QUOTE_SURFACES excluding the first) with 2 attempts each — up to 4 scene generations worst case (~32¢) before falling to renderPhoneQuoteSlide / flat Notes
+- Failure log lines now include the surface name for easier triage
+- No change to recomposeSlide (edit path reuses the stored raw scene + surface) or to the fallbacks themselves
+
+### Manual steps needed
+- None (deploys with this push; no Inngest resync needed — change is inside the step body, not cron config)
+
+### Notes
+- Motivated by Keenan's "they absolutely need to be in a similar style where it blends in" — the main blend path in composeQuoteSurfaceSlide was verified surface-agnostic (multiply + 0.6px blur + grain applied identically for all six surfaces); only the fallback chain could ship non-blended slides.
+- Different surfaces have very different detection difficulty (billboard vs flip phone), so a fresh surface is likelier to succeed than a third try of the same one.
+- Prod-DB spot-check of how often fallbacks actually fired failed from Keenan's work network (Supabase port 6543 blocked — known work-Mac issue); can re-run from home if we want the base rate.
+
+## [2026-09-10] — Quote posts now blend into real surfaces like the car-dash reference
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 04cf05cc
+
+### In plain English (for Keenan)
+The quote posts (both Ripple and BWK) now match the car-dash TikTok you sent. The car version renders as a real Bluetooth Audio media screen — red "Bluetooth Audio" header, Source button, Bluetooth badge, track progress bar with times, RAND/RPT/pause/Sound buttons — with the quote sitting where the song title would be, so it blends right into the photo. A poster surface joined the rotation (framed poster on a wall, bus-stop poster case) alongside the phone, flip phone, billboard, and sign. And the quote wording itself now follows the reference style: all lowercase, a hard truth about time first, then a hopeful turn ("no matter your age..." energy).
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: renderSurfaceOverlay car branch rebuilt as Bluetooth Audio chrome — SVG shapes (Source button, Bluetooth badge + glyph, progress bar, button outlines, pause bars) + Pango text pieces; identical chrome for both audiences (real car UI has no brand skin); SURFACE_ASPECT gains poster (min 1.1, max 2.2, minWFrac 0.45)
+- apps/web/src/lib/content-factory/moody-carousel.ts: "poster" added to QUOTE_SURFACES + QUOTE_SURFACE_SPECS (tall orientation, per-audience scenes); both PHONE_QUOTE_SYSTEM quote rules retuned — 15-40 words, ALL lowercase, 2-4 sentence truth-then-turn structure, reference quote embedded as a banned-to-copy north star
+- Poster renders through the existing billboard/sign else-branch (centered dark type on a bright face) — no new render code needed
+- Verified locally via a temp tsx script: car overlay at 900x500 and 700x220, poster at 600x900 — all render correctly (script deleted after)
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- Keenan validated the 2026-09-09 blended-surface direction with this reference: "this is exactly what i'm looking for. posts like this where it blends right into the image."
+- The reference quote ("no matter your age, you'll always wish you started younger...") is embedded as a style example but marked NEVER copy — per the 2026-09-04 "DON'T LIE NOW" lesson, example phrases in prompts are remix fodder.
+- Track times are fixed at 1:52 / -0:42 (like iOS's canonical 9:41) — deterministic beats randomized for replay-stable Inngest steps.
+
+## [2026-09-10] — Moody-men lane revived as a pick-list
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 816f996e
+
+### In plain English (for Keenan)
+The "moody men" lane (the STAY INVISIBLE. / GUARD THE QUIET. silence-themed posts) is back in the nightly rotation — it had been cut this morning. Like the other three core BWK lanes, it now arrives as a pick-list: 3 candidate cover photos plus 15 item slides so you curate the keepers. It generates at 3am CDT alongside the women's memento post, so BWK is now 5 posts a night, 10 total.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: generateMoodyTopic men path converted to pick-list (buildMultiCoverRule(3, sceneFamily), exactly 15 items, minItems 12, coverCount 3, maxTokens 6000, new optional sceneFamily param); women's path untouched
+- apps/web/src/inngest/functions/carousel-daily.ts: moody-men back in CAROUSEL_LANES, HOUR_LANES 8 UTC (["memento", "moody-men"]), imageAudience men-list, named flag, and the dispatch ternary
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 🤫 moody-men button + union member restored
+- apps/web/src/app/api/admin/carousels/route.ts: lane docs updated
+- email.ts BWK_LANES and carousel-generate.ts MOODY_LANES never dropped moody-men — no changes needed there
+
+### Manual steps needed
+- None (deployed with this batch; HOUR_LANES lives inside the function body, so no Inngest resync needed)
+
+### Notes
+- Slotted at 8 UTC instead of its historical 5 UTC slot to balance the hours (5 already carries memento-men + selfie; 8 only had memento after price/prove died).
+- The revived lane inherits everything shipped today automatically: four-family image library, anti-bland rule, classic-car rotation, and the SILENCE theme lock from 2026-09-03.
+
+## [2026-09-10] — BWK lanes become pick-lists, price/prove killed, classic cars in
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d2079491
+
+### In plain English (for Keenan)
+Three changes from the lane review. First, the price ("COLLECT YOUR DEBTS.") and prove lanes are dead — no more nightly posts from them. Second, the three core BWK lanes (memento mori, when-no-one's-watching, timeline) now come as pick-lists: each email delivers 3 candidate cover photos plus 15 item slides, so you pick the covers and slides that actually look good instead of getting whatever the machine chose. Third, the car images shift from Lambo-style supercars to luxury and classic cars — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — anything timeless and inspiring.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: MoodyTopic gains optional coverScenes[]; generateMoodyFamilyTopic gains coverCount/maxTokens opts and parses/slices coverScenes; new buildMultiCoverRule(count, forcedFamily?) — 3 covers each from a DIFFERENT family (or all one family when sceneFamily is forced); generateWatchingTopic / generateMementoTopic(men) / generateProtocolTopic converted to 3 covers + exactly-15 items (minItems 12 tolerance, maxTokens 6000); women's memento unchanged; generatePriceTopic/generateProveTopic doc-marked DORMANT; CAR RULE (rotate luxury/classic marques, modern supercars rarely) added to the objects family brief and all three SCENES blocks + PHONE_QUOTE_BG_SCENES
+- apps/web/src/inngest/functions/carousel-daily.ts: price/prove removed from CAROUSEL_LANES, HOUR_LANES (8 UTC now ["memento"]), imageAudience, named, and the topic dispatch; single generate-moody-cover step replaced by a loop over moody.coverScenes (step ids generate-moody-cover-N, files slide-cover-N.jpg, avatar roll only on first cover); save step writes covers as COVER slides at orders 0..n-1 with REASON items after; slideCount/estimatedCostCents count real covers
+- apps/web/src/lib/content-factory/humanizer.ts: max_tokens 3000 → 6000 (15-item payloads would truncate; the gate fails open on truncation but then skips real rewrites)
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: 🧾 price / 🎯 prove buttons and union members removed
+- apps/web/src/app/api/admin/carousels/route.ts: lane docs updated
+- email.ts BWK_LANES and carousel-generate.ts MOODY_LANES intentionally KEEP price/prove — today's historical posts still need correct email branding and captions
+
+### Manual steps needed
+- None (deployed with this batch; no cron/trigger changes, so no Inngest resync needed)
+
+### Notes
+- A pick-list post renders ~18 images (~$1.50/post at 8¢ estimate; real gpt-image cost ~25¢/image → ~$4.50). Three lanes nightly ≈ $13.50/day in image spend — Keenan asked for this trade to get curation control.
+- Pick-list covers each come from a DIFFERENT image family (unless a sceneFamily override forces one) so the 3 candidates are visually distinct, not three takes of the same idea.
+- "STAY INVISIBLE." / "GUARD THE QUIET." were moody-men posts — that lane died this morning, which answers Keenan's "which lane is that?" question.
+
+## [2026-09-10] — No more notebook shots, dramatic skies on buildings, timeline posts show real results
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 834c2663
+
+### In plain English (for Keenan)
+Three fixes from reviewing the new round. Notebook/pen/desk images are banned from BWK — object shots must be unmistakable luxury (cars, watches, private jets). Every building image must have a dramatic sky behind it: heavy cloud cover, cool cinematic lighting, or a sunset — never a plain empty sky. And the timeline posts changed format: the cover now reads exactly "100 DAYS OF DISCIPLINE..." (or whichever interval) and the slides show how much progress a man can actually make in that time — believable math and expected results for each area of life (body, bank account, skill, mind).
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: dramatic-sky mandate added to the dark-luxury architecture family brief and all three four-family SCENES blocks; dark-luxury objects family bans notebooks/journals/pens/books/desks/paperwork/stationery (fountain-pen-on-ledger seed removed; private jet + chess king added); PHONE_QUOTE_BG_SCENES men pool: desk-notebook backdrop → matte-black sports car; buildProtocolSystemPrompt rewritten — fixed title "${interval} OF DISCIPLINE...", slides are per-area expected results with plausible hedged math instead of protocol steps
+- Dormant lanes (bloomers, year, moody-men) still carry old notebook scene text — left as is; apply the four-family library if ever revived
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- Keenan flagged a "KEEP YOUR WORD." pen-on-ledger cover as the bad example — it came from the "fountain pen on a closed ledger" seed in the objects family. Seeds ARE the output; a bland seed will get rendered eventually.
+- Same session he called the price post ("COLLECT YOUR DEBTS.") the best generated so far and re-emphasized hyperrealism — the anti-render + quality-high mandates stay pinned.
+
+## [2026-09-10] — Warrior images now demand powerful action poses
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b65f66d5
+
+### In plain English (for Keenan)
+The warrior images now have to show the warrior doing something powerful — striding alone into the storm, arms flexed in triumph, driving a sword into the frozen ground — never just standing there. The goal baked into the prompt: every frame should radiate strength, consistency, and drive, the kind of image that makes a man want to get to work. Distance, snow, and hidden-face rules stay.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: action-pose mandate ("reads in silhouette", "never standing idle") added to the epic-warrior family brief, all three four-family SCENES blocks (SCENE_BRIEF.men, MEMENTO_MEN_SYSTEM_PROMPT, buildProtocolSystemPrompt), and the buildMoodyImagePrompt warrior carve-out
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- Pose energy enforced at both the scene-writing layer and the render layer, same as the distance rule — one layer alone lets the image model regress to idle standing shots.
+
+## [2026-09-10] — Knight images reworked into distant epic warriors
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 70e2401c
+
+### In plain English (for Keenan)
+The first knight posts had the warriors too close to the camera and looked rough. The knight image family is now "epic warriors": any legendary warrior — knight, spartan, samurai, viking — in full silver or gold armor, always shot from a distance in a huge snowy, stormy landscape so the atmosphere and scale carry the image. Never a close-up, never a visible face.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: MEN_COVER_FAMILIES "medieval knight" → "epic warrior" (distance mandate, snow/storm atmosphere default, silver/gold/blackened-steel full armor, warrior variety); matching rewrites in the four-family SCENES text of SCENE_BRIEF.men, MEMENTO_MEN_SYSTEM_PROMPT, and buildProtocolSystemPrompt; buildMoodyImagePrompt carve-out enforces distant wide framing at the render layer too
+- Doc-comment sceneFamily examples in carousel-daily.ts and route.ts updated to "epic warrior" (the forced-family key changed with the rename)
+
+### Manual steps needed
+- None (deployed with this batch)
+
+### Notes
+- The distance rule lives in BOTH the topic-prompt layer (scene text) and buildMoodyImagePrompt (render layer) — the first knight run showed the image model defaults to close-up hero framing unless the render prompt forbids it.
+- Themed one-off key is now "epic warrior" — {"action":"generate-daily","bucket":<men lane>,"sceneFamily":"epic warrior"}.
+
+## [2026-09-10] — BWK image library v3: four scene families, anti-bland rule, knight posts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1996c68e
+
+### In plain English (for Keenan)
+BWK photos were coming out bland — flat empty landscapes with nothing commanding the frame. Every BWK image now comes from exactly four families: dark-luxury architecture, super-cool landscapes with one alpha animal as the hero, dark-luxury objects (cars, watches), and a brand-new medieval-knight family (hyperreal weathered armor, visor down, face never visible). Every frame must have a clear dramatic subject — empty marsh covers are banned. There's also a new way to request a themed one-off post where every slide lives in one family, like an all-knight post.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: MEN_COVER_FAMILIES cut 18 → 4 (dark-luxury architecture / alpha wildlife / dark-luxury objects / medieval knight); SCENE_BRIEF.men, buildProtocolSystemPrompt, and MEMENTO_MEN_SYSTEM_PROMPT scenes rewritten to the four-family brief with an ANTI-BLAND RULE (every frame needs a dramatic subject; no empty flat landscapes); knight carve-out added to buildMoodyImagePrompt (rendered only when the scene explicitly describes one, face never visible — follows the 2026-09-01 lone-man lesson); rollMenCoverRule(forcedFamily?) — forced family = FAMILY LOCK on cover AND item scenes; sceneFamily? param on generateWatchingTopic / generateProtocolTopic / generatePriceTopic / generateProveTopic / generateMementoTopic
+- apps/web/src/inngest/functions/carousel-daily.ts: sceneFamily extracted from event data and threaded into the five men-lane generator calls
+- apps/web/src/app/api/admin/carousels/route.ts: generate-daily action passes sceneFamily through to the Inngest event
+
+### Manual steps needed
+- None (deployed with this session's batch; no schema change, no cron/trigger change so no Inngest resync)
+
+### Notes
+- Root cause of blandness: the old 18-family library and scene briefs permitted subject-less flat landscapes. The fix is fewer, stronger families plus an explicit anti-bland rule — the UNLIMITED LIBRARY RULE stays (families are seeds; every image is still freshly invented).
+- Knight = a person, which conflicts with "NO people EVER"; resolved as a conditional carve-out like the statue/animal ones — only when the scene describes a knight, and armor-only, never a face.
+- Themed one-offs: POST /api/admin/carousels {"action":"generate-daily","bucket":"watching","sceneFamily":"medieval knight"} — forced family locks item scenes too, so the whole post lives in one world.
+
+## [2026-09-10] — BWK lineup reshuffle: memento mori in, two new lanes, rotating protocol
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f30e523d
+
+### In plain English (for Keenan)
+The BWK side of the nightly content run changed shape. The "earn your silence" posts are retired and replaced by men's memento mori time-math posts. "Hold the line" became "when no one's watching" — private discipline tests nobody sees. The protocol posts no longer always say 30 days: each one rolls 30 days, 100 days, 365 days, 2 years, or 5 years, and the cover is now a question like "if you locked in for 100 days, who would you be on the other side?" Two brand-new lanes were added on top: "pay the price" (each slide names the real cost of the life he wants, ending on "still want it?") and "prove it" (each slide turns a claim like "I want the money" into what today has to look like). BWK goes from 4 to 6 posts per night — 11 total across both accounts.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new WATCHING_THEME / PRICE_THEME / PROVE_THEME + generateWatchingTopic / generatePriceTopic / generateProveTopic (all via generateMoodyFamilyTopic, so humanizer gate + HUMAN_VOICE_RULES + BWK cover-family rotation come free); PROTOCOL_SYSTEM_PROMPT converted to buildProtocolSystemPrompt(interval) with a PROTOCOL_INTERVALS roll (5 values) inside generateProtocolTopic; question-style title rule (8-15 words, must name the interval, ends "?"); generateMementoTopic men path now appends rollMenCoverRule(); LINE_THEME/generateLineTopic and the moody-men path of generateMoodyTopic are dormant, not deleted
+- apps/web/src/inngest/functions/carousel-daily.ts: lanes are now memento-men / watching / protocol / price / prove / questions / memento / selfie / phone-quote / phone-quote-men; HOUR_LANES — 5: memento-men+selfie, 6: watching+questions+phone-quote, 7: protocol+selfie+phone-quote-men, 8: memento+price+prove; imageAudience + `named` flags updated (memento-men unnamed — numbers are the content)
+- email.ts BWK_LANES + carousel-generate.ts MOODY_LANES: added watching / price / prove (memento-men was already in both from its first life)
+- Admin: three new generate buttons (🕰️ memento-men, 👁️ watching, 🧾 price, 🎯 prove replace 🏛️/🌩️); route comment updated
+
+### Manual steps needed
+- [ ] Deploy (`vercel deploy --prod`) before tonight's 5-8 UTC run, then Inngest resync `curl -X PUT https://goripple.io/api/inngest` (Keenan says "push it") — without deploy the run still generates the old lineup
+
+### Notes
+- Interval + cover-family rolls both happen inside the memoized generate-moody-topic Inngest step, so replays keep the same values.
+- Protocol covers are now 8-15 word questions rendered in the COVER treatment (72px, 14-char wrap) — they render as a bigger text block than the old 2-6 word titles. If Keenan says covers look like a text wall, the SIGN treatment (60px, 18-char wrap) is the ready fallback.
+- PRICE's "Still want it?" final line and PROVE's claim-as-name (3-6 words) are prompt-mandated exceptions to the base moody rules; the parser accepts both (requireName only checks presence).
+- No schema changes — lane is a plain string column, no db push needed.
+
+## [2026-09-09] — Quote-surface text now blends into the photo instead of looking pasted on
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** b4bf572c
+
+### In plain English (for Keenan)
+The billboard/phone/car-dash quote images no longer look like a sticker slapped on top of the photo. The text now picks up the photo's own lighting — its gradients, glow, and color tint show through the panel — plus a hint of softness and film grain, so it reads like the words were actually photographed in the scene.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: `composeQuoteSurfaceSlide` no longer pastes the rendered overlay opaquely. It extracts the detected bright-panel region from the AI photo, multiplies the overlay into it (white ≈ passthrough, so the photo's painted lighting modulates our render), applies a 0.6px blur to the overlay (vector-crisp type doesn't exist in photos), and composites gaussian grain (sigma 6) with soft-light blend to match photographic noise, then puts the lit region back into the frame.
+- Applies to all five surfaces (imessage, flip, car, billboard, sign). The recompose path in carousel-generate.ts calls the same function, so it inherits the blend automatically.
+- sharp `create.noise` requires a `background` field in the type defs — set to mid-gray {128,128,128}.
+
+### Manual steps needed
+- [ ] Deploy required for tonight's 5–8 UTC generation run to use the blended compositing (Keenan says "push it")
+
+### Notes
+- Classic mockup-blending technique: multiply preserves dark content (text) while letting the panel's own bright lighting show through, which is physically how a printed/displayed surface behaves. Dark-mode phone UIs stay dark under multiply — correct, since dark screens don't reflect scene lighting much.
+- The overlay's rounded corners leave the original photo panel visible at the corners — this looks natural (the photo's own screen edge shows).
+- Verified with synthetic gradient-panel scenes for billboard + imessage: gradient carries through the composited content.
+
+## [2026-09-08] — Slides no longer show numbers, so Keenan can drop any slide before posting
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4b132b58
+
+### In plain English (for Keenan)
+Slides used to be numbered ("1. ... 2. ... 3. ...") on the discipline, hold-the-line, and protocol posts. Since you review every post and sometimes cut a slide or two before posting, the numbering would expose the gap. Now slides just show the short bold header ("Reset day.") and the text — you can drop any slide and the post still reads clean. The numbered list in your email stays, since that helps you pick which slides to cut.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: `numbered` flag → `named`; item header renders `item.name` without the `${i + 1}. ` prefix (moody-men, line, protocol — other lanes never had headers/numbers)
+- apps/web/src/lib/content-factory/moody-carousel.ts: FORMAT examples in the moody builder + PROTOCOL_SYSTEM_PROMPT un-numbered ("Reset day.", "One hour on the skill."); protocol user prompt says "steps" not "numbered steps"
+- email.ts slide numbering intentionally untouched (it's Keenan's navigation, not post content)
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — live from the next generation
+
+### Notes
+- Historical posts keep their baked-in numbers; recomposeSlide edits on old slides re-render the stored overlayText as-is (numbers included) — expected
+- If a future lane wants numbering back, it's one flag in carousel-daily.ts
+
+## [2026-09-08] — BWK image variety expanded to 18 families with unlimited scene invention
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d3bdfdad
+
+### In plain English (for Keenan)
+Per your "unlimited amounts — every post should be a unique image": the scene system doesn't pick from a fixed list — the AI writes a brand-new scene description for every single image, so the library is infinite. What changed: BWK now rotates 18 different visual worlds instead of 9 (added: the forge, empty fight gyms, candlelit monasteries, night stadium tracks, motorcycles/cars in the dark, hourglasses and clocks, desert roads, frozen lakes, and dark libraries), the wildlife family opens to the entire animal kingdom instead of five examples, and every scene instruction now carries a hard rule: the examples are seeds only — invent something never used before, every slide, every post.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts only
+- MEN_COVER_FAMILIES 9 → 18 (forge, combat gym, monastery, night track, machines, time still-life, desert, frozen world, war room)
+- Apex wildlife brief broadened to the full animal kingdom + never-reuse-a-recent-animal rule
+- SCENE_BRIEF.men + PROTOCOL_SYSTEM_PROMPT: new families added compactly; closing "inspiration, not a menu" line upgraded to an UNLIMITED LIBRARY RULE (invent fresh subject/location/season/weather/time/vantage per slide, never verbatim, never repeat recent)
+- rollMenCoverRule: rolled family's cover must be a never-before-used scene inside that family
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — pushed and deployed this session; BWK example triggered for Keenan's review
+
+### Notes
+- Scene uniqueness is enforced by prompt mandate, not a DB check — the model doesn't see recent scene text (avoidBlock covers titles/substance only). If near-duplicate images still appear, the next lever is plumbing recent coverScene/imagePrompt strings into the avoid block
+- Women's briefs already carry an "inspiration, not a menu — invent new" clause; extend the stronger UNLIMITED LIBRARY wording there if Keenan flags Ripple repetition
+
+## [2026-09-08] — Five new photo styles: statues, wildlife, and luxury objects for BWK; letters and quiet rooms for Ripple
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1c1f681e
+
+### In plain English (for Keenan)
+Per your ask for way more picture variety: BWK posts can now open on and use dramatic stoic statues (rain-soaked marble, hard spotlight), lone apex animals (a wolf in snow, a lion in rain, a stag on a ridge), and old-money still-lifes (a watch on leather, a chessboard, a fountain pen on a ledger) — alongside the existing buildings, gyms, nature, and streets. Ripple posts can now use letter-writing scenes (blank stationery and a pen in lamplight — the paper is always blank so nothing can be misspelled) and quiet-house rooms that carry emotional weight (the kitchen after everyone's asleep, a made bed in a kid's old room, a porch light left on). These are new looks inside the existing daily posts, not new lanes — your posting volume doesn't change.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts only; no schema/route/config changes
+- SCENE_BRIEF.men + PROTOCOL_SYSTEM_PROMPT SCENES: 3 new families (stoic statue, apex wildlife, old-money still-life); MEN_COVER_FAMILIES 6 → 9 so they rotate as covers across all 4 BWK lanes
+- WOMEN_SCENE_BRIEFS light+dark (drives questions + the shared women builder), MEMENTO_WOMEN_SCENES light+dark, phone-quote women coverScene bullet: letter-writing still-lifes + quiet-house scenes
+- buildMoodyImagePrompt men branch: was "NO people, NO animals ... render EMPTY"; now statues and ONE lone wild animal are allowed only when the scene text explicitly names one — conditional, not standing (2026-09-01 lone-man lesson)
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — variety shows up in the next overnight run
+
+### Notes
+- Statues technically depict human figures — the conditional carve-out phrasing matters. If a generic statue starts leaking into non-statue scenes, tighten the carve-out first, don't remove the family
+- Letter scenes always describe BLANK stationery; the global "no text anywhere" image rule stays the backstop
+- Dormant lanes (memento-men, year, etc.) intentionally not updated
+
+## [2026-09-08] — Quote screens must now fill most of the frame so the text is readable
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f3494cbb
+
+### In plain English (for Keenan)
+You flagged a flip-phone quote post where the phone was small in a wide shot and the quote was too tiny to read. Two fixes: the AI is now told to shoot every quote scene as a close-up where the screen dominates the picture ("never a wide shot"), and our code now measures the screen it finds — if it's too small to hold readable text, it throws the scene away and generates a new one instead of shipping an unreadable post.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: QUOTE_SURFACE_SPECS sizeHints rewritten (was "roughly one third"/"one quarter" → "at least two thirds of the frame's width", flip demands an extreme close-up); buildQuoteSurfacePrompt gains a "CLOSE-UP COMPOSITION (critical)" clause banning wide shots
+- apps/web/src/lib/content-factory/compose.ts: SURFACE_ASPECT entries gain minWFrac (imessage 0.5, flip 0.45, car 0.6, billboard 0.6, sign 0.5); composeQuoteSurfaceSlide rejects detected rects narrower than minWFrac × frame width → returns null → carousel-daily's regenerate-once-then-fallback chain fires
+- tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] None — deployed and fresh examples re-triggered in this session
+
+### Notes
+- The bad slide passed the old floor (rect ≥20% of frame width) because that floor was a detection-sanity check, not a readability check. minWFrac is the readability floor
+- If real runs show frequent fallback-to-drawn-phone (meaning gpt-image-2 ignores the close-up demand), the next lever is raising the retry count or tightening scene descriptions per surface
+
+## [2026-09-08] — BWK cover photos now rotate scene families instead of always opening on a building
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3b61f64b
+
+### In plain English (for Keenan)
+You flagged that almost every BWK post was starting with a building. That happened because one lane was literally locked to skyscraper covers (from when the skyscraper post did big numbers) and the AI's scene instructions listed buildings first, so it kept defaulting there. Now every BWK cover rolls one of six looks per post — storm skyscraper, late-night grind (glowing laptop / empty gym), raw nature (no buildings at all), dark bedroom or car looking out at night, empty rain-soaked streets, and a moody coastline. The skyscraper still shows up, but as one in six instead of nearly every post. Ripple's covers are untouched.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new MEN_COVER_FAMILIES (6 families) + rollMenCoverRule() — returns a "COVER SCENE RULE" string injected into topic-generation system prompts
+- Wired into all 4 live BWK lanes: generateMoodyTopic (men), generateLineTopic (replaces the deleted LINE_COVER_RULE skyscraper lock), generateProtocolTopic (rule appended to PROTOCOL_SYSTEM_PROMPT at call time), generatePhoneQuoteTopic (men only — the fixed night-city coverScene bullet now defers to the appended rule)
+- Rolls happen at topic-generation time inside memoized Inngest steps, so replays keep the same family
+- No schema, route, or config changes; tsc holds the 246-line baseline
+
+### Manual steps needed
+- [ ] Included in the queued "push it" (3 commits now: 4d59d00e, 3a9916b4, 3b61f64b + docs) — deploy via `npx vercel deploy --prod --yes` from repo root (Keenan says go, Claude runs it)
+
+### Notes
+- This supersedes the 2026-09-03 "storm-skyscraper covers" lock on the line lane. Keenan's instruction was "do not make this the cover photo every time" — not "never buildings" — so storm-architecture stays in the rotation at ~1/6
+- The men's SCENE_BRIEF still leads with architecture for ITEM slides; only covers are steered. If item slides also skew building-heavy later, the same rotation approach can extend there
+- Women's lanes (moody-women, phone-quote) deliberately untouched — the complaint was BWK-specific
+
+## [2026-09-08] — Quote slides now live inside real scenes: texts, car screens, billboards, signs
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4d59d00e
+
+### In plain English (for Keenan)
+You said the drawn phone looked "way too generic" — so the quote slide is now built into the environment, the way you asked. The AI photographs a real scene that contains a blank glowing screen — a phone in someone's hand, an open flip phone, a car dashboard display, a billboard on a street, or a letterboard sign outside a shop (it rotates randomly, warm cozy scenes for Ripple, dark moody ones for BWK) — and our code finds that blank screen in the photo and types the quote onto it. A phone in a hand shows a real incoming text from a friend, complete with the message bubble and typing bar. The words are still drawn by our own code, never by the AI, so they can never be misspelled. If the AI botches the screen (tilted, missing), the system retries once, then quietly falls back to the previous phone look so the daily post always ships.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: detectBrightRect (270×480 grayscale downsample, luminance ≥228 threshold, largest connected component, validates ≥3% frame area, ≥0.82 bbox fill ratio, rejects blown-out frames — tilted/absent screens return null); renderSurfaceOverlay renders per-surface content at 1080-wide design res then downscales into the detected rect (iMessage thread w/ bottom-pinned incoming bubble + input bar, light for women / iOS-dark for men; flip-phone green-LCD SMS; car infotainment w/ brand accent; billboard; letterboard sign in caps); composeQuoteSurfaceSlide ties it together with per-surface aspect validation (SURFACE_ASPECT) and 2% overscan
+- apps/web/src/lib/content-factory/moody-carousel.ts: QUOTE_SURFACES/rollQuoteSurface/buildQuoteSurfacePrompt — per-surface per-audience scene pools; prompt demands a pure-white blank screen, straight-on with edges parallel to frame, the brightest thing in the photo, no other bright areas, no text anywhere
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen rolls a surface, generates the scene, composites; detection failure regenerates the scene once, then falls back to renderPhoneQuoteSlide (drawn phone over the last scene, or flat with none). New marker "PHONE-QUOTE SURFACE (variant/surface)"; raw scene still stored as rawImageUrl
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide branch for the SURFACE marker — re-fetches the raw scene, re-detects the screen, re-composites the edited quote; falls back to drawn phone if detection or the fetch fails. Old "PHONE-QUOTE NOTE SCREEN" slides keep their existing branch
+
+### Manual steps needed
+- [ ] Keenan says "push it" — remember the push must include `npx vercel deploy --prod --yes` from the repo root (git auto-deploy is still broken) (Keenan)
+- [ ] After deploy, trigger fresh examples for both phone-quote lanes so Keenan can judge the new look on real posts (Claude Code, on "push it")
+
+### Notes
+- Tested end-to-end with two real gpt-image-2 scenes (~50¢): hand-held iPhone in lamp-lit bedroom (women) and car dashboard at night (men) — detection landed first try on both, results at /tmp/qsurf-real/. All 5 surfaces × 2 variants also pass on synthetic scenes; no-screen and 25°-tilted-screen negatives correctly return null
+- The threshold approach depends on the prompt keeping the screen the ONLY bright area — if real runs show detection failing (falling back to the drawn phone), the retry+fallback chain means posts still ship, and the failure logs as "Quote-surface screen not detected"
+- Billboard/sign shrink the font to fit 20–45-word quotes; sign renders in caps (letterboards are caps), billboard keeps lowercase
+- tsc holds the 246-line pre-existing baseline; the two "Cannot find namespace 'sharp'" compose.ts errors in it are pre-existing, only line numbers shifted
+
+## [2026-09-08] — The quote slide is now a real phone photographed in a scene
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The phone-quote lane's second slide is no longer a full-screen Notes page — it's now a photo: a realistic iPhone sitting in a dim, softly blurred scene (warm lamp-lit rooms for Ripple, dark city/desk scenes for BWK), with the Notes screen and your quote showing on the phone's display. The quote is baked into the image. The scene behind the phone is AI-generated, but the phone itself and every word on its screen are drawn by our own code — so the quote can never be misspelled or garbled. If the background generation ever fails mid-run, the post falls back to the old full-screen Notes look instead of dying. Note: the previous Notes-screen redesign from the 4th never went live — those commits were held awaiting your "push it," so production ran the old flat renderer all weekend. This commit joins that queue.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/compose.ts: renderPhoneQuoteSlide split into renderNotesScreenNative (parametrized Notes-screen PNG at native width, optional Dynamic Island, tunable quote size/wrap) + a new signature renderPhoneQuoteSlide(quote, variant, background?). No background = legacy full-bleed screen (fallback + old-post recompose). With background = drawn iPhone (SVG body/buttons/shadow/Dynamic Island, 700×1466 at 190,227) with the screen rendered at native res (66pt quote, wrap 24) then downscaled to 656×1422 and rounded-corner-masked (dest-in, rx 88), composited over the cover-resized backdrop
+- apps/web/src/lib/content-factory/moody-carousel.ts: new buildPhoneQuoteBgPrompt(audience) — per-variant scene pools (women: warm dim interiors; men: dark desk/city-night), prompt demands a real photograph fully OUT of focus with bokeh (as if focused on a foreground phone not in shot), 9:16, NO people/hands/phones/screens/text
+- apps/web/src/inngest/functions/carousel-daily.ts: compose-phone-quote-screen step now generates the backdrop via generateMoodyImage (quality high, ~25¢), uploads the raw to slide-1-quote-raw.jpg, passes it to renderPhoneQuoteSlide; try/catch fails open to the flat render. Slide-1 create stores rawImageUrl; estimatedCostCents corrected 10 → 52 (two images + Claude tokens)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide's PHONE-QUOTE marker branch fetches slide.rawImageUrl (if present) and re-composites the same backdrop on text edits; falls back to full-bleed if the fetch fails or no raw exists
+
+### Manual steps needed
+- [x] Keenan says "push it" — pushed + manually deployed via `npx vercel deploy --prod --yes` on 2026-09-08 (git auto-deploy found broken; see deploy notes in scripts/deploy-main.sh)
+
+### Notes
+- The marker prefix "PHONE-QUOTE NOTE SCREEN" is unchanged, so recomposeSlide still catches old and new slides alike; old slides have no rawImageUrl and correctly re-render full-bleed
+- Screen text renders at 1080-wide native then downscales 0.607× — quote bumped to 66pt/wrap-24 so it stays legible at final size; Dynamic Island only appears in phone mode (full-bleed mimics a screenshot, which never shows the island)
+- Verified visually before commit: /tmp/pq-women-phone.jpg, /tmp/pq-men-phone.jpg (phone-in-scene, both variants), /tmp/pq-women-flat.jpg (fallback) — tsc holds the 246-line pre-existing baseline
+- The backdrop prompt bans phones/screens/text in the AI image — the only phone in frame is ours, so there's no double-phone risk
+
+## [2026-09-04] — The humanizer gate now covers every social generator, including dormant and admin-triggered ones
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Per your directive that every social media post runs through the humanizer before generation: an audit found the nightly lanes were covered but several older paths were not — the admin "generate one carousel" button, the retired sign/aura/quote-video/calm-video formats (still revivable), and the old X/TikTok/Instagram/ad-copy generator behind the admin content dashboard. All of them are now wired the same way: the anti-AI-writing rules ride on the generation prompt, and the finished copy passes through the full humanizer approval gate before it's accepted. Nothing in the system can produce a social post that skips the gate anymore — including anything we revive later.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/generate-topic.ts: generateTopic (admin one-off negative/positive carousels) — HUMAN_VOICE_RULES on the system prompt + humanizePass on headline/reasons/details/captionQuestion with shape validation, fail-open
+- apps/web/src/lib/content-factory/moody-carousel.ts: generateSignTopic + generateAuraTopic (dormant single-line lanes) — rules + gate on the line; scene never gated
+- apps/web/src/lib/content-factory/quote-loop.ts: generateQuoteConcept — rules + gate on the quote (4-20 word re-check)
+- apps/web/src/lib/content-factory/ambient-video.ts: generateAmbientScript — gate on title/caption/script, run BEFORE the vocalScript word-lock so a rewritten script drops the tagged read instead of drifting from the audio. HUMAN_VOICE_RULES deliberately NOT appended to this lane's prompt (its spoken-style rules use ellipsis/em-dash pause direction, which conflicts); the gate pass is the enforcement
+- apps/web/src/lib/content-factory/generate.ts: HUMAN_VOICE_RULES appended to BRAND_SYSTEM_PROMPT (covers blog too); new gateSocialPieces() helper; gate wired into generateTwitterPosts, generateTikTokScripts, generateAdCopy, generateInstagramPost (caption+hook; imagePrompt/hashtags untouched)
+- Already gated in the previous commit: all 5 moody-family nightly lanes (shared builder — versions delegates there too), selfie, both phone-quote lanes
+- NOT gated: generateBlogPost body (1,400+ word HTML exceeds the gate's output budget and it's not a social post — the prevention rules now ride on its prompt), blog/niche-research/strategy-memo callClaude users (not social posts)
+
+### Manual steps needed
+None — deploy is automatic on push.
+
+### Notes
+- Every gate call fails open with a console.warn + ClaudeCallLog failure row — a gate outage degrades copy quality, never kills a run
+- Slugs everywhere derive from the pre-gate text so filenames/dedupe keys stay stable
+- Dormant lanes were gated on purpose: reviving a lane must not silently reopen an ungated path
+
+## [2026-09-04] — Human-voice approval gate, title sense-check, and a real phone-screen quote slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three quality fixes from today's escalations. First, every piece of post copy (titles, slide text, hooks, quotes, captions) now passes through a final "humanizer" approval gate before it's accepted: a checker armed with the full library of known AI-writing tells (em dashes, "It's not X, it's Y", fake-deep one-liners, forced groups of three, chatbot filler, and ~20 more) that rewrites anything that sounds like a bot wrote it. Second, cover titles now have a hard sense-check rule so a garbled title like "DON'T LIE NOW" can never ship — the title must read as a natural phrase a real person would say, on its own, instantly. Third, the phone-quote lane's second slide is no longer text floating on a blank background: it's now a pixel-perfect fake iOS Notes screenshot (status bar, "< Notes" back button, date line, the quote typed out) — light blue for the women's account, dark with gold for the men's. The phone-quote format is locked exactly as you specified: slide 1 = your hook line on a fresh photo, slide 2 = the quote on the Notes screen, every single time, no variance. The Notes screen is drawn by our own code, not the image AI, so the quote can never be misspelled or garbled.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/humanizer.ts: `HUMAN_VOICE_RULES` (prevention block appended to every live topic-gen system prompt), `HUMANIZER_PATTERNS` (26 prose patterns vendored from github.com/blader/humanizer SKILL.md, MIT), `humanizePass<T>()` (post-validation Claude call on reader-facing strings only — same-shape JSON back, ClaudeCallLog bookkeeping, throws after logging), `extractVoice()`
+- apps/web/src/lib/content-factory/moody-carousel.ts: SENSE CHECK clause added to all 4 live title rules (shared moody builder, memento-women, questions, protocol); removed "BE HONEST NOW" from the questions examples (it seeded the "DON'T LIE NOW" remix); generateMoodyFamilyTopic + generatePhoneQuoteTopic now append HUMAN_VOICE_RULES to system prompts and run humanizePass on title/items and hook/quote with strict merge-back validation (shape, lengths, non-empty; quote re-checked 10-60 words). Gate FAILS OPEN — on error the pre-gate copy ships and the failure is logged, so the overnight run never dies
+- apps/web/src/lib/content-factory/generate-topic.ts: same gate wiring for the selfie lane (headline/steps/details/captionQuestion)
+- apps/web/src/lib/content-factory/compose.ts: renderPhoneQuoteSlide fully rewritten as an iOS Notes screenshot — SVG shapes for chrome (status bar, chevron, ellipsis; no SVG text, avoids serverless font issues), Pango-rendered text pieces (9:41, "Notes", date line, left-aligned quote); women #D9EAF7/#1C2733/#3D6186, men #1C1C1E/#F2F2F0/#E5B84C. renderMarkup gained an `align` param ("centre" | "left")
+- No schema, cron, or Inngest changes; slide-2 marker prompt unchanged so recomposeSlide still re-renders programmatically
+
+### Manual steps needed
+None — deploy is automatic on push. Tonight's 5-8 UTC runs pick everything up.
+
+### Notes
+- The humanizer gate adds one extra claude-sonnet call per post (~1-2¢) — negligible next to the 25¢/image spend
+- Scenes/coverScene image directions NEVER go through the gate (churn there wastes image money and can break markers); only reader-facing strings do
+- The "DON'T LIE NOW" garble happened because the model remixed example title phrases; the fix is both the sense-check rule AND removing the seed example — when a title rule changes, sweep every live lane's system prompt
+- Slide-2 renders verified visually before commit (/tmp/pq-women.jpg, /tmp/pq-men.jpg both read as genuine Notes screenshots)
+- Keenan floated alternate quote surfaces (billboard, sign, car bluetooth screen, "bat signal"); Notes screen chosen because it's the only deterministic one — AI-generated surfaces would risk garbled quote text, the exact failure class this batch fixes. A deterministic car-screen variant is buildable if he wants rotation later
+
 ## [2026-09-02] — The phone app can now be built at the new prices, without pausing the RevenueCat trial run
 
 **Requested by:** Jimmy
@@ -87,6 +771,59 @@ Nothing changes for existing subscribers: grandfathering is automatic, so everyo
 - **`pricing` was added to `OBSERVER_PROFILES` deliberately** — it configures the SDK in observer mode, so it should be held to every observer expectation. The one exception is the NEW_PRICING assertion, which moved out of the shared block with a comment saying why.
 - **A submit profile was needed.** `eas submit --profile pricing` on a missing profile fails with "Missing submit profile in eas.json"; with the new one it gets past resolution to the archive prompt. That contrast is how the profile was verified without running a real submission.
 - Baselines: web tsc **161 before, 161 after**; mobile tsc **19 before, 19 after** — both measured by stashing. (The brief said 163; main has drifted to 161. That is five briefs running with a stale tsc number.) Tests **724/724** across 43 files; the RC evidence file went 22 → 34. Six mutations of `eas.json` each fail between 1 and 7 tests.
+## [2026-09-04] — Image generation bumped to maximum quality with a fine-detail mandate
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every generated image now runs at the image model's maximum quality tier instead of its default — this is the single biggest lever for the fidelity you flagged (the TRUST THE PROCESS reference level, and the blurred leaves on the bench photo). On top of that, every image instruction now carries an explicit attention-to-detail rule: individual leaves, fabric weave, wood grain, and background elements must all be fully resolved — no mushy, smeared, or half-melted areas anywhere in the frame, on any lane (scenery, selfies, and aesthetic shots alike). Heads up on cost: max quality is roughly 3x the per-image price — about 25¢ per image instead of 8¢, so a full 9-post day lands around $10-12 in image spend instead of ~$3-4.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/carousel-generate.ts: `quality: "high"` pinned on both gpt-image-2 calls (images.generate at 1024x1792 and images.edit at 1024x1536); estimateImageCost 8¢ → 25¢ with updated comment
+- apps/web/src/lib/content-factory/moody-carousel.ts: buildMoodyImagePrompt gains an ATTENTION TO DETAIL line (fully resolved fine texture everywhere; background softness must be optical depth of field, never smear) — covers all scenery lanes + phone-quote covers + quote loop
+- apps/web/src/lib/content-factory/brand.ts: same ATTENTION TO DETAIL line added to SELFIE_VISUAL_DNA (mirror selfies) and SELFIE_AESTHETIC_DNA (aesthetic/POV shots — the blurred-leaves bench image was this lane)
+- No schema, cron, or Inngest changes
+
+### Manual steps needed
+None — deploy is automatic on push. Tonight's 5-8 UTC runs pick it up.
+
+### Notes
+- The quality param was previously unset, so gpt-image-2 was serving its default tier — the mushy foliage is a classic sub-max-tier artifact; the prompt-side detail mandate alone would not have fixed it.
+- Cost math: ~45 images/day at 25¢ ≈ $11/day ≈ $340/month, up from ~$3.60/day. Flagged to Keenan in the PR of record (this entry); dial back to default tier by removing the two `quality` lines if spend becomes a problem.
+- The admin cost estimator (estimateImageCost) was updated in the same commit so dashboard numbers stay honest.
+
+## [2026-09-03] — Content factory rebuilt around the winning posts: 9 posts/day, new HOLD THE LINE and phone-quote lanes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The daily content is now built entirely around the posts that already performed. BWK gets 4 posts a day, each anchored on a winner: every discipline post is now a "move in silence" post (EARN YOUR SILENCE family), a new HOLD THE LINE lane always opens on a storm-skyscraper image like the one that got views, the 30 DAYS protocol posts continue unchanged, and there's a new 2-slide quote post ("this quote kept me up all night..." over a night skyline, then a phone notes-screen with the quote). Ripple gets 5 a day: the selfie slideshow now runs TWICE daily with a different photography style per post (golden hour, lamplight, overcast, etc.), the ANSWER HONESTLY-style question posts are back to the dark warm imagery that worked, the DO THE MATH posts always open on a dusk beach like the one that got shares, and Ripple gets its own version of the 2-slide quote post (light-blue notes screen). The lanes that weren't winning — men's life-math, ONE YEAR FROM NOW, THINGS THAT ARE STILL FREE, NOBODY TELLS YOU, DELETE THIS AFTER READING — are paused, not deleted, and can come back anytime. The quote text on the phone-screen slides is typed by code, not drawn by the image AI, so it can never be misspelled. Follow-up (same day): every cover title across all carousel lanes must now be short, sweet, and pull the reader in — a direct command or prompt to engage ("EARN YOUR SILENCE", "ANSWER THESE HONESTLY...") — never a passive topic label; a trailing "..." is allowed as swipe bait. Second follow-up (same day): every generated image on every lane must now look like a real photograph someone actually took — the image instructions explicitly forbid the 3D-render / CGI / too-perfect AI look and demand honest camera behavior (real light, a touch of grain, natural focus). The selfie lanes already worked this way; now the scenery lanes match. Third follow-up (same day): on top of realism, every image must be high quality and CLEAR — tack-sharp, never blurry or hazy — and the variance directive was widened so each image also varies its focal length, camera distance, weather, and light direction (not just the vantage). The mirror-selfie instructions dropped "mild soft focus" for crisp modern-phone clarity.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: CAROUSEL_LANES → [moody-men, line, protocol, questions, memento, selfie, phone-quote, phone-quote-men]; HOUR_LANES → 5:[moody-men,selfie] 6:[line,questions,phone-quote] 7:[protocol,selfie,phone-quote-men] 8:[memento] (selfie twice on purpose); Ripple scheme PINNED to "dark" (supersedes the 2026-09-01 50/50 roll — light machinery stays implemented); new phone-quote branch (own early-return like selfie: moody dark cover + programmatic quote screen); caption ternary collapsed to buildMoodyCaption; selfie branch threads a slug-deterministic SELFIE_STYLE_VARIANTS pick into every image prompt
+- apps/web/src/lib/content-factory/moody-carousel.ts: buildMoodySystemPrompt gains opts { theme, coverRule }; SILENCE_THEME injected into generateMoodyTopic("men"); new generateLineTopic (LINE_THEME + storm-skyscraper LINE_COVER_RULE, numbered 4-7 items); questions title rule → direct reader-prompt covers ("ANSWER HONESTLY" energy); memento women dark scheme gains MEMENTO_COVER_RULE (dusk-coast covers); new PhoneQuoteTopic + generatePhoneQuoteTopic(audience) with per-audience system prompts (hook + 20-45-word quote + coverScene); follow-up sweep — the "title" rule in ALL four live carousel system prompts (moody base builder, protocol, memento-women, questions) rewritten to "short, sweet, impossible to scroll past: a direct command to act or prompt to engage, never a passive label, trailing '...' allowed" (selfie + phone-quote covers are already hook-style and unchanged)
+- apps/web/src/lib/content-factory/compose.ts: new renderPhoneQuoteSlide(quote, variant) — full 1080x1920 JPEG notes-app screen (women: #D9EAF7 bg / near-black text; men: near-black bg / off-white text), Poppins Medium via the existing Pango pipeline
+- apps/web/src/lib/content-factory/brand.ts: SELFIE_STYLE_VARIANTS (6 photography styles, per-post)
+- apps/web/src/lib/content-factory/carousel-generate.ts: buildSelfieImagePrompt takes style; MOODY_LANES + line/phone-quote/phone-quote-men; recomposeSlide branch for "PHONE-QUOTE NOTE SCREEN" marker prompts (re-renders the screen, never calls an image model); phone-quote covers recompose as ITEM (sentence-case hook, never uppercase)
+- apps/web/src/lib/content-factory/email.ts: BWK_LANES + line, phone-quote-men
+- apps/web/src/app/admin/content-factory/carousels/page.tsx + api/admin/carousels/route.ts: generate buttons/union → new lane set (year/free/nobody/forbidden/memento-men buttons removed)
+- Hyperrealism sweep (second follow-up): buildMoodyImagePrompt in moody-carousel.ts now opens "A REAL photograph a person actually took with a camera:", strengthens the camera line (believable optics, honest exposure, faint grain) and adds an explicit negative line (NOT 3D render/CGI/digital art/illustration/matte painting/oversaturated AI look). Covers every moody-image path: moody-men, line, protocol, questions, memento, both phone-quote covers, and the quote-loop function. Selfie DNAs (SELFIE_VISUAL_DNA / SELFIE_AESTHETIC_DNA) already enforce real-phone-photo realism — untouched. The "SOFT and LIGHT"/"DIM and shadowed" recompose tone markers and the "reference photo" avatar marker are untouched
+- Clarity + wider variance (third follow-up): buildMoodyImagePrompt camera line gains "TACK-SHARP and high-resolution — crisp, clear... never blurry, hazy, murky, soft, or low-quality"; the 2026-08-31 vantage-variance line widened to also vary focal length, camera distance, weather, and light direction per image ("no two frames should ever feel like the same shot"); brand.ts SELFIE_VISUAL_DNA "mild soft focus" → "crisp natural phone-camera focus — clear and sharp... never blurry or hazy" (SELFIE_AESTHETIC_DNA already crisp + high-variance, untouched)
+- No schema changes; cron string unchanged (dispatch-only) — no Inngest resync needed
+
+### Manual steps needed
+None — deploy is automatic on push. Tonight's 5-8 UTC runs pick this up automatically.
+
+### Notes
+- Volume decision (Keenan, AskUserQuestion): the phone-quote lanes are ADDED ON TOP of the 3+4 cut → BWK 4/day, Ripple 5/day, 9 total. This supersedes his earlier "Rotate 4 of 6 daily" answer — selfie×2 + questions + memento exactly filled Ripple's 4 before the quote lane landed on top.
+- Lane names are "phone-quote"/"phone-quote-men", NOT the dormant "quote-women"/"quote-men" from the killed animated quote loop — reusing those would collide in recomposeSlide's lane tables.
+- The Ripple dark pin lives where the 50/50 roll lived (inside the generate-moody-topic step) and is cast wide ("light"|"dark"|null) so the textTone comparison stays legal and a future re-roll is a one-line change.
+- The quote slide's imagePrompt is a marker string ("PHONE-QUOTE NOTE SCREEN (…)"); recomposeSlide keys off the prefix BEFORE the moody-lanes branch, so editing quote text is free (no gpt-image-2 call).
+- HOLD THE LINE items are numbered ("N. Name.") like moody-men; the winner post was a moody-men post, so the two BWK carousel lanes intentionally share a skeleton and differ by theme + cover family.
 
 ## [2026-09-01] — Ripple posts split 50/50 between light and dark looks
 

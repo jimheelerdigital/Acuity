@@ -24,6 +24,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { AUDIENCE_BRIEF, SCENE_BRIEF, type MoodyAudience } from "./moody-carousel";
+import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -107,7 +108,8 @@ export async function generateQuoteConcept(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 600,
-      system: buildQuoteSystemPrompt(audience),
+      // HUMAN_VOICE_RULES appended 2026-09-04 (humanizer prevention layer).
+      system: `${buildQuoteSystemPrompt(audience)}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -148,6 +150,26 @@ export async function generateQuoteConcept(
       );
     }
 
+    // HUMANIZER approval gate (2026-09-04, per Keenan: every social post
+    // runs through it before generation). Quote only — scene/motion are
+    // video directions and never gated. Fails open.
+    let gatedQuote = quote;
+    try {
+      const gated = await humanizePass<{ quote: string }>({
+        purpose: `humanize:quote-loop-${audience}`,
+        voice:
+          "One short devastating line of recognition. Second person or plain statement, short declarative words, sounds inevitable read aloud.",
+        payload: { quote },
+      });
+      const gq = (gated.quote ?? "").trim();
+      const gw = gq.split(/\s+/).length;
+      if (gq && gw >= 4 && gw <= 20) gatedQuote = gq;
+    } catch {
+      console.warn(
+        `[quote-loop-${audience}] humanizer gate failed — shipping ungated copy`
+      );
+    }
+
     const slug = quote
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -157,7 +179,7 @@ export async function generateQuoteConcept(
 
     return {
       slug: `quote-${audience}-${slug}`,
-      quote,
+      quote: gatedQuote,
       theme: (parsed.theme ?? "").trim() || quote.slice(0, 40),
       scene,
       motion,

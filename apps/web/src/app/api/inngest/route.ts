@@ -57,6 +57,7 @@ import { carouselMetricsRefreshFn } from "@/inngest/functions/carousel-metrics-r
 import { nicheResearchNightlyFn } from "@/inngest/functions/niche-research-nightly";
 import { nicheStrategyMemoFn } from "@/inngest/functions/niche-strategy-memo";
 import { nicheDiscoveryFn } from "@/inngest/functions/niche-discovery";
+import { socialPublishCronFn } from "@/inngest/functions/social-publish-cron";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -121,6 +122,7 @@ const handler = serve({
     nicheResearchNightlyFn,
     nicheStrategyMemoFn,
     nicheDiscoveryFn,
+    socialPublishCronFn,
   ],
 });
 

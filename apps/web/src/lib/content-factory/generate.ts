@@ -1,6 +1,7 @@
 import type { ContentBriefing, ContentPiece } from "@prisma/client";
 
 import { callClaude } from "./claude-client";
+import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
 import { displayMonthly } from "@/lib/pricing";
 
 // ─── Shared brand system prompt ──────────────────────────────────────────────
@@ -28,7 +29,48 @@ NEVER use these words/phrases:
 
 Always include specific numbers, specific examples, specific experiences — never vague benefits.
 
-Pricing: ${displayMonthly()}/month after 7-day free trial, no card required.`;
+Pricing: ${displayMonthly()}/month after 7-day free trial, no card required.
+
+${HUMAN_VOICE_RULES}`;
+
+/** The voice line handed to the humanizer gate for this file's copy. */
+const BRAND_VOICE =
+  "Direct, no-fluff, founder-led build-in-public tone. Specific numbers and examples, never vague benefits.";
+
+/**
+ * HUMANIZER approval gate for hook/body/cta pieces (2026-09-04, per
+ * Keenan: "every social media post should be run through /humanizer
+ * before generation"). Fails open — ungated copy ships rather than
+ * killing the job; humanizePass logs the failure to ClaudeCallLog.
+ */
+async function gateSocialPieces<T extends { hook: string; body: string; cta: string }>(
+  purpose: string,
+  pieces: T[]
+): Promise<T[]> {
+  try {
+    const gated = await humanizePass<Array<{ hook: string; body: string; cta: string }>>({
+      purpose,
+      voice: BRAND_VOICE,
+      payload: pieces.map((p) => ({ hook: p.hook, body: p.body, cta: p.cta })),
+    });
+    if (Array.isArray(gated) && gated.length === pieces.length) {
+      return pieces.map((p, i) => {
+        const g = gated[i];
+        return g &&
+          typeof g.hook === "string" &&
+          g.hook.trim() &&
+          typeof g.body === "string" &&
+          g.body.trim() &&
+          typeof g.cta === "string"
+          ? { ...p, hook: g.hook, body: g.body, cta: g.cta }
+          : p;
+      });
+    }
+  } catch {
+    console.warn(`[${purpose}] humanizer gate failed — shipping ungated copy`);
+  }
+  return pieces;
+}
 
 // ─── Few-shot loader ─────────────────────────────────────────────────────────
 
@@ -163,7 +205,10 @@ Respond as a JSON array of objects:
     userPrompt,
   });
 
-  return JSON.parse(extractJson(raw));
+  return gateSocialPieces<TwitterResult>(
+    "humanize:twitter-posts",
+    JSON.parse(extractJson(raw))
+  );
 }
 
 // ─── TikTok scripts ──────────────────────────────────────────────────────────
@@ -219,7 +264,10 @@ Respond as a JSON array of objects:
     userPrompt,
   });
 
-  return JSON.parse(extractJson(raw));
+  return gateSocialPieces<TikTokResult>(
+    "humanize:tiktok-scripts",
+    JSON.parse(extractJson(raw))
+  );
 }
 
 // ─── Ad copy ─────────────────────────────────────────────────────────────────
@@ -264,7 +312,10 @@ Write ${count} ad copy variants, each using a different angle from: pain, benefi
     userPrompt,
   });
 
-  return JSON.parse(extractJson(raw));
+  return gateSocialPieces<AdCopyResult>(
+    "humanize:ad-copy",
+    JSON.parse(extractJson(raw))
+  );
 }
 
 // ─── Instagram posts ────────────────────────────────────────────────────────
@@ -323,7 +374,27 @@ Respond in JSON format:
     userPrompt,
   });
 
-  return JSON.parse(extractJson(raw));
+  const post = JSON.parse(extractJson(raw)) as InstagramResult;
+
+  // HUMANIZER approval gate (2026-09-04) — caption + hook only; the
+  // imagePrompt is image direction and hashtags are tags. Fails open.
+  try {
+    const gated = await humanizePass<{ caption: string; hook: string }>({
+      purpose: "humanize:instagram-post",
+      voice: BRAND_VOICE,
+      payload: { caption: post.caption, hook: post.hook },
+    });
+    if (typeof gated.caption === "string" && gated.caption.trim()) {
+      post.caption = gated.caption;
+    }
+    if (typeof gated.hook === "string" && gated.hook.trim()) {
+      post.hook = gated.hook;
+    }
+  } catch {
+    console.warn("[humanize:instagram-post] humanizer gate failed — shipping ungated copy");
+  }
+
+  return post;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -98,7 +98,7 @@ InfrastructureCost no-rls # admin-only infrastructure cost entries for P&L dashb
 CarouselPost no-rls      # admin-only content factory carousel posts, accessed via /api/admin/carousels
 CarouselSlide no-rls     # admin-only content factory carousel slide images, child of CarouselPost
 
-# ─── Habits (user data) — added 2026-09-13 ───────────────────
+# ─── Habits (user data) — added 2026-09-14 ───────────────────
 # Per-user habit tracker. Has userId; accessed only via service-role
 # Prisma. After schema push, enable in prod:
 #   ALTER TABLE public."Habit" ENABLE ROW LEVEL SECURITY;
@@ -117,7 +117,7 @@ InsightEvidence rls
 #   ALTER TABLE public."RevenueCatEvent" ENABLE ROW LEVEL SECURITY;
 RevenueCatEvent rls
 
-# ─── Niche Research Lab (admin-only operational) — added 2026-09-13 ──
+# ─── Niche Research Lab (admin-only operational) — added 2026-09-14 ──
 # Content Factory niche research: public IG/TikTok data, hashtags, memos.
 # Admin-only via /api/admin/* service-role Prisma; no user PII. Same
 # pattern as CarouselPost / AdLab* above.
@@ -127,3 +127,12 @@ NichePost no-rls            # scraped public posts
 NicheTopicSuggestion no-rls # generated carousel topic suggestions
 NicheHashtag no-rls         # ranked hashtags
 NicheMemo no-rls            # weekly strategy memos
+
+# ─── Social auto-publish (2026-09-14) ────────────────────────────────
+# SocialPublish: operational queue rows (post id, platform, status) —
+# admin/cron only via service-role Prisma, no PII. CarouselPost pattern.
+SocialPublish no-rls        # auto-publish queue, service-role only
+# SocialToken holds live OAuth access/refresh tokens (TikTok) — secrets,
+# so RLS on even though it's service-role-only. After schema push:
+#   ALTER TABLE public."SocialToken" ENABLE ROW LEVEL SECURITY;
+SocialToken rls

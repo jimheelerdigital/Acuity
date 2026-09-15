@@ -16,6 +16,7 @@ import {
 } from "./brand";
 import type { SlideEmotion } from "./animate-cover";
 import { fetchGrowthosResearch, growthosResearchBlock } from "./growthos-research";
+import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 
 const anthropic = new Anthropic();
 
@@ -288,7 +289,9 @@ export async function generateSelfieTopic(
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 2000,
-      system: SELFIE_SYSTEM_PROMPT,
+      // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
+      // humanizer gate still runs on the output below.
+      system: `${SELFIE_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -351,21 +354,69 @@ export async function generateSelfieTopic(
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
+    // Humanizer approval gate (2026-09-04, per Keenan: "every single
+    // script must pass through this first in order to be approved
+    // content"). Reader-facing text only — shots/scenes never go
+    // through. Fails open on error.
+    let gatedHeadline = parsed.headline as string;
+    let gatedSteps = steps;
+    let gatedDetails = details;
+    let gatedCaptionQuestion =
+      typeof parsed.captionQuestion === "string"
+        ? (parsed.captionQuestion as string)
+        : undefined;
+    try {
+      const gated = await humanizePass({
+        purpose: "humanize:selfie-topic",
+        voice: extractVoice(SELFIE_SYSTEM_PROMPT),
+        payload: {
+          headline: gatedHeadline,
+          steps,
+          details,
+          captionQuestion: gatedCaptionQuestion ?? "",
+        },
+      });
+      if (
+        typeof gated.headline === "string" &&
+        gated.headline.trim() &&
+        Array.isArray(gated.steps) &&
+        gated.steps.length === steps.length &&
+        gated.steps.every((s) => typeof s === "string" && s.trim()) &&
+        Array.isArray(gated.details) &&
+        gated.details.length === details.length
+      ) {
+        gatedHeadline = gated.headline.trim();
+        gatedSteps = gated.steps.map((s) => s.trim());
+        gatedDetails = details.map((d, i) =>
+          typeof gated.details[i] === "string" ? gated.details[i].trim() : d
+        );
+        if (
+          gatedCaptionQuestion &&
+          typeof gated.captionQuestion === "string" &&
+          gated.captionQuestion.trim()
+        ) {
+          gatedCaptionQuestion = gated.captionQuestion.trim();
+        }
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for selfie-topic — shipping ungated copy:`,
+        err
+      );
+    }
+
     return {
       slug,
-      headline: parsed.headline,
-      steps,
-      details,
+      headline: gatedHeadline,
+      steps: gatedSteps,
+      details: gatedDetails,
       mood: isMood(parsed.mood) ? parsed.mood : undefined,
       coverScene:
         typeof parsed.cover?.scene === "string" && parsed.cover.scene.trim()
           ? parsed.cover.scene.trim()
           : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone raised covering her whole face, mirror lightly smudged",
       stepShots,
-      captionQuestion:
-        typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
-          ? parsed.captionQuestion.trim()
-          : undefined,
+      captionQuestion: gatedCaptionQuestion?.trim() || undefined,
     };
   } catch (err) {
     const durationMs = Date.now() - start;
@@ -483,7 +534,8 @@ Return ONLY valid JSON, no other text.`;
       // 2026-08-24: raised from 1000 — per-slide "scene" directions added
       // ~500 output tokens and were getting the JSON truncated mid-array.
       max_tokens: 2500,
-      system: buildSystemPrompt(opts?.visualStyle ?? "aesthetic"),
+      // HUMAN_VOICE_RULES appended 2026-09-04 (humanizer prevention layer).
+      system: `${buildSystemPrompt(opts?.visualStyle ?? "aesthetic")}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: userPrompt }],
     });
 
@@ -557,20 +609,64 @@ Return ONLY valid JSON, no other text.`;
       typeof rawDetails[i] === "string" ? (rawDetails[i] as string).trim() : ""
     );
 
+    // HUMANIZER approval gate (2026-09-04, per Keenan: every social post
+    // runs through it before generation). Reader-facing strings only —
+    // scene/motion/mood directions never go through. Fails open.
+    let gatedHeadline: string = parsed.headline;
+    let gatedReasons = reasons;
+    let gatedDetails = details;
+    let gatedCaptionQuestion =
+      typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
+        ? parsed.captionQuestion.trim()
+        : undefined;
+    try {
+      const gated = await humanizePass<{
+        headline: string;
+        reasons: string[];
+        details: string[];
+        captionQuestion: string;
+      }>({
+        purpose: "humanize:carousel-topic",
+        voice: extractVoice(buildSystemPrompt(opts?.visualStyle ?? "aesthetic")),
+        payload: {
+          headline: parsed.headline,
+          reasons,
+          details,
+          captionQuestion: gatedCaptionQuestion ?? "",
+        },
+      });
+      const okStrings = (arr: unknown, len: number, allowEmpty: boolean) =>
+        Array.isArray(arr) &&
+        arr.length === len &&
+        arr.every((s) => typeof s === "string" && (allowEmpty || s.trim()));
+      if (
+        typeof gated.headline === "string" &&
+        gated.headline.trim() &&
+        okStrings(gated.reasons, reasons.length, false) &&
+        okStrings(gated.details, details.length, true)
+      ) {
+        gatedHeadline = gated.headline.trim();
+        gatedReasons = gated.reasons.map((s) => s.trim());
+        gatedDetails = gated.details.map((s) => s.trim());
+        if (gatedCaptionQuestion && typeof gated.captionQuestion === "string" && gated.captionQuestion.trim()) {
+          gatedCaptionQuestion = gated.captionQuestion.trim();
+        }
+      }
+    } catch {
+      console.warn("[generate-topic] humanizer gate failed — shipping ungated copy");
+    }
+
     return {
       slug,
-      headline: parsed.headline,
+      headline: gatedHeadline,
       style: parsed.style === "hook" ? "hook" : "listicle",
       lane,
-      reasons,
-      details,
+      reasons: gatedReasons,
+      details: gatedDetails,
       mood,
       coverEmotion: parseEmotion(parsed.cover),
       reasonEmotions,
-      captionQuestion:
-        typeof parsed.captionQuestion === "string" && parsed.captionQuestion.trim()
-          ? parsed.captionQuestion.trim()
-          : undefined,
+      captionQuestion: gatedCaptionQuestion,
     };
   } catch (err) {
     const durationMs = Date.now() - start;

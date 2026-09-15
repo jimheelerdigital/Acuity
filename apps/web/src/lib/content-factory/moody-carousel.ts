@@ -4,9 +4,10 @@
  * Cloned from a reference format that performs ("TRUST THE PROCESS"
  * style): a ~6-slide photo carousel of dark, moody, hyper-realistic
  * architecture/interior photography with clean white text centered
- * mid-frame. Cover = short commanding title; each item slide = a
- * numbered name ("4. Reset day.") + 2-3 short punchy paragraphs ending
- * on a command ("Bring order back.").
+ * mid-frame. Cover = short commanding title; each item slide = a short
+ * name ("Reset day.") + 2-3 short punchy paragraphs ending on a
+ * command ("Bring order back."). No numbering on slides (2026-09-08,
+ * per Keenan — he omits slides when hand-posting).
  *
  * TWO FUNNELS, same skeleton, different soul (both audience-growth
  * only — NO product CTA anywhere):
@@ -23,6 +24,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -45,6 +47,11 @@ export interface MoodyTopic {
   /** Cover title — short, commanding ("TRUST THE PROCESS" energy). */
   title: string;
   coverScene: string;
+  /** Pick-list lanes (2026-09-10, per Keenan: "add 3 cover photos and
+   *  15 different images per lane. that way I can pick the ones that
+   *  actually make sense/are good") — multiple candidate cover scenes,
+   *  each rendered as its own COVER slide. coverScene = the first. */
+  coverScenes?: string[];
   items: MoodyItem[];
 }
 
@@ -67,8 +74,8 @@ export type WomenScheme = "light" | "dark";
 // quiet-luxury identity (dim scenes, white text). Selfie is a
 // real-photo lane and exempt.
 export const WOMEN_SCENE_BRIEFS: Record<WomenScheme, string> = {
-  light: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window, a balcony breakfast in early sun, a garden path after light rain, market flowers wrapped in paper on a pale counter, a lake seen from a wooden dock in soft morning light, white linen breathing on a line, a bright window seat with an open book. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever. These are INSPIRATION, not a menu — invent new light-airy locations (garden, coast, bright morning interiors, a sunlit balcony over a soft city) and vary the vantage and time of morning so no two posts look alike.`,
-  dark: `SCENES: soft, aesthetically pleasing FEMININE photography in warm LOW light — silk bedding in candlelight, a kitchen table cleared after dinner lit by one warm lamp, dried flowers by a dark window, a bath steaming in flickering candlelight, a silk robe over a chair by rain-streaked night glass, a dark garden seen through a lit kitchen window, tea steaming under a single lamp at blue hour, an armchair and open book in a pool of lamplight, a lit porch at dusk with rain falling beyond, an emptied dining table with one chair pulled out at night. Muted, warm, dreamy — quiet luxury after dark, never harsh or cold. Every scene DIM (white text must read on it), soft shadows, intimate. No people ever. These are INSPIRATION, not a menu — invent new warm-evening locations (a candlelit bedroom, a rainy night window seat, a garden at dusk) and vary the vantage and time of evening so no two posts look alike.`,
+  light: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window, a balcony breakfast in early sun, a garden path after light rain, market flowers wrapped in paper on a pale counter, a lake seen from a wooden dock in soft morning light, white linen breathing on a line, a bright window seat with an open book — AND letter-writing still-lifes: blank cream stationery and a fountain pen on a pale desk in morning sun, an opened envelope beside a bright window, unwritten notepaper under soft daylight with a flower laid across it — AND quiet-house scenes: emotionally loaded empty rooms in daylight — a kitchen still and sunlit after everyone has left, a made bed in a child's old bedroom with curtains glowing, a hallway of small shoes by the door in morning light, a bright emptied living room with one cushion out of place. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever. These are INSPIRATION, not a menu — invent new light-airy locations (garden, coast, bright morning interiors, a sunlit balcony over a soft city, blank stationery, quiet emptied rooms) and vary the vantage and time of morning so no two posts look alike.`,
+  dark: `SCENES: soft, aesthetically pleasing FEMININE photography in warm LOW light — silk bedding in candlelight, a kitchen table cleared after dinner lit by one warm lamp, dried flowers by a dark window, a bath steaming in flickering candlelight, a silk robe over a chair by rain-streaked night glass, a dark garden seen through a lit kitchen window, tea steaming under a single lamp at blue hour, an armchair and open book in a pool of lamplight, a lit porch at dusk with rain falling beyond, an emptied dining table with one chair pulled out at night — AND letter-writing still-lifes: blank cream stationery and a fountain pen in a pool of warm lamplight, an opened envelope beside a low candle, unwritten notepaper on a dark wood desk at night — AND quiet-house scenes: emotionally loaded empty rooms after dark — the kitchen after everyone is asleep lit by one small light, a made bed in a child's old bedroom at dusk, a porch light left on over an empty step, a hallway nightlight glowing at 2am. Muted, warm, dreamy — quiet luxury after dark, never harsh or cold. Every scene DIM (white text must read on it), soft shadows, intimate. No people ever. These are INSPIRATION, not a menu — invent new warm-evening locations (a candlelit bedroom, a rainy night window seat, a garden at dusk, blank stationery in lamplight, quiet sleeping-house rooms) and vary the vantage and time of evening so no two posts look alike.`,
 };
 
 // First sentence of every women-lane system prompt, by scheme — the
@@ -80,20 +87,21 @@ const WOMEN_PROMPT_HEADER: Record<WomenScheme, string> = {
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dominant, minimalist power imagery — brutalist stone and black glass towers at night, floor-to-ceiling windows with storm or dark forest beyond, polished concrete, empty gyms lit by one cold light, stone stairways climbing into shadow, a lone lit skyscraper, rain hammering black pavement — AND late-night grind still-lifes: a glowing laptop open on a couch in a near-black minimalist living room, a desk lit by a single screen in an empty room, a barbell resting under one cold light in an empty gym — AND raw-elements landscapes: a snowy ridge in a whiteout storm, a cliff edge in driving rain, a grey sea at dawn, a trail vanishing into mountain fog — AND night-vantage interior scenes: a dark minimalist bedroom or penthouse seen from the bed or a low couch, floor-to-ceiling glass filling the frame with a glittering city skyline at night (rain-blurred, fog-wrapped, or snow-dusted variants), an empty black car interior on a night highway with distant city lights ahead — AND brutalist-coastal scenes: a dark stone house alone on a cliff above a fog-covered sea, a long slate walkway ending at a cliff edge in sea mist, black rocks under a grey tide at dusk. Desaturated, near-monochrome, overcast or night light. Every scene DIM and shadowed (white text must read on it), austere and powerful. NO people EVER — write every scene EMPTY. The empty location does the work: the still-glowing laptop, the unused gym, the storm nobody is standing in. These families are INSPIRATION, not a menu — invent new locations with the same DNA (night city, cold nature, austere architecture, late-night interiors, sea fog) and vary the vantage, weather, and time of night boldly so no two posts look alike.`,
+  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic and a DRAMATIC SKY (every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it): a black-glass penthouse tower with its crown wrapped in storm cloud, a cliff mansion glowing above a storm sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads. The building shot low and dramatic, grand and expensive, never a flat distant skyline, never a plain empty sky. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes at dusk, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; HYPER-REAL weather only — natural light a wildlife photographer could actually capture, NEVER lightning bolts, glowing skies, or painted-on effects; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a classic Ferrari gleaming under one cold garage spotlight, rain beading on an old-school Mercedes gullwing at night, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille in deep shadow, a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. One hero object, deep shadow, tactile hyperreal detail — the object must be unmistakably LUXURY and dramatic, NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (4) EPIC WARRIORS — a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS: a viking striding up a windswept grey beach with longships behind him, a samurai on a misty bamboo path in rain, a medieval knight leading his horse up a snowy mountain trail, a spartan climbing sun-bleached coastal rocks — every warrior type gets ITS OWN world matched to his culture, never one generic snowfield, and NEVER standing directly on ice or a frozen lake. FULL armor (gleaming silver, burnished gold, or blackened steel), DOING something powerful — mid-stride into the weather, arms flexed in triumph with head raised to the sky, driving a sword into the earth, climbing against the wind. The pose reads in silhouette and radiates STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to get to work. WIDE cinematic framing in an immense landscape, NEVER close to the camera, never a close-up; HYPER-REAL like a prestige-film still — real weather, real light, never a video-game render; face never visible (helmet on, visor down, or too distant to read). Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE distant armored warrior (face never visible) in warrior scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
   women: WOMEN_SCENE_BRIEFS.light,
 };
 
 const buildMoodySystemPrompt = (
-  audience: MoodyAudience
+  audience: MoodyAudience,
+  opts?: { theme?: string; coverRule?: string }
 ) => `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 item slides of white text centered on cinematic photography.
 
 ${AUDIENCE_BRIEF[audience]}
-
+${opts?.theme ? `\n${opts.theme}\n` : ""}
 ${SCENE_BRIEF[audience]}
-
+${opts?.coverRule ? `\n${opts.coverRule}\n` : ""}
 FORMAT — study this real slide and match its rhythm exactly:
-"4. Reset day.
+"Reset day.
 
 Clean your space, organize your room, car, digital files, notes.
 
@@ -102,7 +110,7 @@ Chaos outside = chaos inside.
 Bring order back."
 
 RULES:
-- "title": the cover text. 2-4 words, commanding, works in ALL CAPS ("TRUST THE PROCESS", "PROTECT YOUR PEACE"). No number, no punctuation except a period if natural.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act ("EARN YOUR SILENCE", "HOLD THE LINE") or a direct prompt to engage what's inside ("READ THESE SLOWLY", "ANSWER THIS FIRST..."). Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix the example phrases; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item:
   - "name": 1-3 words + period ("Reset day.", "Go quiet.").
   - "lines": 2-3 short paragraphs. First expands the item concretely in one sentence (can use lists: "room, car, digital files, notes"). Optional middle line: a compressed truth, equations welcome ("Chaos outside = chaos inside."). Last line: a 2-5 word command ("Bring order back.").
@@ -138,14 +146,21 @@ async function generateMoodyFamilyTopic(opts: {
    *  vary length pass these; everything else keeps the 4-6 default. */
   minItems?: number;
   maxItems?: number;
+  /** Pick-list lanes (2026-09-10): number of candidate cover scenes to
+   *  request/accept. Default 1 (plain coverScene). */
+  coverCount?: number;
+  /** 15-item pick-list posts need more room than the 2000 default. */
+  maxTokens?: number;
 }): Promise<MoodyTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 2000,
-      system: opts.system,
+      max_tokens: opts.maxTokens ?? 2000,
+      // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
+      // humanizer gate still runs on the output below.
+      system: `${opts.system}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: opts.user }],
     });
 
@@ -173,6 +188,7 @@ async function generateMoodyFamilyTopic(opts: {
     const parsed = JSON.parse(jsonStr) as {
       title?: string;
       coverScene?: string;
+      coverScenes?: string[];
       items?: { name?: string; lines?: string[]; scene?: string }[];
     };
 
@@ -203,11 +219,72 @@ async function generateMoodyFamilyTopic(opts: {
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
+    const finalItems = items.slice(0, opts.maxItems ?? 6);
+
+    // Humanizer approval gate (2026-09-04, per Keenan: "every single
+    // script must pass through this first in order to be approved
+    // content"). Reader-facing text only — scenes never go through.
+    // Fails open: on gate error the prompt-side-ruled copy ships.
+    let gatedTitle = title;
+    let gatedItems = finalItems;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${opts.purpose}`,
+        voice: extractVoice(opts.system),
+        payload: {
+          title,
+          items: finalItems.map((it) => ({ name: it.name, lines: it.lines })),
+        },
+      });
+      if (
+        typeof gated.title === "string" &&
+        gated.title.trim() &&
+        Array.isArray(gated.items) &&
+        gated.items.length === finalItems.length
+      ) {
+        gatedTitle = gated.title.trim();
+        gatedItems = finalItems.map((it, i) => {
+          const g = gated.items[i];
+          const gLines =
+            Array.isArray(g?.lines) &&
+            g.lines.length === it.lines.length &&
+            g.lines.every((l) => typeof l === "string" && l.trim())
+              ? g.lines.map((l) => l.trim())
+              : it.lines;
+          return {
+            ...it,
+            name:
+              typeof g?.name === "string" && g.name.trim()
+                ? g.name.trim()
+                : it.name,
+            lines: gLines,
+          };
+        });
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${opts.purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
+    // Pick-list lanes: accept up to coverCount candidate cover scenes.
+    const coverScenes = (parsed.coverScenes ?? [])
+      .filter((s): s is string => typeof s === "string" && !!s.trim())
+      .map((s) => s.trim())
+      .slice(0, opts.coverCount ?? 1);
+    const coverScene =
+      coverScenes[0] || (parsed.coverScene ?? "").trim() || items[0].scene;
+
     return {
       slug: `${opts.slugPrefix}-${slug}`,
-      title,
-      coverScene: (parsed.coverScene ?? "").trim() || items[0].scene,
-      items: items.slice(0, opts.maxItems ?? 6),
+      title: gatedTitle,
+      coverScene,
+      coverScenes:
+        (opts.coverCount ?? 1) > 1 && coverScenes.length > 1
+          ? coverScenes
+          : undefined,
+      items: gatedItems,
     };
   } catch (err) {
     await prisma.claudeCallLog.create({
@@ -239,19 +316,214 @@ function avoidBlock(recentHeadlines: string[]): string {
     : "";
 }
 
+// ─── BWK theme lock (2026-09-03, per Keenan) ─────────────────────────
+// "the best post so far was the 'earn your silence' post for build
+// with key, followed by 30 days. earn it. and hold the line got a lot
+// of views with the skyscraper start image... focus around these
+// topics and images for the inital posts. still include variance. but
+// keep to these three for BWK." BWK is now 3 posts/day, one per
+// winning family: moody-men = SILENCE, line = HOLD THE LINE
+// (storm-skyscraper covers), protocol = 30 DAYS (already the winner
+// format, unchanged).
+const SILENCE_THEME = `THEME — every post belongs to the SILENCE family: moving in silence, building in private, working unseen, no announcements, letting results speak. Rotate the angle every post — going quiet for a season, killing announcement culture, private standards nobody sees, disappearing to build, the quiet hours before the world wakes, winning without telling anyone — so no two posts repeat, but every post is unmistakably a silence post. Titles live in the family too ("EARN YOUR SILENCE" energy) without repeating a recent title.`;
+
+// DORMANT 2026-09-10 (per Keenan: "change 'hold the line' to a
+// new-style discipline line" — replaced by the WATCHING lane below).
+// Kept for revival, like every retired format.
+const LINE_THEME = `THEME — every post belongs to the HOLD THE LINE family: endurance, standards that do not move, staying when it gets hard, refusing to break the streak, holding position when motivation dies. Rotate the angle every post — holding the morning line, standards under pressure, the days nobody claps, finishing what the first week started, never negotiating with yourself — so no two posts repeat, but every post is unmistakably a hold-the-line post. Titles live in the family too ("HOLD THE LINE" energy) without repeating a recent title.`;
+
+// ─── Three discipline lanes (2026-09-10, per Keenan) ─────────────────
+// "replace [hold the line] with 2 [WHEN NO ONE'S WATCHING], and also
+// add 'pay the price' line, and a 'prove it' one too." All three are
+// moody-family men's lanes sharing the BWK visual DNA + cover-family
+// rotation; each has its own locked theme.
+const WATCHING_THEME = `THEME — every post belongs to the WHEN NO ONE'S WATCHING family: private discipline — what a man does when nobody would ever know either way. Every item is a private test: the bed made in an empty house, the workout that never gets posted, the alarm kept on a free morning, the food logged with no one checking, the promise kept to himself alone at midnight. The tension is always integrity vs audience — who he is when there is no camera, no story, no applause. Rotate the angle every post — the 5am hours nobody sees, standards kept in hotel rooms, what he does after everyone is asleep, the reps counted honestly when lying would be free — so no two posts repeat, but every post is unmistakably about the unwatched hours. Titles live in the family too ("WHEN NO ONE'S WATCHING..." energy) without repeating a recent title.`;
+
+const PRICE_THEME = `THEME — every post belongs to the PAY THE PRICE family: naming the REAL cost of the life he says he wants — the sleep, the comfort, the nights out declined, the friends who stop calling, the opinions ignored, the years of looking stupid before it works. Each item names ONE price in plain, unsentimental terms: what exactly gets paid, and what paying it buys. No romanticizing — it should read like an itemized bill. EXCEPTION to the last-line rule: the FINAL item's last line must be exactly "Still want it?" — the one place a command becomes a question. Rotate the goal every post — the body, the money, the freedom, the skill, the name — so no two posts repeat. Titles live in the family too ("PAY THE PRICE." energy) without repeating a recent title.`;
+
+const PROVE_THEME = `THEME — every post belongs to the PROVE IT family: call-out energy. Every item takes a claim men love to make and turns it into what TODAY has to look like if the claim is true. EXCEPTION to the name rule: each item's "name" is the claim itself, 3-6 words ending with a period ("I want the money.", "I'm built different.", "I want the body.") — no quotation marks. The lines then convert the claim into one concrete, checkable action for today (a time, a count, a rule) and close on a short command with "prove it" energy ("Prove it before noon."). The unspoken thesis of every post: talk is free, the calendar doesn't lie. Rotate the claims every post — money, physique, discipline, skill, independence, focus — so no two posts repeat. Titles live in the family too ("PROVE IT." energy) without repeating a recent title.`;
+
+// BWK image library v3 (2026-09-10, per Keenan: "these photos are all
+// too bland/boring... focus on these when building posts for BWK -
+// luxury buildings with dark aesthetic, super cool landscape scenes
+// with alpha animals, luxury items/cars/watches with dark theme, and
+// add a new photo type of similar aesthetic medieval knights in sick
+// armor hyper realistic snowy or other kinds of settings"). His
+// "bland" example was an empty flat marsh; his "good" example a wolf
+// commanding a frozen lake — the difference is a dramatic SUBJECT.
+// Supersedes the 18-family library from 2026-09-08: the rotation now
+// focuses on his FOUR chosen aesthetics. The UNLIMITED LIBRARY RULE
+// still stands — families are seeds, every image invented fresh. The
+// roll happens at topic-generation time, inside a memoized Inngest
+// step, so replays keep the same family.
+const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
+  {
+    name: "dark-luxury architecture",
+    brief:
+      "luxury buildings with a dark aesthetic and a DRAMATIC SKY — every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it: a black-glass penthouse tower with its crown wrapped in storm cloud, a modern cliff mansion glowing above a storm-lit sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads, a marble estate lit cool blue beneath a breaking storm. Grand, expensive, cinematic — the building is the SUBJECT, shot low and dramatic with real presence, never a flat distant skyline, never a plain empty sky.",
+  },
+  {
+    name: "alpha wildlife",
+    brief:
+      "ONE alpha animal commanding a super-cool landscape — a wolf standing on a cracked frozen lake beneath storm pines, a lion crossing black dunes at dusk, a stag on a ridgeline in blowing snow, a golden eagle sweeping low over a fjord, a black panther on wet rock in night rain, a bison facing a whiteout. Draw from the ENTIRE animal kingdom; the animal is the clear HERO of the frame — close enough to feel its presence, the landscape epic around it. HYPER-REALISM RULE (2026-09-11, per Keenan): this must look like a real wildlife photograph — natural light and physically plausible weather ONLY, the kind of frame a wildlife photographer could actually capture; NEVER lightning bolts, glowing skies, or any painted-on dramatic effect. Emotion comes from the animal and the realism, not from spectacle. NEVER reuse an animal from a recent post.",
+  },
+  {
+    name: "dark-luxury objects",
+    brief:
+      "luxury items with a dark theme, shot like a high-end ad — a classic Ferrari under one cold spotlight in a dark garage, rain beading on an old-school Mercedes gullwing parked on a night street, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille catching a single beam in deep shadow, a Swiss watch on black marble in low light, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night, a chess king in dramatic side light. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. ONE hero object, deep shadow, controlled highlights, tactile hyperreal detail. The object must be unmistakably LUXURY and dramatic — NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life.",
+  },
+  {
+    name: "epic warrior",
+    brief:
+      "a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS, hyperrealistic — a viking striding up a windswept grey beach with longships anchored behind him, a samurai walking a misty bamboo path in falling rain, a medieval knight leading his horse up a snowy mountain trail, a spartan climbing sun-bleached coastal rocks above a wine-dark sea, a crusader crossing wind-carved dunes at dusk. LANDSCAPE RULE (2026-09-11, per Keenan): every warrior type gets ITS OWN world — match the terrain to his culture and era, never default to one generic snowfield, and NEVER have him standing directly on ice or a frozen lake (a snowy path or ridgeline is fine). FULL armor (gleaming silver, burnished gold, or blackened steel). The warrior is DOING something powerful, never posing idle: mid-stride into the weather, fists clenched and arms flexed in triumph with head raised to the sky, driving a sword or spear into the earth, climbing against the wind. The pose must read in silhouette and radiate STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to stand up and get to work. The shot is WIDE and cinematic: the warrior small-to-mid in an immense landscape, NEVER close to the camera, NEVER a close-up or portrait framing. HYPER-REALISM RULE: this must read as a still from a prestige film — real weather physics, real light, real textures, never a video-game render or painted fantasy sky. Face never visible — helmet on, visor down, or too distant to read.",
+  },
+];
+
+/** Roll one cover-scene family and return the injectable rule string.
+ *  The family constrains the DNA; the scene itself must be INVENTED
+ *  fresh (2026-09-08, per Keenan: "unlimited amounts actually. every
+ *  post should be a unique image"). Pass `forcedFamily` (a
+ *  MEN_COVER_FAMILIES name, e.g. "epic warrior") to pin the whole
+ *  post — cover AND item scenes — to one family for themed one-offs
+ *  (2026-09-10, per Keenan: "create a knight themed post"). */
+function rollMenCoverRule(forcedFamily?: string): string {
+  const forced = forcedFamily
+    ? MEN_COVER_FAMILIES.find((f) => f.name === forcedFamily)
+    : undefined;
+  const fam =
+    forced ??
+    MEN_COVER_FAMILIES[Math.floor(Math.random() * MEN_COVER_FAMILIES.length)];
+  const itemRule = forced
+    ? `FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${fam.name} family — the whole post lives in one visual world, with each slide a DIFFERENT freshly-invented scene inside it.`
+    : `Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
+  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
+}
+
 /** Generate one moody-carousel topic for the given audience funnel.
- *  Slide count varies 4-7 items per post (2026-08-31, per Keenan:
- *  "create a ton of variance between posts"). */
+ *  The men's lane is theme-locked to the SILENCE family (2026-09-03;
+ *  "STAY INVISIBLE." / "GUARD THE QUIET." energy). Went dormant the
+ *  morning of 2026-09-10 in the BWK reshuffle, then Keenan revived it
+ *  the same day as a pick-list (3 covers + 15 items). 2026-09-14, per
+ *  Keenan: pick-list retired — back to ONE cover + 4-7 items so posts
+ *  go out ready-made for auto-publish. `sceneFamily` pins the whole
+ *  post to one image family (themed one-offs). */
 export async function generateMoodyTopic(
   audience: MoodyAudience,
+  recentHeadlines: string[],
+  sceneFamily?: string
+): Promise<MoodyTopic> {
+  const men = audience === "men";
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: `moody-carousel-topic-${audience}`,
+    system: buildMoodySystemPrompt(
+      audience,
+      men
+        ? {
+            theme: SILENCE_THEME,
+            coverRule: rollMenCoverRule(sceneFamily),
+          }
+        : undefined
+    ),
+    user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: `moody-${audience}`,
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: itemCount,
+  });
+}
+
+/** HOLD THE LINE lane (2026-09-03, per Keenan: "hold the line got a
+ *  lot of views with the skyscraper start image"). Endurance family,
+ *  "Name." items like moody-men. Covers rotate families since
+ *  2026-09-08 (skyscraper is one family, not the default).
+ *  DORMANT 2026-09-10 — replaced by generateWatchingTopic. */
+export async function generateLineTopic(
   recentHeadlines: string[]
 ): Promise<MoodyTopic> {
   const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
-    purpose: `moody-carousel-topic-${audience}`,
-    system: buildMoodySystemPrompt(audience),
-    user: `Write one new post for the ${audience === "men" ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
-    slugPrefix: `moody-${audience}`,
+    purpose: "line-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: LINE_THEME,
+      // 2026-09-08: rotates families instead of always storm-skyscraper.
+      coverRule: rollMenCoverRule(),
+    }),
+    user: `Write one new hold-the-line post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "line",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: 7,
+  });
+}
+
+/** WHEN NO ONE'S WATCHING lane (2026-09-10, per Keenan — replaces
+ *  HOLD THE LINE). Private-discipline tests; "Name." items.
+ *  2026-09-14, per Keenan: pick-list retired — ONE cover + 4-7 items
+ *  so posts go out ready-made for auto-publish. `sceneFamily` pins the
+ *  whole post to one image family (themed one-offs). */
+export async function generateWatchingTopic(
+  recentHeadlines: string[],
+  sceneFamily?: string
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: "watching-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: WATCHING_THEME,
+      coverRule: rollMenCoverRule(sceneFamily),
+    }),
+    user: `Write one new when-no-one's-watching post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "watching",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: itemCount,
+  });
+}
+
+/** PAY THE PRICE lane — DORMANT (2026-09-10, per Keenan: "get rid of
+ *  prove and price" — killed the same day it launched). Each slide
+ *  named one real cost of the life he claims he wants; the final slide
+ *  landed on "Still want it?". */
+export async function generatePriceTopic(
+  recentHeadlines: string[],
+  sceneFamily?: string
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: "price-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: PRICE_THEME,
+      coverRule: rollMenCoverRule(sceneFamily),
+    }),
+    user: `Write one new pay-the-price post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "price",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: 7,
+  });
+}
+
+/** PROVE IT lane — DORMANT (2026-09-10, per Keenan: "get rid of prove
+ *  and price" — killed the same day it launched). Each slide took a
+ *  claim men make and converted it into what today must look like. */
+export async function generateProveTopic(
+  recentHeadlines: string[],
+  sceneFamily?: string
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
+  return generateMoodyFamilyTopic({
+    purpose: "prove-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: PROVE_THEME,
+      coverRule: rollMenCoverRule(sceneFamily),
+    }),
+    user: `Write one new prove-it post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "prove",
     requireName: true,
     minLines: 2,
     minItems: 4,
@@ -281,17 +553,28 @@ export function buildMoodyImagePrompt(
   // markers ("SOFT and LIGHT" → dark text, "DIM and shadowed" →
   // white) — change the phrases in both places or not at all.
   return [
-    `Hyper-realistic cinematic photograph: ${scene}`,
+    // Hyperrealism mandate (2026-09-03, per Keenan: "the images also
+    // need to be hyperrealistic for all posts... they should look like
+    // someone took a photo across all platforms").
+    `A REAL photograph a person actually took with a camera: ${scene}`,
     style,
     audience === "women" && womenScheme === "light"
       ? "The entire frame is SOFT and LIGHT — a bright, even, airy exposure so dark charcoal text placed at the center of the image would be perfectly legible. No harsh highlights or busy detail in the middle of the frame."
       : "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
-    "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. Indistinguishable from a real photograph.",
+    // Clarity mandate (2026-09-03, per Keenan: "all high quality, clear
+    // images that are hyper realistic").
+    "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. TACK-SHARP and high-resolution — crisp, clear, and perfectly focused on the subject; never blurry, hazy, murky, soft, or low-quality. Physically believable optics: honest exposure, natural depth of field, at most a faint touch of grain, light behaving the way it actually does. It must be INDISTINGUISHABLE from a real photograph someone took.",
+    "Absolutely NOT a 3D render, NOT CGI, NOT digital art, NOT an illustration, NOT a matte painting, and NOT the oversaturated too-perfect AI look — no plastic surfaces, no impossible glow, no fake-clean geometry.",
+    // Fine-detail mandate (2026-09-04, per Keenan's blurred-leaves
+    // example: "look how blurred the leaves are... better attention to
+    // detail").
+    "ATTENTION TO DETAIL: every element in the frame is fully resolved with fine, true texture — individual leaves on trees, fabric weave, wood and stone grain, distant buildings all crisply defined. NO mushy, smeared, half-melted, or painterly areas ANYWHERE in the frame, including the background and edges. Any background softness must be genuine optical depth of field, never smear.",
     "Vertical 9:16 composition, calm and uncluttered in the middle of the frame.",
     // Variance directive (2026-08-31, per Keenan: "create a ton of
     // variance between posts and image generations while keeping the
-    // theme intact").
-    "Choose a distinctive vantage for THIS image — low from the ground or a bed, from inside looking out through glass, elevated, or deep one-point perspective — so it doesn't compose like a default eye-level shot. Keep the color grade and mood exactly on theme.",
+    // theme intact"; widened 2026-09-03: "there should be variance
+    // everywhere").
+    "Choose a distinctive vantage for THIS image — low from the ground or a bed, from inside looking out through glass, elevated, or deep one-point perspective — so it doesn't compose like a default eye-level shot. Also make its OTHER choices its own: vary the focal length (wide vs. tight), camera distance, weather, and the light's direction and character from image to image — no two frames should ever feel like the same shot. Keep the color grade and mood exactly on theme.",
     // People-free EVERYWHERE (2026-09-01, per Keenan: "the avatar is in
     // literally every single post again" — the standing "at most ONE
     // person: a lone man" allowance made gpt-image-2 paint a generic
@@ -299,8 +582,11 @@ export function buildMoodyImagePrompt(
     // never attached). A man may ONLY enter via generateMoodyImage's
     // avatar-winner exception block (≤8% of posts, and then he's
     // Keenan).
+    // Statue/wildlife carve-outs (2026-09-08) are CONDITIONAL on the
+    // scene text naming one — never a standing allowance (the 2026-09-01
+    // "lone man" lesson: standing allowances leak into every image).
     audience === "men"
-      ? "NO people, NO animals — even if the scene description implies a person, render the location EMPTY. Screens may glow softly but show NO readable content."
+      ? "NO people — even if the scene description implies a person, render the location EMPTY of humans. A stone/marble/bronze STATUE is sculpture, not a person: render it ONLY when the scene explicitly describes one. ONE lone wild ANIMAL is allowed ONLY when the scene explicitly names one; otherwise NO animals. ONE armored WARRIOR (medieval knight, spartan, samurai, viking, or similar) is allowed ONLY when the scene explicitly describes one — always DISTANT in the frame (wide epic shot, never close to the camera, never a close-up), FULL hyperreal armor in silver, gold, or blackened steel, face never visible (helmet on, visor down, or too far to read), in the epic landscape the scene text describes — matched to his culture, NEVER standing directly on ice or a frozen lake — caught in a POWERFUL ACTION pose that reads in silhouette (striding into the weather, arms flexed in triumph, sword driven into the earth) — heroic strength and drive, never standing idle, rendered hyper-real like a prestige-film still, never a video-game look. Screens may glow softly but show NO readable content."
       : "NO people, NO animals, NO screens with content.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
@@ -379,13 +665,18 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 // short command. NO "N. Name." headers — the numbers ARE the content.
 // 2026-09-01: "memento" (women) REVIVED into Ripple ("add the 'do the
 // math' / less time than you think back to ripple... add memento mori
-// posts back"); like all Ripple lanes it rolls the 50/50 light/dark
-// scheme per post.
+// posts back"). 2026-09-03: pinned to the DARK scheme with dusk-coast
+// covers — per Keenan, the winning post was "the 'do the math' piture
+// of the beach. this one did well on instagram/facebook reals with
+// multiple shares and likes. so give me more of that."
 
 const MEMENTO_WOMEN_SCENES: Record<WomenScheme, string> = {
-  light: `SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy schemes — an empty porch swing in pale morning sun, a cream kitchen table cleared after breakfast by a bright window, dried flowers on a white sill in soft daylight, a child's empty bedroom with sheer curtains glowing, linen bedding in diffused morning light, a silk robe over a chair by a sunlit window, a garden bench under soft overcast light, a pale staircase with light falling across it, an emptied dining table with one chair pulled out in late-afternoon glow. Bright cream, ivory, warm white — every frame LIGHT (dark charcoal text must read on it), the quiet ache carried by emptiness and light, not darkness. No people ever. These are inspiration, not a menu — invent new quiet-daylight locations in the same DNA so no two posts look alike.`,
-  dark: `SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass, a dark garden seen through a lit kitchen window, a single lamp on in a house at blue hour, an emptied dining table with one chair pulled out. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever. These are inspiration, not a menu — invent new quiet-evening locations in the same DNA so no two posts look alike.`,
+  light: `SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy schemes — an empty porch swing in pale morning sun, a cream kitchen table cleared after breakfast by a bright window, dried flowers on a white sill in soft daylight, a child's empty bedroom with sheer curtains glowing, linen bedding in diffused morning light, a silk robe over a chair by a sunlit window, a garden bench under soft overcast light, a pale staircase with light falling across it, an emptied dining table with one chair pulled out in late-afternoon glow, blank cream stationery and a fountain pen on a sunlit desk, a hallway of small shoes by the door in morning light, a kitchen still and bright after everyone has left. Bright cream, ivory, warm white — every frame LIGHT (dark charcoal text must read on it), the quiet ache carried by emptiness and light, not darkness. No people ever. These are inspiration, not a menu — invent new quiet-daylight locations in the same DNA so no two posts look alike.`,
+  dark: `SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass, a dark garden seen through a lit kitchen window, a single lamp on in a house at blue hour, an emptied dining table with one chair pulled out, blank cream stationery and a fountain pen in warm lamplight, a porch light left on over an empty step, the kitchen after everyone is asleep lit by one small light. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever. These are inspiration, not a menu — invent new quiet-evening locations in the same DNA so no two posts look alike.`,
 };
+
+// Winning-cover family for the dark scheme (the "DO THE MATH" beach).
+const MEMENTO_COVER_RULE = `COVER SCENE RULE: "coverScene" MUST come from the dusk-coast family — an empty shoreline at last light: a beach as the tide pulls back from dark wet sand, a thin line of amber on a grey horizon, a lake shore at dusk, dunes at blue hour, a wide bay going dark, a pier reaching into evening mist. Vary the water, the light, and the vantage every post so no two covers repeat, but every cover is unmistakably an empty shore at the end of the day. Item scenes follow the normal SCENES brief with full variety.`;
 
 const buildMementoWomenSystemPrompt = (
   scheme: WomenScheme
@@ -393,7 +684,7 @@ const buildMementoWomenSystemPrompt = (
 
 AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock at full scale: weekends left in an average lifetime, times she'll see her parents before they're gone, Christmases left with everyone at the table, healthy years remaining, summers while the kids still come home.
 
-${MEMENTO_WOMEN_SCENES[scheme]}
+${MEMENTO_WOMEN_SCENES[scheme]}${scheme === "dark" ? `\n\n${MEMENTO_COVER_RULE}` : ""}
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 45, you have about 1,700 weekends left. On average.
@@ -403,7 +694,7 @@ That's the whole number. Not this year's.
 Stop giving them away."
 
 RULES:
-- "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("YOU'RE ON THE CLOCK", "DO THE MATH"). No number in the title.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides ("DO THE MATH", "COUNT THESE HONESTLY...", "LOOK AT THE CLOCK"). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix the example phrases; if a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
   - First line: ONE life-scale number — anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
@@ -427,7 +718,7 @@ const MEMENTO_MEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal pho
 AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
 VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
 
-SCENES: dark minimalist photography — an empty gym at night with a loaded barbell under one cold light, a black ridgeline under a night sky, a long road at dusk, a desk lamp over an open notebook, a train platform after the last train, rain on dark glass, a glowing laptop open on a couch in a near-black minimalist living room, a dark bedroom seen from the bed with floor-to-ceiling glass over a glittering night skyline, a stone walkway to a cliff edge in sea fog, a black car interior on an empty night highway. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY; the still-glowing laptop, the unused gym, the road nobody is on do the work. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion crossing black dunes at dusk, a stag in blowing snow; the whole animal kingdom, never a recent post's animal; HYPER-REAL weather only — natural light a wildlife photographer could capture, NEVER lightning bolts or painted-on skies), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL armor, seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS — a viking on a windswept grey beach with longships behind, a samurai on a misty bamboo path in rain, a knight leading his horse up a snowy mountain trail, a spartan on sun-bleached coastal rocks; each warrior type gets ITS OWN world, never one generic snowfield, NEVER standing directly on ice or a frozen lake; DOING something powerful — striding into the weather, arms flexed in triumph, sword driven into the earth — a pose that reads in silhouette and radiates strength and drive; hyper-real like a prestige-film still, wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
 
 FORMAT — each slide reads like this (match the rhythm):
 "At 30, you have about 2,500 weekends left. On average.
@@ -457,27 +748,31 @@ OUTPUT (strict JSON, no markdown):
 }`;
 
 /** Generate one memento mori topic for the given audience lane.
- *  Slide count varies per post (2026-08-29, per Keenan: "they can be
- *  4-10 slides long. the more scrolls the better engagement") — 3-9
- *  items + cover = 4-10 slides. `scheme` applies to women only. */
+ *  Women: slide count varies per post (2026-08-29) — 3-9 items.
+ *  Men (BWK): 2026-09-14, per Keenan — pick-list retired, back to ONE
+ *  cover + 4-7 items so posts go out ready-made for auto-publish.
+ *  `scheme` applies to women only. */
 export async function generateMementoTopic(
   audience: MoodyAudience,
   recentHeadlines: string[],
-  scheme: WomenScheme = "light"
+  scheme: WomenScheme = "light",
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
-  const itemCount = 3 + Math.floor(Math.random() * 7); // 3-9 items
+  const men = audience === "men";
+  const itemCount = men
+    ? 4 + Math.floor(Math.random() * 4) // men 4-7
+    : 3 + Math.floor(Math.random() * 7); // women 3-9
   return generateMoodyFamilyTopic({
-    purpose: audience === "men" ? "memento-men-carousel-topic" : "memento-carousel-topic",
-    system:
-      audience === "men"
-        ? MEMENTO_MEN_SYSTEM_PROMPT
-        : buildMementoWomenSystemPrompt(scheme),
+    purpose: men ? "memento-men-carousel-topic" : "memento-carousel-topic",
+    system: men
+      ? `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${rollMenCoverRule(sceneFamily)}`
+      : buildMementoWomenSystemPrompt(scheme),
     user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
-    slugPrefix: audience === "men" ? "memento-men" : "memento",
+    slugPrefix: men ? "memento-men" : "memento",
     requireName: false,
     minLines: 2,
-    minItems: 3,
-    maxItems: 9,
+    minItems: men ? 4 : 3,
+    maxItems: itemCount,
   });
 }
 
@@ -519,7 +814,7 @@ VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wis
 ${WOMEN_SCENE_BRIEFS[scheme]}
 
 RULES:
-- "title": the cover text. 2-4 words, commanding, works in ALL CAPS ("ANSWER HONESTLY", "READ THESE SLOWLY"). Not itself a question.
+- "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER THESE HONESTLY...", "READ THESE SLOWLY", "DON'T LOOK AWAY"). Not itself a question. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must clearly set up questions to answer. Do NOT stitch together or remix the example phrases; "DON'T LIE NOW" is the kind of garbled title that gets a post killed — if a title reads odd or random without the slides, it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the question. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise.
 - Each question hits a DIFFERENT nerve: identity, resentment, time, what she's postponing, what she'd never admit. Never two questions on the same nerve.
 - The questions must be answerable only by the reader — never rhetorical, never yes-obvious.
@@ -1203,7 +1498,7 @@ export async function generateSignTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 400,
-      system: SIGN_SYSTEM_PROMPT,
+      system: `${SIGN_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -1244,6 +1539,22 @@ export async function generateSignTopic(
       throw new Error(`sign-image-topic unusable: line="${line}"`);
     }
 
+    // HUMANIZER approval gate (2026-09-04, per Keenan: every social post
+    // runs through it before generation). Line only — scene is image
+    // direction and never gated. Fails open.
+    let gatedLine = line;
+    try {
+      const gated = await humanizePass<{ line: string }>({
+        purpose: "humanize:sign-topic",
+        voice: extractVoice(SIGN_SYSTEM_PROMPT),
+        payload: { line },
+      });
+      const gl = (gated.line ?? "").trim();
+      if (gl.toUpperCase().startsWith("THIS IS YOUR SIGN")) gatedLine = gl;
+    } catch {
+      console.warn("[sign-topic] humanizer gate failed — shipping ungated copy");
+    }
+
     const slug = line
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -1251,7 +1562,7 @@ export async function generateSignTopic(
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
-    return { slug: `sign-${slug}`, line, scene };
+    return { slug: `sign-${slug}`, line: gatedLine, scene };
   } catch (err) {
     await prisma.claudeCallLog.create({
       data: {
@@ -1302,7 +1613,7 @@ export async function generateAuraTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 400,
-      system: AURA_SYSTEM_PROMPT,
+      system: `${AURA_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -1343,6 +1654,20 @@ export async function generateAuraTopic(
       throw new Error(`aura-image-topic unusable: line="${line}"`);
     }
 
+    // HUMANIZER approval gate (2026-09-04) — line only, fails open.
+    let gatedLine = line;
+    try {
+      const gated = await humanizePass<{ line: string }>({
+        purpose: "humanize:aura-topic",
+        voice: extractVoice(AURA_SYSTEM_PROMPT),
+        payload: { line },
+      });
+      const gl = (gated.line ?? "").trim();
+      if (gl && gl.split(/\s+/).length <= 10) gatedLine = gl;
+    } catch {
+      console.warn("[aura-topic] humanizer gate failed — shipping ungated copy");
+    }
+
     const slug = line
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -1350,7 +1675,7 @@ export async function generateAuraTopic(
       .replace(/\s+/g, "-")
       .slice(0, 60);
 
-    return { slug: `aura-${slug}`, line, scene };
+    return { slug: `aura-${slug}`, line: gatedLine, scene };
   } catch (err) {
     await prisma.claudeCallLog.create({
       data: {
@@ -1414,24 +1739,38 @@ export async function generateVersionsTopic(
 // Per Keenan: "add ... 30 days". A concrete numbered protocol — the
 // save-bait format: people bookmark protocols, not motivation.
 
-const PROTOCOL_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: 30-DAY PROTOCOL — a concrete, numbered daily protocol a man can start tonight and run for 30 days. Not motivation — instructions.
+// Protocol interval rotation (2026-09-10, per Keenan: "change
+// 'protocol' interval... it can rotate between 30 days, 100 days, 365
+// days, 5 years, 2 years"). Rolled per post inside the memoized topic
+// step, same pattern as the cover-family roll.
+const PROTOCOL_INTERVALS = [
+  "30 DAYS",
+  "100 DAYS",
+  "365 DAYS",
+  "2 YEARS",
+  "5 YEARS",
+] as const;
 
-AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE protocols. Every step must be concrete enough to schedule: a time, a count, a limit, a rule — never vague advice like "work harder" or "stay focused".
-VOICE: calm command energy. Imperative mood. Short declarative sentences. A mentor issuing orders, not a poet. Never bro-slang, never yelling.
+const buildProtocolSystemPrompt = (
+  interval: string
+) => `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: ${interval} OF DISCIPLINE — the concrete progress a man can ACTUALLY make and the results he can expect if he locks in for ${interval.toLowerCase()}. Real math, real outcomes — evidence, not motivation.
 
-SCENES: dark minimalist photography — a dim gym with one light on, a desk lamp over an open notebook before dawn, a glowing laptop open in a near-black room, a pre-dawn road, a cold grey sea at first light, a phone face-down on a dark table, a dark bedroom with floor-to-ceiling glass over a night skyline, a stone stairway climbing into fog. Desaturated, near-monochrome. Every frame DIM (white text must read on it). NO people EVER — write every scene EMPTY; the still-glowing laptop, the unused gym, the face-down phone do the work. These are inspiration, not a menu — invent new locations in the same DNA so no two posts look alike.
+AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. They SAVE posts that show them what the work actually buys. Every slide must name a real, expected result — accumulated hours, measurable body change, money stacked, skills built — never vague promises like "you'll be different" or "everything changes".
+VOICE: calm command energy. Short declarative sentences. A mentor stating what the math says, not a poet. Never bro-slang, never yelling.
+
+SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion crossing black dunes at dusk, a stag in blowing snow; the whole animal kingdom, never a recent post's animal; HYPER-REAL weather only — natural light a wildlife photographer could capture, NEVER lightning bolts or painted-on skies), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL armor, seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS — a viking on a windswept grey beach with longships behind, a samurai on a misty bamboo path in rain, a knight leading his horse up a snowy mountain trail, a spartan on sun-bleached coastal rocks; each warrior type gets ITS OWN world, never one generic snowfield, NEVER standing directly on ice or a frozen lake; DOING something powerful — striding into the weather, arms flexed in triumph, sword driven into the earth — a pose that reads in silhouette and radiates strength and drive; hyper-real like a prestige-film still, wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within these families; never render an example verbatim, never repeat a recent post's scene.
 
 FORMAT — each slide reads like this (match the rhythm):
-"5. One hour on the skill.
+"The skill.
 
-Same hour every day. Phone in another room.
+One focused hour a day. That's about 100 hours in.
 
-Thirty hours in a month. Most people give it zero."
+Enough to go from clueless to dangerous. Most people never log ten."
 
 RULES:
-- "title": the cover text. Must contain "30 DAYS" ("DO THIS FOR 30 DAYS", "30 DAYS. NEW MAN."). 2-6 words, commanding, works in ALL CAPS.
-- Each protocol needs a THEME for the month (sleep + training + focus, money discipline, physical hardening, digital detox, building a skill, going quiet, cutting the circle, morning ownership) — vary it post to post, invent new themes, and NEVER reuse a theme from the recent-posts list.
-- Each item: "name" = the step, 2-5 words ("One hour on the skill."). "lines" = 2-3 short paragraphs: the exact rule (specific time/count/limit), then why it compounds over 30 days.
+- "title": the cover text is EXACTLY "${interval} OF DISCIPLINE..." — nothing else, all caps, trailing "..." as the swipe bait. Do not add words, do not rephrase.
+- The slides answer the cover: HOW MUCH progress he can actually make in ${interval.toLowerCase()}, area by area. Each item is a DIFFERENT area of life (the body, the bank account, the skill, the mind, the reading, the reputation, the business) — vary the areas post to post and NEVER reuse the mix from the recent-posts list.
+- Each item: "name" = the area, 2-4 words ("The body.", "The bank account."). "lines" = 2-3 short paragraphs: the daily action, the accumulated math over ${interval.toLowerCase()}, and the real expected result. The math must be plausible and scaled to the interval — hedge honest numbers with "about" or "~" (about 100 workouts in 100 days; ~1,800 focused hours in 5 years). Results must be believable, never inflated.
 - Each item's "scene": one concrete sentence for the photograph, per SCENES above.
 - "coverScene": one scene sentence for the cover.
 - No emojis, no hashtags. Never mention any app, product, journaling, therapy, or AI.
@@ -1439,18 +1778,969 @@ RULES:
 OUTPUT (strict JSON, no markdown):
 { "title": "...", "coverScene": "...", "items": [{ "name": "...", "lines": ["...", "..."], "scene": "..." }] }`;
 
-/** Generate one 30-day protocol carousel (men / BWK funnel). */
+/** Generate one timeline carousel (men / BWK funnel). The interval
+ *  rotates per post (2026-09-10) and the cover is exactly
+ *  "{INTERVAL} OF DISCIPLINE..." with slides laying out how much
+ *  progress he can actually make and the expected results (2026-09-10,
+ *  later — replaced the question cover + protocol-steps format). */
 export async function generateProtocolTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  sceneFamily?: string
 ): Promise<MoodyTopic> {
+  const interval =
+    PROTOCOL_INTERVALS[Math.floor(Math.random() * PROTOCOL_INTERVALS.length)];
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: "protocol-carousel-topic",
-    system: PROTOCOL_SYSTEM_PROMPT,
-    user: `Write one new 30-day protocol with 5, 6, or 7 numbered steps.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    // 2026-09-08: rolled cover-family rule appended so protocol covers
+    // rotate too instead of drifting toward buildings.
+    // 2026-09-14, per Keenan: pick-list retired — ONE cover + 4-7
+    // areas so posts go out ready-made for auto-publish.
+    system: `${buildProtocolSystemPrompt(interval)}\n\n${rollMenCoverRule(sceneFamily)}`,
+    user: `Write one new "${interval} OF DISCIPLINE..." post with exactly ${itemCount} areas of expected progress.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
     minLines: 2,
-    minItems: 5,
-    maxItems: 7,
+    minItems: 4,
+    maxItems: itemCount,
   });
+}
+
+// ─── PHONE-QUOTE: "this quote kept me up all night" (2026-09-03) ─────
+// Per Keenan (with reference screenshots): "add a lane for both of
+// these types of posts. one for ripple, one for BWK. 'this quote kept
+// me up all night...' first slide, and then the next slide is a phone
+// screen with a quote about something important. a message that people
+// resonate with. something motivational and developmental."
+// 2 slides: cover = photo + sentence-case hook; slide 2 = a phone
+// notes-app screen with the quote TYPED on it. The quote slide is
+// composed PROGRAMMATICALLY in compose.ts (renderPhoneQuoteSlide) —
+// gpt-image-2 never touches the text. Lane names are "phone-quote"
+// (Ripple) / "phone-quote-men" (BWK) — NOT the dormant
+// "quote-women"/"quote-men" from the killed animated-loop format.
+
+export interface PhoneQuoteTopic {
+  slug: string;
+  /** Sentence-case cover hook, e.g. "this quote kept me up all night..." */
+  hook: string;
+  coverScene: string;
+  /** The quote typed on the notes-app slide. No attribution. */
+  quote: string;
+}
+
+const PHONE_QUOTE_SYSTEM: Record<MoodyAudience, string> = {
+  women: `You write 2-slide quote posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "someone sent me this and i can't stop thinking about it...", "i found this at exactly the right moment..."). Vary the framing every post — never reuse a recent hook's framing.
+- "quote": 15-40 words, ALL lowercase. Motivational and developmental — self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands the reader her power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or change; the last flips it into quiet permission or hope. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a real person would screenshot and send a friend at 2am: warm, plain words, second person welcome, no clichés stacked on clichés. NO attribution, NO quotation marks, NO emojis, NO hashtags.
+- "coverScene": one concrete sentence for the photograph — a quiet night interior in warm low light: a lamp-lit bedroom at night, tea by a dark rain-streaked window, a candlelit bath, a lit porch at dusk, a phone glowing face-up on dark bedding, blank stationery and a fountain pen in lamplight, the kitchen after everyone is asleep lit by one small light. DIM, warm, intimate, NO people. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "quote": "..." }`,
+  men: `You write 2-slide quote posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "read this before you quit...", "someone sent me this at 2am..."). Vary the framing every post — never reuse a recent hook's framing.
+- "quote": 15-40 words, ALL lowercase. Motivational and developmental — discipline, patience, building in silence, becoming the man who keeps his word, delayed gratification, standards. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands him his power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or the cost of waiting; the last flips it into quiet resolve or possibility. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a man would screenshot and set as his lock screen: calm command energy, plain declarative words, second person welcome, never bro-slang, never yelling. NO attribution, NO quotation marks, NO emojis, NO hashtags.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, desaturated, NO people. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "quote": "..." }`,
+};
+
+/** Generate one phone-quote topic (2-slide format) for either funnel. */
+export async function generatePhoneQuoteTopic(
+  audience: MoodyAudience,
+  recentHeadlines: string[]
+): Promise<PhoneQuoteTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const purpose =
+    audience === "men" ? "phone-quote-men-topic" : "phone-quote-topic";
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      // Men's covers rotate scene families (2026-09-08) — the rolled
+      // rule replaces the old fixed night-city-vantage bullet.
+      system: `${PHONE_QUOTE_SYSTEM[audience]}${audience === "men" ? `\n\n${rollMenCoverRule()}` : ""}\n\n${HUMAN_VOICE_RULES}`,
+      messages: [
+        {
+          role: "user",
+          content: `Write one new phone-quote post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      hook?: string;
+      coverScene?: string;
+      quote?: string;
+    };
+    const hook = (parsed.hook ?? "").trim();
+    const coverScene = (parsed.coverScene ?? "").trim();
+    const quote = (parsed.quote ?? "").trim();
+    const quoteWords = quote.split(/\s+/).length;
+    if (!hook || !coverScene || !quote || quoteWords < 10 || quoteWords > 60) {
+      throw new Error(
+        `${purpose} unusable: hook="${hook}", quote ${quoteWords} words`
+      );
+    }
+
+    const slug = hook
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    // Humanizer approval gate (2026-09-04) — hook + quote only, never
+    // the coverScene image direction. Fails open on error.
+    let gatedHook = hook;
+    let gatedQuote = quote;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${purpose}`,
+        voice: extractVoice(PHONE_QUOTE_SYSTEM[audience]),
+        payload: { hook, quote },
+      });
+      const gw =
+        typeof gated.quote === "string"
+          ? gated.quote.trim().split(/\s+/).length
+          : 0;
+      if (
+        typeof gated.hook === "string" &&
+        gated.hook.trim() &&
+        gw >= 10 &&
+        gw <= 60
+      ) {
+        gatedHook = gated.hook.trim();
+        gatedQuote = gated.quote.trim();
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
+    return {
+      slug: `${audience === "men" ? "phone-quote-men" : "phone-quote"}-${slug}`,
+      hook: gatedHook,
+      coverScene,
+      quote: gatedQuote,
+    };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
+
+// Background scenes for the phone-in-photo quote slide (2026-09-08, per
+// Keenan: "you need to put the quotes onto some sort of screen and bake
+// it into the image"). The AI generates ONLY a text-free out-of-focus
+// backdrop — the iPhone and Notes screen are drawn programmatically in
+// compose.ts, so the quote text never touches gpt-image-2.
+const PHONE_QUOTE_BG_SCENES: Record<MoodyAudience, string[]> = {
+  women: [
+    "a lamp-lit bedroom at night, warm amber glow on rumpled linen bedding",
+    "a dim living room at night, one warm floor lamp beside a soft armchair with a knit throw",
+    "a kitchen counter at night lit by a single warm under-cabinet light, a mug of tea steaming",
+    "a rain-streaked window at night from inside a warm dim room, soft golden lamplight reflected in the glass",
+    "a candlelit bathroom at night, warm flames blurred into soft glowing orbs",
+    "a lit porch at dusk, a string of warm fairy lights blurred against deep blue twilight",
+  ],
+  men: [
+    "a classic Ferrari at night under one cold light, body lines blurred into deep reflections",
+    "floor-to-ceiling glass at night over a glittering city skyline, lights blurred into bokeh",
+    "a dark balcony at night facing distant city lights dissolved into soft glowing points",
+    "a black car interior at night, dashboard glow and distant streetlights blurred through the windshield",
+    "an empty gym at night with one cold overhead light on, everything else in darkness",
+    "a dark bedroom at night, a single lone lit window visible across the street through the glass",
+  ],
+};
+
+/**
+ * Prompt for the AI-generated backdrop behind the drawn phone. The whole
+ * scene is softly OUT of focus — as if the camera focused on a phone held
+ * in the foreground (which our code composites in afterward).
+ */
+export function buildPhoneQuoteBgPrompt(audience: MoodyAudience): string {
+  const scenes = PHONE_QUOTE_BG_SCENES[audience];
+  const scene = scenes[Math.floor(Math.random() * scenes.length)];
+  const palette =
+    audience === "men"
+      ? "desaturated, near-monochrome, cool dark tones"
+      : "warm, dim, intimate amber tones";
+  return `A real photograph, vertical 9:16: ${scene}. The ENTIRE scene is softly OUT of focus with gentle bokeh — shallow depth of field, as if the camera is focused on a phone held close in the foreground (the phone itself is NOT in the shot). ${palette}, DIM overall, moody available light, authentic photographic grain. NO people, NO hands, NO phones, NO screens, NO text, NO words, NO letters anywhere in the image.`;
+}
+
+// ─── Quote surfaces (2026-09-08) ────────────────────────────────────────────
+// Per Keenan (rejecting the drawn-phone composite as "way too generic"):
+// "it should be a phone screen in a hand that looks like a true text
+// message from a friend coming in, or text on a flip phone as a text
+// message, or a car digital screen with words on it... you can also put
+// it on a billboard, or on a sign." The AI photographs the scene WITH a
+// blank glowing white screen in it; compose.ts finds that screen
+// (detectBrightRect) and composites the deterministic text — the quote
+// still never touches gpt-image-2.
+
+// "poster" added 2026-09-10 (per Keenan, with a car-dash reference:
+// "whether it's a phone screen, a car dash (like pictured), a
+// billboard with signage, a poster, doesn't matter").
+// neon/marquee/chalkboard/paper added 2026-09-14 (per Keenan: "the
+// signs where the lettering built in is doing the best" + "give me 4
+// more ideas for each" — four new built-in-lettering surfaces, each
+// with brand-flavored scenes).
+export const QUOTE_SURFACES = [
+  "imessage",
+  "flip",
+  "car",
+  "billboard",
+  "sign",
+  "poster",
+  "neon",
+  "marquee",
+  "chalkboard",
+  "paper",
+] as const;
+export type QuoteSurface = (typeof QUOTE_SURFACES)[number];
+
+export function rollQuoteSurface(): QuoteSurface {
+  return QUOTE_SURFACES[Math.floor(Math.random() * QUOTE_SURFACES.length)];
+}
+
+interface SurfaceSpec {
+  /** What holds the text, per audience. */
+  scenes: Record<MoodyAudience, string[]>;
+  /** What we call the text-bearing area in the prompt ("screen" / "face"). */
+  screenWord: string;
+  /** How much of the frame the text-bearing area should fill. */
+  sizeHint: string;
+  /** Orientation of the text-bearing area. */
+  orientation: string;
+  /** How the letters physically exist on this surface (2026-09-11 baked-text pipeline). */
+  textMedium: string;
+}
+
+const QUOTE_SURFACE_SPECS: Record<QuoteSurface, SurfaceSpec> = {
+  imessage: {
+    scenes: {
+      women: [
+        "a woman's hand holding an iPhone in a dim lamp-lit bedroom at night, soft knit blanket blurred behind",
+        "a woman's hands cradling an iPhone at a kitchen table at night, a steaming mug of tea blurred beside it",
+        "a woman's hand holding an iPhone in a warm dim living room at night, fairy lights blurred into bokeh behind",
+      ],
+      men: [
+        "a man's hand holding an iPhone at a dark desk at night, a single lamp glowing behind",
+        "a man's hand holding an iPhone in a parked car at night, city lights blurred through the windshield",
+        "a man's hand holding an iPhone in front of a floor-to-ceiling window over a night city skyline, lights blurred into bokeh",
+      ],
+    },
+    screenWord: "screen",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — the phone is held CLOSE to the camera",
+    orientation: "TALL and vertical (portrait, like a phone screen)",
+    textMedium:
+      "crisp dark lettering typed on the phone's softly glowing pale screen, like a note open on the phone",
+  },
+  flip: {
+    scenes: {
+      women: [
+        "a woman's hand holding an OPEN classic early-2000s flip phone in a warm lamp-lit room at night",
+        "a woman's hand holding an OPEN classic flip phone at a cafe table, warm dim evening light",
+      ],
+      men: [
+        "a man's hand holding an OPEN classic early-2000s flip phone at a dark desk at night, single lamp",
+        "a man's hand holding an OPEN classic flip phone at a dark bar counter at night, moody low light",
+      ],
+    },
+    screenWord: "inner display",
+    sizeHint:
+      "at least half of the frame's width — an EXTREME close-up where the open phone fills the frame and the inner display dominates it",
+    orientation: "roughly SQUARE or slightly tall",
+    textMedium:
+      "softly glowing early-2000s pixel-style text on the small backlit inner display",
+  },
+  car: {
+    scenes: {
+      women: [
+        "the interior of a car at night seen from the driver's seat, the center dashboard infotainment screen, warm streetlight bokeh blurred through the windshield",
+        "a car interior at night in soft rain, the center dashboard screen, warm blurred city lights beyond the glass",
+      ],
+      men: [
+        "the interior of a black car at night seen from the driver's seat, the center dashboard infotainment screen, cold city lights blurred through the windshield",
+        "a dark car interior at night parked on an empty street, the center dashboard screen, distant streetlights dissolved into bokeh",
+      ],
+    },
+    screenWord: "screen",
+    sizeHint:
+      "at least two thirds of the frame's width — shot CLOSE so the dashboard screen dominates the composition",
+    orientation: "WIDE and horizontal (landscape, like a dashboard display)",
+    textMedium:
+      "glowing text on the dashboard media screen, displayed like a now-playing track title",
+  },
+  billboard: {
+    scenes: {
+      women: [
+        "a city street at dusk with one large blank billboard mounted on a building, warm golden-hour glow, street details blurred below",
+        "an empty two-lane road at dusk with one large roadside billboard against a deep blue twilight sky",
+      ],
+      men: [
+        "a dark downtown street at night with one large blank billboard on a building, cold desaturated tones, wet asphalt reflections",
+        "a highway shoulder at night with one large billboard lit against the black sky, desaturated and moody",
+      ],
+    },
+    screenWord: "face",
+    sizeHint:
+      "at least two thirds of the frame's width — shot from close below so the billboard dominates the composition",
+    orientation: "WIDE and horizontal (landscape, like a billboard)",
+    textMedium:
+      "large printed letters filling the billboard face, weathered slightly by sun and city air",
+  },
+  sign: {
+    scenes: {
+      women: [
+        "a sidewalk outside a small cafe at dusk, one letterboard sign standing on the pavement, warm string lights blurred behind",
+        "the front of a cozy shop at dusk, one blank sign face beside the door, warm dim evening light",
+      ],
+      men: [
+        "a dark city sidewalk at night, one letterboard sign standing outside a bar, cold moody low light",
+        "an empty street corner at night, one blank sign face lit by a single streetlight, desaturated tones",
+      ],
+    },
+    screenWord: "face",
+    sizeHint:
+      "at least two thirds of the frame's width — shot CLOSE so the sign face dominates the composition",
+    orientation: "roughly SQUARE or slightly tall",
+    textMedium:
+      "physical changeable black letterboard letters slotted into the sign's tracks, each letter casting its own tiny shadow",
+  },
+  poster: {
+    scenes: {
+      women: [
+        "a framed poster hanging on a warm brick wall inside a dim cafe at night, one small lamp glowing nearby",
+        "a bus-stop poster case on a quiet street at dusk, warm golden streetlight, the sidewalk blurred around it",
+      ],
+      men: [
+        "a framed poster on a dark concrete wall in a moody hallway at night, lit by one cold overhead beam",
+        "a bus-stop poster case on an empty city street at night, wet asphalt reflections, desaturated tones",
+      ],
+    },
+    screenWord: "face",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — shot CLOSE so the poster dominates the composition",
+    orientation: "TALL and vertical (portrait, like a poster)",
+    textMedium:
+      "elegant printed typography that is part of the poster's graphic design, ink on paper",
+  },
+  neon: {
+    scenes: {
+      women: [
+        "a warm blush-and-amber neon sign glowing on the exposed-brick wall of a dim cozy cafe at night, string lights blurred below",
+        "a soft warm-white neon sign mounted above a dresser in a dark bedroom, one small lamp glowing at the edge of frame",
+      ],
+      men: [
+        "a cold white neon sign on the bare concrete wall of an empty gym at night, everything else in darkness",
+        "a stark ice-blue neon sign glowing on the dark brick wall of an empty bar after close, wet-street light leaking through a window",
+      ],
+    },
+    screenWord: "sign",
+    sizeHint:
+      "at least two thirds of the frame's width — shot CLOSE so the glowing sign dominates the composition",
+    orientation: "roughly SQUARE or slightly wide",
+    textMedium:
+      "hand-bent glowing neon tubing forming every word, the tubes casting soft colored light and a faint halo onto the wall behind them",
+  },
+  marquee: {
+    scenes: {
+      women: [
+        "an old theater marquee at dusk on a small-town main street, rows of warm bulbs glowing against a deep blue twilight sky",
+        "a vintage cinema marquee at dusk, warm golden bulbs lit, the quiet street below blurred in golden-hour light",
+      ],
+      men: [
+        "a vintage cinema marquee at night on a dark empty street, cold bulbs lit, desaturated tones, wet asphalt reflections below",
+        "an old theater marquee at night against a black sky, stark white bulbs, the street below dissolved into darkness",
+      ],
+    },
+    screenWord: "board",
+    sizeHint:
+      "at least two thirds of the frame's width — shot from close below so the marquee dominates the composition",
+    orientation: "WIDE and horizontal (landscape, like a marquee board)",
+    textMedium:
+      "black changeable marquee letters slotted into the tracks of the backlit white board, lit by the surrounding rows of bulbs, a couple of letters sitting very slightly crooked",
+  },
+  chalkboard: {
+    scenes: {
+      women: [
+        "an A-frame chalkboard sign on the sidewalk outside a small flower shop at dusk, warm string lights blurred behind it",
+        "an A-frame chalkboard sign outside a cozy cafe at dusk, warm window glow spilling onto the pavement around it",
+      ],
+      men: [
+        "an A-frame chalkboard sign on a dark sidewalk outside a closed coffee shop at night, one streetlight, moody shadows",
+        "an A-frame chalkboard sign outside a dark gym entrance at night, cold light from a doorway, desaturated tones",
+      ],
+    },
+    screenWord: "board",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — shot CLOSE so the chalkboard dominates the composition",
+    orientation: "TALL and vertical (portrait, like an A-frame board)",
+    textMedium:
+      "hand-written white chalk lettering with real chalk texture — slightly dusty strokes, faint smudges, uneven pressure, written by a human hand",
+  },
+  paper: {
+    scenes: {
+      women: [
+        "a handwritten note on cream paper lying on a wooden nightstand in warm lamplight, a mug of tea blurred beside it",
+        "a handwritten note on soft ivory paper on rumpled linen bedding at night, warm dim lamp glow across it",
+      ],
+      men: [
+        "a handwritten note on white paper lying on a dark desk at night, lit by one cold desk lamp, a watch blurred beside it",
+        "a handwritten note on plain paper taped to a bathroom mirror's edge, dim cold light, the dark room blurred in the reflection",
+      ],
+    },
+    screenWord: "page",
+    sizeHint:
+      "at least two thirds of the frame's height and more than half its width — shot from directly above or a natural reading angle, CLOSE so the page dominates",
+    orientation: "TALL and vertical (portrait, like a sheet of paper)",
+    textMedium:
+      "legible handwritten ink lettering in a natural human hand — pen strokes pressed into the paper's fiber, ink weight varying slightly, imperfect but easy to read",
+  },
+};
+
+/**
+ * Prompt for a scene photo where the quote is TYPESET DIRECTLY into the
+ * surface by gpt-image-2 (2026-09-11, per Keenan: the composited
+ * white-box look was "still not blending in. it should just be
+ * letters. the letters need to be BUILT IN to the poster, sign, phone
+ * screen... one cohesive picture without a blank white text box").
+ * The exact quote goes into the image prompt; verifyBakedQuote checks
+ * the rendered letters afterwards.
+ */
+export function buildBakedQuotePrompt(
+  audience: MoodyAudience,
+  surface: QuoteSurface,
+  quote: string
+): string {
+  const spec = QUOTE_SURFACE_SPECS[surface];
+  const scenes = spec.scenes[audience];
+  const scene = scenes[Math.floor(Math.random() * scenes.length)];
+  const palette =
+    audience === "men"
+      ? "Desaturated, near-monochrome, cool dark tones"
+      : "Warm, dim, intimate amber tones";
+  return `A real photograph, vertical 9:16: ${scene}. The ${spec.screenWord} displays this text and NOTHING else — rendered EXACTLY, word for word, all lowercase, every word spelled perfectly, no words added, no words missing:
+
+"${quote}"
+
+The text appears as ${spec.textMedium}. The letters are physically PART of the ${spec.screenWord} — they share its exact perspective, lighting, color cast, texture, and grain, photographed together in one shot. The lettering MUST BLEND into the ${spec.screenWord} and its background: it inherits the surface's glow, reflections, wear, and material, sits behind any glare or shadow that falls across the surface, and follows the surface's curvature and angle precisely. If someone zoomed in, nothing about the letters would look added afterward. NEVER a flat white box, NEVER a pasted-on panel, NEVER an overlay, sticker, or mockup look — one cohesive photograph. The text breaks over several lines with natural spacing and is large enough to read easily on a phone. COMPOSITION: the ${spec.screenWord} is ${spec.orientation} and fills ${spec.sizeHint}. A natural, slightly imperfect camera angle is good — this must feel like a candid photo someone actually took. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the text stays tack sharp and clearly legible against its background. NO other text, words, letters, numbers, or logos anywhere else in the image.`;
+}
+
+/**
+ * Vision QA for baked quote slides: gpt-image-2 renders short lowercase
+ * text well but can still typo, duplicate, or drop a word. Claude reads
+ * the final slide and confirms the rendered text matches word-for-word.
+ * Returns false on API failure — callers treat that as "unverified",
+ * never as a hard error.
+ */
+export async function verifyBakedQuote(
+  image: Buffer,
+  quote: string
+): Promise<boolean> {
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 10,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/jpeg",
+                data: image.toString("base64"),
+              },
+            },
+            {
+              type: "text",
+              text: `Does the main text displayed in this image read EXACTLY as follows — every word present, in order, spelled correctly, with no words added, duplicated, or missing?\n\n"${quote}"\n\nIgnore incidental device UI (clock, battery, signal bars, a small contact-name header) and line-break placement. Any garbled, misspelled, duplicated, or missing word means NO. Answer with ONLY the single word YES or NO.`,
+            },
+          ],
+        },
+      ],
+    });
+    const answer =
+      response.content[0]?.type === "text" ? response.content[0].text : "";
+    return /^\s*yes\b/i.test(answer);
+  } catch (err) {
+    console.warn(
+      `[carousel] Baked-quote verification call failed (treating as unverified): ${err instanceof Error ? err.message : err}`
+    );
+    return false;
+  }
+}
+
+// ─── Five new lanes (2026-09-14 night, per Keenan: "do 1, 2, 3 for
+// ripple, and 3. and 4. for bwk") ────────────────────────────────────
+// Ripple: TEXTS-YOUNGER ("texts to my younger self"), PERMISSION
+// ("permission slips"), LETTER ("the unsent letter"). BWK:
+// DISCIPLINE-REAL ("what discipline actually looks like"),
+// FUTURE-TEXTS ("texts from your future self"). Keenan also asked to
+// "get creative with more variation amongst image lanes and themes
+// that would match" — so each lane carries its own THEME-MATCHED scene
+// pool (the bath for rest, the parked car before dawn for the unseen
+// hours) instead of reusing the generic briefs.
+
+// ─── PERMISSION SLIPS (Ripple) ───────────────────────────────────────
+// One line of quiet permission per slide — the listicle cousin of the
+// dead SIGN format ("THIS IS YOUR SIGN TO..."), multi-slide and
+// second-person. Scenes are theme-matched: thresholds and endings of
+// the day, each echoing its slide's permission where possible.
+
+const PERMISSION_SCENES = `SCENES: soft, aesthetically pleasing FEMININE photography in warm LOW light, every location a quiet THRESHOLD or END-OF-DAY moment that MATCHES the permission being given — a phone face-down on a nightstand under warm lamplight, a bath running with steam curling in candlelight, a bed left unmade in soft evening light, a car parked in a dark driveway with the porch light glowing ahead, a laptop closed on a kitchen table at dusk, a robe over a chair with the day's clothes left where they fell, a book open face-down beside a cooling cup of tea, an armchair in one pool of lamplight, a door pulled quietly shut at the end of a dark hallway, a dinner table left uncleared under one low lamp, an unanswered doorbell seen from a warm lit kitchen. Muted, warm, dreamy — quiet luxury after dark. Every scene DIM (white text must read on it), soft shadows, intimate, NO people ever. These are INSPIRATION, not a menu — invent new theme-matched locations and vary the vantage and time of evening so no two posts look alike. Where you can, let each scene quietly echo its slide's permission (the running bath for rest, the face-down phone for unavailability, the closed laptop for enough).`;
+
+const PERMISSION_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account for women. Each post is a cover + slides of white text centered on warm, dim cinematic photography. The niche: PERMISSION SLIPS — each slide is ONE line of quiet permission she has been waiting for someone to give her.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. Each permission should release something she already wants to do but feels she must earn, explain, or apologize for.
+VOICE: warm, certain, plain. Permission, never pressure. A wise friend saying "you're allowed" and meaning it. Never preachy, never girlboss, never clinical.
+
+${PERMISSION_SCENES}
+
+RULES:
+- "title": the cover text — 2-4 words, works in ALL CAPS, and it must PULL her into the slides ("PERMISSION GRANTED", "YOU'RE ALLOWED...", "TAKE THESE"). Never a passive label or topic name. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say — and it must fit what the slides deliver. If a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
+- The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the permission. 6-16 words, plain words. Most may start "you're allowed to..." but VARY the opener across the post ("you can...", "it's okay to...", "you don't have to...") so it never reads like a template.
+- Each permission releases a DIFFERENT weight: rest, availability, saying no, imperfection, spending on herself, letting a friendship fade, leaving things unfinished, going to bed early. Never two on the same weight. Every permission SMALL and concrete — never dramatic (no quitting jobs, no leaving marriages).
+- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location, matched to its slide's permission where possible.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one permission-slips topic (women / Ripple). Single-line
+ *  slides like questions; 4-6 permissions per post. */
+export async function generatePermissionTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
+  return generateMoodyFamilyTopic({
+    purpose: "permission-carousel-topic",
+    system: PERMISSION_SYSTEM_PROMPT,
+    user: `Write one new permission-slips post with exactly ${itemCount} permissions.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "permission",
+    requireName: false,
+    minLines: 1,
+    minItems: 4,
+    maxItems: itemCount,
+  });
+}
+
+// ─── WHAT DISCIPLINE ACTUALLY LOOKS LIKE (BWK) ───────────────────────
+// Myth-vs-truth pairs: the item name is the romanticized myth, the
+// lines are the boring, unglamorous reality. Shares the BWK visual DNA
+// and cover-family rotation.
+
+const DISCIPLINE_REAL_THEME = `THEME — every post belongs to the WHAT DISCIPLINE ACTUALLY LOOKS LIKE family: stripping the romance off discipline. EXCEPTION to the name rule: each item's "name" is the romanticized MYTH, 2-6 words ending with a period ("The 4am club.", "Monk mode.", "Beast mode every day.") — the version people post about. The lines then state the mundane, unglamorous TRUTH in one or two plain sentences (the same bedtime kept for 200 nights, the workout done bored on a Tuesday, the meal prepped on a Sunday nobody claps for, the phone left in another room again) and close on a short 2-5 word command ("Do it bored.", "Repeat tomorrow."). The unspoken thesis of every post: discipline is boring, and boring is why it works. Rotate the myths every post — sleep, training, food, focus, money, the phone, mornings, saying no — so no two posts repeat. Titles live in the family too ("THE BORING TRUTH" / "WHAT IT ACTUALLY LOOKS LIKE..." energy) without repeating a recent title.`;
+
+/** Generate one what-discipline-actually-looks-like topic (men / BWK).
+ *  Myth as the "Name." header, mundane truth in the lines. */
+export async function generateDisciplineRealTopic(
+  recentHeadlines: string[],
+  sceneFamily?: string
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
+  return generateMoodyFamilyTopic({
+    purpose: "discipline-real-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: DISCIPLINE_REAL_THEME,
+      coverRule: rollMenCoverRule(sceneFamily),
+    }),
+    user: `Write one new what-discipline-actually-looks-like post with exactly ${itemCount} myth-vs-truth items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "discipline-real",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: itemCount,
+  });
+}
+
+// ─── THE UNSENT LETTER (Ripple) ──────────────────────────────────────
+// 2-slide sibling of phone-quote: photo cover + the letter handwritten
+// on paper (the "paper" baked surface, FORCED in carousel-daily.ts).
+// Returns a PhoneQuoteTopic so the whole phone-quote pipeline (baked
+// generation, vision verify, save/email) is reused unchanged. Distinct
+// from the DEAD 2026-08-29 "unsent" texts lane — different format,
+// different slug prefix.
+
+const LETTER_SYSTEM_PROMPT = `You write 2-slide posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a handwritten letter on paper — a letter that was never sent.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it frames the letter without revealing it ("i wrote this and never sent it...", "this has been sitting in my drawer for years...", "i finally put it on paper..."). Vary the framing every post — never reuse a recent hook's framing.
+- "letter": 25-55 words, ALL lowercase, 3-5 short plain sentences — the unsent letter itself. Rotate WHO it's for every post: her younger self, the friend who drifted away, her mother, the version of her that kept going, the person she was before everyone needed her, her body, the house they left behind. It may open with a short address ("to the friend i lost to the years,") or just begin. The shape: something true and a little heavy, then a turn into tenderness or release. It must read like something a real woman would write at midnight and never send — warm, plain words, no clichés stacked on clichés. NO signature, NO quotation marks, NO emojis, NO hashtags.
+- "coverScene": one concrete sentence for the photograph — letter-writing still-lifes at night: blank cream stationery and a fountain pen in a pool of warm lamplight, an opened envelope beside a low candle, a folded note in an open nightstand drawer, notepaper on a dark wood desk by rain-streaked glass, a shoebox of old letters on a bed in lamplight. DIM, warm, intimate, NO people, NO readable text in the scene. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "letter": "..." }`;
+
+/** Generate one unsent-letter topic (women / Ripple, 2-slide). */
+export async function generateLetterTopic(
+  recentHeadlines: string[]
+): Promise<PhoneQuoteTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const purpose = "letter-carousel-topic";
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      system: `${LETTER_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
+      messages: [
+        {
+          role: "user",
+          content: `Write one new unsent-letter post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      hook?: string;
+      coverScene?: string;
+      letter?: string;
+    };
+    const hook = (parsed.hook ?? "").trim();
+    const coverScene = (parsed.coverScene ?? "").trim();
+    const letter = (parsed.letter ?? "").trim();
+    const letterWords = letter.split(/\s+/).length;
+    if (!hook || !coverScene || !letter || letterWords < 15 || letterWords > 70) {
+      throw new Error(
+        `${purpose} unusable: hook="${hook}", letter ${letterWords} words`
+      );
+    }
+
+    const slug = hook
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    // Humanizer approval gate — hook + letter only, never the
+    // coverScene image direction. Fails open on error.
+    let gatedHook = hook;
+    let gatedLetter = letter;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${purpose}`,
+        voice: extractVoice(LETTER_SYSTEM_PROMPT),
+        payload: { hook, letter },
+      });
+      const gw =
+        typeof gated.letter === "string"
+          ? gated.letter.trim().split(/\s+/).length
+          : 0;
+      if (
+        typeof gated.hook === "string" &&
+        gated.hook.trim() &&
+        gw >= 15 &&
+        gw <= 70
+      ) {
+        gatedHook = gated.hook.trim();
+        gatedLetter = gated.letter.trim();
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
+    return {
+      slug: `letter-${slug}`,
+      hook: gatedHook,
+      coverScene,
+      quote: gatedLetter,
+    };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
+
+// ─── TEXT-MESSAGE lanes: TEXTS-YOUNGER (Ripple) / FUTURE-TEXTS (BWK) ─
+// Multi-slide texts baked into phone-in-hand photos: cover hook + one
+// message bubble per slide, rendered by gpt-image-2 with the same
+// blend mandate and vision verification as the baked phone-quote
+// pipeline. texts-younger = SENT bubbles to "younger me" (2-4 texts);
+// future-texts = RECEIVED bubbles from "future me" (1-2 texts).
+
+export type TextsLane = "texts-younger" | "future-texts";
+
+export interface TextsTopic {
+  slug: string;
+  /** Sentence-case cover hook, e.g. "texts i'd send my younger self..." */
+  hook: string;
+  coverScene: string;
+  /** One text message per slide, in order. */
+  messages: string[];
+}
+
+const TEXTS_SYSTEM: Record<TextsLane, string> = {
+  "texts-younger": `You write multi-slide text-message posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; each following slide is a photo of a phone showing ONE text message she is sending to her younger self.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate, ending with "..." ("texts i'd send my younger self...", "if i could reach her, i'd tell her...", "she needed to hear these..."). Vary the framing every post — never reuse a recent hook's framing.
+- "messages": 2-4 texts, each 8-25 words, ALL lowercase — messages from the woman she is now to the girl she was. Each text lands on a DIFFERENT age and a DIFFERENT wound: the friendship that ends anyway, the body she picked apart, the no she was afraid to say, the thing that felt like the end and wasn't, the years she spent making herself smaller. Plain text-message language — the way a real person actually texts at midnight, warm and direct, second person. One text may be lighter to break the ache. NO emojis, NO hashtags, NO quotation marks.
+- "coverScene": one concrete sentence for the photograph — a quiet night interior in warm low light: a lamp-lit bedroom, tea by a dark rain-streaked window, a closed photo album on a bed in lamplight, a childhood bedroom kept the same at dusk, a porch light on over an empty step. DIM, warm, intimate, NO people. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "messages": ["...", "..."] }`,
+  "future-texts": `You write text-message posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; each following slide is a photo of a phone showing ONE text message arriving from his future self.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." ("a text from the man you're becoming...", "your future self finally texted back...", "this came from ten years ahead..."). Vary the framing every post — never reuse a recent hook's framing.
+- "messages": 1-2 texts, each 12-30 words, ALL lowercase — messages from the man he becomes to the man he is now. Calm command energy: what mattered, what didn't, what he's glad he did NOW ("the nights you trained alone are the reason i exist. don't skip tonight."). Plain declarative text-message language, second person, never bro-slang, never yelling. Each text a DIFFERENT angle. NO emojis, NO hashtags, NO quotation marks.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, desaturated, NO people. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "messages": ["..."] }`,
+};
+
+/** Generate one text-message topic for either texts lane. */
+export async function generateTextsTopic(
+  lane: TextsLane,
+  recentHeadlines: string[]
+): Promise<TextsTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const purpose = `${lane}-topic`;
+  const men = lane === "future-texts";
+  const maxMessages = men ? 2 : 4;
+  const minMessages = men ? 1 : 2;
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      // Men's covers rotate the BWK scene families like every other
+      // BWK lane.
+      system: `${TEXTS_SYSTEM[lane]}${men ? `\n\n${rollMenCoverRule()}` : ""}\n\n${HUMAN_VOICE_RULES}`,
+      messages: [
+        {
+          role: "user",
+          content: `Write one new post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      hook?: string;
+      coverScene?: string;
+      messages?: string[];
+    };
+    const hook = (parsed.hook ?? "").trim();
+    const coverScene = (parsed.coverScene ?? "").trim();
+    const messages = (parsed.messages ?? [])
+      .filter((m): m is string => typeof m === "string" && !!m.trim())
+      .map((m) => m.trim())
+      .slice(0, maxMessages);
+    if (!hook || !coverScene || messages.length < minMessages) {
+      throw new Error(
+        `${purpose} unusable: hook="${hook}", ${messages.length} valid messages`
+      );
+    }
+
+    const slug = hook
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    // Humanizer approval gate — hook + messages, never the coverScene
+    // image direction. Fails open on error.
+    let gatedHook = hook;
+    let gatedMessages = messages;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${purpose}`,
+        voice: extractVoice(TEXTS_SYSTEM[lane]),
+        payload: { hook, messages },
+      });
+      if (
+        typeof gated.hook === "string" &&
+        gated.hook.trim() &&
+        Array.isArray(gated.messages) &&
+        gated.messages.length === messages.length &&
+        gated.messages.every((m) => typeof m === "string" && m.trim())
+      ) {
+        gatedHook = gated.hook.trim();
+        gatedMessages = gated.messages.map((m) => m.trim());
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
+    return {
+      slug: `${lane}-${slug}`,
+      hook: gatedHook,
+      coverScene,
+      messages: gatedMessages,
+    };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
+
+// Phone-in-hand scene pools for the baked message slides — the
+// "creative variation" pass (2026-09-14, per Keenan): every location
+// matches the lane's emotional register instead of a generic desk shot.
+const TEXTS_PHONE_SCENES: Record<TextsLane, string[]> = {
+  "texts-younger": [
+    "a woman's hand holding an iPhone in a dim lamp-lit bedroom at night, a soft knit blanket blurred behind",
+    "a woman's hands cradling an iPhone at a kitchen table at night, a steaming mug of tea blurred beside it",
+    "a woman's hand holding an iPhone in the driver's seat of a car parked at dusk, rain beading on the windshield",
+    "a woman's hand holding an iPhone on a porch swing at dusk, warm string lights blurred behind",
+    "a woman's hand holding an iPhone beside a candlelit bath at night, flames blurred into soft glowing orbs",
+    "a woman's hand holding an iPhone on a bed beside a folded stack of laundry, one warm lamp glowing",
+    "a woman's hand holding an iPhone by a rain-streaked window at night, golden lamplight reflected in the glass",
+  ],
+  "future-texts": [
+    "a man's hand holding an iPhone in an empty gym at night, one cold overhead light, a loaded barbell blurred behind",
+    "a man's hand holding an iPhone in a parked car before dawn, dashboard glow, an empty street beyond the windshield",
+    "a man's hand holding an iPhone on a rooftop at night, city lights blurred into bokeh far below",
+    "a man's hand holding an iPhone at a dark desk at night, a single lamp and an open notebook blurred behind",
+    "a man's hand holding an iPhone in a bare concrete stairwell under one cold light",
+    "a man's hand holding an iPhone at the edge of an empty running track at dawn, lane lines dissolving into mist",
+    "a man's hand holding an iPhone on a loading dock at night, rain falling through one sodium light beyond",
+  ],
+};
+
+/**
+ * Prompt for a phone-in-hand photo where ONE message bubble is typeset
+ * directly into the screen by gpt-image-2 — same blend mandate as
+ * buildBakedQuotePrompt, but the surface is always a messages thread.
+ */
+export function buildBakedTextsPrompt(lane: TextsLane, message: string): string {
+  const scenes = TEXTS_PHONE_SCENES[lane];
+  const scene = scenes[Math.floor(Math.random() * scenes.length)];
+  const women = lane === "texts-younger";
+  const palette = women
+    ? "Warm, dim, intimate amber tones"
+    : "Desaturated, near-monochrome, cool dark tones";
+  const contact = women ? "younger me" : "future me";
+  const bubble = women
+    ? "ONE sent message bubble aligned to the RIGHT of the thread — a soft blue rounded bubble with white text, as if she just sent it"
+    : "ONE received message bubble aligned to the LEFT of the thread — a dark gray rounded bubble with white text, as if it just arrived";
+  return `A real photograph, vertical 9:16: ${scene}. The phone's screen shows a text-messaging conversation: at the very top of the screen, the contact name "${contact}" in small letters; below it, ${bubble}, containing this text and NOTHING else — rendered EXACTLY, word for word, all lowercase, every word spelled perfectly, no words added, no words missing:
+
+"${message}"
+
+The message bubble is large and fills most of the screen's width, the text breaking over several lines with natural spacing, large enough to read easily on a phone. The screen's glow, the lettering, and the interface are physically PART of the phone — they share its exact perspective, tilt, reflections, and the scene's lighting, photographed together in one shot. The lettering MUST BLEND into the screen: it sits behind any glare that falls across the glass and follows the screen's angle precisely. If someone zoomed in, nothing about the text would look added afterward. NEVER a flat white box, NEVER a pasted-on panel, NEVER an overlay, sticker, or mockup look — one cohesive photograph. COMPOSITION: the phone is TALL and vertical and fills at least two thirds of the frame's height — held CLOSE to the camera. A natural, slightly imperfect camera angle is good — this must feel like a candid photo someone actually took. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the screen text stays tack sharp and clearly legible. NO other text, words, letters, numbers, or logos anywhere else in the image — no keyboard, no timestamps, no other messages.`;
 }

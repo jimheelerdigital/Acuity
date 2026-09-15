@@ -103,14 +103,32 @@ export const SELFIE_COVER_POSE_COUNT = SELFIE_POSE_VARIANTS.length;
  */
 export const SELFIE_VISUAL_DNA = [
   "This is a REAL amateur smartphone photo of a real woman — a mirror selfie, an ordinary photo from her own camera roll, posted to her own Instagram. It must be indistinguishable from a genuine phone photo.",
-  "PHOTOGRAPHY: shot on a phone camera. Natural imperfect framing, slightly off-center, honest angles. Natural light only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, mild soft focus, true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
+  "PHOTOGRAPHY: shot on a phone camera. Natural imperfect framing, slightly off-center, honest angles. Natural light only — window light, bathroom vanity light, warm lamp — with realistic shadows. Slight sensor grain, crisp natural phone-camera focus — clear and sharp like a modern phone photo, never blurry or hazy — true-to-life colors. Real skin texture with pores and fine lines. NO studio lighting, NO beauty retouching, NO professional composition, NO cinematic color grading, NO shallow-depth-of-field portrait look.",
   "SETTING: her real, lived-in world — a slightly cluttered home (counters, a towel on a hook, cables, door frames, normal furniture). Authentic and unglamorous, never staged or magazine-styled.",
+  "ATTENTION TO DETAIL: every element is fully resolved with fine, true texture — hair strands, fabric weave, wood grain, tile, clutter all crisply defined. NO mushy, smeared, half-melted, or painterly areas ANYWHERE, including the background and edges.",
   "THE MIRROR IS A LITTLE DIRTY: light smudges, a few fingerprints, specks of dust, maybe a faint streak catching the light — the way a real, lived-with mirror actually looks. Subtle and realistic, not filthy.",
   "HER FACE IS COVERED: her raised phone is directly in front of her face and completely hides it — no eyes, nose, or mouth visible. Her identity reads through her hair, build, and everyday clothes, never her face.",
   "VARIANCE: real people never take the same selfie twice. This photo must have its own distinct posture, camera distance, angle, outfit, room, and light compared to her other posts.",
   "9:16 vertical portrait, exactly like a phone photo.",
   "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, phone-screen UI, logos, or watermarks. The phone screen faces away or is dark.",
 ].join("\n");
+
+/**
+ * Photography-style variants for the selfie lane (2026-09-03, per
+ * Keenan: "give me 2x of those per day with more variance and different
+ * picture styles"). One style is chosen per POST (slug-deterministic in
+ * carousel-daily.ts, like stickerColor/pose) and appended to every
+ * image prompt in that post so the whole slideshow reads as one camera
+ * roll from one day — but different posts look like different days.
+ */
+export const SELFIE_STYLE_VARIANTS = [
+  "STYLE: warm golden-hour light — late-afternoon sun through the windows, long soft shadows, honeyed tones on skin and walls.",
+  "STYLE: bright clean daylight — crisp late-morning light, white-balanced and airy, the room looks freshly lit and awake.",
+  "STYLE: moody evening lamplight — after dark, warm lamps only, deep cozy shadows in the corners, intimate low-light phone photo grain.",
+  "STYLE: soft overcast light — a grey day outside, flat gentle window light, muted calm colors, no hard shadows anywhere.",
+  "STYLE: crisp cool morning light — early pale-blue daylight, slightly cool white balance, the quiet of a house before anyone else is up.",
+  "STYLE: dusk blue-hour mix — deep blue fading daylight in the windows while warm lamps glow inside, two light temperatures in one frame.",
+] as const;
 
 /**
  * DNA for the AESTHETIC slides mixed into the selfie slideshow
@@ -124,6 +142,7 @@ export const SELFIE_VISUAL_DNA = [
 export const SELFIE_AESTHETIC_DNA = [
   "This is a hyper-realistic, beautiful phone photo — the kind of aesthetic shot a real woman posts in a photo dump. Genuinely pleasing to the eye: warm natural light, soft golden tones, cozy real textures, satisfying composition.",
   "PHOTOGRAPHY: shot on a modern phone camera. True-to-life detail and realistic depth — crisp subject, naturally soft background. Golden-hour window light, warm lamplight, or soft morning light. Real materials: steam, linen, wood grain, ceramic, condensation, page texture. It must still read as a photograph, never as a render or illustration.",
+  "ATTENTION TO DETAIL: every element is fully resolved with fine, true texture — individual leaves, blades of grass, fabric weave, wood grain, brick and stone all crisply defined. NO mushy, smeared, half-melted, or painterly areas ANYWHERE, including the background and edges. Background softness must be genuine optical depth of field, never smear.",
   "SUBJECT: first-person / POV or still-life only — her coffee, her journal, her walk, her window, her candle, her unmade bed in morning light. NO people, NO faces, NO mirrors — at most her own hand holding something, photographed from her point of view.",
   "SETTING: her real, lived-in world — same warm home and everyday life as the rest of the series. Beautiful but honest, never staged like a magazine or hotel.",
   "VARIANCE: every aesthetic photo in the series must look different from the others — its own subject, room, time of day, light temperature, camera angle, and distance. Mix it up: some shots are close and intimate (steam curling off a mug, a pen on a page), some are wide (a whole sunlit corner of a room, the view down the hallway), some are looking down at her feet or hands, some are out a window. Never repeat the same composition, surface, or golden-hour treatment twice.",
