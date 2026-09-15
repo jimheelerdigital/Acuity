@@ -17,9 +17,12 @@ import { inngest } from "@/inngest/client";
  * columns stay IG-only — the learning loop (performance.ts) sums the FB
  * rows on top, so nothing clobbers hand-entered numbers.
  *
- * TikTok slot: when the TikTok developer app is approved, add a
- * tiktok-metrics lib and a third fetch here writing to the tiktok
- * SocialPublish rows the same way.
+ * TikTok (2026-09-15, per Keenan: "the main issue is the lack of
+ * tiktok insight"): a third step pulls each connected account's video
+ * list via the Display API (video.list works in sandbox for target
+ * users — no app review needed) and title-matches videos back to the
+ * manually-posted drafts. Unmatched drafts keep null metrics (missing
+ * data, not zero). See tiktok-metrics.ts for the matching rules.
  *
  * Manual trigger: "content-factory/metrics.refresh" (admin button).
  * Posts WITHOUT links are untouched — the manual admin form still owns
@@ -166,11 +169,32 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
       `[metrics-refresh] Facebook: refreshed ${fb.refreshed}, failed ${fb.failed}`
     );
 
+    // ── TikTok: match manually-posted drafts to videos, pull counts ──
+    const tiktok = await step.run("fetch-tiktok", async () => {
+      const { tiktokConfigured } = await import(
+        "@/lib/content-factory/tiktok-publish"
+      );
+      if (!tiktokConfigured()) {
+        return { matched: 0, unmatched: 0, errors: ["TikTok not configured"] };
+      }
+      const { refreshTikTokMetrics } = await import(
+        "@/lib/content-factory/tiktok-metrics"
+      );
+      return refreshTikTokMetrics();
+    });
+    if (tiktok.errors.length > 0) {
+      logger.warn(`[metrics-refresh] TikTok: ${tiktok.errors.join(" | ")}`);
+    }
+    logger.info(
+      `[metrics-refresh] TikTok: matched ${tiktok.matched}, unmatched ${tiktok.unmatched}`
+    );
+
     return {
       refreshed: result.refreshed,
       total: posts.length,
       unmatched: result.unmatched,
       facebook: fb,
+      tiktok,
     };
   }
 );

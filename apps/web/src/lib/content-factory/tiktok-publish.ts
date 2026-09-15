@@ -32,8 +32,10 @@
 const OPEN_API = "https://open.tiktokapis.com/v2";
 const AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
 
-/** Scopes: user info for the "connected as" check, upload for drafts. */
-export const TIKTOK_SCOPES = "user.info.basic,video.upload";
+/** Scopes: user info for the "connected as" check, upload for drafts,
+ * video.list for the nightly engagement pull (added 2026-09-15 — tokens
+ * granted before then lack it; reconnect both accounts to grant it). */
+export const TIKTOK_SCOPES = "user.info.basic,video.upload,video.list";
 
 /** TikTok photo posts cap at 35 images. */
 export const TIKTOK_MAX_PHOTOS = 35;

@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-15] — TikTok engagement numbers now feed the learning loop automatically
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+TikTok is our best-performing platform but the only one whose numbers weren't coming back into the system — the learning loop that decides which topics to make more of was flying blind on exactly the channel where we win. Now, every night, the system pulls view/like/comment/share counts for both TikTok accounts and matches each video back to the draft it came from. Since you post drafts manually from the TikTok inbox, the system matches by the title it stamped on each draft (plus posting time). Drafts you never posted are treated as "no data," never as "zero views," so they can't drag a topic's score down unfairly. Two one-time steps needed from you (below) before the first numbers flow.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/tiktok-metrics.ts (new): `fetchTikTokVideos()` pages `/v2/video/list/` (Display API — works in sandbox for target users, no app review); `refreshTikTokMetrics()` two-pass matcher — pass 1 re-matches previously-matched rows by stored permalink, pass 2 first-time-matches by normalized title/description + createTime ≥ postedAt − 6h, duplicates resolved by time-proximity; writes views/likes/comments/shares + permalink + externalId onto the tiktok SocialPublish rows
+- apps/web/src/lib/content-factory/tiktok-publish.ts: TIKTOK_SCOPES now includes `video.list` — tokens granted before today lack it, so both accounts must reconnect
+- apps/web/src/inngest/functions/carousel-metrics-refresh.ts: new "fetch-tiktok" step after the Facebook step; result added to the function's return. Cron/triggers unchanged — no Inngest resync needed
+- No schema changes — metrics land in existing SocialPublish columns; performance.ts consumes them with zero changes
+
+### Manual steps needed
+- [ ] Keenan: on developers.tiktok.com, add the **video.list** scope to the sandbox app (same place video.upload was added)
+- [ ] Keenan: reconnect BOTH accounts to grant the new scope — logged into TikTok as **Ripple**: https://goripple.io/api/integrations/tiktok/connect — then logged in as **buildwithkey**: https://goripple.io/api/integrations/tiktok/connect?account=bwk
+- [ ] Claude: after reconnect, trigger `content-factory/metrics.refresh` and verify video.list actually returns data in sandbox (≈90% confident; fallback is scraping public video pages)
+
+### Notes
+- The core problem: photo drafts are posted manually from the inbox, so the final video ID is never known at publish time. The matcher leans on `publishTikTokPhotoDraft` slicing the post headline to 90 chars as the draft title — if Keenan retitles a draft in the TikTok editor, it won't match (and stays null, which is correct: missing ≠ zero)
+- TikTok's Display API has no "saves" metric — that column stays null for tiktok rows
+- share_url is persisted to `permalink` on first match so later refreshes re-match by URL, stable against reused headlines
+
+---
+
 ## [2026-09-15] — Old-format posts are trimmed to 1 cover + 6 items before publishing
 
 **Requested by:** Keenan
