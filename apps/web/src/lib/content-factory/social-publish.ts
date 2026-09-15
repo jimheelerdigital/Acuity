@@ -84,6 +84,78 @@ export function laneWantsReel(lane: string | null): boolean {
 export type SocialAccountKey = "ripple" | "bwk";
 export type SocialPlatform = "instagram" | "facebook" | "tiktok";
 
+// ─── Prime-time scheduling (2026-09-15, per Keenan: "make sure ALL
+// posts on social media are at prime time social media hours for the
+// US") ───────────────────────────────────────────────────────────────
+// Windows are EASTERN time (~47% of the US lives in ET; Central lags by
+// one hour, so ET windows serve both coasts' peaks). Sources: Sprout
+// Social 2026 (2B engagements), Buffer 2026 (7M TikTok posts):
+// - Instagram peaks 9am-1pm + 5-7pm ET weekdays → 11am-7pm window
+// - Facebook peaks 8am-1pm ET, dead after 6pm → 9am-6pm window
+// - TikTok rows are INBOX DRAFT deliveries, not posts — Keenan posts
+//   them by hand through the day, so they all land FIRST THING IN THE
+//   MORNING (7-10am ET = 6-9am CT, per Keenan 2026-09-15: "tiktok i
+//   want first thing in the morning so i can go in throughout the day
+//   to post them"). Short stagger — delivery time isn't engagement
+//   time.
+export const PLATFORM_WINDOWS: Record<
+  SocialPlatform,
+  { openMin: number; closeMin: number; staggerMs: number }
+> = {
+  instagram: { openMin: 11 * 60, closeMin: 19 * 60, staggerMs: 50 * 60_000 },
+  facebook: { openMin: 9 * 60, closeMin: 18 * 60, staggerMs: 50 * 60_000 },
+  tiktok: { openMin: 7 * 60, closeMin: 10 * 60, staggerMs: 5 * 60_000 },
+};
+
+const ET = "America/New_York";
+
+/** Milliseconds to ADD to a UTC instant to get its ET wall-clock time. */
+function etOffsetMs(d: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: ET,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value])
+  );
+  const asUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour) % 24,
+    Number(parts.minute),
+    Number(parts.second)
+  );
+  return asUtc - d.getTime();
+}
+
+/**
+ * Clamp an instant into the platform's ET posting window: inside the
+ * window → unchanged; before it opens → today's open; after it closes →
+ * tomorrow's open. (DST edge: the offset is taken at `t`, so a slot
+ * computed across a spring-forward/fall-back boundary can be off by an
+ * hour once a year — harmless for posting windows this wide.)
+ */
+export function clampToWindow(t: Date, platform: SocialPlatform): Date {
+  const w = PLATFORM_WINDOWS[platform];
+  const off = etOffsetMs(t);
+  const wall = new Date(t.getTime() + off); // UTC fields = ET wall clock
+  const mod = wall.getUTCHours() * 60 + wall.getUTCMinutes();
+  if (mod >= w.openMin && mod < w.closeMin) return t;
+  let openWallMs =
+    Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate()) +
+    w.openMin * 60_000;
+  if (mod >= w.closeMin) openWallMs += 86_400_000;
+  return new Date(openWallMs - off);
+}
+
 export interface SocialAccount {
   key: SocialAccountKey;
   accessToken: string;

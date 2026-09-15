@@ -8,9 +8,13 @@ import { inngest } from "@/inngest/client";
  * 1. SCAN — find recent DRAFT photo carousels in the auto-eligible lanes
  *    (AUTO_LANES: ALL lanes since 2026-09-14 — the BWK pick-list
  *    downsize keeps every post ≤10 slides) that don't have queue rows
- *    yet, and enqueue one PENDING
- *    SocialPublish row per platform with staggered scheduledAt times so
- *    posts trickle out instead of dumping all at once.
+ *    yet, and enqueue one PENDING SocialPublish row per platform.
+ *    Scheduling is PRIME-TIME AWARE (2026-09-15, per Keenan): each
+ *    platform has an ET window (PLATFORM_WINDOWS in social-publish.ts)
+ *    and posts stagger within it — IG 11am-7pm, FB 9am-6pm, TikTok
+ *    drafts all first thing in the morning (7-10am ET) so Keenan posts
+ *    them by hand through the day. Overflow rolls to the next day's
+ *    window; nothing publishes overnight anymore.
  *
  * 2. PUBLISH — publish every due PENDING row (max 3 posts per run to stay
  *    inside the 300s Vercel step ceiling; IG container processing alone
@@ -43,8 +47,6 @@ import { inngest } from "@/inngest/client";
  * Manual trigger: event "content-factory/social.publish".
  */
 
-/** Stagger between consecutive posts entering the queue. */
-const STAGGER_MS = 45 * 60_000;
 /** Max attempts before a row is marked FAILED. */
 const MAX_ATTEMPTS = 3;
 /** Max posts published per cron run (IG flow is slow). */
@@ -92,22 +94,37 @@ export const socialPublishCronFn = inngest.createFunction(
       });
       if (candidates.length === 0) return 0;
 
-      // Start the stagger after the latest already-pending row so a new
-      // batch never front-runs or piles onto the existing queue.
-      const latestPending = await prisma.socialPublish.findFirst({
-        where: { status: "PENDING" },
-        orderBy: { scheduledAt: "desc" },
-        select: { scheduledAt: true },
-      });
-      const base = Math.max(
-        Date.now(),
-        latestPending ? latestPending.scheduledAt.getTime() + STAGGER_MS : 0
-      );
+      const { resolveAccount, BWK_LANES, PLATFORM_WINDOWS, clampToWindow } =
+        await import("@/lib/content-factory/social-publish");
 
-      const { resolveAccount, BWK_LANES } = await import(
-        "@/lib/content-factory/social-publish"
-      );
-      const rows = candidates.flatMap((post, i) => {
+      // Prime-time scheduling (2026-09-15, per Keenan): each platform
+      // has its own ET window (see PLATFORM_WINDOWS) and its own queue
+      // cursor, seeded after the latest already-pending row so a new
+      // batch never front-runs or piles onto the existing queue.
+      const cursors = {} as Record<
+        "instagram" | "facebook" | "tiktok",
+        number
+      >;
+      for (const platform of ["instagram", "facebook", "tiktok"] as const) {
+        const latest = await prisma.socialPublish.findFirst({
+          where: { status: "PENDING", platform },
+          orderBy: { scheduledAt: "desc" },
+          select: { scheduledAt: true },
+        });
+        cursors[platform] = Math.max(
+          Date.now(),
+          latest
+            ? latest.scheduledAt.getTime() + PLATFORM_WINDOWS[platform].staggerMs
+            : 0
+        );
+      }
+      const nextSlot = (platform: "instagram" | "facebook" | "tiktok") => {
+        const slot = clampToWindow(new Date(cursors[platform]), platform);
+        cursors[platform] = slot.getTime() + PLATFORM_WINDOWS[platform].staggerMs;
+        return slot;
+      };
+
+      const rows = candidates.flatMap((post) => {
         // null for BWK lanes until META_BWK_* creds exist (2026-09-14,
         // per Keenan: "don't post bwk posts across insta/facebook yet")
         // — those posts get NO IG/FB rows, TikTok only.
@@ -120,7 +137,6 @@ export const socialPublishCronFn = inngest.createFunction(
         )
           ? "bwk"
           : "ripple";
-        const scheduledAt = new Date(base + i * STAGGER_MS);
         // TikTok Phase 1 (2026-09-14): EVERY auto-lane post gets an
         // inbox-draft row. Per Keenan's format split, TikTok always gets
         // the PHOTO slideshow (suggested audio lives in photo mode) while
@@ -132,7 +148,7 @@ export const socialPublishCronFn = inngest.createFunction(
           carouselPostId: post.id,
           platform,
           accountKey: platform === "tiktok" ? tiktokKey : account!.key,
-          scheduledAt,
+          scheduledAt: nextSlot(platform),
         }));
       });
       await prisma.socialPublish.createMany({

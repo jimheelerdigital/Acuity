@@ -7,11 +7,34 @@
 
 ---
 
-## [2026-09-14] — Slideshow Reel slides hold 3.3s instead of 2.5s
+## [2026-09-15] — All social posts now go out at US prime-time hours
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Auto-published posts no longer fire at whatever odd hour they were generated — every platform now has its own US prime-time window (Eastern Time). Instagram posts go out between 11am and 7pm ET, Facebook between 9am and 6pm ET, and TikTok drafts land in your inbox between 7 and 10am ET so you have the whole day to add audio and post them. Posts queued outside a window wait for the next opening; posts within a window keep a stagger so the accounts never dump everything at once. The ~43 posts already waiting in the queue were re-slotted into these windows too.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: new exported `PLATFORM_WINDOWS` (per-platform openMin/closeMin/staggerMs — IG 11:00–19:00 ET @ 50min, FB 9:00–18:00 ET @ 50min, TikTok 7:00–10:00 ET @ 5min), `etOffsetMs()` (DST-safe via Intl.DateTimeFormat America/New_York), and `clampToWindow(t, platform)` (in-window → unchanged; before open → today's open; after close → tomorrow's open)
+- apps/web/src/inngest/functions/social-publish-cron.ts: enqueue replaced the single 45-min STAGGER_MS with per-platform cursors seeded from the latest PENDING row per platform; each new row gets `scheduledAt: nextSlot(platform)` = clampToWindow(cursor) then cursor += that platform's stagger. Cron trigger unchanged — no Inngest resync needed.
+- apps/web/scripts/reschedule-social-queue.ts: one-off that re-slotted all existing PENDING SocialPublish rows into the new windows, preserving relative order (already run against prod)
+
+### Manual steps needed
+None.
+
+### Notes
+- Window choices from Sprout Social 2026 (2B engagements) + Buffer (7M TikTok posts): IG peaks 9am–1pm + 5–7pm ET weekdays, FB 8am–1pm and dead after 6pm, TikTok engagement peaks evenings — but Keenan explicitly wants TikTok drafts first thing in the morning ("so i can go in throughout the day to post them"), so the TikTok window is a 7–10am ET delivery window for inbox drafts, not an engagement-optimized posting window.
+- clampToWindow works in ET wall-clock minutes and converts back to UTC, so DST transitions are handled by Intl rather than a hardcoded offset.
+
+---
+
+## [2026-09-14] — Slideshow Reel slides hold 3.3s instead of 2.5s
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 036131d6
 
 ### In plain English (for Keenan)
 Each slide in the auto-published music Reels (Instagram Reels + Facebook videos) now stays on screen for 3.3 seconds instead of 2.5, giving viewers more time to read before the crossfade. An 8-slide post goes from ~17s to ~23s.
@@ -32,7 +55,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** 0010c933
 
 ### In plain English (for Keenan)
 Every time the auto-publisher successfully posts something — an Instagram post, a Facebook post, or a draft delivered to a TikTok inbox — you get an email listing exactly what went out: the platform, which brand (Ripple or Build With Key), the post headline, and a direct link to the live post (TikTok drafts say "open the TikTok app inbox" instead, since drafts have no public link yet). If one publishing run ships several things at once, they're bundled into one email instead of flooding your inbox.
