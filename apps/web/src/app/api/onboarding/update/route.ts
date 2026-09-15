@@ -372,7 +372,7 @@ export async function POST(req: NextRequest) {
       });
       if (userAfter) {
         const primary = await prisma.userReminder.findFirst({
-          where: { userId },
+          where: { userId, kind: "debrief" },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         });
         if (primary) {

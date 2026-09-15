@@ -10,6 +10,7 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { CommitmentRing } from "./_components/commitment-ring";
+import { useV10RedirectIfEnabled } from "./_v10/route-switch";
 
 /**
  * Screen 9 — Commitment. Slice 7 (2026-05-26) onboarding-v2.
@@ -56,7 +57,7 @@ const HAPTIC_LIGHT_AT_MS = 1000;
 const HAPTIC_MEDIUM_AT_MS = 2000;
 const PURPLE = "#7C5CFC";
 
-export default function CommitmentScreen() {
+function CommitmentScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -254,4 +255,21 @@ export default function CommitmentScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. This screen exists ONLY in the legacy flow — v10
+ * collapses the eleven pre-record screens into two, so there is no v10
+ * equivalent.
+ *
+ * Flag OFF renders CommitmentScreen exactly as before. Flag ON redirects to the
+ * start of the v10 flow rather than rendering a screen from a funnel the
+ * user is not in, which is what a stale deep link or a back-swipe would
+ * otherwise land on. The file is kept intact so flag OFF restores the
+ * previous flow with nothing missing (spec §9).
+ */
+export default function CommitmentRoute() {
+  const redirecting = useV10RedirectIfEnabled();
+  if (redirecting) return null;
+  return <CommitmentScreen />;
 }

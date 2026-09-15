@@ -31,6 +31,8 @@ import {
 
 import { inngest } from "@/inngest/client";
 import { isEnabledForAnon } from "@/lib/feature-flags";
+import { evidenceReceiptsEnabled } from "@/lib/evidence/flags";
+import { selectExcerpt } from "@/lib/evidence/excerpt";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -111,6 +113,57 @@ Examples of bad (do not produce):
 
 Return ONLY valid JSON — no markdown, no prose.`;
 
+/**
+ * Evidence-mode prompt (EVIDENCE_RECEIPTS). Same voice rules as above, plus
+ * two hard requirements: every observation must cite the entries it came
+ * from, and must self-report a confidence.
+ *
+ * The citation is by REFERENCE LABEL ([E1], [E2]) rather than by quote. The
+ * model never sees transcripts — only the same summaries it sees today — so
+ * asking it to quote would invite invention. It says WHICH entries support
+ * the claim; the server then pulls the actual sentence out of stored text
+ * (lib/evidence/excerpt.ts). Verbatim by construction, and no change to what
+ * leaves our servers.
+ *
+ * An observation that cites nothing is not rejected here — it is written
+ * with zero evidence rows and THE RULE suppresses it downstream. Rejecting
+ * at generation time would hide how often the model reaches beyond its
+ * evidence, which is exactly what we want to measure in observer mode.
+ */
+const EVIDENCE_SYSTEM_PROMPT = `You are Ripple's weekly observer. Read the user's 14-day journaling context + the numeric signals below and return 2-3 observations as JSON.
+
+Tone:
+- Second person ("you"), warm, non-judgmental.
+- Specific to this user's content. Never generic.
+- Point to a pattern the user might not have noticed.
+- Each observation ≤ 140 characters.
+- DO NOT output diagnoses, prescriptions, or anything that reads like a therapist.
+
+EVIDENCE REQUIREMENTS (these are not optional):
+- Each entry in the context is labelled [E1], [E2], … Cite the labels of the
+  entries that directly support your observation in "sourceRefs".
+- Only cite an entry if its content genuinely supports the claim. Citing an
+  unrelated entry is worse than citing none.
+- If you cannot point to at least one entry, return an empty "sourceRefs"
+  array. Do NOT invent support. An uncited observation is expected and fine.
+- "confidence" is your honest 0-1 estimate that this pattern is real, based
+  only on what you can see.
+
+Shape:
+{
+  "observations": [
+    {
+      "text": "...",
+      "severity": "POSITIVE" | "NEUTRAL" | "CONCERNING",
+      "linkedAreaId": "CAREER" | "HEALTH" | "RELATIONSHIPS" | "FINANCES" | "PERSONAL" | "OTHER" | null,
+      "sourceRefs": ["E1", "E4"],
+      "confidence": 0.0
+    }
+  ]
+}
+
+Return ONLY valid JSON — no markdown, no prose.`;
+
 export const computeUserInsightsFn = inngest.createFunction(
   {
     id: "compute-user-insights",
@@ -143,6 +196,9 @@ export const computeUserInsightsFn = inngest.createFunction(
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
     let totalWritten = 0;
+    let totalEvidenceRows = 0;
+    const evidenceOn = evidenceReceiptsEnabled();
+    logger.info(`[compute-user-insights] evidenceReceipts=${evidenceOn}`);
 
     for (const { id: userId } of users) {
       const signals = await collectSignals(prisma, {
@@ -161,10 +217,21 @@ export const computeUserInsightsFn = inngest.createFunction(
         if (recentCount === 0) continue;
       }
 
-      const digest = await buildDigest(prisma, userId, fourteenDaysAgo);
+      // EVIDENCE_RECEIPTS. With the flag off, `sources` is empty, the
+      // original prompt is used, and every branch below behaves exactly as
+      // it did before this feature — no evidence rows, no confidence, and
+      // the same createMany write.
+      const sourced = evidenceOn
+        ? await buildDigestWithSources(prisma, userId, fourteenDaysAgo)
+        : null;
+      const digest =
+        sourced?.text ?? (await buildDigest(prisma, userId, fourteenDaysAgo));
+      const sources = sourced?.sources ?? [];
+
       const claudeObs = await synthesizeWithClaude({
         signals,
         digest,
+        evidenceMode: evidenceOn,
       }).catch((err) => {
         logger.warn(`[compute-user-insights] Claude failed for ${userId}: ${String(err)}`);
         return null;
@@ -175,6 +242,8 @@ export const computeUserInsightsFn = inngest.createFunction(
         severity: Severity;
         linkedAreaId: string | null;
         generationModel: string;
+        confidence: number | null;
+        sourceRefs: string[];
       }>;
 
       if (claudeObs && claudeObs.length > 0) {
@@ -183,15 +252,25 @@ export const computeUserInsightsFn = inngest.createFunction(
           severity: o.severity,
           linkedAreaId: o.linkedAreaId,
           generationModel: CLAUDE_FLAGSHIP_MODEL,
+          confidence: o.confidence,
+          sourceRefs: o.sourceRefs,
         }));
       } else {
         // Heuristic fallback — better something than nothing when Claude
         // is unavailable. Uses the raw signal text from the scanner.
+        // Heuristic fallback. These are computed from real aggregates, but
+        // the detectors don't currently retain the entry ids behind them
+        // (see docs/INSIGHT_GENERATION_AUDIT.md §2) — so they carry no
+        // sourceRefs and land as UNSOURCED. That is the honest reading:
+        // "Your mood dipped this week" is a real computation, but we cannot
+        // yet quote the recordings it came from.
         toWrite = signals.slice(0, 3).map((s) => ({
           observationText: s.heuristicText,
           severity: s.severity,
           linkedAreaId: s.linkedAreaId ?? null,
           generationModel: "heuristic",
+          confidence: null,
+          sourceRefs: [],
         }));
       }
 
@@ -206,19 +285,63 @@ export const computeUserInsightsFn = inngest.createFunction(
       const fresh = toWrite.filter((o) => !recentTexts.has(o.observationText));
       if (fresh.length === 0) continue;
 
-      await prisma.userInsight.createMany({
-        data: fresh.map((o) => ({
-          userId,
-          observationText: o.observationText,
-          severity: o.severity,
-          linkedAreaId: o.linkedAreaId,
-          generationModel: o.generationModel,
-        })),
-      });
-      totalWritten += fresh.length;
+      if (!evidenceOn) {
+        // UNCHANGED PATH — identical to pre-EVIDENCE_RECEIPTS behavior.
+        await prisma.userInsight.createMany({
+          data: fresh.map((o) => ({
+            userId,
+            observationText: o.observationText,
+            severity: o.severity,
+            linkedAreaId: o.linkedAreaId,
+            generationModel: o.generationModel,
+          })),
+        });
+        totalWritten += fresh.length;
+        continue;
+      }
+
+      // Evidence path: create one at a time because createMany does not
+      // return ids, and we need each insight's id to attach its receipts.
+      for (const o of fresh) {
+        const evidence = resolveEvidence(o.observationText, o.sourceRefs, sources);
+
+        const insight = await prisma.userInsight.create({
+          data: {
+            userId,
+            observationText: o.observationText,
+            severity: o.severity,
+            linkedAreaId: o.linkedAreaId,
+            generationModel: o.generationModel,
+            confidence: o.confidence,
+          },
+          select: { id: true },
+        });
+
+        if (evidence.length > 0) {
+          await prisma.insightEvidence.createMany({
+            data: evidence.map((e) => ({ insightId: insight.id, ...e })),
+            skipDuplicates: true,
+          });
+        } else {
+          // Not an error — it is the signal we most want to see in observer
+          // mode. An observation the model could not (or would not) ground
+          // is written and then suppressed by THE RULE at read time. Logging
+          // it is how we measure how often the generator over-reaches.
+          logger.info(
+            `[compute-user-insights] unsourced observation for ${userId} (refs=${o.sourceRefs.length}, model=${o.generationModel})`
+          );
+        }
+        totalEvidenceRows += evidence.length;
+        totalWritten += 1;
+      }
     }
 
-    return { usersProcessed: users.length, insightsWritten: totalWritten };
+    return {
+      usersProcessed: users.length,
+      insightsWritten: totalWritten,
+      evidenceRowsWritten: totalEvidenceRows,
+      evidenceReceipts: evidenceOn,
+    };
   }
 );
 
@@ -441,12 +564,150 @@ export async function buildDigest(
   return `Entries (last 14 days):\n${lines.join("\n")}`;
 }
 
+// ─── Evidence-mode digest (EVIDENCE_RECEIPTS) ────────────────────────────
+
+export interface DigestSource {
+  /** Stable label the model cites: "E1", "E2", … */
+  ref: string;
+  entryId: string;
+  transcript: string | null;
+  summary: string | null;
+}
+
+/**
+ * Same digest as `buildDigest`, but each line carries a [E<n>] label and we
+ * keep the entry id + source text behind it.
+ *
+ * The ONLY difference in what the model sees is the label prefix — the same
+ * summaries, moods and themes, no transcripts. Everything needed to turn a
+ * citation into a verbatim excerpt is retained server-side.
+ *
+ * This is the fix for the traceability gap documented in
+ * docs/INSIGHT_GENERATION_AUDIT.md §2: today's digest selects entries and
+ * then throws their ids away, which makes receipts impossible in principle.
+ */
+export async function buildDigestWithSources(
+  prisma: typeof import("@prisma/client").PrismaClient.prototype,
+  userId: string,
+  fourteenDaysAgo: Date
+): Promise<{ text: string; sources: DigestSource[] }> {
+  const entries = await prisma.entry.findMany({
+    where: { userId, status: "COMPLETE", createdAt: { gte: fourteenDaysAgo } },
+    select: {
+      id: true,
+      createdAt: true,
+      summary: true,
+      transcript: true,
+      mood: true,
+      moodScore: true,
+      energy: true,
+      themes: true,
+      wins: true,
+      blockers: true,
+    },
+    orderBy: { createdAt: "asc" },
+    take: 30,
+  });
+
+  if (entries.length === 0) {
+    return { text: "No entries in the last 14 days.", sources: [] };
+  }
+
+  const sources: DigestSource[] = [];
+  const lines = entries.map((e, i) => {
+    const ref = `E${i + 1}`;
+    sources.push({
+      ref,
+      entryId: e.id,
+      transcript: e.transcript ?? null,
+      summary: e.summary ?? null,
+    });
+    const date = e.createdAt.toISOString().slice(0, 10);
+    const bits = [
+      `[${ref}]`,
+      `[${date}]`,
+      `mood=${e.mood ?? "?"}/${e.moodScore ?? "?"}`,
+      `energy=${e.energy ?? "?"}`,
+    ];
+    if (e.themes && e.themes.length > 0) {
+      bits.push(`themes=${e.themes.slice(0, 5).join(",")}`);
+    }
+    if (e.summary) bits.push(`"${e.summary.slice(0, 120)}"`);
+    return bits.join(" ");
+  });
+
+  return { text: `Entries (last 14 days):\n${lines.join("\n")}`, sources };
+}
+
+/**
+ * Turn the model's cited refs into persistable evidence rows.
+ *
+ * Two independent guards against a bogus receipt:
+ *   1. An unknown ref (model invented "E99") is dropped — we only resolve
+ *      labels we actually issued.
+ *   2. `selectExcerpt` returns null when nothing in the entry's text
+ *      overlaps the observation, and we drop that citation too. So a model
+ *      citing a real-but-irrelevant entry still yields no evidence.
+ *
+ * The result is that evidence count reflects entries we can genuinely quote,
+ * which is precisely what THE RULE then gates on.
+ */
+export function resolveEvidence(
+  observationText: string,
+  sourceRefs: string[],
+  sources: DigestSource[]
+): Array<{ entryId: string; excerpt: string; startIndex: number | null; endIndex: number | null }> {
+  const byRef = new Map(sources.map((s) => [s.ref.toUpperCase(), s]));
+  const seenEntryIds = new Set<string>();
+  const out: Array<{
+    entryId: string;
+    excerpt: string;
+    startIndex: number | null;
+    endIndex: number | null;
+  }> = [];
+
+  for (const raw of sourceRefs) {
+    if (typeof raw !== "string") continue;
+    const src = byRef.get(raw.trim().toUpperCase());
+    if (!src) continue; // guard 1: ref we never issued
+    if (seenEntryIds.has(src.entryId)) continue; // @@unique([insightId, entryId])
+
+    const picked = selectExcerpt(observationText, {
+      transcript: src.transcript,
+      summary: src.summary,
+    });
+    if (!picked) continue; // guard 2: nothing quotable supports the claim
+
+    seenEntryIds.add(src.entryId);
+    out.push({
+      entryId: src.entryId,
+      excerpt: picked.excerpt,
+      startIndex: picked.startIndex,
+      endIndex: picked.endIndex,
+    });
+  }
+
+  return out;
+}
+
 // ─── Claude synthesis ────────────────────────────────────────────────────
 
 export async function synthesizeWithClaude(params: {
   signals: Signal[];
   digest: string;
-}): Promise<Array<{ text: string; severity: Severity; linkedAreaId: string | null }> | null> {
+  /**
+   * EVIDENCE_RECEIPTS. When true, uses the citation-requiring prompt and
+   * parses `sourceRefs` + `confidence` off each observation. When false the
+   * request is byte-identical to what it was before this feature existed.
+   */
+  evidenceMode?: boolean;
+}): Promise<Array<{
+  text: string;
+  severity: Severity;
+  linkedAreaId: string | null;
+  sourceRefs: string[];
+  confidence: number | null;
+}> | null> {
   const signalBlock =
     params.signals.length === 0
       ? "No strong mechanical signals this week — surface whatever pattern reads as meaningful from the digest alone."
@@ -462,7 +723,9 @@ export async function synthesizeWithClaude(params: {
   const res = await anthropic.messages.create({
     model: CLAUDE_FLAGSHIP_MODEL,
     max_tokens: CLAUDE_FLAGSHIP_MAX_TOKENS,
-    system: OBSERVATION_SYSTEM_PROMPT,
+    system: params.evidenceMode
+      ? EVIDENCE_SYSTEM_PROMPT
+      : OBSERVATION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
   });
 
@@ -477,6 +740,8 @@ export async function synthesizeWithClaude(params: {
       text?: unknown;
       severity?: unknown;
       linkedAreaId?: unknown;
+      sourceRefs?: unknown;
+      confidence?: unknown;
     }>;
   };
   if (!parsed.observations || !Array.isArray(parsed.observations)) return null;
@@ -508,8 +773,28 @@ export async function synthesizeWithClaude(params: {
         VALID_AREAS.has(o.linkedAreaId.toUpperCase())
           ? o.linkedAreaId.toUpperCase()
           : null;
-      return { text, severity, linkedAreaId };
+      // Both default to "nothing claimed" so a non-evidence-mode response,
+      // or a model that ignored the citation instructions, yields zero
+      // evidence rather than a silently-unverified assertion.
+      const sourceRefs = Array.isArray(o.sourceRefs)
+        ? o.sourceRefs.filter((r): r is string => typeof r === "string").slice(0, 10)
+        : [];
+      const confidence =
+        typeof o.confidence === "number" && Number.isFinite(o.confidence)
+          ? Math.min(1, Math.max(0, o.confidence))
+          : null;
+      return { text, severity, linkedAreaId, sourceRefs, confidence };
     })
-    .filter((x): x is { text: string; severity: Severity; linkedAreaId: string | null } => x !== null)
+    .filter(
+      (
+        x
+      ): x is {
+        text: string;
+        severity: Severity;
+        linkedAreaId: string | null;
+        sourceRefs: string[];
+        confidence: number | null;
+      } => x !== null
+    )
     .slice(0, 3);
 }

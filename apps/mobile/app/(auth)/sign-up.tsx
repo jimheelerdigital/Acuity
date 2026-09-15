@@ -1,16 +1,35 @@
+// AUTH-CRITICAL FILE
+// This screen mounts Apple + Google via the shared
+// components/auth/social-auth-buttons.tsx (added 2026-09-04 — the providers
+// were on sign-in only, so sign-up offered email/password alone). Any change
+// here or in that component REQUIRES manual verification of:
+//   - Mobile Google OAuth (TestFlight), from sign-UP
+//   - Mobile Apple sign-in, from sign-UP ("Sign up with Apple" label)
+//   - Email + password sign-up (the verify-email path below)
+// before any OTA or production deploy.
+//
+// ⚠️ Do NOT reintroduce KeyboardAwareScreen here — see the ScrollView note
+// in the render below. See docs/AUTH_HARDENING.md for the full checklist.
+
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { KeyboardAwareScreen } from "@/components/keyboard-aware-screen";
+import {
+  SocialAuthButtons,
+  type AuthLoading,
+} from "@/components/auth/social-auth-buttons";
+import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { signUpWithPassword } from "@/lib/auth";
 
@@ -23,11 +42,15 @@ const PASSWORD_MIN = 8;
 export default function SignUpScreen() {
   const router = useRouter();
   const { tokens } = useTheme();
+  const { setAuthenticatedUser } = useAuth();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // Union rather than boolean: shared with <SocialAuthButtons> so Apple
+  // and Google can report which one is in flight and every button on the
+  // screen disables as one set.
+  const [loading, setLoading] = useState<AuthLoading>(null);
   const [sent, setSent] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
 
@@ -41,13 +64,13 @@ export default function SignUpScreen() {
       setPwError(`Password must be at least ${PASSWORD_MIN} characters.`);
       return;
     }
-    setLoading(true);
+    setLoading("password");
     const result = await signUpWithPassword(
       email.trim(),
       password,
       name.trim() || undefined
     );
-    setLoading(false);
+    setLoading(null);
 
     if (!result.ok) {
       // Password-rule failures surface inline under the field; account-
@@ -112,12 +135,22 @@ export default function SignUpScreen() {
       className="flex-1"
       style={{ backgroundColor: tokens.bg }}
     >
-      <KeyboardAwareScreen
+      {/* Plain ScrollView, NOT KeyboardAwareScreen. This screen now mounts
+          Apple/Google, and keyboard-aware-screen.tsx forbids that: its
+          automaticallyAdjustKeyboardInsets re-layouts the ScrollView while
+          promptAsync() has the SFAuthenticationSession sheet open, tearing
+          it down and returning `cancelled` (f4297d1, 2026-04-28). A plain
+          ScrollView does not re-layout on keyboard events, keeps the form
+          scrollable for the three inputs, and matches what the other
+          OAuth+form screens (onboarding-new/account, _v10/save) use. */}
+      <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingVertical: 24,
+          flexGrow: 1,
           justifyContent: "center",
         }}
+        keyboardShouldPersistTaps="handled"
       >
         <View
           className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
@@ -140,6 +173,35 @@ export default function SignUpScreen() {
         >
           7-day free trial. No credit card.
         </Text>
+
+        {/* Apple + Google. Same component and same handlers as sign-in —
+            OAuth sign-up and sign-in are the identical call, so only the
+            Apple button's label differs. */}
+        <SocialAuthButtons
+          loading={loading}
+          setLoading={setLoading}
+          onAuthenticated={setAuthenticatedUser}
+          tokens={tokens}
+          appleButtonType={
+            AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
+          }
+          appleBusyLabel="Creating account…"
+        />
+
+        {/* Divider */}
+        <View className="flex-row items-center gap-3 my-3">
+          <View
+            className="h-px flex-1"
+            style={{ backgroundColor: tokens.line }}
+          />
+          <Text className="text-xs" style={{ color: tokens.textTer }}>
+            or
+          </Text>
+          <View
+            className="h-px flex-1"
+            style={{ backgroundColor: tokens.line }}
+          />
+        </View>
 
         <TextInput
           value={name}
@@ -221,18 +283,18 @@ export default function SignUpScreen() {
         {!pwError && <View className="mb-3" />}
         <Pressable
           onPress={handleSubmit}
-          disabled={loading}
+          disabled={loading !== null}
           className="w-full rounded-xl px-4 py-3.5 items-center"
           style={{
             backgroundColor: tokens.text,
-            opacity: loading ? 0.5 : 1,
+            opacity: loading !== null ? 0.5 : 1,
           }}
         >
           <Text
             className="text-sm font-semibold"
             style={{ color: tokens.bg }}
           >
-            {loading ? "Creating account…" : "Create account"}
+            {loading === "password" ? "Creating account…" : "Create account"}
           </Text>
         </Pressable>
 
@@ -254,7 +316,7 @@ export default function SignUpScreen() {
             </Pressable>
           </Link>
         </View>
-      </KeyboardAwareScreen>
+      </ScrollView>
     </SafeAreaView>
   );
 }

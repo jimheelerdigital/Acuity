@@ -72,6 +72,33 @@ const EVENING_BODIES = [
   "One minute. Your future self will thank you.",
 ];
 
+/**
+ * Habit nudge bodies.
+ *
+ * Names the habit rather than the product, because that is the thing the
+ * user committed to. No streak count and no "don't break it" — a streak is
+ * a reward for showing up, not a debt to be threatened with, and this
+ * audience does not need another thing to feel behind on.
+ */
+const HABIT_BODIES = [
+  (name: string) => `${name} — still time today.`,
+  (name: string) => `A nudge about ${name}.`,
+  (name: string) => `${name}, whenever it fits.`,
+];
+
+function pickHabitBody(
+  habitName: string | null | undefined,
+  weekday: number,
+  weekOfYear: number
+): string {
+  const name = (habitName ?? "").trim();
+  // No name means no personalised copy. Better a plain line than one that
+  // reads "  — still time today."
+  if (!name) return "A habit is waiting for you today.";
+  const pool = HABIT_BODIES;
+  return pool[(weekday + weekOfYear) % pool.length](name);
+}
+
 function pickBody(
   weekday: number,
   weekOfYear: number,
@@ -278,6 +305,18 @@ export type MultiReminderInput = {
   time: string; // "HH:MM"
   daysActive: number[]; // 0..6, Sun=0
   enabled: boolean;
+  /**
+   * What this reminder is FOR. Mirrors UserReminder.kind.
+   *
+   * Defaults to "debrief" so every existing caller — and every row that
+   * predates habits — keeps today's copy exactly. A habit nudge must not
+   * inherit "remind me to debrief" wording: it is asking about something
+   * the user named themselves, and generic reflection copy would read as
+   * the wrong notification arriving.
+   */
+  kind?: "debrief" | "habit";
+  /** Habit name, for habit-kind copy. Never interpolated for debriefs. */
+  habitName?: string | null;
 };
 
 export type MultiScheduleOutcome =
@@ -337,9 +376,19 @@ export async function applyMultiReminderSchedule({
             // Per-reminder `hour` parsed above. Each reminder in a
             // multi-reminder set picks copy independently — a 7am
             // reminder gets MORNING_BODIES, an 8pm gets EVENING_BODIES.
-            body: pickBody(weekday, weekOfYear, hour),
+            //
+            // Habit nudges take their own pool: they name the habit the
+            // user chose, and inheriting debrief copy would deliver the
+            // wrong notification under the right schedule.
+            body:
+              reminder.kind === "habit"
+                ? pickHabitBody(reminder.habitName, weekday, weekOfYear)
+                : pickBody(weekday, weekOfYear, hour),
             sound: "default",
-            data: { deepLink: "acuity://", reminderId: reminder.id },
+            data: {
+              deepLink: reminder.kind === "habit" ? "acuity://habits" : "acuity://",
+              reminderId: reminder.id,
+            },
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.CALENDAR,

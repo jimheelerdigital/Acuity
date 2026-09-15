@@ -27,6 +27,8 @@ import type { AcuityTokens } from "@/lib/theme/tokens";
 import { getCached } from "@/lib/cache";
 import { PROCESSING_STATUSES } from "./entries";
 
+import { useSaveWall } from "@/components/onboarding/v10-save-wall";
+
 /**
  * Custom tab bar — 5 slots all rendered by ONE code path so the labels
  * are guaranteed to share a baseline. The raised mic button is an
@@ -132,6 +134,7 @@ function CustomTabBar({
 }: BottomTabBarProps & { isDark: boolean; tokens: AcuityTokens }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { interceptRecord } = useSaveWall();
 
   const tabBarBg = tokens.bg;
   const tabBarBorder = tokens.line;
@@ -322,6 +325,9 @@ function CustomTabBar({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(
               () => {}
             );
+            // Second mic entry point — must respect the guest save wall
+            // too, or the long-press becomes a way around it.
+            if (interceptRecord()) return;
             router.push("/record");
           }}
         />

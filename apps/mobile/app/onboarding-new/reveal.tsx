@@ -25,6 +25,8 @@ import { useTheme } from "@/contexts/theme-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { getStoredTryExtraction } from "@/lib/try-session";
+import V10Reveal from "./_v10/reveal";
+import { V10Switch } from "./_v10/route-switch";
 
 /**
  * Screen 12 — Reveal. Slice 10 (2026-05-26).
@@ -183,7 +185,7 @@ function normalize(
   return { pullQuote, mood, moodLabel, energy, themes, tasks, goals };
 }
 
-export default function RevealScreen() {
+function RevealScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const tokens = makeAcuityTokens({ dark: false, accent: palette });
@@ -708,4 +710,15 @@ function MissingExtractionView({
       </SafeAreaView>
     </View>
   );
+}
+
+/**
+ * Route entry point. ONBOARDING_V10 decides which flow renders here.
+ *
+ * Flag OFF renders RevealScreen exactly as before — same component, same
+ * behaviour, one boolean read added. Flag ON renders the v10 screen at this
+ * same route, so the live Meta-ad deep links keep working either way.
+ */
+export default function RevealRoute() {
+  return <V10Switch v10={<V10Reveal />} legacy={<RevealScreen />} />;
 }

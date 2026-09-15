@@ -2,6 +2,11 @@ import "../global.css";
 
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+
+import { SaveWallProvider } from "@/components/onboarding/v10-save-wall";
+import { decideColdStartRoute } from "@/lib/onboarding-v10/entry-routing";
+import { markV10Offered } from "@/lib/onboarding-v10/state";
+import { useColdStartFacts } from "@/lib/onboarding-v10/use-cold-start-facts";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -72,21 +77,29 @@ function AuthGate() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { facts, ready: factsReady } = useColdStartFacts();
   // Tracks the userId we've already run once-per-session boot effects
   // for (push-token refresh, Meta SDK init), so user-object churn from
   // refresh() doesn't re-fire them. See the effect below.
   const pushBootedForRef = useRef<string | null>(null);
 
-  // Hide the native splash once auth has resolved. We block on
-  // `loading` rather than `user` because a signed-out user should see
-  // the sign-in screen, not a spinner. Paired with
-  // `SplashScreen.preventAutoHideAsync()` at module scope, this turns
-  // the boot sequence into: splash → sign-in/home (no spinner flash).
+  // Hide the native splash once auth has resolved AND the routing facts
+  // are in. We block on `loading` rather than `user` because a signed-out
+  // user should see the sign-in screen, not a spinner. Paired with
+  // `SplashScreen.preventAutoHideAsync()` at module scope, this turns the
+  // boot sequence into: splash → sign-in/home/funnel (no spinner flash).
+  //
+  // `factsReady` is part of the condition because the routing effect below
+  // waits for it too. Hiding earlier would show the user the pre-redirect
+  // screen — a signed-out first-run installer would see sign-in flash
+  // before being sent into the funnel, which is the exact flash this gate
+  // was built to remove. Both signals are local reads, so the added wait
+  // is milliseconds and is dominated by the network call behind `loading`.
   useEffect(() => {
-    if (!loading) {
+    if (!loading && factsReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [loading]);
+  }, [loading, factsReady]);
 
   // Tag Sentry with the current user id as soon as auth resolves.
   useEffect(() => {
@@ -157,95 +170,67 @@ function AuthGate() {
 
   useEffect(() => {
     if (loading) return;
+    // Device facts gate the signed-out branch. See use-cold-start-facts:
+    // every one of them can only PREVENT a redirect, so acting before they
+    // load would fire the wrong redirect and the right answer would arrive
+    // after the user is already looking at sign-in.
+    if (!factsReady) return;
 
-    const inAuth = segments[0] === "(auth)";
-    const inOnboarding = segments[0] === "onboarding";
-    // Onboarding-v2 pain-first flow (parent 12098990473). Lives at
-    // /onboarding-new/* so the existing /onboarding/* post-signup
-    // flow is untouched. AuthGate now allows both pre-auth (slice 2
-    // pain screen → slice 11 account creation) and post-auth
-    // (slices 11-12 between signup and paywall) traversal of this
-    // tree without yanking the user away. Slice 13's feature flag
-    // is what ROUTES unauthenticated users INTO this tree on cold
-    // launch; this just stops the existing redirect logic from
-    // kicking them out of it.
-    // String() bypasses expo-router's strict typed-routes segment
-    // union — the /onboarding-new folder exists in the file tree
-    // but the auto-generated union won't include it until the next
-    // `expo start` regenerates expo-env.d.ts. Runtime is unchanged.
-    const inOnboardingNew = String(segments[0]) === "onboarding-new";
-    // Deep-link handoff from the magic-link email. AuthGate must
-    // let the user stay on /auth-callback while the token-exchange
-    // runs — bouncing them back to sign-in mid-exchange would lose
-    // the token and drop them into an infinite loop.
-    const inAuthCallback = segments[0] === "auth-callback";
+    // String() bypasses expo-router's typed-routes segment union — the
+    // /onboarding-new folder exists in the file tree but the generated
+    // union omits it until the next `expo start`. Runtime is unchanged.
+    const segment = String(segments[0] ?? "");
 
-    if (!user && !inAuth && !inAuthCallback && !inOnboardingNew) {
-      // v1.3 (2026-06-03): the EXPO_PUBLIC_NEW_ONBOARDING_ENABLED
-      // feature flag was removed. Unsigned cold-launches always go
-      // to /(auth)/sign-in. The /onboarding-new/* pre-auth funnel
-      // is still reachable via Meta-ad deep links — AuthGate stays
-      // out of the way once segments[0] === "onboarding-new".
-      router.replace("/(auth)/sign-in");
-      return;
-    }
+    const route = decideColdStartRoute({
+      v10Enabled: facts.v10Enabled,
+      signedIn: !!user,
+      onboardingCompleted: !!user?.onboardingCompleted,
+      subscriptionStatus: user?.subscriptionStatus ?? null,
+      isGuest: facts.isGuest,
+      v10Offered: facts.v10Offered,
+      v10Dismissed: facts.v10Dismissed,
+      hasAppHistory: facts.hasAppHistory,
+      segment,
+    });
 
-    if (
-      user &&
-      !user.onboardingCompleted &&
-      !inOnboarding &&
-      !inOnboardingNew &&
-      !inAuthCallback
-    ) {
-      // Pro-bypass (2026-06-01 P0 — Polly): a user who's already
-      // paid (typically via the web Stripe flow) should NEVER be
-      // routed through mobile onboarding on iOS. Apple Guideline
-      // 3.1.3(b) Multiplatform Services permits honoring their
-      // existing entitlement; we land them on /(tabs) and write
-      // onboardingCompleted=true fire-and-forget so the next
-      // /api/user/me reflects the same state. Onboarding artifacts
-      // (mood baseline, life areas) get captured opportunistically
-      // post-signup — they don't gate access for a paying customer.
-      //
-      // This is layered behind Fix A (account.tsx Pro-bypass) and
-      // Fix B (paywall.tsx mount guard). Hit when:
-      //   - User signs in via /(auth)/sign-in (the legacy path)
-      //     with new-onboarding flag OFF
-      //   - User cold-launches with stored auth from a prior
-      //     install that pre-dated the Stripe webhook firing
-      // PRO-ONLY. A genuinely-paid (returning, web-Stripe) user should
-      // skip mobile onboarding under Guideline 3.1.3(b). TRIAL must NOT
-      // bypass: every fresh signup is created in TRIAL state, so the
-      // 2026-06-01 expansion to `|| TRIAL` auto-completed onboarding for
-      // EVERY new user — the AuthGate fired, POSTed /api/onboarding/
-      // complete (currentStep=10, completedAt=now), and dropped them on
-      // /(tabs), so the 5-step onboarding + first-login tour never ran.
-      // Trial users get full access without being PAYwalled, but they
-      // still go through onboarding. (Paywall-skip for TRIAL is handled
-      // separately by the paywall screens, not here.)
-      if (user.subscriptionStatus === "PRO") {
-        // Route a paid, returning user straight into the app. Do NOT
-        // POST /api/onboarding/complete here — that endpoint is hit
-        // ONLY by an explicit action on the final onboarding step,
-        // never on login/launch. It was being fired (twice, on every
-        // AuthGate tick) and force-completing onboarding rows the user
-        // had just reset. AuthGate routes PRO users on subscriptionStatus
-        // alone, so no completedAt write is needed here.
+    switch (route) {
+      case "stay":
+        return;
+
+      case "signin":
+        router.replace("/(auth)/sign-in");
+        return;
+
+      case "home":
+        // Covers the PRO bypass (Guideline 3.1.3(b) — a user who already
+        // paid, typically via web Stripe, is never routed through mobile
+        // onboarding), v10 arrivals who must not get the legacy
+        // post-signup flow on top of the one they just finished, and a
+        // completed user sitting on an auth/onboarding route.
+        //
+        // Deliberately does NOT POST /api/onboarding/complete. That
+        // endpoint is for an explicit action on the final onboarding
+        // step; firing it here (twice, on every AuthGate tick) used to
+        // force-complete onboarding rows a user had just reset.
         router.replace("/(tabs)");
         return;
-      }
-      // Fresh signup OR a user who existed before the onboarding
-      // schema landed (no row → completedAt is falsy). Drop them at
-      // the step they last reached so re-launches resume cleanly.
-      const step = Math.max(1, user.onboardingStep ?? 1);
-      router.replace(`/onboarding?step=${step}`);
-      return;
-    }
 
-    if (user && user.onboardingCompleted && (inAuth || inOnboarding)) {
-      router.replace("/(tabs)");
+      case "v10":
+        // Mark at ROUTING time so a force-quit on Screen 1 resumes the
+        // funnel instead of being read as a brand-new install forever.
+        void markV10Offered();
+        router.replace("/onboarding-new/pain");
+        return;
+
+      case "legacy-onboarding": {
+        // Fresh signup, or a user predating the onboarding schema (no row
+        // → completedAt falsy). Resume at the step they last reached.
+        const step = Math.max(1, user?.onboardingStep ?? 1);
+        router.replace(`/onboarding?step=${step}`);
+        return;
+      }
     }
-  }, [user, loading, segments, router]);
+  }, [user, loading, segments, router, facts, factsReady]);
 
   return null;
 }
@@ -286,9 +271,16 @@ function RootLayout() {
                   sees every CopilotStep registered across tab screens.
                   Above ThemedApp = above <Stack/>. Below LockProvider so
                   a locked app's overlay covers any in-flight tour. */}
-              <TourProvider>
-                <ThemedApp />
-              </TourProvider>
+              {/* SaveWallProvider needs Auth (to know a guest is signed
+                  out) and Theme (tokens), and must sit above <Stack/> so
+                  its modal covers whichever screen the mic was tapped
+                  from. Below LockProvider for the same reason TourProvider
+                  is: a locked app's overlay wins. */}
+              <SaveWallProvider>
+                <TourProvider>
+                  <ThemedApp />
+                </TourProvider>
+              </SaveWallProvider>
             </LockProvider>
           </AuthProvider>
         </ThemeProvider>
@@ -384,6 +376,7 @@ function ThemedApp() {
             presentation: "modal",
           }}
         />
+        <Stack.Screen name="habits" options={{ headerShown: false }} />
         <Stack.Screen
           name="insights/theme/[themeId]"
           options={{ headerShown: false }}
