@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** 4a3fff5c
 
 ### In plain English (for Keenan)
 TikTok is our best-performing platform but the only one whose numbers weren't coming back into the system — the learning loop that decides which topics to make more of was flying blind on exactly the channel where we win. Now, every night, the system pulls view/like/comment/share counts for both TikTok accounts and matches each video back to the draft it came from. Since you post drafts manually from the TikTok inbox, the system matches by the title it stamped on each draft (plus posting time). Drafts you never posted are treated as "no data," never as "zero views," so they can't drag a topic's score down unfairly. Two one-time steps needed from you (below) before the first numbers flow.
@@ -38,7 +38,7 @@ TikTok is our best-performing platform but the only one whose numbers weren't co
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** bb73b614
 
 ### In plain English (for Keenan)
 The first TikTok draft delivery exposed a leftover: posts generated before we retired the old "pick-list" format still carried 3 identical cover images plus 15 item images, and the auto-publisher was shipping all 18. Now any old-format post gets cut down at publish time to 1 cover + the first 6 items — the shape we agreed on — before it goes to TikTok, Instagram, or Facebook. Newer posts are unaffected. 7 old-format posts were still waiting in the TikTok queue; they'll all deliver in the trimmed shape.
@@ -62,7 +62,7 @@ The first TikTok draft delivery exposed a leftover: posts generated before we re
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** a8f7ef54
 
 ### In plain English (for Keenan)
 Instead of every music Reel using the same slide transition, each new Reel now picks one of five styles at random (the smooth swipe, a crisp swipe, a circle reveal, a clock-sweep, and a sliced wipe). Which style each post used is saved with the post, so once engagement numbers come in we can see which transition audiences respond to and lock in the winner. Separately, TikTok is officially live: both accounts (Ripple + buildwithkey) are connected and all 37 queued drafts are being delivered to the TikTok inboxes today — the first two landed at 5:00pm ET.
