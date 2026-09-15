@@ -20,9 +20,9 @@
  * it, so this ships dark until the SocialPublish table is pushed and the
  * env vars are set.
  *
- * IG constraint: carousels max out at 10 images. Phase 1 therefore only
- * auto-publishes the non-pick-list lanes (≤10 slides). Pick-list lanes
- * (18 images) join AUTO_LANES after the planned 1-cover+6-photo downsize.
+ * IG constraint: carousels max out at 10 images. All lanes now produce
+ * ≤10 slides (BWK pick-lists downsized to 1 cover + 4-7 items,
+ * 2026-09-14 per Keenan), so every lane auto-publishes.
  */
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -39,10 +39,11 @@ export const BWK_LANES = [
 ] as const;
 
 /**
- * Phase 1: lanes eligible for auto-publishing. Only lanes that always
- * produce ≤10 slides (IG's carousel cap). The pick-list lanes
- * (memento-men, moody-men, watching, protocol — 3 covers + 15 items)
- * get added here once they're downsized to 1 cover + 6 photos.
+ * Lanes eligible for auto-publishing — ALL of them since 2026-09-14
+ * (per Keenan: "I want 5-10 automated posts going out daily to all
+ * different social media lanes"). Every lane now produces ≤10 slides
+ * (IG's carousel cap) after the BWK pick-list downsize to 1 cover +
+ * 4-7 items, so nothing needs curation before it ships.
  */
 export const AUTO_LANES = [
   "questions",
@@ -50,6 +51,10 @@ export const AUTO_LANES = [
   "selfie",
   "phone-quote",
   "phone-quote-men",
+  "memento-men",
+  "moody-men",
+  "watching",
+  "protocol",
 ] as const;
 
 /**

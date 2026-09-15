@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-14] — BWK posts back to 1 cover + 4-7 slides; ALL lanes now auto-publish
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+The four BWK pick-list lanes (memento-men, moody-men, watching, protocol) no longer generate 3 candidate covers + 15 slides for you to curate — every post now comes out ready-made with one cover and 4-7 slides, just like the Ripple lanes. Because every post now fits Instagram's 10-image limit, ALL nine lanes were added to the auto-publish queue: once the switch is flipped, 10 posts a day (9 lanes, selfie twice) go out automatically to Instagram, Facebook, and TikTok, staggered 45 minutes apart.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: generateMoodyTopic, generateWatchingTopic, generateMementoTopic (men path), generateProtocolTopic all switched from `buildMultiCoverRule(3)` + 15 items to `rollMenCoverRule()` + 4-7 random items (minItems 4, coverCount/maxTokens overrides removed); buildMultiCoverRule deleted (unused; recoverable from git)
+- apps/web/src/lib/content-factory/social-publish.ts: AUTO_LANES expanded to all 9 lanes (added memento-men, moody-men, watching, protocol)
+- apps/web/src/inngest/functions/social-publish-cron.ts: docblock updated
+- prisma/rls-allowlist.txt: SocialPublish no-rls, SocialToken rls (fixes the RLS-coverage CI failure on main from the TikTok push)
+
+### Manual steps needed
+- [ ] Run in Supabase SQL editor: `ALTER TABLE public."SocialToken" ENABLE ROW LEVEL SECURITY;` (Keenan)
+- [ ] Sandbox TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET into Vercel, then connect both TikTok accounts (Keenan — carried over from TikTok entry)
+
+### Notes
+- The `coverScenes` plumbing (MoodyTopic.coverScenes, carousel-daily multi-cover loop, SlideKind COVER ordering) is left in place — it degrades to a single cover naturally and re-enables pick-lists with a one-line coverCount change if ever wanted again.
+- Daily output stays 10 posts/day (selfie ×2); with all lanes auto-publishing that's 10 posts × 3 platforms staggered 45 min apart — comfortably inside Keenan's "5-10 automated posts daily" target.
+- Auto-publish is still gated behind SOCIAL_AUTOPUBLISH_ENABLED=1 (not yet set in Vercel).
+
+---
+
 ## [2026-09-14] — TikTok auto-drafts are photo slideshows (format split per platform)
 
 **Requested by:** Keenan

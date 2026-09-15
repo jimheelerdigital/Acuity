@@ -6,8 +6,9 @@ import { inngest } from "@/inngest/client";
  * middleman. Runs every 30 minutes and does two things:
  *
  * 1. SCAN — find recent DRAFT photo carousels in the auto-eligible lanes
- *    (AUTO_LANES: non-pick-list lanes only, since IG carousels cap at 10
- *    images) that don't have queue rows yet, and enqueue one PENDING
+ *    (AUTO_LANES: ALL lanes since 2026-09-14 — the BWK pick-list
+ *    downsize keeps every post ≤10 slides) that don't have queue rows
+ *    yet, and enqueue one PENDING
  *    SocialPublish row per platform with staggered scheduledAt times so
  *    posts trickle out instead of dumping all at once.
  *

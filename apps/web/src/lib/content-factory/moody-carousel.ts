@@ -399,37 +399,21 @@ function rollMenCoverRule(forcedFamily?: string): string {
   return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
 }
 
-/** Pick-list cover rule (2026-09-10, per Keenan: "add 3 cover photos
- *  and 15 different images per lane. that way I can pick the ones that
- *  actually make sense/are good"). Asks for `count` candidate cover
- *  scenes — each from a DIFFERENT family so he gets real options — and
- *  leaves item scenes on the normal four-family rotation. A forced
- *  family (themed one-offs) locks everything to that family instead. */
-function buildMultiCoverRule(count: number, forcedFamily?: string): string {
-  const forced = forcedFamily
-    ? MEN_COVER_FAMILIES.find((f) => f.name === forcedFamily)
-    : undefined;
-  if (forced) {
-    return `COVER SCENE RULE: return "coverScenes" — an ARRAY of exactly ${count} cover scene sentences, EVERY one from the ${forced.name} family — ${forced.brief} Each of the ${count} is a COMPLETELY DIFFERENT freshly-invented scene inside the family. Also set "coverScene" to the first of them. FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${forced.name} family — the whole post lives in one visual world, each slide a DIFFERENT freshly-invented scene inside it.`;
-  }
-  return `COVER SCENE RULE: return "coverScenes" — an ARRAY of exactly ${count} cover scene sentences, each from a DIFFERENT one of the four SCENES families (never two covers from the same family). Every cover is a freshly-invented scene: the examples are SEEDS, not a menu — new subject, setting, season, weather, time, and vantage, never a scene from a recent post. Also set "coverScene" to the first of them. Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, spread across the families.`;
-}
-
 /** Generate one moody-carousel topic for the given audience funnel.
  *  The men's lane is theme-locked to the SILENCE family (2026-09-03;
  *  "STAY INVISIBLE." / "GUARD THE QUIET." energy). Went dormant the
  *  morning of 2026-09-10 in the BWK reshuffle, then Keenan revived it
- *  the same day IN the pick-list format: 3 candidate covers + 15 items
- *  so he curates the good ones. `sceneFamily` pins the whole post to
- *  one image family (themed one-offs). Women's path unchanged (4-7
- *  items, single cover) — only the men's lane is live. */
+ *  the same day as a pick-list (3 covers + 15 items). 2026-09-14, per
+ *  Keenan: pick-list retired — back to ONE cover + 4-7 items so posts
+ *  go out ready-made for auto-publish. `sceneFamily` pins the whole
+ *  post to one image family (themed one-offs). */
 export async function generateMoodyTopic(
   audience: MoodyAudience,
   recentHeadlines: string[],
   sceneFamily?: string
 ): Promise<MoodyTopic> {
   const men = audience === "men";
-  const itemCount = men ? 15 : 4 + Math.floor(Math.random() * 4);
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: `moody-carousel-topic-${audience}`,
     system: buildMoodySystemPrompt(
@@ -437,7 +421,7 @@ export async function generateMoodyTopic(
       men
         ? {
             theme: SILENCE_THEME,
-            coverRule: buildMultiCoverRule(3, sceneFamily),
+            coverRule: rollMenCoverRule(sceneFamily),
           }
         : undefined
     ),
@@ -445,10 +429,8 @@ export async function generateMoodyTopic(
     slugPrefix: `moody-${audience}`,
     requireName: true,
     minLines: 2,
-    minItems: men ? 12 : 4,
+    minItems: 4,
     maxItems: itemCount,
-    coverCount: men ? 3 : 1,
-    maxTokens: men ? 6000 : undefined,
   });
 }
 
@@ -479,27 +461,26 @@ export async function generateLineTopic(
 
 /** WHEN NO ONE'S WATCHING lane (2026-09-10, per Keenan — replaces
  *  HOLD THE LINE). Private-discipline tests; "Name." items.
- *  Pick-list format (2026-09-10, later): 3 candidate covers + 15
- *  items so Keenan curates the good ones. `sceneFamily` pins the
+ *  2026-09-14, per Keenan: pick-list retired — ONE cover + 4-7 items
+ *  so posts go out ready-made for auto-publish. `sceneFamily` pins the
  *  whole post to one image family (themed one-offs). */
 export async function generateWatchingTopic(
   recentHeadlines: string[],
   sceneFamily?: string
 ): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: "watching-carousel-topic",
     system: buildMoodySystemPrompt("men", {
       theme: WATCHING_THEME,
-      coverRule: buildMultiCoverRule(3, sceneFamily),
+      coverRule: rollMenCoverRule(sceneFamily),
     }),
-    user: `Write one new when-no-one's-watching post with exactly 15 items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new when-no-one's-watching post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "watching",
     requireName: true,
     minLines: 2,
-    minItems: 12,
-    maxItems: 15,
-    coverCount: 3,
-    maxTokens: 6000,
+    minItems: 4,
+    maxItems: itemCount,
   });
 }
 
@@ -768,8 +749,8 @@ OUTPUT (strict JSON, no markdown):
 
 /** Generate one memento mori topic for the given audience lane.
  *  Women: slide count varies per post (2026-08-29) — 3-9 items.
- *  Men (BWK): pick-list format (2026-09-10, later) — 3 candidate
- *  covers + 15 items so Keenan curates the good ones.
+ *  Men (BWK): 2026-09-14, per Keenan — pick-list retired, back to ONE
+ *  cover + 4-7 items so posts go out ready-made for auto-publish.
  *  `scheme` applies to women only. */
 export async function generateMementoTopic(
   audience: MoodyAudience,
@@ -778,22 +759,20 @@ export async function generateMementoTopic(
   sceneFamily?: string
 ): Promise<MoodyTopic> {
   const men = audience === "men";
-  const itemCount = men ? 15 : 3 + Math.floor(Math.random() * 7); // men 15, women 3-9
+  const itemCount = men
+    ? 4 + Math.floor(Math.random() * 4) // men 4-7
+    : 3 + Math.floor(Math.random() * 7); // women 3-9
   return generateMoodyFamilyTopic({
     purpose: men ? "memento-men-carousel-topic" : "memento-carousel-topic",
     system: men
-      ? // 2026-09-10 (memento-men revived into BWK): multi-cover
-        // pick-list rule — 3 candidate covers across the families.
-        `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${buildMultiCoverRule(3, sceneFamily)}`
+      ? `${MEMENTO_MEN_SYSTEM_PROMPT}\n\n${rollMenCoverRule(sceneFamily)}`
       : buildMementoWomenSystemPrompt(scheme),
     user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: men ? "memento-men" : "memento",
     requireName: false,
     minLines: 2,
-    minItems: men ? 12 : 3,
+    minItems: men ? 4 : 3,
     maxItems: itemCount,
-    coverCount: men ? 3 : 1,
-    maxTokens: men ? 6000 : undefined,
   });
 }
 
@@ -1810,21 +1789,20 @@ export async function generateProtocolTopic(
 ): Promise<MoodyTopic> {
   const interval =
     PROTOCOL_INTERVALS[Math.floor(Math.random() * PROTOCOL_INTERVALS.length)];
+  const itemCount = 4 + Math.floor(Math.random() * 4); // 4-7 items
   return generateMoodyFamilyTopic({
     purpose: "protocol-carousel-topic",
     // 2026-09-08: rolled cover-family rule appended so protocol covers
     // rotate too instead of drifting toward buildings.
-    // 2026-09-10: pick-list format — 3 candidate covers + 15 areas so
-    // Keenan can curate the good frames instead of taking pot luck.
-    system: `${buildProtocolSystemPrompt(interval)}\n\n${buildMultiCoverRule(3, sceneFamily)}`,
-    user: `Write one new "${interval} OF DISCIPLINE..." post with exactly 15 areas of expected progress.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    // 2026-09-14, per Keenan: pick-list retired — ONE cover + 4-7
+    // areas so posts go out ready-made for auto-publish.
+    system: `${buildProtocolSystemPrompt(interval)}\n\n${rollMenCoverRule(sceneFamily)}`,
+    user: `Write one new "${interval} OF DISCIPLINE..." post with exactly ${itemCount} areas of expected progress.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "protocol",
     requireName: true,
     minLines: 2,
-    minItems: 12,
-    maxItems: 15,
-    coverCount: 3,
-    maxTokens: 6000,
+    minItems: 4,
+    maxItems: itemCount,
   });
 }
 
