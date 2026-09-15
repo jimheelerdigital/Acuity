@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-15] — Sunday lane intelligence report: a weekly autopsy email so Keenan can kill and birth lanes with real numbers
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Every Sunday morning you'll get an email that grades every content lane on its last 45 days of real engagement — with TikTok counted extra because that's where we win. It uses medians, so one lucky viral post can't hide a weak lane. The report names kill candidates (only lanes with at least 8 measured posts can be nominated — young lanes get a fair shot), tells you whether each TESTING lane deserves promotion, and pitches exactly 3 new lane ideas complete with sample hooks and a ready-to-use theme. You decide; nothing is ever killed or launched automatically. Acting on a decision is one click on the lanes admin page.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/inngest/functions/lane-intelligence-report.ts — cron `0 12 * * 0` (Sundays 7am Central) + manual trigger event "content-factory/lane.report"
+- compute-lane-stats step: per-lane, per-platform engagement (CarouselPost IG columns preferred over the IG SocialPublish mirror row; facebook/tiktok rows summed on top), score = views×0.01 + likes + comments×3 + saves×8 + shares×8, TikTok weighted 1.5×, per-lane weighted MEDIAN (not mean), kill-eligible = ≥8 measured posts and not RETIRED
+- Deterministic plain-text scoreboard built in code; Claude (purpose "lane-intelligence-report") only writes the analysis — kills restricted to kill-eligible lanes, exactly 3 birth candidates in the exact shape the birth API/admin form needs (key, brand, hoursUtc, named, locked THEME, 3 sample hooks)
+- Emailed via Resend using the existing CONTENT_FACTORY_EMAIL_FROM/TO envs; email failure fails the run (the email IS the deliverable, unlike the niche memo which persists to a table)
+- apps/web/src/app/api/inngest/route.ts: registered laneIntelligenceReportFn
+
+### Manual steps needed
+- [ ] Inngest resync after deploy — new cron function: `curl -X PUT https://goripple.io/api/inngest` (Claude, at deploy time)
+
+### Notes
+- Men-audience birth candidates are instructed to always be brand bwk; the birth API enforces it server-side anyway.
+- Medians chosen per the co-pilot design discussion: a lane that went viral once but flops daily should look weak, and a consistent quiet performer should look strong.
+- Report degrades gracefully pre-TikTok-metrics: platform breakdown just shows IG/FB until video.list data lands, then TikTok appears with no changes.
+- First report lands the first Sunday after deploy; can be fired early via the "content-factory/lane.report" event to sanity-check the email.
+
+---
+
 ## [2026-09-15] — Content lanes now live in the database: killing or launching a lane is a click, not a code change
 
 **Requested by:** Keenan
