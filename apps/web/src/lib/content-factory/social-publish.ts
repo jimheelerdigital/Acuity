@@ -93,25 +93,36 @@ export function autoPublishEnabled(): boolean {
   return process.env.SOCIAL_AUTOPUBLISH_ENABLED === "1";
 }
 
+/**
+ * Env values get trimmed: a trailing space pasted into a Vercel env var
+ * (live incident 2026-09-14 — IG_USER_ID ended in " " and every Graph
+ * call 404'd with "Object with ID '… ' does not exist") corrupts the
+ * request path silently.
+ */
+function env(name: string): string | null {
+  const v = process.env[name]?.trim();
+  return v ? v : null;
+}
+
 function rippleAccount(): SocialAccount | null {
-  const accessToken = process.env.IG_ACCESS_TOKEN;
+  const accessToken = env("IG_ACCESS_TOKEN");
   if (!accessToken) return null;
   return {
     key: "ripple",
     accessToken,
-    igUserId: process.env.IG_USER_ID ?? null,
-    fbPageId: process.env.FB_PAGE_ID ?? null,
+    igUserId: env("IG_USER_ID"),
+    fbPageId: env("FB_PAGE_ID"),
   };
 }
 
 function bwkAccount(): SocialAccount | null {
-  const accessToken = process.env.META_BWK_ACCESS_TOKEN;
+  const accessToken = env("META_BWK_ACCESS_TOKEN");
   if (!accessToken) return null;
   return {
     key: "bwk",
     accessToken,
-    igUserId: process.env.META_BWK_IG_USER_ID ?? null,
-    fbPageId: process.env.META_BWK_FB_PAGE_ID ?? null,
+    igUserId: env("META_BWK_IG_USER_ID"),
+    fbPageId: env("META_BWK_FB_PAGE_ID"),
   };
 }
 
