@@ -93,12 +93,12 @@ export const SCENE_BRIEF: Record<MoodyAudience, string> = {
 
 const buildMoodySystemPrompt = (
   audience: MoodyAudience,
-  opts?: { theme?: string; coverRule?: string }
+  opts?: { theme?: string; coverRule?: string; sceneBrief?: string }
 ) => `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 item slides of white text centered on cinematic photography.
 
 ${AUDIENCE_BRIEF[audience]}
 ${opts?.theme ? `\n${opts.theme}\n` : ""}
-${SCENE_BRIEF[audience]}
+${opts?.sceneBrief ?? SCENE_BRIEF[audience]}
 ${opts?.coverRule ? `\n${opts.coverRule}\n` : ""}
 FORMAT — study this real slide and match its rhythm exactly:
 "Reset day.
@@ -2762,4 +2762,88 @@ export function buildBakedTextsPrompt(lane: TextsLane, message: string): string 
 "${message}"
 
 The message bubble is large and fills most of the screen's width, the text breaking over several lines with natural spacing, large enough to read easily on a phone. The screen's glow, the lettering, and the interface are physically PART of the phone — they share its exact perspective, tilt, reflections, and the scene's lighting, photographed together in one shot. The lettering MUST BLEND into the screen: it sits behind any glare that falls across the glass and follows the screen's angle precisely. If someone zoomed in, nothing about the text would look added afterward. NEVER a flat white box, NEVER a pasted-on panel, NEVER an overlay, sticker, or mockup look — one cohesive photograph. COMPOSITION: the phone is TALL and vertical and fills at least two thirds of the frame's height — held CLOSE to the camera. A natural, slightly imperfect camera angle is good — this must feel like a candid photo someone actually took. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the screen text stays tack sharp and clearly legible. NO other text, words, letters, numbers, or logos anywhere else in the image — no keyboard, no timestamps, no other messages.`;
+}
+
+// ─── SPEC-DRIVEN LANES (2026-09-15, lanes-as-data) ───────────────────
+// Part of the co-pilot lane system (per Keenan: weekly try-new /
+// kill-underperforming lanes, with his oversight). Every hard-coded
+// moody-family lane above is one shared core call + a THEME string +
+// a few flags — this section turns that recipe into data so a NEW lane
+// can be born as a ContentLane DB row (template "moody") with no code
+// change or deploy. Legacy lanes keep their bespoke generators; only
+// born lanes flow through here.
+
+/** The tunable part of a ContentLane row's `spec` JSON (template
+ *  "moody"). `theme` is the lane's soul — written in the same
+ *  "THEME — every post belongs to the X family: ..." register as the
+ *  hard-coded lane themes above (see SILENCE_THEME / WATCHING_THEME
+ *  for the pattern, including rotation + title rules). */
+export interface MoodyLaneSpec {
+  /** Drives voice, scene DNA, caption pool, and brand visual rules. */
+  audience: MoodyAudience;
+  /** Locked lane theme, "THEME — every post belongs to..." register. */
+  theme: string;
+  /** true = items carry a "Name." header line (discipline/protocol
+   *  style); false = headerless lines (memento/questions style). */
+  named: boolean;
+  /** Slide-count range; defaults 4-7 (the 2026-09-14 go-live shape). */
+  minItems?: number;
+  maxItems?: number;
+}
+
+/** Parse + validate a ContentLane.spec JSON blob. Returns null when
+ *  the spec is unusable — callers treat that as a config error and
+ *  fail the run loudly rather than generating off-brand content. */
+export function parseMoodyLaneSpec(raw: unknown): MoodyLaneSpec | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  if (s.audience !== "men" && s.audience !== "women") return null;
+  if (typeof s.theme !== "string" || s.theme.trim().length < 40) return null;
+  const minItems =
+    typeof s.minItems === "number" && s.minItems >= 2 && s.minItems <= 10
+      ? Math.floor(s.minItems)
+      : undefined;
+  const maxItems =
+    typeof s.maxItems === "number" && s.maxItems >= 2 && s.maxItems <= 10
+      ? Math.floor(s.maxItems)
+      : undefined;
+  return {
+    audience: s.audience,
+    theme: s.theme.trim(),
+    named: s.named === true,
+    minItems,
+    maxItems,
+  };
+}
+
+/** Generate one topic for a spec-driven (DB-born) moody-family lane.
+ *  Mirrors the hard-coded theme lanes: men get the BWK cover-family
+ *  roll; women get the pinned-dark scene brief (Ripple has been
+ *  scheme-pinned to dark since 2026-09-03, and the shared system
+ *  prompt's header already describes the dark treatment). */
+export async function generateSpecTopic(
+  laneKey: string,
+  spec: MoodyLaneSpec,
+  recentHeadlines: string[],
+  sceneFamily?: string,
+  feedback?: string | null
+): Promise<MoodyTopic> {
+  const men = spec.audience === "men";
+  const lo = Math.min(spec.minItems ?? 4, spec.maxItems ?? 7);
+  const hi = Math.max(spec.minItems ?? 4, spec.maxItems ?? 7);
+  const itemCount = lo + Math.floor(Math.random() * (hi - lo + 1));
+  return generateMoodyFamilyTopic({
+    purpose: `lane-${laneKey}-topic`,
+    system: buildMoodySystemPrompt(spec.audience, {
+      theme: spec.theme,
+      coverRule: men ? rollMenCoverRule(sceneFamily) : undefined,
+      sceneBrief: men ? undefined : WOMEN_SCENE_BRIEFS.dark,
+    }),
+    user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: laneKey,
+    requireName: spec.named,
+    minLines: spec.named ? 2 : 1,
+    minItems: Math.min(lo, 4),
+    maxItems: itemCount,
+  });
 }

@@ -113,7 +113,7 @@ async function main() {
     console.log(`Rendered + uploaded ${(buf.length / 1e6).toFixed(1)}MB: ${publicUrl}`);
   }
 
-  const account = resolveAccount(post.lane);
+  const account = await resolveAccount(post.lane);
   if (!account) throw new Error("No Meta account resolved (IG_ACCESS_TOKEN missing?)");
   const caption = post.caption ?? post.headline;
 

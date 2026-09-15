@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-09-15] — Content lanes now live in the database: killing or launching a lane is a click, not a code change
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Until now, which content lanes run each night was hard-coded — adding or removing a lane meant a code change and a deploy. Now the daily roster lives in the database, and there's a new admin page at /admin/content-factory/lanes where you can retire an underperforming lane (it stops generating that same night), revive it later, or birth a brand-new lane by writing its theme in a form — new lanes run through the same proven generation pipeline that powers the current lanes. This is the machinery half of the weekly self-optimizing lane system we agreed on: the upcoming Sunday report will propose kills and births, and you execute them here. All 14 current lanes were migrated in unchanged — tonight's generation is identical to yesterday's.
+
+### Technical changes (for Jimmy)
+- New Prisma model: ContentLane (key unique, name, brand ripple|bwk, status TESTING|ACTIVE|RETIRED, template moody|code, hoursUtc Int[], spec Json, origin, retiredAt) — table created in prod via additive raw SQL (apps/web/scripts/add-content-lane-table.ts) and back-declared in schema.prisma same session; 14 founding lanes seeded template "code" with exact HOUR_LANES parity (verified per hour)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron dispatch now reads ContentLane (status != RETIRED, hoursUtc has hour) with HOUR_LANES as empty-table fallback; unknown buckets resolve to a "spec lane" (ContentLane template "moody") that routes through the shared moody-family pipeline with audience/named/theme from the row's spec; bad specs throw (never generate off-brand)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new MoodyLaneSpec interface, parseMoodyLaneSpec() validator, generateSpecTopic() (spec-driven twin of the hard-coded theme lanes: men get the BWK cover-family roll, women get the pinned-dark scene brief); buildMoodySystemPrompt gained a sceneBrief override
+- apps/web/src/lib/content-factory/social-publish.ts: new async laneBrand() (BWK_LANES first, then ContentLane lookup, 5-min cache); resolveAccount() is now async; enqueue eligibility = AUTO_LANES ∪ ContentLane keys
+- Async resolveAccount/laneBrand call sites updated: social-publish-cron.ts (enqueue flatMap → for-loop, tiktok accountKey via laneBrand), slideshow-reel.ts music-folder pick, api/admin/carousels route, scripts/test-social-reel.ts
+- apps/web/src/lib/content-factory/email.ts: accountLabel() async — DB-born lanes label [BUILD WITH KEY]/[RIPPLE] correctly
+- New API: /api/admin/content-factory/lanes (GET list w/ 45-day post counts, POST birth — validates spec, forces men-audience → bwk, starts TESTING; PATCH status/hours/name/spec)
+- New admin page: /admin/content-factory/lanes (status badges, Retire/Revive/Promote, birth form)
+
+### Manual steps needed
+- [ ] None for this feature (table already created + seeded in prod; Keenan's home-network `npm run db:push` NOT needed — but the next legitimate db:push from main will see the schema already matches)
+
+### Notes
+- Legacy lanes stay template "code": the DB controls WHETHER and WHEN they run; their bespoke generation branches still control HOW. Only born lanes are spec-driven. Migrating the 9 bespoke lanes to specs would be churn with zero behavior gain.
+- Selfie/phone-quote lanes run twice a day — hence hoursUtc as Int[] (Prisma `has` filter), not a single hour column.
+- The dispatch falls back to HOUR_LANES only if the ContentLane table is empty or unreachable, so a DB outage can't silence a night's generation.
+- Retiring is reversible by design (status flip, retiredAt timestamp) — matches the house rule that dead lanes stay revivable.
+- Seed script is idempotent (ON CONFLICT DO NOTHING) — re-running never clobbers later admin edits.
+
+---
+
 ## [2026-09-15] — TikTok engagement numbers now feed the learning loop automatically
 
 **Requested by:** Keenan

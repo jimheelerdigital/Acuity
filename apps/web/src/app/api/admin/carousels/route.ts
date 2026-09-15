@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
       const { resolveAccount, publishIgReel, publishFbVideo } = await import(
         "@/lib/content-factory/social-publish"
       );
-      const account = resolveAccount(post.lane);
+      const account = await resolveAccount(post.lane);
       if (!account) {
         return NextResponse.json({ error: "No Meta account configured" }, { status: 500 });
       }

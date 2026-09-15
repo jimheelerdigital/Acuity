@@ -1545,6 +1545,31 @@ model SocialToken {
   @@unique([provider, accountKey])
 }
 
+// Content lanes as data (2026-09-15, co-pilot lane system) — the daily
+// generation roster lives here instead of the hard-coded HOUR_LANES
+// map. Legacy lanes are template "code" (their generation stays in
+// carousel-daily.ts's bespoke branches); lanes born from the Sunday
+// intelligence report are template "moody" with the tunables in `spec`
+// (see MoodyLaneSpec in lib/content-factory/moody-carousel.ts). Kill =
+// status RETIRED (dispatch skips it, history and revival stay one
+// UPDATE away); birth = INSERT — no deploy either way.
+model ContentLane {
+  id        String    @id @default(cuid())
+  key       String    @unique // matches CarouselPost.lane
+  name      String // display name for admin + Sunday report
+  brand     String    @default("ripple") // "ripple" | "bwk"
+  status    String    @default("ACTIVE") // "TESTING" | "ACTIVE" | "RETIRED"
+  template  String    @default("moody") // "moody" (spec-driven) | "code" (bespoke branch)
+  hoursUtc  Int[] // overnight dispatch hours (5-8); twice-a-day lanes list two
+  spec      Json? // MoodyLaneSpec for template "moody"; null for "code"
+  origin    String?   @db.Text // why this lane exists (birth notes / report reasoning)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  retiredAt DateTime?
+
+  @@index([status])
+}
+
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
 
 model BlogTopicQueue {

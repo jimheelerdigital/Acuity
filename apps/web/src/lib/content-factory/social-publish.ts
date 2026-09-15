@@ -222,14 +222,48 @@ function bwkAccount(): SocialAccount | null {
 }
 
 /**
+ * Which brand a lane belongs to. Legacy lanes come from the hard-coded
+ * BWK_LANES list; DB-born lanes (lanes-as-data, 2026-09-15) carry
+ * their brand on the ContentLane row. Every lane that can reach
+ * publishing is either legacy-listed or DB-rowed, so the ripple
+ * default only fires for null/historical lanes. The 5-minute cache
+ * keeps the nightly per-post loops from hammering the table.
+ */
+let laneBrandCache: { map: Map<string, string>; at: number } | null = null;
+
+export async function laneBrand(
+  lane: string | null
+): Promise<SocialAccountKey> {
+  if (!lane) return "ripple";
+  if ((BWK_LANES as readonly string[]).includes(lane)) return "bwk";
+  if (!laneBrandCache || Date.now() - laneBrandCache.at > 5 * 60_000) {
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const rows = await prisma.contentLane.findMany({
+        select: { key: true, brand: true },
+      });
+      laneBrandCache = {
+        map: new Map(rows.map((r) => [r.key, r.brand])),
+        at: Date.now(),
+      };
+    } catch {
+      // Table missing/unreachable — legacy list already answered above.
+      laneBrandCache = { map: new Map(), at: Date.now() };
+    }
+  }
+  return laneBrandCache.map.get(lane) === "bwk" ? "bwk" : "ripple";
+}
+
+/**
  * Which Meta account a lane posts to. BWK lanes use ONLY the dedicated
  * BWK account — null until META_BWK_* creds exist, which means no IG/FB
  * for BWK (men's content must never land on Ripple's women-audience
  * pages; TikTok is BWK's only live platform for now).
  */
-export function resolveAccount(lane: string | null): SocialAccount | null {
-  const isBwk = (BWK_LANES as readonly string[]).includes(lane ?? "");
-  return isBwk ? bwkAccount() : rippleAccount();
+export async function resolveAccount(
+  lane: string | null
+): Promise<SocialAccount | null> {
+  return (await laneBrand(lane)) === "bwk" ? bwkAccount() : rippleAccount();
 }
 
 async function graphPost(

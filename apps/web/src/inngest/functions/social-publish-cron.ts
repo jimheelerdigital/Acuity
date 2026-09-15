@@ -80,12 +80,21 @@ export const socialPublishCronFn = inngest.createFunction(
         "@/lib/content-factory/social-publish"
       );
 
+      // Lanes-as-data (2026-09-15): DB-born lanes are auto-eligible
+      // alongside the legacy AUTO_LANES list.
+      const laneRows = await prisma.contentLane.findMany({
+        select: { key: true },
+      });
+      const eligibleLanes = [
+        ...new Set([...AUTO_LANES, ...laneRows.map((r) => r.key)]),
+      ];
+
       const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000);
       const candidates = await prisma.carouselPost.findMany({
         where: {
           status: "DRAFT",
           format: "PHOTO",
-          lane: { in: [...AUTO_LANES] },
+          lane: { in: eligibleLanes },
           generatedFor: { gte: threeDaysAgo },
           socialPublishes: { none: {} },
         },
@@ -94,7 +103,7 @@ export const socialPublishCronFn = inngest.createFunction(
       });
       if (candidates.length === 0) return 0;
 
-      const { resolveAccount, BWK_LANES, PLATFORM_WINDOWS, clampToWindow } =
+      const { resolveAccount, laneBrand, PLATFORM_WINDOWS, clampToWindow } =
         await import("@/lib/content-factory/social-publish");
 
       // Prime-time scheduling (2026-09-15, per Keenan): each platform
@@ -124,19 +133,21 @@ export const socialPublishCronFn = inngest.createFunction(
         return slot;
       };
 
-      const rows = candidates.flatMap((post) => {
+      const rows: {
+        carouselPostId: string;
+        platform: "instagram" | "facebook" | "tiktok";
+        accountKey: string;
+        scheduledAt: Date;
+      }[] = [];
+      for (const post of candidates) {
         // null for BWK lanes until META_BWK_* creds exist (2026-09-14,
         // per Keenan: "don't post bwk posts across insta/facebook yet")
         // — those posts get NO IG/FB rows, TikTok only.
-        const account = resolveAccount(post.lane);
-        // TikTok accounts are keyed by BRAND lane, not by which Meta
-        // creds exist — BWK drafts must never leak into the Ripple
-        // TikTok inbox.
-        const tiktokKey = (BWK_LANES as readonly string[]).includes(
-          post.lane ?? ""
-        )
-          ? "bwk"
-          : "ripple";
+        const account = await resolveAccount(post.lane);
+        // TikTok accounts are keyed by BRAND, not by which Meta creds
+        // exist — BWK drafts must never leak into the Ripple TikTok
+        // inbox.
+        const tiktokKey = await laneBrand(post.lane);
         // TikTok Phase 1 (2026-09-14): EVERY auto-lane post gets an
         // inbox-draft row. Per Keenan's format split, TikTok always gets
         // the PHOTO slideshow (suggested audio lives in photo mode) while
@@ -144,13 +155,15 @@ export const socialPublishCronFn = inngest.createFunction(
         const platforms = account
           ? (["instagram", "facebook", "tiktok"] as const)
           : (["tiktok"] as const);
-        return platforms.map((platform) => ({
-          carouselPostId: post.id,
-          platform,
-          accountKey: platform === "tiktok" ? tiktokKey : account!.key,
-          scheduledAt: nextSlot(platform),
-        }));
-      });
+        for (const platform of platforms) {
+          rows.push({
+            carouselPostId: post.id,
+            platform,
+            accountKey: platform === "tiktok" ? tiktokKey : account!.key,
+            scheduledAt: nextSlot(platform),
+          });
+        }
+      }
       await prisma.socialPublish.createMany({
         data: rows,
         skipDuplicates: true,
@@ -388,7 +401,7 @@ export const socialPublishCronFn = inngest.createFunction(
           }
         }
 
-        const account = resolveAccount(post.lane);
+        const account = await resolveAccount(post.lane);
         const missing =
           !account ||
           (row.platform === "instagram" && !account.igUserId) ||

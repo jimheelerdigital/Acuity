@@ -202,7 +202,29 @@ export const carouselDailyCronFn = inngest.createFunction(
     if (event?.name !== "content-factory/daily.generate") {
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
-      const lanes = HOUR_LANES[hour] ?? [];
+      // Lanes-as-data (2026-09-15, co-pilot lane system): the roster
+      // lives in ContentLane — killing a lane (status RETIRED) or
+      // birthing one is a DB row, no deploy. HOUR_LANES is only the
+      // fallback if the table is empty/unreachable.
+      const lanes = await step.run("load-hour-lanes", async () => {
+        try {
+          const { prisma } = await import("@/lib/prisma");
+          const total = await prisma.contentLane.count();
+          if (total > 0) {
+            const rows = await prisma.contentLane.findMany({
+              where: { status: { not: "RETIRED" }, hoursUtc: { has: hour } },
+              select: { key: true },
+              orderBy: { key: "asc" },
+            });
+            return rows.map((r) => r.key);
+          }
+        } catch (err) {
+          console.error(
+            `[carousel-cron] ContentLane load failed — falling back to HOUR_LANES: ${err instanceof Error ? err.message : err}`
+          );
+        }
+        return (HOUR_LANES[hour] ?? []) as string[];
+      });
       if (lanes.length === 0) {
         logger.warn(`[carousel-cron] No lanes mapped for hour ${hour} UTC`);
         return { generated: 0, dispatched: [] };
@@ -226,12 +248,43 @@ export const carouselDailyCronFn = inngest.createFunction(
     // scenes to one family via rollMenCoverRule's FAMILY LOCK.
     const sceneFamily = (event.data as { sceneFamily?: string } | undefined)
       ?.sceneFamily;
-    const bucket: DailyBucket = (CAROUSEL_LANES as readonly string[]).includes(
+    const isLegacyBucket = (CAROUSEL_LANES as readonly string[]).includes(
       b ?? ""
-    )
+    );
+    // Spec-driven lanes (2026-09-15, lanes-as-data): a bucket that
+    // isn't a hard-coded lane may be a DB-born ContentLane (template
+    // "moody"). Its spec routes it through the shared moody-family
+    // pipeline below with audience/theme/named coming from the row.
+    const specLane = !isLegacyBucket && b
+      ? await step.run("load-spec-lane", async () => {
+          const { prisma } = await import("@/lib/prisma");
+          const row = await prisma.contentLane.findUnique({
+            where: { key: b },
+          });
+          if (!row || row.status === "RETIRED") return null;
+          if (row.template !== "moody") return null;
+          const { parseMoodyLaneSpec } = await import(
+            "@/lib/content-factory/moody-carousel"
+          );
+          const spec = parseMoodyLaneSpec(row.spec);
+          if (!spec) {
+            // Bad spec = config error. Fail loudly so it lands in
+            // Inngest's failed runs — never generate off-brand copy.
+            throw new Error(
+              `[carousel-cron] ContentLane "${b}" has an unusable spec — fix the row`
+            );
+          }
+          return { key: row.key, spec };
+        })
+      : null;
+    const bucket: DailyBucket | (string & {}) = isLegacyBucket
       ? (b as DailyBucket)
-      : "questions";
-    logger.info(`[carousel-cron] Bucket: ${bucket}`);
+      : specLane
+        ? specLane.key
+        : "questions";
+    logger.info(
+      `[carousel-cron] Bucket: ${bucket}${specLane ? " (spec-driven)" : ""}`
+    );
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -788,7 +841,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // mandate + vision verification as the baked phone-quote pipeline;
     // no flat-render fallback — throw and let Inngest retry).
     if (bucket === "texts-younger" || bucket === "future-texts") {
-      const textsLane = bucket;
+      const textsLane = bucket as "texts-younger" | "future-texts";
       const variant = bucket === "future-texts" ? "men" : "women";
 
       const tx = await step.run("generate-texts-topic", async () => {
@@ -988,12 +1041,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     // Visual DNA per lane (2026-08-29, per Keenan): BWK men's lanes =
     // male-dominant dark power imagery; EVERY Ripple lane = soft
     // aesthetically-pleasing feminine photography.
-    const imageAudience: "women" | "men" =
-      bucket === "memento-men" ||
-      bucket === "moody-men" ||
-      bucket === "watching" ||
-      bucket === "protocol" ||
-      bucket === "discipline-real"
+    const imageAudience: "women" | "men" = specLane
+      ? specLane.spec.audience
+      : bucket === "memento-men" ||
+          bucket === "moody-men" ||
+          bucket === "watching" ||
+          bucket === "protocol" ||
+          bucket === "discipline-real"
         ? "men"
         : "women";
     // Lanes whose items carry a "Name." header (discipline tests,
@@ -1002,12 +1056,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     // sometimes omits a slide or two — "1-7" numbering breaks the
     // moment one is dropped). Memento lanes carry no header — the
     // numbers ARE the content.
-    const named =
-      bucket === "moody-men" ||
-      bucket === "watching" ||
-      bucket === "protocol" ||
-      // discipline-real: the "Name." IS the myth being punctured.
-      bucket === "discipline-real";
+    const named = specLane
+      ? specLane.spec.named
+      : bucket === "moody-men" ||
+        bucket === "watching" ||
+        bucket === "protocol" ||
+        // discipline-real: the "Name." IS the myth being punctured.
+        bucket === "discipline-real";
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -1024,6 +1079,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateProtocolTopic,
         generatePermissionTopic,
         generateDisciplineRealTopic,
+        generateSpecTopic,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
       const recent = await prisma.carouselPost.findMany({
@@ -1050,8 +1106,15 @@ export const carouselDailyCronFn = inngest.createFunction(
         "@/lib/content-factory/performance"
       );
       const feedback = await getLaneFeedback(bucket);
-      const topic =
-        bucket === "memento"
+      const topic = specLane
+        ? await generateSpecTopic(
+            specLane.key,
+            specLane.spec,
+            headlines,
+            sceneFamily,
+            feedback
+          )
+        : bucket === "memento"
           ? await generateMementoTopic("women", headlines, "dark", undefined, feedback)
           : bucket === "memento-men"
             ? await generateMementoTopic("men", headlines, "light", sceneFamily, feedback)

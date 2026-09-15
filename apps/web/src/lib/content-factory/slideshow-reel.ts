@@ -66,9 +66,9 @@ const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|mp4)$/i;
  */
 export async function pickMusicTrack(lane: string | null): Promise<string | null> {
   const { supabase } = await import("@/lib/supabase.server");
-  const { BWK_LANES } = await import("./social-publish");
+  const { laneBrand } = await import("./social-publish");
 
-  const isBwk = (BWK_LANES as readonly string[]).includes(lane ?? "");
+  const isBwk = (await laneBrand(lane)) === "bwk";
   // Supabase Storage paths are case-sensitive and the dashboard-created
   // BWK folder is uppercase — check both spellings.
   const folders = isBwk
