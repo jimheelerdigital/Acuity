@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** fa483e44
 
 ### In plain English (for Keenan)
 Every Sunday morning you'll get an email that grades every content lane on its last 45 days of real engagement — with TikTok counted extra because that's where we win. It uses medians, so one lucky viral post can't hide a weak lane. The report names kill candidates (only lanes with at least 8 measured posts can be nominated — young lanes get a fair shot), tells you whether each TESTING lane deserves promotion, and pitches exactly 3 new lane ideas complete with sample hooks and a ready-to-use theme. You decide; nothing is ever killed or launched automatically. Acting on a decision is one click on the lanes admin page.
