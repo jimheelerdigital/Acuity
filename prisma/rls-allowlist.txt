@@ -127,3 +127,12 @@ NichePost no-rls            # scraped public posts
 NicheTopicSuggestion no-rls # generated carousel topic suggestions
 NicheHashtag no-rls         # ranked hashtags
 NicheMemo no-rls            # weekly strategy memos
+
+# ─── Social auto-publish (2026-09-14) ────────────────────────────────
+# SocialPublish: operational queue rows (post id, platform, status) —
+# admin/cron only via service-role Prisma, no PII. CarouselPost pattern.
+SocialPublish no-rls        # auto-publish queue, service-role only
+# SocialToken holds live OAuth access/refresh tokens (TikTok) — secrets,
+# so RLS on even though it's service-role-only. After schema push:
+#   ALTER TABLE public."SocialToken" ENABLE ROW LEVEL SECURITY;
+SocialToken rls
