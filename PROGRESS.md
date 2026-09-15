@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-14] — Slideshow Reel slides hold 3.3s instead of 2.5s
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Each slide in the auto-published music Reels (Instagram Reels + Facebook videos) now stays on screen for 3.3 seconds instead of 2.5, giving viewers more time to read before the crossfade. An 8-slide post goes from ~17s to ~23s.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: SLIDE_SEC 2.5 → 3.3 (crossfade offsets and the -t output cap all derive from it, so nothing else changes)
+
+### Manual steps needed
+None.
+
+### Notes
+- Already-rendered reels are cached at reels/{postId}.mp4 and reused (HEAD-check skips re-render) — existing renders keep the old 2.5s timing; every new post renders at 3.3s.
+- TikTok is unaffected (photo drafts have no baked duration) and animated carousels are unaffected (model-generated clips, not fixed stills).
+
+---
+
 ## [2026-09-14] — Email notification for every successful auto-publish
 
 **Requested by:** Keenan

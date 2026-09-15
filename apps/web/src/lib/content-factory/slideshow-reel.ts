@@ -22,8 +22,9 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-/** Seconds each slide is on screen. */
-const SLIDE_SEC = 2.5;
+/** Seconds each slide is on screen (2026-09-14, per Keenan: 2.5 → 3.3 —
+ * slides need more read time). */
+const SLIDE_SEC = 3.3;
 /** Crossfade length between slides. */
 const XFADE_SEC = 0.4;
 const FPS = 30;
