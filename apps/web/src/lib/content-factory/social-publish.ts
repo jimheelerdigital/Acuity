@@ -36,6 +36,8 @@ export const BWK_LANES = [
   "watching",
   "protocol",
   "phone-quote-men",
+  "discipline-real",
+  "future-texts",
 ] as const;
 
 /**
@@ -55,6 +57,12 @@ export const AUTO_LANES = [
   "moody-men",
   "watching",
   "protocol",
+  // Five lanes added 2026-09-14 night — all ≤10 slides, auto-eligible.
+  "texts-younger",
+  "permission",
+  "letter",
+  "discipline-real",
+  "future-texts",
 ] as const;
 
 /**

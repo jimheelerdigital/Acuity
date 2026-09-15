@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-09-14] — Five new carousel lanes: 3 for Ripple, 2 for BWK (17 posts/day)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Five brand-new post formats now generate automatically every night, bringing the daily total from 12 to 17 posts. Ripple gets three: "texts to my younger self" (real-looking iMessage bubbles baked into cozy phone-in-hand photos), "permission slips" (one-line permissions like "you're allowed to rest before everything is done" over warm evening scenes that quietly match each line), and "the unsent letter" (a handwritten letter on paper, sibling of the phone-quote format). Build With Key gets two: "what discipline actually looks like" (each slide names a romanticized myth like "The 4am club." then shows the boring truth) and "texts from your future self" (a gray received bubble from "future me" baked into gritty dawn/gym/rooftop phone photos). Every text-in-photo slide is vision-checked for typos before it ships, and each scene is picked to emotionally match the words on it. All five lanes are eligible for auto-publishing the moment the switch flips.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new generators — generatePermissionTopic (PERMISSION_SCENES pool, 4-6 one-liners), generateDisciplineRealTopic (DISCIPLINE_REAL_THEME, myth-as-Name exception, men cover-family rotation), generateLetterTopic (returns PhoneQuoteTopic; 25-55-word lowercase letter, rotating recipient), generateTextsTopic + TextsLane/TextsTopic types + TEXTS_PHONE_SCENES (7 theme-matched phone-in-hand scenes per lane) + buildBakedTextsPrompt (sent-blue right bubble for texts-younger, received-gray left bubble for future-texts, full blend mandate); verifyBakedQuote now ignores incidental device UI (clock/battery/contact header)
+- apps/web/src/inngest/functions/carousel-daily.ts: CAROUSEL_LANES + HOUR_LANES grew to 17/day (hour 5 +texts-younger, 6 +discipline-real, 7 +permission, 8 +future-texts +letter); letter rides the phone-quote branch with surface pinned to "paper" (4 attempts, no surface swap); new texts branch — moody cover (hook as lowercase ITEM overlay) + per-message baked slides, 3 attempts each with vision verify, PROOFREAD flag on best unverified, throw if all fail (no flat fallback per the blend decree); permission/discipline-real route through the moody-family branch (discipline-real added to men-audience + named-lane sets)
+- apps/web/src/lib/content-factory/carousel-generate.ts: recomposeSlide — new TEXTS BAKED prompt-prefix branch (regenerate + one verify retry, lane parsed from marker), 5 lanes added to MOODY_LANES, letter/texts lanes added to the ITEM moodyKind ternary (lowercase cover hooks)
+- apps/web/src/lib/content-factory/social-publish.ts: all 5 lanes added to AUTO_LANES (now 14); discipline-real + future-texts added to BWK_LANES (now 7 — keys Meta account fallback + TikTok "bwk" rows)
+- apps/web/src/lib/content-factory/email.ts: discipline-real + future-texts added to the BWK subject-prefix set
+- apps/web/src/app/admin/content-factory/carousels/page.tsx: generateBucket union + 5 manual-generate buttons (💌 🎟️ ✉️ 🔁 📨)
+- No schema changes, no new env vars, no Inngest resync needed (cron/trigger definitions unchanged — HOUR_LANES is data)
+
+### Manual steps needed
+None (deploy covers it; first new-lane posts land in tonight's overnight run).
+
+### Notes
+- Lane named "letter" (slugPrefix "letter-"), NOT "unsent" — a dormant generateUnsentTopic from the dead 2026-08-29 unsent-texts lane already owns the "unsent" slug prefix.
+- letter reuses the phone-quote pipeline end-to-end (same topic shape, forced paper surface), so recomposeSlide's existing PHONE-QUOTE BAKED branch edits it with zero new code.
+- Texts message slides carry marker prompts `TEXTS BAKED (lane)` (+ ` TEXT-UNVERIFIED` when the vision check never passed) — the recompose branch and any future tooling key off that prefix.
+- Watch first future-texts posts: 1-2 slides is intentionally short (cover + one strong received text beats a padded carousel); if engagement wants more, raise the max in TEXTS_SYSTEM.
+- verifyBakedQuote's ignore-list tweak (device UI) applies to phone-quote lanes too — needed because texts scenes legitimately show a contact-name header ("younger me" / "future me").
+
+---
+
 ## [2026-09-14] — Phone-quote lanes doubled + 4 new lettering surfaces, blend rule hardened
 
 **Requested by:** Keenan

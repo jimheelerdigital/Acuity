@@ -2298,7 +2298,7 @@ export async function verifyBakedQuote(
             },
             {
               type: "text",
-              text: `Does the main text displayed in this image read EXACTLY as follows — every word present, in order, spelled correctly, with no words added, duplicated, or missing?\n\n"${quote}"\n\nIgnore incidental device UI (clock, battery, signal bars) and line-break placement. Any garbled, misspelled, duplicated, or missing word means NO. Answer with ONLY the single word YES or NO.`,
+              text: `Does the main text displayed in this image read EXACTLY as follows — every word present, in order, spelled correctly, with no words added, duplicated, or missing?\n\n"${quote}"\n\nIgnore incidental device UI (clock, battery, signal bars, a small contact-name header) and line-break placement. Any garbled, misspelled, duplicated, or missing word means NO. Answer with ONLY the single word YES or NO.`,
             },
           ],
         },
@@ -2313,4 +2313,434 @@ export async function verifyBakedQuote(
     );
     return false;
   }
+}
+
+// ─── Five new lanes (2026-09-14 night, per Keenan: "do 1, 2, 3 for
+// ripple, and 3. and 4. for bwk") ────────────────────────────────────
+// Ripple: TEXTS-YOUNGER ("texts to my younger self"), PERMISSION
+// ("permission slips"), LETTER ("the unsent letter"). BWK:
+// DISCIPLINE-REAL ("what discipline actually looks like"),
+// FUTURE-TEXTS ("texts from your future self"). Keenan also asked to
+// "get creative with more variation amongst image lanes and themes
+// that would match" — so each lane carries its own THEME-MATCHED scene
+// pool (the bath for rest, the parked car before dawn for the unseen
+// hours) instead of reusing the generic briefs.
+
+// ─── PERMISSION SLIPS (Ripple) ───────────────────────────────────────
+// One line of quiet permission per slide — the listicle cousin of the
+// dead SIGN format ("THIS IS YOUR SIGN TO..."), multi-slide and
+// second-person. Scenes are theme-matched: thresholds and endings of
+// the day, each echoing its slide's permission where possible.
+
+const PERMISSION_SCENES = `SCENES: soft, aesthetically pleasing FEMININE photography in warm LOW light, every location a quiet THRESHOLD or END-OF-DAY moment that MATCHES the permission being given — a phone face-down on a nightstand under warm lamplight, a bath running with steam curling in candlelight, a bed left unmade in soft evening light, a car parked in a dark driveway with the porch light glowing ahead, a laptop closed on a kitchen table at dusk, a robe over a chair with the day's clothes left where they fell, a book open face-down beside a cooling cup of tea, an armchair in one pool of lamplight, a door pulled quietly shut at the end of a dark hallway, a dinner table left uncleared under one low lamp, an unanswered doorbell seen from a warm lit kitchen. Muted, warm, dreamy — quiet luxury after dark. Every scene DIM (white text must read on it), soft shadows, intimate, NO people ever. These are INSPIRATION, not a menu — invent new theme-matched locations and vary the vantage and time of evening so no two posts look alike. Where you can, let each scene quietly echo its slide's permission (the running bath for rest, the face-down phone for unavailability, the closed laptop for enough).`;
+
+const PERMISSION_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account for women. Each post is a cover + slides of white text centered on warm, dim cinematic photography. The niche: PERMISSION SLIPS — each slide is ONE line of quiet permission she has been waiting for someone to give her.
+
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. Each permission should release something she already wants to do but feels she must earn, explain, or apologize for.
+VOICE: warm, certain, plain. Permission, never pressure. A wise friend saying "you're allowed" and meaning it. Never preachy, never girlboss, never clinical.
+
+${PERMISSION_SCENES}
+
+RULES:
+- "title": the cover text — 2-4 words, works in ALL CAPS, and it must PULL her into the slides ("PERMISSION GRANTED", "YOU'RE ALLOWED...", "TAKE THESE"). Never a passive label or topic name. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say — and it must fit what the slides deliver. If a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
+- The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the permission. 6-16 words, plain words. Most may start "you're allowed to..." but VARY the opener across the post ("you can...", "it's okay to...", "you don't have to...") so it never reads like a template.
+- Each permission releases a DIFFERENT weight: rest, availability, saying no, imperfection, spending on herself, letting a friendship fade, leaving things unfinished, going to bed early. Never two on the same weight. Every permission SMALL and concrete — never dramatic (no quitting jobs, no leaving marriages).
+- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, therapy, or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location, matched to its slide's permission where possible.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "lines": ["..."], "scene": "..." }
+  ]
+}`;
+
+/** Generate one permission-slips topic (women / Ripple). Single-line
+ *  slides like questions; 4-6 permissions per post. */
+export async function generatePermissionTopic(
+  recentHeadlines: string[]
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
+  return generateMoodyFamilyTopic({
+    purpose: "permission-carousel-topic",
+    system: PERMISSION_SYSTEM_PROMPT,
+    user: `Write one new permission-slips post with exactly ${itemCount} permissions.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "permission",
+    requireName: false,
+    minLines: 1,
+    minItems: 4,
+    maxItems: itemCount,
+  });
+}
+
+// ─── WHAT DISCIPLINE ACTUALLY LOOKS LIKE (BWK) ───────────────────────
+// Myth-vs-truth pairs: the item name is the romanticized myth, the
+// lines are the boring, unglamorous reality. Shares the BWK visual DNA
+// and cover-family rotation.
+
+const DISCIPLINE_REAL_THEME = `THEME — every post belongs to the WHAT DISCIPLINE ACTUALLY LOOKS LIKE family: stripping the romance off discipline. EXCEPTION to the name rule: each item's "name" is the romanticized MYTH, 2-6 words ending with a period ("The 4am club.", "Monk mode.", "Beast mode every day.") — the version people post about. The lines then state the mundane, unglamorous TRUTH in one or two plain sentences (the same bedtime kept for 200 nights, the workout done bored on a Tuesday, the meal prepped on a Sunday nobody claps for, the phone left in another room again) and close on a short 2-5 word command ("Do it bored.", "Repeat tomorrow."). The unspoken thesis of every post: discipline is boring, and boring is why it works. Rotate the myths every post — sleep, training, food, focus, money, the phone, mornings, saying no — so no two posts repeat. Titles live in the family too ("THE BORING TRUTH" / "WHAT IT ACTUALLY LOOKS LIKE..." energy) without repeating a recent title.`;
+
+/** Generate one what-discipline-actually-looks-like topic (men / BWK).
+ *  Myth as the "Name." header, mundane truth in the lines. */
+export async function generateDisciplineRealTopic(
+  recentHeadlines: string[],
+  sceneFamily?: string
+): Promise<MoodyTopic> {
+  const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
+  return generateMoodyFamilyTopic({
+    purpose: "discipline-real-carousel-topic",
+    system: buildMoodySystemPrompt("men", {
+      theme: DISCIPLINE_REAL_THEME,
+      coverRule: rollMenCoverRule(sceneFamily),
+    }),
+    user: `Write one new what-discipline-actually-looks-like post with exactly ${itemCount} myth-vs-truth items.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+    slugPrefix: "discipline-real",
+    requireName: true,
+    minLines: 2,
+    minItems: 4,
+    maxItems: itemCount,
+  });
+}
+
+// ─── THE UNSENT LETTER (Ripple) ──────────────────────────────────────
+// 2-slide sibling of phone-quote: photo cover + the letter handwritten
+// on paper (the "paper" baked surface, FORCED in carousel-daily.ts).
+// Returns a PhoneQuoteTopic so the whole phone-quote pipeline (baked
+// generation, vision verify, save/email) is reused unchanged. Distinct
+// from the DEAD 2026-08-29 "unsent" texts lane — different format,
+// different slug prefix.
+
+const LETTER_SYSTEM_PROMPT = `You write 2-slide posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a handwritten letter on paper — a letter that was never sent.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it frames the letter without revealing it ("i wrote this and never sent it...", "this has been sitting in my drawer for years...", "i finally put it on paper..."). Vary the framing every post — never reuse a recent hook's framing.
+- "letter": 25-55 words, ALL lowercase, 3-5 short plain sentences — the unsent letter itself. Rotate WHO it's for every post: her younger self, the friend who drifted away, her mother, the version of her that kept going, the person she was before everyone needed her, her body, the house they left behind. It may open with a short address ("to the friend i lost to the years,") or just begin. The shape: something true and a little heavy, then a turn into tenderness or release. It must read like something a real woman would write at midnight and never send — warm, plain words, no clichés stacked on clichés. NO signature, NO quotation marks, NO emojis, NO hashtags.
+- "coverScene": one concrete sentence for the photograph — letter-writing still-lifes at night: blank cream stationery and a fountain pen in a pool of warm lamplight, an opened envelope beside a low candle, a folded note in an open nightstand drawer, notepaper on a dark wood desk by rain-streaked glass, a shoebox of old letters on a bed in lamplight. DIM, warm, intimate, NO people, NO readable text in the scene. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "letter": "..." }`;
+
+/** Generate one unsent-letter topic (women / Ripple, 2-slide). */
+export async function generateLetterTopic(
+  recentHeadlines: string[]
+): Promise<PhoneQuoteTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const purpose = "letter-carousel-topic";
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      system: `${LETTER_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
+      messages: [
+        {
+          role: "user",
+          content: `Write one new unsent-letter post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      hook?: string;
+      coverScene?: string;
+      letter?: string;
+    };
+    const hook = (parsed.hook ?? "").trim();
+    const coverScene = (parsed.coverScene ?? "").trim();
+    const letter = (parsed.letter ?? "").trim();
+    const letterWords = letter.split(/\s+/).length;
+    if (!hook || !coverScene || !letter || letterWords < 15 || letterWords > 70) {
+      throw new Error(
+        `${purpose} unusable: hook="${hook}", letter ${letterWords} words`
+      );
+    }
+
+    const slug = hook
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    // Humanizer approval gate — hook + letter only, never the
+    // coverScene image direction. Fails open on error.
+    let gatedHook = hook;
+    let gatedLetter = letter;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${purpose}`,
+        voice: extractVoice(LETTER_SYSTEM_PROMPT),
+        payload: { hook, letter },
+      });
+      const gw =
+        typeof gated.letter === "string"
+          ? gated.letter.trim().split(/\s+/).length
+          : 0;
+      if (
+        typeof gated.hook === "string" &&
+        gated.hook.trim() &&
+        gw >= 15 &&
+        gw <= 70
+      ) {
+        gatedHook = gated.hook.trim();
+        gatedLetter = gated.letter.trim();
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
+    return {
+      slug: `letter-${slug}`,
+      hook: gatedHook,
+      coverScene,
+      quote: gatedLetter,
+    };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
+
+// ─── TEXT-MESSAGE lanes: TEXTS-YOUNGER (Ripple) / FUTURE-TEXTS (BWK) ─
+// Multi-slide texts baked into phone-in-hand photos: cover hook + one
+// message bubble per slide, rendered by gpt-image-2 with the same
+// blend mandate and vision verification as the baked phone-quote
+// pipeline. texts-younger = SENT bubbles to "younger me" (2-4 texts);
+// future-texts = RECEIVED bubbles from "future me" (1-2 texts).
+
+export type TextsLane = "texts-younger" | "future-texts";
+
+export interface TextsTopic {
+  slug: string;
+  /** Sentence-case cover hook, e.g. "texts i'd send my younger self..." */
+  hook: string;
+  coverScene: string;
+  /** One text message per slide, in order. */
+  messages: string[];
+}
+
+const TEXTS_SYSTEM: Record<TextsLane, string> = {
+  "texts-younger": `You write multi-slide text-message posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; each following slide is a photo of a phone showing ONE text message she is sending to her younger self.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate, ending with "..." ("texts i'd send my younger self...", "if i could reach her, i'd tell her...", "she needed to hear these..."). Vary the framing every post — never reuse a recent hook's framing.
+- "messages": 2-4 texts, each 8-25 words, ALL lowercase — messages from the woman she is now to the girl she was. Each text lands on a DIFFERENT age and a DIFFERENT wound: the friendship that ends anyway, the body she picked apart, the no she was afraid to say, the thing that felt like the end and wasn't, the years she spent making herself smaller. Plain text-message language — the way a real person actually texts at midnight, warm and direct, second person. One text may be lighter to break the ache. NO emojis, NO hashtags, NO quotation marks.
+- "coverScene": one concrete sentence for the photograph — a quiet night interior in warm low light: a lamp-lit bedroom, tea by a dark rain-streaked window, a closed photo album on a bed in lamplight, a childhood bedroom kept the same at dusk, a porch light on over an empty step. DIM, warm, intimate, NO people. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "messages": ["...", "..."] }`,
+  "future-texts": `You write text-message posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; each following slide is a photo of a phone showing ONE text message arriving from his future self.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." ("a text from the man you're becoming...", "your future self finally texted back...", "this came from ten years ahead..."). Vary the framing every post — never reuse a recent hook's framing.
+- "messages": 1-2 texts, each 12-30 words, ALL lowercase — messages from the man he becomes to the man he is now. Calm command energy: what mattered, what didn't, what he's glad he did NOW ("the nights you trained alone are the reason i exist. don't skip tonight."). Plain declarative text-message language, second person, never bro-slang, never yelling. Each text a DIFFERENT angle. NO emojis, NO hashtags, NO quotation marks.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, desaturated, NO people. Vary the location every post.
+- Never mention any app, product, journaling, therapy, or AI.
+
+OUTPUT (strict JSON, no markdown):
+{ "hook": "...", "coverScene": "...", "messages": ["..."] }`,
+};
+
+/** Generate one text-message topic for either texts lane. */
+export async function generateTextsTopic(
+  lane: TextsLane,
+  recentHeadlines: string[]
+): Promise<TextsTopic> {
+  const { prisma } = await import("@/lib/prisma");
+  const purpose = `${lane}-topic`;
+  const men = lane === "future-texts";
+  const maxMessages = men ? 2 : 4;
+  const minMessages = men ? 1 : 2;
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      // Men's covers rotate the BWK scene families like every other
+      // BWK lane.
+      system: `${TEXTS_SYSTEM[lane]}${men ? `\n\n${rollMenCoverRule()}` : ""}\n\n${HUMAN_VOICE_RULES}`,
+      messages: [
+        {
+          role: "user",
+          content: `Write one new post.${avoidBlock(recentHeadlines)}\n\nReturn ONLY valid JSON.`,
+        },
+      ],
+    });
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn,
+        tokensOut,
+        costCents: Math.ceil(
+          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      hook?: string;
+      coverScene?: string;
+      messages?: string[];
+    };
+    const hook = (parsed.hook ?? "").trim();
+    const coverScene = (parsed.coverScene ?? "").trim();
+    const messages = (parsed.messages ?? [])
+      .filter((m): m is string => typeof m === "string" && !!m.trim())
+      .map((m) => m.trim())
+      .slice(0, maxMessages);
+    if (!hook || !coverScene || messages.length < minMessages) {
+      throw new Error(
+        `${purpose} unusable: hook="${hook}", ${messages.length} valid messages`
+      );
+    }
+
+    const slug = hook
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    // Humanizer approval gate — hook + messages, never the coverScene
+    // image direction. Fails open on error.
+    let gatedHook = hook;
+    let gatedMessages = messages;
+    try {
+      const gated = await humanizePass({
+        purpose: `humanize:${purpose}`,
+        voice: extractVoice(TEXTS_SYSTEM[lane]),
+        payload: { hook, messages },
+      });
+      if (
+        typeof gated.hook === "string" &&
+        gated.hook.trim() &&
+        Array.isArray(gated.messages) &&
+        gated.messages.length === messages.length &&
+        gated.messages.every((m) => typeof m === "string" && m.trim())
+      ) {
+        gatedHook = gated.hook.trim();
+        gatedMessages = gated.messages.map((m) => m.trim());
+      }
+    } catch (err) {
+      console.warn(
+        `[content-factory] humanize gate failed for ${purpose} — shipping ungated copy:`,
+        err
+      );
+    }
+
+    return {
+      slug: `${lane}-${slug}`,
+      hook: gatedHook,
+      coverScene,
+      messages: gatedMessages,
+    };
+  } catch (err) {
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose,
+        model: CLAUDE_MODEL,
+        tokensIn: 0,
+        tokensOut: 0,
+        costCents: 0,
+        durationMs: Date.now() - start,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
+      },
+    });
+    throw err;
+  }
+}
+
+// Phone-in-hand scene pools for the baked message slides — the
+// "creative variation" pass (2026-09-14, per Keenan): every location
+// matches the lane's emotional register instead of a generic desk shot.
+const TEXTS_PHONE_SCENES: Record<TextsLane, string[]> = {
+  "texts-younger": [
+    "a woman's hand holding an iPhone in a dim lamp-lit bedroom at night, a soft knit blanket blurred behind",
+    "a woman's hands cradling an iPhone at a kitchen table at night, a steaming mug of tea blurred beside it",
+    "a woman's hand holding an iPhone in the driver's seat of a car parked at dusk, rain beading on the windshield",
+    "a woman's hand holding an iPhone on a porch swing at dusk, warm string lights blurred behind",
+    "a woman's hand holding an iPhone beside a candlelit bath at night, flames blurred into soft glowing orbs",
+    "a woman's hand holding an iPhone on a bed beside a folded stack of laundry, one warm lamp glowing",
+    "a woman's hand holding an iPhone by a rain-streaked window at night, golden lamplight reflected in the glass",
+  ],
+  "future-texts": [
+    "a man's hand holding an iPhone in an empty gym at night, one cold overhead light, a loaded barbell blurred behind",
+    "a man's hand holding an iPhone in a parked car before dawn, dashboard glow, an empty street beyond the windshield",
+    "a man's hand holding an iPhone on a rooftop at night, city lights blurred into bokeh far below",
+    "a man's hand holding an iPhone at a dark desk at night, a single lamp and an open notebook blurred behind",
+    "a man's hand holding an iPhone in a bare concrete stairwell under one cold light",
+    "a man's hand holding an iPhone at the edge of an empty running track at dawn, lane lines dissolving into mist",
+    "a man's hand holding an iPhone on a loading dock at night, rain falling through one sodium light beyond",
+  ],
+};
+
+/**
+ * Prompt for a phone-in-hand photo where ONE message bubble is typeset
+ * directly into the screen by gpt-image-2 — same blend mandate as
+ * buildBakedQuotePrompt, but the surface is always a messages thread.
+ */
+export function buildBakedTextsPrompt(lane: TextsLane, message: string): string {
+  const scenes = TEXTS_PHONE_SCENES[lane];
+  const scene = scenes[Math.floor(Math.random() * scenes.length)];
+  const women = lane === "texts-younger";
+  const palette = women
+    ? "Warm, dim, intimate amber tones"
+    : "Desaturated, near-monochrome, cool dark tones";
+  const contact = women ? "younger me" : "future me";
+  const bubble = women
+    ? "ONE sent message bubble aligned to the RIGHT of the thread — a soft blue rounded bubble with white text, as if she just sent it"
+    : "ONE received message bubble aligned to the LEFT of the thread — a dark gray rounded bubble with white text, as if it just arrived";
+  return `A real photograph, vertical 9:16: ${scene}. The phone's screen shows a text-messaging conversation: at the very top of the screen, the contact name "${contact}" in small letters; below it, ${bubble}, containing this text and NOTHING else — rendered EXACTLY, word for word, all lowercase, every word spelled perfectly, no words added, no words missing:
+
+"${message}"
+
+The message bubble is large and fills most of the screen's width, the text breaking over several lines with natural spacing, large enough to read easily on a phone. The screen's glow, the lettering, and the interface are physically PART of the phone — they share its exact perspective, tilt, reflections, and the scene's lighting, photographed together in one shot. The lettering MUST BLEND into the screen: it sits behind any glare that falls across the glass and follows the screen's angle precisely. If someone zoomed in, nothing about the text would look added afterward. NEVER a flat white box, NEVER a pasted-on panel, NEVER an overlay, sticker, or mockup look — one cohesive photograph. COMPOSITION: the phone is TALL and vertical and fills at least two thirds of the frame's height — held CLOSE to the camera. A natural, slightly imperfect camera angle is good — this must feel like a candid photo someone actually took. ${palette}, DIM overall, moody available light, authentic photographic grain, shallow depth of field on the surroundings while the screen text stays tack sharp and clearly legible. NO other text, words, letters, numbers, or logos anywhere else in the image — no keyboard, no timestamps, no other messages.`;
 }

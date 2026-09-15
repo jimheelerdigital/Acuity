@@ -11,7 +11,7 @@ import OpenAI from "openai";
 import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
-import type { QuoteSurface } from "./moody-carousel";
+import type { QuoteSurface, TextsLane } from "./moody-carousel";
 import { buildCaption } from "./caption";
 
 let _openai: OpenAI | null = null;
@@ -586,6 +586,10 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     "behind", "nobody", "bloomers", "taught", "forbidden", "unsent",
     "aura", "versions", "protocol", "line", "watching", "price",
     "prove", "phone-quote", "phone-quote-men",
+    // Five lanes added 2026-09-14 night. letter/texts-* covers are moody
+    // overlays; their non-cover slides are BAKED and never reach this
+    // branch (caught by the prompt-prefix branches above).
+    "letter", "texts-younger", "future-texts", "permission", "discipline-real",
   ]);
 
   if (slide.kind === "CTA") {
@@ -620,6 +624,30 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
         await generateImage(
           buildBakedQuotePrompt(bakedVariant, bakedSurface, newText)
         )
+      );
+    }
+  } else if (slide.imagePrompt.startsWith("TEXTS BAKED")) {
+    // Texts-lane message slides (2026-09-14): the iMessage bubble is
+    // generated INTO the phone-in-hand photo by gpt-image-2, so editing
+    // the message regenerates the image (fresh scene, ~$0.25). Two
+    // attempts with vision verification; the second ships even
+    // unverified — the admin sees the result and can edit again.
+    const { buildBakedTextsPrompt, verifyBakedQuote } = await import(
+      "./moody-carousel"
+    );
+    const { finalizeBakedQuoteSlide } = await import("./compose");
+    const textsMatch = slide.imagePrompt.match(
+      /^TEXTS BAKED \((texts-younger|future-texts)\)/
+    );
+    const textsLane = (textsMatch?.[1] ??
+      slide.carouselPost.lane ??
+      "texts-younger") as TextsLane;
+    composed = await finalizeBakedQuoteSlide(
+      await generateImage(buildBakedTextsPrompt(textsLane, newText))
+    );
+    if (!(await verifyBakedQuote(composed, newText))) {
+      composed = await finalizeBakedQuoteSlide(
+        await generateImage(buildBakedTextsPrompt(textsLane, newText))
       );
     }
   } else if (slide.imagePrompt.startsWith("PHONE-QUOTE SURFACE")) {
@@ -720,7 +748,11 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     const moodyKind =
       lane === "sign" || lane === "aura"
         ? "SIGN"
-        : lane === "phone-quote" || lane === "phone-quote-men"
+        : lane === "phone-quote" ||
+            lane === "phone-quote-men" ||
+            lane === "letter" ||
+            lane === "texts-younger" ||
+            lane === "future-texts"
           ? "ITEM"
           : slide.kind === "COVER"
             ? "COVER"

@@ -98,25 +98,40 @@ import { inngest } from "@/inngest/client";
  * covers + 15 item slides per post so Keenan curates the frames that
  * land. BWK 5/day, Ripple 5/day.
  *
+ * 2026-09-14 night — FIVE NEW LANES (per Keenan: "do 1, 2, 3 for
+ * ripple, and 3. and 4. for bwk", plus "get creative with more
+ * variation amongst image lanes and themes that would match"):
+ * Ripple TEXTS-YOUNGER (texts to my younger self — cover + 2-4 baked
+ * iMessage-bubble slides), PERMISSION (permission slips — one-line
+ * slides over theme-matched thresholds/end-of-day scenes), LETTER
+ * (the unsent letter — phone-quote sibling with the paper surface
+ * FORCED); BWK DISCIPLINE-REAL (myth-vs-truth pairs, myth as the
+ * "Name." header) and FUTURE-TEXTS (texts from your future self —
+ * cover + 1-2 baked bubbles from "future me"). 17 posts/day.
+ *
  * Overnight schedule (CDT):
  * -  5 UTC (12am): MEMENTO-MEN — men's memento mori life-math (BWK)
- *                  + SELFIE #1 (Ripple)
+ *                  + SELFIE #1 (Ripple) + PHONE-QUOTE-MEN (BWK) +
+ *                  TEXTS-YOUNGER (Ripple)
  * -  6 UTC (1am):  WATCHING — when no one's watching (BWK) +
  *                  QUESTIONS — hard questions, dark (Ripple) +
- *                  PHONE-QUOTE (Ripple, 2 slides)
+ *                  PHONE-QUOTE (Ripple, 2 slides) +
+ *                  DISCIPLINE-REAL (BWK)
  * -  7 UTC (2am):  PROTOCOL — rotating-interval protocol (BWK) +
  *                  SELFIE #2 (Ripple) + PHONE-QUOTE-MEN (BWK,
- *                  2 slides)
+ *                  2 slides) + PERMISSION (Ripple)
  * -  8 UTC (3am):  MEMENTO — women's "DO THE MATH" life-math, dark
  *                  dusk-coast cover (Ripple, 4-10 slides) +
- *                  MOODY-MEN — SILENCE family (BWK, pick-list)
+ *                  MOODY-MEN — SILENCE family (BWK) +
+ *                  FUTURE-TEXTS (BWK) + LETTER (Ripple, 2 slides)
  *
  * Manual/test trigger (admin): event "content-factory/daily.generate"
  * with data.bucket set to any lane name above.
  *
  * Every email subject leads with the TikTok account the post belongs
  * to: [BUILD WITH KEY] for memento-men / moody-men / watching /
- * protocol / phone-quote-men, [RIPPLE] for everything else (handled in
+ * protocol / phone-quote-men / discipline-real / future-texts,
+ * [RIPPLE] for everything else (handled in
  * lib/content-factory/email.ts, keyed off post.lane).
  */
 const CAROUSEL_LANES = [
@@ -129,6 +144,13 @@ const CAROUSEL_LANES = [
   "selfie",
   "phone-quote",
   "phone-quote-men",
+  // Five lanes added 2026-09-14 night (per Keenan: "do 1, 2, 3 for
+  // ripple, and 3. and 4. for bwk"):
+  "texts-younger", // Ripple — texts to my younger self (baked bubbles)
+  "permission", // Ripple — permission slips (one-line slides)
+  "letter", // Ripple — the unsent letter (2-slide, paper surface)
+  "discipline-real", // BWK — myth-vs-truth discipline pairs
+  "future-texts", // BWK — texts from your future self (baked bubbles)
 ] as const;
 type DailyBucket = (typeof CAROUSEL_LANES)[number];
 
@@ -136,14 +158,16 @@ type DailyBucket = (typeof CAROUSEL_LANES)[number];
  *  appears twice on purpose (2026-09-03: "give me 2x of those per
  *  day"). Phone-quote lanes appear twice since 2026-09-14 (per Keenan:
  *  "add another phone quote men lane on BWK and on Ripple, they've
- *  been doing well with minimal tokens") — 12 posts/day total. */
+ *  been doing well with minimal tokens"). Five new lanes added
+ *  2026-09-14 night (texts-younger / permission / letter for Ripple,
+ *  discipline-real / future-texts for BWK) — 17 posts/day total. */
 const HOUR_LANES: Record<number, DailyBucket[]> = {
-  5: ["memento-men", "selfie", "phone-quote-men"],
-  6: ["watching", "questions", "phone-quote"],
-  7: ["protocol", "selfie", "phone-quote-men"],
+  5: ["memento-men", "selfie", "phone-quote-men", "texts-younger"],
+  6: ["watching", "questions", "phone-quote", "discipline-real"],
+  7: ["protocol", "selfie", "phone-quote-men", "permission"],
   // moody-men revived 2026-09-10 (later same day); slotted at 8 UTC to
   // balance the hours after price/prove died.
-  8: ["memento", "moody-men", "phone-quote"],
+  8: ["memento", "moody-men", "phone-quote", "future-texts", "letter"],
 };
 
 /**
@@ -523,12 +547,20 @@ export const carouselDailyCronFn = inngest.createFunction(
     // (rendered ITEM-style, never uppercase); slide 2 = the notes-app
     // screen composed programmatically by renderPhoneQuoteSlide — the
     // quote text never touches gpt-image-2, so it can't be misspelled.
-    if (bucket === "phone-quote" || bucket === "phone-quote-men") {
+    // The LETTER lane (2026-09-14 night) is a phone-quote sibling: same
+    // 2-slide skeleton, but the topic is an unsent letter and the baked
+    // surface is FORCED to "paper" (handwritten note) instead of the
+    // 10-surface roll.
+    if (
+      bucket === "phone-quote" ||
+      bucket === "phone-quote-men" ||
+      bucket === "letter"
+    ) {
       const variant = bucket === "phone-quote-men" ? "men" : "women";
 
       const pq = await step.run("generate-phone-quote-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
-        const { generatePhoneQuoteTopic } = await import(
+        const { generatePhoneQuoteTopic, generateLetterTopic } = await import(
           "@/lib/content-factory/moody-carousel"
         );
         const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
@@ -536,10 +568,12 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
           select: { headline: true },
         });
-        return generatePhoneQuoteTopic(
-          variant,
-          recent.map((p) => p.headline)
-        );
+        return bucket === "letter"
+          ? generateLetterTopic(recent.map((p) => p.headline))
+          : generatePhoneQuoteTopic(
+              variant,
+              recent.map((p) => p.headline)
+            );
       });
 
       const slug = pq.slug;
@@ -608,9 +642,14 @@ export const carouselDailyCronFn = inngest.createFunction(
           "@/lib/content-factory/compose"
         );
 
-        const firstSurface = rollQuoteSurface();
+        // Letter lane: the surface is ALWAYS handwritten paper — both
+        // attempts run on it (4 tries total).
+        const forcedSurface =
+          bucket === "letter" ? ("paper" as const) : null;
+        const firstSurface = forcedSurface ?? rollQuoteSurface();
         const backupPool = QUOTE_SURFACES.filter((s) => s !== firstSurface);
         const backupSurface =
+          forcedSurface ??
           backupPool[Math.floor(Math.random() * backupPool.length)];
         let composed: Buffer | null = null;
         let candidate: Buffer | null = null;
@@ -729,6 +768,198 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 1, bucket, ...pqResult };
     }
 
+    // ── TEXTS buckets: baked message-bubble posts (2026-09-14) ─────
+    // texts-younger (Ripple): cover + 2-4 slides, each ONE iMessage
+    // bubble she sends to "younger me". future-texts (BWK): cover +
+    // 1-2 bubbles arriving from "future me". Each bubble is typeset
+    // directly into a phone-in-hand photo by gpt-image-2 (same blend
+    // mandate + vision verification as the baked phone-quote pipeline;
+    // no flat-render fallback — throw and let Inngest retry).
+    if (bucket === "texts-younger" || bucket === "future-texts") {
+      const textsLane = bucket;
+      const variant = bucket === "future-texts" ? "men" : "women";
+
+      const tx = await step.run("generate-texts-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateTextsTopic } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
+          select: { headline: true },
+        });
+        return generateTextsTopic(
+          textsLane,
+          recent.map((p) => p.headline)
+        );
+      });
+
+      const slug = tx.slug;
+      logger.info(
+        `[carousel-cron] Texts (${bucket}): "${tx.hook}" (${tx.messages.length} messages)`
+      );
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        await ensureBucket();
+      });
+
+      // Slide 0: photo cover with the sentence-case hook — same dark
+      // treatment as the phone-quote covers.
+      const txCover = await step.run("generate-texts-cover", async () => {
+        const { generateMoodyImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMoodyImagePrompt } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+
+        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+          buildMoodyImagePrompt(variant, tx.coverScene, "dark"),
+          false
+        );
+        const overlay = await renderMoodyTextOverlay([tx.hook], "ITEM", "white");
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
+        );
+        return { imageUrl, overlayText: tx.hook, imagePrompt: prompt };
+      });
+
+      // Slides 1..N: one baked message bubble per slide. Three attempts
+      // each (fresh scene per attempt); unverified best candidate ships
+      // flagged PROOFREAD; all-throw → step throws and Inngest retries.
+      const txSlides: {
+        imageUrl: string;
+        overlayText: string;
+        imagePrompt: string;
+      }[] = [];
+      for (let i = 0; i < tx.messages.length; i++) {
+        const slide = await step.run(`compose-texts-message-${i}`, async () => {
+          const { generateMoodyImage, uploadImage } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          const { buildBakedTextsPrompt, verifyBakedQuote } = await import(
+            "@/lib/content-factory/moody-carousel"
+          );
+          const { finalizeBakedQuoteSlide } = await import(
+            "@/lib/content-factory/compose"
+          );
+
+          const message = tx.messages[i];
+          let composed: Buffer | null = null;
+          let candidate: Buffer | null = null;
+          let imagePrompt = "";
+
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              const { buffer } = await generateMoodyImage(
+                buildBakedTextsPrompt(textsLane, message),
+                false
+              );
+              const jpeg = await finalizeBakedQuoteSlide(buffer);
+              candidate = jpeg;
+              if (await verifyBakedQuote(jpeg, message)) {
+                composed = jpeg;
+                imagePrompt = `TEXTS BAKED (${textsLane}) — message bubble typeset directly into the phone screen by gpt-image-2; text verified word-for-word by a vision pass. Edit regenerates the image.`;
+                break;
+              }
+              logger.warn(
+                `[carousel-cron] Baked texts message ${i} failed verification (attempt ${attempt})`
+              );
+            } catch (err) {
+              logger.warn(
+                `[carousel-cron] Baked texts message ${i} generation failed (attempt ${attempt}): ${err instanceof Error ? err.message : err}`
+              );
+            }
+          }
+
+          if (!composed && candidate) {
+            composed = candidate;
+            imagePrompt = `TEXTS BAKED (${textsLane}) TEXT-UNVERIFIED — vision pass could not confirm the rendered message matches; PROOFREAD BEFORE POSTING. Edit regenerates the image.`;
+          }
+          if (!composed) {
+            throw new Error(
+              `Texts baked message ${i} generation failed on all attempts`
+            );
+          }
+
+          const imageUrl = await uploadImage(
+            composed,
+            `carousels/${dateStr}/${slug}/slide-${i + 1}-message.jpg`
+          );
+          return { imageUrl, overlayText: message, imagePrompt };
+        });
+        txSlides.push(slide);
+      }
+
+      const txResult = await step.run("save-and-email-texts", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildMoodyCaption } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { extractHashtags } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+
+        const caption = buildMoodyCaption(variant, slug);
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: slug,
+            headline: tx.hook,
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: bucket,
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: txCover.overlayText,
+                  imagePrompt: txCover.imagePrompt,
+                  imageUrl: txCover.imageUrl,
+                },
+                ...txSlides.map((s, i) => ({
+                  order: i + 1,
+                  kind: "REASON" as const,
+                  overlayText: s.overlayText,
+                  imagePrompt: s.imagePrompt,
+                  imageUrl: s.imageUrl,
+                })),
+              ],
+            },
+          },
+        });
+
+        const { sendCarouselEmail } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendCarouselEmail(post.id);
+        // One cover + one baked image per message at ~25¢ each, plus
+        // ~2¢ of Claude tokens (verification retries push some posts
+        // higher).
+        return {
+          postId: post.id,
+          slideCount: txSlides.length + 1,
+          estimatedCostCents: (txSlides.length + 1) * 25 + 2,
+        };
+      });
+
+      logger.info(
+        `[carousel-cron] Generated texts (${bucket}) "${tx.hook}": ${txResult.slideCount} slides`
+      );
+      return { generated: 1, bucket, ...txResult };
+    }
+
     // ── MOODY-FAMILY buckets: dark centered-text carousels ─────────
     // (2026-08-28, per Keenan — cloned from the "TRUST THE PROCESS"
     // reference and expanded lane by lane until the whole daily
@@ -744,7 +975,8 @@ export const carouselDailyCronFn = inngest.createFunction(
       bucket === "memento-men" ||
       bucket === "moody-men" ||
       bucket === "watching" ||
-      bucket === "protocol"
+      bucket === "protocol" ||
+      bucket === "discipline-real"
         ? "men"
         : "women";
     // Lanes whose items carry a "Name." header (discipline tests,
@@ -756,7 +988,9 @@ export const carouselDailyCronFn = inngest.createFunction(
     const named =
       bucket === "moody-men" ||
       bucket === "watching" ||
-      bucket === "protocol";
+      bucket === "protocol" ||
+      // discipline-real: the "Name." IS the myth being punctured.
+      bucket === "discipline-real";
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -771,6 +1005,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateMementoTopic,
         generateQuestionsTopic,
         generateProtocolTopic,
+        generatePermissionTopic,
+        generateDisciplineRealTopic,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
       const recent = await prisma.carouselPost.findMany({
@@ -802,7 +1038,11 @@ export const carouselDailyCronFn = inngest.createFunction(
                 ? await generateMoodyTopic("men", headlines, sceneFamily)
                 : bucket === "watching"
                   ? await generateWatchingTopic(headlines, sceneFamily)
-                  : await generateProtocolTopic(headlines, sceneFamily);
+                  : bucket === "permission"
+                    ? await generatePermissionTopic(headlines)
+                    : bucket === "discipline-real"
+                      ? await generateDisciplineRealTopic(headlines, sceneFamily)
+                      : await generateProtocolTopic(headlines, sceneFamily);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar

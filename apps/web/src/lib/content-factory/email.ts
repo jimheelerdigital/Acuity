@@ -42,7 +42,8 @@ function forceDownloadUrl(url: string, filename: string): string {
  * behind, plus the 2026-08-30 persona lanes aura / versions / protocol,
  * plus the 2026-09-03 winner lanes line / phone-quote-men, plus the
  * 2026-09-10 discipline lanes watching / price / prove (memento-men
- * revived the same day). Dead lanes stay listed so historical resends
+ * revived the same day), plus the 2026-09-14 lanes discipline-real /
+ * future-texts. Dead lanes stay listed so historical resends
  * still label correctly.
  * Every other lane — women-funnel and universal — is Ripple.
  */
@@ -60,6 +61,8 @@ const BWK_LANES = new Set([
   "price",
   "prove",
   "phone-quote-men",
+  "discipline-real",
+  "future-texts",
 ]);
 function accountLabel(lane: string | null | undefined): string {
   return lane && BWK_LANES.has(lane) ? "[BUILD WITH KEY]" : "[RIPPLE]";
