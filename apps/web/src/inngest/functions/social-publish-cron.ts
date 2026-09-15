@@ -213,11 +213,15 @@ export const socialPublishCronFn = inngest.createFunction(
                   slides: {
                     where: { kind: { not: "SCENE" } },
                     orderBy: { order: "asc" },
-                    select: { imageUrl: true },
+                    select: { imageUrl: true, kind: true },
                   },
                 },
               });
               if (!post || post.slides.length === 0) return null;
+              const { trimLegacyPickList } = await import(
+                "@/lib/content-factory/social-publish"
+              );
+              const reelSlides = trimLegacyPickList(post.slides);
 
               const storagePath = `reels/${row.carouselPostId}.mp4`;
               const publicUrl = supabase.storage
@@ -238,7 +242,7 @@ export const socialPublishCronFn = inngest.createFunction(
                 return null;
               }
               const { buf, transition } = await renderSlideshowReel(
-                post.slides.map((s) => s.imageUrl),
+                reelSlides.map((s) => s.imageUrl),
                 music
               );
               const { error } = await supabase.storage
@@ -274,6 +278,7 @@ export const socialPublishCronFn = inngest.createFunction(
           publishIgReel,
           publishFbVideo,
           IG_MAX_CAROUSEL_IMAGES,
+          trimLegacyPickList,
         } = await import("@/lib/content-factory/social-publish");
 
         const post = await prisma.carouselPost.findUnique({
@@ -286,7 +291,7 @@ export const socialPublishCronFn = inngest.createFunction(
             slides: {
               where: { kind: { not: "SCENE" } },
               orderBy: { order: "asc" },
-              select: { imageUrl: true },
+              select: { imageUrl: true, kind: true },
             },
           },
         });
@@ -330,7 +335,7 @@ export const socialPublishCronFn = inngest.createFunction(
             }
             const { publishId } = await publishTikTokPhotoDraft(
               accessToken,
-              post.slides.map((s) => s.imageUrl),
+              trimLegacyPickList(post.slides).map((s) => s.imageUrl),
               post.headline ?? ""
             );
             // TikTok pulls the images async — one status check catches
@@ -399,7 +404,9 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
 
-        const imageUrls = post.slides.map((s) => s.imageUrl);
+        const imageUrls = trimLegacyPickList(post.slides).map(
+          (s) => s.imageUrl
+        );
         try {
           const result = reelUrl
             ? row.platform === "instagram"

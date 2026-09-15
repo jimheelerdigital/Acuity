@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-15] — Old-format posts are trimmed to 1 cover + 6 items before publishing
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+The first TikTok draft delivery exposed a leftover: posts generated before we retired the old "pick-list" format still carried 3 identical cover images plus 15 item images, and the auto-publisher was shipping all 18. Now any old-format post gets cut down at publish time to 1 cover + the first 6 items — the shape we agreed on — before it goes to TikTok, Instagram, or Facebook. Newer posts are unaffected. 7 old-format posts were still waiting in the TikTok queue; they'll all deliver in the trimmed shape.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: new `trimLegacyPickList()` — detects legacy posts by multiple COVER slides, returns [first cover, first 6 non-cover items]; single-cover posts pass through
+- apps/web/src/inngest/functions/social-publish-cron.ts: trim applied in all three slide consumers (TikTok photo draft, IG/FB carousel `imageUrls`, and the reel renderer); slide selects now include `kind`
+- Entire pending TikTok queue held +60 min so nothing else shipped untrimmed pre-deploy
+
+### Manual steps needed
+- [ ] Keenan: reconnect the Ripple TikTok account (both OAuth grants captured the buildwithkey login) — log into tiktok.com as Ripple, then visit https://goripple.io/api/integrations/tiktok/connect
+- [ ] After reconnect: re-slot the held TikTok queue + redeliver the 2 wrongly-shaped/wrongly-routed drafts (Claude, same session)
+
+### Notes
+- The bug: "WHAT GETS COUNTED" (memento-men, generated 09-13, pre-retirement) delivered to the TikTok inbox with all 18 slides. The multi-cover check is the cleanest legacy discriminator — no date cutoff needed.
+- Both delivered drafts went to buildwithkey because the plain /connect URL run while logged into that TikTok account overwrote the ripple token slot. `?account=bwk` is what routes a grant to the BWK slot.
+
+---
+
 ## [2026-09-15] — Reel transitions now rotate randomly so we can learn which performs best; TikTok drafts are flowing
 
 **Requested by:** Keenan

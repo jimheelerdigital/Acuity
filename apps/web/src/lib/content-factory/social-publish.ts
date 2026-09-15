@@ -81,6 +81,27 @@ export function laneWantsReel(lane: string | null): boolean {
   return (REEL_LANES as readonly string[]).includes(lane ?? "");
 }
 
+/**
+ * Trim legacy pick-list posts at publish time (2026-09-15, per Keenan —
+ * a pre-retirement BWK post shipped all 18 slides to TikTok: "it sent 3
+ * separate 'what gets counted' and 15 separate posts as part of it
+ * instead of cutting it down like we discussed").
+ *
+ * Posts generated before the 2026-09-14 pick-list retirement carry 3
+ * duplicate COVER slides + up to 15 items. Multiple covers is the
+ * legacy tell — those posts publish as 1 cover + first 6 items (the
+ * agreed go-live shape). New-format posts (1 cover + 4-7 items) pass
+ * through untouched.
+ */
+export function trimLegacyPickList<T extends { kind: string }>(
+  slides: T[]
+): T[] {
+  const covers = slides.filter((s) => s.kind === "COVER");
+  if (covers.length <= 1) return slides;
+  const items = slides.filter((s) => s.kind !== "COVER");
+  return [covers[0], ...items.slice(0, 6)];
+}
+
 export type SocialAccountKey = "ripple" | "bwk";
 export type SocialPlatform = "instagram" | "facebook" | "tiktok";
 
