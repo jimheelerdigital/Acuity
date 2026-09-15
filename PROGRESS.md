@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-14] — Reel pipeline live-test: two real bugs fixed before go-live
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Ran the first real end-to-end test of the music Reel pipeline and it caught two bugs that would have silently broken every auto-published Reel: (1) the music library uploads are .mp4 files, but the code only accepted .mp3-style extensions — so it saw an "empty" library and would have quietly posted silent photo carousels instead of Reels; (2) the video render never stopped — a 17-second Reel kept encoding forever (80MB+ and climbing) and would have timed out every single run in production. Both fixed; the test Reel published to Instagram and Facebook confirms the whole path works.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: AUDIO_EXT now includes .mp4 (Meta Sound Collection exports audio-in-mp4; ffmpeg maps only [n:a]); pickMusicTrack checks music/BWK (uppercase — dashboard-created folder, storage paths are case-sensitive); renderSlideshowReel adds `-t <totalSec>` — `-shortest` alone never terminates when the audio input is `-stream_loop -1` through a filter graph
+- apps/web/src/app/api/admin/carousels/route.ts: new POST action "test-social-reel" (CRON_SECRET or admin session) — publishes an already-rendered reels/{postId}.mp4 as IG Reel + FB video via resolveAccount; kept for future one-off format tests
+- apps/web/scripts/test-social-reel.ts: one-off local driver (renders + uploads the reel; publish happens via the API action because Meta env vars are Vercel-sensitive and redacted on `vercel env pull`)
+
+### Manual steps needed
+None.
+
+### Notes
+- Vercel-sensitive env vars pull as the literal string "[SENSITIVE]" — any live test needing IG_ACCESS_TOKEN/IG_USER_ID/FB_PAGE_ID must run server-side (the test-social-reel action exists for exactly this).
+- Music library format: keep uploading Meta Sound Collection .mp4s as-is — no conversion needed.
+- Render cost/time: 8 slides → 17.2s Reel ≈ 60s ffmpeg on a laptop; well inside the 300s serverless ceiling now that the encode terminates.
+
+---
+
 ## [2026-09-14] — Five new carousel lanes: 3 for Ripple, 2 for BWK (17 posts/day)
 
 **Requested by:** Keenan

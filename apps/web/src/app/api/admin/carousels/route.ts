@@ -252,6 +252,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "test-social-reel": {
+      // One-off live test of the hybrid Reel publish path (2026-09-14,
+      // per Keenan: "do a quick instagram/facebook test reel so we can
+      // see if it worked"). Publishes an ALREADY-RENDERED reels/{id}.mp4
+      // to the resolved Meta account. Runs server-side because the Meta
+      // env vars are Vercel-sensitive (redacted on `vercel env pull`).
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      const post = await prisma.carouselPost.findUnique({
+        where: { id: postId },
+        select: { lane: true, caption: true, headline: true },
+      });
+      if (!post) return NextResponse.json({ error: "post not found" }, { status: 404 });
+      const { supabase } = await import("@/lib/supabase.server");
+      const videoUrl = supabase.storage
+        .from("content-factory")
+        .getPublicUrl(`reels/${postId}.mp4`).data.publicUrl;
+      const head = await fetch(videoUrl, { method: "HEAD" });
+      if (!head.ok) {
+        return NextResponse.json(
+          { error: `reels/${postId}.mp4 not found in storage — render it first` },
+          { status: 400 }
+        );
+      }
+      const { resolveAccount, publishIgReel, publishFbVideo } = await import(
+        "@/lib/content-factory/social-publish"
+      );
+      const account = resolveAccount(post.lane);
+      if (!account) {
+        return NextResponse.json({ error: "No Meta account configured" }, { status: 500 });
+      }
+      const caption = post.caption ?? post.headline;
+      const ig = await publishIgReel(account, videoUrl, caption);
+      const fb = await publishFbVideo(account, videoUrl, caption);
+      return NextResponse.json({ ok: true, instagram: ig, facebook: fb });
+    }
+
     case "save-metrics": {
       // Manual engagement entry (Keenan, from the platform's analytics).
       // Feeds the topic-generation feedback loop — top/bottom performers

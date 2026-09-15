@@ -39,7 +39,10 @@ function ffmpegPath(): string | null {
   }
 }
 
-const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg)$/i;
+// .mp4 included (2026-09-14): Meta Sound Collection downloads tracks as
+// audio-in-mp4 — ffmpeg maps only the audio stream ([n:a]), so any video
+// stream in the file is ignored.
+const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|mp4)$/i;
 
 /**
  * Pick a random music track for a lane from the bucket library.
@@ -50,7 +53,11 @@ export async function pickMusicTrack(lane: string | null): Promise<string | null
   const { BWK_LANES } = await import("./social-publish");
 
   const isBwk = (BWK_LANES as readonly string[]).includes(lane ?? "");
-  const folders = isBwk ? ["music/bwk", "music/ripple"] : ["music/ripple"];
+  // Supabase Storage paths are case-sensitive and the dashboard-created
+  // BWK folder is uppercase — check both spellings.
+  const folders = isBwk
+    ? ["music/bwk", "music/BWK", "music/ripple"]
+    : ["music/ripple"];
 
   for (const folder of folders) {
     const { data, error } = await supabase.storage
@@ -146,6 +153,11 @@ export async function renderSlideshowReel(
       "-c:a", "aac",
       "-b:a", "128k",
       "-movflags", "+faststart",
+      // Hard duration cap. -shortest alone does NOT stop the encode when
+      // the audio input is -stream_loop -1 through a filter graph (the
+      // looped stream never EOFs — ffmpeg kept encoding past 80MB for a
+      // 16s video when this was tested 2026-09-14). -t is authoritative.
+      "-t", totalSec.toFixed(2),
       "-shortest",
       outPath
     );
