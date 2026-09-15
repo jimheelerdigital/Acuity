@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-15] — Reels: 3.5s slides, no zoom, swipe transition
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Future music Reels hold each slide for 3.5 seconds (up from 3.3), the slow zoom-in effect is gone (slides are now perfectly still), and slides change with a smooth swipe — like someone flicking through a real carousel — instead of a plain fade.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: SLIDE_SEC 3.3 → 3.5; zoompan filter removed — stills become finite streams via `-loop 1 -t SLIDE_SEC -framerate 30` per input with scale/crop/fps/format normalization; xfade transition fade → smoothleft (new TRANSITION const)
+- Verified with a full local ffmpeg render (3 test slides + sine-wave track → 9.7s MP4, correct streams) before committing
+
+### Manual steps needed
+None.
+
+### Notes
+- Already-rendered reels cached at reels/{postId}.mp4 are reused as-is — only newly rendered posts get the new look.
+- smoothleft chosen because it mimics the swipe gesture of a real photo carousel; xfade offset math is unchanged (offsets derive from SLIDE_SEC − XFADE_SEC).
+
+---
+
 ## [2026-09-15] — All social posts now go out at US prime-time hours
 
 **Requested by:** Keenan

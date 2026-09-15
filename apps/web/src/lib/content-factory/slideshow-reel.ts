@@ -5,9 +5,10 @@
  * Instagram's Graph API cannot attach music to photo carousels — music on
  * an API-published post is only possible when the post IS a video with
  * the audio baked in. So Reel-designated lanes get their slides rendered
- * into a 1080x1920 slideshow MP4 (gentle Ken Burns zoom per slide,
- * crossfades between) with a library music track muxed in, published as
- * an IG Reel + FB video instead of a photo carousel.
+ * into a 1080x1920 slideshow MP4 (static slides with a smooth swipe
+ * transition — zoom removed 2026-09-15 per Keenan) with a library music
+ * track muxed in, published as an IG Reel + FB video instead of a photo
+ * carousel.
  *
  * MUSIC LIBRARY: Keenan uploads royalty-free MP3s to the content-factory
  * bucket under music/ripple/ and music/bwk/ (Supabase dashboard →
@@ -22,11 +23,15 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-/** Seconds each slide is on screen (2026-09-14, per Keenan: 2.5 → 3.3 —
- * slides need more read time). */
-const SLIDE_SEC = 3.3;
-/** Crossfade length between slides. */
+/** Seconds each slide is on screen (2026-09-14: 2.5 → 3.3; 2026-09-15,
+ * per Keenan: 3.3 → 3.5 — slides need more read time). */
+const SLIDE_SEC = 3.5;
+/** Transition length between slides. */
 const XFADE_SEC = 0.4;
+/** xfade transition (2026-09-15, per Keenan: "add a better slide
+ * transition that's more engaging" — smoothleft is a smooth directional
+ * swipe that mimics a real carousel swipe gesture; was plain fade). */
+const TRANSITION = "smoothleft";
 const FPS = 30;
 
 /** Resolve the bundled ffmpeg binary path (null if unavailable). */
@@ -108,11 +113,14 @@ export async function renderSlideshowReel(
     await download(musicUrl, musicPath);
 
     const n = imgPaths.length;
-    const frames = Math.round(SLIDE_SEC * FPS);
     const totalSec = n * SLIDE_SEC - (n - 1) * XFADE_SEC;
 
     const args: string[] = ["-y", "-loglevel", "warning"];
-    for (const p of imgPaths) args.push("-i", p);
+    // Each still becomes a SLIDE_SEC-long video stream (-loop 1 -t) —
+    // xfade needs finite, timestamped inputs at a common fps.
+    for (const p of imgPaths) {
+      args.push("-loop", "1", "-t", SLIDE_SEC.toFixed(2), "-framerate", String(FPS), "-i", p);
+    }
     // Loop the track in case it's shorter than the video; -shortest ends
     // the encode when the (finite) video stream does.
     args.push("-stream_loop", "-1", "-i", musicPath);
@@ -121,9 +129,7 @@ export async function renderSlideshowReel(
     for (let i = 0; i < n; i++) {
       filters.push(
         `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,` +
-          `crop=1080:1920,setsar=1,` +
-          `zoompan=z='min(zoom+0.0012,1.10)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
-          `d=${frames}:s=1080x1920:fps=${FPS}[v${i}]`
+          `crop=1080:1920,setsar=1,fps=${FPS},format=yuv420p[v${i}]`
       );
     }
     let videoLabel = "[v0]";
@@ -133,7 +139,7 @@ export async function renderSlideshowReel(
         const out = j === n - 2 ? "[vout]" : `[x${j}]`;
         const left = j === 0 ? "[v0]" : `[x${j - 1}]`;
         filters.push(
-          `${left}[v${j + 1}]xfade=transition=fade:duration=${XFADE_SEC}:offset=${offset}${out}`
+          `${left}[v${j + 1}]xfade=transition=${TRANSITION}:duration=${XFADE_SEC}:offset=${offset}${out}`
         );
       }
       videoLabel = "[vout]";
