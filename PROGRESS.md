@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** a82c4396
 
 ### In plain English (for Keenan)
 Until now, which content lanes run each night was hard-coded — adding or removing a lane meant a code change and a deploy. Now the daily roster lives in the database, and there's a new admin page at /admin/content-factory/lanes where you can retire an underperforming lane (it stops generating that same night), revive it later, or birth a brand-new lane by writing its theme in a form — new lanes run through the same proven generation pipeline that powers the current lanes. This is the machinery half of the weekly self-optimizing lane system we agreed on: the upcoming Sunday report will propose kills and births, and you execute them here. All 14 current lanes were migrated in unchanged — tonight's generation is identical to yesterday's.
@@ -210,7 +210,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** a3101e06
 
 ### In plain English (for Keenan)
 The content factory now learns from its own results. Every night it pulls the real engagement numbers (views, likes, comments, shares — and saves on Instagram) for auto-published Facebook posts, alongside the Instagram numbers it was already pulling. Then, when it generates the next day's topics, each lane's generator is shown that lane's recent winners and flops — with the actual numbers — and is told to lean into what worked and avoid what flopped. Saves and shares count far more than views, because those are what the algorithms reward with reach. New lanes are unaffected until they have at least 4 posts with real numbers, so nothing changes until there's something to learn from.
@@ -239,7 +239,7 @@ None — schema already pushed to prod, no new env vars, no cron/trigger changes
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see below)
+**Commit hash:** 1fe2a25d
 
 ### In plain English (for Keenan)
 Build With Key posts no longer fall back to Ripple's Instagram and Facebook pages — men's content will never appear on the women's-audience Ripple accounts. Until BWK gets its own IG/FB accounts, BWK posts go only to the BWK TikTok inbox (as photo slideshows, same as Ripple's TikTok posts). The moment BWK Meta account credentials are added to Vercel, BWK Instagram/Facebook posting turns on by itself — no code changes needed.
