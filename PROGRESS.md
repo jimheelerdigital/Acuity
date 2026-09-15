@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-14] — BWK posts are TikTok-only until BWK gets Meta accounts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Build With Key posts no longer fall back to Ripple's Instagram and Facebook pages — men's content will never appear on the women's-audience Ripple accounts. Until BWK gets its own IG/FB accounts, BWK posts go only to the BWK TikTok inbox (as photo slideshows, same as Ripple's TikTok posts). The moment BWK Meta account credentials are added to Vercel, BWK Instagram/Facebook posting turns on by itself — no code changes needed.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: resolveAccount no longer falls back to the Ripple account for BWK lanes — returns bwkAccount() (null until META_BWK_* env vars exist); header comment updated
+- apps/web/src/inngest/functions/social-publish-cron.ts: scan-and-enqueue creates only a tiktok row (no instagram/facebook rows) when resolveAccount returns null for a post's lane
+
+### Manual steps needed
+- [ ] (whenever BWK Meta accounts exist) add META_BWK_ACCESS_TOKEN, META_BWK_IG_USER_ID, META_BWK_FB_PAGE_ID to Vercel (Keenan)
+
+### Notes
+- Reverses the 2026-09-10 "capture all markets from one page" fallback decision, per Keenan 2026-09-14: "don't post bwk posts across insta/facebook yet. First focus on TikTok."
+- The publish step already SKIPs rows whose account resolves null, so any pre-existing enqueued BWK IG/FB rows die safely; the enqueue change just stops creating them.
+- TikTok format is unchanged: every lane (both brands) delivers a PHOTO slideshow draft to the brand's TikTok inbox — video never goes to TikTok (suggested audio only exists in photo mode).
+
+---
+
 ## [2026-09-14] — Reel pipeline live-test: two real bugs fixed before go-live
 
 **Requested by:** Keenan

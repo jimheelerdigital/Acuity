@@ -10,11 +10,13 @@
  * - "ripple" — reuses the metrics-refresh creds already in Vercel:
  *     IG_ACCESS_TOKEN (long-lived Page access token), IG_USER_ID
  *   plus one new var: FB_PAGE_ID (the Ripple Facebook Page ID).
- * - "bwk" — optional, for when Build With Key gets its own IG/FB:
+ * - "bwk" — for when Build With Key gets its own IG/FB:
  *     META_BWK_ACCESS_TOKEN, META_BWK_IG_USER_ID, META_BWK_FB_PAGE_ID
- *   Until those exist, BWK lanes FALL BACK to the Ripple account
- *   (Keenan's call 2026-09-10 — capture all markets from one page until
- *   dedicated BWK accounts are set up).
+ *   Until those exist, BWK lanes DO NOT post to IG/FB at all (Keenan's
+ *   call 2026-09-14: "don't post bwk posts across insta/facebook yet" —
+ *   reversing the 2026-09-10 fall-back-to-Ripple decision). BWK is
+ *   TikTok-only until the Meta creds land; adding them to Vercel turns
+ *   BWK IG/FB on with zero code changes.
  *
  * Master switch: SOCIAL_AUTOPUBLISH_ENABLED=1. Everything no-ops without
  * it, so this ships dark until the SocialPublish table is pushed and the
@@ -127,16 +129,14 @@ function bwkAccount(): SocialAccount | null {
 }
 
 /**
- * Which Meta account a lane posts to. BWK lanes prefer the dedicated BWK
- * account but fall back to Ripple until one exists.
+ * Which Meta account a lane posts to. BWK lanes use ONLY the dedicated
+ * BWK account — null until META_BWK_* creds exist, which means no IG/FB
+ * for BWK (men's content must never land on Ripple's women-audience
+ * pages; TikTok is BWK's only live platform for now).
  */
 export function resolveAccount(lane: string | null): SocialAccount | null {
   const isBwk = (BWK_LANES as readonly string[]).includes(lane ?? "");
-  if (isBwk) {
-    const bwk = bwkAccount();
-    if (bwk) return bwk;
-  }
-  return rippleAccount();
+  return isBwk ? bwkAccount() : rippleAccount();
 }
 
 async function graphPost(

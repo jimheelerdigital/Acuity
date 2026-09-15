@@ -108,30 +108,32 @@ export const socialPublishCronFn = inngest.createFunction(
         "@/lib/content-factory/social-publish"
       );
       const rows = candidates.flatMap((post, i) => {
+        // null for BWK lanes until META_BWK_* creds exist (2026-09-14,
+        // per Keenan: "don't post bwk posts across insta/facebook yet")
+        // — those posts get NO IG/FB rows, TikTok only.
         const account = resolveAccount(post.lane);
-        const accountKey = account?.key ?? "ripple";
         // TikTok accounts are keyed by BRAND lane, not by which Meta
-        // creds exist — the Meta-side "BWK falls back to Ripple until
-        // META_BWK_* is set" rule must not leak BWK drafts into the
-        // Ripple TikTok inbox.
+        // creds exist — BWK drafts must never leak into the Ripple
+        // TikTok inbox.
         const tiktokKey = (BWK_LANES as readonly string[]).includes(
           post.lane ?? ""
         )
           ? "bwk"
           : "ripple";
         const scheduledAt = new Date(base + i * STAGGER_MS);
-        // TikTok Phase 1 (2026-09-14): EVERY auto-lane post also gets an
+        // TikTok Phase 1 (2026-09-14): EVERY auto-lane post gets an
         // inbox-draft row. Per Keenan's format split, TikTok always gets
         // the PHOTO slideshow (suggested audio lives in photo mode) while
         // IG/FB keep their video/carousel formats.
-        return (["instagram", "facebook", "tiktok"] as const).map(
-          (platform) => ({
-            carouselPostId: post.id,
-            platform,
-            accountKey: platform === "tiktok" ? tiktokKey : accountKey,
-            scheduledAt,
-          })
-        );
+        const platforms = account
+          ? (["instagram", "facebook", "tiktok"] as const)
+          : (["tiktok"] as const);
+        return platforms.map((platform) => ({
+          carouselPostId: post.id,
+          platform,
+          accountKey: platform === "tiktok" ? tiktokKey : account!.key,
+          scheduledAt,
+        }));
       });
       await prisma.socialPublish.createMany({
         data: rows,
