@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 1bc036eb
 
 ### In plain English (for Keenan)
 The content machine slimmed way down, on purpose. Research showed our near-zero views weren't caused by HOW we post (APIs aren't penalized) but by posting 8-10 templated posts a day on small accounts — the algorithms read that as mass production and stop showing anyone. So: Ripple now runs 5 lanes a day (Selfie, Texts to Younger Self, Phone Quote, Answer Honestly, Memento) that all still auto-post to Instagram and Facebook, and BWK runs 4 (Memento, Timeline, No One's Watching, Discipline). The TikTok inbox-draft system is gone — it kept hitting TikTok's ~5-pending-drafts-per-day spam cap and jamming the inbox. Instead, the ONLY emails Keenan gets now are the 7 lanes he posts to TikTok by hand (Ripple: Selfie, Texts to Younger Self, Answer Honestly; BWK: all 4). The TikTok metrics scraping plan was scrapped along with it.
