@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 1e875ab2
 
 ### In plain English (for Keenan)
 The Reels we auto-post to Instagram and Facebook were coming out blurry — but the video files we create are pixel-sharp (verified frame-by-frame on today's selfie reel). The blur happens when Meta re-compresses every uploaded Reel: our files were so efficiently compressed (~1.4 Mbps) that Meta's second pass turned the text to mush. Reels now upload as much heavier files (~8 Mbps, still tiny by platform limits), which survive Meta's re-compression visibly sharper. Note: Meta also serves lower-quality versions to pages with low engagement, so some softness on the Facebook page may remain until engagement builds.
