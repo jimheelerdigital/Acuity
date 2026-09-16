@@ -168,7 +168,16 @@ export async function renderSlideshowReel(
       "-map", "[aud]",
       "-c:v", "libx264",
       "-preset", "fast",
-      "-crf", "21",
+      // Target a FAT ~8Mbps master, not CRF (2026-09-16, per Keenan:
+      // "the facebook/insta posts look super blurry"). CRF 21 encoded
+      // these static slides at ~1.4Mbps — pixel-perfect locally, but
+      // Meta ALWAYS re-encodes Reels, and their transcode of a skinny
+      // master turns burned-in text to mush. A high-bitrate source
+      // survives their second compression visibly sharper. ~19MB for a
+      // 19s reel — far under every platform cap.
+      "-b:v", "8M",
+      "-maxrate", "12M",
+      "-bufsize", "16M",
       "-pix_fmt", "yuv420p",
       "-c:a", "aac",
       "-b:a", "128k",

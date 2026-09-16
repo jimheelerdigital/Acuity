@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-16] — Slideshow Reels now upload at ~6× the bitrate so Meta's re-compression stops blurring them
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The Reels we auto-post to Instagram and Facebook were coming out blurry — but the video files we create are pixel-sharp (verified frame-by-frame on today's selfie reel). The blur happens when Meta re-compresses every uploaded Reel: our files were so efficiently compressed (~1.4 Mbps) that Meta's second pass turned the text to mush. Reels now upload as much heavier files (~8 Mbps, still tiny by platform limits), which survive Meta's re-compression visibly sharper. Note: Meta also serves lower-quality versions to pages with low engagement, so some softness on the Facebook page may remain until engagement builds.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: renderSlideshowReel x264 args switched from `-crf 21` to `-b:v 8M -maxrate 12M -bufsize 16M` (~19MB for a 19s reel)
+
+### Manual steps needed
+None — takes effect on the next reel render after deploy.
+
+### Notes
+- Verified the root cause by downloading reels/cmu3n5rki000bkdkeyysio0ie.mp4 (the exact file Meta pulled) and extracting frames — sharp at 1080x1920, so the blur is introduced downstream by Meta's transcode of a low-bitrate master.
+- Already-rendered reels in storage keep their old bitrate; reels are memoized per post (HEAD check on reels/{postId}.mp4), so only new posts get the fat master.
+
+---
+
 ## [2026-09-16] — Volume cut to 9 lanes, TikTok inbox retired, emails only for the posts Keenan hand-posts to TikTok
 
 **Requested by:** Keenan
