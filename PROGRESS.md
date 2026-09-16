@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-09-16] — Volume cut to 9 lanes, TikTok inbox retired, emails only for the posts Keenan hand-posts to TikTok
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+The content machine slimmed way down, on purpose. Research showed our near-zero views weren't caused by HOW we post (APIs aren't penalized) but by posting 8-10 templated posts a day on small accounts — the algorithms read that as mass production and stop showing anyone. So: Ripple now runs 5 lanes a day (Selfie, Texts to Younger Self, Phone Quote, Answer Honestly, Memento) that all still auto-post to Instagram and Facebook, and BWK runs 4 (Memento, Timeline, No One's Watching, Discipline). The TikTok inbox-draft system is gone — it kept hitting TikTok's ~5-pending-drafts-per-day spam cap and jamming the inbox. Instead, the ONLY emails Keenan gets now are the 7 lanes he posts to TikTok by hand (Ripple: Selfie, Texts to Younger Self, Answer Honestly; BWK: all 4). The TikTok metrics scraping plan was scrapped along with it.
+
+### Technical changes (for Jimmy)
+- Prod ContentLane edits (no deploy needed): RETIRED permission, letter, phone-quote-men, protocol, moody-men, future-texts; selfie hoursUtc [5,7]→[5]; spec.tiktokEmail=true flagged on selfie, texts-younger, questions, memento-men, timeline, watching, discipline-real
+- apps/web/src/inngest/functions/social-publish-cron.ts: TikTok removed from enqueue (BWK posts now enqueue nothing) and the whole TikTok publish branch deleted; take is now MAX_POSTS_PER_RUN * 2
+- apps/web/src/lib/content-factory/email.ts: sendCarouselEmail now skips lanes whose ContentLane row lacks spec.tiktokEmail=true; lanes with no ContentLane row (one-offs/specials) and force=true (admin resend) still send
+- apps/web/src/inngest/functions/carousel-metrics-refresh.ts: fetch-tiktok step removed
+- DELETED apps/web/src/lib/content-factory/tiktok-metrics.ts (both the committed video.list version and the uncommitted Apify rewrite)
+- apps/web/src/lib/content-factory/tiktok-publish.ts: TIKTOK_SCOPES reverted to "user.info.basic,video.upload" (video.list broke the entire OAuth connect flow — Display API product not offered to this app); module dormant for a possible Phase-2 DIRECT_POST revival
+- Prod SocialPublish: all 14 remaining PENDING tiktok rows marked SKIPPED
+
+### Manual steps needed
+- [ ] Keenan: post daily from the 7 lane emails to TikTok, using the caption in the email as the caption/title
+- [ ] Keenan: after 2-3 weeks at this volume, judge whether per-post views recovered (the account-suppression diagnostic)
+
+### Notes
+- Reach research (2026-09-16): Meta and TikTok do NOT penalize API-published content (Mosseri on record). Real risks: duplicate content (TikTok unoriginal-content enforcement since Sept 2025; Meta "Rewarding Original Creators" suppresses the whole account), high-volume templated posting on small accounts, and template visual fingerprints. No duplicates ever went live here — the dupes only sat in the inbox.
+- TikTok's `spam_risk_too_many_pending_share` is a documented ~5-pending-drafts-per-rolling-24h cap, NOT an account flag. It made 8 drafts/day structurally impossible anyway.
+- The email gate is data-driven: flipping a lane's email on/off is a spec.tiktokEmail edit on the lanes admin/DB — no deploy.
+- Sunday lane report still works; it just sees IG/FB numbers only (TikTok rows stop accruing).
+- No Inngest resync needed (no cron/trigger changes).
+
+---
+
 ## [2026-09-15] — Sunday lane intelligence report: a weekly autopsy email so Keenan can kill and birth lanes with real numbers
 
 **Requested by:** Keenan

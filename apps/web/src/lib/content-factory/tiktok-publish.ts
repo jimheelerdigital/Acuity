@@ -32,10 +32,17 @@
 const OPEN_API = "https://open.tiktokapis.com/v2";
 const AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
 
-/** Scopes: user info for the "connected as" check, upload for drafts,
- * video.list for the nightly engagement pull (added 2026-09-15 — tokens
- * granted before then lack it; reconnect both accounts to grant it). */
-export const TIKTOK_SCOPES = "user.info.basic,video.upload,video.list";
+/** Scopes: user info for the "connected as" check, upload for drafts.
+ * video.list was briefly added 2026-09-15 for the engagement pull, but
+ * TikTok's authorize page rejects it outright ("scope" error) — the
+ * Display API product isn't offered to this app, so requesting it
+ * breaks the ENTIRE connect flow. Do not re-add video.list unless the
+ * developer portal actually lists the Display API product.
+ *
+ * NOTE (2026-09-16): the inbox-draft flow is RETIRED — TikTok posting
+ * is fully manual from the daily email (spec.tiktokEmail lanes). This
+ * module stays dormant for a possible Phase-2 DIRECT_POST revival. */
+export const TIKTOK_SCOPES = "user.info.basic,video.upload";
 
 /** TikTok photo posts cap at 35 images. */
 export const TIKTOK_MAX_PHOTOS = 35;

@@ -178,6 +178,29 @@ export async function sendCarouselEmail(
     return { emailId: "" };
   }
 
+  // Manual-TikTok lanes ONLY (2026-09-16, per Keenan: "ONLY SEND ME
+  // EMAILS FOR THOSE POSTS, so i know which ones to post on tiktok").
+  // A ContentLane row with spec.tiktokEmail=true marks a lane Keenan
+  // posts to TikTok by hand — those get the daily email. Other DB lanes
+  // auto-post to IG/FB silently with no email. Lanes with NO ContentLane
+  // row (one-offs, quote loops, specials) keep emailing as before, and
+  // force=true (the admin "Resend email" button) always sends.
+  if (!force && post.lane) {
+    const laneRow = await prisma.contentLane.findUnique({
+      where: { key: post.lane },
+      select: { spec: true },
+    });
+    const wantsEmail = laneRow
+      ? (laneRow.spec as Record<string, unknown> | null)?.tiktokEmail === true
+      : true;
+    if (!wantsEmail) {
+      console.log(
+        `[carousel-email] Lane ${post.lane} is IG/FB-only (no tiktokEmail flag) — skipping email for ${carouselPostId}`
+      );
+      return { emailId: "" };
+    }
+  }
+
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
   const lane = post.topicSlug;
 

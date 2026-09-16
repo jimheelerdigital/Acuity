@@ -30,15 +30,15 @@ import { inngest } from "@/inngest/client";
  *    is empty or the render fails, the post falls back to the silent
  *    photo-carousel path — it always ships one way or the other.
  *
- * TIKTOK PHASE 1 (2026-09-14): every auto-lane post also enqueues a
- *    "tiktok" row delivering the slide images to Keenan's TikTok INBOX
- *    as a PHOTO draft (PULL_FROM_URL via the goripple.io image proxy —
- *    TikTok only pulls from the app's verified domain). Per Keenan's
- *    format split, TikTok never gets the MP4: photo mode is where
- *    TikTok's suggested audio lives. He finishes each draft in-app.
- *    Needs TIKTOK_CLIENT_KEY/SECRET env vars + one-time OAuth at
- *    /api/integrations/tiktok/connect (tokens live in SocialToken).
- *    Phase 2 (post-audit): DIRECT_POST with auto_add_music.
+ * TIKTOK INBOX RETIRED (2026-09-16, per Keenan: "get rid of tiktok
+ *    inbox"): the Phase-1 inbox-draft flow (2026-09-14) kept tripping
+ *    TikTok's ~5-pending-drafts-per-24h spam cap and jammed both
+ *    inboxes. TikTok posting is now fully manual: lanes flagged
+ *    spec.tiktokEmail on their ContentLane row get the daily content
+ *    email (see sendCarouselEmail's lane gate) and Keenan posts those
+ *    natively. No tiktok rows are enqueued anymore; tiktok-publish.ts
+ *    and the OAuth connect route stay dormant in case Phase 2
+ *    (post-audit DIRECT_POST) ever revives.
  *
  * DARK BY DEFAULT: everything no-ops unless SOCIAL_AUTOPUBLISH_ENABLED=1.
  * That keeps this cron safe to deploy before the SocialPublish table is
@@ -103,18 +103,15 @@ export const socialPublishCronFn = inngest.createFunction(
       });
       if (candidates.length === 0) return 0;
 
-      const { resolveAccount, laneBrand, PLATFORM_WINDOWS, clampToWindow } =
+      const { resolveAccount, PLATFORM_WINDOWS, clampToWindow } =
         await import("@/lib/content-factory/social-publish");
 
       // Prime-time scheduling (2026-09-15, per Keenan): each platform
       // has its own ET window (see PLATFORM_WINDOWS) and its own queue
       // cursor, seeded after the latest already-pending row so a new
       // batch never front-runs or piles onto the existing queue.
-      const cursors = {} as Record<
-        "instagram" | "facebook" | "tiktok",
-        number
-      >;
-      for (const platform of ["instagram", "facebook", "tiktok"] as const) {
+      const cursors = {} as Record<"instagram" | "facebook", number>;
+      for (const platform of ["instagram", "facebook"] as const) {
         const latest = await prisma.socialPublish.findFirst({
           where: { status: "PENDING", platform },
           orderBy: { scheduledAt: "desc" },
@@ -127,7 +124,7 @@ export const socialPublishCronFn = inngest.createFunction(
             : 0
         );
       }
-      const nextSlot = (platform: "instagram" | "facebook" | "tiktok") => {
+      const nextSlot = (platform: "instagram" | "facebook") => {
         const slot = clampToWindow(new Date(cursors[platform]), platform);
         cursors[platform] = slot.getTime() + PLATFORM_WINDOWS[platform].staggerMs;
         return slot;
@@ -135,31 +132,22 @@ export const socialPublishCronFn = inngest.createFunction(
 
       const rows: {
         carouselPostId: string;
-        platform: "instagram" | "facebook" | "tiktok";
+        platform: "instagram" | "facebook";
         accountKey: string;
         scheduledAt: Date;
       }[] = [];
       for (const post of candidates) {
         // null for BWK lanes until META_BWK_* creds exist (2026-09-14,
-        // per Keenan: "don't post bwk posts across insta/facebook yet")
-        // — those posts get NO IG/FB rows, TikTok only.
+        // per Keenan: "don't post bwk posts across insta/facebook yet").
+        // With the TikTok inbox retired (2026-09-16), BWK posts enqueue
+        // nothing — they reach Keenan via the daily email only.
         const account = await resolveAccount(post.lane);
-        // TikTok accounts are keyed by BRAND, not by which Meta creds
-        // exist — BWK drafts must never leak into the Ripple TikTok
-        // inbox.
-        const tiktokKey = await laneBrand(post.lane);
-        // TikTok Phase 1 (2026-09-14): EVERY auto-lane post gets an
-        // inbox-draft row. Per Keenan's format split, TikTok always gets
-        // the PHOTO slideshow (suggested audio lives in photo mode) while
-        // IG/FB keep their video/carousel formats.
-        const platforms = account
-          ? (["instagram", "facebook", "tiktok"] as const)
-          : (["tiktok"] as const);
-        for (const platform of platforms) {
+        if (!account) continue;
+        for (const platform of ["instagram", "facebook"] as const) {
           rows.push({
             carouselPostId: post.id,
             platform,
-            accountKey: platform === "tiktok" ? tiktokKey : account!.key,
+            accountKey: account.key,
             scheduledAt: nextSlot(platform),
           });
         }
@@ -186,7 +174,7 @@ export const socialPublishCronFn = inngest.createFunction(
           attempts: { lt: MAX_ATTEMPTS },
         },
         orderBy: { scheduledAt: "asc" },
-        take: MAX_POSTS_PER_RUN * 3, // IG + FB (+ TikTok) rows share a scheduledAt
+        take: MAX_POSTS_PER_RUN * 2, // IG + FB rows share a scheduledAt
         select: {
           id: true,
           platform: true,
@@ -212,7 +200,7 @@ export const socialPublishCronFn = inngest.createFunction(
       const { laneWantsReel } = await import(
         "@/lib/content-factory/social-publish"
       );
-      if (row.platform !== "tiktok" && laneWantsReel(row.carouselPost.lane)) {
+      if (laneWantsReel(row.carouselPost.lane)) {
         reelUrl = await step.run(
           `render-reel-${row.carouselPostId}`,
           async (): Promise<string | null> => {
@@ -316,91 +304,6 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
 
-        // ── TikTok: photo-slideshow inbox draft ──────────────────────
-        // Per Keenan's format split: TikTok gets the slide IMAGES (photo
-        // mode is where TikTok's suggested audio lives), never the MP4.
-        // He finishes the post in the app — TikTok's editor suggests
-        // audio, he pastes the caption. "POSTED" here means "delivered
-        // to the inbox"; carouselPost.status is left alone so his pasted
-        // tiktokUrl stays the posted signal.
-        if (row.platform === "tiktok") {
-          const {
-            tiktokConfigured,
-            getTikTokAccessToken,
-            publishTikTokPhotoDraft,
-          } = await import("@/lib/content-factory/tiktok-publish");
-
-          const skip = async (reason: string) => {
-            await prisma.socialPublish.update({
-              where: { id: row.id },
-              data: { status: "SKIPPED", error: reason },
-            });
-            return false;
-          };
-          if (!tiktokConfigured()) return skip("TIKTOK_CLIENT_KEY/SECRET not set");
-
-          try {
-            const accessToken = await getTikTokAccessToken(row.accountKey);
-            if (!accessToken) {
-              return skip(
-                "TikTok not connected — visit /api/integrations/tiktok/connect"
-              );
-            }
-            const { publishId } = await publishTikTokPhotoDraft(
-              accessToken,
-              trimLegacyPickList(post.slides).map((s) => s.imageUrl),
-              post.headline ?? ""
-            );
-            // TikTok pulls the images async — one status check catches
-            // immediate rejections (bad URL, unverified domain) so they
-            // land in the error column instead of a silently absent draft.
-            await new Promise((r) => setTimeout(r, 3000));
-            const { fetchTikTokPublishStatus } = await import(
-              "@/lib/content-factory/tiktok-publish"
-            );
-            const check = await fetchTikTokPublishStatus(
-              accessToken,
-              publishId
-            ).catch(() => null);
-            if (check?.status === "FAILED") {
-              throw new Error(
-                `TikTok rejected the draft: ${check.failReason ?? "unknown reason"}`
-              );
-            }
-
-            await prisma.socialPublish.update({
-              where: { id: row.id },
-              data: {
-                status: "POSTED",
-                externalId: publishId,
-                postedAt: new Date(),
-                attempts: { increment: 1 },
-                error: null,
-              },
-            });
-            console.log(
-              `[social-publish] TIKTOK INBOX DRAFT: "${post.headline}" → ${publishId}`
-            );
-            return { headline: post.headline ?? "", permalink: null };
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            const updated = await prisma.socialPublish.update({
-              where: { id: row.id },
-              data: { attempts: { increment: 1 }, error: message },
-            });
-            if (updated.attempts >= MAX_ATTEMPTS) {
-              await prisma.socialPublish.update({
-                where: { id: row.id },
-                data: { status: "FAILED" },
-              });
-            }
-            console.error(
-              `[social-publish] tiktok failed (attempt ${updated.attempts}) for "${post.headline}": ${message}`
-            );
-            return false;
-          }
-        }
-
         const account = await resolveAccount(post.lane);
         const missing =
           !account ||
@@ -485,8 +388,8 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
       });
-      // typeof guard (not just truthiness): the tiktok skip() helper's
-      // inferred boolean return widens the step union to include `true`.
+      // typeof guard (not just truthiness): the failure paths return
+      // `false`, so the step union is object | false.
       if (ok && typeof ok === "object") {
         published++;
         successes.push({
