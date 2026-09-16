@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 491b499d
+**Commit hash:** f4ee9e31
 
 ### In plain English (for Keenan)
 The Timeline lane's first post ("HOLD THE LINE") came out looking like every other dark-quote BWK post instead of the collage account you screenshotted — the lane had the right content idea but rendered through the generic template. The lane is now a faithful rebuild of that reference format: a bold cover slide ("4 MONTHS TO GET YOUR SH*T TOGETHER" style), then one collage slide per phase — six small dark photos in a 2×3 grid, each stamped with a short action label like "Fix your sleep" or "Train consistently", with an italic serif title band across the middle seam ("MONTH 01 / GET YOURSELF TOGETHER") — and a closing slide with a sober two-sentence reframe. Every post invents its own time span and roadmap so the lane never repeats itself. It still emails you for manual TikTok posting and never auto-posts.
@@ -11483,7 +11483,7 @@ The seed/default for new projects was already US, CA, GB only — AU was only in
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 491b499d
+**Commit hash:** f4ee9e31
 
 ### In plain English (for Keenan)
 
@@ -11802,7 +11802,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 491b499d (closes 092f73b → d9e6630 → e6ce183 → this)
+**Commit hash:** f4ee9e31 (closes 092f73b → d9e6630 → e6ce183 → this)
 
 ### In plain English (for Keenan)
 
@@ -11882,7 +11882,7 @@ All 21 events route through the web `VALID_EVENTS` whitelist; the `value` column
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 491b499d
+**Commit hash:** f4ee9e31
 
 ### In plain English (for Keenan)
 
@@ -11936,7 +11936,7 @@ Meta Pixel events (Lead, CompleteRegistration, StartTrial, Subscribe) now includ
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 491b499d
+**Commit hash:** f4ee9e31
 
 ### In plain English (for Keenan)
 
