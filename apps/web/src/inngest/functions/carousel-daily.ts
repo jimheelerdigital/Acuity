@@ -290,6 +290,226 @@ export const carouselDailyCronFn = inngest.createFunction(
     today.setUTCHours(0, 0, 0, 0);
     const dateStr = today.toISOString().slice(0, 10);
 
+    // ── TIMELINE-GRID lanes (template "grid-timeline", 2026-09-16) ──
+    // Per Keenan ("I wanted it to be an entirely new lane like the
+    // pictures that I'd send and this looks nothing like them"): the
+    // claritiyouneeded-style span roadmap. Cover (9:16 headline photo)
+    // + one SQUARE 2×3 photo-collage slide per phase (6 labeled cells,
+    // italic-serif title band on the seam) + a two-sentence closer
+    // slide. Grid slides are composed with sharp in timeline-grid.ts —
+    // never asked of gpt-image-2.
+    const gridLane =
+      !isLegacyBucket && b
+        ? await step.run("load-grid-lane", async () => {
+            const { prisma } = await import("@/lib/prisma");
+            const row = await prisma.contentLane.findUnique({
+              where: { key: b },
+            });
+            if (
+              !row ||
+              row.status === "RETIRED" ||
+              row.template !== "grid-timeline"
+            )
+              return null;
+            const { parseGridLaneSpec } = await import(
+              "@/lib/content-factory/timeline-grid"
+            );
+            const spec = parseGridLaneSpec(row.spec);
+            if (!spec) {
+              throw new Error(
+                `[carousel-cron] ContentLane "${b}" has an unusable grid spec — fix the row`
+              );
+            }
+            return { key: row.key, spec };
+          })
+        : null;
+    if (gridLane) {
+      const laneKey = gridLane.key;
+      const topic = await step.run("generate-grid-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateTimelineGridTopic } = await import(
+          "@/lib/content-factory/timeline-grid"
+        );
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: thirtyDaysAgo }, lane: laneKey },
+          select: { headline: true },
+        });
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback(laneKey);
+        return generateTimelineGridTopic(
+          gridLane.spec,
+          recent.map((p) => p.headline),
+          feedback
+        );
+      });
+      logger.info(
+        `[carousel-cron] Timeline-grid (${laneKey}) topic: "${topic.title}" (${topic.phases.length} phases)`
+      );
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        await ensureBucket();
+      });
+
+      const gridCover = await step.run("grid-cover", async () => {
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildGridWidePrompt } = await import(
+          "@/lib/content-factory/timeline-grid"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+        const prompt = buildGridWidePrompt(topic.coverScene, false);
+        const raw = await generateImage(prompt);
+        const overlay = await renderMoodyTextOverlay(
+          [topic.title],
+          "COVER",
+          "white"
+        );
+        const composed = await composeSlideWithOverlay(raw, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${topic.slug}/slide-cover.jpg`
+        );
+        return { imageUrl, overlayText: topic.title, imagePrompt: prompt };
+      });
+
+      // One step per phase: the 6 cell photos generate in PARALLEL
+      // (medium quality, ~4¢ each), then sharp composes the collage.
+      const phaseSlides: {
+        imageUrl: string;
+        overlayText: string;
+        imagePrompt: string;
+      }[] = [];
+      for (let p = 0; p < topic.phases.length; p++) {
+        const slide = await step.run(`grid-phase-${p}`, async () => {
+          const { generateGridCellImage, uploadImage } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          const { buildGridCellPrompt, composeTimelineGridSlide } =
+            await import("@/lib/content-factory/timeline-grid");
+          const phase = topic.phases[p];
+          const buffers = await Promise.all(
+            phase.cells.map((c) =>
+              generateGridCellImage(buildGridCellPrompt(c.scene))
+            )
+          );
+          const composed = await composeTimelineGridSlide(
+            buffers.map((buffer, i) => ({
+              buffer,
+              label: phase.cells[i].label,
+            })),
+            phase.header,
+            phase.bandTitle
+          );
+          const imageUrl = await uploadImage(
+            composed,
+            `carousels/${dateStr}/${topic.slug}/slide-phase-${p + 1}.jpg`
+          );
+          return {
+            imageUrl,
+            overlayText: `${phase.header} / ${phase.bandTitle}\n\n${phase.cells
+              .map((c) => c.label)
+              .join("\n")}`,
+            imagePrompt: phase.cells.map((c) => c.scene).join(" | "),
+          };
+        });
+        phaseSlides.push(slide);
+      }
+
+      const gridCloser = await step.run("grid-closer", async () => {
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildGridWidePrompt } = await import(
+          "@/lib/content-factory/timeline-grid"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+        const prompt = buildGridWidePrompt(topic.closerScene, true);
+        const raw = await generateImage(prompt);
+        const overlay = await renderMoodyTextOverlay(
+          [topic.closer],
+          "ITEM",
+          "white"
+        );
+        const composed = await composeSlideWithOverlay(raw, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${topic.slug}/slide-closer.jpg`
+        );
+        return { imageUrl, overlayText: topic.closer, imagePrompt: prompt };
+      });
+
+      const gridResult = await step.run("save-and-email-grid", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildMoodyCaption } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { extractHashtags } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const caption = buildMoodyCaption("men", topic.slug);
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: topic.slug,
+            headline: topic.title.toUpperCase(),
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: laneKey,
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: gridCover.overlayText,
+                  imagePrompt: gridCover.imagePrompt,
+                  imageUrl: gridCover.imageUrl,
+                },
+                ...phaseSlides.map((s, i) => ({
+                  order: i + 1,
+                  kind: "REASON" as const,
+                  overlayText: s.overlayText,
+                  imagePrompt: s.imagePrompt,
+                  imageUrl: s.imageUrl,
+                })),
+                {
+                  order: phaseSlides.length + 1,
+                  kind: "REASON" as const,
+                  overlayText: gridCloser.overlayText,
+                  imagePrompt: gridCloser.imagePrompt,
+                  imageUrl: gridCloser.imageUrl,
+                },
+              ],
+            },
+          },
+        });
+        const { sendCarouselEmail } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendCarouselEmail(post.id);
+        return {
+          postId: post.id,
+          slideCount: phaseSlides.length + 2,
+          // Cover + closer at "high" (~25¢) + 6 medium cells per phase (~4¢).
+          estimatedCostCents: 2 * 25 + topic.phases.length * 6 * 4 + 4,
+        };
+      });
+      logger.info(
+        `[carousel-cron] Generated timeline-grid (${laneKey}) "${topic.title}": ${gridResult.slideCount} slides`
+      );
+      return { generated: 1, bucket: laneKey, ...gridResult };
+    }
+
     // ── SELFIE bucket: realistic first-person photo slideshow ──────
     // 2026-08-25, per Keenan; 2026-08-28: ONE selfie per slideshow;
     // killed 2026-08-28, REVIVED 2026-08-30 ("add the selfie carousel

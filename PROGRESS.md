@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-16] — BWK Timeline lane rebuilt as the photo-collage roadmap format from Keenan's reference screenshots
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 491b499d
+
+### In plain English (for Keenan)
+The Timeline lane's first post ("HOLD THE LINE") came out looking like every other dark-quote BWK post instead of the collage account you screenshotted — the lane had the right content idea but rendered through the generic template. The lane is now a faithful rebuild of that reference format: a bold cover slide ("4 MONTHS TO GET YOUR SH*T TOGETHER" style), then one collage slide per phase — six small dark photos in a 2×3 grid, each stamped with a short action label like "Fix your sleep" or "Train consistently", with an italic serif title band across the middle seam ("MONTH 01 / GET YOURSELF TOGETHER") — and a closing slide with a sober two-sentence reframe. Every post invents its own time span and roadmap so the lane never repeats itself. It still emails you for manual TikTok posting and never auto-posts.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/timeline-grid.ts: `generateTimelineGridTopic` (claude-sonnet-4-6 topic generator producing 3-4 phases × exactly 6 labeled cells, humanizer gate on title+closer), `composeTimelineGridSlide` (sharp-composited 1080×1080 collage: 360×540 cover-cropped cells, Poppins labels, Playfair italic center band), `parseGridLaneSpec`, and the gpt-image-2 prompt builders
+- apps/web/src/lib/content-factory/carousel-generate.ts: added `generateGridCellImage` — 1024×1024 quality "medium" (~4¢/cell vs ~25¢ for the tall slides; cells display at 360×540 so medium is plenty)
+- apps/web/src/inngest/functions/carousel-daily.ts: new `grid-timeline` template branch (load-grid-lane → topic → cover → per-phase collage steps → closer → save-and-email). Intercepts before bucket fallback — previously a non-"moody" template fell through to the "questions" bucket
+- Prod ContentLane row `timeline` updated: template "moody" → "grid-timeline", spec rewritten to `{theme, minPhases: 3, maxPhases: 4, tiktokEmail: true}`
+- No trigger/cron changes — no Inngest resync needed
+
+### Manual steps needed
+None — lane row updated via script this session; deploy done.
+
+### Notes
+- Collage slides are composed deterministically with sharp from 6 individually generated cell photos. NEVER ask gpt-image-2 for a grid/collage directly — it can't be trusted with geometry or text placement.
+- Full post cost ≈ $1.50 (2 tall "high" images + ~18-24 "medium" cells + Claude), same range as a moody pick-list post.
+- Cell photos may include ONE anonymous figure (from behind / silhouette / hands) — face never visible, per the reference account's style.
+- Today's earlier "HOLD THE LINE" post (cmu4ld0r000008cd8wlpwjrco) was left untouched — Keenan is posting it manually.
+- Renderer was validated locally with placeholder cells (/tmp/grid-test.jpg) before spending image credits — band and label geometry match the reference screenshots.
+
+---
+
 ## [2026-09-16] — Slideshow Reels now upload at ~6× the bitrate so Meta's re-compression stops blurring them
 
 **Requested by:** Keenan
@@ -11455,7 +11483,7 @@ The seed/default for new projects was already US, CA, GB only — AU was only in
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 491b499d
 
 ### In plain English (for Keenan)
 
@@ -11774,7 +11802,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING (closes 092f73b → d9e6630 → e6ce183 → this)
+**Commit hash:** 491b499d (closes 092f73b → d9e6630 → e6ce183 → this)
 
 ### In plain English (for Keenan)
 
@@ -11854,7 +11882,7 @@ All 21 events route through the web `VALID_EVENTS` whitelist; the `value` column
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 491b499d
 
 ### In plain English (for Keenan)
 
@@ -11908,7 +11936,7 @@ Meta Pixel events (Lead, CompleteRegistration, StartTrial, Subscribe) now includ
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 491b499d
 
 ### In plain English (for Keenan)
 

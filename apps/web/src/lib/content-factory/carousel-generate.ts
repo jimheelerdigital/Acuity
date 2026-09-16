@@ -425,6 +425,25 @@ export async function generateImage(prompt: string): Promise<Buffer> {
 }
 
 /**
+ * Small square image for timeline-grid CELLS (2026-09-16). Cells
+ * display at 360×540 inside the 2×3 collage, so quality "medium"
+ * (~4¢) is indistinguishable from "high" (~25¢) at that size — a
+ * 24-cell post at "high" would cost ~$6 in cells alone.
+ */
+export async function generateGridCellImage(prompt: string): Promise<Buffer> {
+  const response = await openai().images.generate({
+    model: "gpt-image-2",
+    prompt,
+    n: 1,
+    size: "1024x1024",
+    quality: "medium",
+  });
+  const b64 = response.data?.[0]?.b64_json;
+  if (!b64) throw new Error("gpt-image-2 returned no image data");
+  return Buffer.from(b64, "base64");
+}
+
+/**
  * Generate an image with a REFERENCE image via gpt-image-2's edit
  * endpoint (2026-08-16, per Keenan: the story video's woman looked like
  * a different person in every scene — each scene was generated from
