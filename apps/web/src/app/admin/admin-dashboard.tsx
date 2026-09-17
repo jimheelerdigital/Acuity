@@ -159,8 +159,7 @@ function NavButton({
       style={
         active
           ? {
-              boxShadow:
-                "inset 2px 0 0 0 var(--acuity-primary), 0 0 18px 0 color-mix(in oklch, var(--acuity-primary), transparent 82%)",
+              boxShadow: "inset 2px 0 0 0 var(--acuity-primary)",
             }
           : undefined
       }

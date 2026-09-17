@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-17] — Admin dashboard restyled: calmer colors, more motion
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+The admin dashboard keeps its new futuristic glass look but drops the neon. Colors are now a muted steel-cyan and dusk-violet instead of electric glow, the grid floor is gone, and the whole thing feels cleaner and more premium. In exchange, there's more motion: cards fade up one after another when a tab opens, tab switches animate, clickable cards lift slightly on hover, and the background tints drift very slowly. Nothing about what the dashboard shows or does changed — only how it looks and moves.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/admin/admin-neo.css: full rewrite. Token overrides dialed down (primary oklch chroma 0.14→0.085, secondary 0.22→0.1), near-neutral hairlines/card borders, shadows rebuilt as soft depth with no glow ring. Grid-floor ::after overlay deleted; shell background is now three half-opacity radial tints with a 26s `neo-drift` animation. New motion pass per DESIGN_SYSTEM §6: `neo-fade-up` keyframes, `.acuity-fade-in` (keyed tab wrapper) 340ms easeStandard, `.neo-glass`/`.neo-edge` 420ms easeEnter with 60ms nth-child stagger (first 8 siblings), hover lift (translateY(-2px)) + active scale on button/anchor cards, full prefers-reduced-motion block. `.neo-glow-cyan` kept for markup compat but reduced to a faint text-shadow; live dot and scrollbars de-saturated.
+- apps/web/src/app/admin/admin-dashboard.tsx: NavButton active state — removed the 18px outer glow from the inline boxShadow, keeping only the 2px inset accent bar.
+- No markup, route, schema, or env changes. All tabs re-skin via the existing acuity-* token override architecture.
+
+### Manual steps needed
+- [ ] Keenan: say "push it" to deploy, then eyeball /admin — confirm the calmer palette and stagger animation feel right
+
+### Notes
+- CompetitorsTab's "Track" button has an inset 1px ring using the primary token — it inherits the muted color, so it was left alone.
+- Typecheck run: no new errors; the `searchParams is possibly null` errors in admin-dashboard.tsx are pre-existing baseline noise.
+- Easing/duration values come straight from _design/DESIGN_SYSTEM.md §6 (easeStandard cubic-bezier(.32,.72,0,1), easeEnter cubic-bezier(.16,.9,.3,1), 60ms stagger, "hover lifts, never glow").
+
+---
+
 ## [2026-09-17] — Three Ripple lanes now star their own recurring "avatar" woman on every cover
 
 **Requested by:** Keenan
