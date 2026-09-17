@@ -1570,6 +1570,22 @@ model ContentLane {
   @@index([status])
 }
 
+// Daily Reddit "audience pulse" digest (2026-09-17, per Keenan: fully
+// automated Reddit trend scraping influencing all lanes + freelance
+// lanes). One row per brand per UTC day; themes are Claude-distilled
+// from that day's top posts blended with the trailing 7 days of rows.
+model RedditTrendDigest {
+  id          String   @id @default(cuid())
+  date        DateTime // UTC midnight of the scrape day
+  brand       String // "ripple" | "bwk"
+  themes      Json // [{theme, why, angle, phrases[]}] — distilled, ranked
+  sourcePosts Json // raw scraped {subreddit, titles[]} for audit/debug
+  createdAt   DateTime @default(now())
+
+  @@unique([date, brand])
+  @@index([brand, date])
+}
+
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
 
 model BlogTopicQueue {

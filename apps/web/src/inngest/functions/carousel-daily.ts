@@ -433,7 +433,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
         const prompt = buildGridWidePrompt(topic.closerScene, true);
-        const raw = await generateImage(prompt);
+        const raw = await generateImage(prompt, "item");
         const overlay = await renderMoodyTextOverlay(
           [topic.closer],
           "ITEM",
@@ -712,7 +712,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               Buffer.from(await res.arrayBuffer())
             );
           } else {
-            rawBuffer = await generateImage(prompt);
+            rawBuffer = await generateImage(prompt, "item");
           }
 
           // Keep the text-free raw so captions can be re-rendered later
@@ -1450,7 +1450,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         // chosen slide (2026-08-31 cap).
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
           buildMoodyImagePrompt(imageAudience, item.scene, moody.scheme ?? "light"),
-          moody.avatarSlideIndex === i + 1
+          moody.avatarSlideIndex === i + 1,
+          "item"
         );
         const overlay = await renderMoodyTextOverlay(
           paragraphs,

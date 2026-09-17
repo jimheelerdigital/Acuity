@@ -58,6 +58,7 @@ import { nicheStrategyMemoFn } from "@/inngest/functions/niche-strategy-memo";
 import { nicheDiscoveryFn } from "@/inngest/functions/niche-discovery";
 import { socialPublishCronFn } from "@/inngest/functions/social-publish-cron";
 import { laneIntelligenceReportFn } from "@/inngest/functions/lane-intelligence-report";
+import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -121,6 +122,7 @@ const handler = serve({
     nicheDiscoveryFn,
     socialPublishCronFn,
     laneIntelligenceReportFn,
+    redditTrendsDailyFn,
   ],
 });
 

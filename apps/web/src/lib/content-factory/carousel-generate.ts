@@ -123,7 +123,7 @@ export async function generateCarousel(
   for (let i = 0; i < topic.reasons.length; i++) {
     const reason = topic.reasons[i];
     const prompt = buildImagePrompt(lanePrefix, reason, topic);
-    const rawBuffer = await generateImage(prompt);
+    const rawBuffer = await generateImage(prompt, "item");
     totalCostCents += estimateImageCost();
     const composed = await composeSlide(rawBuffer, reason, "REASON", i + 1);
     const url = await uploadImage(
@@ -407,12 +407,31 @@ export async function getAvatarReference(): Promise<Buffer | null> {
   return _avatarCache;
 }
 
-export async function generateImage(prompt: string): Promise<Buffer> {
+/**
+ * Cost split (2026-09-17, per Keenan: "the FIRST picture of every
+ * generation should use the newest model of chatgpt, and every other
+ * picture in the carousel should revert to the older model"). The
+ * cover is the scroll-stopper — it stays on gpt-image-2; interior
+ * slides render on gpt-image-1 at a fraction of the cost. Baked-TEXT
+ * slides (phone-quote / texts bubbles) intentionally stay on the
+ * cover model: their text is vision-verified and the older model's
+ * typesetting fails verification more often, which costs retries.
+ */
+export type ImageSlot = "cover" | "item";
+
+export async function generateImage(
+  prompt: string,
+  slot: ImageSlot = "cover"
+): Promise<Buffer> {
+  const cover = slot === "cover";
   const response = await openai().images.generate({
-    model: "gpt-image-2",
+    model: cover ? "gpt-image-2" : "gpt-image-1",
     prompt,
     n: 1,
-    size: "1024x1792", // 9:16 portrait — native TikTok carousel dimensions
+    // 9:16 portrait — native TikTok carousel dimensions. gpt-image-1's
+    // tallest size is 1024x1536; composeSlide cover-crops to 1080x1920
+    // downstream either way (same path the edit endpoint already uses).
+    size: cover ? "1024x1792" : "1024x1536",
     // 2026-09-04, per Keenan's TRUST THE PROCESS reference: "images
     // need to be this level of quality" — pin max fidelity instead of
     // the model's default tier. ~3x cost per image (see estimateImageCost).
@@ -420,7 +439,7 @@ export async function generateImage(prompt: string): Promise<Buffer> {
   });
 
   const b64 = response.data?.[0]?.b64_json;
-  if (!b64) throw new Error("gpt-image-2 returned no image data");
+  if (!b64) throw new Error("image generation returned no image data");
   return Buffer.from(b64, "base64");
 }
 
@@ -432,7 +451,8 @@ export async function generateImage(prompt: string): Promise<Buffer> {
  */
 export async function generateGridCellImage(prompt: string): Promise<Buffer> {
   const response = await openai().images.generate({
-    model: "gpt-image-2",
+    // Cells are item slides — older model per the 2026-09-17 cost split.
+    model: "gpt-image-1",
     prompt,
     n: 1,
     size: "1024x1024",
@@ -483,7 +503,8 @@ export async function generateImageWithReference(
  */
 export async function generateMoodyImage(
   prompt: string,
-  withAvatar: boolean
+  withAvatar: boolean,
+  slot: ImageSlot = "cover"
 ): Promise<{ buffer: Buffer; prompt: string }> {
   if (withAvatar) {
     const reference = await getAvatarReference();
@@ -496,7 +517,7 @@ export async function generateMoodyImage(
       };
     }
   }
-  return { buffer: await generateImage(prompt), prompt };
+  return { buffer: await generateImage(prompt, slot), prompt };
 }
 
 /** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. */

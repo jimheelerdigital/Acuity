@@ -136,11 +136,20 @@ export async function generateTimelineGridTopic(
       : "";
   const fb = feedback ? `\n\nENGAGEMENT FEEDBACK:\n${feedback}` : "";
 
+  // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
+  let pulse = "";
+  try {
+    const { getAudiencePulse } = await import("./reddit-trends");
+    pulse = await getAudiencePulse("bwk");
+  } catch {
+    /* soft — generate without the pulse */
+  }
+
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 3000,
-      system: `${SYSTEM}\n\n${HUMAN_VOICE_RULES}`,
+      system: `${SYSTEM}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",

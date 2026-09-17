@@ -151,16 +151,34 @@ async function generateMoodyFamilyTopic(opts: {
   coverCount?: number;
   /** 15-item pick-list posts need more room than the 2000 default. */
   maxTokens?: number;
+  /** Reddit audience-pulse injection (2026-09-17, per Keenan: "this
+   *  influences our daily lanes"). When set, the freshest
+   *  RedditTrendDigest block for the brand is appended to the system
+   *  prompt as angle inspiration. Soft: missing digest / any error =
+   *  no block, generation unchanged. */
+  brand?: "ripple" | "bwk";
 }): Promise<MoodyTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
+  let pulse = "";
+  if (opts.brand) {
+    try {
+      const { getAudiencePulse } = await import("./reddit-trends");
+      pulse = await getAudiencePulse(opts.brand);
+    } catch (err) {
+      console.warn(
+        `[moody-carousel] audience pulse unavailable (${opts.brand}):`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: opts.maxTokens ?? 2000,
       // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
       // humanizer gate still runs on the output below.
-      system: `${opts.system}\n\n${HUMAN_VOICE_RULES}`,
+      system: `${opts.system}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: opts.user }],
     });
 
@@ -492,6 +510,7 @@ export async function generateWatchingTopic(
     minLines: 2,
     minItems: 4,
     maxItems: itemCount,
+    brand: "bwk",
   });
 }
 
@@ -785,6 +804,7 @@ export async function generateMementoTopic(
     minLines: 2,
     minItems: men ? 4 : 3,
     maxItems: itemCount,
+    brand: men ? "bwk" : "ripple",
   });
 }
 
@@ -859,6 +879,7 @@ export async function generateQuestionsTopic(
     minLines: 1,
     minItems: 4,
     maxItems: 6,
+    brand: "ripple",
   });
 }
 
@@ -1873,13 +1894,21 @@ export async function generatePhoneQuoteTopic(
   const purpose =
     audience === "men" ? "phone-quote-men-topic" : "phone-quote-topic";
   const start = Date.now();
+  // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
+  let pulse = "";
+  try {
+    const { getAudiencePulse } = await import("./reddit-trends");
+    pulse = await getAudiencePulse(audience === "men" ? "bwk" : "ripple");
+  } catch {
+    /* soft — generate without the pulse */
+  }
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1000,
       // Men's covers rotate scene families (2026-09-08) — the rolled
       // rule replaces the old fixed night-city-vantage bullet.
-      system: `${PHONE_QUOTE_SYSTEM[audience]}${audience === "men" ? `\n\n${rollMenCoverRule()}` : ""}\n\n${HUMAN_VOICE_RULES}`,
+      system: `${PHONE_QUOTE_SYSTEM[audience]}${audience === "men" ? `\n\n${rollMenCoverRule()}` : ""}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -2418,6 +2447,7 @@ export async function generateDisciplineRealTopic(
     minLines: 2,
     minItems: 4,
     maxItems: itemCount,
+    brand: "bwk",
   });
 }
 
@@ -2607,13 +2637,21 @@ export async function generateTextsTopic(
   const maxMessages = men ? 2 : 4;
   const minMessages = men ? 1 : 2;
   const start = Date.now();
+  // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
+  let pulse = "";
+  try {
+    const { getAudiencePulse } = await import("./reddit-trends");
+    pulse = await getAudiencePulse(men ? "bwk" : "ripple");
+  } catch {
+    /* soft — generate without the pulse */
+  }
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1000,
       // Men's covers rotate the BWK scene families like every other
       // BWK lane.
-      system: `${TEXTS_SYSTEM[lane]}${men ? `\n\n${rollMenCoverRule()}` : ""}\n\n${HUMAN_VOICE_RULES}`,
+      system: `${TEXTS_SYSTEM[lane]}${men ? `\n\n${rollMenCoverRule()}` : ""}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -2789,6 +2827,13 @@ export interface MoodyLaneSpec {
   /** Slide-count range; defaults 4-7 (the 2026-09-14 go-live shape). */
   minItems?: number;
   maxItems?: number;
+  /** Reddit freelance lane (2026-09-17, per Keenan: "we'll have
+   *  another lane per category that freelances posts based on
+   *  reddit"). true = each post's SUBJECT is mandated by the day's
+   *  strongest RedditTrendDigest theme; the spec theme stays the
+   *  lane's standing voice/format brief. Soft: no digest = the lane
+   *  generates from the base theme alone. */
+  redditTheme?: boolean;
 }
 
 /** Parse + validate a ContentLane.spec JSON blob. Returns null when
@@ -2813,6 +2858,7 @@ export function parseMoodyLaneSpec(raw: unknown): MoodyLaneSpec | null {
     named: s.named === true,
     minItems,
     maxItems,
+    redditTheme: s.redditTheme === true,
   };
 }
 
@@ -2829,9 +2875,28 @@ export async function generateSpecTopic(
   feedback?: string | null
 ): Promise<MoodyTopic> {
   const men = spec.audience === "men";
+  const brand = men ? ("bwk" as const) : ("ripple" as const);
   const lo = Math.min(spec.minItems ?? 4, spec.maxItems ?? 7);
   const hi = Math.max(spec.minItems ?? 4, spec.maxItems ?? 7);
   const itemCount = lo + Math.floor(Math.random() * (hi - lo + 1));
+
+  // Reddit freelance lanes (2026-09-17): today's strongest digest
+  // theme becomes a MANDATED SUBJECT — the post is written about what
+  // the audience is actually talking about right now. Soft: no digest
+  // (or any error) = the lane generates from its base theme alone.
+  let mandate = "";
+  if (spec.redditTheme) {
+    try {
+      const { getTopTheme } = await import("./reddit-trends");
+      const t = await getTopTheme(brand);
+      if (t) {
+        mandate = `\n\nTODAY'S MANDATED SUBJECT (from live audience research — write THIS post): "${t.theme}" — ${t.why}\nAngle to lean into: ${t.angle}${t.phrases.length ? `\nTheir own words for it: ${t.phrases.join(", ")}` : ""}\nThe title and every item must live inside this subject while obeying every format and voice rule above. Never mention the research, any community, or trends.`;
+      }
+    } catch {
+      /* soft — generate without the mandate */
+    }
+  }
+
   return generateMoodyFamilyTopic({
     purpose: `lane-${laneKey}-topic`,
     system: buildMoodySystemPrompt(spec.audience, {
@@ -2839,11 +2904,14 @@ export async function generateSpecTopic(
       coverRule: men ? rollMenCoverRule(sceneFamily) : undefined,
       sceneBrief: men ? undefined : WOMEN_SCENE_BRIEFS.dark,
     }),
-    user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
+    user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${mandate}${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: laneKey,
     requireName: spec.named,
     minLines: spec.named ? 2 : 1,
     minItems: Math.min(lo, 4),
     maxItems: itemCount,
+    // Ambient pulse only for ordinary spec lanes — a mandated reddit
+    // lane already carries the strongest theme, no double injection.
+    brand: spec.redditTheme ? undefined : brand,
   });
 }

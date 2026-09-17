@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-09-17] — Reddit trend engine feeds every lane, two new Reddit-driven lanes, and cheaper inner slides
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+Every morning, an hour before the first post generates, the system now reads the top posts from the Reddit communities where our two audiences actually hang out, and distills what they're talking about into a ranked list of themes per brand. All 9 daily lanes now see that list as background inspiration — they keep their own format and voice, but lean toward subjects the audience is genuinely worked up about today. On top of that, two brand-new lanes (one Ripple, one BWK, posting at hour 7) take the single strongest theme of the day and write their whole post about it — a "freelance" lane that covers whatever the audience cares about most, fully auto-posted like the others. The posts never mention Reddit or any community. Separately, per your cost instruction: only the first image of every carousel uses the newest (most expensive) image model now; every inner slide uses the older model at roughly a fifth of the cost. One deliberate exception — the slides with words baked INTO the image (the phone-quote quote screen and the texts bubbles) stay on the newer model, because the older one botches lettering often enough that the retries would eat the savings.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/reddit-trends.ts: RSS-only anonymous scraper (JSON endpoints 403 anonymously; RSS works) with 8s spacing + one 30s retry on 429; `buildDailyDigest(brand)` scrapes ~25 top-of-day posts per subreddit and has claude-sonnet distill 8-10 ranked themes, blending today with the trailing 7 days of stored theme names; `getAudiencePulse(brand)` returns an "AUDIENCE PULSE" system-prompt block (top 6 themes, ≤3-day freshness, influence-only); `getTopTheme(brand)` returns the #1 theme for mandate lanes. All failures soft — lanes generate normally without the pulse.
+- NEW prisma model `RedditTrendDigest` (unique [date, brand], themes Json, sourcePosts Json) — already pushed to prod from main this session.
+- NEW apps/web/src/inngest/functions/reddit-trends-daily.ts: cron "0 4 * * *" (1h before the hour-5 lanes) + manual event "content-factory/reddit.digest"; one digest step per brand. Registered in api/inngest/route.ts — **needs Inngest resync after deploy**.
+- moody-carousel.ts: `generateMoodyFamilyTopic` gained `brand` opt → pulse injected for memento (both brands), questions, watching, discipline-real; inline pulse fetch added to generatePhoneQuoteTopic + generateTextsTopic; `MoodyLaneSpec.redditTheme` flag + `generateSpecTopic` mandate block (top theme becomes the post's MANDATED SUBJECT; no double pulse injection).
+- generate-topic.ts (selfie) + timeline-grid.ts (timeline): same soft pulse fetch.
+- carousel-generate.ts: `generateImage(prompt, slot)` — "cover" → gpt-image-2 @1024x1792, "item" → gpt-image-1 @1024x1536, both quality high; `generateMoodyImage` threads the slot; `generateGridCellImage` → gpt-image-1. Item call sites flipped in carousel-generate.ts (reason slides), carousel-daily.ts (grid closer, selfie aesthetic slides, moody item slides), carousel-one-off.ts (reason slides). Covers, baked-text slides (vision-verified lettering), and edit-endpoint reference calls stay gpt-image-2.
+- Freelance lanes ship as ContentLane rows (no code branch): keys "pulse" (ripple) and "pulse-men" (bwk), template "moody", hoursUtc [7], spec `{..., redditTheme: true, tiktokEmail: true}` — rows created post-deploy so tonight's dispatch doesn't run them against old code.
+
+### Manual steps needed
+- [ ] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root
+- [ ] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — REQUIRED, new cron won't fire without resync
+- [ ] Claude (post-deploy): create the 2 ContentLane rows ("pulse", "pulse-men") in prod
+- [ ] Claude (post-deploy): fire "content-factory/reddit.digest" in prod and verify RedditTrendDigest rows land (also proves Vercel IPs aren't RSS-blocked — local IP worked, Vercel unverified)
+- [ ] Keenan: reply to the avatar approval email — avatar-led covers for texts-younger/questions/memento remain blocked on that
+
+### Notes
+- Reddit JSON endpoints return 403 to anonymous servers; RSS (`/r/X/top/.rss?t=day`) is the reliable anonymous path at ~10 req/min per IP. If Vercel IPs get blocked anyway, next step is routing the scrape through a proxy or authenticated OAuth app.
+- The pulse block is influence-only by design and lane rules always win — Keenan's standing rule that posts never reveal the research source is baked into both the pulse and mandate prompt text.
+- Lane keys are "pulse"/"pulse-men", NOT "reddit-*": the lane key lands in public storage URLs and captions must never hint at Reddit.
+- Baked-text slides staying on gpt-image-2 is a deliberate deviation from the blanket "every other picture" instruction — flagged above; gpt-image-1's lettering failure rate makes vision-verify retries cost more than the model saves.
+- Local ANTHROPIC_API_KEY in the prod env snapshot is invalid (401) — the distill step can only be verified in prod, hence the post-deploy event fire.
+- Hour 7 chosen for both freelance lanes: least-loaded dispatch hour, 3h after the 4 UTC digest.
+
+---
+
 ## [2026-09-16] — BWK Timeline lane rebuilt as the photo-collage roadmap format from Keenan's reference screenshots
 
 **Requested by:** Keenan
