@@ -31,6 +31,15 @@ export const competitorScrapeDailyFn = inngest.createFunction(
       return scrapeAllAccounts();
     });
 
+    // Hashtag top-video feed for the admin "Top Videos" tab (Keenan
+    // recreates these by hand — separate from the mimic-brief pipeline).
+    const hashtags = await step.run("scrape-hashtags", async () => {
+      const { scrapeAllHashtags } = await import(
+        "@/lib/content-factory/hashtag-trends"
+      );
+      return scrapeAllHashtags();
+    });
+
     const briefs = await step.run("write-briefs", async () => {
       const { writeMimicBriefs } = await import(
         "@/lib/content-factory/competitor-mimic"
@@ -38,7 +47,9 @@ export const competitorScrapeDailyFn = inngest.createFunction(
       return writeMimicBriefs();
     });
 
-    logger.info(`[competitor-mimic] ${scraped} accounts scraped, ${briefs} briefs written`);
-    return { scraped, briefs };
+    logger.info(
+      `[competitor-mimic] ${scraped} accounts + ${hashtags} hashtags scraped, ${briefs} briefs written`
+    );
+    return { scraped, hashtags, briefs };
   }
 );

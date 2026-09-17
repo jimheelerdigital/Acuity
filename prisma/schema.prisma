@@ -1633,6 +1633,45 @@ model CompetitorPost {
   @@index([isOutlier, briefAt])
 }
 
+// Hashtag watchlist for the daily "top videos to recreate" feed
+// (2026-09-17, per Keenan: link to the top 3 performing videos that day
+// for specific hashtags so he can recreate them as talking-head videos
+// on BWK and Ripple). TikTok-only — hashtag feeds there carry real view
+// counts; IG hashtag scraping is unreliable and hides views.
+model HashtagWatch {
+  id            String         @id @default(cuid())
+  tag           String // without the #
+  brand         String // "ripple" | "bwk"
+  status        String         @default("ACTIVE") // "ACTIVE" | "PAUSED"
+  lastScrapedAt DateTime?
+  scrapeError   String? // last scrape failure message, null on success
+  createdAt     DateTime       @default(now())
+  videos        HashtagVideo[]
+
+  @@unique([brand, tag])
+  @@index([brand, status])
+}
+
+model HashtagVideo {
+  id           String       @id @default(cuid())
+  watchId      String
+  watch        HashtagWatch @relation(fields: [watchId], references: [id], onDelete: Cascade)
+  externalId   String // TikTok video id
+  url          String
+  authorHandle String?
+  caption      String?      @db.Text
+  views        Int          @default(0)
+  likes        Int          @default(0)
+  comments     Int          @default(0)
+  shares       Int          @default(0)
+  thumbnailUrl String?      @db.Text
+  postedAt     DateTime?
+  scrapedAt    DateTime     @default(now())
+
+  @@unique([watchId, externalId])
+  @@index([watchId, postedAt])
+}
+
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
 
 model BlogTopicQueue {

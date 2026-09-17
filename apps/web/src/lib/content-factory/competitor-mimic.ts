@@ -79,8 +79,9 @@ function str(v: unknown): string {
 /**
  * Run an Apify actor synchronously and return its dataset items.
  * Throws on any HTTP/config failure — callers treat all throws as soft.
+ * (Also used by hashtag-trends.ts for the hashtag top-video feed.)
  */
-async function runApifyActor(
+export async function runApifyActor(
   actorId: string,
   input: object
 ): Promise<Record<string, unknown>[]> {

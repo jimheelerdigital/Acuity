@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-17] — "Top Videos" tab: daily top-3 hashtag videos to recreate
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+There's a new "Top Videos" tab in the admin's Trends section. You add TikTok hashtags you care about (like #selfdiscipline for BWK or #mentalload for Ripple), and every night the system scrapes those hashtag feeds and shows you the top 3 performing recent videos per brand — with a "watch" link, view counts, and how many days ago each was posted. Open the link, see what's working, and recreate it as your own talking-head video. It ranks recent posts (last few days) by views so the same old mega-video doesn't sit at #1 forever. The "Scrape now" button refreshes it on demand; otherwise it updates nightly at 3:30 UTC alongside the competitor scrape.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: NEW models `HashtagWatch` (tag+brand unique, ACTIVE/PAUSED, lastScrapedAt/scrapeError) and `HashtagVideo` (per-watch upserts on externalId, views/likes/comments/shares, postedAt, cascade delete). Purely additive.
+- NEW apps/web/src/lib/content-factory/hashtag-trends.ts: `scrapeHashtag`/`scrapeAllHashtags` via Apify `clockworks~tiktok-hashtag-scraper` (30 videos/tag), plus `getTopVideos(brand)` — top 3 by views among videos posted in the last 3 days, widening to 7 days if scarce, deduped across tags. All failures soft, recorded on the watch row.
+- competitor-mimic.ts: `runApifyActor` now exported (shared with hashtag-trends).
+- competitor-scrape-daily.ts: new `scrape-hashtags` step inside the existing 3:30 UTC function — no new Inngest function, no cron/trigger change, so no resync needed. The existing manual-scrape event covers hashtags too.
+- NEW apps/web/src/app/api/admin/trends/hashtags/route.ts: GET (watches + top-3 per brand) / POST (add, tag normalized lowercase alnum) / PATCH (pause-resume) / DELETE.
+- NEW apps/web/src/app/admin/tabs/TopVideosTab.tsx + registered as "top-videos" under the Trends nav group in admin-dashboard.tsx.
+
+### Manual steps needed
+- [ ] Claude (at "push it" time): run the guarded db:push from main AFTER the code push lands (additive — two new tables)
+- [ ] Keenan: add your first hashtags in the Top Videos tab, hit "Scrape now", confirm links open the right videos
+
+### Notes
+- TikTok-only by design: hashtag feeds there expose real play counts; IG hashtag scraping is unreliable and hides views on static posts.
+- This feed is for HUMAN recreation and deliberately does NOT feed the automated lanes — the competitor-mimic brief pipeline already covers machine-side research. Keeps the two concerns separable.
+- Ranking prefers postedAt within 3 days (fallback 7) rather than pure all-time views, otherwise one evergreen viral video would occupy #1 indefinitely.
+- Apify cost: ~30 results/tag/night on the same pay-per-result billing as the competitor scrape — pennies at a handful of tags.
+
+---
+
 ## [2026-09-17] — Admin dashboard restyled: calmer colors, more motion
 
 **Requested by:** Keenan
