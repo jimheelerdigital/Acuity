@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 4a81d1c4 (+ 82a529ea admin-routes fix)
 
 ### In plain English (for Keenan)
 The texts-younger, questions, and memento lanes each now have their own fictional recurring woman — the three avatar photos you approved ("avatars look good and dialed in"). From the next daily run onward, every cover in those lanes features that lane's same woman: same hair, same build, same style, photographed from behind or the side so her face never shows. Followers of a lane will see a consistent character post after post, which reads like a real person's account instead of random stock-style imagery. Interior slides are unchanged, and the BWK lanes still use you at the same rare ≤8% frequency as before. Editing a cover's text in the admin keeps the right woman in the regenerated image.
@@ -23,7 +23,7 @@ The texts-younger, questions, and memento lanes each now have their own fictiona
 - Supabase storage: promoted the three approved candidates from reference/candidates/ripple-avatar-*.png to live reference/ripple-avatar-*.png (via scripts/promote-avatar-refs.ts, untracked one-off). Already done — no manual step.
 
 ### Manual steps needed
-- [ ] Keenan: say "push it" (deploys with the three held commits; no schema change, no env vars, no Inngest sync needed for this one)
+- [x] Keenan: say "push it" (deploys with the three held commits; no schema change, no env vars, no Inngest sync needed for this one) — pushed + deployed 2026-09-17
 - [ ] Keenan: after the next daily run, eyeball the three lanes' covers — confirm the same woman appears per lane and her face stays hidden
 
 ### Notes
@@ -38,7 +38,7 @@ The texts-younger, questions, and memento lanes each now have their own fictiona
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 9630a653 (API routes landed in 82a529ea — left untracked in the original commit)
 
 ### In plain English (for Keenan)
 The admin dashboard is now the futuristic command center you asked for: deep-space glassmorphic panels, electric cyan + violet neon accents, a grid-floor/aurora backdrop, and glowing highlights — every tab picked up the new look at once. The home screen is a new "Command Center" that shows everything at a glance: business vitals (MRR, signups, trial conversion, churn, AI spend) with trend arrows, a system-status line that turns red if anything's flagged, today's audience pulse per brand, the competitor breakout feed, and a top-content leaderboard. There's also a new Trends section in the sidebar: "Audience Pulse" shows the nightly Reddit digest history with the raw sources, and "Competitors" is where you add the handles to track, pause/remove them, trigger an immediate scrape, and read every mimic brief. Old bookmarked tab links still work — they redirect to the new layout.
@@ -53,7 +53,7 @@ The admin dashboard is now the futuristic command center you asked for: deep-spa
 - OverviewTab.tsx is no longer routed (Command Center replaces it) but left in place — the metrics API "overview" payload it defines is still the vitals source.
 
 ### Manual steps needed
-- [ ] Keenan: say "push it" (deploys together with the competitor-engine commit below)
+- [x] Keenan: say "push it" (deploys together with the competitor-engine commit below) — pushed + deployed 2026-09-17
 - [ ] Keenan: after deploy, hard-refresh /admin and sanity-check the new look on your machine — oklch/color-mix needs a modern browser
 
 ### Notes
@@ -67,7 +67,7 @@ The admin dashboard is now the futuristic command center you asked for: deep-spa
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** c966140f
 
 ### In plain English (for Keenan)
 You can now feed the system TikTok and Instagram handles of accounts that are crushing it in niches like ours. Every night it scrapes their recent posts, spots the breakouts (anything doing 3x or better that account's normal views), and Claude writes a "mimic brief" for each one — what the hook mechanic is, what format it uses, why it lands, and how we'd run the same play in our own voice. All 9 daily lanes see the top briefs as background inspiration, and two brand-new lanes (one Ripple, one BWK) build their entire daily post around the single strongest brief — rotating through briefs so they never repeat. Nothing is ever copied word-for-word and the posts never mention the source account or that any research happened. If the scraper token isn't set up yet, everything just generates normally without the competitor signal.
@@ -81,11 +81,11 @@ You can now feed the system TikTok and Instagram handles of accounts that are cr
 - Mimic lanes ship as ContentLane rows (no code branch): keys "muse" (ripple) and "muse-men" (bwk), template "moody", spec `{..., mimicBrief: true, tiktokEmail: true}` — created post-deploy.
 
 ### Manual steps needed
-- [ ] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root
+- [x] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root — done 2026-09-17
 - [ ] Keenan: add `APIFY_TOKEN` to Vercel env (competitor scrape soft-skips until it exists), then redeploy or wait for the next deploy
-- [ ] Claude (post-deploy): `npm run db:push` from main — CompetitorAccount/CompetitorPost are additive
-- [ ] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — new cron won't fire without resync
-- [ ] Claude (post-deploy): create the 2 ContentLane rows ("muse", "muse-men") in prod
+- [x] Claude (post-deploy): `npm run db:push` from main — CompetitorAccount/CompetitorPost are additive — done (guard passed, additive)
+- [x] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — new cron won't fire without resync — done ("Successfully registered", modified:true)
+- [x] Claude (post-deploy): create the 2 ContentLane rows ("muse", "muse-men") in prod — done via scripts/seed-pulse-muse-lanes.ts
 - [ ] Keenan: add the first competitor handles in the new admin Competitors tab, hit "Scrape now"
 
 ### Notes
@@ -100,7 +100,7 @@ You can now feed the system TikTok and Instagram handles of accounts that are cr
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 0d595a96
 
 ### In plain English (for Keenan)
 Every morning, an hour before the first post generates, the system now reads the top posts from the Reddit communities where our two audiences actually hang out, and distills what they're talking about into a ranked list of themes per brand. All 9 daily lanes now see that list as background inspiration — they keep their own format and voice, but lean toward subjects the audience is genuinely worked up about today. On top of that, two brand-new lanes (one Ripple, one BWK, posting at hour 7) take the single strongest theme of the day and write their whole post about it — a "freelance" lane that covers whatever the audience cares about most, fully auto-posted like the others. The posts never mention Reddit or any community. Separately, per your cost instruction: only the first image of every carousel uses the newest (most expensive) image model now; every inner slide uses the older model at roughly a fifth of the cost. One deliberate exception — the slides with words baked INTO the image (the phone-quote quote screen and the texts bubbles) stay on the newer model, because the older one botches lettering often enough that the retries would eat the savings.
@@ -115,11 +115,11 @@ Every morning, an hour before the first post generates, the system now reads the
 - Freelance lanes ship as ContentLane rows (no code branch): keys "pulse" (ripple) and "pulse-men" (bwk), template "moody", hoursUtc [7], spec `{..., redditTheme: true, tiktokEmail: true}` — rows created post-deploy so tonight's dispatch doesn't run them against old code.
 
 ### Manual steps needed
-- [ ] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root
-- [ ] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — REQUIRED, new cron won't fire without resync
-- [ ] Claude (post-deploy): create the 2 ContentLane rows ("pulse", "pulse-men") in prod
-- [ ] Claude (post-deploy): fire "content-factory/reddit.digest" in prod and verify RedditTrendDigest rows land (also proves Vercel IPs aren't RSS-blocked — local IP worked, Vercel unverified)
-- [ ] Keenan: reply to the avatar approval email — avatar-led covers for texts-younger/questions/memento remain blocked on that
+- [x] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root — done 2026-09-17
+- [x] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — REQUIRED, new cron won't fire without resync — done
+- [x] Claude (post-deploy): create the 2 ContentLane rows ("pulse", "pulse-men") in prod — done via scripts/seed-pulse-muse-lanes.ts
+- [ ] Fire "content-factory/reddit.digest" in prod and verify RedditTrendDigest rows land (also proves Vercel IPs aren't RSS-blocked — local IP worked, Vercel unverified). BLOCKED for Claude: INNGEST_EVENT_KEY/SIGNING_KEY are marked sensitive in Vercel (not pullable) — either Keenan invokes reddit-trends-daily from the Inngest dashboard, or tonight's 4 UTC cron is the verification; check the Audience Pulse admin tab after. Pulse lanes fall back soft to the base theme if no digest exists.
+- [x] Keenan: reply to the avatar approval email — avatar-led covers for texts-younger/questions/memento remain blocked on that — approved; shipped in 4a81d1c4
 
 ### Notes
 - Reddit JSON endpoints return 403 to anonymous servers; RSS (`/r/X/top/.rss?t=day`) is the reliable anonymous path at ~10 req/min per IP. If Vercel IPs get blocked anyway, next step is routing the scrape through a proxy or authenticated OAuth app.
@@ -597,7 +597,7 @@ The four BWK pick-list lanes (memento-men, moody-men, watching, protocol) no lon
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 22507a14
 
 ### In plain English (for Keenan)
 Locked in the per-platform format split: Instagram/Facebook get the music videos (content intact), TikTok gets photo slideshow drafts — because TikTok's photo mode is where its suggested/auto audio lives. Now EVERY auto-published post (not just memento/selfie) drops its slide images into your TikTok inbox as a ready-to-post photo draft; you open it, TikTok suggests a sound, you paste the caption and post. After the TikTok app audit passes, Phase 2 makes these fully hands-off with TikTok auto-adding music.
