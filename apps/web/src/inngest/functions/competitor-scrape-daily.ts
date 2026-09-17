@@ -40,6 +40,15 @@ export const competitorScrapeDailyFn = inngest.createFunction(
       return scrapeAllHashtags();
     });
 
+    // Daily "top 3 per hashtag" email to Keenan — fresh links right
+    // after the scrape, so morning inbox = today's recreate list.
+    const emailedTags = await step.run("send-top-videos-email", async () => {
+      const { sendTopVideosEmail } = await import(
+        "@/lib/content-factory/hashtag-trends"
+      );
+      return sendTopVideosEmail();
+    });
+
     const briefs = await step.run("write-briefs", async () => {
       const { writeMimicBriefs } = await import(
         "@/lib/content-factory/competitor-mimic"
@@ -48,8 +57,8 @@ export const competitorScrapeDailyFn = inngest.createFunction(
     });
 
     logger.info(
-      `[competitor-mimic] ${scraped} accounts + ${hashtags} hashtags scraped, ${briefs} briefs written`
+      `[competitor-mimic] ${scraped} accounts + ${hashtags} hashtags scraped, ${briefs} briefs written, top-videos email covered ${emailedTags} tags`
     );
-    return { scraped, hashtags, briefs };
+    return { scraped, hashtags, emailedTags, briefs };
   }
 );

@@ -14,7 +14,7 @@
 **Commit hash:** (pending — held until "push it")
 
 ### In plain English (for Keenan)
-There's a new "Top Videos" tab in the admin's Trends section. You add TikTok hashtags you care about (like #selfdiscipline for BWK or #mentalload for Ripple), and every night the system scrapes those hashtag feeds and shows you the top 3 performing recent videos per brand — with a "watch" link, view counts, and how many days ago each was posted. Open the link, see what's working, and recreate it as your own talking-head video. It ranks recent posts (last few days) by views so the same old mega-video doesn't sit at #1 forever. The "Scrape now" button refreshes it on demand; otherwise it updates nightly at 3:30 UTC alongside the competitor scrape.
+There's a new "Top Videos" tab in the admin's Trends section, plus a daily email. You add TikTok hashtags you care about (like #selfdiscipline for BWK or #mentalload for Ripple), and every night the system scrapes those hashtag feeds. Then it emails you "Top hashtag videos to recreate" — the top 3 videos per hashtag, each with a watch link, views, likes, comments, shares, and engagement rate — so your morning inbox is that day's recreate list. The admin tab shows the same data on demand. It ranks recent posts (last few days) by views so the same old mega-video doesn't sit at #1 forever. The "Scrape now" button refreshes on demand; otherwise everything runs nightly at 3:30 UTC alongside the competitor scrape.
 
 ### Technical changes (for Jimmy)
 - prisma/schema.prisma: NEW models `HashtagWatch` (tag+brand unique, ACTIVE/PAUSED, lastScrapedAt/scrapeError) and `HashtagVideo` (per-watch upserts on externalId, views/likes/comments/shares, postedAt, cascade delete). Purely additive.
@@ -22,6 +22,7 @@ There's a new "Top Videos" tab in the admin's Trends section. You add TikTok has
 - competitor-mimic.ts: `runApifyActor` now exported (shared with hashtag-trends).
 - competitor-scrape-daily.ts: new `scrape-hashtags` step inside the existing 3:30 UTC function — no new Inngest function, no cron/trigger change, so no resync needed. The existing manual-scrape event covers hashtags too.
 - NEW apps/web/src/app/api/admin/trends/hashtags/route.ts: GET (watches + top-3 per brand) / POST (add, tag normalized lowercase alnum) / PATCH (pause-resume) / DELETE.
+- hashtag-trends.ts also exports `sendTopVideosEmail()` — top 3 per hashtag (views-ranked, 3-day window, 7-day fallback) grouped by brand, sent via Resend to CONTENT_FACTORY_EMAIL_TO right after the nightly scrape (new `send-top-videos-email` step). Skips silently with no watches/videos/RESEND_API_KEY.
 - NEW apps/web/src/app/admin/tabs/TopVideosTab.tsx + registered as "top-videos" under the Trends nav group in admin-dashboard.tsx.
 
 ### Manual steps needed

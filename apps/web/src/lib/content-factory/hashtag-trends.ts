@@ -224,3 +224,139 @@ export async function getTopVideos(
   const fresh = await pick(3);
   return fresh.length >= take ? fresh : pick(7);
 }
+
+// ── Daily "top 3 per hashtag" email ─────────────────────────────────
+// (per Keenan: "send me an email with the top 3 videos by
+// view/engagement per hashtag that day — that's what i'm looking for")
+
+const FROM_ADDRESS =
+  process.env.CONTENT_FACTORY_EMAIL_FROM ?? '"Ripple Content" <content@getacuity.io>';
+const TO_ADDRESS =
+  process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital.com";
+
+const BRAND_LABEL: Record<string, string> = { ripple: "Ripple", bwk: "BWK" };
+
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Email the top 3 videos per watched hashtag (ranked by views among
+ * videos posted in the last 3 days, widening to 7 when scarce), grouped
+ * by brand. Runs right after the nightly hashtag scrape so the links
+ * are fresh. Skips silently when there are no watches or no videos.
+ * Returns the number of hashtags included.
+ */
+export async function sendTopVideosEmail(): Promise<number> {
+  const { prisma } = await import("@/lib/prisma");
+  const watches = await prisma.hashtagWatch.findMany({
+    where: { status: "ACTIVE" },
+    orderBy: [{ brand: "asc" }, { tag: "asc" }],
+    select: { id: true, tag: true, brand: true },
+  });
+  if (watches.length === 0) return 0;
+
+  const topForWatch = async (watchId: string) => {
+    const pick = (sinceDays: number) =>
+      prisma.hashtagVideo.findMany({
+        where: {
+          watchId,
+          postedAt: { gte: new Date(Date.now() - sinceDays * 24 * 3600 * 1000) },
+        },
+        orderBy: { views: "desc" },
+        take: 3,
+        select: {
+          url: true,
+          authorHandle: true,
+          caption: true,
+          views: true,
+          likes: true,
+          comments: true,
+          shares: true,
+          postedAt: true,
+        },
+      });
+    const fresh = await pick(3);
+    return fresh.length >= 3 ? fresh : pick(7);
+  };
+
+  // brand → array of per-tag HTML sections
+  const sections: Record<string, string[]> = {};
+  let tagsIncluded = 0;
+
+  for (const w of watches) {
+    const vids = await topForWatch(w.id);
+    if (vids.length === 0) continue;
+    tagsIncluded++;
+    const rows = vids
+      .map((v, i) => {
+        const engagement = v.likes + v.comments + v.shares;
+        const rate = v.views > 0 ? ((engagement / v.views) * 100).toFixed(1) : "0";
+        const caption = v.caption
+          ? esc(v.caption.length > 120 ? `${v.caption.slice(0, 120)}…` : v.caption)
+          : "(no caption)";
+        const age = v.postedAt
+          ? `${Math.max(0, Math.floor((Date.now() - v.postedAt.getTime()) / 86_400_000))}d ago`
+          : "";
+        return `<li style="margin-bottom:10px">
+          <strong>#${i + 1}</strong> — <a href="${v.url}">watch on TikTok</a>${
+            v.authorHandle ? ` (@${esc(v.authorHandle)})` : ""
+          }<br/>
+          ${caption}<br/>
+          <span style="color:#666">${fmt(v.views)} views · ${fmt(v.likes)} likes · ${fmt(
+            v.comments
+          )} comments · ${fmt(v.shares)} shares · ${rate}% engagement${
+            age ? ` · ${age}` : ""
+          }</span>
+        </li>`;
+      })
+      .join("\n");
+    (sections[w.brand] ??= []).push(
+      `<h3 style="margin:16px 0 6px">#${esc(w.tag)}</h3><ol style="margin:0;padding-left:20px">${rows}</ol>`
+    );
+  }
+
+  if (tagsIncluded === 0) {
+    console.log("[hashtag-trends] no videos to email yet — skipping");
+    return 0;
+  }
+
+  let resend: ReturnType<typeof import("@/lib/resend").getResendClient>;
+  try {
+    const { getResendClient } = await import("@/lib/resend");
+    resend = getResendClient(); // throws when RESEND_API_KEY is unset
+  } catch {
+    console.warn("[hashtag-trends] RESEND_API_KEY not set — skipping email");
+    return 0;
+  }
+
+  const body = Object.entries(sections)
+    .map(
+      ([brand, tags]) =>
+        `<h2 style="margin:24px 0 4px">${BRAND_LABEL[brand] ?? brand}</h2>${tags.join("\n")}`
+    )
+    .join("\n");
+
+  const dateLabel = new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: TO_ADDRESS,
+    subject: `🎬 Top hashtag videos to recreate — ${dateLabel}`,
+    html: `<p>Last night's top performers for your watched hashtags — top 3 per tag by views, recent posts only. Open, study the hook, recreate.</p>${body}`,
+  });
+  if (error) {
+    console.error(`[hashtag-trends] email send failed: ${error.message}`);
+    return 0;
+  }
+  console.log(`[hashtag-trends] emailed top videos for ${tagsIncluded} hashtags`);
+  return tagsIncluded;
+}
