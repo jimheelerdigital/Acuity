@@ -11,7 +11,7 @@ import OpenAI from "openai";
 import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
-import type { QuoteSurface, TextsLane } from "./moody-carousel";
+import type { QuoteSurface, TextsLane, RippleAvatarLane } from "./moody-carousel";
 import { buildCaption } from "./caption";
 
 let _openai: OpenAI | null = null;
@@ -379,32 +379,38 @@ export function buildSelfieImagePrompt(opts: {
 }
 
 /**
- * Keenan's avatar reference photo for BWK lone-man scenes (2026-08-30,
- * per Keenan: "use me as an avatar for pictures that need one").
- * Uploaded once to Supabase storage; cached per lambda instance.
- * Returns null (and the caller falls back to plain generation) if the
- * file is missing — the avatar is an enhancement, never a dependency.
+ * Avatar reference photos, cached per lambda instance. The default
+ * path is Keenan's BWK reference (2026-08-30, per Keenan: "use me as
+ * an avatar for pictures that need one"); the Ripple lane avatars
+ * (2026-09-17) pass their own per-lane paths. Returns null (and the
+ * caller falls back to plain generation) if the file is missing — the
+ * avatar is an enhancement, never a dependency.
  */
 const AVATAR_REFERENCE_PATH = "reference/bwk-avatar.jpg";
-let _avatarCache: Buffer | null | undefined;
-export async function getAvatarReference(): Promise<Buffer | null> {
-  if (_avatarCache !== undefined) return _avatarCache;
+const _avatarCache = new Map<string, Buffer | null>();
+export async function getAvatarReference(
+  path: string = AVATAR_REFERENCE_PATH
+): Promise<Buffer | null> {
+  const cached = _avatarCache.get(path);
+  if (cached !== undefined) return cached;
+  let result: Buffer | null = null;
   try {
     const { supabase } = await import("@/lib/supabase.server");
     const { data, error } = await supabase.storage
       .from("content-factory")
-      .download(AVATAR_REFERENCE_PATH);
+      .download(path);
     if (error || !data) {
-      console.warn(`[carousel] Avatar reference missing: ${error?.message}`);
-      _avatarCache = null;
+      console.warn(
+        `[carousel] Avatar reference missing (${path}): ${error?.message}`
+      );
     } else {
-      _avatarCache = Buffer.from(await data.arrayBuffer());
+      result = Buffer.from(await data.arrayBuffer());
     }
   } catch (e) {
-    console.warn(`[carousel] Avatar reference fetch failed:`, e);
-    _avatarCache = null;
+    console.warn(`[carousel] Avatar reference fetch failed (${path}):`, e);
   }
-  return _avatarCache;
+  _avatarCache.set(path, result);
+  return result;
 }
 
 /**
@@ -475,7 +481,14 @@ export async function generateImageWithReference(
   prompt: string,
   reference: Buffer
 ): Promise<Buffer> {
-  const file = await OpenAI.toFile(reference, "reference.jpg", { type: "image/jpeg" });
+  // BWK reference is JPEG; Ripple lane references are PNG — sniff the
+  // magic bytes so the upload's content type is honest either way.
+  const isPng = reference[0] === 0x89 && reference[1] === 0x50;
+  const file = await OpenAI.toFile(
+    reference,
+    isPng ? "reference.png" : "reference.jpg",
+    { type: isPng ? "image/png" : "image/jpeg" }
+  );
   const response = await openai().images.edit({
     model: "gpt-image-2",
     image: file,
@@ -504,17 +517,36 @@ export async function generateImageWithReference(
 export async function generateMoodyImage(
   prompt: string,
   withAvatar: boolean,
-  slot: ImageSlot = "cover"
+  slot: ImageSlot = "cover",
+  // Ripple lane avatars (2026-09-17): when set (and withAvatar is
+  // true), the lane's fictional recurring woman is the reference
+  // instead of the BWK Keenan avatar.
+  rippleAvatarLane?: RippleAvatarLane
 ): Promise<{ buffer: Buffer; prompt: string }> {
   if (withAvatar) {
-    const reference = await getAvatarReference();
-    if (reference) {
-      const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
-      const full = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
-      return {
-        buffer: await generateImageWithReference(full, reference),
-        prompt: full,
-      };
+    if (rippleAvatarLane) {
+      const { buildRippleAvatarPrompt, rippleAvatarReferencePath } =
+        await import("./moody-carousel");
+      const reference = await getAvatarReference(
+        rippleAvatarReferencePath(rippleAvatarLane)
+      );
+      if (reference) {
+        const full = `${prompt}\n${buildRippleAvatarPrompt(rippleAvatarLane)}`;
+        return {
+          buffer: await generateImageWithReference(full, reference),
+          prompt: full,
+        };
+      }
+    } else {
+      const reference = await getAvatarReference();
+      if (reference) {
+        const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
+        const full = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
+        return {
+          buffer: await generateImageWithReference(full, reference),
+          prompt: full,
+        };
+      }
     }
   }
   return { buffer: await generateImage(prompt, slot), prompt };
@@ -760,7 +792,19 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // one of the known lead-ins) so the model isn't told to match a
     // photo that isn't attached.
     if (slide.imagePrompt.includes("reference photo")) {
-      const reference = await getAvatarReference();
+      // Ripple avatar-led lanes (2026-09-17) re-attach the LANE's
+      // reference, not the BWK one — otherwise an edit would swap the
+      // lane's recurring woman for Keenan.
+      const { RIPPLE_AVATAR_LANES, rippleAvatarReferencePath } = await import(
+        "./moody-carousel"
+      );
+      const editLane = slide.carouselPost.lane ?? "";
+      const refPath = (RIPPLE_AVATAR_LANES as readonly string[]).includes(
+        editLane
+      )
+        ? rippleAvatarReferencePath(editLane as RippleAvatarLane)
+        : undefined;
+      const reference = await getAvatarReference(refPath);
       if (reference) {
         rawBuffer = await generateImageWithReference(slide.imagePrompt, reference);
       } else {

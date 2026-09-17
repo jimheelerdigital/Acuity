@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-17] — Three Ripple lanes now star their own recurring "avatar" woman on every cover
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+The texts-younger, questions, and memento lanes each now have their own fictional recurring woman — the three avatar photos you approved ("avatars look good and dialed in"). From the next daily run onward, every cover in those lanes features that lane's same woman: same hair, same build, same style, photographed from behind or the side so her face never shows. Followers of a lane will see a consistent character post after post, which reads like a real person's account instead of random stock-style imagery. Interior slides are unchanged, and the BWK lanes still use you at the same rare ≤8% frequency as before. Editing a cover's text in the admin keeps the right woman in the regenerated image.
+
+### Technical changes (for Jimmy)
+- moody-carousel.ts: NEW `RIPPLE_AVATAR_LANES` (["texts-younger","questions","memento"]), `RippleAvatarLane` type, `rippleAvatarReferencePath()`, per-lane identity strings (mirroring scripts/generate-avatar-refs.ts), and `buildRippleAvatarPrompt(lane)` — opens with "EXCEPTION to the no-people rule" and contains the literal "reference photo" phrase so recomposeSlide's existing marker + cut-fallback logic both work.
+- carousel-generate.ts: `getAvatarReference()` generalized from a single BWK-path cache to `getAvatarReference(path?)` with a per-path Map cache; `generateMoodyImage()` gains an optional `rippleAvatarLane` param that routes to the lane's reference + ripple prompt block; `generateImageWithReference()` now sniffs PNG magic bytes (BWK ref is JPEG, ripple refs are PNG); `recomposeSlide()`'s "reference photo" branch picks the reference by `carouselPost.lane` so edits re-attach the lane's woman, not Keenan.
+- carousel-daily.ts: texts-younger cover call flips from `withAvatar=false` to avatar-led (future-texts/BWK unchanged); the shared moody cover loop computes `rippleAvatarLane` for questions/memento and passes avatar-led for EVERY cover candidate (vs. BWK's ≤8% roll, first candidate only). Item slides untouched.
+- Supabase storage: promoted the three approved candidates from reference/candidates/ripple-avatar-*.png to live reference/ripple-avatar-*.png (via scripts/promote-avatar-refs.ts, untracked one-off). Already done — no manual step.
+
+### Manual steps needed
+- [ ] Keenan: say "push it" (deploys with the three held commits; no schema change, no env vars, no Inngest sync needed for this one)
+- [ ] Keenan: after the next daily run, eyeball the three lanes' covers — confirm the same woman appears per lane and her face stays hidden
+
+### Notes
+- The avatar is an enhancement, never a dependency: if a reference file is missing from storage, generation falls back to a plain people-free scene (same behavior BWK has always had).
+- Ripple avatar frequency is deliberately NOT rolled: these are fictional lane characters, so avatar-led means every cover. The ≤8% cap only ever existed because the BWK avatar is Keenan's actual face.
+- Identity text lives in both moody-carousel.ts and scripts/generate-avatar-refs.ts — if a reference is ever regenerated, keep the two in sync or the model fights the photo.
+- The live reference uploads are inert until this code deploys; nothing running in prod reads reference/ripple-avatar-*.png yet.
+
+---
+
 ## [2026-09-17] — Admin dashboard revamped: neon "Command Center" with a Trends section
 
 **Requested by:** Keenan

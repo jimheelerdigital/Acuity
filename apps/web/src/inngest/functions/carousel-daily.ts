@@ -1109,9 +1109,15 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
+        // Avatar-led cover (2026-09-17, per Keenan — "avatars look
+        // good and dialed in"): texts-younger covers always feature
+        // the lane's recurring woman via her reference photo.
+        // future-texts (BWK) stays avatar-free.
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
           buildMoodyImagePrompt(variant, tx.coverScene, "dark"),
-          false
+          textsLane === "texts-younger",
+          "cover",
+          textsLane === "texts-younger" ? "texts-younger" : undefined
         );
         const overlay = await renderMoodyTextOverlay([tx.hook], "ITEM", "white");
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
@@ -1387,6 +1393,16 @@ export const carouselDailyCronFn = inngest.createFunction(
       ? moody.coverScenes
       : [moody.coverScene];
 
+    // Avatar-led Ripple lanes (2026-09-17, per Keenan — "avatars look
+    // good and dialed in"): questions and memento covers ALWAYS
+    // feature the lane's fictional recurring woman. Unlike BWK's ≤8%
+    // Keenan roll, these are lane characters, so every cover candidate
+    // is avatar-led. Item slides stay avatar-free.
+    const rippleAvatarLane =
+      bucket === "questions" || bucket === "memento"
+        ? (bucket as "questions" | "memento")
+        : undefined;
+
     const moodyCovers: {
       imageUrl: string;
       overlayText: string;
@@ -1403,15 +1419,19 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
-        // Avatar only when this post won the ≤8% roll AND the cover is
-        // the chosen slide (2026-08-31 cap) — first candidate only.
+        // BWK: avatar only when this post won the ≤8% roll AND the
+        // cover is the chosen slide (2026-08-31 cap) — first candidate
+        // only. Ripple avatar lanes: every cover candidate.
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
           buildMoodyImagePrompt(
             imageAudience,
             coverScenes[c],
             moody.scheme ?? "light"
           ),
-          moody.avatarSlideIndex === 0 && c === 0
+          (moody.avatarSlideIndex === 0 && c === 0) ||
+            rippleAvatarLane !== undefined,
+          "cover",
+          rippleAvatarLane
         );
         const overlay = await renderMoodyTextOverlay(
           [moody.title],

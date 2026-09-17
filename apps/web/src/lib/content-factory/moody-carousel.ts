@@ -652,6 +652,56 @@ export const MOODY_AVATAR_PROMPT = [
   "Photorealistic, luxury editorial quality.",
 ].join("\n");
 
+// ─── Ripple lane avatars (2026-09-17, per Keenan) ─────────────────────
+// Three FICTIONAL recurring women — one per lane — so each lane's
+// covers feature the same character post after post ("avatars look
+// good and dialed in"). Unlike the BWK avatar (Keenan himself, capped
+// at ≤8% of posts), these are lane characters: EVERY cover for these
+// lanes is avatar-led. References were generated face-NOT-visible by
+// scripts/generate-avatar-refs.ts and live at
+// content-factory/reference/ripple-avatar-<lane>.png.
+
+export const RIPPLE_AVATAR_LANES = [
+  "texts-younger",
+  "questions",
+  "memento",
+] as const;
+export type RippleAvatarLane = (typeof RIPPLE_AVATAR_LANES)[number];
+
+export function rippleAvatarReferencePath(lane: RippleAvatarLane): string {
+  return `reference/ripple-avatar-${lane}.png`;
+}
+
+// Identity text mirrors the reference-generation prompts in
+// scripts/generate-avatar-refs.ts — keep the two in sync if a
+// reference is ever regenerated.
+const RIPPLE_AVATAR_IDENTITIES: Record<RippleAvatarLane, string> = {
+  "texts-younger":
+    "early 40s, long espresso-brown wavy hair falling past her shoulders, average realistic build; her style is cozy feminine everyday — an oversized knit cardigan over a soft tee, relaxed jeans, or similar",
+  questions:
+    "late 40s, shoulder-length blonde hair (a soft lob, one side tucked behind her ear), tall with an average build; her style is clean and minimal — a light linen shirt, straight-leg trousers, simple sneakers, or similar",
+  memento:
+    "mid 40s, loose curly copper-auburn hair, average curvy build; her style is warm and earthy — a chunky oatmeal knit sweater, a soft scarf, ankle boots, or similar",
+};
+
+/**
+ * Appended to buildMoodyImagePrompt output when generating a Ripple
+ * avatar-led cover. Like MOODY_AVATAR_PROMPT, the literal phrase
+ * "reference photo" doubles as the marker recomposeSlide uses to
+ * re-attach the reference on edits, and the block opens with
+ * "EXCEPTION to the no-people rule" so recomposeSlide's
+ * reference-missing fallback can cut it cleanly.
+ */
+export function buildRippleAvatarPrompt(lane: RippleAvatarLane): string {
+  return [
+    `EXCEPTION to the no-people rule: this image features exactly ONE woman — ${RIPPLE_AVATAR_IDENTITIES[lane]}. Dress her in that style, adapted naturally to the scene and weather.`,
+    "IDENTITY: that woman IS the woman in the attached reference photo — the same person: same hair, same build, same skin tone, same presence.",
+    "HER FACE IS NOT VISIBLE: photograph her from behind or from the side-back — no eyes, nose, or mouth visible. Her identity reads through her hair, build, posture, and clothes.",
+    "Transfer her IDENTITY ONLY. Completely IGNORE the reference photo's setting, pose, lighting, and framing — build the scene described above from scratch and place her in it naturally.",
+    "She belongs in the scene as a real person caught in a candid moment — natural, unposed, never modeling for the camera.",
+  ].join("\n");
+}
+
 // ─── Captions: pure discovery hashtags, cloned from the reference ─────
 // (2026-08-28, per Keenan — no question on these two funnels.)
 const MEN_CORE_TAGS = ["#fyp", "#motivation", "#mindset", "#mentality"];
