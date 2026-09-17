@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-17] — Admin dashboard revamped: neon "Command Center" with a Trends section
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+The admin dashboard is now the futuristic command center you asked for: deep-space glassmorphic panels, electric cyan + violet neon accents, a grid-floor/aurora backdrop, and glowing highlights — every tab picked up the new look at once. The home screen is a new "Command Center" that shows everything at a glance: business vitals (MRR, signups, trial conversion, churn, AI spend) with trend arrows, a system-status line that turns red if anything's flagged, today's audience pulse per brand, the competitor breakout feed, and a top-content leaderboard. There's also a new Trends section in the sidebar: "Audience Pulse" shows the nightly Reddit digest history with the raw sources, and "Competitors" is where you add the handles to track, pause/remove them, trigger an immediate scrape, and read every mimic brief. Old bookmarked tab links still work — they redirect to the new layout.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/app/admin/admin-neo.css: `[data-theme="dark"][data-admin-neo]` token override (cyan h=195 primary, violet h=305 secondary, translucent deep-space surfaces, glow shadows) — re-skins all existing tabs via the acuity-* token system with zero markup changes. Utility classes: .neo-shell-bg (fixed aurora + 44px grid), .neo-glass, .neo-edge, .neo-title, .neo-glow-cyan, .neo-live-dot.
+- admin/layout.tsx: imports the CSS, adds `data-admin-neo` + the shell background layer; admin-topbar.tsx restyled (gradient "Ripple Command" wordmark, LIVE pulse dot, heavier blur).
+- admin-dashboard.tsx: new nav grouping (Pulse / Trends / Content / Growth / Money / Users / System), new tabs "command" (default), "pulse", "competitors"; legacy "overview" (+ growth/revenue/red-flags) redirect to "command"; neon active states on sidebar + mobile chips.
+- NEW tabs/CommandCenterTab.tsx (vitals via the existing tab=overview metrics API + trends summary fetch), tabs/AudiencePulseTab.tsx (digest history + source audit), tabs/CompetitorsTab.tsx (account CRUD, pause/resume/delete, "Scrape now", outlier feed with expandable briefs).
+- NEW API routes (getServerSession + isAdmin pattern): /api/admin/trends/summary, /api/admin/trends/pulse, /api/admin/trends/competitors (GET/POST/PATCH/DELETE), /api/admin/trends/competitors/scrape (fires the Inngest event).
+- Shared components restyled: MetricCard/ChartCard gain .neo-edge + backdrop blur, DrilldownModal glass panel, DataTable + DrilldownModal sticky headers moved to card-bg-raised (translucent bg was illegible when sticky), TimeRangeSelector neon active pill, EmptyState blur.
+- OverviewTab.tsx is no longer routed (Command Center replaces it) but left in place — the metrics API "overview" payload it defines is still the vitals source.
+
+### Manual steps needed
+- [ ] Keenan: say "push it" (deploys together with the competitor-engine commit below)
+- [ ] Keenan: after deploy, hard-refresh /admin and sanity-check the new look on your machine — oklch/color-mix needs a modern browser
+
+### Notes
+- The re-skin strategy was token override, not per-tab edits: every existing tab consumes acuity-* vars, so one scoped CSS file re-themes all of them. Only the shell + 3 new tabs were ground-up.
+- The Trends tabs read the RedditTrendDigest + Competitor tables from the two pipeline commits — they render friendly empty states until the first digest/scrape lands.
+- Pre-existing tsc errors in adlab/experiments and integrations-settings are untouched baseline noise (build has ignoreBuildErrors: true); all new files typecheck clean.
+
+---
+
 ## [2026-09-17] — Competitor mimic engine: auto-scrape winning accounts, brief every lane, two new "muse" lanes
 
 **Requested by:** Keenan

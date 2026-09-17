@@ -51,7 +51,7 @@ export default function MetricCard({
   }
 
   const baseClass =
-    "rounded-acuity-lg bg-acuity-card-bg border border-acuity-card-border shadow-acuity-soft flex flex-col justify-between min-h-[160px]";
+    "neo-edge rounded-acuity-lg bg-acuity-card-bg border border-acuity-card-border shadow-acuity-soft backdrop-blur-md flex flex-col justify-between min-h-[160px]";
   const Wrapper = onClick ? "button" : "div";
   const wrapperProps = onClick
     ? {

@@ -10,7 +10,9 @@ import TimeRangeSelector, {
 } from "./components/TimeRangeSelector";
 
 // Lazy-load tab components so only the active tab's code ships
-const OverviewTab = dynamic(() => import("./tabs/OverviewTab"));
+const CommandCenterTab = dynamic(() => import("./tabs/CommandCenterTab"));
+const AudiencePulseTab = dynamic(() => import("./tabs/AudiencePulseTab"));
+const CompetitorsTab = dynamic(() => import("./tabs/CompetitorsTab"));
 const UsersTab = dynamic(() => import("./tabs/UsersTab"));
 const AdsTab = dynamic(() => import("./tabs/AdsTab"));
 const ContentTab = dynamic(() => import("./tabs/ContentTab"));
@@ -29,7 +31,9 @@ type NavItem = { key: TabKey; label: string };
 type NavGroup = { eyebrow: string; items: NavItem[] };
 
 const TAB_KEYS = [
-  "overview",
+  "command",
+  "pulse",
+  "competitors",
   "mri",
   "funnel-analytics",
   "users",
@@ -45,13 +49,25 @@ const TAB_KEYS = [
 
 type TabKey = (typeof TAB_KEYS)[number];
 
+// Command Center layout (2026-09-17, Keenan-approved grouping):
+// PULSE is the glanceable home; TRENDS holds the two research feeds
+// (Reddit audience pulse + competitor mimic) that drive the content
+// factory; the rest are the operational groups from the old layout.
 const NAV_GROUPS: NavGroup[] = [
   {
     eyebrow: "Pulse",
+    items: [{ key: "command", label: "Command Center" }],
+  },
+  {
+    eyebrow: "Trends",
     items: [
-      { key: "overview", label: "Overview" },
-      { key: "mri", label: "MRI" },
+      { key: "pulse", label: "Audience Pulse" },
+      { key: "competitors", label: "Competitors" },
     ],
+  },
+  {
+    eyebrow: "Content",
+    items: [{ key: "content", label: "Content" }],
   },
   {
     eyebrow: "Growth",
@@ -62,14 +78,6 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    eyebrow: "Users",
-    items: [
-      { key: "users", label: "Users" },
-      { key: "engagement-distribution", label: "Engagement" },
-      { key: "feature-adoption", label: "Feature adoption" },
-    ],
-  },
-  {
     eyebrow: "Money",
     items: [
       { key: "business-metrics", label: "Business" },
@@ -77,8 +85,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    eyebrow: "Content",
-    items: [{ key: "content", label: "Content" }],
+    eyebrow: "Users",
+    items: [
+      { key: "users", label: "Users" },
+      { key: "mri", label: "MRI" },
+      { key: "engagement-distribution", label: "Engagement" },
+      { key: "feature-adoption", label: "Feature adoption" },
+    ],
   },
   {
     eyebrow: "System",
@@ -101,11 +114,12 @@ const TAB_LABELS: Record<TabKey, string> = Object.fromEntries(
 // Legacy tab keys redirect to their new merged parents so bookmarks
 // and saved URLs from the old 16-tab layout still work.
 const LEGACY_REDIRECT: Record<string, TabKey> = {
-  growth: "overview",
+  overview: "command",
+  growth: "command",
   engagement: "users",
-  revenue: "overview",
+  revenue: "command",
   funnel: "funnel-analytics",
-  "red-flags": "overview",
+  "red-flags": "command",
   acquisition: "ads",
   "content-factory": "content",
   "auto-blog": "content",
@@ -116,7 +130,13 @@ const LEGACY_REDIRECT: Record<string, TabKey> = {
 };
 
 // Tabs that don't use the global time range selector
-const NO_TIME_RANGE: Set<string> = new Set(["users", "content", "settings"]);
+const NO_TIME_RANGE: Set<string> = new Set([
+  "users",
+  "content",
+  "settings",
+  "pulse",
+  "competitors",
+]);
 
 function NavButton({
   item,
@@ -131,11 +151,19 @@ function NavButton({
     <button
       onClick={() => onSelect(item.key)}
       aria-current={active ? "page" : undefined}
-      className={`w-full rounded-acuity-sm px-3 py-2 text-left text-[14px] font-medium transition duration-acuity-base ease-acuity-standard ${
+      className={`relative w-full rounded-acuity-sm px-3 py-2 text-left text-[14px] font-medium transition duration-acuity-base ease-acuity-standard ${
         active
-          ? "bg-acuity-grad-mix text-white"
+          ? "bg-acuity-primary-soft text-acuity-primary-hi"
           : "text-acuity-text-sec hover:bg-acuity-bg-sub hover:text-acuity-text"
       }`}
+      style={
+        active
+          ? {
+              boxShadow:
+                "inset 2px 0 0 0 var(--acuity-primary), 0 0 18px 0 color-mix(in oklch, var(--acuity-primary), transparent 82%)",
+            }
+          : undefined
+      }
     >
       {item.label}
     </button>
@@ -146,10 +174,10 @@ export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const rawTab = searchParams.get("tab") ?? "overview";
+  const rawTab = searchParams.get("tab") ?? "command";
   const redirected = LEGACY_REDIRECT[rawTab];
   const tabParam = (redirected ?? rawTab) as TabKey;
-  const activeTab = TAB_KEYS.includes(tabParam) ? tabParam : "overview";
+  const activeTab = TAB_KEYS.includes(tabParam) ? tabParam : "command";
 
   const [timeRange, setTimeRange] = useState<TimeRange>(
     (searchParams.get("range") as TimeRange) ?? "7d"
@@ -199,10 +227,16 @@ export default function AdminDashboard() {
   const showTimeRange = !NO_TIME_RANGE.has(activeTab);
 
   return (
-    <div className="min-h-screen bg-acuity-bg text-acuity-text">
+    <div className="min-h-screen text-acuity-text">
       <div className="mx-auto flex w-full max-w-[1720px]">
         {/* ── Sidebar (desktop) ─────────────────────────────────── */}
-        <aside className="sticky top-[68px] hidden h-[calc(100vh-68px)] w-[230px] shrink-0 overflow-y-auto border-r border-acuity-line px-4 py-8 lg:block">
+        <aside
+          className="sticky top-[68px] hidden h-[calc(100vh-68px)] w-[230px] shrink-0 overflow-y-auto border-r border-acuity-line px-4 py-8 backdrop-blur-md lg:block"
+          style={{
+            background:
+              "color-mix(in oklch, var(--acuity-bg), transparent 45%)",
+          }}
+        >
           <nav className="space-y-6">
             {NAV_GROUPS.map((group) => (
               <div key={group.eyebrow}>
@@ -264,7 +298,7 @@ export default function AdminDashboard() {
                 onClick={() => setTab(item.key)}
                 className={`shrink-0 rounded-acuity-pill px-4 py-2 text-[13px] font-medium transition ${
                   activeTab === item.key
-                    ? "bg-acuity-grad-mix text-white"
+                    ? "bg-acuity-primary-soft text-acuity-primary-hi ring-1 ring-inset ring-[color-mix(in_oklch,var(--acuity-primary),transparent_60%)]"
                     : "bg-acuity-bg-sub text-acuity-text-sec hover:text-acuity-text"
                 }`}
               >
@@ -285,8 +319,8 @@ export default function AdminDashboard() {
           {/* Page header */}
           <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <h1
-              className="font-display font-bold text-acuity-text"
-              style={{ fontSize: 30, letterSpacing: "-0.8px", lineHeight: 1 }}
+              className="neo-title font-display font-bold"
+              style={{ fontSize: 30, letterSpacing: "-0.8px", lineHeight: 1.1 }}
             >
               {TAB_LABELS[activeTab]}
             </h1>
@@ -303,9 +337,11 @@ export default function AdminDashboard() {
 
           {/* Tab content */}
           <div className="acuity-fade-in" key={activeTab}>
-            {activeTab === "overview" && (
-              <OverviewTab start={startStr} end={endStr} />
+            {activeTab === "command" && (
+              <CommandCenterTab start={startStr} end={endStr} />
             )}
+            {activeTab === "pulse" && <AudiencePulseTab />}
+            {activeTab === "competitors" && <CompetitorsTab />}
             {activeTab === "mri" && <MRITab start={startStr} end={endStr} />}
             {activeTab === "users" && <UsersTab />}
             {activeTab === "ads" && <AdsTab start={startStr} end={endStr} />}
