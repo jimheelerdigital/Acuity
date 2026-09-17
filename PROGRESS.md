@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 3e4d54d0 (+ ec6e0a8d daily email)
 
 ### In plain English (for Keenan)
 There's a new "Top Videos" tab in the admin's Trends section, plus a daily email. You add TikTok hashtags you care about (like #selfdiscipline for BWK or #mentalload for Ripple), and every night the system scrapes those hashtag feeds. Then it emails you "Top hashtag videos to recreate" — the top 3 videos per hashtag, each with a watch link, views, likes, comments, shares, and engagement rate — so your morning inbox is that day's recreate list. The admin tab shows the same data on demand. It ranks recent posts (last few days) by views so the same old mega-video doesn't sit at #1 forever. The "Scrape now" button refreshes on demand; otherwise everything runs nightly at 3:30 UTC alongside the competitor scrape.
@@ -26,7 +26,7 @@ There's a new "Top Videos" tab in the admin's Trends section, plus a daily email
 - NEW apps/web/src/app/admin/tabs/TopVideosTab.tsx + registered as "top-videos" under the Trends nav group in admin-dashboard.tsx.
 
 ### Manual steps needed
-- [ ] Claude (at "push it" time): run the guarded db:push from main AFTER the code push lands (additive — two new tables)
+- [x] Claude: guarded db:push run from main 2026-09-17 — additive, two new tables live
 - [ ] Keenan: add your first hashtags in the Top Videos tab, hit "Scrape now", confirm links open the right videos
 
 ### Notes
@@ -41,7 +41,7 @@ There's a new "Top Videos" tab in the admin's Trends section, plus a daily email
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 91dc2d47
 
 ### In plain English (for Keenan)
 The admin dashboard keeps its new futuristic glass look but drops the neon. Colors are now a muted steel-cyan and dusk-violet instead of electric glow, the grid floor is gone, and the whole thing feels cleaner and more premium. In exchange, there's more motion: cards fade up one after another when a tab opens, tab switches animate, clickable cards lift slightly on hover, and the background tints drift very slowly. Nothing about what the dashboard shows or does changed — only how it looks and moves.
