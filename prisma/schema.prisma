@@ -1586,6 +1586,53 @@ model RedditTrendDigest {
   @@index([brand, date])
 }
 
+// Competitor accounts we track and mimic (2026-09-17, per Keenan: "a
+// section where I can put in social media handles performing super well
+// in similar niches/areas that we can mimic... fully automated, auto
+// scrape"). Scraped daily via Apify (TikTok + Instagram); outlier posts
+// get Claude "mimic briefs" that feed the dashboard, the daily lanes'
+// inspiration block, and the two mimic-mandate lanes.
+model CompetitorAccount {
+  id            String    @id @default(cuid())
+  handle        String // without the @
+  platform      String // "tiktok" | "instagram"
+  brand         String // "ripple" | "bwk" — which of our brands mimics it
+  niche         String? // free-text ("midlife women self-care", "male discipline")
+  status        String    @default("ACTIVE") // "ACTIVE" | "PAUSED"
+  notes         String?   @db.Text
+  lastScrapedAt DateTime?
+  scrapeError   String? // last scrape failure message, null on success
+  createdAt     DateTime  @default(now())
+  posts         CompetitorPost[]
+
+  @@unique([platform, handle])
+  @@index([brand, status])
+}
+
+model CompetitorPost {
+  id           String            @id @default(cuid())
+  accountId    String
+  account      CompetitorAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  externalId   String // platform-native post id
+  url          String
+  caption      String?           @db.Text
+  views        Int               @default(0)
+  likes        Int               @default(0)
+  comments     Int               @default(0)
+  shares       Int               @default(0)
+  thumbnailUrl String?           @db.Text
+  postedAt     DateTime?
+  scrapedAt    DateTime          @default(now())
+  outlierScore Float             @default(0) // views ÷ account median views
+  isOutlier    Boolean           @default(false)
+  brief        Json? // Claude mimic brief {hook, format, whyItWorks, howWeApply, phrases[]}
+  briefAt      DateTime?
+  mandatedAt   DateTime? // when a mimic-mandate lane last built a post from this brief
+
+  @@unique([accountId, externalId])
+  @@index([isOutlier, briefAt])
+}
+
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
 
 model BlogTopicQueue {

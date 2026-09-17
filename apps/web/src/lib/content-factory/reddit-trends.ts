@@ -285,6 +285,10 @@ export async function buildDailyDigest(
  * Uses the freshest digest ≤3 days old; returns "" when none exists so
  * callers can append unconditionally. Influence only — every lane's
  * locked format/voice rules still win.
+ *
+ * 2026-09-17: also appends the competitor "WHAT'S WINNING" mimic-signal
+ * block (competitor-mimic.ts) — one wiring point feeds every lane both
+ * research streams. Both halves are independently soft.
  */
 export async function getAudiencePulse(brand: "ripple" | "bwk"): Promise<string> {
   const { prisma } = await import("@/lib/prisma");
@@ -293,17 +297,29 @@ export async function getAudiencePulse(brand: "ripple" | "bwk"): Promise<string>
     where: { brand, date: { gte: cutoff } },
     orderBy: { date: "desc" },
   });
-  if (!row || !Array.isArray(row.themes)) return "";
-  const themes = (row.themes as unknown as RedditTheme[]).slice(0, 6);
-  if (themes.length === 0) return "";
-  return [
-    "",
-    "AUDIENCE PULSE — what this audience is feeling right now (from live audience research):",
-    ...themes.map(
-      (t) => `- ${t.theme}: ${t.why} Angle: ${t.angle}${t.phrases.length ? ` (their words: ${t.phrases.join(", ")})` : ""}`
-    ),
-    "Let one of these currents inform today's ANGLE if it fits naturally — the lane's own format, theme, and voice rules always come first. Never mention the research, communities, or trends themselves.",
-  ].join("\n");
+  let pulse = "";
+  if (row && Array.isArray(row.themes)) {
+    const themes = (row.themes as unknown as RedditTheme[]).slice(0, 6);
+    if (themes.length > 0) {
+      pulse = [
+        "",
+        "AUDIENCE PULSE — what this audience is feeling right now (from live audience research):",
+        ...themes.map(
+          (t) => `- ${t.theme}: ${t.why} Angle: ${t.angle}${t.phrases.length ? ` (their words: ${t.phrases.join(", ")})` : ""}`
+        ),
+        "Let one of these currents inform today's ANGLE if it fits naturally — the lane's own format, theme, and voice rules always come first. Never mention the research, communities, or trends themselves.",
+      ].join("\n");
+    }
+  }
+
+  let mimic = "";
+  try {
+    const { getMimicSignal } = await import("./competitor-mimic");
+    mimic = await getMimicSignal(brand);
+  } catch {
+    /* soft — pulse alone is fine */
+  }
+  return `${pulse}${mimic}`;
 }
 
 /** Strongest theme of the day for the freelance lanes (null = no digest). */

@@ -2834,6 +2834,12 @@ export interface MoodyLaneSpec {
    *  lane's standing voice/format brief. Soft: no digest = the lane
    *  generates from the base theme alone. */
   redditTheme?: boolean;
+  /** Competitor mimic lane (2026-09-17, per Keenan: "use the content
+   *  of others to generate two new lanes and posts daily"). true =
+   *  each post runs the MECHANIC (hook/format/beat) of the day's
+   *  strongest competitor mimic brief in our own voice. Soft: no
+   *  brief = the lane generates from the base theme alone. */
+  mimicBrief?: boolean;
 }
 
 /** Parse + validate a ContentLane.spec JSON blob. Returns null when
@@ -2859,6 +2865,7 @@ export function parseMoodyLaneSpec(raw: unknown): MoodyLaneSpec | null {
     minItems,
     maxItems,
     redditTheme: s.redditTheme === true,
+    mimicBrief: s.mimicBrief === true,
   };
 }
 
@@ -2897,6 +2904,21 @@ export async function generateSpecTopic(
     }
   }
 
+  // Mimic lanes (2026-09-17): the day's strongest competitor mimic
+  // brief mandates the MECHANIC — hook shape, format, emotional beat —
+  // never the words. Soft: no brief = base theme alone.
+  if (spec.mimicBrief && !mandate) {
+    try {
+      const { getTopMimicBrief } = await import("./competitor-mimic");
+      const b = await getTopMimicBrief(brand);
+      if (b) {
+        mandate = `\n\nTODAY'S MANDATED MECHANIC (from live creative research — build THIS post around it):\nHook mechanic: ${b.hook}\nFormat: ${b.format}\nWhy it lands: ${b.whyItWorks}\nHow we run it: ${b.howWeApply}${b.phrases.length ? `\nAudience words for the feeling: ${b.phrases.join(", ")}` : ""}\nRun this mechanic inside the lane's own subject matter and voice — never copy anyone's wording, never mention the research, any creator, or trends.`;
+      }
+    } catch {
+      /* soft — generate without the mandate */
+    }
+  }
+
   return generateMoodyFamilyTopic({
     purpose: `lane-${laneKey}-topic`,
     system: buildMoodySystemPrompt(spec.audience, {
@@ -2910,8 +2932,9 @@ export async function generateSpecTopic(
     minLines: spec.named ? 2 : 1,
     minItems: Math.min(lo, 4),
     maxItems: itemCount,
-    // Ambient pulse only for ordinary spec lanes — a mandated reddit
-    // lane already carries the strongest theme, no double injection.
-    brand: spec.redditTheme ? undefined : brand,
+    // Ambient pulse only for ordinary spec lanes — a mandated lane
+    // (reddit or mimic) already carries its strongest signal, no
+    // double injection.
+    brand: spec.redditTheme || spec.mimicBrief ? undefined : brand,
   });
 }

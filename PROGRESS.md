@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-09-17] — Competitor mimic engine: auto-scrape winning accounts, brief every lane, two new "muse" lanes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+You can now feed the system TikTok and Instagram handles of accounts that are crushing it in niches like ours. Every night it scrapes their recent posts, spots the breakouts (anything doing 3x or better that account's normal views), and Claude writes a "mimic brief" for each one — what the hook mechanic is, what format it uses, why it lands, and how we'd run the same play in our own voice. All 9 daily lanes see the top briefs as background inspiration, and two brand-new lanes (one Ripple, one BWK) build their entire daily post around the single strongest brief — rotating through briefs so they never repeat. Nothing is ever copied word-for-word and the posts never mention the source account or that any research happened. If the scraper token isn't set up yet, everything just generates normally without the competitor signal.
+
+### Technical changes (for Jimmy)
+- NEW prisma models `CompetitorAccount` (unique [platform, handle], status ACTIVE/PAUSED, brand routing) and `CompetitorPost` (unique [accountId, externalId], engagement counts, outlierScore, brief Json, mandatedAt for lane rotation). **NOT yet pushed to prod — needs `npm run db:push` from main (additive only).**
+- NEW apps/web/src/lib/content-factory/competitor-mimic.ts: Apify REST scrape (`clockworks~tiktok-profile-scraper` + `apify~instagram-scraper`, run-sync-get-dataset-items, 240s timeout), outlier detection (views ÷ account median ≥ 3 AND ≥ 10k views), claude-sonnet mimic briefs (max 8/run), `getMimicSignal(brand)` ("WHAT'S WINNING" block, top 3 briefs ≤7 days), `getTopMimicBrief(brand)` with mandatedAt nulls-first rotation. All failures soft — no APIFY_TOKEN just skips.
+- NEW apps/web/src/inngest/functions/competitor-scrape-daily.ts: cron "30 3 * * *" (before the 4 UTC Reddit digest) + manual event "content-factory/competitor.scrape". Registered in api/inngest/route.ts — **needs Inngest resync after deploy**.
+- reddit-trends.ts: `getAudiencePulse` now appends the mimic signal via soft dynamic import — single wiring point, all 9 lanes get both research streams with zero generator edits.
+- moody-carousel.ts: `MoodyLaneSpec.mimicBrief` flag + mandate block in `generateSpecTopic` (runs the brief's MECHANIC in the lane's own voice; skips double pulse injection).
+- Mimic lanes ship as ContentLane rows (no code branch): keys "muse" (ripple) and "muse-men" (bwk), template "moody", spec `{..., mimicBrief: true, tiktokEmail: true}` — created post-deploy.
+
+### Manual steps needed
+- [ ] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root
+- [ ] Keenan: add `APIFY_TOKEN` to Vercel env (competitor scrape soft-skips until it exists), then redeploy or wait for the next deploy
+- [ ] Claude (post-deploy): `npm run db:push` from main — CompetitorAccount/CompetitorPost are additive
+- [ ] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — new cron won't fire without resync
+- [ ] Claude (post-deploy): create the 2 ContentLane rows ("muse", "muse-men") in prod
+- [ ] Keenan: add the first competitor handles in the new admin Competitors tab, hit "Scrape now"
+
+### Notes
+- Lane keys are "muse"/"muse-men", NOT "mimic-*" or "competitor-*" — lane keys land in public storage URLs and must never hint at the research source (same rule as the "pulse" lanes).
+- Brief rotation uses `mandatedAt` nulls-first ordering so the muse lanes cycle through briefs instead of hammering the top one daily.
+- With the pulse + muse lanes, Ripple is at 7 posts/day and BWK at 6 — approaching the 8-10/day threshold that triggered the 09-16 slim-down. Keenan said volume is OK; flag before adding more.
+- Apify scrape is fire-and-forget sync REST (no webhooks) — a slow actor run past 240s fails soft and retries next night.
+
+---
+
 ## [2026-09-17] — Reddit trend engine feeds every lane, two new Reddit-driven lanes, and cheaper inner slides
 
 **Requested by:** Keenan
