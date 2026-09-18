@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-18] — Ripple images now rotate five visual worlds instead of one
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+Ripple's photos kept coming out as the same warm lamplit-interior theme (tea, silk, candles) because every lane pulled from one scene pool. Now every Ripple post rolls one of five distinct visual worlds for its cover — quiet home after dark, night gardens, dusk water, evening city, or a warm still-life — and the slides inside a post must mix at least three of those worlds. Same soft feminine brand, far more visual variety, exactly like the rotation that already keeps BWK's covers fresh.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts (all changes in this file):
+  - New `WOMEN_COVER_FAMILIES` (5 families) + `rollWomenCoverRule()` — the women's mirror of `rollMenCoverRule`, rolled fresh per generation, supports `forcedFamily` pinning
+  - Rewrote `WOMEN_SCENE_BRIEFS` (light + dark) from one interior pool into the same 5 families, with a FAMILY-SPREAD RULE: item scenes in one post must span ≥3 families
+  - Wired the roll into every live Ripple lane: questions, permission (cover only — items stay theme-matched thresholds), spec lanes (pulse/muse), phone-quote women, texts-younger, and the women's moody path
+  - Memento keeps its dusk-coast cover lock (the winning "do the math" beach identity) but its dark item-scene pool gains beyond-the-house locations
+  - Letter lane untouched — stationery covers are its identity
+- No schema, route, or Inngest changes
+
+### Manual steps needed
+None — takes effect on the next nightly generation after deploy.
+
+### Notes
+- Root cause: Ripple's scheme was pinned to "dark" on 2026-09-03, so every lane drew covers from the single warm-interior pool; BWK never had this problem because its covers roll 4 families
+- The five families were designed to stay inside the existing brand rules: all DIM (white text must read), soft/feminine, no people ever
+- `rollWomenCoverRule()` runs inside builders called from memoized Inngest steps, so replays keep the same family (same behavior as the men's roll)
+
+---
+
 ## [2026-09-18] — "Texts to my younger self" covers can no longer be vague
 
 **Requested by:** Keenan

@@ -74,8 +74,8 @@ export type WomenScheme = "light" | "dark";
 // quiet-luxury identity (dim scenes, white text). Selfie is a
 // real-photo lane and exempt.
 export const WOMEN_SCENE_BRIEFS: Record<WomenScheme, string> = {
-  light: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, white peonies in a glass vase on a pale table, a sunlit bath with steam rising, a light-washed vanity, a robe over a linen chair in soft daylight, tea steaming by a bright window, a balcony breakfast in early sun, a garden path after light rain, market flowers wrapped in paper on a pale counter, a lake seen from a wooden dock in soft morning light, white linen breathing on a line, a bright window seat with an open book — AND letter-writing still-lifes: blank cream stationery and a fountain pen on a pale desk in morning sun, an opened envelope beside a bright window, unwritten notepaper under soft daylight with a flower laid across it — AND quiet-house scenes: emotionally loaded empty rooms in daylight — a kitchen still and sunlit after everyone has left, a made bed in a child's old bedroom with curtains glowing, a hallway of small shoes by the door in morning light, a bright emptied living room with one cushion out of place. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever. These are INSPIRATION, not a menu — invent new light-airy locations (garden, coast, bright morning interiors, a sunlit balcony over a soft city, blank stationery, quiet emptied rooms) and vary the vantage and time of morning so no two posts look alike.`,
-  dark: `SCENES: soft, aesthetically pleasing FEMININE photography in warm LOW light — silk bedding in candlelight, a kitchen table cleared after dinner lit by one warm lamp, dried flowers by a dark window, a bath steaming in flickering candlelight, a silk robe over a chair by rain-streaked night glass, a dark garden seen through a lit kitchen window, tea steaming under a single lamp at blue hour, an armchair and open book in a pool of lamplight, a lit porch at dusk with rain falling beyond, an emptied dining table with one chair pulled out at night — AND letter-writing still-lifes: blank cream stationery and a fountain pen in a pool of warm lamplight, an opened envelope beside a low candle, unwritten notepaper on a dark wood desk at night — AND quiet-house scenes: emotionally loaded empty rooms after dark — the kitchen after everyone is asleep lit by one small light, a made bed in a child's old bedroom at dusk, a porch light left on over an empty step, a hallway nightlight glowing at 2am. Muted, warm, dreamy — quiet luxury after dark, never harsh or cold. Every scene DIM (white text must read on it), soft shadows, intimate. No people ever. These are INSPIRATION, not a menu — invent new warm-evening locations (a candlelit bedroom, a rainy night window seat, a garden at dusk, blank stationery in lamplight, quiet sleeping-house rooms) and vary the vantage and time of evening so no two posts look alike.`,
+  light: `SCENES: soft, aesthetically pleasing FEMININE photography in LIGHT, airy tones, in FIVE families (2026-09-18 library — per Keenan: "the pictures all come out too similar"): (1) QUIET HOME IN DAYLIGHT — morning sun through sheer linen curtains, cream silk bedding in a bright bedroom, a sunlit bath with steam rising, a kitchen still and sunlit after everyone has left, a made bed in a child's old bedroom with curtains glowing, a hallway of small shoes by the door in morning light. (2) GARDENS & SOFT NATURE — a garden path after light rain, roses heavy with dew in morning sun, a bench under a blossoming tree, white linen breathing on a line in a bright yard, an orchard in soft morning mist, long grass and wildflowers in early light. (3) MORNING WATER — a lake seen from a wooden dock in soft morning light, a calm shoreline at sunrise, a rowboat tied at a misty jetty, light rain dimpling a pale pond. (4) SOFT CITY & AWAY — a balcony breakfast in early sun over a soft-focus city, a sunlit café window with pastries and folded newspapers, a bright European lane with shutters open to the morning, a train window full of passing fields in morning light, a hotel bed in white linen beside a tall bright window. (5) BRIGHT STILL-LIFE — white peonies in a glass vase on a pale table, market flowers wrapped in paper on a pale counter, tea steaming by a bright window, blank cream stationery and a fountain pen on a pale desk in morning sun, a bright window seat with an open book. Cream, ivory, blush, soft gold — warm, dreamy, beautiful, never cluttered, and every scene SOFT and LIGHT (dark charcoal text must read on it). Gentle and airy, never dark or heavy. No people ever. FAMILY-SPREAD RULE (non-negotiable): the scenes in ONE post must span AT LEAST THREE different families — never let a whole post live in home interiors. These are SEEDS, not a menu — invent a brand-new location for every slide (new place, season, weather, vantage, time of morning) so no two posts look alike.`,
+  dark: `SCENES: soft, aesthetically pleasing FEMININE photography in warm LOW light, in FIVE families (2026-09-18 library — per Keenan: "the pictures all come out too similar"): (1) QUIET HOME AFTER DARK — silk bedding in candlelight, a kitchen table cleared after dinner lit by one warm lamp, a bath steaming in flickering candlelight, a silk robe over a chair by rain-streaked night glass, an armchair and open book in a pool of lamplight, the kitchen after everyone is asleep lit by one small light, a porch light left on over an empty step. (2) NIGHT GARDENS & WILD QUIET — a garden at blue hour with one lit window glowing behind, rain beading on roses in evening light, a greenhouse glowing warm at dusk, a bench under a tree in soft night rain, a lavender field at last light, a stone path into a darkening garden, fireflies over long grass at dusk. (3) DUSK WATER — a lake at last light with mist rising, a wooden dock reaching into dark water at blue hour, a shoreline as the tide pulls back at dusk, willow branches trailing over a dark pond, a rowboat tied at an empty jetty in the evening calm, rain circles on a lake under a warm grey sky. (4) EVENING CITY FROM A SOFT DISTANCE — a rain-streaked café window glowing warm at night, a narrow European lane at dusk with shop windows lit, a balcony table with the city blurred to bokeh below, a train window at last light, warm-lit windows across a courtyard in the rain, a bookshop window glowing on a dark street. (5) WARM STILL-LIFE — white peonies catching lamplight in a dark room, tea steaming beside a low candle, a strand of pearls on dark wood, blank cream stationery and a fountain pen in a pool of warm lamplight, dried flowers by a dark window, an open book and reading glasses in lamplight — one hero subject, shot like a quiet-luxury ad. Muted, warm, dreamy — quiet luxury after dark, never harsh or cold. Every scene DIM (white text must read on it), soft shadows, intimate. No people ever. FAMILY-SPREAD RULE (non-negotiable): the scenes in ONE post must span AT LEAST THREE different families — never let a whole post live in home interiors. These are SEEDS, not a menu — invent a brand-new location for every slide (new place, season, weather, vantage, time of evening) so no two posts look alike.`,
 };
 
 // First sentence of every women-lane system prompt, by scheme — the
@@ -426,6 +426,61 @@ function rollMenCoverRule(forcedFamily?: string): string {
   return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
 }
 
+// Ripple cover families (2026-09-18, per Keenan: "the pictures all
+// come out too similar and it's almost always the same theme") — the
+// women's answer to MEN_COVER_FAMILIES. Before this, every Ripple
+// cover drew from one warm-interior pool (scheme pinned dark since
+// 09-03), so posts converged on lamplight/tea/silk. Now every cover
+// rolls one of five families; briefs are dark-scheme (dim, white text
+// reads) since Ripple is pinned dark.
+const WOMEN_COVER_FAMILIES: { name: string; brief: string }[] = [
+  {
+    name: "quiet home after dark",
+    brief:
+      "the warm-dim interior DNA — silk bedding in candlelight, a kitchen cleared after dinner under one warm lamp, a bath steaming in candlelight, an armchair and open book in a pool of lamplight, a child's old bedroom kept the same at dusk, a porch light left on over an empty step.",
+  },
+  {
+    name: "night gardens & wild quiet",
+    brief:
+      "soft nature in evening light — a garden at blue hour with one lit window glowing behind, rain beading on roses at dusk, a greenhouse glowing warm in the dark, a bench under a tree in soft night rain, a lavender field at last light, fireflies over long grass, an orchard in blue evening mist.",
+  },
+  {
+    name: "dusk water",
+    brief:
+      "still water at the end of the day — a lake at last light with mist rising, a wooden dock reaching into dark water at blue hour, a shoreline as the tide pulls back at dusk, willow branches over a dark pond, a rowboat tied at an empty jetty, rain circles on a lake under a warm grey sky.",
+  },
+  {
+    name: "evening city from a soft distance",
+    brief:
+      "the city kept gentle and far — a rain-streaked café window glowing warm at night, a narrow European lane at dusk with shop windows lit, a balcony table with the city blurred to bokeh below, a train window at last light, warm-lit windows across a courtyard in the rain, a bookshop window on a dark street.",
+  },
+  {
+    name: "warm still-life",
+    brief:
+      "one hero subject shot like a quiet-luxury ad — white peonies catching lamplight in a dark room, tea steaming beside a low candle, a strand of pearls on dark wood, cream stationery and a fountain pen in a pool of warm light, dried flowers by a dark window, an open book and reading glasses in lamplight.",
+  },
+];
+
+/** Roll one Ripple cover-scene family — the women's mirror of
+ *  rollMenCoverRule. The family constrains the DNA; the scene itself
+ *  is invented fresh. All briefs are DIM (white text must read).
+ *  Pass `forcedFamily` (a WOMEN_COVER_FAMILIES name) to pin the whole
+ *  post to one family for themed one-offs. */
+function rollWomenCoverRule(forcedFamily?: string): string {
+  const forced = forcedFamily
+    ? WOMEN_COVER_FAMILIES.find((f) => f.name === forcedFamily)
+    : undefined;
+  const fam =
+    forced ??
+    WOMEN_COVER_FAMILIES[
+      Math.floor(Math.random() * WOMEN_COVER_FAMILIES.length)
+    ];
+  const itemRule = forced
+    ? `FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${fam.name} family — the whole post lives in one visual world, with each slide a DIFFERENT freshly-invented scene inside it.`
+    : `Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
+  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} Soft, feminine, DIM, warm, intimate, NO people. The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
+}
+
 /** Generate one moody-carousel topic for the given audience funnel.
  *  The men's lane is theme-locked to the SILENCE family (2026-09-03;
  *  "STAY INVISIBLE." / "GUARD THE QUIET." energy). Went dormant the
@@ -451,7 +506,7 @@ export async function generateMoodyTopic(
             theme: SILENCE_THEME,
             coverRule: rollMenCoverRule(sceneFamily),
           }
-        : undefined
+        : { coverRule: rollWomenCoverRule(sceneFamily) }
     ),
     user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: `moody-${audience}`,
@@ -752,7 +807,7 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 
 const MEMENTO_WOMEN_SCENES: Record<WomenScheme, string> = {
   light: `SCENES: soft, aesthetically pleasing feminine photography in LIGHT, airy schemes — an empty porch swing in pale morning sun, a cream kitchen table cleared after breakfast by a bright window, dried flowers on a white sill in soft daylight, a child's empty bedroom with sheer curtains glowing, linen bedding in diffused morning light, a silk robe over a chair by a sunlit window, a garden bench under soft overcast light, a pale staircase with light falling across it, an emptied dining table with one chair pulled out in late-afternoon glow, blank cream stationery and a fountain pen on a sunlit desk, a hallway of small shoes by the door in morning light, a kitchen still and bright after everyone has left. Bright cream, ivory, warm white — every frame LIGHT (dark charcoal text must read on it), the quiet ache carried by emptiness and light, not darkness. No people ever. These are inspiration, not a menu — invent new quiet-daylight locations in the same DNA so no two posts look alike.`,
-  dark: `SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass, a dark garden seen through a lit kitchen window, a single lamp on in a house at blue hour, an emptied dining table with one chair pulled out, blank cream stationery and a fountain pen in warm lamplight, a porch light left on over an empty step, the kitchen after everyone is asleep lit by one small light. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever. These are inspiration, not a menu — invent new quiet-evening locations in the same DNA so no two posts look alike.`,
+  dark: `SCENES: soft, aesthetically pleasing feminine photography, contemplative in low warm light — an empty porch swing at dusk, a kitchen table cleared after dinner lit by one lamp, dried flowers by a dark window, a child's empty bedroom in soft evening light, a candlelit bath still steaming, a silk robe over a chair by rain-streaked glass, a dark garden seen through a lit kitchen window, a single lamp on in a house at blue hour, an emptied dining table with one chair pulled out, blank cream stationery and a fountain pen in warm lamplight, a porch light left on over an empty step, the kitchen after everyone is asleep lit by one small light — AND quiet evening world beyond the house (2026-09-18 variety pass): a garden bench under a tree at blue hour, a lake with mist rising at last light, an empty playground swing at dusk, a rain-streaked café window glowing at night, a train window at last light, a country road going dark between fields. Muted, warm, beautiful — every frame DIM (white text must read on it). No people ever. These are inspiration, not a menu — invent new quiet-evening locations in the same DNA, and vary the item slides between house and world so no two posts look alike.`,
 };
 
 // Winning-cover family for the dark scheme (the "DO THE MATH" beach).
@@ -894,6 +949,8 @@ AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it
 VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wise friend would ask and then just wait.
 
 ${WOMEN_SCENE_BRIEFS[scheme]}
+
+${rollWomenCoverRule()}
 
 RULES:
 - "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER THESE HONESTLY...", "READ THESE SLOWLY", "DON'T LOOK AWAY"). Not itself a question. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must clearly set up questions to answer. Do NOT stitch together or remix the example phrases; "DON'T LIE NOW" is the kind of garbled title that gets a post killed — if a title reads odd or random without the slides, it is WRONG — write a different one.
@@ -1918,7 +1975,7 @@ const PHONE_QUOTE_SYSTEM: Record<MoodyAudience, string> = {
 
 - "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "someone sent me this and i can't stop thinking about it...", "i found this at exactly the right moment..."). Vary the framing every post — never reuse a recent hook's framing.
 - "quote": 15-40 words, ALL lowercase. Motivational and developmental — self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands the reader her power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or change; the last flips it into quiet permission or hope. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a real person would screenshot and send a friend at 2am: warm, plain words, second person welcome, no clichés stacked on clichés. NO attribution, NO quotation marks, NO emojis, NO hashtags.
-- "coverScene": one concrete sentence for the photograph — a quiet night interior in warm low light: a lamp-lit bedroom at night, tea by a dark rain-streaked window, a candlelit bath, a lit porch at dusk, a phone glowing face-up on dark bedding, blank stationery and a fountain pen in lamplight, the kitchen after everyone is asleep lit by one small light. DIM, warm, intimate, NO people. Vary the location every post.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, warm, intimate, NO people. Vary the location every post.
 - Never mention any app, product, journaling, therapy, or AI.
 
 OUTPUT (strict JSON, no markdown):
@@ -1956,9 +2013,9 @@ export async function generatePhoneQuoteTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1000,
-      // Men's covers rotate scene families (2026-09-08) — the rolled
-      // rule replaces the old fixed night-city-vantage bullet.
-      system: `${PHONE_QUOTE_SYSTEM[audience]}${audience === "men" ? `\n\n${rollMenCoverRule()}` : ""}${pulse}\n\n${HUMAN_VOICE_RULES}`,
+      // Both funnels rotate cover families — men since 2026-09-08,
+      // women since 2026-09-18 (was a fixed night-interior pool).
+      system: `${PHONE_QUOTE_SYSTEM[audience]}\n\n${audience === "men" ? rollMenCoverRule() : rollWomenCoverRule()}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -2460,7 +2517,9 @@ export async function generatePermissionTopic(
   const itemCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
   return generateMoodyFamilyTopic({
     purpose: "permission-carousel-topic",
-    system: PERMISSION_SYSTEM_PROMPT,
+    // Cover rolls a Ripple family (2026-09-18 variety pass); item
+    // scenes stay theme-matched thresholds per PERMISSION_SCENES.
+    system: `${PERMISSION_SYSTEM_PROMPT}\n\n${rollWomenCoverRule()}`,
     user: `Write one new permission-slips post with exactly ${itemCount} permissions.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "permission",
     requireName: false,
@@ -2659,7 +2718,7 @@ const TEXTS_SYSTEM: Record<TextsLane, string> = {
 
 - "hook": the cover line, 5-12 words, lowercase sentence case, intimate, ending with "...". EVERY hook MUST explicitly name the younger self: include "my younger self", "younger me", "the girl i was", or a specific age ("to 25-year-old me..."). NEVER an unanchored "her"/"she" — a reader seeing only the cover must instantly know these are texts to her OWN younger self, not to another person ("texts i'd send my younger self...", "what the girl i was needed to hear...", "messages to 25-year-old me..."). Vary the framing every post — but the younger-self anchor is non-negotiable.
 - "messages": 2-4 texts, each 8-25 words, ALL lowercase — messages from the woman she is now to the girl she was. Each text lands on a DIFFERENT age and a DIFFERENT wound: the friendship that ends anyway, the body she picked apart, the no she was afraid to say, the thing that felt like the end and wasn't, the years she spent making herself smaller. Plain text-message language — the way a real person actually texts at midnight, warm and direct, second person. One text may be lighter to break the ache. NO emojis, NO hashtags, NO quotation marks.
-- "coverScene": one concrete sentence for the photograph — a quiet night interior in warm low light: a lamp-lit bedroom, tea by a dark rain-streaked window, a closed photo album on a bed in lamplight, a childhood bedroom kept the same at dusk, a porch light on over an empty step. DIM, warm, intimate, NO people. Vary the location every post.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, warm, intimate, NO people. Vary the location every post.
 - Never mention any app, product, journaling, therapy, or AI.
 
 OUTPUT (strict JSON, no markdown):
@@ -2699,9 +2758,9 @@ export async function generateTextsTopic(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 1000,
-      // Men's covers rotate the BWK scene families like every other
-      // BWK lane.
-      system: `${TEXTS_SYSTEM[lane]}${men ? `\n\n${rollMenCoverRule()}` : ""}${pulse}\n\n${HUMAN_VOICE_RULES}`,
+      // Both funnels rotate cover families — men use the BWK families,
+      // women the Ripple families (2026-09-18 variety pass).
+      system: `${TEXTS_SYSTEM[lane]}\n\n${men ? rollMenCoverRule() : rollWomenCoverRule()}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -2973,7 +3032,9 @@ export async function generateSpecTopic(
     purpose: `lane-${laneKey}-topic`,
     system: buildMoodySystemPrompt(spec.audience, {
       theme: spec.theme,
-      coverRule: men ? rollMenCoverRule(sceneFamily) : undefined,
+      coverRule: men
+        ? rollMenCoverRule(sceneFamily)
+        : rollWomenCoverRule(sceneFamily),
       sceneBrief: men ? undefined : WOMEN_SCENE_BRIEFS.dark,
     }),
     user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${mandate}${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
