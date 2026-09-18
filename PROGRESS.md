@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** a2a80455
 
 ### In plain English (for Keenan)
 Ripple's photos kept coming out as the same warm lamplit-interior theme (tea, silk, candles) because every lane pulled from one scene pool. Now every Ripple post rolls one of five distinct visual worlds for its cover — quiet home after dark, night gardens, dusk water, evening city, or a warm still-life — and the slides inside a post must mix at least three of those worlds. Same soft feminine brand, far more visual variety, exactly like the rotation that already keeps BWK's covers fresh.
