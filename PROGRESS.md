@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 72b73452
+**Commit hash:** 0233b75c
 
 ### In plain English (for Keenan)
 The texts-younger lane produced a cover hook — "the text i keep sending her" — that read like someone texting an ex, not texting their younger self. The AI is now required to name the younger self in every single cover hook ("my younger self", "younger me", "the girl i was", or a specific age), so nobody seeing the cover can misread who the texts are for.
