@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-18] — Social posts no longer ship at 6am PST — windows now open 9am PT
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending — held until "push it")
+
+### In plain English (for Keenan)
+Facebook and Instagram posts were firing as early as 6am Pacific because the Facebook posting window opened at 9am Eastern — and since the day's queue is built overnight, the first post always went out the moment the window opened. Both windows now open at noon Eastern (9am Pacific), so nothing ships before 9am anywhere in the continental US. Posting still ends at the same times (Facebook 3pm PT, Instagram 4pm PT). Today's already-queued posts were also rescheduled directly, so the fix took effect immediately — the last early posts were this morning's two.
+
+Also checked "not all posts going out": nothing is failing. Every Ripple post shipped (zero failures in 3 days). The posts that don't go to Instagram/Facebook are all six BWK lanes — that's the hold you asked for on 2026-09-14 ("don't post bwk posts across insta/facebook yet"; BWK has no Meta credentials). BWK reaches you via the daily email for manual TikTok posting. Say the word if you want BWK auto-posting turned on — we'd need the BWK Meta account credentials.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: PLATFORM_WINDOWS — instagram openMin 11:00→12:00 ET (close 19:00 unchanged), facebook openMin 9:00→12:00 ET (close 18:00 unchanged), facebook staggerMs 50→45min so the shorter 6h window still fits 7+ daily posts (8 slots).
+- NEW apps/web/scripts/reschedule-pending-social.ts (one-off, untracked pattern but committed for reuse): re-spaces all PENDING SocialPublish rows into the current windows via clampToWindow. Ran against prod 2026-09-18 — 12 rows moved (first slots now 9:00am PT both platforms).
+- NEW apps/web/scripts/social-publish-diagnostic.ts: dumps 3 days of SocialPublish rows (status/schedule/errors in PT) + DRAFT posts with no queue rows. Used for this diagnosis; keep for future publish debugging.
+
+### Manual steps needed
+- [ ] Keenan: say "push it" TODAY (before tonight's ~5 UTC generation) — otherwise tomorrow's queue is built by the old deployed code with the 9am-ET FB open and will need the reschedule script re-run
+- [ ] Keenan: decide whether BWK should start auto-posting to IG/FB (needs META_BWK_* credentials) or stay email-only
+
+### Notes
+- The DB reschedule fixed TODAY without waiting for a deploy because scheduledAt lives in SocialPublish rows — the cron just reads them. The code change governs how FUTURE rows are scheduled.
+- Diagnostic confirmed the SKIPPED tiktok rows are the retired inbox flow (expected) and the att-2 retry on 09-17 phone-quote IG succeeded on the second attempt — the retry ladder works.
+- FB "peak" per Sprout is 8am-1pm ET; opening at noon keeps only the tail. Deliberate trade: Keenan's no-posts-before-9am-PT requirement wins over the ET morning peak.
+
+---
+
 ## [2026-09-17] — "Top Videos" tab: daily top-3 hashtag videos to recreate
 
 **Requested by:** Keenan

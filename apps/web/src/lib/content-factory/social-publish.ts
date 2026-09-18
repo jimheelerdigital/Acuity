@@ -111,8 +111,15 @@ export type SocialPlatform = "instagram" | "facebook" | "tiktok";
 // Windows are EASTERN time (~47% of the US lives in ET; Central lags by
 // one hour, so ET windows serve both coasts' peaks). Sources: Sprout
 // Social 2026 (2B engagements), Buffer 2026 (7M TikTok posts):
-// - Instagram peaks 9am-1pm + 5-7pm ET weekdays → 11am-7pm window
-// - Facebook peaks 8am-1pm ET, dead after 6pm → 9am-6pm window
+// - Instagram peaks 9am-1pm + 5-7pm ET weekdays → 12pm-7pm window
+// - Facebook peaks 8am-1pm ET, dead after 6pm → 12pm-6pm window
+// REVISED 2026-09-18, per Keenan: "it's pushing posts at 6 am pst, too
+// early" — the queue is built overnight, so the first post always fired
+// at window-open, and FB's old 9am ET open = 6am PT. Both windows now
+// open at NOON ET (9am PT): nothing ships before 9am anywhere in the
+// continental US, noon-1pm ET still catches the lunchtime peak, and IG
+// keeps its 5-7pm ET evening peak. FB stagger tightened 50→45min so the
+// shorter window still fits all 7 daily Ripple posts (360/45 = 8 slots).
 // - TikTok rows are INBOX DRAFT deliveries, not posts — Keenan posts
 //   them by hand through the day, so they all land FIRST THING IN THE
 //   MORNING (7-10am ET = 6-9am CT, per Keenan 2026-09-15: "tiktok i
@@ -123,8 +130,8 @@ export const PLATFORM_WINDOWS: Record<
   SocialPlatform,
   { openMin: number; closeMin: number; staggerMs: number }
 > = {
-  instagram: { openMin: 11 * 60, closeMin: 19 * 60, staggerMs: 50 * 60_000 },
-  facebook: { openMin: 9 * 60, closeMin: 18 * 60, staggerMs: 50 * 60_000 },
+  instagram: { openMin: 12 * 60, closeMin: 19 * 60, staggerMs: 50 * 60_000 },
+  facebook: { openMin: 12 * 60, closeMin: 18 * 60, staggerMs: 45 * 60_000 },
   tiktok: { openMin: 7 * 60, closeMin: 10 * 60, staggerMs: 5 * 60_000 },
 };
 
