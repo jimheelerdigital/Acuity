@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 7379a135
 
 ### In plain English (for Keenan)
 Facebook and Instagram posts were firing as early as 6am Pacific because the Facebook posting window opened at 9am Eastern — and since the day's queue is built overnight, the first post always went out the moment the window opened. Both windows now open at noon Eastern (9am Pacific), so nothing ships before 9am anywhere in the continental US. Posting still ends at the same times (Facebook 3pm PT, Instagram 4pm PT). Today's already-queued posts were also rescheduled directly, so the fix took effect immediately — the last early posts were this morning's two.
@@ -24,8 +24,8 @@ Also checked "not all posts going out": nothing is failing. Every Ripple post sh
 - NEW apps/web/scripts/social-publish-diagnostic.ts: dumps 3 days of SocialPublish rows (status/schedule/errors in PT) + DRAFT posts with no queue rows. Used for this diagnosis; keep for future publish debugging.
 
 ### Manual steps needed
-- [ ] Keenan: say "push it" TODAY (before tonight's ~5 UTC generation) — otherwise tomorrow's queue is built by the old deployed code with the 9am-ET FB open and will need the reschedule script re-run
-- [ ] Keenan: decide whether BWK should start auto-posting to IG/FB (needs META_BWK_* credentials) or stay email-only
+- [x] Keenan: said "push it" 2026-09-18 — deployed same day, well before the overnight queue build
+- [x] Keenan: BWK stays email-only for now ("still working on that", 2026-09-18) — revisit when Meta creds are ready
 
 ### Notes
 - The DB reschedule fixed TODAY without waiting for a deploy because scheduledAt lives in SocialPublish rows — the cron just reads them. The code change governs how FUTURE rows are scheduled.
