@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-18] — "Texts to my younger self" covers can no longer be vague
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 72b73452
+
+### In plain English (for Keenan)
+The texts-younger lane produced a cover hook — "the text i keep sending her" — that read like someone texting an ex, not texting their younger self. The AI is now required to name the younger self in every single cover hook ("my younger self", "younger me", "the girl i was", or a specific age), so nobody seeing the cover can misread who the texts are for.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: rewrote the hook rule in `TEXTS_SYSTEM["texts-younger"]` — the younger-self anchor is now mandatory, unanchored "her"/"she" is explicitly banned, and the two ambiguous example hooks ("if i could reach her...", "she needed to hear these...") were replaced with anchored ones
+- The message-slide screens were already safe — the baked phone UI shows contact name "younger me" at the top of every thread — so only the cover hook needed the fix
+- No schema, route, or Inngest changes
+
+### Manual steps needed
+None — takes effect on the next texts-younger generation after deploy.
+
+### Notes
+- Root cause: the prompt told Claude to "vary the framing every post" and two of the three example hooks used unanchored "her"/"she" pronouns — variation pressure plus vague examples eventually produced a hook with no younger-self anchor at all
+- The vary-the-framing instruction is kept, but now scoped: framing varies, the anchor is non-negotiable
+- future-texts (BWK) checked: its example hooks all name "future self"/"the man you're becoming", so no equivalent risk there
+
+---
+
 ## [2026-09-18] — Social posts no longer ship at 6am PST — windows now open 9am PT
 
 **Requested by:** Keenan
