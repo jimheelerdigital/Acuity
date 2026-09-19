@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-19] — Reddit-driven lanes now write problem → fix posts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** PENDING
+
+### In plain English (for Keenan)
+The Pulse lanes (the ones built from what our audiences are talking about on Reddit) used to squeeze the day's hot topic into the lane's usual reflective format. Now every one of those posts is built as its own thing in one consistent shape: the cover names the exact issue people are wrestling with ("CAN'T SWITCH OFF AT NIGHT?"), and each following slide is one concrete step of how to solve it — specific actions, exact times, even the exact words to say. Vague advice like "set boundaries" is explicitly banned; the prompt demands things like the actual text message to send.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/reddit-trends.ts: `getTopTheme` → `getTopThemes(brand, take=4)` — returns the top ranked themes so the writer can pick one that doesn't repeat a recent post (the 7-day rolling blend keeps the same #1 theme around for days)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new `buildRedditSolveSystemPrompt` (THE FIX format — issue-naming title, ordered step slides with "Step name." headers + exact instructions, step 1 doable within the hour, scene briefs + cover-family roll per audience); `generateSpecTopic` branches into it for `spec.redditTheme` lanes, replacing the 09-17 mandated-subject block. No digest = fall through to the base spec theme, unchanged
+- apps/web/src/inngest/functions/carousel-daily.ts: spec lanes render name headers when `spec.redditTheme` even if `spec.named` is false (the seeded women's pulse lane is `named: false`); empty names are filtered so the no-digest fallback still renders cleanly
+- No schema, route, or Inngest trigger changes
+
+### Manual steps needed
+None — takes effect on the next nightly generation after deploy.
+
+### Notes
+- Affects `pulse` (Ripple) and `pulse-men` (BWK) only; the muse (competitor-mimic) lanes are untouched
+- The solve prompt gets the top 4 themes and picks the strongest that avoids the recent-headlines list — without this, the rolling blend would make the lane repeat the same issue several days running
+- The DB lane specs (`named`, theme text) were deliberately NOT migrated — the solve format is enforced in code, and the spec theme now only serves the no-digest fallback
+
+---
+
 ## [2026-09-18] — Ripple images now rotate five visual worlds instead of one
 
 **Requested by:** Keenan

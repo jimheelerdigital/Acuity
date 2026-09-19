@@ -2978,6 +2978,64 @@ export function parseMoodyLaneSpec(raw: unknown): MoodyLaneSpec | null {
   };
 }
 
+// ─── REDDIT SOLVE FORMAT (2026-09-19, per Keenan) ────────────────────
+// "write posts that tell people exactly how to solve the issues
+// they're dealing with in those reddit subthreads." The pulse lanes
+// (spec.redditTheme) no longer bend the day's theme into the lane's
+// standing format — every post is an independent PROBLEM → FIX build:
+// the cover names the issue, each following slide is ONE concrete step
+// of the solution. The writer picks from the top ranked themes so the
+// same issue doesn't repeat while it sits atop the 7-day rolling
+// blend. Soft: no digest = the lane falls back to its base spec theme.
+
+const buildRedditSolveSystemPrompt = (
+  audience: MoodyAudience,
+  themes: import("./reddit-trends").RedditTheme[],
+  sceneFamily?: string
+): string => {
+  const men = audience === "men";
+  const issues = themes
+    .map(
+      (t, i) =>
+        `${i + 1}. "${t.theme}" — ${t.why} Angle: ${t.angle}${t.phrases.length ? ` Their words: ${t.phrases.join(", ")}.` : ""}`
+    )
+    .join("\n");
+  const header = men
+    ? "You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + item slides of white text centered on cinematic photography."
+    : WOMEN_PROMPT_HEADER.dark;
+  return `${header} The niche: THE FIX — each post takes ONE real issue this audience is wrestling with right now and tells them EXACTLY how to solve it, one concrete step per slide.
+
+${AUDIENCE_BRIEF[audience]}
+
+LIVE AUDIENCE ISSUES (ranked, from today's research):
+${issues}
+
+PICK ONE issue — the strongest one that does NOT overlap anything in the avoid list. The whole post lives inside that single issue; never blend two.
+
+${men ? SCENE_BRIEF.men : WOMEN_SCENE_BRIEFS.dark}
+
+${men ? rollMenCoverRule(sceneFamily) : rollWomenCoverRule(sceneFamily)}
+
+RULES:
+- "title": the cover text — the chosen issue named so the reader instantly feels seen, in their own plain words. 3-8 words, works in ALL CAPS: either the pain as a direct question ("CAN'T SWITCH OFF AT NIGHT?") or a direct fix promise ("HOW TO GET YOUR EVENINGS BACK"). SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN and name a problem a real person would recognize as theirs — if it reads vague, clever, or garbled without the slides, it is WRONG.
+- The request tells you EXACTLY how many items to write. Each item is ONE step of the fix, in the exact order to do them:
+  - "name": the step as a short imperative + period ("Move the charger.", "Send this one text.", "Pick the night."). 2-5 words.
+  - "lines": 1-2 short paragraphs saying EXACTLY what to do — specific actions, times, amounts, and the exact words to say where a script helps. Vague advice is BANNED: "set boundaries" is WRONG; "text back: i can't take that on this week." is RIGHT.
+- Step 1 must be doable within the hour of reading. The final step may end on what changes after a week of doing this — a plain statement, never a pep talk.
+- Every step is a DIFFERENT physical action. No theory slides, no mindset-only slides — every slide is something to actually DO.
+- US English. No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI — and NEVER mention the research, any community, or trends.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above and the COVER SCENE RULE. Every scene a DIFFERENT location.
+
+OUTPUT (strict JSON, no markdown):
+{
+  "title": "...",
+  "coverScene": "...",
+  "items": [
+    { "name": "...", "lines": ["...", "..."], "scene": "..." }
+  ]
+}`;
+};
+
 /** Generate one topic for a spec-driven (DB-born) moody-family lane.
  *  Mirrors the hard-coded theme lanes: men get the BWK cover-family
  *  roll; women get the pinned-dark scene brief (Ripple has been
@@ -2996,20 +3054,36 @@ export async function generateSpecTopic(
   const hi = Math.max(spec.minItems ?? 4, spec.maxItems ?? 7);
   const itemCount = lo + Math.floor(Math.random() * (hi - lo + 1));
 
-  // Reddit freelance lanes (2026-09-17): today's strongest digest
-  // theme becomes a MANDATED SUBJECT — the post is written about what
-  // the audience is actually talking about right now. Soft: no digest
-  // (or any error) = the lane generates from its base theme alone.
+  // Reddit solve lanes (2026-09-19, replaces the 09-17 mandated-subject
+  // approach): the post becomes an independent PROBLEM → FIX build in
+  // the solve format above. Soft: no digest (or any error) = fall
+  // through to the lane's base spec theme.
   let mandate = "";
   if (spec.redditTheme) {
     try {
-      const { getTopTheme } = await import("./reddit-trends");
-      const t = await getTopTheme(brand);
-      if (t) {
-        mandate = `\n\nTODAY'S MANDATED SUBJECT (from live audience research — write THIS post): "${t.theme}" — ${t.why}\nAngle to lean into: ${t.angle}${t.phrases.length ? `\nTheir own words for it: ${t.phrases.join(", ")}` : ""}\nThe title and every item must live inside this subject while obeying every format and voice rule above. Never mention the research, any community, or trends.`;
+      const { getTopThemes } = await import("./reddit-trends");
+      const themes = await getTopThemes(brand, 4);
+      if (themes.length > 0) {
+        return generateMoodyFamilyTopic({
+          purpose: `lane-${laneKey}-topic`,
+          system: buildRedditSolveSystemPrompt(
+            spec.audience,
+            themes,
+            sceneFamily
+          ),
+          user: `Write one new solve-it post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} step slides.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
+          slugPrefix: laneKey,
+          // The solve format always carries step-name headers,
+          // regardless of the lane spec's `named` flag.
+          requireName: true,
+          minLines: 1,
+          minItems: Math.min(lo, 4),
+          maxItems: itemCount,
+          // No `brand` pulse injection — the issues block IS the signal.
+        });
       }
     } catch {
-      /* soft — generate without the mandate */
+      /* soft — fall through to the base theme */
     }
   }
 

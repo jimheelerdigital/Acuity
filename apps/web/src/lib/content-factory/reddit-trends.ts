@@ -322,15 +322,20 @@ export async function getAudiencePulse(brand: "ripple" | "bwk"): Promise<string>
   return `${pulse}${mimic}`;
 }
 
-/** Strongest theme of the day for the freelance lanes (null = no digest). */
-export async function getTopTheme(brand: "ripple" | "bwk"): Promise<RedditTheme | null> {
+/** Top N ranked themes of the day for the solve lanes (empty = no
+ *  digest). Returns several so the writer can pick the strongest one
+ *  that doesn't repeat a recent post — the 7-day rolling blend keeps
+ *  the same #1 theme around for days (2026-09-19). */
+export async function getTopThemes(
+  brand: "ripple" | "bwk",
+  take = 4
+): Promise<RedditTheme[]> {
   const { prisma } = await import("@/lib/prisma");
   const cutoff = new Date(Date.now() - 3 * 24 * 3600 * 1000);
   const row = await prisma.redditTrendDigest.findFirst({
     where: { brand, date: { gte: cutoff } },
     orderBy: { date: "desc" },
   });
-  if (!row || !Array.isArray(row.themes)) return null;
-  const themes = row.themes as unknown as RedditTheme[];
-  return themes[0] ?? null;
+  if (!row || !Array.isArray(row.themes)) return [];
+  return (row.themes as unknown as RedditTheme[]).slice(0, take);
 }

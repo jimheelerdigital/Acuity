@@ -1283,7 +1283,12 @@ export const carouselDailyCronFn = inngest.createFunction(
     // moment one is dropped). Memento lanes carry no header — the
     // numbers ARE the content.
     const named = specLane
-      ? specLane.spec.named
+      ? // Reddit solve posts (2026-09-19) always carry a step-name
+        // header regardless of the lane spec's `named` flag — the
+        // solve format IS "Step name." + exact instructions. (The
+        // renderer drops an empty name, so the no-digest fallback to
+        // the headerless base theme still renders cleanly.)
+        specLane.spec.named || specLane.spec.redditTheme === true
       : bucket === "moody-men" ||
         bucket === "watching" ||
         bucket === "protocol" ||
@@ -1465,7 +1470,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           await import("@/lib/content-factory/compose");
 
         const item = moody.items[i];
-        const paragraphs = named ? [item.name, ...item.lines] : item.lines;
+        const paragraphs = named
+          ? [item.name, ...item.lines].filter(Boolean)
+          : item.lines;
         // Avatar only when this post won the ≤8% roll AND this is the
         // chosen slide (2026-08-31 cap).
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
