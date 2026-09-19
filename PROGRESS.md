@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** 64394d6b
 
 ### In plain English (for Keenan)
 The Pulse lanes (the ones built from what our audiences are talking about on Reddit) used to squeeze the day's hot topic into the lane's usual reflective format. Now every one of those posts is built as its own thing in one consistent shape: the cover names the exact issue people are wrestling with ("CAN'T SWITCH OFF AT NIGHT?"), and each following slide is one concrete step of how to solve it — specific actions, exact times, even the exact words to say. Vague advice like "set boundaries" is explicitly banned; the prompt demands things like the actual text message to send.
