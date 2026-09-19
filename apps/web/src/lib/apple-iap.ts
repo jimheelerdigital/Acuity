@@ -49,6 +49,11 @@ import {
 export const ALLOWED_PRODUCT_IDS = new Set([
   "com.heelerdigital.acuity.pro.monthly",
   "com.heelerdigital.acuity.pro.annual",
+  // v2 pricing tier ($9.99/$89.99). Separate immutable SKUs so legacy
+  // subscribers are never repriced. The mobile app requests these when
+  // new pricing is enabled; the gate must accept them for receipts to verify.
+  "com.heelerdigital.acuity.pro.monthly.v2",
+  "com.heelerdigital.acuity.pro.annual.v2",
 ]);
 
 // ─── Bundle ID for JWT bid claim ──────────────────────────────

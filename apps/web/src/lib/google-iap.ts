@@ -25,6 +25,10 @@ import { google } from "googleapis";
 export const GOOGLE_ALLOWED_PRODUCT_IDS = new Set([
   "acuity_pro_monthly",
   "acuity_pro_annual",
+  // v2 pricing tier ($9.99/$89.99). Separate SKUs; mirror of
+  // apple-iap.ts. Gate must accept these for v2 receipts to verify.
+  "acuity_pro_monthly_v2",
+  "acuity_pro_annual_v2",
 ]);
 
 // subscriptionsv2 states that grant access (PRO). CANCELED still has access
