@@ -29,6 +29,8 @@ import { Link } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -155,16 +157,25 @@ export default function SignInScreen() {
     // KeyboardAwareScreen wrapper (commit f4297d1, OTA shipped 2026-04-28)
     // the parent ScrollView destabilized the auth-session promise so
     // the user was bounced back to sign-in with no token. Reverting to
-    // the pre-wrapper layout. The sign-in screen has 2 short inputs and
-    // a tall stack of OAuth buttons — it doesn't actually need keyboard
-    // avoidance for the password field to stay visible (the page is
-    // already centered on viewport). Onboarding / sign-up / forgot-
-    // password / delete-modal keep the wrapper since they have more
-    // inputs and benefit from it.
+    // the pre-wrapper layout for the ScrollView-based KeyboardAwareScreen.
+    // 2026-09-19: on smaller devices the centered layout DID leave the
+    // password field behind the keyboard, so we now use a plain
+    // KeyboardAvoidingView (behavior="padding" on iOS, NO ScrollView).
+    // It is inert while no keyboard is shown — the Apple/Google OAuth taps
+    // happen with the keyboard down — so it does NOT reintroduce the
+    // f4297d1 promptAsync() regression, which was caused specifically by a
+    // parent ScrollView re-layout dismissing SFAuthenticationSession.
+    // Do NOT swap this back to a ScrollView / KeyboardAwareScreen.
+    // Onboarding / sign-up / forgot-password / delete-modal keep their own
+    // wrapper since they have more inputs.
     <SafeAreaView
       className="flex-1 px-6"
       style={{ backgroundColor: tokens.bg }}
     >
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <View className="flex-1 justify-center">
         <View
           className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
@@ -339,6 +350,7 @@ export default function SignInScreen() {
           </Text>
         )}
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

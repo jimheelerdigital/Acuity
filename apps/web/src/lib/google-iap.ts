@@ -25,6 +25,9 @@ import { google } from "googleapis";
 export const GOOGLE_ALLOWED_PRODUCT_IDS = new Set([
   "acuity_pro_monthly",
   "acuity_pro_annual",
+  // v2 ($9.99 / $89.99) — accepted so new-pricing purchases verify.
+  "acuity_pro_monthly_v2",
+  "acuity_pro_annual_v2",
 ]);
 
 // subscriptionsv2 states that grant access (PRO). CANCELED still has access

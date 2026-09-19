@@ -49,6 +49,10 @@ import {
 export const ALLOWED_PRODUCT_IDS = new Set([
   "com.heelerdigital.acuity.pro.monthly",
   "com.heelerdigital.acuity.pro.annual",
+  // v2 ($9.99 / $89.99) — accepted so new-pricing purchases verify.
+  // Legacy ids above stay valid: existing subscribers renew on them.
+  "com.heelerdigital.acuity.pro.monthly.v2",
+  "com.heelerdigital.acuity.pro.annual.v2",
 ]);
 
 // ─── Bundle ID for JWT bid claim ──────────────────────────────
