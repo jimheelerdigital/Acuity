@@ -4,6 +4,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useQuickActionRouting } from "expo-quick-actions/router";
 
 import { setupQuickActions } from "@/lib/quick-actions";
+import { isHabitsEnabled } from "@/lib/feature-flags";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Animated, Pressable, Text, View } from "react-native";
@@ -81,7 +82,10 @@ export default function TabsLayout() {
             <CustomTabBar {...props} isDark={isDark} tokens={tokens} />
           )}
         >
-          <Tabs.Screen name="goals" options={{ title: "Goals" }} />
+          <Tabs.Screen
+            name="goals"
+            options={{ title: isHabitsEnabled() ? "Growth" : "Goals" }}
+          />
           <Tabs.Screen name="tasks" options={{ title: "Tasks" }} />
           <Tabs.Screen name="record-placeholder" options={{ title: "Home" }} />
           <Tabs.Screen name="insights" options={{ title: "Insights" }} />
@@ -100,7 +104,9 @@ const TAB_META: Record<
   TabKey,
   { label: string; iconOn: string; iconOff: string }
 > = {
-  goals: { label: "Goals", iconOn: "trophy", iconOff: "trophy-outline" },
+  goals: isHabitsEnabled()
+    ? { label: "Growth", iconOn: "trending-up", iconOff: "trending-up-outline" }
+    : { label: "Goals", iconOn: "trophy", iconOff: "trophy-outline" },
   tasks: {
     label: "Tasks",
     iconOn: "checkmark-done",

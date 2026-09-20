@@ -184,7 +184,7 @@ function mapWebHrefToMobile(webHref: string): Href {
     "/record": "/record",
     "/entries": "/(tabs)/entries",
     "/insights": "/(tabs)/insights",
-    "/goals": "/(tabs)/goals",
+    "/goals": "/(tabs)/goals?pane=goals",
   };
   return map[webHref] ?? "/(tabs)/";
 }

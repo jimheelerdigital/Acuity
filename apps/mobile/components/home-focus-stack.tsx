@@ -103,7 +103,7 @@ const UNLOCK_BODIES: Record<UnlockKey, string> = {
 
 const UNLOCK_HREFS: Record<UnlockKey, string> = {
   lifeMatrix: "/(tabs)/insights",
-  goalSuggestions: "/(tabs)/goals",
+  goalSuggestions: "/(tabs)/goals?pane=goals",
   patternInsights: "/(tabs)/insights",
   themeMap: "/insights/theme-map",
   weeklyReport: "/(tabs)/insights",
