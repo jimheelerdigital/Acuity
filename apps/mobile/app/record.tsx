@@ -25,6 +25,7 @@ import {
   SpeedometerGauge,
 } from "@/components/recording";
 import { useEntryPolling } from "@/hooks/use-entry-polling";
+import { useProcessingNotifier } from "@/contexts/processing-notifier";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import {
@@ -180,6 +181,15 @@ export default function RecordScreen() {
   const currentUploadCancelRef = useRef<{ requested: boolean } | null>(null);
 
   const poll = useEntryPolling(polledEntryId);
+  const { trackEntry, resolveEntry } = useProcessingNotifier();
+
+  // Register the in-flight entry with the app-wide notifier the moment
+  // polling starts, so if the user navigates away before it finishes
+  // they still get the "brief ready" banner. record's own poll below
+  // resolves it on completion when the user stays, avoiding a dupe.
+  useEffect(() => {
+    if (polledEntryId) trackEntry(polledEntryId);
+  }, [polledEntryId, trackEntry]);
 
   // Bridge polling terminal states → nav or error surface.
   useEffect(() => {
@@ -203,6 +213,11 @@ export default function RecordScreen() {
       invalidate("/api/entries");
       invalidate("/api/home");
       invalidate("/api/user/progression");
+      // The user stayed on the record screen through completion, so we
+      // take them straight to the entry — hand off from the global
+      // notifier so it doesn't also fire a redundant "brief ready"
+      // banner for this same entry.
+      resolveEntry(polledEntryId);
       // Route to the entry detail screen. router.replace so a back
       // swipe from detail goes to the dashboard, not back to a
       // post-record spinner.
@@ -231,7 +246,7 @@ export default function RecordScreen() {
     } else if (poll.status === "timeout") {
       setState("timeout");
     }
-  }, [poll.status, poll.entry, polledEntryId, router]);
+  }, [poll.status, poll.entry, polledEntryId, router, resolveEntry]);
 
   // Set up audio mode on mount — routes non-recording interruptions
   // (incoming call, Siri, alarm) to pause rather than crash the

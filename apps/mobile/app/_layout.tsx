@@ -32,6 +32,7 @@ import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { LockProvider } from "@/contexts/lock-context";
 import { ThemeProvider, useTheme } from "@/contexts/theme-context";
+import { ProcessingNotifierProvider } from "@/contexts/processing-notifier";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
@@ -276,11 +277,13 @@ function RootLayout() {
                   its modal covers whichever screen the mic was tapped
                   from. Below LockProvider for the same reason TourProvider
                   is: a locked app's overlay wins. */}
-              <SaveWallProvider>
-                <TourProvider>
-                  <ThemedApp />
-                </TourProvider>
-              </SaveWallProvider>
+              <ProcessingNotifierProvider>
+                <SaveWallProvider>
+                  <TourProvider>
+                    <ThemedApp />
+                  </TourProvider>
+                </SaveWallProvider>
+              </ProcessingNotifierProvider>
             </LockProvider>
           </AuthProvider>
         </ThemeProvider>
