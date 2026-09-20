@@ -51,6 +51,12 @@
         "buildType": "app-bundle"
       }
     },
+    "habits": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_HABITS": "true"
+      }
+    },
     "v10": {
       "extends": "production",
       "channel": "v10-validation",
