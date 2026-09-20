@@ -623,6 +623,13 @@ export default function RecordScreen() {
           // completion. iOS + Android share this path.
           if (res.status === 202 && responseEntryId) {
             setState("saved");
+            // Async/background path: the user is free to leave while the
+            // entry processes. Register it with the app-wide notifier so
+            // the "brief ready" banner fires on completion wherever they
+            // are. (This path doesn't poll, so the polledEntryId hook
+            // never covered it — this is the real fix for the missing
+            // banner.)
+            trackEntry(responseEntryId);
             void (async () => {
               try {
                 const meRes = await api.get<{
@@ -680,7 +687,7 @@ export default function RecordScreen() {
         }
       }
     },
-    [router, goalId, dimensionKey]
+    [router, goalId, dimensionKey, trackEntry]
   );
 
   /**
