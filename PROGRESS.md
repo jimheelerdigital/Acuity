@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-21] — "Run now" button for the audience pulse + script report
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d3a28310
+
+### In plain English (for Keenan)
+You can now trigger the Reddit audience-pulse digest (and the talking-head script email that rides along with it) on demand from the admin dashboard — Audience Pulse tab, "Run now" button — instead of waiting for the Monday morning run.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: new POST action `reddit-digest` — sends the `content-factory/reddit.digest` Inngest event (auth: CRON_SECRET bearer or admin session, same as the other actions)
+- apps/web/src/app/admin/tabs/AudiencePulseTab.tsx: "Run now" button (running/queued states), copy updated from "nightly" to the weekly Monday cadence
+
+### Manual steps needed
+- [ ] None beyond the Inngest resync already flagged in the earlier 2026-09-21 entries (`curl -X PUT https://goripple.io/api/inngest` after deploy)
+
+### Notes
+- The event fires the full reddit-trends-daily function: both brand digests rebuild, then the script report emails. A manual run mid-week overwrites nothing — digests are append-only rows keyed by date.
+- CRON_SECRET bearer auth on this route means the digest can also be fired via curl without an admin session.
+
+---
+
 ## [2026-09-21] — Weekly talking-head video scripts from the audience pulse
 
 **Requested by:** Keenan
