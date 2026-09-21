@@ -282,9 +282,10 @@ export async function buildDailyDigest(
 
 /**
  * The "audience pulse" prompt block for a brand's topic generators.
- * Uses the freshest digest ≤3 days old; returns "" when none exists so
- * callers can append unconditionally. Influence only — every lane's
- * locked format/voice rules still win.
+ * Uses the freshest digest ≤8 days old (digest runs weekly Mondays
+ * since 2026-09-21, so the window must span the whole week); returns
+ * "" when none exists so callers can append unconditionally. Influence
+ * only — every lane's locked format/voice rules still win.
  *
  * 2026-09-17: also appends the competitor "WHAT'S WINNING" mimic-signal
  * block (competitor-mimic.ts) — one wiring point feeds every lane both
@@ -292,7 +293,7 @@ export async function buildDailyDigest(
  */
 export async function getAudiencePulse(brand: "ripple" | "bwk"): Promise<string> {
   const { prisma } = await import("@/lib/prisma");
-  const cutoff = new Date(Date.now() - 3 * 24 * 3600 * 1000);
+  const cutoff = new Date(Date.now() - 8 * 24 * 3600 * 1000);
   const row = await prisma.redditTrendDigest.findFirst({
     where: { brand, date: { gte: cutoff } },
     orderBy: { date: "desc" },
@@ -331,7 +332,7 @@ export async function getTopThemes(
   take = 4
 ): Promise<RedditTheme[]> {
   const { prisma } = await import("@/lib/prisma");
-  const cutoff = new Date(Date.now() - 3 * 24 * 3600 * 1000);
+  const cutoff = new Date(Date.now() - 8 * 24 * 3600 * 1000);
   const row = await prisma.redditTrendDigest.findFirst({
     where: { brand, date: { gte: cutoff } },
     orderBy: { date: "desc" },
