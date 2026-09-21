@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-21] — Weekly talking-head video scripts from the audience pulse
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7a367b5b
+
+### In plain English (for Keenan)
+Every Monday, right after the weekly Reddit audience research runs, you now get an email with 3 camera-ready talking-head TikTok scripts per brand (Ripple and BWK). Each script rides one of that week's strongest audience themes: a scroll-stopping opening line, a few spoken beats, and a soft close, written in each brand's voice. Read them to camera like a voice memo, one take.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/video-scripts.ts`: `generateVideoScripts(brand)` pulls the top 6 themes via `getTopThemes`, has Claude (sonnet-4-6, logged to ClaudeCallLog as `video-scripts-{brand}`) write exactly 3 scripts with the HUMAN_VOICE_RULES prevention layer; `sendVideoScriptReport()` emails both brands' scripts via Resend (same FROM/TO envs as hashtag-trends)
+- `apps/web/src/inngest/functions/reddit-trends-daily.ts`: new `email-video-scripts` step after the two digest steps — soft-fail, never breaks the digest run
+- New `apps/web/scripts/send-script-report.ts`: on-demand local runner (same env-loading pattern as send-welcome-test.ts)
+- Everything is soft: no fresh digest, Claude error, or missing RESEND_API_KEY → no email, run still succeeds
+
+### Manual steps needed
+- [ ] Push + deploy, then `curl -X PUT https://goripple.io/api/inngest` (cron + step changes) — Claude at push time
+- [ ] Trigger `content-factory/reddit.digest` from Inngest after deploy to send Keenan the first report immediately (Claude at push time — Keenan asked for it "now")
+
+### Notes
+- The local ANTHROPIC_API_KEY in apps/web/.env.local AND root .env is stale (401 invalid) — the valid key lives only in Vercel. The on-demand runner therefore can't send from a laptop until someone refreshes the local key; the first send has to go through prod via the manual Inngest event.
+- Scripts deliberately have no product mention and no "follow for more" — organic brand-building only, matching the lanes' rules.
+
+---
+
 ## [2026-09-21] — Cheaper interior slides + weekly Reddit pulse
 
 **Requested by:** Keenan
