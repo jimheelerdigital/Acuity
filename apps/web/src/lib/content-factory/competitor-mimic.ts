@@ -35,8 +35,8 @@ const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
 const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
 
 const APIFY_BASE = "https://api.apify.com/v2/acts";
-/** Posts pulled per account per scrape. */
-const POSTS_PER_ACCOUNT = 20;
+/** Posts pulled per account per scrape. Cut 20→10 on 2026-09-21 for Apify plan limits. */
+const POSTS_PER_ACCOUNT = 10;
 /** views ÷ median ≥ this ⇒ outlier. */
 const OUTLIER_MULTIPLE = 3;
 /** Absolute views floor so tiny accounts don't flag 3× of nothing. */

@@ -26,10 +26,11 @@ import { inngest } from "@/inngest/client";
 export const nicheResearchNightlyFn = inngest.createFunction(
   {
     id: "niche-research-nightly",
-    name: "Niche Lab — Nightly Research",
+    name: "Niche Lab — Monthly Research",
     retries: 1,
     triggers: [
-      { cron: "0 2 * * *" },
+      // Monthly (1st, 2:00 UTC) — was nightly; cut 2026-09-21 to stay inside Apify plan limits
+      { cron: "0 2 1 * *" },
       { event: "content-factory/niche.scrape" },
     ],
   },
@@ -148,7 +149,7 @@ export const nicheResearchNightlyFn = inngest.createFunction(
       );
       const samples = await scrapeHashtagPosts(
         profile.igHashtags.slice(0, 10),
-        15
+        10
       );
       return ingestViral("INSTAGRAM", samples);
     });
@@ -160,7 +161,7 @@ export const nicheResearchNightlyFn = inngest.createFunction(
       );
       const samples = await scrapeTikTokHashtags(
         profile.tiktokHashtags.slice(0, 10),
-        15
+        10
       );
       return ingestViral("TIKTOK", samples);
     });
