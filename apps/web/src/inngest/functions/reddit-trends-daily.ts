@@ -38,7 +38,26 @@ export const redditTrendsDailyFn = inngest.createFunction(
       return buildDailyDigest("bwk");
     });
 
-    logger.info(`[reddit-trends] ripple=${ripple} themes, bwk=${bwk} themes`);
-    return { ripple, bwk };
+    // Weekly talking-head script report (2026-09-21, per Keenan):
+    // 3 pulse-driven scripts per brand, emailed right after the fresh
+    // digest lands. Soft — a failure never breaks the digest run.
+    const scripts = await step.run("email-video-scripts", async () => {
+      try {
+        const { sendVideoScriptReport } = await import(
+          "@/lib/content-factory/video-scripts"
+        );
+        return await sendVideoScriptReport();
+      } catch (err) {
+        logger.warn(
+          `[reddit-trends] script report failed: ${err instanceof Error ? err.message : err}`
+        );
+        return 0;
+      }
+    });
+
+    logger.info(
+      `[reddit-trends] ripple=${ripple} themes, bwk=${bwk} themes, scripts emailed=${scripts}`
+    );
+    return { ripple, bwk, scripts };
   }
 );
