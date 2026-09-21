@@ -1,33 +1,48 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 
 import { useTheme } from "@/contexts/theme-context";
 import {
+  archiveHabit,
   checksByHabit,
   createHabit,
   fetchHabits,
   setHabitCheck,
   streakFor,
   todayLocalDate,
+  updateHabit,
   type Habit,
   type HabitCheckRow,
 } from "@/lib/habits-api";
+import type { AcuityTokens } from "@/lib/theme/tokens";
 import { MAX_ACTIVE_HABITS, isExpectedOn, isPaused } from "@acuity/shared";
 
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
 /**
- * Habits pane of the Growth tab. Content-only (no SafeAreaView / no page
- * title): the Growth tab owns the safe area, the title, and the
- * Habits|Goals toggle. Extracted from the former standalone app/habits.tsx.
+ * Habits pane of the Growth tab. Content-only (the Growth tab owns the safe
+ * area, title, and the Habits|Goals toggle).
+ *
+ * Row interactions:
+ *   - tap the checkbox  → check / uncheck today
+ *   - tap the row       → open the habit detail (history, insights, manage)
+ *   - swipe left        → Edit (rename) + Delete (archive)
+ *   - long-press        → quick action menu
  */
 export function HabitsPane() {
   const { tokens } = useTheme();
+  const router = useRouter();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checks, setChecks] = useState<HabitCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +111,86 @@ export function HabitsPane() {
       }
     },
     [byHabit, today]
+  );
+
+  const rename = useCallback((habit: Habit) => {
+    // Alert.prompt is iOS-only; on Android the detail screen owns rename.
+    if (Platform.OS !== "ios") {
+      router.push(`/habit/${habit.id}`);
+      return;
+    }
+    Alert.prompt(
+      "Rename habit",
+      undefined,
+      async (text) => {
+        const next = (text ?? "").trim();
+        if (!next || next === habit.name) return;
+        const updated = await updateHabit(habit.id, { name: next }).catch(
+          () => null
+        );
+        if (updated) {
+          setHabits((prev) =>
+            prev.map((h) => (h.id === habit.id ? { ...h, ...updated } : h))
+          );
+        }
+      },
+      "plain-text",
+      habit.name
+    );
+  }, [router]);
+
+  const setPaused = useCallback(async (habit: Habit, paused: boolean) => {
+    const daysActive = paused ? [] : ALL_DAYS;
+    const updated = await updateHabit(habit.id, { daysActive }).catch(
+      () => null
+    );
+    if (updated) {
+      setHabits((prev) =>
+        prev.map((h) => (h.id === habit.id ? { ...h, ...updated } : h))
+      );
+    }
+  }, []);
+
+  const remove = useCallback((habit: Habit) => {
+    Alert.alert(
+      "Delete habit?",
+      `"${habit.name}" will be removed. Your history is kept and it stops nudging.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const ok = await archiveHabit(habit.id).catch(() => false);
+            if (ok) {
+              setHabits((prev) => prev.filter((h) => h.id !== habit.id));
+            } else {
+              Alert.alert("Couldn't delete", "Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const openMenu = useCallback(
+    (habit: Habit) => {
+      const paused = isPaused(habit);
+      Alert.alert(habit.name, undefined, [
+        {
+          text: "View history",
+          onPress: () => router.push(`/habit/${habit.id}`),
+        },
+        { text: "Rename", onPress: () => rename(habit) },
+        {
+          text: paused ? "Resume" : "Pause",
+          onPress: () => setPaused(habit, !paused),
+        },
+        { text: "Delete", style: "destructive", onPress: () => remove(habit) },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    },
+    [router, rename, setPaused, remove]
   );
 
   const atCap = habits.length >= MAX_ACTIVE_HABITS;
@@ -171,98 +266,187 @@ export function HabitsPane() {
         </Text>
       ) : (
         <View style={{ gap: 8 }}>
-          {habits.map((habit) => {
-            const done = byHabit.get(habit.id)?.has(today) ?? false;
-            const streak = streakFor(habit, byHabit, today);
-            const dueToday = isExpectedOn(habit, today);
-            const paused = isPaused(habit);
-            return (
-              <Pressable
-                key={habit.id}
-                onPress={() => dueToday && void toggle(habit)}
-                disabled={!dueToday}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: done, disabled: !dueToday }}
-                accessibilityLabel={habit.name}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  borderWidth: 1,
-                  borderColor: tokens.line,
-                  borderRadius: 12,
-                  paddingVertical: 14,
-                  paddingHorizontal: 14,
-                  opacity: dueToday ? 1 : 0.55,
-                }}
-              >
-                <View
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 11,
-                    borderWidth: done ? 0 : 1.5,
-                    borderColor: tokens.line,
-                    backgroundColor: done ? tokens.primary : "transparent",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {done ? (
-                    <Text style={{ color: "#ffffff", fontSize: 13 }}>✓</Text>
-                  ) : null}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontFamily: tokens.fontSans,
-                      fontSize: 15,
-                      color: tokens.text,
-                      textDecorationLine: done ? "line-through" : "none",
-                    }}
-                  >
-                    {habit.name}
-                  </Text>
-                  {paused ? (
-                    <Text
-                      style={{
-                        fontFamily: tokens.fontSans,
-                        fontSize: 12,
-                        color: tokens.textTer,
-                        marginTop: 2,
-                      }}
-                    >
-                      Paused
-                    </Text>
-                  ) : !dueToday ? (
-                    <Text
-                      style={{
-                        fontFamily: tokens.fontSans,
-                        fontSize: 12,
-                        color: tokens.textTer,
-                        marginTop: 2,
-                      }}
-                    >
-                      Not today
-                    </Text>
-                  ) : null}
-                </View>
-                {streak > 0 ? (
-                  <Text
-                    style={{
-                      fontFamily: tokens.fontMono,
-                      fontSize: 12,
-                      color: tokens.textTer,
-                    }}
-                  >
-                    {streak}d
-                  </Text>
-                ) : null}
-              </Pressable>
-            );
-          })}
+          {habits.map((habit) => (
+            <HabitRow
+              key={habit.id}
+              habit={habit}
+              done={byHabit.get(habit.id)?.has(today) ?? false}
+              streak={streakFor(habit, byHabit, today)}
+              dueToday={isExpectedOn(habit, today)}
+              paused={isPaused(habit)}
+              tokens={tokens}
+              onToggle={() => toggle(habit)}
+              onOpen={() => router.push(`/habit/${habit.id}`)}
+              onEdit={() => rename(habit)}
+              onDelete={() => remove(habit)}
+              onLongPress={() => openMenu(habit)}
+            />
+          ))}
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 12,
+              color: tokens.textTer,
+              marginTop: 8,
+              textAlign: "center",
+            }}
+          >
+            Tap a habit for history · swipe for edit &amp; delete
+          </Text>
         </View>
       )}
     </View>
+  );
+}
+
+function HabitRow({
+  habit,
+  done,
+  streak,
+  dueToday,
+  paused,
+  tokens,
+  onToggle,
+  onOpen,
+  onEdit,
+  onDelete,
+  onLongPress,
+}: {
+  habit: Habit;
+  done: boolean;
+  streak: number;
+  dueToday: boolean;
+  paused: boolean;
+  tokens: AcuityTokens;
+  onToggle: () => void;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onLongPress: () => void;
+}) {
+  const swipeRef = useRef<Swipeable | null>(null);
+
+  const renderRightActions = () => (
+    <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+      <Pressable
+        onPress={() => {
+          swipeRef.current?.close();
+          onEdit();
+        }}
+        style={{
+          width: 76,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: tokens.bgInset,
+          borderRadius: 12,
+          marginLeft: 8,
+        }}
+        accessibilityLabel={`Edit ${habit.name}`}
+      >
+        <Ionicons name="pencil" size={18} color={tokens.textSec} />
+        <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textSec, marginTop: 4 }}>
+          Edit
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          swipeRef.current?.close();
+          onDelete();
+        }}
+        style={{
+          width: 76,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: tokens.bad,
+          borderRadius: 12,
+          marginLeft: 8,
+        }}
+        accessibilityLabel={`Delete ${habit.name}`}
+      >
+        <Ionicons name="trash" size={18} color="#ffffff" />
+        <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: "#ffffff", marginTop: 4 }}>
+          Delete
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      rightThreshold={40}
+    >
+      <Pressable
+        onPress={onOpen}
+        onLongPress={onLongPress}
+        delayLongPress={300}
+        accessibilityRole="button"
+        accessibilityLabel={`${habit.name}, open details`}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          borderWidth: 1,
+          borderColor: tokens.line,
+          borderRadius: 12,
+          paddingVertical: 14,
+          paddingHorizontal: 14,
+          backgroundColor: tokens.cardBg,
+          opacity: dueToday ? 1 : 0.55,
+        }}
+      >
+        <Pressable
+          onPress={dueToday ? onToggle : undefined}
+          disabled={!dueToday}
+          hitSlop={10}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: done, disabled: !dueToday }}
+          accessibilityLabel={`Mark ${habit.name} done`}
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            borderWidth: done ? 0 : 1.5,
+            borderColor: tokens.line,
+            backgroundColor: done ? tokens.primary : "transparent",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {done ? <Text style={{ color: "#ffffff", fontSize: 14 }}>✓</Text> : null}
+        </Pressable>
+
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 15,
+              color: tokens.text,
+              textDecorationLine: done ? "line-through" : "none",
+            }}
+          >
+            {habit.name}
+          </Text>
+          {paused ? (
+            <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textTer, marginTop: 2 }}>
+              Paused
+            </Text>
+          ) : !dueToday ? (
+            <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textTer, marginTop: 2 }}>
+              Not today
+            </Text>
+          ) : null}
+        </View>
+
+        {streak > 0 ? (
+          <Text style={{ fontFamily: tokens.fontMono, fontSize: 12, color: tokens.textTer }}>
+            {streak}d
+          </Text>
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color={tokens.textTer} />
+      </Pressable>
+    </Swipeable>
   );
 }

@@ -115,3 +115,60 @@ export function habitsForToday<T extends HabitLike>(
 export function isPaused(habit: HabitLike): boolean {
   return !habit.archivedAt && habit.daysActive.length === 0;
 }
+
+/**
+ * Longest run of consecutive EXPECTED days completed, over a lookback
+ * window. Same rules as currentStreak: days the habit is not expected are
+ * skipped (not counted as a break), so a weekdays-only habit is not
+ * penalised for its own schedule.
+ */
+export function bestStreak(
+  habit: HabitLike,
+  checkedDates: ReadonlySet<string>,
+  today: string,
+  maxLookbackDays = 400
+): number {
+  let best = 0;
+  let run = 0;
+  let cursor = today;
+  for (let i = 0; i < maxLookbackDays; i += 1) {
+    if (isExpectedOn(habit, cursor)) {
+      if (checkedDates.has(cursor)) {
+        run += 1;
+        if (run > best) best = run;
+      } else if (!(i === 0)) {
+        // Today unchecked is "in progress", not a break — it only resets
+        // the running count, which never lowers the best already found.
+        run = 0;
+      }
+    }
+    cursor = shiftDate(cursor, -1);
+  }
+  return best;
+}
+
+/**
+ * Completion rate over the last `days` calendar days: of the days the habit
+ * was EXPECTED (and already over), how many were completed. Today is only
+ * counted once it's been checked — an unchecked "today" is still in
+ * progress and would otherwise drag the rate down every morning.
+ */
+export function completionRate(
+  habit: HabitLike,
+  checkedDates: ReadonlySet<string>,
+  today: string,
+  days = 30
+): { done: number; expected: number; pct: number } {
+  let done = 0;
+  let expected = 0;
+  for (let i = 0; i < days; i += 1) {
+    const date = shiftDate(today, -i);
+    if (!isExpectedOn(habit, date)) continue;
+    const checked = checkedDates.has(date);
+    if (i === 0 && !checked) continue; // today, still in progress
+    expected += 1;
+    if (checked) done += 1;
+  }
+  const pct = expected === 0 ? 0 : Math.round((done / expected) * 100);
+  return { done, expected, pct };
+}

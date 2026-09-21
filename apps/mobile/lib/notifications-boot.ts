@@ -2,10 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 
 import { api } from "@/lib/api";
+import { fetchHabitReminderInputs } from "@/lib/habit-reminders-sync";
 import {
   applyMultiReminderSchedule,
   getPermissionStatus,
   topUpRandomNudges,
+  type MultiReminderInput,
 } from "@/lib/notifications";
 
 /**
@@ -85,9 +87,10 @@ export async function reapplyRemindersIfNeeded(
     // per-reminder rows live on UserReminder. Both are needed because
     // applyMultiReminderSchedule cuts the whole list if masterEnabled
     // is false.
-    const [meRes, listRes] = await Promise.all([
+    const [meRes, listRes, habitInputs] = await Promise.all([
       api.get<{ user: { notificationsEnabled?: boolean } }>("/api/user/me"),
       api.get<{ reminders: ServerReminder[] }>("/api/account/reminders"),
+      fetchHabitReminderInputs().catch(() => [] as MultiReminderInput[]),
     ]);
 
     const masterEnabled = !!meRes.user?.notificationsEnabled;
@@ -96,8 +99,22 @@ export async function reapplyRemindersIfNeeded(
       (r) => r.enabled && r.daysActive.length > 0
     );
 
+    // Debrief + habit nudges share one on-device schedule (a single
+    // cancel-then-reschedule over all triggers). The self-heal must
+    // consider BOTH — otherwise a boot reschedule would silently drop
+    // whichever kind it left out.
+    const activeAll: MultiReminderInput[] = [
+      ...activeReminders.map((r) => ({
+        id: r.id,
+        time: r.time,
+        daysActive: r.daysActive,
+        enabled: r.enabled,
+      })),
+      ...habitInputs.filter((r) => r.enabled && r.daysActive.length > 0),
+    ];
+
     const expectedTriggers = masterEnabled
-      ? activeReminders.reduce((sum, r) => sum + r.daysActive.length, 0)
+      ? activeAll.reduce((sum, r) => sum + r.daysActive.length, 0)
       : 0;
 
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
@@ -124,7 +141,7 @@ export async function reapplyRemindersIfNeeded(
     if (masterEnabled) {
       // Per-reminder check: any active reminder with zero matching
       // triggers means a missing schedule.
-      for (const r of activeReminders) {
+      for (const r of activeAll) {
         if ((triggersByReminderId.get(r.id) ?? 0) === 0) {
           needsReschedule = true;
           break;
@@ -152,12 +169,7 @@ export async function reapplyRemindersIfNeeded(
 
     const outcome = await applyMultiReminderSchedule({
       masterEnabled,
-      reminders: activeReminders.map((r) => ({
-        id: r.id,
-        time: r.time,
-        daysActive: r.daysActive,
-        enabled: r.enabled,
-      })),
+      reminders: activeAll,
     });
 
     if (outcome.kind === "scheduled") {
