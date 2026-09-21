@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-21] — Apify scraping cut to once a month, 10 posts per source
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7f5b2fd3
+
+### In plain English (for Keenan)
+We were maxing out our Apify plan because the competitor scrape ran every day and the niche hashtag research ran every night. All three research scrapers (competitor accounts, niche hashtag research, niche discovery) now run once a month and pull 10 posts per account or hashtag instead of 15–20. This drops Apify usage from roughly 11,500 scraped items a month to about 300, so the plan limit should never trip again. The manual "Scrape now" buttons in the admin still work any time you want fresh data on demand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/competitor-scrape-daily.ts`: cron `30 3 * * *` → `30 3 1 * *` (1st of month); display name → "Monthly Competitor Scrape"
+- `apps/web/src/inngest/functions/niche-research-nightly.ts`: cron `0 2 * * *` → `0 2 1 * *` (1st of month); viral IG/TikTok hashtag scrapes 15 → 10 results per tag; display name → "Monthly Research"
+- `apps/web/src/inngest/functions/niche-discovery.ts`: cron `0 2 * * 0` (weekly Sun) → `0 2 15 * *` (15th of month); discovery scrapes 20 → 10 per tag
+- `apps/web/src/lib/content-factory/competitor-mimic.ts`: `POSTS_PER_ACCOUNT` 20 → 10
+- Function IDs unchanged (only crons + display names) so Inngest history is preserved
+- New diagnostic script `apps/web/scripts/apify-usage-check.ts` (untracked) — groupBy counts of CompetitorAccount / HashtagWatch / NicheAccount for future Apify-usage audits
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` to resync Inngest — cron changes do NOT take effect on deploy alone (Keenan or Claude at push time)
+
+### Notes
+- Live counts at time of change: 4 active competitor accounts (all TikTok), 0 hashtag watches, 25 niche accounts (all inactive), 1 niche profile. ~80% of Apify volume was the two nightly hashtag-viral runs (10 tags × 15 results × 2 platforms daily).
+- Mimic briefs (muse lanes) and the viral feed will now refresh monthly — content quality of those lanes depends on month-old competitor data between runs. If that hurts the muse lanes, the levers are the admin "Scrape now" buttons or moving the crons back to weekly.
+- Discovery moved to the 15th (not the 1st) so the two heavy jobs don't share a day.
+
+---
+
 ## [2026-09-19] — Reddit-driven lanes now write problem → fix posts
 
 **Requested by:** Keenan
