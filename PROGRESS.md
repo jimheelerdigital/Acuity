@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-21] — Cheaper interior slides + weekly Reddit pulse
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dd02aadb (image quality), 6dfd3e1c (weekly pulse)
+
+### In plain English (for Keenan)
+Two cost cuts. First, the image bill (~$16/day) drops by more than half: cover photos and any slide with text baked into the image keep max quality, but the interior background slides now render at medium quality — they sit behind composited text and are seen for a second mid-swipe, so the difference is invisible in practice. Second, the Reddit audience-pulse research now runs once a week (Mondays) instead of every night; posts still use the latest weekly pulse all week long.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `generateImage` quality `"high"` → `cover ? "high" : "medium"` (~25¢ → ~6¢ per interior). Covers, baked phone-quote/texts slides (vision-verified text), and `generateImageWithReference` (avatar/story consistency) unchanged at high.
+- `apps/web/src/inngest/functions/reddit-trends-daily.ts`: cron `0 4 * * *` → `0 4 * * 1` (Mondays); name → "Weekly Reddit Audience Pulse". Function ID unchanged.
+- `apps/web/src/lib/content-factory/reddit-trends.ts`: `getAudiencePulse` + `getTopThemes` digest freshness cutoff 3 → 8 days, so weekly digests cover the whole week (3-day window would have left lanes pulse-blind Thu–Sun).
+- New diagnostic script `apps/web/scripts/lane-audit.ts` (untracked): per-lane generated/posted/engagement rollup from CarouselPost, used for the lane-kill audit.
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` to resync Inngest for the cron change (Claude at push time)
+
+### Notes
+- Lane audit findings (2026-09-21): 454 posts generated in 45 days, 43 with links pasted — ALL Ripple. BWK lanes show zero posted links but Keenan confirms he posts them all on TikTok where they perform well. TikTok metrics have no automated path (Display API unavailable; Apify fallback deliberately scrapped 2026-09-16), so the engagement feedback loop only sees IG/FB. Any lane-kill decision needs Keenan's TikTok analytics, not our DB.
+- This walks back part of the 2026-09-04 "TRUST THE PROCESS" max-fidelity mandate, explicitly approved by Keenan today for interiors only.
+
+---
+
 ## [2026-09-21] — Apify scraping cut to once a month, 10 posts per source
 
 **Requested by:** Keenan
