@@ -44,6 +44,18 @@ type ReviewGoal = {
    *  committing this goal is a no-op. */
   alreadyExists: boolean;
 };
+/** A habit the debrief evidenced, matched back to one of the user's
+ *  active habits. Surfaced in the review so the user sees what was
+ *  caught and can toggle the check for the entry's local day. Unlike
+ *  tasks/goals these are NOT part of the commit batch: the review
+ *  toggles them live via the habit-check API (source of truth is the
+ *  HabitCheck row, shared with the Growth tab). */
+type ReviewHabit = {
+  habitId: string;
+  name: string;
+  /** Whether a HabitCheck already exists for (habit, entry-local-day). */
+  checked: boolean;
+};
 
 export async function GET(
   req: NextRequest,
@@ -63,6 +75,7 @@ export async function GET(
       status: true,
       rawAnalysis: true,
       extractionCommittedAt: true,
+      createdAt: true,
     },
   });
   if (!entry) {
@@ -111,12 +124,65 @@ export async function GET(
     alreadyExists: existingTitleSet.has(g.title.toLowerCase()),
   }));
 
+  // Caught habits — the debrief-evidenced habits, matched back to the
+  // user's active habits. Only when the feature is on. Toggled live by
+  // the review (not committed), so we also report their current checked
+  // state for the entry's local day.
+  let habits: ReviewHabit[] = [];
+  let habitLocalDate: string | null = null;
+  const habitMatches = extraction?.habitCompletions ?? [];
+  if (habitMatches.length > 0) {
+    const { habitsEnabled, fetchActiveHabits, localDateForTimezone } =
+      await import("@/lib/habits-autocheck");
+    if (habitsEnabled()) {
+      const active = await fetchActiveHabits(prisma, userId);
+      const byName = new Map(
+        active.map((h) => [h.name.trim().toLowerCase(), h])
+      );
+      const matched: { id: string; name: string }[] = [];
+      const seen = new Set<string>();
+      for (const m of habitMatches) {
+        const h = byName.get((m.habitName ?? "").trim().toLowerCase());
+        if (h && !seen.has(h.id)) {
+          seen.add(h.id);
+          matched.push(h);
+        }
+      }
+      if (matched.length > 0) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        });
+        habitLocalDate = localDateForTimezone(
+          user?.timezone ?? null,
+          entry.createdAt
+        );
+        const existing = await prisma.habitCheck.findMany({
+          where: {
+            userId,
+            localDate: habitLocalDate,
+            habitId: { in: matched.map((h) => h.id) },
+          },
+          select: { habitId: true },
+        });
+        const checkedSet = new Set(existing.map((c) => c.habitId));
+        habits = matched.map((h) => ({
+          habitId: h.id,
+          name: h.name,
+          checked: checkedSet.has(h.id),
+        }));
+      }
+    }
+  }
+
   return NextResponse.json({
     entryId: entry.id,
     status: entry.status,
     committedAt: entry.extractionCommittedAt?.toISOString() ?? null,
     tasks,
     goals,
+    habits,
+    habitLocalDate,
   });
 }
 
