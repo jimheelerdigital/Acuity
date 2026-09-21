@@ -342,6 +342,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "reddit-digest": {
+      // Fire the weekly Reddit pulse digest on demand (2026-09-21) —
+      // rebuilds both brands' digests AND sends the talking-head
+      // script report email at the end of the run.
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({ name: "content-factory/reddit.digest", data: {} });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
     case "resend-email": {
       if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
       const { sendCarouselEmail } = await import("@/lib/content-factory/email");

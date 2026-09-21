@@ -43,6 +43,27 @@ export default function AudiencePulseTab() {
   const [digests, setDigests] = useState<Digest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [runQueued, setRunQueued] = useState(false);
+
+  // "Run now" (2026-09-21, per Keenan): fires the weekly digest +
+  // talking-head script report on demand instead of waiting for Monday.
+  const runNow = async () => {
+    setRunning(true);
+    try {
+      const res = await fetch("/api/admin/carousels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reddit-digest" }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setRunQueued(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to queue the run");
+    } finally {
+      setRunning(false);
+    }
+  };
 
   const load = () => {
     setError(null);
@@ -67,24 +88,38 @@ export default function AudiencePulseTab() {
     );
   }
 
+  const runButton = (
+    <button
+      onClick={runNow}
+      disabled={running || runQueued}
+      className="shrink-0 rounded-acuity-md border border-acuity-line px-4 py-2 text-sm text-acuity-text-sec transition hover:border-acuity-line-strong hover:text-acuity-text disabled:opacity-50"
+    >
+      {runQueued ? "Run queued ✓" : running ? "Queuing…" : "Run now"}
+    </button>
+  );
+
   if (digests.length === 0) {
     return (
-      <div className="neo-glass rounded-acuity-lg p-10 text-center">
+      <div className="neo-glass rounded-acuity-lg space-y-4 p-10 text-center">
         <p className="text-sm text-acuity-text-sec">
-          No digests yet. The Reddit scrape runs nightly at 4:00 UTC — or
-          fire the <code className="text-acuity-primary">content-factory/reddit.digest</code>{" "}
-          event from Inngest to run one now.
+          No digests yet. The Reddit scrape runs Mondays at 4:00 UTC — or
+          run one now. The run also emails the talking-head script report.
         </p>
+        {runButton}
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-acuity-text-ter">
-        Nightly Reddit scrape, distilled by Claude into the themes and
-        angles injected into every content lane the following morning.
-      </p>
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm text-acuity-text-ter">
+          Weekly Reddit scrape (Mondays), distilled by Claude into the
+          themes and angles injected into every content lane — plus the
+          emailed talking-head script report.
+        </p>
+        {runButton}
+      </div>
 
       {digests.map((d) => {
         const themes = d.themes ?? [];
