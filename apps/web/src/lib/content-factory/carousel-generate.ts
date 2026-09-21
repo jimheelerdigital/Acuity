@@ -438,10 +438,13 @@ export async function generateImage(
     // tallest size is 1024x1536; composeSlide cover-crops to 1080x1920
     // downstream either way (same path the edit endpoint already uses).
     size: cover ? "1024x1792" : "1024x1536",
-    // 2026-09-04, per Keenan's TRUST THE PROCESS reference: "images
-    // need to be this level of quality" — pin max fidelity instead of
-    // the model's default tier. ~3x cost per image (see estimateImageCost).
-    quality: "high",
+    // Covers stay max fidelity (2026-09-04, per Keenan's TRUST THE
+    // PROCESS reference: "images need to be this level of quality") —
+    // they're the scroll-stopper. Interior slides dropped to "medium"
+    // (2026-09-21, per Keenan): they're moody backgrounds behind
+    // composited text, and high on interiors was ~60% of the ~$16/day
+    // image bill. ~25¢ → ~6¢ per interior.
+    quality: cover ? "high" : "medium",
   });
 
   const b64 = response.data?.[0]?.b64_json;
