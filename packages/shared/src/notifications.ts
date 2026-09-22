@@ -13,6 +13,8 @@
 export type NotificationCategory =
   | "streak_preservation"
   | "habit_reminder"
+  | "habit_nudge"
+  | "surprise_checkin"
   | "milestone_celebration"
   | "goal_nudge"
   | "task_reminder"
@@ -59,6 +61,26 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategoryDef[] = [
     label: "Gentle reminders",
     description: "A reminder to debrief around when you usually do.",
     defaultOn: true,
+    group: "stay_on_track",
+  },
+  {
+    key: "habit_nudge",
+    label: "Habit nudges",
+    description: "A nudge for a habit you're tracking, at the time you chose.",
+    // Activity-based (a habit you added yourself), not inferred from speech —
+    // so it lives in stay_on_track and stays on by default, matching how habit
+    // reminders already behaved before this system owned them.
+    defaultOn: true,
+    group: "stay_on_track",
+  },
+  {
+    key: "surprise_checkin",
+    label: "Surprise check-ins",
+    description: "An occasional unprompted nudge to capture a moment.",
+    // Off by default: an unpredictable nudge is more intrusive than a
+    // reminder the user scheduled, so it's opt-in even though it's
+    // activity-based (nothing here is inferred from what you said).
+    defaultOn: false,
     group: "stay_on_track",
   },
   {
@@ -215,4 +237,103 @@ export function defaultNotificationPreferences(): NotificationPreferences {
     maxPerWeek: NOTIFICATION_FREE_MAX_PER_WEEK,
     pausedUntil: null,
   };
+}
+
+
+// ─── Delivery-decision helpers (server-owned reminders, 2026-09) ─────────────
+//
+// Pure functions the server reminder dispatcher composes to decide whether a
+// given reminder should fire on a given cron tick. Kept here (not in the cron)
+// so they're unit-testable in isolation and can't drift from the category
+// model above. No I/O, no Date.now() — the caller passes "now".
+
+/** Minutes since local midnight for "HH:MM". null if malformed. */
+export function hhmmToMinutes(hhmm: string): number | null {
+  if (!isValidHHMM(hhmm)) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/**
+ * Is `nowHHMM` inside the quiet-hours window [start, end)? The window wraps
+ * midnight when end <= start (e.g. 21:00 → 09:00 covers the night). Equal
+ * start/end is treated as "no quiet hours" (never suppresses) rather than
+ * "always quiet", which would silence everything and read as a bug.
+ */
+export function isWithinQuietHours(
+  nowHHMM: string,
+  start: string,
+  end: string
+): boolean {
+  const now = hhmmToMinutes(nowHHMM);
+  const s = hhmmToMinutes(start);
+  const e = hhmmToMinutes(end);
+  if (now === null || s === null || e === null) return false;
+  if (s === e) return false; // empty window
+  return s < e ? now >= s && now < e : now >= s || now < e; // wrap midnight
+}
+
+/** True if `category` is switched on in the user's saved set. */
+export function isCategoryEnabled(
+  enabledCategories: readonly string[] | null | undefined,
+  category: NotificationCategory
+): boolean {
+  return !!enabledCategories && enabledCategories.includes(category);
+}
+
+// ─── App-version gate for server-owned reminders ─────────────────────────────
+//
+// The migration from on-device scheduling to server push is version-gated so a
+// user is served by exactly ONE system and never gets a double reminder:
+//   - app >= MIN_SERVER_REMINDER_VERSION  → on-device scheduling removed;
+//     the SERVER owns delivery (this gate returns true).
+//   - older app / unknown version         → the installed app still schedules
+//     locally, so the server must NOT also send (returns false).
+// Unknown/unparseable versions fail CLOSED (false) — never risk a double-send.
+export const MIN_SERVER_REMINDER_VERSION = "1.6.0";
+
+/** Parse "1.6.0" / "1.6" / "1.6.0-beta.2" → [major, minor, patch]. null if unparseable. */
+export function parseSemver(
+  v: string | null | undefined
+): [number, number, number] | null {
+  if (!v) return null;
+  const core = v.trim().split(/[-+]/)[0]; // drop pre-release / build metadata
+  const parts = core.split(".");
+  if (parts.length === 0) return null;
+  const nums = parts.map((p) => Number(p));
+  if (nums.some((n) => !Number.isInteger(n) || n < 0)) return null;
+  return [nums[0] ?? 0, nums[1] ?? 0, nums[2] ?? 0];
+}
+
+/** a >= b for [major,minor,patch] tuples. */
+export function semverGte(
+  a: [number, number, number],
+  b: [number, number, number]
+): boolean {
+  for (let i = 0; i < 3; i += 1) {
+    if (a[i] > b[i]) return true;
+    if (a[i] < b[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * Does the server own reminder delivery for a user on this app version?
+ * Fails closed (false) on unknown/old versions so the on-device app that's
+ * still scheduling locally is never doubled up by a server push.
+ */
+export function serverOwnsReminders(
+  appVersion: string | null | undefined
+): boolean {
+  const parsed = parseSemver(appVersion);
+  const min = parseSemver(MIN_SERVER_REMINDER_VERSION);
+  if (!parsed || !min) return false;
+  return semverGte(parsed, min);
+}
+
+/** The reminder-kind → notification-category mapping (server-owned reminders). */
+export function categoryForReminderKind(
+  kind: "debrief" | "habit"
+): NotificationCategory {
+  return kind === "habit" ? "habit_nudge" : "habit_reminder";
 }
