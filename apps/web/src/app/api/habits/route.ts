@@ -37,11 +37,18 @@ export async function GET(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
+  // ?archived=1 returns the user's archived (soft-deleted) habits instead of
+  // active ones, so the app can offer a "restore" screen. Checks come back the
+  // same way, so an archived row can still show its history/streak-at-archive.
+  const archivedOnly = req.nextUrl.searchParams.get("archived") === "1";
+
   const cutoff = new Date(Date.now() - CHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const [habits, checks] = await Promise.all([
     prisma.habit.findMany({
-      where: { userId, archivedAt: null },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      where: { userId, archivedAt: archivedOnly ? { not: null } : null },
+      orderBy: archivedOnly
+        ? [{ archivedAt: "desc" }]
+        : [{ sortOrder: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
         name: true,

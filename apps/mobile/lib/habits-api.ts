@@ -52,6 +52,12 @@ export async function fetchHabits(): Promise<HabitsPayload> {
   return { habits: res?.habits ?? [], checks: res?.checks ?? [] };
 }
 
+/** Archived (soft-deleted) habits, most-recently-archived first, + checks. */
+export async function fetchArchivedHabits(): Promise<HabitsPayload> {
+  const res = await api.get<HabitsPayload>("/api/habits?archived=1");
+  return { habits: res?.habits ?? [], checks: res?.checks ?? [] };
+}
+
 export async function createHabit(
   name: string,
   daysActive?: number[],
@@ -123,6 +129,18 @@ export async function updateHabit(
 export async function archiveHabit(id: string): Promise<boolean> {
   const res = await api.del<{ ok: boolean }>(`/api/habits/${id}`);
   return !!res?.ok;
+}
+
+/**
+ * Restore (unarchive) a previously deleted habit. Throws with the server's
+ * message when it can't (e.g. you're at the active-habit cap), so the caller
+ * can surface it.
+ */
+export async function unarchiveHabit(id: string): Promise<Habit | null> {
+  const res = await api.patch<{ habit: Habit }>(`/api/habits/${id}`, {
+    archived: false,
+  });
+  return res?.habit ?? null;
 }
 
 // ─── Per-habit reminders (nudges) ────────────────────────────────────

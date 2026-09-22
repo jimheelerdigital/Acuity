@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { MAX_ACTIVE_HABITS } from "@acuity/shared";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 /**
  * Edit / archive a single habit.
  *
- * PATCH  /api/habits/[id]  → rename and/or set active days (pause = []).
+ * PATCH  /api/habits/[id]  → rename and/or set active days (pause = []);
+ *                            or { archived: false } to restore (unarchive).
  * DELETE /api/habits/[id]  → archive (soft delete). The check history is
  *                            kept so streak/insight data survives; an
  *                            archived habit simply stops appearing and
@@ -48,7 +50,61 @@ export async function PATCH(
   const body = (await req.json().catch(() => null)) as {
     name?: unknown;
     daysActive?: unknown;
+    archived?: unknown;
   } | null;
+
+  // Restore (unarchive): { archived: false }. Handled first because it targets
+  // an ARCHIVED habit — the opposite of every other PATCH, which only touches
+  // active ones. Only false is meaningful; archiving happens via DELETE.
+  if (body?.archived === false) {
+    const { prisma } = await import("@/lib/prisma");
+
+    const owned = await prisma.habit.findFirst({
+      where: { id, userId, archivedAt: { not: null } },
+      select: { id: true, type: true },
+    });
+    if (!owned) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Restoring counts against the active cap.
+    const active = await prisma.habit.count({
+      where: { userId, archivedAt: null },
+    });
+    if (active >= MAX_ACTIVE_HABITS) {
+      return NextResponse.json(
+        {
+          error: `You can track up to ${MAX_ACTIVE_HABITS} habits at once. Remove one before restoring.`,
+          code: "TOO_MANY_HABITS",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Preserve the one-active-reflection-habit invariant.
+    if (owned.type === "reflection") {
+      const existing = await prisma.habit.findFirst({
+        where: { userId, archivedAt: null, type: "reflection" },
+        select: { id: true },
+      });
+      if (existing) {
+        return NextResponse.json(
+          {
+            error: "You already have an active Daily Reflection habit.",
+            code: "REFLECTION_EXISTS",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const habit = await prisma.habit.update({
+      where: { id },
+      data: { archivedAt: null, updatedAt: new Date() },
+      select: HABIT_SELECT,
+    });
+    return NextResponse.json({ habit });
+  }
 
   const data: { name?: string; daysActive?: number[] } = {};
 

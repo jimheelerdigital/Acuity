@@ -378,6 +378,29 @@ export function HabitsPane() {
           </Text>
         </View>
       )}
+
+      <Pressable
+        onPress={() => router.push("/habits-archived")}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="View archived habits"
+        style={{
+          alignSelf: "center",
+          marginTop: 20,
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 13,
+            color: tokens.textTer,
+          }}
+        >
+          Archived habits
+        </Text>
+      </Pressable>
     </View>
   );
 }
