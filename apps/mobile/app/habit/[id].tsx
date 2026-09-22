@@ -292,7 +292,9 @@ export default function HabitDetailScreen() {
   const cell = (state: "done" | "miss" | "off" | "future") => {
     if (state === "future") return "transparent";
     if (state === "done") return tokens.primary;
-    if (state === "miss") return tokens.bgSub;
+    // Missed = an outlined empty slot (see the border in the cell/legend),
+    // so it reads as "a day you didn't fill" rather than another grey fill.
+    if (state === "miss") return "transparent";
     return tokens.bgInset;
   };
 
@@ -366,8 +368,8 @@ export default function HabitDetailScreen() {
                     aspectRatio: 1,
                     borderRadius: 6,
                     backgroundColor: cell(c.state),
-                    borderWidth: c.state === "miss" ? 1 : 0,
-                    borderColor: tokens.line,
+                    borderWidth: c.state === "miss" ? 1.5 : 0,
+                    borderColor: tokens.lineStrong,
                   }}
                 />
               ))}
@@ -384,7 +386,7 @@ export default function HabitDetailScreen() {
         >
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.primary }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Done</Text>
-          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgSub, borderWidth: 1, borderColor: tokens.line, marginLeft: 12 }} />
+          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.5, borderColor: tokens.lineStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Missed</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInset, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Off day</Text>
