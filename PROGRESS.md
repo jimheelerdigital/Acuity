@@ -56,6 +56,31 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 - Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
 
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+## [2026-09-22] — Every slideshow reel now ends with a branded Ripple CTA slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every slideshow reel we publish now closes on a branded final slide with the Ripple logo and a button-style download CTA. BWK reels get the dark-mode version ("Your AI life optimizer." / "Tracks your habits. Gives you insights on how to be a better you." / "Download in our bio"); Ripple reels get the light orange version ("Take the load off." / "Ripple, your daily life optimizer." / "Download at the link in our bio"). Viewers who watch to the end now always see who made the content and how to get the app.
+
+### Technical changes (for Jimmy)
+- New static slides `apps/web/public/cta-slide-bwk.jpg` and `cta-slide-ripple.jpg` (1080x1920, composed from the real lockup PNGs + Poppins via sharp — not AI-generated, so the logo is pixel-perfect)
+- New generator script `apps/web/scripts/make-cta-slides.ts` (re-run to tweak copy/layout; cleans lockup background compression noise and writes its own fontconfig so Pango finds the repo Poppins fonts on macOS)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: the reel render step resolves the brand via `laneBrand(post.lane)` and appends `https://goripple.io/cta-slide-{brand}.jpg` to the imageUrls passed to `renderSlideshowReel`
+- Photo-carousel fallback path deliberately unchanged — scope was slideshows
+
+### Manual steps needed
+- [ ] Keenan: approve the two slides (emailed 2026-09-22 via Resend) or ask for tweaks, then say push
+
+### Notes
+- The slide adds one 3.5s segment to each reel (SLIDE_SEC in slideshow-reel.ts)
+- Already-rendered reels are memoized by the HEAD-check on `reels/{postId}.mp4` — the CTA slide only appears on reels rendered after this deploys; it will not retro-fit existing MP4s
+- The slides ship inside the repo (public/) so the CDN URL is live the moment the deploy lands; no bucket upload involved
+
+---
+
 ## [2026-09-22] — "Run now" no longer depends on the silently-broken Inngest function
 
 **Requested by:** Keenan
