@@ -106,3 +106,35 @@ export async function persistDebriefHabitChecks(params: {
   }
   return checked;
 }
+
+
+/**
+ * The "Daily Reflection with Ripple" habit completes itself.
+ *
+ * Unlike the tracked-habit matcher above, there's nothing to find in the
+ * transcript — the act of recording a debrief IS the habit. So on entry
+ * creation we check off the user's reflection-type habit (if they've added
+ * it) for their local day. Best-effort + idempotent, same contract as
+ * persistDebriefHabitChecks. A MANUAL check already present stays as-is.
+ */
+export async function checkReflectionHabitOnRecord(params: {
+  prisma: PrismaClient;
+  userId: string;
+  entryId: string;
+  timezone: string | null | undefined;
+  now?: Date;
+}): Promise<boolean> {
+  const { prisma, userId, entryId, timezone } = params;
+  const habit = await prisma.habit.findFirst({
+    where: { userId, archivedAt: null, type: "reflection" },
+    select: { id: true },
+  });
+  if (!habit) return false;
+  const localDate = localDateForTimezone(timezone, params.now);
+  await prisma.habitCheck.upsert({
+    where: { habitId_localDate: { habitId: habit.id, localDate } },
+    create: { habitId: habit.id, userId, localDate, source: "DEBRIEF", entryId },
+    update: {},
+  });
+  return true;
+}

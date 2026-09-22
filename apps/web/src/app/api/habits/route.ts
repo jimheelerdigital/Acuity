@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         name: true,
+        type: true,
         daysActive: true,
         archivedAt: true,
         sortOrder: true,
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as {
     name?: unknown;
     daysActive?: unknown;
+    type?: unknown;
   } | null;
 
   const name = typeof body?.name === "string" ? body.name.trim() : "";
@@ -81,6 +83,11 @@ export async function POST(req: NextRequest) {
   if (name.length > 80) {
     return NextResponse.json({ error: "Name is too long" }, { status: 400 });
   }
+
+  // Only two habit types exist: the ordinary "standard" habit, and the single
+  // self-completing "reflection" habit (Daily Reflection with Ripple). Any
+  // other value is coerced to "standard" — clients can't invent new types.
+  const type = body?.type === "reflection" ? "reflection" : "standard";
 
   // Days are validated rather than trusted: an out-of-range value would
   // make the habit silently never appear, which reads as a broken feature
@@ -95,6 +102,27 @@ export async function POST(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
+  // Exactly one reflection habit per user. If they already have an active one,
+  // return it rather than erroring — the "add" chip is idempotent, so a double
+  // tap can't create a duplicate self-completing habit.
+  if (type === "reflection") {
+    const existing = await prisma.habit.findFirst({
+      where: { userId, archivedAt: null, type: "reflection" },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        daysActive: true,
+        archivedAt: true,
+        sortOrder: true,
+        createdAt: true,
+      },
+    });
+    if (existing) {
+      return NextResponse.json({ habit: existing }, { status: 200 });
+    }
+  }
+
   const active = await prisma.habit.count({ where: { userId, archivedAt: null } });
   if (active >= MAX_ACTIVE_HABITS) {
     return NextResponse.json(
@@ -107,10 +135,11 @@ export async function POST(req: NextRequest) {
   }
 
   const habit = await prisma.habit.create({
-    data: { userId, name, daysActive, sortOrder: active },
+    data: { userId, name, type, daysActive, sortOrder: active },
     select: {
       id: true,
       name: true,
+      type: true,
       daysActive: true,
       archivedAt: true,
       sortOrder: true,

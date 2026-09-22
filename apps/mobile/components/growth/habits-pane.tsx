@@ -14,10 +14,12 @@ import { Swipeable } from "react-native-gesture-handler";
 
 import { useTheme } from "@/contexts/theme-context";
 import {
+  addReflectionHabit,
   archiveHabit,
   checksByHabit,
   createHabit,
   fetchHabits,
+  isReflectionHabit,
   setHabitCheck,
   streakFor,
   todayLocalDate,
@@ -87,6 +89,33 @@ export function HabitsPane() {
       setCreating(false);
     }
   }, [name, creating]);
+
+  // The one suggested habit: doing your daily Ripple. Offered until they add
+  // it. One tap; the server is idempotent so it can't duplicate.
+  const hasReflection = useMemo(
+    () => habits.some((h) => isReflectionHabit(h)),
+    [habits]
+  );
+
+  const onAddReflection = useCallback(async () => {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const habit = await addReflectionHabit();
+      if (habit) {
+        setHabits((prev) =>
+          prev.some((h) => h.id === habit.id) ? prev : [...prev, habit]
+        );
+      }
+    } catch (err) {
+      Alert.alert(
+        "Couldn't add that",
+        err instanceof Error ? err.message : "Please try again."
+      );
+    } finally {
+      setCreating(false);
+    }
+  }, [creating]);
 
   const toggle = useCallback(
     async (habit: Habit) => {
@@ -250,6 +279,60 @@ export function HabitsPane() {
           </Text>
         </Pressable>
       </View>
+
+      {!loading && !hasReflection && !atCap ? (
+        <Pressable
+          onPress={() => void onAddReflection()}
+          disabled={creating}
+          accessibilityRole="button"
+          accessibilityLabel="Add the Daily Reflection with Ripple habit"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            borderWidth: 1,
+            borderColor: tokens.primary,
+            borderRadius: 14,
+            paddingHorizontal: 14,
+            paddingVertical: 13,
+            marginBottom: 24,
+            backgroundColor: tokens.bgInset,
+            opacity: creating ? 0.5 : 1,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontFamily: tokens.fontDisplay,
+                fontSize: 15,
+                color: tokens.text,
+                marginBottom: 3,
+              }}
+            >
+              Daily Reflection with Ripple
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 13,
+                lineHeight: 18,
+                color: tokens.textSec,
+              }}
+            >
+              Checks itself off every time you record. One tap to add.
+            </Text>
+          </View>
+          <Text
+            style={{
+              fontFamily: tokens.fontDisplay,
+              fontSize: 14,
+              color: tokens.primary,
+            }}
+          >
+            {creating ? "…" : "Add"}
+          </Text>
+        </Pressable>
+      ) : null}
 
       {loading ? (
         <ActivityIndicator color={tokens.textSec} />

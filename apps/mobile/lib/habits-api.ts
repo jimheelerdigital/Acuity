@@ -14,10 +14,21 @@ import { currentStreak, type HabitLike } from "@acuity/shared";
 export interface Habit extends HabitLike {
   id: string;
   name: string;
+  /** "standard" | "reflection". The reflection habit self-completes on record. */
+  type: string;
   daysActive: number[];
   archivedAt: string | null;
   sortOrder: number;
   createdAt: string;
+}
+
+/** The one self-completing habit: doing your daily Ripple debrief. */
+export const REFLECTION_HABIT_TYPE = "reflection";
+/** Default name for the suggested reflection habit (one-tap add). */
+export const REFLECTION_HABIT_NAME = "Daily Reflection with Ripple";
+
+export function isReflectionHabit(h: Pick<Habit, "type">): boolean {
+  return h.type === REFLECTION_HABIT_TYPE;
 }
 
 export interface HabitCheckRow {
@@ -43,13 +54,24 @@ export async function fetchHabits(): Promise<HabitsPayload> {
 
 export async function createHabit(
   name: string,
-  daysActive?: number[]
+  daysActive?: number[],
+  type?: string
 ): Promise<Habit | null> {
   const res = await api.post<{ habit: Habit }>("/api/habits", {
     name,
     ...(daysActive ? { daysActive } : {}),
+    ...(type ? { type } : {}),
   });
   return res?.habit ?? null;
+}
+
+/**
+ * One-tap add of the suggested "Daily Reflection with Ripple" habit. The
+ * server is idempotent on the reflection type, so a double-tap can't create
+ * a duplicate — it returns the existing one.
+ */
+export async function addReflectionHabit(): Promise<Habit | null> {
+  return createHabit(REFLECTION_HABIT_NAME, undefined, REFLECTION_HABIT_TYPE);
 }
 
 export async function setHabitCheck(

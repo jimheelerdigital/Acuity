@@ -25,6 +25,7 @@ function isFlagOn(): boolean {
 const HABIT_SELECT = {
   id: true,
   name: true,
+  type: true,
   daysActive: true,
   archivedAt: true,
   sortOrder: true,

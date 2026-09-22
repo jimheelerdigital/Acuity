@@ -2824,6 +2824,12 @@ model Habit {
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name       String
+  // "standard" | "reflection". The reflection habit is the built-in
+  // "Daily Reflection with Ripple" — it auto-completes when the user records
+  // a debrief (see checkReflectionHabitOnRecord) rather than by transcript
+  // matching. Kept as a string, not an enum, so adding future built-in
+  // types needs no migration.
+  type       String    @default("standard")
   // 0=Sunday..6=Saturday. Which days this habit is expected. Defaults to
   // every day; an empty array means "no expected days", which is how a
   // habit is paused without losing its history.
