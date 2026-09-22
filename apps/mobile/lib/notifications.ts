@@ -26,6 +26,19 @@ import { Platform } from "react-native";
 // Format: acuity:reminder:<weekday-int>
 const ID_PREFIX = "acuity:reminder:";
 
+// ─── DEPRECATED (1.6): on-device scheduling retired — server owns reminders ──
+//
+// As of 1.6 the SERVER dispatches all reminders (see the web
+// notifications-twice-daily dispatcher). To guarantee a user is never served by
+// BOTH systems (double-send), the on-device schedulers below no-op and instead
+// cancel anything they would have scheduled. The scheduling bodies are kept for
+// one release so a rollback is a one-line flip; delete them (and the copy pools
+// / random-nudge helpers) once 1.6 is stable.
+//
+// Typed `: boolean` on purpose so TypeScript does NOT narrow the guard to a
+// literal and mark the retained bodies as unreachable / their helpers unused.
+const ON_DEVICE_SCHEDULING_RETIRED: boolean = true;
+
 // Rotated body copy. Kept local (not fetched from the server) so the
 // notification fires even when the device has no network at trigger
 // time. The rotation seeds from (weekday + week-of-year) so the user
@@ -240,6 +253,9 @@ export async function applyReminderSchedule({
 }): Promise<ScheduleOutcome> {
   await cancelAllReminders();
 
+  // Retired in 1.6 — server owns reminders. Cancel + no-op (see banner above).
+  if (ON_DEVICE_SCHEDULING_RETIRED) return { kind: "disabled" };
+
   if (!enabled || days.length === 0) {
     return { kind: "disabled" };
   }
@@ -332,6 +348,9 @@ export async function applyMultiReminderSchedule({
   reminders: MultiReminderInput[];
 }): Promise<MultiScheduleOutcome> {
   await cancelAllReminders();
+
+  // Retired in 1.6 — server owns reminders. Cancel + no-op (see banner above).
+  if (ON_DEVICE_SCHEDULING_RETIRED) return { kind: "disabled" };
 
   if (!masterEnabled || reminders.length === 0) {
     return { kind: "disabled" };
@@ -549,6 +568,11 @@ export async function cancelAllRandomNudges(): Promise<void> {
 export async function topUpRandomNudges(
   input: RandomNudgeScheduleInput
 ): Promise<RandomNudgeOutcome> {
+  // Retired in 1.6 — server owns reminders. Cancel leftover randoms + no-op.
+  if (ON_DEVICE_SCHEDULING_RETIRED) {
+    await cancelAllRandomNudges();
+    return { kind: "disabled" };
+  }
   if (input.activeWeekdays.length === 0) {
     return { kind: "disabled" };
   }
@@ -584,6 +608,11 @@ export async function topUpRandomNudges(
 export async function syncRandomNudges(
   input: RandomNudgeScheduleInput
 ): Promise<RandomNudgeOutcome> {
+  // Retired in 1.6 — server owns reminders. Cancel leftover randoms + no-op.
+  if (ON_DEVICE_SCHEDULING_RETIRED) {
+    await cancelAllRandomNudges();
+    return { kind: "disabled" };
+  }
   if (input.activeWeekdays.length === 0) {
     await cancelAllRandomNudges();
     return { kind: "disabled" };
