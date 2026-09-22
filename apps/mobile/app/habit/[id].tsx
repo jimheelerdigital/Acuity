@@ -60,12 +60,12 @@ const HEATMAP_WEEKS = 5;
 // Base state of one cell in the history calendar. "Today" is tracked
 // separately (isToday) so the today ring can layer on top of ANY state —
 // including a completed today — instead of being mutually exclusive with it.
-//  done    — a completion was recorded (accent fill)
-//  pending — today, not yet marked done (empty, gets the today ring)
-//  miss    — a past expected day that wasn't completed (outlined empty)
-//  off     — a non-active day (solid grey fill)
-//  future  — an upcoming day (outlined empty placeholder, keeps rows full)
-type CellState = "done" | "miss" | "off" | "future" | "pending";
+//  done      — a completion was recorded (accent fill)
+//  off       — a non-scheduled day (solid grey fill)
+//  untracked — a scheduled day with no completion (past OR future): left
+//              blank, just the day number. One neutral state, no "missed"
+//              shaming and no future-specific styling.
+type CellState = "done" | "off" | "untracked";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -150,11 +150,10 @@ export default function HabitDetailScreen() {
       for (let d = 0; d < 7; d += 1) {
         const isToday = cursor === today;
         let state: CellState;
-        if (cursor > today) state = "future";
-        else if (checkSet.has(cursor)) state = "done";
-        // Today with no check yet is "pending" — NOT a miss (the day isn't over).
-        else if (isToday) state = "pending";
-        else if (habit && isExpectedOn(habit, cursor)) state = "miss";
+        if (checkSet.has(cursor)) state = "done";
+        // Scheduled-but-not-done reads the same whether past or future:
+        // blank. Only genuinely non-scheduled days get the grey "off" fill.
+        else if (habit && isExpectedOn(habit, cursor)) state = "untracked";
         else state = "off";
         // Day-of-month for the in-cell label; "2026-09-07" → 7.
         const day = Number(cursor.slice(8, 10));
@@ -305,32 +304,21 @@ export default function HabitDetailScreen() {
   const hour = Number(reminderTime.split(":")[0]) || 8;
   const minute = Number(reminderTime.split(":")[1]) || 0;
 
-  // Fill for each cell. Only "done" and "off" are filled; pending/miss/future
-  // are outlined empties (borders added in the render) so future never looks
-  // like a grey off-day.
+  // Fill: done is the accent; off is the one solid grey chip; untracked days
+  // are left blank (just their number).
   const cellBg = (state: CellState): string => {
     switch (state) {
       case "done":
         return tokens.primary;
       case "off":
-        // The one solid grey chip — a non-active day.
         return tokens.bgInsetStrong;
       default:
-        // pending / miss / future — empty, distinguished by their borders.
         return "transparent";
     }
   };
   // Day-of-month label color, tuned for contrast against each fill.
-  const cellText = (state: CellState): string => {
-    switch (state) {
-      case "done":
-        return "#FFFFFF";
-      case "future":
-        return tokens.textQuiet;
-      default:
-        return tokens.textTer;
-    }
-  };
+  const cellText = (state: CellState): string =>
+    state === "done" ? "#FFFFFF" : tokens.textTer;
 
   return (
     <SafeAreaView
@@ -404,23 +392,12 @@ export default function HabitDetailScreen() {
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: cellBg(c.state),
-                    // Today always gets a ring — in the palette's SECONDARY
+                    // The only ring is "today" — in the palette's SECONDARY
                     // accent so it stands out even on a completed (accent-fill)
-                    // day and never blends with "done". Otherwise: missed is a
-                    // firm outline, future a faint outlined placeholder (keeps
-                    // rows full without looking like a grey off-day).
-                    borderWidth: c.isToday
-                      ? 2
-                      : c.state === "miss"
-                        ? 1.5
-                        : c.state === "future"
-                          ? 1
-                          : 0,
-                    borderColor: c.isToday
-                      ? tokens.secondary
-                      : c.state === "future"
-                        ? tokens.line
-                        : tokens.lineStrong,
+                    // day and never blends with "done". Everything else is
+                    // borderless: a fill or a blank numbered cell.
+                    borderWidth: c.isToday ? 2 : 0,
+                    borderColor: c.isToday ? tokens.secondary : "transparent",
                   }}
                 >
                   <Text
@@ -454,8 +431,8 @@ export default function HabitDetailScreen() {
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Done</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 2, borderColor: tokens.secondary, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Today</Text>
-          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.5, borderColor: tokens.lineStrong, marginLeft: 12 }} />
-          <Text style={{ color: tokens.textTer, fontSize: 12 }}>Missed</Text>
+          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1, borderColor: tokens.line, marginLeft: 12 }} />
+          <Text style={{ color: tokens.textTer, fontSize: 12 }}>Not tracked</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInsetStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Off day</Text>
         </View>
