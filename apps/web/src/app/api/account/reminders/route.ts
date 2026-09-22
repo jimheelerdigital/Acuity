@@ -40,6 +40,16 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const MAX_REMINDERS_PER_USER = 5;
+
+/**
+ * The debrief-reminder endpoints operate on kind="debrief" ONLY.
+ *
+ * Habit nudges live in the same table under kind="habit" with their own cap
+ * (MAX_HABIT_REMINDERS) and their own copy. Scoping every query here means
+ * adding a habit can never evict someone's evening reflection, and the
+ * existing 5-per-user cap keeps applying to exactly the set it always did.
+ */
+const DEBRIEF_KIND = "debrief";
 const HHMM_REGEX = /^\d{2}:\d{2}$/;
 
 interface ReminderInput {
@@ -94,7 +104,7 @@ export async function GET(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
 
   const existing = await prisma.userReminder.findMany({
-    where: { userId },
+    where: { userId, kind: DEBRIEF_KIND },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
   if (existing.length > 0) {
@@ -190,7 +200,7 @@ export async function PUT(req: NextRequest) {
       };
 
   const [, , reminders] = await prisma.$transaction([
-    prisma.userReminder.deleteMany({ where: { userId } }),
+    prisma.userReminder.deleteMany({ where: { userId, kind: DEBRIEF_KIND } }),
     prisma.user.update({
       where: { id: userId },
       data: legacyUpdate,
@@ -198,6 +208,7 @@ export async function PUT(req: NextRequest) {
     prisma.userReminder.createManyAndReturn({
       data: validated.map((r) => ({
         userId,
+        kind: DEBRIEF_KIND,
         time: r.time,
         daysActive: r.daysActive,
         enabled: r.enabled,

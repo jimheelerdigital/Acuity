@@ -26,6 +26,19 @@ import { Platform } from "react-native";
 // Format: acuity:reminder:<weekday-int>
 const ID_PREFIX = "acuity:reminder:";
 
+// ─── DEPRECATED (1.6): on-device scheduling retired — server owns reminders ──
+//
+// As of 1.6 the SERVER dispatches all reminders (see the web
+// notifications-twice-daily dispatcher). To guarantee a user is never served by
+// BOTH systems (double-send), the on-device schedulers below no-op and instead
+// cancel anything they would have scheduled. The scheduling bodies are kept for
+// one release so a rollback is a one-line flip; delete them (and the copy pools
+// / random-nudge helpers) once 1.6 is stable.
+//
+// Typed `: boolean` on purpose so TypeScript does NOT narrow the guard to a
+// literal and mark the retained bodies as unreachable / their helpers unused.
+const ON_DEVICE_SCHEDULING_RETIRED: boolean = true;
+
 // Rotated body copy. Kept local (not fetched from the server) so the
 // notification fires even when the device has no network at trigger
 // time. The rotation seeds from (weekday + week-of-year) so the user
@@ -71,6 +84,33 @@ const EVENING_BODIES = [
   "Say it out loud. You'll feel lighter.",
   "One minute. Your future self will thank you.",
 ];
+
+/**
+ * Habit nudge bodies.
+ *
+ * Names the habit rather than the product, because that is the thing the
+ * user committed to. No streak count and no "don't break it" — a streak is
+ * a reward for showing up, not a debt to be threatened with, and this
+ * audience does not need another thing to feel behind on.
+ */
+const HABIT_BODIES = [
+  (name: string) => `${name} — still time today.`,
+  (name: string) => `A nudge about ${name}.`,
+  (name: string) => `${name}, whenever it fits.`,
+];
+
+function pickHabitBody(
+  habitName: string | null | undefined,
+  weekday: number,
+  weekOfYear: number
+): string {
+  const name = (habitName ?? "").trim();
+  // No name means no personalised copy. Better a plain line than one that
+  // reads "  — still time today."
+  if (!name) return "A habit is waiting for you today.";
+  const pool = HABIT_BODIES;
+  return pool[(weekday + weekOfYear) % pool.length](name);
+}
 
 function pickBody(
   weekday: number,
@@ -213,6 +253,9 @@ export async function applyReminderSchedule({
 }): Promise<ScheduleOutcome> {
   await cancelAllReminders();
 
+  // Retired in 1.6 — server owns reminders. Cancel + no-op (see banner above).
+  if (ON_DEVICE_SCHEDULING_RETIRED) return { kind: "disabled" };
+
   if (!enabled || days.length === 0) {
     return { kind: "disabled" };
   }
@@ -278,6 +321,18 @@ export type MultiReminderInput = {
   time: string; // "HH:MM"
   daysActive: number[]; // 0..6, Sun=0
   enabled: boolean;
+  /**
+   * What this reminder is FOR. Mirrors UserReminder.kind.
+   *
+   * Defaults to "debrief" so every existing caller — and every row that
+   * predates habits — keeps today's copy exactly. A habit nudge must not
+   * inherit "remind me to debrief" wording: it is asking about something
+   * the user named themselves, and generic reflection copy would read as
+   * the wrong notification arriving.
+   */
+  kind?: "debrief" | "habit";
+  /** Habit name, for habit-kind copy. Never interpolated for debriefs. */
+  habitName?: string | null;
 };
 
 export type MultiScheduleOutcome =
@@ -293,6 +348,9 @@ export async function applyMultiReminderSchedule({
   reminders: MultiReminderInput[];
 }): Promise<MultiScheduleOutcome> {
   await cancelAllReminders();
+
+  // Retired in 1.6 — server owns reminders. Cancel + no-op (see banner above).
+  if (ON_DEVICE_SCHEDULING_RETIRED) return { kind: "disabled" };
 
   if (!masterEnabled || reminders.length === 0) {
     return { kind: "disabled" };
@@ -337,9 +395,19 @@ export async function applyMultiReminderSchedule({
             // Per-reminder `hour` parsed above. Each reminder in a
             // multi-reminder set picks copy independently — a 7am
             // reminder gets MORNING_BODIES, an 8pm gets EVENING_BODIES.
-            body: pickBody(weekday, weekOfYear, hour),
+            //
+            // Habit nudges take their own pool: they name the habit the
+            // user chose, and inheriting debrief copy would deliver the
+            // wrong notification under the right schedule.
+            body:
+              reminder.kind === "habit"
+                ? pickHabitBody(reminder.habitName, weekday, weekOfYear)
+                : pickBody(weekday, weekOfYear, hour),
             sound: "default",
-            data: { deepLink: "acuity://", reminderId: reminder.id },
+            data: {
+              deepLink: reminder.kind === "habit" ? "acuity://habits" : "acuity://",
+              reminderId: reminder.id,
+            },
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -500,6 +568,11 @@ export async function cancelAllRandomNudges(): Promise<void> {
 export async function topUpRandomNudges(
   input: RandomNudgeScheduleInput
 ): Promise<RandomNudgeOutcome> {
+  // Retired in 1.6 — server owns reminders. Cancel leftover randoms + no-op.
+  if (ON_DEVICE_SCHEDULING_RETIRED) {
+    await cancelAllRandomNudges();
+    return { kind: "disabled" };
+  }
   if (input.activeWeekdays.length === 0) {
     return { kind: "disabled" };
   }
@@ -535,6 +608,11 @@ export async function topUpRandomNudges(
 export async function syncRandomNudges(
   input: RandomNudgeScheduleInput
 ): Promise<RandomNudgeOutcome> {
+  // Retired in 1.6 — server owns reminders. Cancel leftover randoms + no-op.
+  if (ON_DEVICE_SCHEDULING_RETIRED) {
+    await cancelAllRandomNudges();
+    return { kind: "disabled" };
+  }
   if (input.activeWeekdays.length === 0) {
     await cancelAllRandomNudges();
     return { kind: "disabled" };

@@ -128,9 +128,12 @@ export function ReminderTimePicker({
       />
 
       <View
-        className="rounded-full flex-col"
+        className="flex-col"
         style={{
           backgroundColor: tokens.bgInset,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: tokens.lineStrong,
           padding: 4,
           gap: 4,
           marginLeft: size === "lg" ? 8 : 4,
@@ -174,14 +177,15 @@ function Stepper({
 }) {
   const { tokens } = useTheme();
   return (
-    <View className="items-center" style={{ gap: 6 }}>
+    <View className="items-center" style={{ gap: 2 }}>
       <Pressable
         onPress={onIncrement}
         hitSlop={8}
-        className="rounded-full border items-center justify-center"
+        className="border items-center justify-center"
         style={{
           height: btnH,
           width: btnW,
+          borderRadius: 8,
           borderColor: tokens.line,
         }}
       >
@@ -203,10 +207,11 @@ function Stepper({
       <Pressable
         onPress={onDecrement}
         hitSlop={8}
-        className="rounded-full border items-center justify-center"
+        className="border items-center justify-center"
         style={{
           height: btnH,
           width: btnW,
+          borderRadius: 8,
           borderColor: tokens.line,
         }}
       >
@@ -231,9 +236,10 @@ function PeriodPill({
   return (
     <Pressable
       onPress={onPress}
-      className="rounded-full items-center justify-center"
+      className="items-center justify-center"
       style={{
         backgroundColor: active ? tokens.primary : "transparent",
+        borderRadius: 8,
         paddingHorizontal: size === "lg" ? 14 : 10,
         paddingVertical: size === "lg" ? 6 : 4,
         minWidth: size === "lg" ? 44 : 36,

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isQaForceV10 } from "@/lib/qa/force-v10";
 import {
   createContext,
   useCallback,
@@ -114,6 +115,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // ─── ⚠️ QA-ONLY OVERRIDE — see lib/qa/force-v10.ts ──────────────
+      // Skip hydration so this device shows the net-new LIGHT default
+      // rather than its own saved preference. Returning early also means
+      // no writes: the migration and db-sync branches below would
+      // otherwise rewrite MODE_KEY / PALETTE_KEY, and the override must
+      // ignore the stored preference, not overwrite it.
+      if (isQaForceV10()) return;
+      // ─── end QA-only override ──────────────────────────────────────
+
       try {
         // ─── Mode: dual-read with legacy fallback ────────────────
         const newMode = await AsyncStorage.getItem(MODE_KEY);

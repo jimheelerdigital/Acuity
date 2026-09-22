@@ -4,6 +4,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useQuickActionRouting } from "expo-quick-actions/router";
 
 import { setupQuickActions } from "@/lib/quick-actions";
+import { isHabitsEnabled } from "@/lib/feature-flags";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Animated, Pressable, Text, View } from "react-native";
@@ -26,6 +27,8 @@ import { useTheme } from "@/contexts/theme-context";
 import type { AcuityTokens } from "@/lib/theme/tokens";
 import { getCached } from "@/lib/cache";
 import { PROCESSING_STATUSES } from "./entries";
+
+import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 
 /**
  * Custom tab bar — 5 slots all rendered by ONE code path so the labels
@@ -79,7 +82,10 @@ export default function TabsLayout() {
             <CustomTabBar {...props} isDark={isDark} tokens={tokens} />
           )}
         >
-          <Tabs.Screen name="goals" options={{ title: "Goals" }} />
+          <Tabs.Screen
+            name="goals"
+            options={{ title: isHabitsEnabled() ? "Growth" : "Goals" }}
+          />
           <Tabs.Screen name="tasks" options={{ title: "Tasks" }} />
           <Tabs.Screen name="record-placeholder" options={{ title: "Home" }} />
           <Tabs.Screen name="insights" options={{ title: "Insights" }} />
@@ -98,7 +104,9 @@ const TAB_META: Record<
   TabKey,
   { label: string; iconOn: string; iconOff: string }
 > = {
-  goals: { label: "Goals", iconOn: "trophy", iconOff: "trophy-outline" },
+  goals: isHabitsEnabled()
+    ? { label: "Growth", iconOn: "trending-up", iconOff: "trending-up-outline" }
+    : { label: "Goals", iconOn: "trophy", iconOff: "trophy-outline" },
   tasks: {
     label: "Tasks",
     iconOn: "checkmark-done",
@@ -132,6 +140,7 @@ function CustomTabBar({
 }: BottomTabBarProps & { isDark: boolean; tokens: AcuityTokens }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { interceptRecord } = useSaveWall();
 
   const tabBarBg = tokens.bg;
   const tabBarBorder = tokens.line;
@@ -322,6 +331,9 @@ function CustomTabBar({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(
               () => {}
             );
+            // Second mic entry point — must respect the guest save wall
+            // too, or the long-press becomes a way around it.
+            if (interceptRecord()) return;
             router.push("/record");
           }}
         />

@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar, SubscriptionPill } from "@/components/acuity";
 import { fetchCatalog, type CatalogResponse } from "@/lib/achievements-api";
 import { api } from "@/lib/api";
+import type { EntryDTO } from "@acuity/shared";
 import { AppearanceCard } from "@/components/appearance/appearance-card";
 import { TrialStatusCard } from "@/components/TrialStatusCard";
 import { HapticsRow } from "@/components/appearance/haptics-row";
@@ -29,10 +30,79 @@ import {
   isLockEnabled,
 } from "@/lib/app-lock";
 import { TOUR_FORCE_REPLAY_KEY } from "@/hooks/use-tour-trigger";
+import { isObsidianExportEnabled } from "@/lib/feature-flags";
 import { isIapEnabled } from "@/lib/iap-config";
+import { exportAll } from "@/lib/obsidian/export";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
 export default function ProfileTab() {
+
+  /**
+   * Bulk export. Pulls the full entry list rather than reusing whatever
+   * Home cached — an export that silently covers only the most recent
+   * page is worse than no export, because the user believes they have a
+   * complete copy.
+   */
+  const [exporting, setExporting] = useState(false);
+  const handleExportAll = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const res = await api.get<{
+        entries: EntryDTO[];
+        truncated?: boolean;
+        cap?: number;
+      }>("/api/entries?all=1");
+      const entries = res?.entries ?? [];
+      if (entries.length === 0) {
+        Alert.alert("Nothing to export", "Record a debrief first.");
+        return;
+      }
+      const out = await exportAll(
+        entries.map((e) => ({
+          entry: {
+            id: e.id,
+            createdAt: e.createdAt,
+            transcript: e.transcript ?? "",
+            summary: e.summary ?? null,
+            mood: e.mood ?? null,
+            moodScore: e.moodScore ?? null,
+            energy: e.energy ?? null,
+            themes: e.themes ?? [],
+            wins: e.wins ?? [],
+            blockers: e.blockers ?? [],
+            insights: e.insights ?? [],
+          },
+        }))
+      );
+      if (out.ok) {
+        // Say so when the export is partial. Handing someone an incomplete
+        // copy while the button said "all" is the failure mode worth an
+        // extra dialog.
+        if (res?.truncated) {
+          Alert.alert(
+            "Exported your most recent debriefs",
+            `This file has the latest ${entries.length}. Export again later for older ones.`
+          );
+        }
+        return;
+      }
+      if (out.reason === "cancelled") return;
+      if (out.reason === "unsupported") {
+        Alert.alert("Not available yet", "Markdown export is iOS-only for now.");
+        return;
+      }
+      Alert.alert("Export failed", out.message ?? "Please try again.");
+    } catch (err) {
+      Alert.alert(
+        "Export failed",
+        err instanceof Error ? err.message : "Please try again."
+      );
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting]);
+
   const router = useRouter();
   const { user, signOut, deleteAccount, refresh } = useAuth();
   const { tokens } = useTheme();
@@ -313,20 +383,15 @@ export default function ProfileTab() {
         <SettingsGroup label="Preferences">
           <AppearanceCard />
           <HapticsRow />
-          <MenuItem
-            icon="time-outline"
-            label="Reminders"
-            sublabel="When to nudge you to journal"
-            onPress={() => router.push("/reminders")}
-          />
-          {/* Notifications — server-driven engagement notifications
-              (streaks, milestones, goal/task nudges, reflections),
-              channel + tone + quiet hours + snooze. Distinct from the
-              OS-local journaling Reminders row above. */}
+          {/* Notification Center (1.6) — one screen for reminder times,
+              per-type nudges, tone and quiet hours. Replaces the former
+              separate "Reminders" (on-device scheduling) + "Notifications"
+              (engagement prefs) rows: reminders are server-owned now, so
+              both live under one entry. */}
           <MenuItem
             icon="notifications-outline"
             label="Notifications"
-            sublabel="What Ripple reaches out about, and how"
+            sublabel="Reminders, nudges, tone & quiet hours"
             onPress={() => router.push("/notification-preferences" as never)}
           />
           {/* Replay product tour — clears User.tourCompletedAt + the
@@ -365,6 +430,20 @@ export default function ProfileTab() {
             sublabel="Send tasks to your iOS calendar"
             onPress={() => router.push("/integrations")}
           />
+          {/* Habits moved into the Growth tab (Habits|Goals toggle).
+              The standalone Profile entry and /habits route are retired. */}
+          {/* Export — manual Markdown/Obsidian export. Sits in the Data
+              group next to Privacy because it IS a data-portability
+              control: it is the user's route to a copy of their debriefs
+              that does not depend on us. */}
+          {isObsidianExportEnabled() ? (
+            <MenuItem
+              icon="document-text-outline"
+              label="Export all debriefs"
+              sublabel="Markdown file for Obsidian or Files"
+              onPress={() => void handleExportAll()}
+            />
+          ) : null}
           {/* Privacy — product-analytics opt-out + withdraw the
               special-category (Art. 9) consent given at onboarding.
               v1.4 GDPR slice. */}

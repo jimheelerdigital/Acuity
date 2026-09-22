@@ -73,9 +73,19 @@ async function fetchExpoPushToken(): Promise<string | null> {
 
 async function postPushToken(token: string, platform: "ios" | "android"): Promise<boolean> {
   try {
+    // Piggyback the device's IANA timezone so User.timezone (what the
+    // reminder dispatcher schedules against) stays current on every launch —
+    // not just at onboarding. Falls back to omitting on any Intl failure.
+    let timezone: string | undefined;
+    try {
+      timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch {
+      timezone = undefined;
+    }
     const res = await api.post<{ ok: boolean }>("/api/user/push-token", {
       token,
       platform,
+      ...(timezone ? { timezone } : {}),
     });
     return !!res.ok;
   } catch (err) {
@@ -145,6 +155,67 @@ export async function registerPushTokenAfterRecording(
   } catch (err) {
     if (__DEV__) {
       console.log("[push-token] registerPushTokenAfterRecording threw:", err);
+    }
+    return "error";
+  }
+}
+
+/**
+ * Permission ask driven by an explicit user choice (v10 Screen 8).
+ *
+ * Same one-shot resource as registerPushTokenAfterRecording, different
+ * trigger. The v2 flow prompts on the second recording, having inferred
+ * intent from behaviour. v10 asks the user directly which part of the day
+ * they want, shows a primer, and only then opens the OS dialog — so by the
+ * time this runs, consent has already been given in our own UI.
+ *
+ * Shares PROMPTED_KEY / DENIED_KEY with the behavioural trigger on purpose.
+ * A user who came through v10 and granted permission must never be
+ * re-prompted by the recording path, and one who denied must not be asked
+ * again by either. The guards are about the OS's one-shot, not about which
+ * flow happened to reach it first.
+ *
+ * NOT called for the "No reminders" slot — see
+ * lib/onboarding-v10/reminders.ts::shouldPromptForPush.
+ */
+export async function registerPushTokenForReminderSlot(): Promise<
+  "granted" | "denied" | "skipped" | "error"
+> {
+  const platform = currentPlatform();
+  if (!platform) return "skipped";
+
+  try {
+    const denied = await AsyncStorage.getItem(DENIED_KEY);
+    // A previous denial is final — the OS will not show the dialog again,
+    // so re-requesting returns denied instantly and teaches us nothing.
+    if (denied) return "skipped";
+
+    // Stamp BEFORE the dialog: backgrounding mid-prompt must not re-ask.
+    await AsyncStorage.setItem(PROMPTED_KEY, String(Date.now()));
+
+    const current = await Notifications.getPermissionsAsync();
+    let granted = current.granted;
+    if (!granted) {
+      const req = await Notifications.requestPermissionsAsync({
+        ios: { allowAlert: true, allowBadge: false, allowSound: true },
+      });
+      granted = req.granted;
+      if (!granted) {
+        await AsyncStorage.setItem(DENIED_KEY, String(Date.now()));
+        return "denied";
+      }
+    }
+
+    const token = await fetchExpoPushToken();
+    if (!token) return "error";
+    const ok = await postPushToken(token, platform);
+    if (!ok) return "error";
+
+    await AsyncStorage.setItem(REGISTERED_KEY, String(Date.now()));
+    return "granted";
+  } catch (err) {
+    if (__DEV__) {
+      console.log("[push-token] registerPushTokenForReminderSlot threw:", err);
     }
     return "error";
   }

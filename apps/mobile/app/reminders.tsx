@@ -20,6 +20,7 @@ import {
 } from "@/components/reminders/time-picker";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { fetchHabitReminderInputs } from "@/lib/habit-reminders-sync";
 import {
   applyMultiReminderSchedule,
   getPermissionStatus,
@@ -237,14 +238,21 @@ export default function RemindersScreen() {
 
       // OS-level: schedule the multi-reminder list. Cancel-then-
       // reschedule covers the "remove a reminder" path idempotently.
+      // Habit nudges live in the same on-device schedule (one cancel-then-
+      // reschedule over all triggers), so they must be included here or
+      // saving debrief reminders would wipe them.
+      const habitInputs = await fetchHabitReminderInputs().catch(() => []);
       await applyMultiReminderSchedule({
         masterEnabled,
-        reminders: fromServer.map((r) => ({
-          id: r.id,
-          time: r.time,
-          daysActive: r.daysActive,
-          enabled: r.enabled,
-        })),
+        reminders: [
+          ...fromServer.map((r) => ({
+            id: r.id,
+            time: r.time,
+            daysActive: r.daysActive,
+            enabled: r.enabled,
+          })),
+          ...habitInputs,
+        ],
       });
 
       // Slice P3A — sync the random nudge window. activeWeekdays is

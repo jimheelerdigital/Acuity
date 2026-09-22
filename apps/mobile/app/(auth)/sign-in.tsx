@@ -17,15 +17,19 @@
 //     web Google sign-in via P2022 in PrismaAdapter.createUser → bootstrap.
 //     Schema pushed; bootstrap-user hardened in 04b729f.
 //
+// The Apple + Google block lives in components/auth/social-auth-buttons.tsx
+// and is shared with (auth)/sign-up.tsx — a change there changes both
+// screens, so verify both.
+//
 // See docs/AUTH_HARDENING.md for the full test checklist.
 
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Link } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   Text,
@@ -41,11 +45,11 @@ import {
   requestMagicLink,
   signInWithPassword,
 } from "@/lib/auth";
-import { isAppleSignInAvailable, signInWithApple } from "@/lib/apple-auth";
-import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import {
+  SocialAuthButtons,
+  type AuthLoading as Loading,
+} from "@/components/auth/social-auth-buttons";
 import { WARN_AMBER } from "@/lib/tone-colors";
-
-type Loading = "google" | "apple" | "password" | "magic" | null;
 
 /**
  * Mobile sign-in. Three paths, all of which end with a session JWT
@@ -60,68 +64,11 @@ type Loading = "google" | "apple" | "password" | "magic" | null;
 export default function SignInScreen() {
   const { setAuthenticatedUser } = useAuth();
   const { tokens } = useTheme();
-  // Whether Google sign-in is configured for THIS platform. Plain check (no
-  // hook) so we can gate MOUNTING the Google hook: mounting `useGoogleSignIn`
-  // on Android with androidClientId unset throws on render and crashes the app
-  // on launch (fixed 2026-07-07 — render <GoogleSignInButton> only when true).
-  const hasGoogleClientId = Boolean(googlePlatformClientId());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState<Loading>(null);
   const [magicSent, setMagicSent] = useState(false);
-  const [appleAvailable, setAppleAvailable] = useState(false);
-
-  // Apple sign-in is iOS 13+ on physical devices. Hide the button if
-  // unavailable rather than render-then-fail.
-  useEffect(() => {
-    if (Platform.OS !== "ios") {
-      setAppleAvailable(false);
-      return;
-    }
-    let cancelled = false;
-    isAppleSignInAvailable().then((ok) => {
-      if (!cancelled) setAppleAvailable(ok);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function handleApple() {
-    setLoading("apple");
-    const result = await signInWithApple();
-    setLoading(null);
-
-    if (!result.ok) {
-      if (result.reason === "Cancelled") return;
-      Alert.alert(
-        "Sign-in failed",
-        result.reason === "Unavailable"
-          ? "Apple sign-in isn't available on this device."
-          : result.reason === "NoIdentityToken"
-            ? "Apple didn't return a sign-in token. Try again."
-            : result.reason === "NetworkError"
-              ? "Can't reach Ripple. Check your connection and try again."
-              : "Please try again or use email."
-      );
-      return;
-    }
-    // Use the user we just received from the callback rather than
-    // refresh()'ing through SecureStore. iOS Keychain has a brief
-    // window where setItemAsync resolves before getItemAsync sees
-    // the value — refresh() reads null, /api/user/me returns 401
-    // (no Authorization header), and the user is stranded on the
-    // sign-in screen. Diagnosed 2026-05-04 across multiple users.
-    //
-    // Build 29 (2026-05-06): also hand the sessionToken to the
-    // setter so it writes into tokenBridge synchronously. Builds
-    // 27-28 relied on lib/auth's memoryToken closure populating
-    // correctly, but production diagnostics showed the closure
-    // wasn't holding — see lib/token-bridge.ts for the saga.
-    setAuthenticatedUser(result.user, result.sessionToken);
-  }
-
   async function handlePassword() {
     if (!email.trim() || !password) return;
     setLoading("password");
@@ -139,7 +86,8 @@ export default function SignInScreen() {
       );
       return;
     }
-    // See handleApple comment — same SecureStore race avoidance.
+    // Same SecureStore race avoidance as the social paths — see the
+    // onAuthenticated docs in components/auth/social-auth-buttons.tsx.
     // Applies uniformly to all sign-in paths even though the bug
     // was first reported on Google + Apple; the password path uses
     // the same setToken→refresh sequence and is exposed to the
@@ -209,16 +157,25 @@ export default function SignInScreen() {
     // KeyboardAwareScreen wrapper (commit f4297d1, OTA shipped 2026-04-28)
     // the parent ScrollView destabilized the auth-session promise so
     // the user was bounced back to sign-in with no token. Reverting to
-    // the pre-wrapper layout. The sign-in screen has 2 short inputs and
-    // a tall stack of OAuth buttons — it doesn't actually need keyboard
-    // avoidance for the password field to stay visible (the page is
-    // already centered on viewport). Onboarding / sign-up / forgot-
-    // password / delete-modal keep the wrapper since they have more
-    // inputs and benefit from it.
+    // the pre-wrapper layout for the ScrollView-based KeyboardAwareScreen.
+    // 2026-09-19: on smaller devices the centered layout DID leave the
+    // password field behind the keyboard, so we now use a plain
+    // KeyboardAvoidingView (behavior="padding" on iOS, NO ScrollView).
+    // It is inert while no keyboard is shown — the Apple/Google OAuth taps
+    // happen with the keyboard down — so it does NOT reintroduce the
+    // f4297d1 promptAsync() regression, which was caused specifically by a
+    // parent ScrollView re-layout dismissing SFAuthenticationSession.
+    // Do NOT swap this back to a ScrollView / KeyboardAwareScreen.
+    // Onboarding / sign-up / forgot-password / delete-modal keep their own
+    // wrapper since they have more inputs.
     <SafeAreaView
       className="flex-1 px-6"
       style={{ backgroundColor: tokens.bg }}
     >
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <View className="flex-1 justify-center">
         <View
           className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
@@ -242,58 +199,17 @@ export default function SignInScreen() {
           Your nightly recording, pattern recognition across your own words.
         </Text>
 
-        {/* Apple — iOS only. Required by App Store Guideline 4.8
-            whenever a third-party sign-in is offered. Renders the
-            native button via AppleAuthenticationButton; we still
-            allow our own state to drive the loading + post-auth nav. */}
-        {appleAvailable && (
-          <View style={{ marginBottom: 12 }}>
-            {loading === "apple" ? (
-              <View
-                className="w-full flex-row items-center justify-center gap-3 rounded-xl px-4 py-3.5"
-                style={{ backgroundColor: "#000000", height: 48 }}
-              >
-                <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600" }}>
-                  Signing in…
-                </Text>
-              </View>
-            ) : (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={
-                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-                }
-                // Sign-in screen forces dark background (`dark:bg-[#0B0B12]`)
-                // — Apple HIG requires the button to contrast clearly with
-                // the surrounding canvas. BLACK style on dark made the
-                // button essentially invisible; build-40 review rejected
-                // under Guideline 4 for this reason. WHITE style is
-                // Apple's recommended choice for dark backgrounds.
-                buttonStyle={
-                  AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                }
-                cornerRadius={12}
-                style={{ width: "100%", height: 48 }}
-                onPress={() => {
-                  if (loading === null) handleApple();
-                }}
-              />
-            )}
-          </View>
-        )}
-
-        {/* Google — only MOUNTED when the platform's Google client id is
-            configured. On Android with androidClientId unset we skip it (and
-            the expo-auth-session hook it uses, which throws on render) so the
-            screen can't crash; users sign in with email or Apple instead. */}
-        {hasGoogleClientId && (
-          <GoogleSignInButton
-            loading={loading}
-            setLoading={setLoading}
-            onAuthenticated={setAuthenticatedUser}
-            tokens={tokens}
-          />
-        )}
+        {/* Apple + Google. Shared with sign-up so the two screens cannot
+            drift again — see components/auth/social-auth-buttons.tsx. */}
+        <SocialAuthButtons
+          loading={loading}
+          setLoading={setLoading}
+          onAuthenticated={setAuthenticatedUser}
+          tokens={tokens}
+          appleButtonType={
+            AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+          }
+        />
 
         {/* Divider */}
         <View className="flex-row items-center gap-3 my-3">
@@ -421,7 +337,7 @@ export default function SignInScreen() {
           </Link>
         </View>
 
-        {__DEV__ && !hasGoogleClientId && (
+        {__DEV__ && !googlePlatformClientId() && (
           // WARN_AMBER from lib/tone-colors — single source of truth
           // for the warning-amber accent (palette has no warning token).
           // Dev-only: in production a missing platform client id (e.g. Android)
@@ -434,6 +350,7 @@ export default function SignInScreen() {
           </Text>
         )}
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

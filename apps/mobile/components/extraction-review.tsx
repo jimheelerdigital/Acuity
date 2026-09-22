@@ -21,6 +21,7 @@ import {
 } from "@/components/acuity";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { setHabitCheck } from "@/lib/habits-api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 
 type ReviewTask = {
@@ -38,6 +39,15 @@ type ReviewGoal = {
   targetDate: string | null;
   lifeArea: string | null;
   alreadyExists: boolean;
+};
+/** A habit the debrief evidenced, matched to one of the user's active
+ *  habits. Unlike tasks/goals these are toggled live (not committed):
+ *  the checkbox writes straight through to the habit-check API for the
+ *  entry's local day, so it stays in sync with the Growth tab. */
+type ReviewHabit = {
+  habitId: string;
+  name: string;
+  checked: boolean;
 };
 
 /**
@@ -65,6 +75,8 @@ export function ExtractionReview({
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<(ReviewTask & { selected: boolean })[]>([]);
   const [goals, setGoals] = useState<(ReviewGoal & { selected: boolean })[]>([]);
+  const [habits, setHabits] = useState<ReviewHabit[]>([]);
+  const [habitDate, setHabitDate] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -76,12 +88,16 @@ export function ExtractionReview({
           committedAt: string | null;
           tasks: ReviewTask[];
           goals: ReviewGoal[];
+          habits?: ReviewHabit[];
+          habitLocalDate?: string | null;
         }>(`/api/entries/${encodeURIComponent(entryId)}/extraction`);
         if (cancelled) return;
         if (res.committedAt) {
           setHidden(true);
           return;
         }
+        setHabits(res.habits ?? []);
+        setHabitDate(res.habitLocalDate ?? null);
         // Q11 Phase B (2026-05-21): default ALL checkboxes OFF per the
         // design spec ("Check what to keep, everything is off by
         // default"). Was: tasks selected:true, goals selected based on
@@ -157,9 +173,35 @@ export function ExtractionReview({
     }
   };
 
+  // Caught habits are toggled live (not part of commit): the checkbox
+  // writes straight through to the habit-check API for the entry's day,
+  // so it agrees with the Growth tab. Optimistic with rollback.
+  const toggleHabit = async (habitId: string) => {
+    const cur = habits.find((h) => h.habitId === habitId);
+    if (!cur) return;
+    const next = !cur.checked;
+    setHabits((prev) =>
+      prev.map((h) => (h.habitId === habitId ? { ...h, checked: next } : h))
+    );
+    const ok = await setHabitCheck(
+      habitId,
+      next,
+      habitDate ?? undefined
+    ).catch(() => false);
+    if (!ok) {
+      setHabits((prev) =>
+        prev.map((h) =>
+          h.habitId === habitId ? { ...h, checked: !next } : h
+        )
+      );
+      Alert.alert("Couldn't update", "Please try again.");
+    }
+  };
+
   const selectedTasks = tasks.filter((t) => t.selected).length;
   const selectedGoals = goals.filter((g) => g.selected).length;
-  const isEmpty = tasks.length === 0 && goals.length === 0;
+  const isEmpty =
+    tasks.length === 0 && goals.length === 0 && habits.length === 0;
 
   // ─── Empty state ─────────────────────────────────────────────────
   // Q10 replaces the prior `return null` with a friendly card so the
@@ -271,6 +313,94 @@ export function ExtractionReview({
         Tick what to keep, then commit. Items you don&apos;t select are
         discarded.
       </Text>
+
+      {habits.length > 0 && (
+        <View style={{ marginTop: 18 }}>
+          <GradientText
+            colors={[tokens.primaryHi, tokens.primary]}
+            style={{
+              fontFamily: tokens.fontMono,
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 1.3,
+              textTransform: "uppercase",
+            }}
+          >
+            Habits you did ({habits.length})
+          </GradientText>
+          <Text
+            style={{
+              marginTop: 4,
+              fontFamily: tokens.fontSans,
+              fontSize: 12,
+              lineHeight: 17,
+              color: tokens.textTer,
+            }}
+          >
+            Caught from your debrief and checked off. Tap to adjust — saves
+            on its own.
+          </Text>
+          <View style={{ marginTop: 10, gap: 8 }}>
+            {habits.map((h) => (
+              <View
+                key={h.habitId}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  borderRadius: tokens.radius.md,
+                  borderWidth: 0.5,
+                  borderColor: tokens.line,
+                  backgroundColor: tokens.cardBg,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                }}
+              >
+                <GradientCheckbox
+                  checked={h.checked}
+                  onPress={() => void toggleHabit(h.habitId)}
+                  size={20}
+                  accessibilityLabel={`${h.checked ? "Uncheck" : "Check"} ${h.name}`}
+                />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontFamily: tokens.fontSans,
+                    fontSize: 14,
+                    color: tokens.text,
+                    textDecorationLine: h.checked ? "line-through" : "none",
+                  }}
+                >
+                  {h.name}
+                </Text>
+                <View
+                  style={{
+                    borderRadius: 999,
+                    borderWidth: 0.5,
+                    borderColor: `${tokens.primary}55`,
+                    backgroundColor: `${tokens.primary}1f`,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: tokens.fontMono,
+                      fontSize: 9,
+                      fontWeight: "700",
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
+                      color: tokens.primary,
+                    }}
+                  >
+                    Habit
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {tasks.length > 0 && (
         <View style={{ marginTop: 18 }}>

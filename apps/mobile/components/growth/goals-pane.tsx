@@ -1,0 +1,1567 @@
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useFocusEffect, useRouter } from "expo-router";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+
+import {
+  formatRelativeDate,
+  GOAL_GROUPS,
+  goalGroupForArea,
+  lifeAreaDisplayLabel,
+  type GoalGroupMeta,
+  type UserProgression,
+} from "@acuity/shared";
+import {
+  Activity,
+  Brain,
+  Briefcase,
+  ChevronDown,
+  Compass,
+  Heart,
+  HeartPulse,
+  Palette,
+  Sparkles,
+  Sprout,
+  Users,
+  UsersRound,
+  Wallet,
+} from "lucide-react-native";
+
+import { GradientCheckbox } from "@/components/acuity";
+import { LockedFeatureCard } from "@/components/locked-feature-card";
+import { ProLockedCard } from "@/components/pro-locked-card";
+import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/contexts/theme-context";
+import { api } from "@/lib/api";
+import { cachedGet, getCached, isStale } from "@/lib/cache";
+import { isFreeTierUser } from "@/lib/free-tier";
+import { toneColor, type StatusTone } from "@/lib/tone-colors";
+import { fetchUserProgression } from "@/lib/userProgression";
+
+const GOALS_TREE_KEY = "/api/goals/tree";
+const GOALS_TREE_ARCHIVED_KEY = "/api/goals/tree?includeArchived=1";
+const GOALS_PROGRESSION_KEY = "/api/user/progression";
+
+function treeCacheKey(withArchived: boolean): string {
+  return withArchived ? GOALS_TREE_ARCHIVED_KEY : GOALS_TREE_KEY;
+}
+
+type GoalsTreeResponse = {
+  roots: TreeGoal[];
+  pendingSuggestionsCount: number;
+};
+
+/**
+ * Walk the tree and return a new tree with `patcher` applied to the
+ * goal whose id matches. All parent nodes on the path get new array
+ * references so `React.memo` children with stable deps re-render only
+ * if they're on the path. Nodes off the path share the prior reference
+ * so their `TreeNode` memo no-ops.
+ */
+function patchGoalInTree(
+  roots: TreeGoal[],
+  id: string,
+  patcher: (g: TreeGoal) => TreeGoal
+): TreeGoal[] {
+  let changed = false;
+  const next = roots.map((r) => {
+    const replaced = patchGoalRecursive(r, id, patcher);
+    if (replaced !== r) changed = true;
+    return replaced;
+  });
+  return changed ? next : roots;
+}
+
+function patchGoalRecursive(
+  node: TreeGoal,
+  id: string,
+  patcher: (g: TreeGoal) => TreeGoal
+): TreeGoal {
+  if (node.id === id) return patcher(node);
+  let childChanged = false;
+  const newChildren = node.children.map((c) => {
+    const replaced = patchGoalRecursive(c, id, patcher);
+    if (replaced !== c) childChanged = true;
+    return replaced;
+  });
+  if (!childChanged) return node;
+  return { ...node, children: newChildren };
+}
+
+function removeGoalFromTree(roots: TreeGoal[], id: string): TreeGoal[] {
+  let changed = false;
+  const next: TreeGoal[] = [];
+  for (const r of roots) {
+    if (r.id === id) {
+      changed = true;
+      continue;
+    }
+    const cleaned = removeGoalRecursive(r, id);
+    if (cleaned !== r) changed = true;
+    next.push(cleaned);
+  }
+  return changed ? next : roots;
+}
+
+function removeGoalRecursive(node: TreeGoal, id: string): TreeGoal {
+  let childChanged = false;
+  const newChildren: TreeGoal[] = [];
+  for (const c of node.children) {
+    if (c.id === id) {
+      childChanged = true;
+      continue;
+    }
+    const cleaned = removeGoalRecursive(c, id);
+    if (cleaned !== c) childChanged = true;
+    newChildren.push(cleaned);
+  }
+  if (!childChanged) return node;
+  return { ...node, children: newChildren };
+}
+
+function patchTaskStatusInTree(
+  roots: TreeGoal[],
+  taskId: string,
+  nextStatus: string
+): TreeGoal[] {
+  let rootsChanged = false;
+  const next = roots.map((r) => {
+    const replaced = patchTaskInGoal(r, taskId, nextStatus);
+    if (replaced !== r) rootsChanged = true;
+    return replaced;
+  });
+  return rootsChanged ? next : roots;
+}
+
+function patchTaskInGoal(
+  node: TreeGoal,
+  taskId: string,
+  nextStatus: string
+): TreeGoal {
+  let taskChanged = false;
+  const newTasks = node.tasks.map((t) => {
+    if (t.id !== taskId) return t;
+    taskChanged = true;
+    return { ...t, status: nextStatus };
+  });
+  let childChanged = false;
+  const newChildren = node.children.map((c) => {
+    const replaced = patchTaskInGoal(c, taskId, nextStatus);
+    if (replaced !== c) childChanged = true;
+    return replaced;
+  });
+  if (!taskChanged && !childChanged) return node;
+  return {
+    ...node,
+    tasks: taskChanged ? newTasks : node.tasks,
+    children: childChanged ? newChildren : node.children,
+  };
+}
+
+function tapHaptic(): void {
+  if (Platform.OS !== "ios") return;
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+}
+
+/**
+ * Overlay in-flight local mutations on top of the server's freshly-
+ * returned tree. For each pending goal id we preserve the local
+ * goal's `status`; for each pending task id we preserve the local
+ * task's `status`. Everything else comes straight from the server.
+ * Called on silent focus-driven revalidation so a still-pending
+ * optimistic check doesn't flicker back to its pre-tap state.
+ */
+function mergePendingIntoServerTree(
+  serverRoots: TreeGoal[],
+  localRoots: TreeGoal[],
+  pendingGoalIds: Set<string>,
+  pendingTaskIds: Set<string>
+): TreeGoal[] {
+  const localByGoalId = new Map<string, TreeGoal>();
+  const localByTaskId = new Map<string, TreeTask>();
+  const indexLocal = (node: TreeGoal) => {
+    localByGoalId.set(node.id, node);
+    for (const t of node.tasks) localByTaskId.set(t.id, t);
+    for (const c of node.children) indexLocal(c);
+  };
+  for (const r of localRoots) indexLocal(r);
+
+  const overlay = (node: TreeGoal): TreeGoal => {
+    const localGoal = localByGoalId.get(node.id);
+    const overlaidStatus =
+      localGoal && pendingGoalIds.has(node.id)
+        ? localGoal.status
+        : node.status;
+
+    const tasks = node.tasks.map((t) => {
+      if (!pendingTaskIds.has(t.id)) return t;
+      const localTask = localByTaskId.get(t.id);
+      if (!localTask) return t;
+      return { ...t, status: localTask.status };
+    });
+    const children = node.children.map(overlay);
+    return { ...node, status: overlaidStatus, tasks, children };
+  };
+
+  return serverRoots.map(overlay);
+}
+
+/**
+ * Mobile Goals — expandable tree. Parity with web's /goals page:
+ *   - top-level goals render as cards, chevron flips on expand
+ *   - children indent 16px per level (tighter than web's 24 because
+ *     mobile screen width is the constraint)
+ *   - task leaves with tap-to-toggle
+ *   - suggestion banner when PENDING exists → bottom-sheet modal
+ *   - Add sub-goal via +, archive/delete via kebab sheet
+ *
+ * No drag-to-reparent on mobile (too fiddly without a gesture-handler
+ * build). Deferred to v2.
+ */
+
+type TreeGoal = {
+  id: string;
+  title: string;
+  description: string | null;
+  lifeArea: string;
+  status: string;
+  manualProgress: number;
+  calculatedProgress: number;
+  parentGoalId: string | null;
+  depth: number;
+  createdAt: string;
+  lastMentionedAt: string | null;
+  children: TreeGoal[];
+  tasks: TreeTask[];
+};
+
+type TreeTask = {
+  id: string;
+  title: string | null;
+  text: string | null;
+  status: string;
+  priority: string;
+};
+
+// Phase D (2026-05-21): area-label lookup moved to the shared
+// `lifeAreaDisplayLabel` helper, which tolerates both the new 10-axis
+// vocab and the 6-axis legacy vocab (used by goals from build-42 users
+// pre-migration). One source of truth.
+
+// Q11 Phase C: replaced hardcoded per-status hex colors with a `tone`
+// key that resolves to a theme token at render time via
+// toneColor() from lib/tone-colors.ts. The constant stays
+// module-level (no useTheme needed); the color flips on palette
+// change. ON_HOLD's amber is kept as a hardcoded warning accent —
+// palette has primary/secondary/good/bad but no warning amber (same
+// convention as Q11a-2's auth dev warning + Q8 confetti accents).
+//
+// Q11 Phase D.1 (2026-05-21): toneColor + StatusTone lifted to
+// lib/tone-colors.ts so the goal detail screen and any future
+// consumer can resolve through the same shape. statusToneColor was
+// the local name; renamed to toneColor at the shared location
+// since the helper takes a tone (not a status string).
+const STATUS_STYLES: Record<string, { label: string; tone: StatusTone }> = {
+  NOT_STARTED: { label: "Not started", tone: "muted" },
+  IN_PROGRESS: { label: "In progress", tone: "good" },
+  ON_HOLD: { label: "On hold", tone: "warning" },
+  COMPLETE: { label: "Complete", tone: "accent" },
+  ARCHIVED: { label: "Archived", tone: "quiet" },
+};
+
+const ACTION_TO_STATUS: Record<string, string> = {
+  complete: "COMPLETE",
+  archive: "ARCHIVED",
+  start: "IN_PROGRESS",
+  restore: "NOT_STARTED",
+};
+
+export function GoalsPane() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { tokens } = useTheme();
+  const isProLocked = isFreeTierUser(user);
+  const [includeArchived, setIncludeArchived] = useState(false);
+
+  const initialCacheKey = treeCacheKey(includeArchived);
+  const initialCached = getCached<GoalsTreeResponse>(initialCacheKey);
+
+  const [roots, setRoots] = useState<TreeGoal[]>(
+    () => initialCached?.roots ?? []
+  );
+  const [pendingSuggestions, setPendingSuggestions] = useState(
+    () => initialCached?.pendingSuggestionsCount ?? 0
+  );
+  const [loading, setLoading] = useState(() => !initialCached);
+  const [refreshing, setRefreshing] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [addSubgoalFor, setAddSubgoalFor] = useState<TreeGoal | null>(null);
+  const [actionSheetFor, setActionSheetFor] = useState<TreeGoal | null>(null);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [progression, setProgression] = useState<UserProgression | null>(
+    () => getCached<UserProgression>(GOALS_PROGRESSION_KEY) ?? null
+  );
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Pending mutations keep optimistic state alive during a focus-
+  // driven silent revalidation. Ids are goal ids or task ids; we merge
+  // server response by patching each pending id back to local state.
+  const pendingGoalMutationsRef = useRef<Set<string>>(new Set());
+  const pendingTaskMutationsRef = useRef<Set<string>>(new Set());
+
+  const fetchTree = useCallback(
+    async (withArchived: boolean, silent: boolean, force = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const key = treeCacheKey(withArchived);
+        // Shared cache + in-flight dedupe. /api/user/progression is also
+        // fetched by Home, so fetchUserProgression coalesces them;
+        // cachedGet writes the tree cache. Pull-to-refresh forces fresh.
+        const [res, prog] = await Promise.all([
+          cachedGet<GoalsTreeResponse>(key, { force }),
+          fetchUserProgression({ force }).catch(() => null),
+        ]);
+
+        // Merge server state with anything still locally-pending. We
+        // can't know from the server response which tasks/goals the
+        // user mutated mid-fetch, so we overlay the prior local copy
+        // for any id we have a pending mutation on.
+        setRoots((prev) => {
+          const serverRoots = res.roots ?? [];
+          if (
+            pendingGoalMutationsRef.current.size === 0 &&
+            pendingTaskMutationsRef.current.size === 0
+          ) {
+            return serverRoots;
+          }
+          return mergePendingIntoServerTree(
+            serverRoots,
+            prev,
+            pendingGoalMutationsRef.current,
+            pendingTaskMutationsRef.current
+          );
+        });
+        setPendingSuggestions(res.pendingSuggestionsCount ?? 0);
+        setProgression(prog);
+        setExpanded((prevExpanded) => {
+          if (prevExpanded.size > 0) return prevExpanded;
+          const next = new Set<string>();
+          for (const r of res.roots) next.add(r.id);
+          return next;
+        });
+      } catch {
+        // silent
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    []
+  );
+
+  // Initial fetch — silent if cache hydrated.
+  useEffect(() => {
+    fetchTree(includeArchived, roots.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-fetch when the user toggles "include archived" — different
+  // cache key, so seed from cache if we have it, otherwise show the
+  // loading state until the fresh list lands.
+  useEffect(() => {
+    const key = treeCacheKey(includeArchived);
+    const cached = getCached<GoalsTreeResponse>(key);
+    if (cached) {
+      setRoots(cached.roots ?? []);
+      setPendingSuggestions(cached.pendingSuggestionsCount ?? 0);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    fetchTree(includeArchived, !!cached);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [includeArchived]);
+
+  // Silent revalidation on focus — cached tree stays painted.
+  useFocusEffect(
+    useCallback(() => {
+      const key = treeCacheKey(includeArchived);
+      if (isStale(key) || isStale(GOALS_PROGRESSION_KEY)) {
+        fetchTree(includeArchived, true);
+      }
+    }, [fetchTree, includeArchived])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchTree(includeArchived, true, true);
+  }, [fetchTree, includeArchived]);
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const performAction = useCallback(
+    (goalId: string, action: "complete" | "archive" | "start" | "restore") => {
+      if (action === "complete") tapHaptic();
+      const nextStatus = ACTION_TO_STATUS[action];
+      if (nextStatus) {
+        setRoots((prev) =>
+          patchGoalInTree(prev, goalId, (g) => ({ ...g, status: nextStatus }))
+        );
+      }
+      pendingGoalMutationsRef.current.add(goalId);
+      api
+        .patch("/api/goals", { id: goalId, action })
+        .catch(() => {
+          Alert.alert("Couldn't update", "Please try again.");
+        })
+        .finally(() => {
+          pendingGoalMutationsRef.current.delete(goalId);
+        });
+    },
+    []
+  );
+
+  const deleteGoal = useCallback((goalId: string) => {
+    Alert.alert("Delete goal?", "This deletes the goal + its sub-goals.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          // Optimistic removal — the goal vanishes from the tree
+          // immediately. If the DELETE fails, the focus-driven
+          // revalidation will restore it (and the Alert below fires).
+          setRoots((prev) => removeGoalFromTree(prev, goalId));
+          pendingGoalMutationsRef.current.add(goalId);
+          api
+            .del(`/api/goals/${goalId}`)
+            .catch(() => {
+              Alert.alert("Couldn't delete", "Please try again.");
+            })
+            .finally(() => {
+              pendingGoalMutationsRef.current.delete(goalId);
+            });
+        },
+      },
+    ]);
+  }, []);
+
+  const openGoal = useCallback(
+    (id: string) => router.push(`/goal/${id}`),
+    [router]
+  );
+
+  const toggleTask = useCallback((taskId: string, currentStatus: string) => {
+    const isComplete = currentStatus !== "DONE";
+    if (isComplete) tapHaptic();
+    const nextStatus = isComplete ? "DONE" : "OPEN";
+    setRoots((prev) => patchTaskStatusInTree(prev, taskId, nextStatus));
+    pendingTaskMutationsRef.current.add(taskId);
+    api
+      .patch("/api/tasks", {
+        id: taskId,
+        action: isComplete ? "complete" : "reopen",
+      })
+      .catch(() => {
+        // Server will be out of sync with local; focus refetch corrects.
+      })
+      .finally(() => {
+        pendingTaskMutationsRef.current.delete(taskId);
+      });
+  }, []);
+
+  const inProgressCount = useMemo(() => {
+    let n = 0;
+    const walk = (g: TreeGoal) => {
+      if (g.status === "IN_PROGRESS") n += 1;
+      for (const c of g.children) walk(c);
+    };
+    for (const r of roots) walk(r);
+    return n;
+  }, [roots]);
+
+  const groupedRoots = useMemo(() => {
+    const byGroup = new Map<string, TreeGoal[]>();
+    for (const g of roots) {
+      const grp = goalGroupForArea(g.lifeArea);
+      const arr = byGroup.get(grp.id) ?? [];
+      arr.push(g);
+      byGroup.set(grp.id, arr);
+    }
+    return GOAL_GROUPS.map((group) => ({
+      group,
+      goals: byGroup.get(group.id) ?? [],
+    }));
+  }, [roots]);
+
+  const toggleGroupCollapse = useCallback((id: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  if (loading && roots.length === 0) {
+    // Skeleton list — same footprint as the loaded tree's top level
+    // so the swap reads as data resolving in place.
+    return (
+      <View
+        className="flex-1"
+        style={{ backgroundColor: tokens.bg }}
+      >
+        <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+          <Skeleton width={100} height={28} style={{ marginBottom: 6 }} />
+          <Skeleton width={200} height={14} style={{ marginBottom: 20 }} />
+          <View style={{ gap: 12 }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Skeleton width="50%" height={16} />
+                  <Skeleton width={32} height={14} />
+                </View>
+                <Skeleton
+                  width="100%"
+                  height={6}
+                  radius={3}
+                  style={{ marginTop: 12 }}
+                />
+              </SkeletonCard>
+            ))}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className="flex-1"
+      style={{ backgroundColor: tokens.bg }}
+    >
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={tokens.primary}
+          />
+        }
+      >
+        <View className="flex-row items-center justify-between mb-1">
+          <View className="flex-row items-baseline gap-2 flex-1">
+            {inProgressCount > 0 && (
+              <Text className="text-sm" style={{ color: tokens.textSec }}>
+                {inProgressCount} in progress
+              </Text>
+            )}
+          </View>
+          {/* Manual goal creation — opens the /goal/new create modal. */}
+          <Pressable
+            onPress={() => router.push("/goal/new")}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Add goal"
+            className="ml-3 h-11 w-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: tokens.primary }}
+          >
+            <Ionicons name="add" size={26} color="#FFFFFF" />
+          </Pressable>
+        </View>
+        <Text
+          className="text-sm mb-4"
+          style={{ color: tokens.textTer }}
+        >
+          What you&apos;re working toward. Tap to open, + to add a sub-step.
+        </Text>
+
+        {/* §B.2.3 — billing gate (FREE post-trial) takes precedence
+            over the experiential gate (TRIAL/PRO low-data). */}
+        {isProLocked ? (
+          <View className="mb-5">
+            <ProLockedCard surfaceId="goals_suggestions_locked" />
+          </View>
+        ) : (
+          progression &&
+          !progression.unlocked.goalSuggestions && (
+            <View className="mb-5">
+              <LockedFeatureCard
+                unlockKey="goalSuggestions"
+                progression={progression}
+              />
+            </View>
+          )
+        )}
+
+        {progression?.unlocked.goalSuggestions && pendingSuggestions > 0 && (
+          <Pressable
+            onPress={() => setSuggestionsOpen(true)}
+            className="mb-5 rounded-2xl border p-4"
+            style={{
+              borderColor: `${tokens.primary}55`,
+              backgroundColor: `${tokens.primary}14`,
+            }}
+          >
+            <Text
+              className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: tokens.primary }}
+            >
+              From your recordings
+            </Text>
+            <Text
+              className="mt-1 text-sm"
+              style={{ color: tokens.text }}
+            >
+              {pendingSuggestions} reflection
+              {pendingSuggestions === 1 ? "" : "s"} could become sub-goal
+              {pendingSuggestions === 1 ? "" : "s"}. Review →
+            </Text>
+          </Pressable>
+        )}
+
+        <Pressable
+          onPress={() => setIncludeArchived((v) => !v)}
+          className="mb-4 flex-row items-center gap-2 self-start"
+        >
+          <View
+            className="h-4 w-4 rounded border-2 items-center justify-center"
+            style={{
+              backgroundColor: includeArchived ? tokens.primary : "transparent",
+              borderColor: includeArchived ? tokens.primary : tokens.line,
+            }}
+          >
+            {includeArchived && (
+              <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+            )}
+          </View>
+          <Text className="text-xs" style={{ color: tokens.textSec }}>
+            Show archived (on hold)
+          </Text>
+        </Pressable>
+
+        {roots.length === 0 ? (
+          <View
+            className="rounded-2xl border border-dashed px-6 py-16 items-center"
+            style={{ borderColor: tokens.line }}
+          >
+            <Ionicons name="flag-outline" size={36} color={tokens.textTer} />
+            <Text
+              className="mt-3 text-base font-semibold"
+              style={{ color: tokens.textSec }}
+            >
+              No goals yet
+            </Text>
+            <Text
+              className="mt-2 text-sm text-center max-w-xs leading-relaxed"
+              style={{ color: tokens.textTer }}
+            >
+              Mention something you&rsquo;re working toward in a debrief
+              and we&rsquo;ll track it for you.
+            </Text>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(
+                  Haptics.ImpactFeedbackStyle.Medium
+                ).catch(() => {});
+                router.push("/(tabs)");
+              }}
+              className="mt-5 rounded-full px-5 py-2.5 active:opacity-90"
+              style={{ backgroundColor: tokens.primary }}
+            >
+              <Text className="text-sm font-semibold" style={{ color: "#FFFFFF" }}>
+                Record a debrief →
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={{ gap: 16 }}>
+            {groupedRoots.map(({ group, goals }) => {
+              if (goals.length === 0) return null;
+              const collapsed = collapsedGroups.has(group.id);
+              return (
+                <View key={group.id}>
+                  {/* Stronger group header (2026-04-28): hairline
+                      top + colored bottom underline so each section
+                      reads as its own block. Eyebrow bumped 11px →
+                      13px / tracking 1.6 to match the dashboard's
+                      shared eyebrow rhythm. */}
+                  {/* Life-area-colored group header (2026-06-08 QA): 4px
+                      bar + soft background + colored label, all sourced
+                      from group.color (@acuity/shared GOAL_GROUPS, §2.9
+                      Life Matrix palette) — NOT theme primary. Mirrors the
+                      Tasks section-header treatment so both read as
+                      strongly colored. group.color is hex at runtime, so
+                      `${color}1A` / `${color}22` = alpha tints. */}
+                  <Pressable
+                    onPress={() => toggleGroupCollapse(group.id)}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      marginBottom: 12,
+                      borderLeftWidth: 4,
+                      borderLeftColor: group.color,
+                      backgroundColor: `${group.color}1A`,
+                      borderTopWidth: 0.5,
+                      borderTopColor: tokens.line,
+                      borderBottomWidth: 1,
+                      borderBottomColor: tokens.line,
+                    }}
+                  >
+                    <View
+                      style={{
+                        height: 32,
+                        width: 32,
+                        borderRadius: 16,
+                        backgroundColor: `${group.color}22`,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <GoalGroupIcon name={group.icon} color={group.color} />
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "700",
+                        letterSpacing: 1.6,
+                        textTransform: "uppercase",
+                        color: group.color,
+                      }}
+                    >
+                      {group.label}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "500",
+                        color: tokens.textTer,
+                      }}
+                    >
+                      {goals.length}
+                    </Text>
+                    <View style={{ flex: 1 }} />
+                    <ChevronDown
+                      size={16}
+                      color={tokens.textTer}
+                      style={{
+                        transform: [{ rotate: collapsed ? "-90deg" : "0deg" }],
+                      }}
+                    />
+                  </Pressable>
+                  {!collapsed && (
+                    <View style={{ gap: 8 }}>
+                      {goals.map((g) => (
+                        <TreeNode
+                          key={g.id}
+                          goal={g}
+                          depth={0}
+                          expanded={expanded}
+                          onToggleExpand={toggleExpanded}
+                          onOpen={openGoal}
+                          onAddSubgoal={setAddSubgoalFor}
+                          onActions={setActionSheetFor}
+                          onToggleTask={toggleTask}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+
+      {addSubgoalFor && (
+        <AddSubgoalSheet
+          parent={addSubgoalFor}
+          onClose={() => setAddSubgoalFor(null)}
+          onSaved={() => {
+            setAddSubgoalFor(null);
+            // A new sub-goal isn't derivable client-side (server
+            // assigns id, depth, parent linkage), so force-refetch.
+            fetchTree(includeArchived, true);
+          }}
+        />
+      )}
+
+      {actionSheetFor && (
+        <ActionSheet
+          goal={actionSheetFor}
+          onClose={() => setActionSheetFor(null)}
+          onAction={(action) => {
+            const g = actionSheetFor;
+            setActionSheetFor(null);
+            if (action === "delete") {
+              deleteGoal(g.id);
+            } else {
+              performAction(g.id, action);
+            }
+          }}
+        />
+      )}
+
+      {suggestionsOpen && (
+        <SuggestionsSheet
+          onClose={() => setSuggestionsOpen(false)}
+          onChanged={() => {
+            // Accepting a suggestion materializes a new goal on the
+            // server — force-refetch to pick it up.
+            fetchTree(includeArchived, true);
+          }}
+        />
+      )}
+    </View>
+  );
+}
+
+// ─── Tree node recursive ─────────────────────────────────────────────────
+
+const TreeNode = memo(function TreeNode({
+  goal,
+  depth,
+  expanded,
+  onToggleExpand,
+  onOpen,
+  onAddSubgoal,
+  onActions,
+  onToggleTask,
+}: {
+  goal: TreeGoal;
+  depth: number;
+  expanded: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onOpen: (id: string) => void;
+  onAddSubgoal: (goal: TreeGoal) => void;
+  onActions: (goal: TreeGoal) => void;
+  onToggleTask: (id: string, status: string) => void;
+}) {
+  const { tokens } = useTheme();
+  const status = STATUS_STYLES[goal.status] ?? STATUS_STYLES.NOT_STARTED;
+  const area = { label: lifeAreaDisplayLabel(goal.lifeArea) };
+  const statusColor = toneColor(status.tone, tokens);
+  const isExpanded = expanded.has(goal.id);
+  const hasChildren = goal.children.length > 0;
+  const hasTasks = goal.tasks.length > 0;
+  const hasAny = hasChildren || hasTasks;
+  const canAddSub = goal.depth < 4;
+  const manualDifferent =
+    goal.manualProgress !== goal.calculatedProgress && goal.manualProgress !== 0;
+  const struck = goal.status === "COMPLETE";
+
+  return (
+    <View style={{ marginLeft: depth * 16 }}>
+      <View
+        className="rounded-2xl border p-3"
+        style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+      >
+        <View className="flex-row items-start gap-2">
+          {hasAny ? (
+            <Pressable
+              onPress={() => onToggleExpand(goal.id)}
+              hitSlop={16}
+              className="mt-1"
+            >
+              <Ionicons
+                name={isExpanded ? "chevron-down" : "chevron-forward"}
+                size={14}
+                color={tokens.textTer}
+              />
+            </Pressable>
+          ) : (
+            <View style={{ width: 14 }} />
+          )}
+
+          <Pressable
+            onPress={() => onOpen(goal.id)}
+            className="flex-1"
+          >
+            <View className="flex-row items-center flex-wrap gap-1.5 mb-1">
+              <View
+                className="rounded-full px-2 py-0.5"
+                style={{ backgroundColor: `${statusColor}25` }}
+              >
+                <Text
+                  style={{
+                    color: statusColor,
+                    fontSize: 10,
+                    fontWeight: "600",
+                  }}
+                >
+                  {status.label}
+                </Text>
+              </View>
+              {/* Q11a (2026-05-21): area pill now tints with the
+                  active palette token (tokens.primary) instead of
+                  reading area.color from the local hardcoded
+                  LIFE_AREAS constant. Per-area color cue lost; gained
+                  palette consistency across all 4 palettes. The full
+                  Goals tab LIFE_AREAS + STATUS_STYLES refactor lands
+                  in a later Q11 phase. */}
+              <View
+                className="rounded-full px-2 py-0.5"
+                style={{ backgroundColor: `${tokens.primary}20` }}
+              >
+                <Text style={{ color: tokens.primary, fontSize: 10, fontWeight: "600" }}>
+                  {area.label}
+                </Text>
+              </View>
+              {hasChildren && (
+                <Text
+                  className="text-[10px]"
+                  style={{ color: tokens.textTer }}
+                >
+                  {goal.children.length} sub-goal
+                  {goal.children.length === 1 ? "" : "s"}
+                </Text>
+              )}
+            </View>
+            <Text
+              className={`text-base font-semibold leading-snug ${
+                struck ? "line-through" : ""
+              }`}
+              style={{ color: struck ? tokens.textTer : tokens.text }}
+            >
+              {goal.title}
+            </Text>
+
+            <View className="mt-2 flex-row items-center gap-2">
+              <View
+                className="h-1.5 flex-1 rounded-full"
+                style={{ backgroundColor: tokens.bgInset }}
+              >
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${goal.calculatedProgress}%`,
+                    backgroundColor: tokens.primary,
+                  }}
+                />
+              </View>
+              <Text
+                className="text-[10px] tabular-nums w-8 text-right"
+                style={{ color: tokens.textTer }}
+              >
+                {goal.calculatedProgress}%
+              </Text>
+              {manualDifferent && (
+                <Text
+                  className="text-[9px]"
+                  style={{ color: tokens.textTer }}
+                >
+                  you: {goal.manualProgress}%
+                </Text>
+              )}
+            </View>
+          </Pressable>
+
+          <View className="flex-row items-center gap-0.5">
+            {canAddSub && (
+              <Pressable
+                onPress={() => onAddSubgoal(goal)}
+                hitSlop={8}
+                className="p-1.5"
+              >
+                <Ionicons name="add" size={18} color={tokens.primary} />
+              </Pressable>
+            )}
+            <Pressable
+              onPress={() => onActions(goal)}
+              hitSlop={8}
+              className="p-1.5"
+            >
+              <Ionicons name="ellipsis-horizontal" size={16} color={tokens.textTer} />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      {isExpanded && hasAny && (
+        <View
+          className="mt-1.5 gap-1.5 ml-1.5 border-l pl-1.5"
+          style={{ borderColor: tokens.line }}
+        >
+          {goal.tasks.map((t) => (
+            <TaskLeaf
+              key={t.id}
+              task={t}
+              indent={(depth + 1) * 16}
+              onToggle={onToggleTask}
+            />
+          ))}
+          {goal.children.map((c) => (
+            <TreeNode
+              key={c.id}
+              goal={c}
+              depth={depth + 1}
+              expanded={expanded}
+              onToggleExpand={onToggleExpand}
+              onOpen={onOpen}
+              onAddSubgoal={onAddSubgoal}
+              onActions={onActions}
+              onToggleTask={onToggleTask}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+});
+
+const TaskLeaf = memo(function TaskLeaf({
+  task,
+  indent,
+  onToggle,
+}: {
+  task: TreeTask;
+  indent: number;
+  onToggle: (id: string, status: string) => void;
+}) {
+  const { tokens } = useTheme();
+  const done = task.status === "DONE";
+  const label = task.title ?? task.text ?? "Untitled task";
+  const handleToggle = useCallback(
+    () => onToggle(task.id, task.status),
+    [onToggle, task.id, task.status]
+  );
+  return (
+    <View
+      className="flex-row items-center gap-2 rounded-lg px-3 py-2"
+      style={{
+        marginLeft: indent - 8,
+        backgroundColor: tokens.bgInset,
+      }}
+    >
+      {/* Q8 — gradient checkbox visual swap. Same onPress handler,
+          same checked state. */}
+      <GradientCheckbox checked={done} onPress={handleToggle} size={18} />
+      <Text
+        className={`text-xs flex-1 ${done ? "line-through" : ""}`}
+        style={{ color: done ? tokens.textTer : tokens.textSec }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+});
+
+// ─── Sheets ──────────────────────────────────────────────────────────────
+
+function AddSubgoalSheet({
+  parent,
+  onClose,
+  onSaved,
+}: {
+  parent: TreeGoal;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { tokens } = useTheme();
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      await api.post(`/api/goals/${parent.id}/add-subgoal`, { text: text.trim() });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't add");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable onPress={onClose} className="flex-1 bg-black/50 justify-end">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Pressable onPress={() => {}}>
+            <View
+              className="rounded-t-2xl p-5 pb-10"
+              style={{ backgroundColor: tokens.cardBg }}
+            >
+              <Text
+                className="text-[11px] mb-1"
+                style={{ color: tokens.textTer }}
+              >
+                Under
+              </Text>
+              <Text
+                className="text-base font-semibold mb-4"
+                style={{ color: tokens.text }}
+              >
+                {parent.title}
+              </Text>
+
+              <TextInput
+                autoFocus
+                value={text}
+                onChangeText={setText}
+                placeholder="What's the next step?"
+                placeholderTextColor={tokens.textTer}
+                className="rounded-lg border px-3 py-2.5 text-sm"
+                style={{
+                  borderColor: tokens.line,
+                  backgroundColor: tokens.bgInset,
+                  color: tokens.text,
+                }}
+              />
+              {err && (
+                <Text
+                  className="mt-2 text-xs"
+                  style={{ color: tokens.bad }}
+                >
+                  {err}
+                </Text>
+              )}
+              <View className="mt-4 flex-row justify-end gap-2">
+                <Pressable onPress={onClose} className="px-4 py-2">
+                  <Text
+                    className="text-sm"
+                    style={{ color: tokens.textSec }}
+                  >
+                    Cancel
+                  </Text>
+                </Pressable>
+                <Pressable
+                  disabled={saving || !text.trim()}
+                  onPress={save}
+                  className="rounded-full px-4 py-2"
+                  style={{
+                    backgroundColor: tokens.primary,
+                    opacity: saving || !text.trim() ? 0.4 : 1,
+                  }}
+                >
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: "#FFFFFF" }}
+                  >
+                    {saving ? "Adding…" : "Add"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ActionSheet({
+  goal,
+  onClose,
+  onAction,
+}: {
+  goal: TreeGoal;
+  onClose: () => void;
+  onAction: (action: "start" | "complete" | "archive" | "delete" | "restore") => void;
+}) {
+  const { tokens } = useTheme();
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable onPress={onClose} className="flex-1 bg-black/50 justify-end">
+        <Pressable onPress={() => {}}>
+          <View
+            className="rounded-t-2xl p-4 pb-10"
+            style={{ backgroundColor: tokens.cardBg }}
+          >
+            <Text
+              className="text-xs px-2 mb-2"
+              style={{ color: tokens.textTer }}
+            >
+              {goal.title}
+            </Text>
+            {goal.status !== "IN_PROGRESS" && goal.status !== "COMPLETE" && (
+              <SheetRow label="Start" icon="play" onPress={() => onAction("start")} />
+            )}
+            {goal.status !== "COMPLETE" && (
+              <SheetRow
+                label="Mark complete"
+                icon="checkmark"
+                onPress={() => onAction("complete")}
+              />
+            )}
+            {goal.status !== "ARCHIVED" && (
+              <SheetRow
+                label="Archive"
+                icon="archive-outline"
+                onPress={() => onAction("archive")}
+              />
+            )}
+            {goal.status === "ARCHIVED" && (
+              <SheetRow
+                label="Restore"
+                icon="refresh-outline"
+                onPress={() => onAction("restore")}
+              />
+            )}
+            <SheetRow
+              label="Delete"
+              icon="trash-outline"
+              danger
+              onPress={() => onAction("delete")}
+            />
+            <SheetRow label="Cancel" icon="close" onPress={onClose} />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function SheetRow({
+  label,
+  icon,
+  onPress,
+  danger,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  danger?: boolean;
+}) {
+  const { tokens } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3 px-3 py-3 rounded-lg"
+      style={{
+        backgroundColor: "transparent",
+      }}
+    >
+      <Ionicons
+        name={icon}
+        size={18}
+        color={danger ? tokens.bad : tokens.primary}
+      />
+      <Text
+        className="text-sm"
+        style={{ color: danger ? tokens.bad : tokens.text }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+type Suggestion = {
+  id: string;
+  parentGoalId: string | null;
+  parentGoalTitle: string | null;
+  suggestedText: string;
+  createdAt: string;
+  source: {
+    entryId: string;
+    createdAt: string;
+    excerpt: string;
+  } | null;
+};
+
+function SuggestionsSheet({
+  onClose,
+  onChanged,
+}: {
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const { tokens } = useTheme();
+  const [items, setItems] = useState<Suggestion[] | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [pending, setPending] = useState<Set<string>>(new Set());
+
+  const load = useCallback(async () => {
+    try {
+      const res = await api.get<{ suggestions: Suggestion[] }>(
+        "/api/goals/suggestions"
+      );
+      setItems(res.suggestions ?? []);
+    } catch {
+      setItems([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const act = async (
+    id: string,
+    action: "accept" | "dismiss" | "edit-accept",
+    editedText?: string
+  ) => {
+    setPending((p) => new Set(p).add(id));
+    try {
+      await api.post("/api/goals/suggestions", { id, action, editedText });
+      setItems((prev) => (prev ?? []).filter((x) => x.id !== id));
+      setEditingId(null);
+      onChanged();
+    } catch {
+      // silent; user can retry
+    } finally {
+      setPending((p) => {
+        const n = new Set(p);
+        n.delete(id);
+        return n;
+      });
+    }
+  };
+
+  return (
+    <Modal transparent animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 bg-black/50 justify-end">
+        <View
+          className="rounded-t-2xl max-h-[85%]"
+          style={{ backgroundColor: tokens.cardBg }}
+        >
+          <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
+            <Text
+              className="text-lg font-semibold"
+              style={{ color: tokens.text }}
+            >
+              Review suggestions
+            </Text>
+            <Pressable onPress={onClose} hitSlop={8} className="p-1">
+              <Ionicons name="close" size={20} color={tokens.textTer} />
+            </Pressable>
+          </View>
+          <ScrollView
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+            automaticallyAdjustKeyboardInsets
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          >
+            {items === null ? (
+              <View className="py-12 items-center">
+                <ActivityIndicator color={tokens.primary} />
+              </View>
+            ) : items.length === 0 ? (
+              <View className="py-12 items-center">
+                <Text className="text-3xl mb-2">✨</Text>
+                <Text
+                  className="text-sm"
+                  style={{ color: tokens.textSec }}
+                >
+                  All caught up.
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-3">
+                {items.map((s) => {
+                  const busy = pending.has(s.id);
+                  const editing = editingId === s.id;
+                  return (
+                    <View
+                      key={s.id}
+                      className="rounded-xl border p-3"
+                      style={{
+                        borderColor: tokens.line,
+                        backgroundColor: tokens.bgInset,
+                      }}
+                    >
+                      <Text
+                        className="text-xs mb-1"
+                        style={{ color: tokens.textTer }}
+                      >
+                        {s.parentGoalTitle
+                          ? `Under "${s.parentGoalTitle}"`
+                          : "Top-level"}
+                      </Text>
+                      {editing ? (
+                        <TextInput
+                          autoFocus
+                          value={editText}
+                          onChangeText={setEditText}
+                          multiline
+                          placeholderTextColor={tokens.textTer}
+                          className="rounded-lg border px-3 py-2 text-sm"
+                          style={{
+                            borderColor: tokens.line,
+                            backgroundColor: tokens.cardBg,
+                            color: tokens.text,
+                          }}
+                        />
+                      ) : (
+                        <Text
+                          className="text-sm font-medium"
+                          style={{ color: tokens.text }}
+                        >
+                          {s.suggestedText}
+                        </Text>
+                      )}
+                      {s.source && (
+                        <Text
+                          className="mt-2 text-[10px] italic"
+                          style={{ color: tokens.textTer }}
+                        >
+                          from your {formatRelativeDate(s.source.createdAt)} entry
+                          {s.source.excerpt ? ` — “${s.source.excerpt}”` : ""}
+                        </Text>
+                      )}
+                      <View className="mt-3 flex-row justify-end gap-2">
+                        {editing ? (
+                          <>
+                            <Pressable
+                              onPress={() => setEditingId(null)}
+                              className="px-3 py-1.5"
+                            >
+                              <Text
+                                className="text-xs"
+                                style={{ color: tokens.textSec }}
+                              >
+                                Cancel
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              disabled={busy || !editText.trim()}
+                              onPress={() =>
+                                act(s.id, "edit-accept", editText.trim())
+                              }
+                              className="rounded-full px-3 py-1.5"
+                              style={{
+                                backgroundColor: tokens.primary,
+                                opacity:
+                                  busy || !editText.trim() ? 0.4 : 1,
+                              }}
+                            >
+                              <Text
+                                className="text-xs font-semibold"
+                                style={{ color: "#FFFFFF" }}
+                              >
+                                Save + accept
+                              </Text>
+                            </Pressable>
+                          </>
+                        ) : (
+                          <>
+                            <Pressable
+                              disabled={busy}
+                              onPress={() => act(s.id, "dismiss")}
+                              className="px-3 py-1.5"
+                            >
+                              <Text
+                                className="text-xs"
+                                style={{ color: tokens.textSec }}
+                              >
+                                Dismiss
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              disabled={busy}
+                              onPress={() => {
+                                setEditingId(s.id);
+                                setEditText(s.suggestedText);
+                              }}
+                              className="px-3 py-1.5"
+                            >
+                              <Text
+                                className="text-xs"
+                                style={{ color: tokens.text }}
+                              >
+                                Edit
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              disabled={busy}
+                              onPress={() => act(s.id, "accept")}
+                              className="rounded-full px-3 py-1.5"
+                              style={{
+                                backgroundColor: tokens.primary,
+                                opacity: busy ? 0.4 : 1,
+                              }}
+                            >
+                              <Text
+                                className="text-xs font-semibold"
+                                style={{ color: "#FFFFFF" }}
+                              >
+                                Accept
+                              </Text>
+                            </Pressable>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function GoalGroupIcon({
+  name,
+  color,
+}: {
+  name: GoalGroupMeta["icon"];
+  color: string;
+}) {
+  const Icon =
+    name === "Briefcase"
+      ? Briefcase
+      : name === "Wallet"
+        ? Wallet
+        : name === "Heart"
+          ? Heart
+          : name === "Users"
+            ? Users
+            : name === "UsersRound"
+              ? UsersRound
+              : name === "Activity"
+                ? Activity
+                : name === "Brain"
+                  ? Brain
+                  : name === "Sprout"
+                    ? Sprout
+                    : name === "Sparkles"
+                      ? Sparkles
+                      : name === "Compass"
+                        ? Compass
+                        : name === "HeartPulse"
+                          ? HeartPulse
+                          : Palette;
+  return <Icon size={16} color={color} strokeWidth={2} />;
+}

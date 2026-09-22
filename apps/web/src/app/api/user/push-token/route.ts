@@ -36,6 +36,7 @@ const TOKEN_MAX_LEN = 256;
 interface Body {
   token?: unknown;
   platform?: unknown;
+  timezone?: unknown;
 }
 
 export async function POST(req: NextRequest) {
@@ -49,6 +50,16 @@ export async function POST(req: NextRequest) {
   const platform = body.platform === "ios" || body.platform === "android"
     ? body.platform
     : null;
+  // Keep User.timezone (what the reminder dispatcher schedules against) in
+  // sync with the device on every launch. IANA names are short; anything
+  // longer is junk. A bad value can't break scheduling — the dispatcher
+  // falls back to a default tz on an unparseable zone.
+  const timezone =
+    typeof body.timezone === "string" &&
+    body.timezone.length > 0 &&
+    body.timezone.length <= 64
+      ? body.timezone
+      : null;
 
   if (!token || token.length > TOKEN_MAX_LEN) {
     return NextResponse.json({ ok: false, error: "InvalidToken" }, { status: 400 });
@@ -70,6 +81,7 @@ export async function POST(req: NextRequest) {
         pushToken: token,
         pushTokenPlatform: platform,
         pushTokenUpdatedAt: new Date(),
+        ...(timezone ? { timezone } : {}),
       },
     });
   } catch (err) {

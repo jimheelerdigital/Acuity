@@ -851,6 +851,35 @@ export const processEntryFn = inngest.createFunction(
       });
     }
 
+    // ── "Daily Reflection with Ripple" self-completes (fail-soft) ─────────
+    // Recording a debrief IS this habit, so unlike auto-check-habits it runs
+    // unconditionally on every entry — no habitCompletions gate. Own step so
+    // a failure retries in isolation and never blocks the entry. No-op unless
+    // the user has actually added the reflection habit.
+    await step.run("auto-check-reflection-habit", async () => {
+      try {
+        const { habitsEnabled, checkReflectionHabitOnRecord } = await import(
+          "@/lib/habits-autocheck"
+        );
+        if (!habitsEnabled()) return;
+        const u = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        });
+        await checkReflectionHabitOnRecord({
+          prisma,
+          userId,
+          entryId,
+          timezone: u?.timezone ?? null,
+        });
+      } catch (err) {
+        console.error(
+          "[process-entry] reflection habit auto-check failed (non-fatal):",
+          err
+        );
+      }
+    });
+
     // Post-persist enrichment, parallelized. Four substeps —
     // link-calendar-events, extract-people, update-recording-stats,
     // embed-entry — are independent (different DB rows / different

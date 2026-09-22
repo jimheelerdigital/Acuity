@@ -76,13 +76,18 @@ export async function POST(req: NextRequest) {
   const { supabase } = await import("@/lib/supabase.server");
 
   // Download from try bucket
-  const { data: audioData, error: downloadError } = await supabase.storage
-    .from(TRY_STORAGE_BUCKET)
-    .download(trySession.audioPath);
+  // audioPath is null for a TYPED debrief (mic-denied fallback) — there was
+  // never a recording to move. Skip the whole audio hop rather than calling
+  // storage with a null key, which would 400 and look like a failed claim.
+  const { data: audioData, error: downloadError } = trySession.audioPath
+    ? await supabase.storage
+        .from(TRY_STORAGE_BUCKET)
+        .download(trySession.audioPath)
+    : { data: null, error: null };
 
   let userAudioPath: string | null = null;
 
-  if (!downloadError && audioData) {
+  if (trySession.audioPath && !downloadError && audioData) {
     // Determine the MIME type from the extension
     const ext = trySession.audioPath.split(".").pop() ?? "webm";
     const mimeMap: Record<string, string> = {
@@ -190,7 +195,12 @@ export async function POST(req: NextRequest) {
     });
 
     // ── 8. Clean up try audio ────────────────────────────────────────
-    await supabase.storage.from(TRY_STORAGE_BUCKET).remove([trySession.audioPath]);
+    // Nothing to remove for a typed debrief.
+    if (trySession.audioPath) {
+      await supabase.storage
+        .from(TRY_STORAGE_BUCKET)
+        .remove([trySession.audioPath]);
+    }
 
     // ── 9. Clear the cookie ──────────────────────────────────────────
     const response = NextResponse.json(

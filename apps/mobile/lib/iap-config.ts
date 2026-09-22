@@ -1,6 +1,14 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+import {
+  DEFAULT_PRICING_CONFIG,
+  allProductIds,
+  pricingTierFor,
+} from "@acuity/shared";
+
+import { newPricingEnabled } from "./pricing";
+
 /**
  * Compile-time gate for the iOS in-app purchase surface.
  *
@@ -45,37 +53,37 @@ export function isIapEnabled(): boolean {
 // The ACTIVE pair (queried + purchased on THIS platform) resolves at runtime;
 // IapProductId + isIapProductId accept all four so server-bound values
 // typecheck + validate regardless of platform.
-const IOS_MONTHLY_PRODUCT_ID = "com.heelerdigital.acuity.pro.monthly";
-const IOS_ANNUAL_PRODUCT_ID = "com.heelerdigital.acuity.pro.annual";
-const ANDROID_MONTHLY_PRODUCT_ID = "acuity_pro_monthly";
-const ANDROID_ANNUAL_PRODUCT_ID = "acuity_pro_annual";
+// ── Active tier → product ids ────────────────────────────────────────
+// The tier a NEW prospect gets: V2 ($9.99/$89.99) when new pricing is on,
+// LEGACY ($4.99/$39.99) otherwise. V2 uses SEPARATE product ids from
+// LEGACY, so switching here NEVER reprices an existing subscriber's SKU —
+// no Apple price-consent prompt / cancel risk for the grandfathered 17,
+// whose active subscriptions are on the legacy ids and stay untouched.
+// (Grandfathering a *lapsed* prior subscriber back to LEGACY would need a
+// server-provided paidSince and is a future refinement; the active 17 are
+// unaffected regardless.)
+const ACTIVE_TIER = pricingTierFor(
+  { paidSince: null, legacyUnknownStart: false },
+  { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: newPricingEnabled() }
+);
 
-const IS_ANDROID = Platform.OS === "android";
+const PLATFORM: "apple" | "google" =
+  Platform.OS === "android" ? "google" : "apple";
 
-export const IAP_MONTHLY_PRODUCT_ID = IS_ANDROID
-  ? ANDROID_MONTHLY_PRODUCT_ID
-  : IOS_MONTHLY_PRODUCT_ID;
-export const IAP_ANNUAL_PRODUCT_ID = IS_ANDROID
-  ? ANDROID_ANNUAL_PRODUCT_ID
-  : IOS_ANNUAL_PRODUCT_ID;
+export const IAP_MONTHLY_PRODUCT_ID = ACTIVE_TIER.products.monthly[PLATFORM];
+export const IAP_ANNUAL_PRODUCT_ID = ACTIVE_TIER.products.annual[PLATFORM];
 
 export const IAP_ALL_PRODUCT_IDS = [
   IAP_MONTHLY_PRODUCT_ID,
   IAP_ANNUAL_PRODUCT_ID,
 ] as const;
 
-export type IapProductId =
-  | typeof IOS_MONTHLY_PRODUCT_ID
-  | typeof IOS_ANNUAL_PRODUCT_ID
-  | typeof ANDROID_MONTHLY_PRODUCT_ID
-  | typeof ANDROID_ANNUAL_PRODUCT_ID;
+// Any known SKU across BOTH tiers + platforms is a valid IapProductId: a
+// receipt for either price must validate regardless of which tier the
+// buyer purchased (legacy renewals AND new v2 purchases).
+export type IapProductId = string;
 
-const ALL_KNOWN_PRODUCT_IDS: readonly string[] = [
-  IOS_MONTHLY_PRODUCT_ID,
-  IOS_ANNUAL_PRODUCT_ID,
-  ANDROID_MONTHLY_PRODUCT_ID,
-  ANDROID_ANNUAL_PRODUCT_ID,
-];
+const ALL_KNOWN_PRODUCT_IDS: readonly string[] = allProductIds();
 
 export function isIapProductId(value: string): value is IapProductId {
   return ALL_KNOWN_PRODUCT_IDS.includes(value);

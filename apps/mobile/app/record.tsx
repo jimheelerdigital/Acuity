@@ -25,12 +25,14 @@ import {
   SpeedometerGauge,
 } from "@/components/recording";
 import { useEntryPolling } from "@/hooks/use-entry-polling";
+import { useProcessingNotifier } from "@/contexts/processing-notifier";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import {
   AudioTooLargeError,
   uploadAudioDirect,
 } from "@/lib/direct-upload";
+import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
@@ -133,6 +135,15 @@ export default function RecordScreen() {
     typeof params.dimensionKey === "string" && params.dimensionKey.length > 0
       ? params.dimensionKey
       : null;
+  // Third and last mic entry point. Home and the tab bar intercept before
+  // navigating, but this route is reachable directly — a deep link, a
+  // notification, or a future caller that forgets to check. Guarding here
+  // means the wall cannot be routed around.
+  const { interceptRecord } = useSaveWall();
+  useEffect(() => {
+    if (interceptRecord()) router.back();
+  }, [interceptRecord]);
+
   const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
   // Guards the autostart against React StrictMode's double-invoke and any
@@ -170,6 +181,15 @@ export default function RecordScreen() {
   const currentUploadCancelRef = useRef<{ requested: boolean } | null>(null);
 
   const poll = useEntryPolling(polledEntryId);
+  const { trackEntry, resolveEntry } = useProcessingNotifier();
+
+  // Register the in-flight entry with the app-wide notifier the moment
+  // polling starts, so if the user navigates away before it finishes
+  // they still get the "brief ready" banner. record's own poll below
+  // resolves it on completion when the user stays, avoiding a dupe.
+  useEffect(() => {
+    if (polledEntryId) trackEntry(polledEntryId);
+  }, [polledEntryId, trackEntry]);
 
   // Bridge polling terminal states → nav or error surface.
   useEffect(() => {
@@ -193,6 +213,11 @@ export default function RecordScreen() {
       invalidate("/api/entries");
       invalidate("/api/home");
       invalidate("/api/user/progression");
+      // The user stayed on the record screen through completion, so we
+      // take them straight to the entry — hand off from the global
+      // notifier so it doesn't also fire a redundant "brief ready"
+      // banner for this same entry.
+      resolveEntry(polledEntryId);
       // Route to the entry detail screen. router.replace so a back
       // swipe from detail goes to the dashboard, not back to a
       // post-record spinner.
@@ -221,7 +246,7 @@ export default function RecordScreen() {
     } else if (poll.status === "timeout") {
       setState("timeout");
     }
-  }, [poll.status, poll.entry, polledEntryId, router]);
+  }, [poll.status, poll.entry, polledEntryId, router, resolveEntry]);
 
   // Set up audio mode on mount — routes non-recording interruptions
   // (incoming call, Siri, alarm) to pause rather than crash the
@@ -598,6 +623,13 @@ export default function RecordScreen() {
           // completion. iOS + Android share this path.
           if (res.status === 202 && responseEntryId) {
             setState("saved");
+            // Async/background path: the user is free to leave while the
+            // entry processes. Register it with the app-wide notifier so
+            // the "brief ready" banner fires on completion wherever they
+            // are. (This path doesn't poll, so the polledEntryId hook
+            // never covered it — this is the real fix for the missing
+            // banner.)
+            trackEntry(responseEntryId);
             void (async () => {
               try {
                 const meRes = await api.get<{
@@ -655,7 +687,7 @@ export default function RecordScreen() {
         }
       }
     },
-    [router, goalId, dimensionKey]
+    [router, goalId, dimensionKey, trackEntry]
   );
 
   /**

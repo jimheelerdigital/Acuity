@@ -944,6 +944,33 @@ export async function processEntry({
       }
     }
 
+    // ── "Daily Reflection with Ripple" self-completes (non-fatal) ─────────
+    // Recording a debrief IS this habit, so it ticks on every entry create,
+    // regardless of what the extractor matched. Best-effort: never fails the
+    // entry. No-op unless the user has actually added the reflection habit.
+    if (habitsEnabled()) {
+      try {
+        const { checkReflectionHabitOnRecord } = await import(
+          "./habits-autocheck"
+        );
+        const rtzRow = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        });
+        await checkReflectionHabitOnRecord({
+          prisma,
+          userId,
+          entryId,
+          timezone: rtzRow?.timezone ?? null,
+        });
+      } catch (err) {
+        console.error(
+          "[pipeline] reflection habit auto-check failed (non-fatal):",
+          err
+        );
+      }
+    }
+
     // ── Post-transaction: update memory + life map (non-fatal) ────────────
     try {
       const { updateUserMemory, updateLifeMap } = await import("@/lib/memory");

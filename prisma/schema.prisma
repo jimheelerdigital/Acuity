@@ -721,6 +721,11 @@ model UserReminder {
   // cascade so deleting a habit cannot cascade-delete a reminder row the
   // scheduler is mid-read on; the API clears it explicitly.
   habitId    String?
+  // Server reminder dispatcher dedup (2026-09). Local YYYY-MM-DD this reminder
+  // last fired on. The dispatcher skips a reminder whose lastFiredLocalDate ==
+  // today (user-local), so a cron retry or two concurrent runs can't double-send
+  // — same idempotency pattern as User.v10Day2PushSentAt. Null = never fired.
+  lastFiredLocalDate String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -869,7 +874,7 @@ model Entry {
   // Read by `apps/web/scripts/theme-distribution.ts` for cohort
   // comparison reports.
   themePromptVersion String?
-  InsightEvidence    InsightEvidence[]
+  insightEvidence    InsightEvidence[]
   // Habit checks auto-created from this debrief (source="DEBRIEF"). SetNull
   // on delete so removing an entry clears its auto-checks without touching
   // the user's manual history.
@@ -1702,7 +1707,7 @@ model UserInsight {
   /// convention (Entry.status, UserInsight.severity) for cross-Postgres
   /// compatibility and to avoid a migration on every added value.
   correctionState String?
-  InsightEvidence InsightEvidence[]
+  evidence        InsightEvidence[]
 
   @@index([userId, createdAt])
   @@index([userId, correctionState])
@@ -2824,6 +2829,12 @@ model Habit {
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name       String
+  // "standard" | "reflection". The reflection habit is the built-in
+  // "Daily Reflection with Ripple" — it auto-completes when the user records
+  // a debrief (see checkReflectionHabitOnRecord) rather than by transcript
+  // matching. Kept as a string, not an enum, so adding future built-in
+  // types needs no migration.
+  type       String    @default("standard")
   // 0=Sunday..6=Saturday. Which days this habit is expected. Defaults to
   // every day; an empty array means "no expected days", which is how a
   // habit is paused without losing its history.

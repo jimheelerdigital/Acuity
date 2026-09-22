@@ -39,7 +39,7 @@ import {
   isIapEnabled,
 } from "@/lib/iap-config";
 import type { AcuityTokens } from "@/lib/theme/tokens";
-import { displayAnnual, displayMonthly } from "@/lib/pricing";
+import { displayAnnual, displayMonthly, displayTier } from "@/lib/pricing";
 
 type Tier = "monthly" | "annual";
 
@@ -605,12 +605,18 @@ function TierCard({
   const isAnnual = tier === "annual";
   const periodLabel = isAnnual ? "year" : "month";
   const autoRenewLabel = isAnnual ? "Auto-renews yearly" : "Auto-renews monthly";
-  // Static "save 33%" framing matches the placeholder $39.99/year vs
-  // $4.99/month × 12 = $59.88 default. TODO(jim): once ASC has real
-  // prices configured, compute the badge dynamically from
-  // products.monthly.price * 12 vs products.annual.price (requires
-  // adding `price: number` to IapProduct in lib/iap.ts).
-  const annualEquivLabel = isAnnual ? "≈ $3.33/mo — save 33%" : null;
+  // Computed from the active pricing tier (shared catalog) so the badge is
+  // correct for whichever price is live — legacy ($39.99, ~33%) or v2
+  // ($89.99, ~25%) — instead of a hardcoded placeholder.
+  const tierCopy = displayTier();
+  const monthlyRunRate = tierCopy.monthlyCents * 12;
+  const savePct =
+    monthlyRunRate > 0
+      ? Math.round(((monthlyRunRate - tierCopy.annualCents) / monthlyRunRate) * 100)
+      : 0;
+  const annualEquivLabel = isAnnual
+    ? `≈ $${(tierCopy.annualCents / 12 / 100).toFixed(2)}/mo — save ${savePct}%`
+    : null;
   return (
     <Pressable
       onPress={onSelect}

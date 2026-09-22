@@ -1,205 +1,47 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
 
-import { api } from "@/lib/api";
-import {
-  applyMultiReminderSchedule,
-  getPermissionStatus,
-  topUpRandomNudges,
-} from "@/lib/notifications";
+import { cancelAllReminders, cancelAllRandomNudges } from "@/lib/notifications";
 
 /**
- * Boot self-heal for cleared local reminder schedules (Slice P2,
- * 2026-05-19). Fixes RC3 — iOS reinstall / major-OS upgrade /
- * restore-from-backup wiping the scheduled-notification list while
- * server prefs still say `notificationsEnabled = true`. Without this,
- * the user's reminders silently stop until they re-open Profile →
- * Reminders and tap Save.
+ * One-time local-trigger purge (1.6).
  *
- * Trigger points (see apps/mobile/app/_layout.tsx):
- *   - Once after AuthGate resolves an authenticated user
- *   - Each time AppState transitions to "active"
+ * On-device reminder scheduling is retired as of 1.6 — the SERVER now owns
+ * reminder delivery (see the web notifications-twice-daily dispatcher). This
+ * function used to be a boot self-heal that RE-scheduled local reminders; that
+ * would now double-send against the server push.
  *
- * Throttled to once per 6 hours via AsyncStorage so foregrounding the
- * app many times in a row only hits the network on the first one.
+ * Its job is now the opposite: a one-time cleanup that CANCELS any local
+ * reminder / random-nudge triggers left on the device from a <= 1.5.x install.
+ * Those triggers repeat weekly and never self-expire, so an upgraded user would
+ * otherwise get the old on-device reminder AND the new server push. We purge
+ * them once per install (guarded by a flag so repeat launches are a no-op), and
+ * the schedulers in notifications.ts no longer create new ones.
  *
- * Idempotent — if the server says X reminders should be scheduled and
- * the device already has all the matching triggers, we do nothing.
- * The check is per-reminder-id (not just a totals comparison) so a
- * partial loss for one reminder triggers a reschedule.
- *
- * Failure handling: every code path is inside one try/catch that logs
- * and swallows. App boot must never crash because of this self-heal.
+ * Trigger points are unchanged (apps/mobile/app/_layout.tsx): once after
+ * AuthGate resolves, and on each AppState → "active". The flag makes all but
+ * the first call cheap. Wrapped in try/catch — boot must never crash here.
  */
 
-const LAST_BOOT_REAPPLY_KEY = "acuity:reminders:lastBootReapply";
-const REAPPLY_THROTTLE_MS = 6 * 60 * 60 * 1000; // 6 hours
+const LOCAL_PURGE_DONE_KEY = "acuity:reminders:localPurgedV16";
 
-// Must match notifications.ts ID_PREFIX. Identifier scheme set by
-// applyMultiReminderSchedule: `acuity:reminder:<reminderId>:<weekday>`.
-// Legacy single-mode triggers from pre-Slice-C use the shorter
-// `acuity:reminder:<weekday>` shape — those are picked up as
-// orphaned (don't match any reminder id) which forces a reschedule
-// and cleans them up via applyMultiReminderSchedule's cancel-then-
-// reschedule.
-const ID_PREFIX = "acuity:reminder:";
-
-type ServerReminder = {
-  id: string;
-  time: string;
-  daysActive: number[];
-  enabled: boolean;
-  sortOrder: number;
-};
-
+// Signature kept (userId) so the _layout.tsx call site is unchanged, even
+// though the purge is user-independent (it clears this device's triggers).
 export async function reapplyRemindersIfNeeded(
-  userId: string
+  _userId: string
 ): Promise<void> {
   try {
-    // Throttle check first — cheapest read, avoids hammering the API
-    // when the user backgrounds + foregrounds rapidly.
-    const lastRaw = await AsyncStorage.getItem(LAST_BOOT_REAPPLY_KEY);
-    const last = lastRaw ? Number(lastRaw) : 0;
-    const now = Date.now();
-    if (Number.isFinite(last) && last > 0 && now - last < REAPPLY_THROTTLE_MS) {
-      const minsAgo = Math.round((now - last) / 60000);
-      console.log(
-        `[reminders-boot] skipped, throttled (last run ${minsAgo}m ago)`
-      );
-      return;
-    }
+    const done = await AsyncStorage.getItem(LOCAL_PURGE_DONE_KEY);
+    if (done) return;
 
-    // Permission gate. If the OS isn't granting notifications, there
-    // is nothing to schedule — but still bump the throttle so we
-    // don't keep poking the server on every foreground.
-    const permission = await getPermissionStatus();
-    if (permission !== "granted") {
-      console.log(
-        `[reminders-boot] skipped, permission=${permission} (user=${userId})`
-      );
-      await AsyncStorage.setItem(LAST_BOOT_REAPPLY_KEY, String(now));
-      return;
-    }
-
-    // Authoritative server state. Master toggle lives on User; the
-    // per-reminder rows live on UserReminder. Both are needed because
-    // applyMultiReminderSchedule cuts the whole list if masterEnabled
-    // is false.
-    const [meRes, listRes] = await Promise.all([
-      api.get<{ user: { notificationsEnabled?: boolean } }>("/api/user/me"),
-      api.get<{ reminders: ServerReminder[] }>("/api/account/reminders"),
-    ]);
-
-    const masterEnabled = !!meRes.user?.notificationsEnabled;
-    const reminders = listRes.reminders ?? [];
-    const activeReminders = reminders.filter(
-      (r) => r.enabled && r.daysActive.length > 0
-    );
-
-    const expectedTriggers = masterEnabled
-      ? activeReminders.reduce((sum, r) => sum + r.daysActive.length, 0)
-      : 0;
-
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    const oursAll = scheduled.filter((s) =>
-      s.identifier.startsWith(ID_PREFIX)
-    );
-
-    // Count multi-format triggers per reminder id. 4-segment
-    // identifiers are `acuity:reminder:<reminderId>:<weekday>`; older
-    // 3-segment identifiers are unmapped to a reminder row and count
-    // as orphans for this purpose.
-    const triggersByReminderId = new Map<string, number>();
-    for (const s of oursAll) {
-      const parts = s.identifier.split(":");
-      if (parts.length === 4 && parts[2]) {
-        triggersByReminderId.set(
-          parts[2],
-          (triggersByReminderId.get(parts[2]) ?? 0) + 1
-        );
-      }
-    }
-
-    let needsReschedule = false;
-    if (masterEnabled) {
-      // Per-reminder check: any active reminder with zero matching
-      // triggers means a missing schedule.
-      for (const r of activeReminders) {
-        if ((triggersByReminderId.get(r.id) ?? 0) === 0) {
-          needsReschedule = true;
-          break;
-        }
-      }
-      // Totals check catches the case where a reminder has some
-      // triggers but is missing one weekday (partial-loss), and also
-      // catches orphaned legacy 3-segment triggers that need cleanup.
-      if (!needsReschedule && oursAll.length !== expectedTriggers) {
-        needsReschedule = true;
-      }
-    } else if (oursAll.length > 0) {
-      // Master off but stale local triggers exist — clean up.
-      needsReschedule = true;
-    }
-
+    await cancelAllReminders();
+    await cancelAllRandomNudges();
+    await AsyncStorage.setItem(LOCAL_PURGE_DONE_KEY, String(Date.now()));
     console.log(
-      `[reminders-boot] checked schedule, ${oursAll.length} triggers found, ${expectedTriggers} expected`
+      "[reminders-boot] purged legacy local triggers (server owns reminders as of 1.6)"
     );
-
-    if (!needsReschedule) {
-      await AsyncStorage.setItem(LAST_BOOT_REAPPLY_KEY, String(now));
-      return;
-    }
-
-    const outcome = await applyMultiReminderSchedule({
-      masterEnabled,
-      reminders: activeReminders.map((r) => ({
-        id: r.id,
-        time: r.time,
-        daysActive: r.daysActive,
-        enabled: r.enabled,
-      })),
-    });
-
-    if (outcome.kind === "scheduled") {
-      console.log(
-        `[reminders-boot] re-applied schedule for ${outcome.remindersScheduled} reminders (${outcome.totalTriggers} triggers)`
-      );
-    } else {
-      console.log(
-        `[reminders-boot] re-applied schedule, outcome=${outcome.kind}`
-      );
-    }
-
-    await AsyncStorage.setItem(LAST_BOOT_REAPPLY_KEY, String(now));
-
-    // ─── Random nudge top-up (Slice P3A) ─────────────────────────
-    // Pre-schedule one-shot DATE triggers for the rolling 7-day
-    // window of random nudges. Top-up only — never re-rolls existing
-    // future triggers (so users don't see their random times shift
-    // every time they foreground the app). Master + permission
-    // already gated above; only runs when both are healthy.
-    if (masterEnabled) {
-      const activeWeekdays = Array.from(
-        new Set(activeReminders.flatMap((r) => r.daysActive))
-      ).sort();
-      const mainTimes = activeReminders.map((r) => r.time);
-      const randomOutcome = await topUpRandomNudges({
-        activeWeekdays,
-        mainTimes,
-      });
-      if (randomOutcome.kind === "scheduled") {
-        console.log(
-          `[reminders-boot] random nudges topped up, ${randomOutcome.count} new triggers`
-        );
-      } else {
-        console.log(
-          `[reminders-boot] random nudges skipped, outcome=${randomOutcome.kind}`
-        );
-      }
-    }
   } catch (err) {
-    // Swallow — app boot must not crash because of this. Console log
-    // so the cause is visible in `npx react-native log-ios` during QA.
-    console.log("[reminders-boot] error (silent):", err);
+    // Swallow — app boot must not crash. Next launch retries the purge
+    // (the flag is only set on success).
+    console.log("[reminders-boot] purge error (silent):", err);
   }
 }
