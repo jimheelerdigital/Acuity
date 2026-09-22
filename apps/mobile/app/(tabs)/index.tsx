@@ -437,11 +437,11 @@ export default function DashboardTab() {
           <Text
             style={{
               fontFamily: tokens.fontMono,
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: "700",
               letterSpacing: 1.4,
               textTransform: "uppercase",
-              color: tokens.textTer,
+              color: tokens.textSec,
             }}
           >
             Recent sessions

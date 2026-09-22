@@ -57,6 +57,14 @@ const DAY_LABELS = [
 // 5 weeks covers the 30-day window the completion-rate stat uses.
 const HEATMAP_WEEKS = 5;
 
+// One cell in the history calendar.
+//  done   — a completion was recorded (coral fill)
+//  today  — the current day, not yet marked done (coral ring)
+//  miss   — an expected day that wasn't completed (outlined empty)
+//  off    — a non-active day (grey fill)
+//  future — an upcoming day this week (faint placeholder, keeps rows full)
+type CellState = "done" | "miss" | "off" | "future" | "today";
+
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -126,23 +134,21 @@ export default function HabitDetailScreen() {
   const weeks = useMemo(() => {
     const todayDow = dayOfWeek(today);
     const start = shiftDate(today, -((HEATMAP_WEEKS - 1) * 7 + todayDow));
-    const cols: Array<
-      Array<{ date: string; state: "done" | "miss" | "off" | "future" }>
-    > = [];
+    const cols: Array<Array<{ date: string; day: number; state: CellState }>> =
+      [];
     let cursor = start;
     for (let w = 0; w < HEATMAP_WEEKS; w += 1) {
-      const col: Array<{
-        date: string;
-        state: "done" | "miss" | "off" | "future";
-      }> = [];
+      const col: Array<{ date: string; day: number; state: CellState }> = [];
       for (let d = 0; d < 7; d += 1) {
-        let state: "done" | "miss" | "off" | "future";
+        let state: CellState;
         if (cursor > today) state = "future";
-        else if (!habit) state = "off";
         else if (checkSet.has(cursor)) state = "done";
-        else if (isExpectedOn(habit, cursor)) state = "miss";
+        else if (cursor === today) state = "today";
+        else if (habit && isExpectedOn(habit, cursor)) state = "miss";
         else state = "off";
-        col.push({ date: cursor, state });
+        // Day-of-month for the in-cell label; "2026-09-07" → 7.
+        const day = Number(cursor.slice(8, 10));
+        col.push({ date: cursor, day, state });
         cursor = shiftDate(cursor, 1);
       }
       cols.push(col);
@@ -289,13 +295,32 @@ export default function HabitDetailScreen() {
   const hour = Number(reminderTime.split(":")[0]) || 8;
   const minute = Number(reminderTime.split(":")[1]) || 0;
 
-  const cell = (state: "done" | "miss" | "off" | "future") => {
-    if (state === "future") return "transparent";
-    if (state === "done") return tokens.primary;
-    // Missed = an outlined empty slot (see the border in the cell/legend),
-    // so it reads as "a day you didn't fill" rather than another grey fill.
-    if (state === "miss") return "transparent";
-    return tokens.bgInset;
+  // Fill for each cell. Missed/today read as outlined empties (borders added
+  // in the render); done is a coral fill; off/future are grey (future is
+  // dimmed via opacity so upcoming days still fill the row).
+  const cellBg = (state: CellState): string => {
+    switch (state) {
+      case "done":
+        return tokens.primary;
+      case "today":
+      case "miss":
+        return "transparent";
+      default:
+        return tokens.bgInset;
+    }
+  };
+  // Day-of-month label color, tuned for contrast against each fill.
+  const cellText = (state: CellState): string => {
+    switch (state) {
+      case "done":
+        return "#FFFFFF";
+      case "today":
+        return tokens.primary;
+      case "future":
+        return tokens.textQuiet;
+      default:
+        return tokens.textTer;
+    }
   };
 
   return (
@@ -367,11 +392,28 @@ export default function HabitDetailScreen() {
                     flex: 1,
                     aspectRatio: 1,
                     borderRadius: 6,
-                    backgroundColor: cell(c.state),
-                    borderWidth: c.state === "miss" ? 1.5 : 0,
-                    borderColor: tokens.lineStrong,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: cellBg(c.state),
+                    // Upcoming days stay visible but recede, so every row
+                    // renders full instead of trailing off into blanks.
+                    opacity: c.state === "future" ? 0.45 : 1,
+                    borderWidth:
+                      c.state === "today" ? 2 : c.state === "miss" ? 1.5 : 0,
+                    borderColor:
+                      c.state === "today" ? tokens.primary : tokens.lineStrong,
                   }}
-                />
+                >
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: "700",
+                      color: cellText(c.state),
+                    }}
+                  >
+                    {c.day}
+                  </Text>
+                </View>
               ))}
             </View>
           ))}
@@ -380,12 +422,16 @@ export default function HabitDetailScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 6,
+            flexWrap: "wrap",
+            columnGap: 6,
+            rowGap: 6,
             marginTop: 10,
           }}
         >
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.primary }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Done</Text>
+          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 2, borderColor: tokens.primary, marginLeft: 12 }} />
+          <Text style={{ color: tokens.textTer, fontSize: 12 }}>Today</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.5, borderColor: tokens.lineStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Missed</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInset, marginLeft: 12 }} />
@@ -510,11 +556,11 @@ function StatCard({
 
 function sectionLabel(tokens: ReturnType<typeof useTheme>["tokens"]) {
   return {
-    color: tokens.textTer,
-    fontSize: 12,
-    fontWeight: "600" as const,
+    color: tokens.textSec,
+    fontSize: 13,
+    fontWeight: "700" as const,
     textTransform: "uppercase" as const,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     marginTop: 28,
     marginBottom: 12,
   };

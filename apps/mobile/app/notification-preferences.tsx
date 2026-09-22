@@ -683,10 +683,10 @@ function SectionHeader({ tokens, title }: { tokens: AcuityTokens; title: string 
     <Text
       style={{
         fontFamily: tokens.fontMono,
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: "700",
         letterSpacing: 1.4,
-        color: tokens.textTer,
+        color: tokens.textSec,
         textTransform: "uppercase",
         marginTop: 28,
         marginBottom: 12,

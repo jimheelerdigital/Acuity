@@ -58,11 +58,11 @@ export function RecentThemesRow({ themes, max = 5 }: RecentThemesRowProps) {
       <Text
         style={{
           fontFamily: tokens.fontMono,
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: "700",
           letterSpacing: 1.2,
           textTransform: "uppercase",
-          color: tokens.textTer,
+          color: tokens.textSec,
           paddingHorizontal: 4,
           marginBottom: 10,
         }}
