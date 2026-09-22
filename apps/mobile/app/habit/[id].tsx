@@ -57,13 +57,15 @@ const DAY_LABELS = [
 // 5 weeks covers the 30-day window the completion-rate stat uses.
 const HEATMAP_WEEKS = 5;
 
-// One cell in the history calendar.
-//  done   — a completion was recorded (coral fill)
-//  today  — the current day, not yet marked done (coral ring)
-//  miss   — an expected day that wasn't completed (outlined empty)
-//  off    — a non-active day (grey fill)
-//  future — an upcoming day this week (faint placeholder, keeps rows full)
-type CellState = "done" | "miss" | "off" | "future" | "today";
+// Base state of one cell in the history calendar. "Today" is tracked
+// separately (isToday) so the today ring can layer on top of ANY state —
+// including a completed today — instead of being mutually exclusive with it.
+//  done    — a completion was recorded (accent fill)
+//  pending — today, not yet marked done (empty, gets the today ring)
+//  miss    — a past expected day that wasn't completed (outlined empty)
+//  off     — a non-active day (solid grey fill)
+//  future  — an upcoming day (outlined empty placeholder, keeps rows full)
+type CellState = "done" | "miss" | "off" | "future" | "pending";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -134,21 +136,29 @@ export default function HabitDetailScreen() {
   const weeks = useMemo(() => {
     const todayDow = dayOfWeek(today);
     const start = shiftDate(today, -((HEATMAP_WEEKS - 1) * 7 + todayDow));
-    const cols: Array<Array<{ date: string; day: number; state: CellState }>> =
-      [];
+    const cols: Array<
+      Array<{ date: string; day: number; state: CellState; isToday: boolean }>
+    > = [];
     let cursor = start;
     for (let w = 0; w < HEATMAP_WEEKS; w += 1) {
-      const col: Array<{ date: string; day: number; state: CellState }> = [];
+      const col: Array<{
+        date: string;
+        day: number;
+        state: CellState;
+        isToday: boolean;
+      }> = [];
       for (let d = 0; d < 7; d += 1) {
+        const isToday = cursor === today;
         let state: CellState;
         if (cursor > today) state = "future";
         else if (checkSet.has(cursor)) state = "done";
-        else if (cursor === today) state = "today";
+        // Today with no check yet is "pending" — NOT a miss (the day isn't over).
+        else if (isToday) state = "pending";
         else if (habit && isExpectedOn(habit, cursor)) state = "miss";
         else state = "off";
         // Day-of-month for the in-cell label; "2026-09-07" → 7.
         const day = Number(cursor.slice(8, 10));
-        col.push({ date: cursor, day, state });
+        col.push({ date: cursor, day, state, isToday });
         cursor = shiftDate(cursor, 1);
       }
       cols.push(col);
@@ -295,20 +305,19 @@ export default function HabitDetailScreen() {
   const hour = Number(reminderTime.split(":")[0]) || 8;
   const minute = Number(reminderTime.split(":")[1]) || 0;
 
-  // Fill for each cell. Missed/today read as outlined empties (borders added
-  // in the render); done is a coral fill; off/future are grey (future is
-  // dimmed via opacity so upcoming days still fill the row).
+  // Fill for each cell. Only "done" and "off" are filled; pending/miss/future
+  // are outlined empties (borders added in the render) so future never looks
+  // like a grey off-day.
   const cellBg = (state: CellState): string => {
     switch (state) {
       case "done":
         return tokens.primary;
-      case "today":
-      case "miss":
-        return "transparent";
-      default:
-        // off / future — a clearly filled muted chip, distinct from the
-        // outlined-empty "missed" cell.
+      case "off":
+        // The one solid grey chip — a non-active day.
         return tokens.bgInsetStrong;
+      default:
+        // pending / miss / future — empty, distinguished by their borders.
+        return "transparent";
     }
   };
   // Day-of-month label color, tuned for contrast against each fill.
@@ -316,8 +325,6 @@ export default function HabitDetailScreen() {
     switch (state) {
       case "done":
         return "#FFFFFF";
-      case "today":
-        return tokens.primary;
       case "future":
         return tokens.textQuiet;
       default:
@@ -397,20 +404,33 @@ export default function HabitDetailScreen() {
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: cellBg(c.state),
-                    // Upcoming days stay visible but recede, so every row
-                    // renders full instead of trailing off into blanks.
-                    opacity: c.state === "future" ? 0.45 : 1,
-                    borderWidth:
-                      c.state === "today" ? 2 : c.state === "miss" ? 1.5 : 0,
-                    borderColor:
-                      c.state === "today" ? tokens.primary : tokens.lineStrong,
+                    // Today always gets a ring — in the palette's SECONDARY
+                    // accent so it stands out even on a completed (accent-fill)
+                    // day and never blends with "done". Otherwise: missed is a
+                    // firm outline, future a faint outlined placeholder (keeps
+                    // rows full without looking like a grey off-day).
+                    borderWidth: c.isToday
+                      ? 2
+                      : c.state === "miss"
+                        ? 1.5
+                        : c.state === "future"
+                          ? 1
+                          : 0,
+                    borderColor: c.isToday
+                      ? tokens.secondary
+                      : c.state === "future"
+                        ? tokens.line
+                        : tokens.lineStrong,
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 10,
                       fontWeight: "700",
-                      color: cellText(c.state),
+                      color:
+                        c.isToday && c.state !== "done"
+                          ? tokens.secondary
+                          : cellText(c.state),
                     }}
                   >
                     {c.day}
@@ -432,7 +452,7 @@ export default function HabitDetailScreen() {
         >
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.primary }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Done</Text>
-          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 2, borderColor: tokens.primary, marginLeft: 12 }} />
+          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 2, borderColor: tokens.secondary, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Today</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.5, borderColor: tokens.lineStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Missed</Text>
