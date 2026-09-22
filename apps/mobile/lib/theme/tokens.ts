@@ -154,6 +154,10 @@ export interface AcuityTokens {
   bg: string;
   bgSub: string;
   bgInset: string;
+  /** Visible muted inset — a filled neutral chip that clearly reads as
+   *  "filled" against `bg` (e.g. off-days in the habit history grid),
+   *  where `bgInset` sits too close to the background. */
+  bgInsetStrong: string;
 
   // Text
   text: string;
@@ -262,6 +266,12 @@ export function makeAcuityTokens({
   const bgInset = dark
     ? lchToHex(0.185, 0.02, sh)
     : lchToHex(0.95, 0.008, sh);
+  // A clearly visible muted neutral — noticeably off the background in
+  // both themes (lighter in dark, darker in light) so a filled chip
+  // never gets mistaken for an empty/outlined one.
+  const bgInsetStrong = dark
+    ? lchToHex(0.32, 0.02, sh)
+    : lchToHex(0.89, 0.012, sh);
 
   // Hero blob radials. Two soft warm/cool spots at top corners
   // over a vertical linear gradient that gives subtle depth.
@@ -384,6 +394,7 @@ export function makeAcuityTokens({
     bg,
     bgSub,
     bgInset,
+    bgInsetStrong,
 
     text: dark ? lchToHex(0.98, 0.004, sh) : lchToHex(0.14, 0.012, sh),
     textSec: dark ? lchToHex(0.74, 0.01, sh) : lchToHex(0.42, 0.01, sh),
