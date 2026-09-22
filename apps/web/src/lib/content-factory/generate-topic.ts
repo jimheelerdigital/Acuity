@@ -273,7 +273,8 @@ OUTPUT (strict JSON, no markdown):
  * with steps that fix the problem).
  */
 export async function generateSelfieTopic(
-  recentHeadlines: string[]
+  recentHeadlines: string[],
+  feedback?: string | null
 ): Promise<GeneratedSelfieTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -282,7 +283,18 @@ export async function generateSelfieTopic(
       ? `\n\nRECENT POSTS — this ground is already covered:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}\nYour post must be genuinely NEW against that list — a different problem, different steps, different rooms and shots. Not the same fix under a new headline.`
       : "";
 
-  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}\n\nReturn ONLY valid JSON, no other text.`;
+  // Learning loop (2026-09-14): real engagement numbers from
+  // performance.ts, so topics lean into what the audience rewards.
+  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}${feedback ?? ""}\n\nReturn ONLY valid JSON, no other text.`;
+
+  // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
+  let pulse = "";
+  try {
+    const { getAudiencePulse } = await import("./reddit-trends");
+    pulse = await getAudiencePulse("ripple");
+  } catch {
+    /* soft — generate without the pulse */
+  }
 
   const start = Date.now();
   try {
@@ -291,7 +303,7 @@ export async function generateSelfieTopic(
       max_tokens: 2000,
       // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
       // humanizer gate still runs on the output below.
-      system: `${SELFIE_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
+      system: `${SELFIE_SYSTEM_PROMPT}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: userPrompt }],
     });
 

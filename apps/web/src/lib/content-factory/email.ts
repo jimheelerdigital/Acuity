@@ -64,8 +64,78 @@ const BWK_LANES = new Set([
   "discipline-real",
   "future-texts",
 ]);
-function accountLabel(lane: string | null | undefined): string {
-  return lane && BWK_LANES.has(lane) ? "[BUILD WITH KEY]" : "[RIPPLE]";
+async function accountLabel(lane: string | null | undefined): Promise<string> {
+  if (lane && BWK_LANES.has(lane)) return "[BUILD WITH KEY]";
+  // Lanes-as-data (2026-09-15): DB-born lanes carry brand on their
+  // ContentLane row — laneBrand checks it (cached, fails safe ripple).
+  const { laneBrand } = await import("./social-publish");
+  return (await laneBrand(lane ?? null)) === "bwk"
+    ? "[BUILD WITH KEY]"
+    : "[RIPPLE]";
+}
+
+// ── Auto-publish notifications (2026-09-14, per Keenan: "set up an
+// email notification for every successful post generation on facebook,
+// instagram, or draft sent to tiktok") ───────────────────────────────
+// One email per cron run covering every success in that run — never one
+// email per platform row, which would be up to 9 emails per tick.
+
+export interface PublishSuccess {
+  platform: string; // instagram | facebook | tiktok
+  lane: string | null;
+  headline: string;
+  permalink: string | null; // null for TikTok inbox drafts
+}
+
+const PLATFORM_LABEL: Record<string, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok (inbox draft)",
+};
+
+export async function sendPublishNotification(
+  successes: PublishSuccess[]
+): Promise<void> {
+  if (successes.length === 0) return;
+  let resend: ReturnType<typeof getResendClient>;
+  try {
+    resend = getResendClient(); // throws when RESEND_API_KEY is unset
+  } catch {
+    console.warn("[publish-email] RESEND_API_KEY not set — skipping notification");
+    return;
+  }
+
+  const items = (
+    await Promise.all(
+      successes.map(async (s) => {
+        const label = PLATFORM_LABEL[s.platform] ?? s.platform;
+        const link = s.permalink
+          ? `<a href="${s.permalink}">${s.permalink}</a>`
+          : s.platform === "tiktok"
+            ? "open the TikTok app inbox to finish and post it"
+            : "";
+        return `<li><strong>${label}</strong> ${await accountLabel(s.lane)} — “${s.headline}”${link ? `<br/>${link}` : ""}</li>`;
+      })
+    )
+  ).join("\n");
+
+  const counts = successes.reduce<Record<string, number>>((acc, s) => {
+    acc[s.platform] = (acc[s.platform] ?? 0) + 1;
+    return acc;
+  }, {});
+  const subjectBits = Object.entries(counts)
+    .map(([p, n]) => `${n} ${PLATFORM_LABEL[p] ?? p}`)
+    .join(", ");
+
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: TO_ADDRESS,
+    subject: `✅ Auto-published: ${subjectBits}`,
+    html: `<p>The auto-publisher just shipped:</p><ul>${items}</ul><p>Full history: <a href="${REVIEW_BASE_URL}/admin/content-factory/carousels">${REVIEW_BASE_URL}/admin/content-factory/carousels</a></p>`,
+  });
+  if (error) {
+    console.error(`[publish-email] Failed to send notification: ${error.message}`);
+  }
 }
 
 interface SlideRow {
@@ -106,6 +176,29 @@ export async function sendCarouselEmail(
   if (post.emailedAt && !force) {
     console.log(`[carousel-email] Already emailed ${carouselPostId}, skipping`);
     return { emailId: "" };
+  }
+
+  // Manual-TikTok lanes ONLY (2026-09-16, per Keenan: "ONLY SEND ME
+  // EMAILS FOR THOSE POSTS, so i know which ones to post on tiktok").
+  // A ContentLane row with spec.tiktokEmail=true marks a lane Keenan
+  // posts to TikTok by hand — those get the daily email. Other DB lanes
+  // auto-post to IG/FB silently with no email. Lanes with NO ContentLane
+  // row (one-offs, quote loops, specials) keep emailing as before, and
+  // force=true (the admin "Resend email" button) always sends.
+  if (!force && post.lane) {
+    const laneRow = await prisma.contentLane.findUnique({
+      where: { key: post.lane },
+      select: { spec: true },
+    });
+    const wantsEmail = laneRow
+      ? (laneRow.spec as Record<string, unknown> | null)?.tiktokEmail === true
+      : true;
+    if (!wantsEmail) {
+      console.log(
+        `[carousel-email] Lane ${post.lane} is IG/FB-only (no tiktokEmail flag) — skipping email for ${carouselPostId}`
+      );
+      return { emailId: "" };
+    }
   }
 
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
@@ -238,7 +331,7 @@ export async function sendCarouselEmail(
   const emailPayload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    subject: `${accountLabel(post.lane)} ${post.headline} — ${dateStr}`,
+    subject: `${await accountLabel(post.lane)} ${post.headline} — ${dateStr}`,
     html,
     text,
   };
@@ -409,7 +502,7 @@ async function sendStitchedVideoEmail(
   const emailPayload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    subject: `${accountLabel(post.lane)} 🎬 Carousel video — ${post.headline}`,
+    subject: `${await accountLabel(post.lane)} 🎬 Carousel video — ${post.headline}`,
     html,
     text,
   };
@@ -634,10 +727,10 @@ export async function sendStoryVideoEmail(
     // subject so it can't be posted by accident (2026-08-16). Silent
     // BY DESIGN (selfVoice) gets a calm 🎙️ subject instead.
     subject: opts.selfVoice
-      ? `${accountLabel(post.lane)} ${emoji}🎙️ ${label} + your script — ${post.headline}`
+      ? `${await accountLabel(post.lane)} ${emoji}🎙️ ${label} + your script — ${post.headline}`
       : opts.silent
-        ? `${accountLabel(post.lane)} ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
-        : `${accountLabel(post.lane)} ${emoji} ${label} — ${post.headline}`,
+        ? `${await accountLabel(post.lane)} ⚠️ SILENT ${kind} — RECORD VOICEOVER — ${post.headline}`
+        : `${await accountLabel(post.lane)} ${emoji} ${label} — ${post.headline}`,
     html,
     text,
   };

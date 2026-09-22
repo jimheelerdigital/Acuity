@@ -23,10 +23,11 @@ import type { NichePlatform } from "@prisma/client";
 export const nicheDiscoveryFn = inngest.createFunction(
   {
     id: "niche-discovery",
-    name: "Niche Lab — Weekly Hashtag & Account Discovery",
+    name: "Niche Lab — Monthly Hashtag & Account Discovery",
     retries: 1,
     triggers: [
-      { cron: "0 2 * * 0" },
+      // Monthly (15th, 2:00 UTC) — was weekly; cut 2026-09-21 to stay inside Apify plan limits
+      { cron: "0 2 15 * *" },
       { event: "content-factory/niche.discover" },
     ],
   },
@@ -109,7 +110,7 @@ export const nicheDiscoveryFn = inngest.createFunction(
       const { scrapeHashtagPosts } = await import(
         "@/lib/content-factory/niche-research"
       );
-      const samples = await scrapeHashtagPosts(tags.instagram, 20);
+      const samples = await scrapeHashtagPosts(tags.instagram, 10);
       return ingestDiscovery("INSTAGRAM", tags.instagram, samples);
     });
 
@@ -120,7 +121,7 @@ export const nicheDiscoveryFn = inngest.createFunction(
       const { scrapeTikTokHashtags } = await import(
         "@/lib/content-factory/niche-research"
       );
-      const samples = await scrapeTikTokHashtags(tags.tiktok, 20);
+      const samples = await scrapeTikTokHashtags(tags.tiktok, 10);
       return ingestDiscovery("TIKTOK", tags.tiktok, samples);
     });
 

@@ -1425,6 +1425,7 @@ model CarouselPost {
   storyVideoUrl  String? // 30s narrated story video MP4 (Supabase Storage URL)
   storyVoiced    Boolean? // Whether the voiceover actually muxed (false = video shipped SILENT)
   storyTheme     String? // Short label of the standalone story concept (dedup for future scripts)
+  reelTransition String? // xfade transition used for the slideshow Reel render (2026-09-15) — lets the feedback loop rank transitions by engagement
   // Where Keenan posted this carousel (pasted once in the admin). The
   // daily metrics-refresh cron pulls engagement from the platform APIs
   // for any POSTED carousel with a link.
@@ -1507,6 +1508,16 @@ model SocialPublish {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
+  // Per-platform engagement metrics (2026-09-14) — refreshed nightly by
+  // carousel-metrics-refresh. CarouselPost's columns stay IG-only; the
+  // learning loop sums these rows on top for cross-platform totals.
+  views     Int?
+  likes     Int?
+  comments  Int?
+  shares    Int?
+  saves     Int? // IG only — FB has no save metric
+  metricsAt DateTime?
+
   @@unique([carouselPostId, platform, accountKey])
   @@index([status, scheduledAt])
 }
@@ -1537,6 +1548,133 @@ model SocialToken {
   updatedAt    DateTime  @updatedAt
 
   @@unique([provider, accountKey])
+}
+
+// Content lanes as data (2026-09-15, co-pilot lane system) — the daily
+// generation roster lives here instead of the hard-coded HOUR_LANES
+// map. Legacy lanes are template "code" (their generation stays in
+// carousel-daily.ts's bespoke branches); lanes born from the Sunday
+// intelligence report are template "moody" with the tunables in `spec`
+// (see MoodyLaneSpec in lib/content-factory/moody-carousel.ts). Kill =
+// status RETIRED (dispatch skips it, history and revival stay one
+// UPDATE away); birth = INSERT — no deploy either way.
+model ContentLane {
+  id        String    @id @default(cuid())
+  key       String    @unique // matches CarouselPost.lane
+  name      String // display name for admin + Sunday report
+  brand     String    @default("ripple") // "ripple" | "bwk"
+  status    String    @default("ACTIVE") // "TESTING" | "ACTIVE" | "RETIRED"
+  template  String    @default("moody") // "moody" (spec-driven) | "code" (bespoke branch)
+  hoursUtc  Int[] // overnight dispatch hours (5-8); twice-a-day lanes list two
+  spec      Json? // MoodyLaneSpec for template "moody"; null for "code"
+  origin    String?   @db.Text // why this lane exists (birth notes / report reasoning)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  retiredAt DateTime?
+
+  @@index([status])
+}
+
+// Daily Reddit "audience pulse" digest (2026-09-17, per Keenan: fully
+// automated Reddit trend scraping influencing all lanes + freelance
+// lanes). One row per brand per UTC day; themes are Claude-distilled
+// from that day's top posts blended with the trailing 7 days of rows.
+model RedditTrendDigest {
+  id          String   @id @default(cuid())
+  date        DateTime // UTC midnight of the scrape day
+  brand       String // "ripple" | "bwk"
+  themes      Json // [{theme, why, angle, phrases[]}] — distilled, ranked
+  sourcePosts Json // raw scraped {subreddit, titles[]} for audit/debug
+  createdAt   DateTime @default(now())
+
+  @@unique([date, brand])
+  @@index([brand, date])
+}
+
+// Competitor accounts we track and mimic (2026-09-17, per Keenan: "a
+// section where I can put in social media handles performing super well
+// in similar niches/areas that we can mimic... fully automated, auto
+// scrape"). Scraped daily via Apify (TikTok + Instagram); outlier posts
+// get Claude "mimic briefs" that feed the dashboard, the daily lanes'
+// inspiration block, and the two mimic-mandate lanes.
+model CompetitorAccount {
+  id            String    @id @default(cuid())
+  handle        String // without the @
+  platform      String // "tiktok" | "instagram"
+  brand         String // "ripple" | "bwk" — which of our brands mimics it
+  niche         String? // free-text ("midlife women self-care", "male discipline")
+  status        String    @default("ACTIVE") // "ACTIVE" | "PAUSED"
+  notes         String?   @db.Text
+  lastScrapedAt DateTime?
+  scrapeError   String? // last scrape failure message, null on success
+  createdAt     DateTime  @default(now())
+  posts         CompetitorPost[]
+
+  @@unique([platform, handle])
+  @@index([brand, status])
+}
+
+model CompetitorPost {
+  id           String            @id @default(cuid())
+  accountId    String
+  account      CompetitorAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  externalId   String // platform-native post id
+  url          String
+  caption      String?           @db.Text
+  views        Int               @default(0)
+  likes        Int               @default(0)
+  comments     Int               @default(0)
+  shares       Int               @default(0)
+  thumbnailUrl String?           @db.Text
+  postedAt     DateTime?
+  scrapedAt    DateTime          @default(now())
+  outlierScore Float             @default(0) // views ÷ account median views
+  isOutlier    Boolean           @default(false)
+  brief        Json? // Claude mimic brief {hook, format, whyItWorks, howWeApply, phrases[]}
+  briefAt      DateTime?
+  mandatedAt   DateTime? // when a mimic-mandate lane last built a post from this brief
+
+  @@unique([accountId, externalId])
+  @@index([isOutlier, briefAt])
+}
+
+// Hashtag watchlist for the daily "top videos to recreate" feed
+// (2026-09-17, per Keenan: link to the top 3 performing videos that day
+// for specific hashtags so he can recreate them as talking-head videos
+// on BWK and Ripple). TikTok-only — hashtag feeds there carry real view
+// counts; IG hashtag scraping is unreliable and hides views.
+model HashtagWatch {
+  id            String         @id @default(cuid())
+  tag           String // without the #
+  brand         String // "ripple" | "bwk"
+  status        String         @default("ACTIVE") // "ACTIVE" | "PAUSED"
+  lastScrapedAt DateTime?
+  scrapeError   String? // last scrape failure message, null on success
+  createdAt     DateTime       @default(now())
+  videos        HashtagVideo[]
+
+  @@unique([brand, tag])
+  @@index([brand, status])
+}
+
+model HashtagVideo {
+  id           String       @id @default(cuid())
+  watchId      String
+  watch        HashtagWatch @relation(fields: [watchId], references: [id], onDelete: Cascade)
+  externalId   String // TikTok video id
+  url          String
+  authorHandle String?
+  caption      String?      @db.Text
+  views        Int          @default(0)
+  likes        Int          @default(0)
+  comments     Int          @default(0)
+  shares       Int          @default(0)
+  thumbnailUrl String?      @db.Text
+  postedAt     DateTime?
+  scrapedAt    DateTime     @default(now())
+
+  @@unique([watchId, externalId])
+  @@index([watchId, postedAt])
 }
 
 // ─── Auto-Blog System ───────────────────────────────────────────────────────

@@ -202,7 +202,29 @@ export const carouselDailyCronFn = inngest.createFunction(
     if (event?.name !== "content-factory/daily.generate") {
       const ts = typeof event?.ts === "number" ? event.ts : Date.now();
       const hour = new Date(ts).getUTCHours();
-      const lanes = HOUR_LANES[hour] ?? [];
+      // Lanes-as-data (2026-09-15, co-pilot lane system): the roster
+      // lives in ContentLane — killing a lane (status RETIRED) or
+      // birthing one is a DB row, no deploy. HOUR_LANES is only the
+      // fallback if the table is empty/unreachable.
+      const lanes = await step.run("load-hour-lanes", async () => {
+        try {
+          const { prisma } = await import("@/lib/prisma");
+          const total = await prisma.contentLane.count();
+          if (total > 0) {
+            const rows = await prisma.contentLane.findMany({
+              where: { status: { not: "RETIRED" }, hoursUtc: { has: hour } },
+              select: { key: true },
+              orderBy: { key: "asc" },
+            });
+            return rows.map((r) => r.key);
+          }
+        } catch (err) {
+          console.error(
+            `[carousel-cron] ContentLane load failed — falling back to HOUR_LANES: ${err instanceof Error ? err.message : err}`
+          );
+        }
+        return (HOUR_LANES[hour] ?? []) as string[];
+      });
       if (lanes.length === 0) {
         logger.warn(`[carousel-cron] No lanes mapped for hour ${hour} UTC`);
         return { generated: 0, dispatched: [] };
@@ -226,16 +248,267 @@ export const carouselDailyCronFn = inngest.createFunction(
     // scenes to one family via rollMenCoverRule's FAMILY LOCK.
     const sceneFamily = (event.data as { sceneFamily?: string } | undefined)
       ?.sceneFamily;
-    const bucket: DailyBucket = (CAROUSEL_LANES as readonly string[]).includes(
+    const isLegacyBucket = (CAROUSEL_LANES as readonly string[]).includes(
       b ?? ""
-    )
+    );
+    // Spec-driven lanes (2026-09-15, lanes-as-data): a bucket that
+    // isn't a hard-coded lane may be a DB-born ContentLane (template
+    // "moody"). Its spec routes it through the shared moody-family
+    // pipeline below with audience/theme/named coming from the row.
+    const specLane = !isLegacyBucket && b
+      ? await step.run("load-spec-lane", async () => {
+          const { prisma } = await import("@/lib/prisma");
+          const row = await prisma.contentLane.findUnique({
+            where: { key: b },
+          });
+          if (!row || row.status === "RETIRED") return null;
+          if (row.template !== "moody") return null;
+          const { parseMoodyLaneSpec } = await import(
+            "@/lib/content-factory/moody-carousel"
+          );
+          const spec = parseMoodyLaneSpec(row.spec);
+          if (!spec) {
+            // Bad spec = config error. Fail loudly so it lands in
+            // Inngest's failed runs — never generate off-brand copy.
+            throw new Error(
+              `[carousel-cron] ContentLane "${b}" has an unusable spec — fix the row`
+            );
+          }
+          return { key: row.key, spec };
+        })
+      : null;
+    const bucket: DailyBucket | (string & {}) = isLegacyBucket
       ? (b as DailyBucket)
-      : "questions";
-    logger.info(`[carousel-cron] Bucket: ${bucket}`);
+      : specLane
+        ? specLane.key
+        : "questions";
+    logger.info(
+      `[carousel-cron] Bucket: ${bucket}${specLane ? " (spec-driven)" : ""}`
+    );
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const dateStr = today.toISOString().slice(0, 10);
+
+    // ── TIMELINE-GRID lanes (template "grid-timeline", 2026-09-16) ──
+    // Per Keenan ("I wanted it to be an entirely new lane like the
+    // pictures that I'd send and this looks nothing like them"): the
+    // claritiyouneeded-style span roadmap. Cover (9:16 headline photo)
+    // + one SQUARE 2×3 photo-collage slide per phase (6 labeled cells,
+    // italic-serif title band on the seam) + a two-sentence closer
+    // slide. Grid slides are composed with sharp in timeline-grid.ts —
+    // never asked of gpt-image-2.
+    const gridLane =
+      !isLegacyBucket && b
+        ? await step.run("load-grid-lane", async () => {
+            const { prisma } = await import("@/lib/prisma");
+            const row = await prisma.contentLane.findUnique({
+              where: { key: b },
+            });
+            if (
+              !row ||
+              row.status === "RETIRED" ||
+              row.template !== "grid-timeline"
+            )
+              return null;
+            const { parseGridLaneSpec } = await import(
+              "@/lib/content-factory/timeline-grid"
+            );
+            const spec = parseGridLaneSpec(row.spec);
+            if (!spec) {
+              throw new Error(
+                `[carousel-cron] ContentLane "${b}" has an unusable grid spec — fix the row`
+              );
+            }
+            return { key: row.key, spec };
+          })
+        : null;
+    if (gridLane) {
+      const laneKey = gridLane.key;
+      const topic = await step.run("generate-grid-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateTimelineGridTopic } = await import(
+          "@/lib/content-factory/timeline-grid"
+        );
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: thirtyDaysAgo }, lane: laneKey },
+          select: { headline: true },
+        });
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback(laneKey);
+        return generateTimelineGridTopic(
+          gridLane.spec,
+          recent.map((p) => p.headline),
+          feedback
+        );
+      });
+      logger.info(
+        `[carousel-cron] Timeline-grid (${laneKey}) topic: "${topic.title}" (${topic.phases.length} phases)`
+      );
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        await ensureBucket();
+      });
+
+      const gridCover = await step.run("grid-cover", async () => {
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildGridWidePrompt } = await import(
+          "@/lib/content-factory/timeline-grid"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+        const prompt = buildGridWidePrompt(topic.coverScene, false);
+        const raw = await generateImage(prompt);
+        const overlay = await renderMoodyTextOverlay(
+          [topic.title],
+          "COVER",
+          "white"
+        );
+        const composed = await composeSlideWithOverlay(raw, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${topic.slug}/slide-cover.jpg`
+        );
+        return { imageUrl, overlayText: topic.title, imagePrompt: prompt };
+      });
+
+      // One step per phase: the 6 cell photos generate in PARALLEL
+      // (medium quality, ~4¢ each), then sharp composes the collage.
+      const phaseSlides: {
+        imageUrl: string;
+        overlayText: string;
+        imagePrompt: string;
+      }[] = [];
+      for (let p = 0; p < topic.phases.length; p++) {
+        const slide = await step.run(`grid-phase-${p}`, async () => {
+          const { generateGridCellImage, uploadImage } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          const { buildGridCellPrompt, composeTimelineGridSlide } =
+            await import("@/lib/content-factory/timeline-grid");
+          const phase = topic.phases[p];
+          const buffers = await Promise.all(
+            phase.cells.map((c) =>
+              generateGridCellImage(buildGridCellPrompt(c.scene))
+            )
+          );
+          const composed = await composeTimelineGridSlide(
+            buffers.map((buffer, i) => ({
+              buffer,
+              label: phase.cells[i].label,
+            })),
+            phase.header,
+            phase.bandTitle
+          );
+          const imageUrl = await uploadImage(
+            composed,
+            `carousels/${dateStr}/${topic.slug}/slide-phase-${p + 1}.jpg`
+          );
+          return {
+            imageUrl,
+            overlayText: `${phase.header} / ${phase.bandTitle}\n\n${phase.cells
+              .map((c) => c.label)
+              .join("\n")}`,
+            imagePrompt: phase.cells.map((c) => c.scene).join(" | "),
+          };
+        });
+        phaseSlides.push(slide);
+      }
+
+      const gridCloser = await step.run("grid-closer", async () => {
+        const { generateImage, uploadImage } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildGridWidePrompt } = await import(
+          "@/lib/content-factory/timeline-grid"
+        );
+        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+          await import("@/lib/content-factory/compose");
+        const prompt = buildGridWidePrompt(topic.closerScene, true);
+        const raw = await generateImage(prompt, "item");
+        const overlay = await renderMoodyTextOverlay(
+          [topic.closer],
+          "ITEM",
+          "white"
+        );
+        const composed = await composeSlideWithOverlay(raw, overlay);
+        const imageUrl = await uploadImage(
+          composed,
+          `carousels/${dateStr}/${topic.slug}/slide-closer.jpg`
+        );
+        return { imageUrl, overlayText: topic.closer, imagePrompt: prompt };
+      });
+
+      const gridResult = await step.run("save-and-email-grid", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildMoodyCaption } = await import(
+          "@/lib/content-factory/moody-carousel"
+        );
+        const { extractHashtags } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const caption = buildMoodyCaption("men", topic.slug);
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: topic.slug,
+            headline: topic.title.toUpperCase(),
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: laneKey,
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: gridCover.overlayText,
+                  imagePrompt: gridCover.imagePrompt,
+                  imageUrl: gridCover.imageUrl,
+                },
+                ...phaseSlides.map((s, i) => ({
+                  order: i + 1,
+                  kind: "REASON" as const,
+                  overlayText: s.overlayText,
+                  imagePrompt: s.imagePrompt,
+                  imageUrl: s.imageUrl,
+                })),
+                {
+                  order: phaseSlides.length + 1,
+                  kind: "REASON" as const,
+                  overlayText: gridCloser.overlayText,
+                  imagePrompt: gridCloser.imagePrompt,
+                  imageUrl: gridCloser.imageUrl,
+                },
+              ],
+            },
+          },
+        });
+        const { sendCarouselEmail } = await import(
+          "@/lib/content-factory/email"
+        );
+        await sendCarouselEmail(post.id);
+        return {
+          postId: post.id,
+          slideCount: phaseSlides.length + 2,
+          // Cover + closer at "high" (~25¢) + 6 medium cells per phase (~4¢).
+          estimatedCostCents: 2 * 25 + topic.phases.length * 6 * 4 + 4,
+        };
+      });
+      logger.info(
+        `[carousel-cron] Generated timeline-grid (${laneKey}) "${topic.title}": ${gridResult.slideCount} slides`
+      );
+      return { generated: 1, bucket: laneKey, ...gridResult };
+    }
 
     // ── SELFIE bucket: realistic first-person photo slideshow ──────
     // 2026-08-25, per Keenan; 2026-08-28: ONE selfie per slideshow;
@@ -259,7 +532,14 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo } },
           select: { headline: true },
         });
-        const topic = await generateSelfieTopic(recent.map((p) => p.headline));
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback("selfie");
+        const topic = await generateSelfieTopic(
+          recent.map((p) => p.headline),
+          feedback
+        );
 
         // Same avatar across posts: the newest selfie post's text-free
         // cover becomes the identity reference for this post's cover.
@@ -432,7 +712,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               Buffer.from(await res.arrayBuffer())
             );
           } else {
-            rawBuffer = await generateImage(prompt);
+            rawBuffer = await generateImage(prompt, "item");
           }
 
           // Keep the text-free raw so captions can be re-rendered later
@@ -568,11 +848,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
           select: { headline: true },
         });
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback(bucket);
         return bucket === "letter"
-          ? generateLetterTopic(recent.map((p) => p.headline))
+          ? generateLetterTopic(recent.map((p) => p.headline), feedback)
           : generatePhoneQuoteTopic(
               variant,
-              recent.map((p) => p.headline)
+              recent.map((p) => p.headline),
+              feedback
             );
       });
 
@@ -776,7 +1061,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     // mandate + vision verification as the baked phone-quote pipeline;
     // no flat-render fallback — throw and let Inngest retry).
     if (bucket === "texts-younger" || bucket === "future-texts") {
-      const textsLane = bucket;
+      const textsLane = bucket as "texts-younger" | "future-texts";
       const variant = bucket === "future-texts" ? "men" : "women";
 
       const tx = await step.run("generate-texts-topic", async () => {
@@ -789,9 +1074,14 @@ export const carouselDailyCronFn = inngest.createFunction(
           where: { generatedFor: { gte: thirtyDaysAgo }, lane: bucket },
           select: { headline: true },
         });
+        const { getLaneFeedback } = await import(
+          "@/lib/content-factory/performance"
+        );
+        const feedback = await getLaneFeedback(bucket);
         return generateTextsTopic(
           textsLane,
-          recent.map((p) => p.headline)
+          recent.map((p) => p.headline),
+          feedback
         );
       });
 
@@ -819,9 +1109,15 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
+        // Avatar-led cover (2026-09-17, per Keenan — "avatars look
+        // good and dialed in"): texts-younger covers always feature
+        // the lane's recurring woman via her reference photo.
+        // future-texts (BWK) stays avatar-free.
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
           buildMoodyImagePrompt(variant, tx.coverScene, "dark"),
-          false
+          textsLane === "texts-younger",
+          "cover",
+          textsLane === "texts-younger" ? "texts-younger" : undefined
         );
         const overlay = await renderMoodyTextOverlay([tx.hook], "ITEM", "white");
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
@@ -971,12 +1267,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     // Visual DNA per lane (2026-08-29, per Keenan): BWK men's lanes =
     // male-dominant dark power imagery; EVERY Ripple lane = soft
     // aesthetically-pleasing feminine photography.
-    const imageAudience: "women" | "men" =
-      bucket === "memento-men" ||
-      bucket === "moody-men" ||
-      bucket === "watching" ||
-      bucket === "protocol" ||
-      bucket === "discipline-real"
+    const imageAudience: "women" | "men" = specLane
+      ? specLane.spec.audience
+      : bucket === "memento-men" ||
+          bucket === "moody-men" ||
+          bucket === "watching" ||
+          bucket === "protocol" ||
+          bucket === "discipline-real"
         ? "men"
         : "women";
     // Lanes whose items carry a "Name." header (discipline tests,
@@ -985,12 +1282,18 @@ export const carouselDailyCronFn = inngest.createFunction(
     // sometimes omits a slide or two — "1-7" numbering breaks the
     // moment one is dropped). Memento lanes carry no header — the
     // numbers ARE the content.
-    const named =
-      bucket === "moody-men" ||
-      bucket === "watching" ||
-      bucket === "protocol" ||
-      // discipline-real: the "Name." IS the myth being punctured.
-      bucket === "discipline-real";
+    const named = specLane
+      ? // Reddit solve posts (2026-09-19) always carry a step-name
+        // header regardless of the lane spec's `named` flag — the
+        // solve format IS "Step name." + exact instructions. (The
+        // renderer drops an empty name, so the no-digest fallback to
+        // the headerless base theme still renders cleanly.)
+        specLane.spec.named || specLane.spec.redditTheme === true
+      : bucket === "moody-men" ||
+        bucket === "watching" ||
+        bucket === "protocol" ||
+        // discipline-real: the "Name." IS the myth being punctured.
+        bucket === "discipline-real";
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE
@@ -1007,6 +1310,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         generateProtocolTopic,
         generatePermissionTopic,
         generateDisciplineRealTopic,
+        generateSpecTopic,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
       const recent = await prisma.carouselPost.findMany({
@@ -1027,22 +1331,35 @@ export const carouselDailyCronFn = inngest.createFunction(
         | "light"
         | "dark"
         | null;
-      const topic =
-        bucket === "memento"
-          ? await generateMementoTopic("women", headlines, "dark")
+      // Learning loop (2026-09-14): per-lane engagement feedback so
+      // topics lean into what this lane's audience actually rewards.
+      const { getLaneFeedback } = await import(
+        "@/lib/content-factory/performance"
+      );
+      const feedback = await getLaneFeedback(bucket);
+      const topic = specLane
+        ? await generateSpecTopic(
+            specLane.key,
+            specLane.spec,
+            headlines,
+            sceneFamily,
+            feedback
+          )
+        : bucket === "memento"
+          ? await generateMementoTopic("women", headlines, "dark", undefined, feedback)
           : bucket === "memento-men"
-            ? await generateMementoTopic("men", headlines, "light", sceneFamily)
+            ? await generateMementoTopic("men", headlines, "light", sceneFamily, feedback)
             : bucket === "questions"
-              ? await generateQuestionsTopic(headlines, "dark")
+              ? await generateQuestionsTopic(headlines, "dark", feedback)
               : bucket === "moody-men"
-                ? await generateMoodyTopic("men", headlines, sceneFamily)
+                ? await generateMoodyTopic("men", headlines, sceneFamily, feedback)
                 : bucket === "watching"
-                  ? await generateWatchingTopic(headlines, sceneFamily)
+                  ? await generateWatchingTopic(headlines, sceneFamily, feedback)
                   : bucket === "permission"
-                    ? await generatePermissionTopic(headlines)
+                    ? await generatePermissionTopic(headlines, feedback)
                     : bucket === "discipline-real"
-                      ? await generateDisciplineRealTopic(headlines, sceneFamily)
-                      : await generateProtocolTopic(headlines, sceneFamily);
+                      ? await generateDisciplineRealTopic(headlines, sceneFamily, feedback)
+                      : await generateProtocolTopic(headlines, sceneFamily, feedback);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar
@@ -1081,6 +1398,16 @@ export const carouselDailyCronFn = inngest.createFunction(
       ? moody.coverScenes
       : [moody.coverScene];
 
+    // Avatar-led Ripple lanes (2026-09-17, per Keenan — "avatars look
+    // good and dialed in"): questions and memento covers ALWAYS
+    // feature the lane's fictional recurring woman. Unlike BWK's ≤8%
+    // Keenan roll, these are lane characters, so every cover candidate
+    // is avatar-led. Item slides stay avatar-free.
+    const rippleAvatarLane =
+      bucket === "questions" || bucket === "memento"
+        ? (bucket as "questions" | "memento")
+        : undefined;
+
     const moodyCovers: {
       imageUrl: string;
       overlayText: string;
@@ -1097,15 +1424,19 @@ export const carouselDailyCronFn = inngest.createFunction(
         const { composeSlideWithOverlay, renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
-        // Avatar only when this post won the ≤8% roll AND the cover is
-        // the chosen slide (2026-08-31 cap) — first candidate only.
+        // BWK: avatar only when this post won the ≤8% roll AND the
+        // cover is the chosen slide (2026-08-31 cap) — first candidate
+        // only. Ripple avatar lanes: every cover candidate.
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
           buildMoodyImagePrompt(
             imageAudience,
             coverScenes[c],
             moody.scheme ?? "light"
           ),
-          moody.avatarSlideIndex === 0 && c === 0
+          (moody.avatarSlideIndex === 0 && c === 0) ||
+            rippleAvatarLane !== undefined,
+          "cover",
+          rippleAvatarLane
         );
         const overlay = await renderMoodyTextOverlay(
           [moody.title],
@@ -1139,12 +1470,15 @@ export const carouselDailyCronFn = inngest.createFunction(
           await import("@/lib/content-factory/compose");
 
         const item = moody.items[i];
-        const paragraphs = named ? [item.name, ...item.lines] : item.lines;
+        const paragraphs = named
+          ? [item.name, ...item.lines].filter(Boolean)
+          : item.lines;
         // Avatar only when this post won the ≤8% roll AND this is the
         // chosen slide (2026-08-31 cap).
         const { buffer: rawBuffer, prompt } = await generateMoodyImage(
           buildMoodyImagePrompt(imageAudience, item.scene, moody.scheme ?? "light"),
-          moody.avatarSlideIndex === i + 1
+          moody.avatarSlideIndex === i + 1,
+          "item"
         );
         const overlay = await renderMoodyTextOverlay(
           paragraphs,
