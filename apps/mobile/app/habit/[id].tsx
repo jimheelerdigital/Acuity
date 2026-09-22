@@ -53,7 +53,9 @@ const DAY_LABELS = [
   { i: 5, label: "F" },
   { i: 6, label: "S" },
 ];
-const HEATMAP_WEEKS = 12;
+// Rolling calendar: last N weeks (Sun→Sat rows), current week at the bottom.
+// 5 weeks covers the 30-day window the completion-rate stat uses.
+const HEATMAP_WEEKS = 5;
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -335,16 +337,34 @@ export default function HabitDetailScreen() {
 
         {/* Heatmap */}
         <Text style={sectionLabel(tokens)}>History</Text>
-        <View style={{ flexDirection: "row", gap: 4, marginTop: 4 }}>
-          {weeks.map((col, ci) => (
-            <View key={ci} style={{ gap: 4 }}>
-              {col.map((c) => (
+        <View style={{ marginTop: 4, gap: 5 }}>
+          {/* Weekday header — Sun→Sat, aligned with the columns below. */}
+          <View style={{ flexDirection: "row", gap: 5 }}>
+            {DAY_LABELS.map((d, i) => (
+              <Text
+                key={i}
+                style={{
+                  flex: 1,
+                  textAlign: "center",
+                  color: tokens.textTer,
+                  fontSize: 11,
+                  fontWeight: "700",
+                }}
+              >
+                {d.label}
+              </Text>
+            ))}
+          </View>
+          {/* One row per week, oldest at top, current week at the bottom. */}
+          {weeks.map((week, wi) => (
+            <View key={wi} style={{ flexDirection: "row", gap: 5 }}>
+              {week.map((c) => (
                 <View
                   key={c.date}
                   style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: 3,
+                    flex: 1,
+                    aspectRatio: 1,
+                    borderRadius: 6,
                     backgroundColor: cell(c.state),
                     borderWidth: c.state === "miss" ? 1 : 0,
                     borderColor: tokens.line,

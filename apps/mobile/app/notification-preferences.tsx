@@ -405,7 +405,13 @@ export default function NotificationCenterScreen() {
             <Pressable
               onPress={() => router.push("/(tabs)/goals")}
               className="rounded-2xl flex-row items-center"
-              style={{ backgroundColor: tokens.bgInset, padding: 16, gap: 12 }}
+              style={{
+                backgroundColor: tokens.bgInset,
+                borderWidth: 1,
+                borderColor: tokens.lineStrong,
+                padding: 16,
+                gap: 12,
+              }}
             >
               <Text style={{ flex: 1, color: tokens.textTer, fontSize: 13 }}>
                 Set each habit's nudge time on the habit itself.
@@ -526,7 +532,13 @@ function ReflectionReminders({
   return (
     <View
       className="rounded-2xl"
-      style={{ backgroundColor: tokens.bgInset, padding: 16, gap: 14 }}
+      style={{
+        backgroundColor: tokens.bgInset,
+        borderWidth: 1,
+        borderColor: tokens.lineStrong,
+        padding: 16,
+        gap: 14,
+      }}
     >
       <View>
         <Text style={{ color: tokens.text, fontSize: 15, fontWeight: "500" }}>
@@ -547,6 +559,8 @@ function ReflectionReminders({
             className="rounded-2xl"
             style={{
               backgroundColor: tokens.cardBg,
+              borderWidth: 1,
+              borderColor: tokens.line,
               padding: 14,
               gap: 12,
               opacity: r.enabled ? 1 : 0.5,
@@ -701,7 +715,14 @@ function SwitchRow({
   return (
     <View
       className="rounded-2xl flex-row items-center"
-      style={{ backgroundColor: tokens.bgInset, padding: 16, gap: 14, ...style }}
+      style={{
+        backgroundColor: tokens.bgInset,
+        borderWidth: 1,
+        borderColor: tokens.lineStrong,
+        padding: 16,
+        gap: 14,
+        ...style,
+      }}
     >
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ color: tokens.text, fontSize: 15, fontWeight: "500" }}>
@@ -816,7 +837,15 @@ function TimeRow({
   const validMinute = Number.isFinite(Number(minuteStr)) ? Number(minuteStr) : 0;
 
   return (
-    <View className="rounded-2xl" style={{ backgroundColor: tokens.bgInset, padding: 16 }}>
+    <View
+      className="rounded-2xl"
+      style={{
+        backgroundColor: tokens.bgInset,
+        borderWidth: 1,
+        borderColor: tokens.lineStrong,
+        padding: 16,
+      }}
+    >
       <Text
         style={{
           color: tokens.textTer,

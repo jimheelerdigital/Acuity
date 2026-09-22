@@ -73,9 +73,19 @@ async function fetchExpoPushToken(): Promise<string | null> {
 
 async function postPushToken(token: string, platform: "ios" | "android"): Promise<boolean> {
   try {
+    // Piggyback the device's IANA timezone so User.timezone (what the
+    // reminder dispatcher schedules against) stays current on every launch —
+    // not just at onboarding. Falls back to omitting on any Intl failure.
+    let timezone: string | undefined;
+    try {
+      timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+    } catch {
+      timezone = undefined;
+    }
     const res = await api.post<{ ok: boolean }>("/api/user/push-token", {
       token,
       platform,
+      ...(timezone ? { timezone } : {}),
     });
     return !!res.ok;
   } catch (err) {
