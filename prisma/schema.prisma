@@ -2967,6 +2967,12 @@ model Habit {
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name       String
+  // Optional free-text notes for the habit — what it involves (e.g. the
+  // specific stretches for "Nightly stretching"). Shown on the detail
+  // screen and fed to the debrief matcher as extra context, so a habit can
+  // be auto-detected from the activities named here even when the transcript
+  // never says the habit's name verbatim.
+  description String?
   // "standard" | "reflection". The reflection habit is the built-in
   // "Daily Reflection with Ripple" — it auto-completes when the user records
   // a debrief (see checkReflectionHabitOnRecord) rather than by transcript

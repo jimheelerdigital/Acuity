@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -82,6 +83,11 @@ export default function HabitDetailScreen() {
   const [checkSet, setCheckSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
+  // Notes/description local state (committed via "Save notes").
+  const [desc, setDesc] = useState("");
+  const [savedDesc, setSavedDesc] = useState("");
+  const [savingDesc, setSavingDesc] = useState(false);
+
   // Reminder local state (committed via "Save reminder").
   const [reminderOn, setReminderOn] = useState(false);
   const [reminderTime, setReminderTime] = useState("08:00");
@@ -100,6 +106,9 @@ export default function HabitDetailScreen() {
       ]);
       const found = habits.find((h) => h.id === id) ?? null;
       setHabit(found);
+      const initialDesc = found?.description ?? "";
+      setDesc(initialDesc);
+      setSavedDesc(initialDesc);
       const set = checksByHabit(checks).get(id) ?? new Set<string>();
       setCheckSet(set);
       const r = reminders.find((x) => x.habitId === id);
@@ -182,6 +191,24 @@ export default function HabitDetailScreen() {
       habit.name
     );
   }, [habit]);
+
+  const saveDesc = useCallback(async () => {
+    if (!habit || savingDesc) return;
+    const next = desc.trim();
+    setSavingDesc(true);
+    try {
+      const updated = await updateHabit(habit.id, { description: next });
+      if (updated) {
+        setHabit((h) => (h ? { ...h, ...updated } : h));
+        setSavedDesc(updated.description ?? "");
+        setDesc(updated.description ?? "");
+      }
+    } catch {
+      Alert.alert("Couldn't save notes", "Please try again.");
+    } finally {
+      setSavingDesc(false);
+    }
+  }, [habit, desc, savingDesc]);
 
   const toggleDay = useCallback(
     async (dayIndex: number) => {
@@ -436,6 +463,61 @@ export default function HabitDetailScreen() {
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInsetStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Off day</Text>
         </View>
+
+        {/* Notes */}
+        <Text style={sectionLabel(tokens)}>Notes</Text>
+        <Text style={{ color: tokens.textSec, fontSize: 13, marginBottom: 12 }}>
+          What this habit involves. Ripple uses this to spot the habit in your
+          recordings — even if you don&apos;t say its name.
+        </Text>
+        <TextInput
+          value={desc}
+          onChangeText={setDesc}
+          placeholder="e.g. hamstring stretch, calf raises, cobra pose"
+          placeholderTextColor={tokens.textTer}
+          multiline
+          maxLength={1000}
+          style={{
+            minHeight: 96,
+            borderWidth: 1,
+            borderColor: tokens.lineStrong,
+            borderRadius: 12,
+            padding: 12,
+            fontFamily: tokens.fontSans,
+            fontSize: 15,
+            lineHeight: 21,
+            color: tokens.text,
+            backgroundColor: tokens.cardBg,
+            textAlignVertical: "top",
+          }}
+        />
+        {desc.trim() !== savedDesc.trim() ? (
+          <Pressable
+            onPress={() => void saveDesc()}
+            disabled={savingDesc}
+            accessibilityRole="button"
+            accessibilityLabel="Save notes"
+            style={{
+              alignSelf: "flex-start",
+              marginTop: 10,
+              paddingHorizontal: 18,
+              paddingVertical: 10,
+              borderRadius: 10,
+              backgroundColor: tokens.primary,
+              opacity: savingDesc ? 0.5 : 1,
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: tokens.fontDisplay,
+                fontSize: 14,
+                color: "#ffffff",
+              }}
+            >
+              {savingDesc ? "Saving…" : "Save notes"}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* Active days */}
         <Text style={sectionLabel(tokens)}>Active days</Text>

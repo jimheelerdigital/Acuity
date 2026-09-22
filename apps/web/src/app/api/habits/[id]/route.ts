@@ -27,6 +27,7 @@ function isFlagOn(): boolean {
 const HABIT_SELECT = {
   id: true,
   name: true,
+  description: true,
   type: true,
   daysActive: true,
   archivedAt: true,
@@ -51,6 +52,7 @@ export async function PATCH(
     name?: unknown;
     daysActive?: unknown;
     archived?: unknown;
+    description?: unknown;
   } | null;
 
   // Restore (unarchive): { archived: false }. Handled first because it targets
@@ -106,7 +108,8 @@ export async function PATCH(
     return NextResponse.json({ habit });
   }
 
-  const data: { name?: string; daysActive?: number[] } = {};
+  const data: { name?: string; daysActive?: number[]; description?: string | null } =
+    {};
 
   if (body?.name !== undefined) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -117,6 +120,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Name is too long" }, { status: 400 });
     }
     data.name = name;
+  }
+
+  if (body?.description !== undefined) {
+    // Free-text notes. Any string is accepted; empty/blank clears it (null).
+    // Capped so it can't bloat the debrief matcher prompt.
+    const raw = typeof body.description === "string" ? body.description.trim() : "";
+    data.description = raw ? raw.slice(0, 1000) : null;
   }
 
   if (body?.daysActive !== undefined) {
@@ -135,7 +145,11 @@ export async function PATCH(
     data.daysActive = Array.from(new Set(parsed)).sort();
   }
 
-  if (data.name === undefined && data.daysActive === undefined) {
+  if (
+    data.name === undefined &&
+    data.daysActive === undefined &&
+    data.description === undefined
+  ) {
     return NextResponse.json(
       { error: "Nothing to update" },
       { status: 400 }

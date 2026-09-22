@@ -14,6 +14,8 @@ import { currentStreak, type HabitLike } from "@acuity/shared";
 export interface Habit extends HabitLike {
   id: string;
   name: string;
+  /** Optional free-text notes (what the habit involves). May be null. */
+  description: string | null;
   /** "standard" | "reflection". The reflection habit self-completes on record. */
   type: string;
   daysActive: number[];
@@ -116,10 +118,13 @@ export function streakFor(
   return currentStreak(habit, checks.get(habit.id) ?? new Set(), today);
 }
 
-/** Rename and/or change active days (empty daysActive = paused). */
+/**
+ * Rename, change active days (empty daysActive = paused), and/or set the
+ * description. Pass description: "" to clear it.
+ */
 export async function updateHabit(
   id: string,
-  fields: { name?: string; daysActive?: number[] }
+  fields: { name?: string; daysActive?: number[]; description?: string }
 ): Promise<Habit | null> {
   const res = await api.patch<{ habit: Habit }>(`/api/habits/${id}`, fields);
   return res?.habit ?? null;

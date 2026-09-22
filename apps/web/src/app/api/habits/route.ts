@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         name: true,
+        description: true,
         type: true,
         daysActive: true,
         archivedAt: true,
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
     name?: unknown;
     daysActive?: unknown;
     type?: unknown;
+    description?: unknown;
   } | null;
 
   const name = typeof body?.name === "string" ? body.name.trim() : "";
@@ -90,6 +92,12 @@ export async function POST(req: NextRequest) {
   if (name.length > 80) {
     return NextResponse.json({ error: "Name is too long" }, { status: 400 });
   }
+
+  // Optional free-text notes. Empty → null; capped so a runaway paste can't
+  // bloat the debrief matcher prompt.
+  const rawDesc =
+    typeof body?.description === "string" ? body.description.trim() : "";
+  const description = rawDesc ? rawDesc.slice(0, 1000) : null;
 
   // Only two habit types exist: the ordinary "standard" habit, and the single
   // self-completing "reflection" habit (Daily Reflection with Ripple). Any
@@ -118,6 +126,7 @@ export async function POST(req: NextRequest) {
       select: {
         id: true,
         name: true,
+        description: true,
         type: true,
         daysActive: true,
         archivedAt: true,
@@ -142,10 +151,11 @@ export async function POST(req: NextRequest) {
   }
 
   const habit = await prisma.habit.create({
-    data: { userId, name, type, daysActive, sortOrder: active },
+    data: { userId, name, description, type, daysActive, sortOrder: active },
     select: {
       id: true,
       name: true,
+      description: true,
       type: true,
       daysActive: true,
       archivedAt: true,

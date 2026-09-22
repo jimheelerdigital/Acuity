@@ -20,7 +20,13 @@ export function habitsEnabled(): boolean {
   return process.env.ENABLE_HABITS === "1";
 }
 
-export type ActiveHabit = { id: string; name: string };
+export type ActiveHabit = {
+  id: string;
+  name: string;
+  /** Optional notes; fed to the matcher so a habit can be caught by the
+   *  activities it names, not just its title. */
+  description: string | null;
+};
 
 /** Active (non-archived) habits — for the prompt and name reconciliation. */
 export async function fetchActiveHabits(
@@ -29,7 +35,7 @@ export async function fetchActiveHabits(
 ): Promise<ActiveHabit[]> {
   return prisma.habit.findMany({
     where: { userId, archivedAt: null },
-    select: { id: true, name: true },
+    select: { id: true, name: true, description: true },
     orderBy: { sortOrder: "asc" },
   });
 }

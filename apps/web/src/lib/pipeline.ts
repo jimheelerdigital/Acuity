@@ -255,11 +255,13 @@ export async function extractFromTranscript(
   // no calendar connection or no events in window; both cases are
   // pass-through (block is interpolated as empty).
   calendarContextBlock = "",
-  // Habit auto-check (2026-09): the user's active tracked-habit names.
-  // When non-empty, they're listed in the prompt so the model can report
-  // which the debrief evidenced; empty = feature off or no habits, and
-  // the habitCompletions field simply comes back empty.
-  habitNames: string[] = []
+  // Habit auto-check (2026-09): the user's active tracked habits (name +
+  // optional description). When non-empty, they're listed in the prompt so
+  // the model can report which the debrief evidenced; empty = feature off or
+  // no habits, and the habitCompletions field simply comes back empty. The
+  // description lets a habit be caught by the activities it names, not just
+  // its title.
+  habits: Array<{ name: string; description?: string | null }> = []
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Ripple:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
@@ -319,10 +321,21 @@ export async function extractFromTranscript(
 
   // Tracked-habit list — mirrors the taskGroups pattern. Listed in the
   // user message so the model can only ever check off a habit the user
-  // actually has; an empty list yields an empty habitCompletions array.
+  // actually has; an empty list yields an empty habitCompletions array. Each
+  // habit's optional notes are included so the model can recognise a habit
+  // from the specific activities it names (e.g. "cobra pose, calf raises")
+  // even when the transcript never says the habit's title verbatim — but the
+  // reported habitName must still be the title, copied exactly.
   const habitsBlock =
-    habitNames.length > 0
-      ? `Tracked habits (the user is building these; in "habitCompletions" report only the ones the transcript shows they DID today, copying each name verbatim): ${habitNames.join(", ")}.\n\n`
+    habits.length > 0
+      ? `Tracked habits (the user is building these; in "habitCompletions" report only the ones the transcript shows they DID today, copying each habit's NAME verbatim as habitName). A habit counts as done if the transcript evidences its name OR the activities described in its notes:\n${habits
+          .map((h) => {
+            const notes = h.description?.trim();
+            return notes
+              ? `- "${h.name}" — notes: ${notes}`
+              : `- "${h.name}"`;
+          })
+          .join("\n")}\n\n`
       : "";
 
   const systemPrompt = useDispositionalThemes
@@ -760,7 +773,7 @@ export async function processEntry({
       dimensionContext ?? null,
       false,
       "",
-      activeHabits.map((h) => h.name)
+      activeHabits.map((h) => ({ name: h.name, description: h.description }))
     );
 
     // ── Persist everything in one transaction ─────────────────────────────
