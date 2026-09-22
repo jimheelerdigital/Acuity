@@ -93,6 +93,60 @@ const PLATFORM_LABEL: Record<string, string> = {
   tiktok: "TikTok (inbox draft)",
 };
 
+/**
+ * Extract the Resend email id, THROWING on API-level errors. The SDK
+ * resolves with `{ data: null, error }` instead of rejecting, so
+ * ignoring `error` marks posts emailed when nothing was sent
+ * (2026-09-22: four carousel emails "sent" against a bad key with a
+ * clean log line and emailedAt set).
+ */
+function resendEmailId(resp: unknown): string {
+  const r = resp as {
+    data?: { id?: string } | null;
+    error?: { name?: string; message?: string } | null;
+  };
+  if (r.error) {
+    throw new Error(
+      `Resend send failed: ${[r.error.name, r.error.message].filter(Boolean).join(" — ")}`
+    );
+  }
+  // Resend client shape varies — extract ID safely
+  return r.data?.id ?? (resp as { id?: string }).id ?? "";
+}
+
+/**
+ * Branded final CTA slide (2026-09-22, per Keenan: "it should be the
+ * last slide every time per post") — the same static JPEG the slideshow
+ * reels append, attached as the LAST slide of every manual-post email.
+ * Reads the bundled public/ file first (dev + local runs), falls back
+ * to the goripple.io CDN copy.
+ */
+async function ctaSlide(
+  lane: string | null
+): Promise<{ buf: Buffer; url: string } | null> {
+  const { laneBrand } = await import("./social-publish");
+  const brand = await laneBrand(lane);
+  const url = `https://goripple.io/cta-slide-${brand}.jpg`;
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const p = path.join(process.cwd(), "public", `cta-slide-${brand}.jpg`);
+    if (fs.existsSync(p)) return { buf: fs.readFileSync(p), url };
+  } catch {
+    // fall through to the CDN copy
+  }
+  try {
+    const res = await fetch(url);
+    if (res.ok) return { buf: Buffer.from(await res.arrayBuffer()), url };
+  } catch {
+    // handled below
+  }
+  console.warn(
+    `[carousel-email] CTA slide for ${brand} unavailable — email goes without it`
+  );
+  return null;
+}
+
 export async function sendPublishNotification(
   successes: PublishSuccess[]
 ): Promise<void> {
@@ -252,11 +306,23 @@ export async function sendCarouselEmail(
     }
   }
 
+  // Branded CTA end slide — last slide of every post (2026-09-22).
+  const cta = await ctaSlide(post.lane);
+  if (cta) {
+    slideBuffers.push({
+      filename: `${String(post.slides.length + 1).padStart(2, "0")}-cta.jpg`,
+      buf: cta.buf,
+      url: cta.url,
+    });
+    totalBytes += cta.buf.length;
+  }
+
   const useAttachments = totalBytes <= MAX_ATTACHMENT_BYTES;
 
   // ── Build HTML ──────────────────────────────────────────────────
   const slideList = post.slides
     .map((s, i) => `<li style="margin-bottom:4px;color:#999;">${i + 1}. ${escapeHtml(s.overlayText)}</li>`)
+    .concat(cta ? [`<li style="margin-bottom:4px;color:#999;">${post.slides.length + 1}. Branded CTA end slide</li>`] : [])
     .join("\n");
 
   const coverUrl = post.slides[0]?.imageUrl ?? "";
@@ -344,11 +410,7 @@ export async function sendCarouselEmail(
   }
 
   const resp = await resend.emails.send(emailPayload);
-
-  // Resend client shape varies — extract ID safely
-  const respAny = resp as Record<string, unknown>;
-  const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
-  const emailId = (dataObj.id as string) ?? "";
+  const emailId = resendEmailId(resp);
 
   // ── Update DB ───────────────────────────────────────────────────
   await prisma.carouselPost.update({
@@ -513,9 +575,7 @@ async function sendStitchedVideoEmail(
   }
 
   const resp = await resend.emails.send(emailPayload);
-  const respAny = resp as Record<string, unknown>;
-  const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
-  const emailId = (dataObj.id as string) ?? "";
+  const emailId = resendEmailId(resp);
 
   await prisma.carouselPost.update({
     where: { id: post.id },
@@ -741,9 +801,7 @@ export async function sendStoryVideoEmail(
   }
 
   const resp = await resend.emails.send(payload);
-  const respAny = resp as Record<string, unknown>;
-  const dataObj = (respAny.data ?? respAny) as Record<string, unknown>;
-  const emailId = (dataObj.id as string) ?? "";
+  const emailId = resendEmailId(resp);
   console.log(
     `[story-email] Sent story video for ${carouselPostId} to ${TO_ADDRESS} (${videoBuf ? "attached" : "link only"}, resendId=${emailId})`
   );
