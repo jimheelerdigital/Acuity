@@ -7,6 +7,98 @@
 
 ---
 
+## [2026-09-22] — Slide text is now short, punchy, and formatted like the reference posts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c0036db6
+
+### In plain English (for Keenan)
+Carousel slides with a named point no longer render as a long centered wall of text. They now match the reference posts you sent: a bold headline ("The Reset Day"), one italic hook line under it, and one or two short sentences — left-aligned like an editorial card. The AI is also hard-limited to under 30 words per slide across every lane, so the copy stays sharp and screenshot-worthy instead of long-winded and generic.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/compose.ts`: new `renderHeadedItemOverlay` — bold Poppins header / Poppins Medium Italic hook / Poppins Medium body, left-aligned at PADDING_X, vertically centered, per-piece blurred shadows, proportional shrink when the block exceeds the 1240px feed-safe window. `renderMoodyTextOverlay` branches into it when an ITEM's first paragraph is header-shaped (≤5 words, ≤40 chars), so the regenerate path (which splits stored overlay text) inherits the treatment. `ensureFontFile` gains a "MediumItalic" variant
+- New font `apps/web/public/fonts/Poppins-MediumItalic.ttf` (OFL, from google/fonts) — a real italic face, because synthetic oblique renders differently on macOS CoreText vs Lambda fontconfig
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `buildMoodySystemPrompt` (shared by all moody-family + DB-born spec lanes), `buildRedditSolveSystemPrompt` (pulse/muse), and `buildProtocolSystemPrompt` rewritten to the header/hook/body shape — `name` is now Title Case 2-4 words with NO trailing period, `lines` is exactly [hook, body], plus a hard "under 30 words per slide" limit
+- Unnamed lanes (memento, questions, phone-quote hooks) keep the classic centered treatment — full-sentence first lines don't trip the header detector
+
+### Manual steps needed
+- [ ] Keenan: say push — tonight's generation picks up the new copy format only after deploy
+
+### Notes
+- Legacy names carry a trailing period ("Reset day.") — the headed renderer strips it so regenerated old slides read as titles
+- Local macOS Pango uses CoreText and silently ignores sharp's `fontfile`, so every local slide preview to date rendered in Helvetica fallback while prod rendered Poppins. Installed the three Poppins faces into `~/Library/Fonts` so local previews are now faithful
+- Short copy sits well inside the IG/FB 4:5 crop window (test block measured y 797→1131 vs window 285→1635)
+
+---
+
+## [2026-09-22] — Instagram and Facebook posts now fill the screen with proper 4:5 crops
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f1f95ba0
+
+### In plain English (for Keenan)
+Auto-published Instagram and Facebook feed posts were going out in the tall TikTok shape, which those platforms shrink and letterbox. The publisher now sends properly center-cropped 4:5 versions that fill the feed screen. Emails and TikTok keep the original tall format, and reels stay tall too (that's correct for reels).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/content-factory/image/[...path]/route.ts`: the goripple.io image proxy accepts `?ar=4x5` (1080×1350) or `?ar=1x1` (1080×1080) and center-crops with sharp before responding; no param = passthrough stream as before
+- `apps/web/src/lib/content-factory/social-publish.ts`: new `feedCropUrl(imageUrl, ar)` — proxies the Supabase URL through goripple.io and appends the crop param
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: IG carousel + FB photo paths map slide URLs through `feedCropUrl`; reel paths untouched
+- `apps/web/src/lib/content-factory/compose.ts`: `renderMoodyTextOverlay` re-renders at a proportionally smaller font if the text block exceeds 1240px (FEED_SAFE_H), so dense slides can't get clipped by the 4:5 crop
+
+### Manual steps needed
+None (live on next deploy — no schema change, no regeneration of existing slides).
+
+### Notes
+- Publish-time renditions, not new stored images: the slide design's 15% top/bottom safe zone almost exactly matches a 4:5 center-crop (keeps the middle 1350px, y 285→1635), so baked text survives
+- The feed-safe cap was tuned to 1240 because the blurred shadow glow extends ~13px past the measured text bounds
+
+---
+
+## [2026-09-22] — Post emails end with the branded CTA slide, and silent email failures are fixed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 6f852955
+
+### In plain English (for Keenan)
+Every carousel email now attaches the branded end slide as the final numbered slide, so it can be posted as the last slide every time without hunting for the file. Also fixed a bug where emails could silently fail to send while the system still marked them as sent — that's how a batch of "sent" posts never arrived.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/email.ts`: new `resendEmailId()` helper throws when the Resend SDK returns `{ data: null, error }` (it resolves instead of rejecting on failure — all three send sites previously ignored `error` and still set `emailedAt`); new `ctaSlide(lane)` helper loads `public/cta-slide-{brand}.jpg` (CDN fallback) and appends it as the last attachment on static-carousel emails
+- Local-only: `apps/web/.env.local` had a placeholder RESEND_API_KEY — replaced with the real key from root `.env` (prod Vercel env was always correct)
+
+### Manual steps needed
+None.
+
+### Notes
+- Resend SDK failure shape is `{ data: null, error }` on a RESOLVED promise — any future Resend call must check `error` or failures are invisible
+- The four 2026-09-22 manual posts were re-sent with the CTA end slide included after this fix
+
+---
+
+## [2026-09-22] — CTA slides rebuilt at double resolution
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 06117b42
+
+### In plain English (for Keenan)
+The branded end slides looked low quality, so both were rebuilt at double resolution (2160×3840) over 4K-upscaled backgrounds. Same approved layouts, now crisp.
+
+### Technical changes (for Jimmy)
+- `apps/web/scripts/make-cta-slides.ts`: renders at 2160×3840 (all layout constants ×2), prefers a `.tmp/cta-bg-{name}-4k.png` background cache (Higgsfield bytedance 4K upscale of the gpt-image-2 originals), JPEG q95 with 4:4:4 chroma
+- Regenerated `apps/web/public/cta-slide-bwk.jpg` (~1.4MB) and `cta-slide-ripple.jpg` (~1.1MB)
+
+### Manual steps needed
+None.
+
+### Notes
+- Higgsfield upscale flow: media_upload → PUT → media_confirm → upscale_image(resolution "4k") → jobs_wait; outputs 2343×4096 from 1024×1792
+
+---
+
 ## [2026-09-22] — Every slideshow reel now ends with a branded Ripple CTA slide
 
 **Requested by:** Keenan
