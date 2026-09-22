@@ -622,12 +622,25 @@ export async function renderMoodyTextOverlay(
   const letterSpacing = uppercase ? ` letter_spacing="3072"` : "";
   const mainColor = tone === "dark" ? "#2B2622" : "#FFFFFF";
   const shadowColor = tone === "dark" ? "#FFFFFF" : "#000000";
-  const mainMarkup = `<span font_desc="${font} ${fontSize}" foreground="${mainColor}"${letterSpacing}>${body}</span>`;
-  const shadowMarkup = `<span font_desc="${font} ${fontSize}" foreground="${shadowColor}"${letterSpacing}>${body}</span>`;
+  const markup = (color: string, size: number) =>
+    `<span font_desc="${font} ${size}" foreground="${color}"${letterSpacing}>${body}</span>`;
 
   const maxTextW = OUTPUT_W - PADDING_X * 2;
-  const main = await renderMarkup(mainMarkup, fontPath, maxTextW, spacing, 8);
-  const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, spacing, 8);
+  // FEED-SAFE HEIGHT (2026-09-22, per Keenan's IG/FB crop request): the
+  // publisher center-crops slides to 4:5 for Instagram/Facebook feeds
+  // (keeps the middle 1350px of 1920). Dense ITEM paragraphs at the
+  // fixed size could exceed that window and get their first/last lines
+  // clipped — so if the measured block overflows, re-render once at a
+  // proportionally smaller font. 1240 leaves ~55px margin each side —
+  // enough that the blurred shadow glow also clears the crop edge.
+  const FEED_SAFE_H = 1240;
+  let size = fontSize;
+  let main = await renderMarkup(markup(mainColor, size), fontPath, maxTextW, spacing, 8);
+  if (main.height > FEED_SAFE_H) {
+    size = Math.max(24, Math.floor((size * FEED_SAFE_H) / main.height));
+    main = await renderMarkup(markup(mainColor, size), fontPath, maxTextW, spacing, 8);
+  }
+  const shadow = await renderMarkup(markup(shadowColor, size), fontPath, maxTextW, spacing, 8);
   const blurredShadow = await sharp(shadow.buffer).blur(9).png().toBuffer();
 
   const top = Math.round((OUTPUT_H - main.height) / 2);

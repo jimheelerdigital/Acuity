@@ -287,6 +287,7 @@ export const socialPublishCronFn = inngest.createFunction(
           publishFbVideo,
           IG_MAX_CAROUSEL_IMAGES,
           trimLegacyPickList,
+          feedCropUrl,
         } = await import("@/lib/content-factory/social-publish");
 
         const post = await prisma.carouselPost.findUnique({
@@ -327,8 +328,10 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
 
-        const imageUrls = trimLegacyPickList(post.slides).map(
-          (s) => s.imageUrl
+        // IG/FB feed posts get the 4:5 rendition so they fill the feed
+        // frame (2026-09-22, per Keenan) — TikTok emails/reels keep 9:16.
+        const imageUrls = trimLegacyPickList(post.slides).map((s) =>
+          feedCropUrl(s.imageUrl)
         );
         try {
           const result = reelUrl

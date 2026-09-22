@@ -27,6 +27,8 @@
  * 2026-09-14 per Keenan), so every lane auto-publishes.
  */
 
+import { proxiedImageUrl } from "./tiktok-publish";
+
 const GRAPH = "https://graph.facebook.com/v21.0";
 
 export const IG_MAX_CAROUSEL_IMAGES = 10;
@@ -100,6 +102,23 @@ export function trimLegacyPickList<T extends { kind: string }>(
   if (covers.length <= 1) return slides;
   const items = slides.filter((s) => s.kind !== "COVER");
   return [covers[0], ...items.slice(0, 6)];
+}
+
+/**
+ * Platform-optimized feed rendition (2026-09-22, per Keenan: "properly
+ * crop facebook and instagram posts ... to fill the screen"). Slides
+ * are 9:16 TikTok-native; IG/FB feeds max out at 4:5 portrait, so
+ * sending raw 9:16 leaves Meta to crop/letterbox on its own. This
+ * routes the image through the goripple.io proxy with `?ar=4x5`, which
+ * center-crops to 1080x1350 — aligned with the slide design's 15%
+ * top/bottom safe zone, so baked text survives. 1:1 is NOT used for
+ * feeds: it would keep only the middle 56% and clip text.
+ * Non-Supabase URLs pass through untouched (nothing to crop).
+ */
+export function feedCropUrl(imageUrl: string, ar: "4x5" | "1x1" = "4x5"): string {
+  const proxied = proxiedImageUrl(imageUrl);
+  if (proxied === imageUrl) return imageUrl;
+  return `${proxied}?ar=${ar}`;
 }
 
 export type SocialAccountKey = "ripple" | "bwk";
