@@ -383,20 +383,15 @@ export default function ProfileTab() {
         <SettingsGroup label="Preferences">
           <AppearanceCard />
           <HapticsRow />
-          <MenuItem
-            icon="time-outline"
-            label="Reminders"
-            sublabel="When to nudge you to journal"
-            onPress={() => router.push("/reminders")}
-          />
-          {/* Notifications — server-driven engagement notifications
-              (streaks, milestones, goal/task nudges, reflections),
-              channel + tone + quiet hours + snooze. Distinct from the
-              OS-local journaling Reminders row above. */}
+          {/* Notification Center (1.6) — one screen for reminder times,
+              per-type nudges, tone and quiet hours. Replaces the former
+              separate "Reminders" (on-device scheduling) + "Notifications"
+              (engagement prefs) rows: reminders are server-owned now, so
+              both live under one entry. */}
           <MenuItem
             icon="notifications-outline"
             label="Notifications"
-            sublabel="What Ripple reaches out about, and how"
+            sublabel="Reminders, nudges, tone & quiet hours"
             onPress={() => router.push("/notification-preferences" as never)}
           />
           {/* Replay product tour — clears User.tourCompletedAt + the
