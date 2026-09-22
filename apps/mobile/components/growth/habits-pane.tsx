@@ -37,10 +37,10 @@ const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
  * area, title, and the Habits|Goals toggle).
  *
  * Row interactions:
- *   - tap the checkbox  → check / uncheck today
- *   - tap the row       → open the habit detail (history, insights, manage)
- *   - swipe left        → Edit (rename) + Delete (archive)
- *   - long-press        → quick action menu
+ *   - tap the row (or checkbox) → check / uncheck today
+ *   - tap the chevron           → open the habit detail (history, insights, manage)
+ *   - swipe left                → Edit (rename) + Delete (archive)
+ *   - long-press                → quick action menu
  */
 export function HabitsPane() {
   const { tokens } = useTheme();
@@ -374,7 +374,7 @@ export function HabitsPane() {
               textAlign: "center",
             }}
           >
-            Tap a habit for history · swipe for edit &amp; delete
+            Tap to check off · tap the arrow or swipe to edit
           </Text>
         </View>
       )}
@@ -462,11 +462,13 @@ function HabitRow({
       rightThreshold={40}
     >
       <Pressable
-        onPress={onOpen}
+        onPress={dueToday ? onToggle : onOpen}
         onLongPress={onLongPress}
         delayLongPress={300}
         accessibilityRole="button"
-        accessibilityLabel={`${habit.name}, open details`}
+        accessibilityLabel={
+          dueToday ? `Mark ${habit.name} done` : `${habit.name}, open details`
+        }
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -528,7 +530,15 @@ function HabitRow({
             {streak}d
           </Text>
         ) : null}
-        <Ionicons name="chevron-forward" size={16} color={tokens.textTer} />
+        <Pressable
+          onPress={onOpen}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${habit.name} details`}
+          style={{ paddingLeft: 6, paddingVertical: 4, marginRight: -2 }}
+        >
+          <Ionicons name="chevron-forward" size={20} color={tokens.textTer} />
+        </Pressable>
       </Pressable>
     </Swipeable>
   );
