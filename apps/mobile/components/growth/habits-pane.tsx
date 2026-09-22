@@ -360,7 +360,6 @@ export function HabitsPane() {
               tokens={tokens}
               onToggle={() => toggle(habit)}
               onOpen={() => router.push(`/habit/${habit.id}`)}
-              onEdit={() => rename(habit)}
               onDelete={() => remove(habit)}
               onLongPress={() => openMenu(habit)}
             />
@@ -414,7 +413,6 @@ function HabitRow({
   tokens,
   onToggle,
   onOpen,
-  onEdit,
   onDelete,
   onLongPress,
 }: {
@@ -426,7 +424,6 @@ function HabitRow({
   tokens: AcuityTokens;
   onToggle: () => void;
   onOpen: () => void;
-  onEdit: () => void;
   onDelete: () => void;
   onLongPress: () => void;
 }) {
@@ -437,7 +434,7 @@ function HabitRow({
       <Pressable
         onPress={() => {
           swipeRef.current?.close();
-          onEdit();
+          onOpen();
         }}
         style={{
           width: 76,
