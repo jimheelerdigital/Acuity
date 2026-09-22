@@ -392,7 +392,7 @@ export default function HabitDetailScreen() {
 
         {/* Active days */}
         <Text style={sectionLabel(tokens)}>Active days</Text>
-        <Text style={{ color: tokens.textTer, fontSize: 13, marginBottom: 12 }}>
+        <Text style={{ color: tokens.textSec, fontSize: 13, marginBottom: 12 }}>
           Turn all off to pause the habit.
         </Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -421,7 +421,15 @@ export default function HabitDetailScreen() {
 
         {/* Reminder */}
         <Text style={sectionLabel(tokens)}>Reminder</Text>
-        <View style={{ borderRadius: 16, backgroundColor: tokens.bgInset, padding: 16 }}>
+        <View
+          style={{
+            borderRadius: 16,
+            backgroundColor: tokens.bgInset,
+            borderWidth: 1,
+            borderColor: tokens.lineStrong,
+            padding: 16,
+          }}
+        >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={{ color: tokens.text, fontSize: 16 }}>
               {reminderOn ? "Nudge me" : "No reminder"}
@@ -444,7 +452,7 @@ export default function HabitDetailScreen() {
                 onChangeMinute={(m: number) => setReminderTime(`${pad(hour)}:${pad(m)}`)}
                 size="md"
               />
-              <Text style={{ color: tokens.textQuiet, fontSize: 12, marginTop: 10 }}>
+              <Text style={{ color: tokens.textSec, fontSize: 12, marginTop: 10 }}>
                 {tzLabel} · fires on this habit's active days
               </Text>
             </View>

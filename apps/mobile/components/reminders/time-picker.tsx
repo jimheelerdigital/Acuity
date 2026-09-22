@@ -177,14 +177,15 @@ function Stepper({
 }) {
   const { tokens } = useTheme();
   return (
-    <View className="items-center" style={{ gap: 6 }}>
+    <View className="items-center" style={{ gap: 2 }}>
       <Pressable
         onPress={onIncrement}
         hitSlop={8}
-        className="rounded-full border items-center justify-center"
+        className="border items-center justify-center"
         style={{
           height: btnH,
           width: btnW,
+          borderRadius: 8,
           borderColor: tokens.line,
         }}
       >
@@ -206,10 +207,11 @@ function Stepper({
       <Pressable
         onPress={onDecrement}
         hitSlop={8}
-        className="rounded-full border items-center justify-center"
+        className="border items-center justify-center"
         style={{
           height: btnH,
           width: btnW,
+          borderRadius: 8,
           borderColor: tokens.line,
         }}
       >

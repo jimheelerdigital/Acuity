@@ -413,7 +413,7 @@ export default function NotificationCenterScreen() {
                 gap: 12,
               }}
             >
-              <Text style={{ flex: 1, color: tokens.textTer, fontSize: 13 }}>
+              <Text style={{ flex: 1, color: tokens.textSec, fontSize: 13 }}>
                 Set each habit's nudge time on the habit itself.
               </Text>
               <Ionicons name="chevron-forward" size={18} color={tokens.textTer} />
@@ -499,7 +499,7 @@ export default function NotificationCenterScreen() {
 
 function helpStyle(tokens: AcuityTokens) {
   return {
-    color: tokens.textQuiet,
+    color: tokens.textTer,
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 12,
@@ -544,7 +544,7 @@ function ReflectionReminders({
         <Text style={{ color: tokens.text, fontSize: 15, fontWeight: "500" }}>
           Daily reflection
         </Text>
-        <Text style={{ color: tokens.textTer, fontSize: 13, marginTop: 2 }}>
+        <Text style={{ color: tokens.textSec, fontSize: 13, marginTop: 2 }}>
           A reminder to debrief around when you usually do. {tzLabel}
         </Text>
       </View>
@@ -558,7 +558,7 @@ function ReflectionReminders({
             key={r.id}
             className="rounded-2xl"
             style={{
-              backgroundColor: tokens.cardBg,
+              backgroundColor: tokens.bg,
               borderWidth: 1,
               borderColor: tokens.line,
               padding: 14,
@@ -729,7 +729,7 @@ function SwitchRow({
           {label}
         </Text>
         {description ? (
-          <Text style={{ color: tokens.textTer, fontSize: 13, lineHeight: 18 }}>
+          <Text style={{ color: tokens.textSec, fontSize: 13, lineHeight: 18 }}>
             {description}
           </Text>
         ) : null}
@@ -808,7 +808,7 @@ function TonePill({
         >
           {tone.label}
         </Text>
-        <Text style={{ color: tokens.textTer, fontSize: 13, lineHeight: 18 }}>
+        <Text style={{ color: tokens.textSec, fontSize: 13, lineHeight: 18 }}>
           {tone.description}
         </Text>
       </View>
