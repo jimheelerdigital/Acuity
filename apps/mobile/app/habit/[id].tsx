@@ -306,7 +306,9 @@ export default function HabitDetailScreen() {
       case "miss":
         return "transparent";
       default:
-        return tokens.bgInset;
+        // off / future — a clearly filled muted chip, distinct from the
+        // outlined-empty "missed" cell.
+        return tokens.bgInsetStrong;
     }
   };
   // Day-of-month label color, tuned for contrast against each fill.
@@ -434,7 +436,7 @@ export default function HabitDetailScreen() {
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Today</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.5, borderColor: tokens.lineStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Missed</Text>
-          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInset, marginLeft: 12 }} />
+          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInsetStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Off day</Text>
         </View>
 
