@@ -343,12 +343,30 @@ export async function POST(req: NextRequest) {
     }
 
     case "reddit-digest": {
-      // Fire the weekly Reddit pulse digest on demand (2026-09-21) —
-      // rebuilds both brands' digests AND sends the talking-head
-      // script report email at the end of the run.
-      const { inngest } = await import("@/inngest/client");
-      await inngest.send({ name: "content-factory/reddit.digest", data: {} });
-      return NextResponse.json({ ok: true, queued: true });
+      // Run the weekly Reddit pulse digest on demand (2026-09-21) —
+      // rebuilds both brands' digests AND sends the talking-head script
+      // report email. Runs INLINE rather than via the Inngest event:
+      // on 2026-09-22 the reddit-trends-daily function silently ignored
+      // both its cron and the manual event while every other function
+      // ran fine, so the button no longer depends on it (route
+      // maxDuration=300 covers the ~2-4 min run).
+      const { buildDailyDigest } = await import(
+        "@/lib/content-factory/reddit-trends"
+      );
+      const [ripple, bwk] = await Promise.all([
+        buildDailyDigest("ripple").catch(() => 0),
+        buildDailyDigest("bwk").catch(() => 0),
+      ]);
+      let scripts = 0;
+      try {
+        const { sendVideoScriptReport } = await import(
+          "@/lib/content-factory/video-scripts"
+        );
+        scripts = await sendVideoScriptReport();
+      } catch {
+        // soft — digests already stored; the report can be retried
+      }
+      return NextResponse.json({ ok: true, ripple, bwk, scripts });
     }
 
     case "resend-email": {

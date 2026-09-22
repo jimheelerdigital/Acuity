@@ -46,8 +46,10 @@ export default function AudiencePulseTab() {
   const [running, setRunning] = useState(false);
   const [runQueued, setRunQueued] = useState(false);
 
-  // "Run now" (2026-09-21, per Keenan): fires the weekly digest +
+  // "Run now" (2026-09-21, per Keenan): runs the weekly digest +
   // talking-head script report on demand instead of waiting for Monday.
+  // The API runs it inline (2026-09-22 — the Inngest function was
+  // silently skipping), so this request takes a few minutes.
   const runNow = async () => {
     setRunning(true);
     try {
@@ -58,8 +60,9 @@ export default function AudiencePulseTab() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setRunQueued(true);
+      load(); // fresh digests are in the DB once the run returns
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to queue the run");
+      setError(e instanceof Error ? e.message : "Failed to run the digest");
     } finally {
       setRunning(false);
     }
@@ -94,7 +97,11 @@ export default function AudiencePulseTab() {
       disabled={running || runQueued}
       className="shrink-0 rounded-acuity-md border border-acuity-line px-4 py-2 text-sm text-acuity-text-sec transition hover:border-acuity-line-strong hover:text-acuity-text disabled:opacity-50"
     >
-      {runQueued ? "Run queued ✓" : running ? "Queuing…" : "Run now"}
+      {runQueued
+        ? "Done — report emailed ✓"
+        : running
+          ? "Running… (takes a few minutes, leave this open)"
+          : "Run now"}
     </button>
   );
 
