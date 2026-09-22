@@ -7,6 +7,55 @@
 
 ---
 
+## [2026-09-22] — Every slideshow reel now ends with a branded Ripple CTA slide
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2b5a3500
+
+### In plain English (for Keenan)
+Every slideshow reel we publish now closes on a branded final slide with the Ripple logo and a button-style download CTA. BWK reels get the dark-mode version ("Your AI life optimizer." / "Tracks your habits. Gives you insights on how to be a better you." / "Download in our bio"); Ripple reels get the light orange version ("Take the load off." / "Ripple, your daily life optimizer." / "Download at the link in our bio"). Viewers who watch to the end now always see who made the content and how to get the app.
+
+### Technical changes (for Jimmy)
+- New static slides `apps/web/public/cta-slide-bwk.jpg` and `cta-slide-ripple.jpg` (1080x1920). v3 "epic" versions (same session, per Keenan): gpt-image-2 photo backgrounds — BWK dark-luxury night skyline, Ripple warm morning light — with the lockup alpha-extracted from the brand PNGs and text/hairline-outline pills composited deterministically with sharp, so logo and copy stay pixel-perfect
+- New generator script `apps/web/scripts/make-cta-slides.ts` (re-run to tweak copy/layout; backgrounds cache in `.tmp/cta-bg-*.png` — delete one to re-roll a scene, ~25¢ each; writes its own fontconfig so Pango finds the repo Poppins fonts on macOS)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: the reel render step resolves the brand via `laneBrand(post.lane)` and appends `https://goripple.io/cta-slide-{brand}.jpg` to the imageUrls passed to `renderSlideshowReel`
+- Photo-carousel fallback path deliberately unchanged — scope was slideshows
+
+### Manual steps needed
+- [ ] Keenan: approve the two slides (emailed 2026-09-22 via Resend) or ask for tweaks, then say push
+
+### Notes
+- The slide adds one 3.5s segment to each reel (SLIDE_SEC in slideshow-reel.ts)
+- Already-rendered reels are memoized by the HEAD-check on `reels/{postId}.mp4` — the CTA slide only appears on reels rendered after this deploys; it will not retro-fit existing MP4s
+- The slides ship inside the repo (public/) so the CDN URL is live the moment the deploy lands; no bucket upload involved
+
+---
+
+## [2026-09-22] — "Run now" no longer depends on the silently-broken Inngest function
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5680ee3a
+
+### In plain English (for Keenan)
+The Run-now button on the Audience Pulse tab was handing the job to a background system that was silently ignoring it — you clicked, it said "queued," and nothing ever happened. The button now does the work itself: click it, leave the tab open a few minutes, and it builds both brands' digests and emails you the script report directly.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: `reddit-digest` action now runs `buildDailyDigest("ripple"|"bwk")` in parallel + `sendVideoScriptReport()` inline instead of sending the `content-factory/reddit.digest` event (route already had maxDuration=300)
+- apps/web/src/app/admin/tabs/AudiencePulseTab.tsx: button shows a long-running state and reloads the digest list on completion
+- Evidence for the bypass: 2026-09-22 04:00 UTC cron produced no RedditTrendDigest rows and no ClaudeCallLog entries; a manual event send (~17:05 UTC) also produced nothing — while carousel-daily, its event-triggered generate runs (all 13 lanes), social-publish, and admin_insights all ran normally the same day. The failure is isolated to the reddit-trends-daily function.
+
+### Manual steps needed
+- [ ] Jimmy: check the Inngest dashboard for reddit-trends-daily — is it archived, paused, duplicated across apps, or erroring at trigger registration? The cron path is still wired and should fire Mondays 04:00 UTC once fixed
+- [ ] Keenan: click Run now again after this deploy
+
+### Notes
+- Prime suspect for the function's state: this morning's stale deploy synced an app version that did not contain reddit-trends-daily (the file didn't exist in that tree), which may have archived the function in Inngest; the later re-sync claimed to re-register it, but the event still didn't invoke it. Dashboard will confirm.
+- The inline run loses Inngest's step retries, which is acceptable for a manually-watched admin action. The Monday cron keeps the retryable step-based path.
+
+---
+
 ## [2026-08-16] — Evidence-backed insights ("show your receipts") data layer + suite fully green
 
 **Requested by:** Jimmy
