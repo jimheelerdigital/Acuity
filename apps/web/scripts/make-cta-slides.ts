@@ -9,11 +9,15 @@
  *
  * Backgrounds are generated once via gpt-image-2 and cached in
  * .tmp/ (delete the cached PNG to re-roll a scene — costs ~25¢).
- * Logo + text are composited deterministically with sharp so the
- * lockup and copy stay pixel-perfect.
+ * A 4K AI-upscaled variant ({name}-4k.png, made via Higgsfield
+ * bytedance upscale) is preferred when present — the raw 1024-wide
+ * gen looked soft at reel resolution. Logo + text are composited
+ * deterministically with sharp so the lockup and copy stay
+ * pixel-perfect.
  *
- * Outputs 1080x1920 JPEGs to apps/web/public/ (served from the
- * goripple.io CDN, appended to reel imageUrls).
+ * Outputs 2160x3840 JPEGs (q95, 4:4:4) to apps/web/public/ (served
+ * from the goripple.io CDN, appended to reel imageUrls — the reel
+ * renderer downscales, so the extra resolution survives encoding).
  *
  *   npx dotenv -e apps/web/.env.local -- tsx apps/web/scripts/make-cta-slides.ts
  */
@@ -34,8 +38,8 @@ import type { OverlayOptions } from "sharp";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp = require("sharp") as typeof sharpDefault;
 
-const W = 1080;
-const H = 1920;
+const W = 2160;
+const H = 3840;
 const CORAL = "#F97E4E";
 const PUB = path.join(process.cwd(), "apps/web/public");
 const FONTS = path.join(PUB, "fonts");
@@ -44,6 +48,12 @@ const TMP = path.join(process.cwd(), ".tmp");
 // ─── AI background (cached) ─────────────────────────────────────────────────
 
 async function generateBg(cacheName: string, prompt: string): Promise<Buffer> {
+  // Prefer the AI-upscaled 4K variant when it exists.
+  const cache4k = path.join(TMP, cacheName.replace(/\.png$/, "-4k.png"));
+  if (fs.existsSync(cache4k)) {
+    console.log(`bg cache hit (4k): ${path.basename(cache4k)}`);
+    return fs.readFileSync(cache4k);
+  }
   const cachePath = path.join(TMP, cacheName);
   if (fs.existsSync(cachePath)) {
     console.log(`bg cache hit: ${cacheName}`);
@@ -162,7 +172,7 @@ async function outlinePill(
   height: number,
   stroke: string
 ): Promise<Buffer> {
-  const svg = `<svg width="${width}" height="${height}"><rect x="1.5" y="1.5" width="${width - 3}" height="${height - 3}" rx="${(height - 3) / 2}" fill="none" stroke="${stroke}" stroke-width="2.5"/></svg>`;
+  const svg = `<svg width="${width}" height="${height}"><rect x="3" y="3" width="${width - 6}" height="${height - 6}" rx="${(height - 6) / 2}" fill="none" stroke="${stroke}" stroke-width="5"/></svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
@@ -207,7 +217,7 @@ async function makeSlide(opts: {
     bold,
     3400
   );
-  const headline = await sharp(headlineRaw).resize({ width: 850 }).toBuffer();
+  const headline = await sharp(headlineRaw).resize({ width: 1700 }).toBuffer();
   const headlineMeta = await sharp(headline).metadata();
 
   let subline: Buffer | null = null;
@@ -219,7 +229,7 @@ async function makeSlide(opts: {
       medium,
       2600
     );
-    subline = await sharp(sublineRaw).resize({ width: 780 }).toBuffer();
+    subline = await sharp(sublineRaw).resize({ width: 1560 }).toBuffer();
     sublineMeta = await sharp(subline).metadata();
   }
 
@@ -229,18 +239,18 @@ async function makeSlide(opts: {
     medium,
     3000
   );
-  const pillTextImg = await sharp(pillTextRaw).resize({ width: 560 }).toBuffer();
+  const pillTextImg = await sharp(pillTextRaw).resize({ width: 1120 }).toBuffer();
   const pillTextMeta = await sharp(pillTextImg).metadata();
-  const pillW = (pillTextMeta.width ?? 560) + 130;
-  const pillH = (pillTextMeta.height ?? 40) + 60;
+  const pillW = (pillTextMeta.width ?? 1120) + 260;
+  const pillH = (pillTextMeta.height ?? 80) + 120;
   const pill = await outlinePill(pillW, pillH, opts.pillColor);
 
-  const logoY = subline ? 560 : 640;
-  const headlineY = logoY + (logoMeta.height ?? 300) + 110;
-  const sublineY = headlineY + (headlineMeta.height ?? 90) + 56;
+  const logoY = subline ? 1120 : 1280;
+  const headlineY = logoY + (logoMeta.height ?? 600) + 220;
+  const sublineY = headlineY + (headlineMeta.height ?? 180) + 112;
   const pillY = subline
-    ? sublineY + (sublineMeta.height ?? 90) + 90
-    : headlineY + (headlineMeta.height ?? 90) + 90;
+    ? sublineY + (sublineMeta.height ?? 180) + 180
+    : headlineY + (headlineMeta.height ?? 180) + 180;
 
   const layers: OverlayOptions[] = [
     { input: Buffer.from(washSvg), left: 0, top: 0 },
@@ -271,7 +281,7 @@ async function makeSlide(opts: {
 
   await sharp(bg)
     .composite(layers)
-    .jpeg({ quality: 92 })
+    .jpeg({ quality: 95, chromaSubsampling: "4:4:4" })
     .toFile(path.join(PUB, opts.out));
   console.log(`wrote ${opts.out}`);
 }
@@ -284,7 +294,7 @@ async function main() {
       "Dark, dominant, moody minimalist photography: a luxury city skyline at night seen from a high penthouse terrace, cold glass towers, scattered warm window lights, low clouds. Desaturated, near-monochrome color grade — charcoal, slate, black, night-city light. Deep shadows, austere, powerful, cinematic editorial quality. The entire frame is DIM and shadowed, darkest in the center, so clean white text placed at the center would be perfectly legible. No text, no words, no people. 9:16 vertical.",
     wash: { color: "#0E0D1F", opacity: 0.22 },
     bgBrightness: 1.45,
-    logo: await whiteLogoAlpha("ripple-lockup-dusk.png", 620),
+    logo: await whiteLogoAlpha("ripple-lockup-dusk.png", 1240),
     headline: "YOUR AI LIFE OPTIMIZER.",
     headlineColor: "#FBFAF6",
     headlineTracking: 2048,
@@ -301,7 +311,7 @@ async function main() {
     bgPrompt:
       "Bright, airy, soft feminine lifestyle photography: warm morning sunlight streaming through sheer linen curtains onto a clean cream-colored kitchen counter, a ceramic mug with gentle steam, soft out-of-focus glow. Cream, ivory and soft peach tones, gentle warm light, calm and unhurried. Plenty of soft, bright negative space in the center of the frame so dark text placed at the center would be perfectly legible. No text, no words, no people. 9:16 vertical.",
     wash: { color: "#FAF4EF", opacity: 0.62 },
-    logo: await colorLogoAlpha("ripple-lockup-cream.png", 660, "#FAF4EF"),
+    logo: await colorLogoAlpha("ripple-lockup-cream.png", 1320, "#FAF4EF"),
     headline: "Take the load off.",
     headlineColor: CORAL,
     subline: "Talk daily, optimize your life.",
