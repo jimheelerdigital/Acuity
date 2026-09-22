@@ -29,9 +29,13 @@ const PADDING_X = 72; // horizontal padding for text
  * "QuoteSerif" = Playfair Display Medium Italic — the premium editorial
  * serif used by the quote-loop / questions overlays (2026-08-28 PM, per
  * Keenan: "italicized and fancier... stand out and feel premium").
+ * "MediumItalic" = Poppins Medium Italic — the hook line of headed item
+ * slides (2026-09-22). A real italic face, NOT Pango synthetic oblique:
+ * macOS Pango (CoreText) and Lambda Pango (fontconfig) synthesize
+ * differently, so shipping the face is the only way both match.
  */
 export async function ensureFontFile(
-  variant: "Bold" | "Medium" | "QuoteSerif" = "Bold"
+  variant: "Bold" | "Medium" | "MediumItalic" | "QuoteSerif" = "Bold"
 ): Promise<string | null> {
   const filename =
     variant === "QuoteSerif"
@@ -594,6 +598,19 @@ export async function renderMoodyTextOverlay(
   // text on dark scenes.
   tone: "white" | "dark" = "white"
 ): Promise<Buffer> {
+  // HEADED ITEM (2026-09-22, per Keenan's novu.m reference: "better
+  // formatted with a header and more engaging text"): named item slides
+  // render as a left-aligned editorial block — bold header, one italic
+  // hook sentence, short body — instead of a uniform centered column.
+  // Detected by shape (short first paragraph = the item name) so the
+  // regenerate path, which splits stored overlay text, inherits it too.
+  if (
+    kind === "ITEM" &&
+    paragraphs.length >= 2 &&
+    isItemHeader(paragraphs[0])
+  ) {
+    return renderHeadedItemOverlay(paragraphs, tone);
+  }
   const fontPath = await ensureFontFile(
     kind === "ITEM" ? "Medium" : kind === "QUOTE" ? "QuoteSerif" : "Bold"
   );
@@ -658,6 +675,121 @@ export async function renderMoodyTextOverlay(
       { input: blurredShadow, top: top + 4, left: left + 2 },
       { input: main.buffer, top, left },
     ])
+    .png()
+    .toBuffer();
+}
+
+/** A short first paragraph is the item's named header ("The Reset Day",
+ *  legacy "Reset day."). Full-sentence first lines (memento etc.) fall
+ *  through to the classic centered treatment. */
+function isItemHeader(s: string): boolean {
+  const words = s.trim().split(/\s+/);
+  return words.length <= 5 && s.trim().length <= 40;
+}
+
+/**
+ * HEADED ITEM slide (2026-09-22, per Keenan's reference screenshots —
+ * novu.m-style posts: "the text answers we're providing are usually too
+ * long winded and look too generic... better formatted with a header and
+ * more engaging text"). Left-aligned editorial block, vertically
+ * centered:
+ *   header — Poppins Bold, the named concept
+ *   hook   — Poppins Medium Italic, one line that lands alone
+ *   body   — Poppins Medium, 1-2 short sentences
+ * Same blurred-shadow legibility treatment as every moody slide, and the
+ * whole block obeys FEED_SAFE_H (the IG/FB 4:5 center-crop window).
+ */
+async function renderHeadedItemOverlay(
+  paragraphs: string[],
+  tone: "white" | "dark"
+): Promise<Buffer> {
+  const [rawHeader, rawHook, ...rawBody] = paragraphs.map((p) =>
+    stripUnrenderable(p)
+  );
+  // Legacy names carry a trailing period ("Reset day.") — the headed
+  // layout drops it so the header reads like a title, not a sentence.
+  const header = rawHeader.replace(/\.$/, "");
+
+  const [fontBold, fontItalic, fontMedium] = await Promise.all([
+    ensureFontFile("Bold"),
+    ensureFontFile("MediumItalic"),
+    ensureFontFile("Medium"),
+  ]);
+  const mainColor = tone === "dark" ? "#2B2622" : "#FFFFFF";
+  const shadowColor = tone === "dark" ? "#FFFFFF" : "#000000";
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+
+  const pieces: {
+    text: string;
+    font: string;
+    fontPath: string | null;
+    size: number;
+    gapAfter: number;
+  }[] = [
+    { text: header, font: "Poppins Bold", fontPath: fontBold, size: 62, gapAfter: 44 },
+    { text: rawHook, font: "Poppins Medium Italic", fontPath: fontItalic, size: 44, gapAfter: 40 },
+  ];
+  const bodyText = rawBody.filter(Boolean).join("\n\n");
+  if (bodyText) {
+    pieces.push({
+      text: bodyText,
+      font: "Poppins Medium",
+      fontPath: fontMedium,
+      size: 40,
+      gapAfter: 0,
+    });
+  } else {
+    pieces[pieces.length - 1].gapAfter = 0;
+  }
+
+  const markup = (p: (typeof pieces)[number], color: string, scale: number) =>
+    `<span font_desc="${p.font} ${Math.max(20, Math.round(p.size * scale))}" foreground="${color}">${p.text
+      .split("\n")
+      .map((l) => escapePango(l))
+      .join("\n")}</span>`;
+
+  const render = async (scale: number) =>
+    Promise.all(
+      pieces.map(async (p) => ({
+        main: await renderMarkup(markup(p, mainColor, scale), p.fontPath, maxTextW, 12, 8, "left"),
+        shadow: await renderMarkup(markup(p, shadowColor, scale), p.fontPath, maxTextW, 12, 8, "left"),
+        gapAfter: Math.round(p.gapAfter * scale),
+      }))
+    );
+
+  const totalH = (r: Awaited<ReturnType<typeof render>>) =>
+    r.reduce((sum, p) => sum + p.main.height + p.gapAfter, 0);
+
+  // FEED-SAFE: shrink the whole block proportionally if it would exceed
+  // the IG/FB 4:5 crop window (same guard as the classic ITEM path).
+  const FEED_SAFE_H = 1240;
+  let rendered = await render(1);
+  if (totalH(rendered) > FEED_SAFE_H) {
+    rendered = await render(FEED_SAFE_H / totalH(rendered));
+  }
+
+  const blockH = totalH(rendered);
+  let y = Math.round((OUTPUT_H - blockH) / 2);
+  const left = PADDING_X;
+  const composites: sharp.OverlayOptions[] = [];
+  for (const p of rendered) {
+    const blurred = await sharp(p.shadow.buffer).blur(9).png().toBuffer();
+    composites.push(
+      { input: blurred, top: y + 4, left: left + 2 },
+      { input: p.main.buffer, top: y, left }
+    );
+    y += p.main.height + p.gapAfter;
+  }
+
+  return sharp({
+    create: {
+      width: OUTPUT_W,
+      height: OUTPUT_H,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
     .png()
     .toBuffer();
 }

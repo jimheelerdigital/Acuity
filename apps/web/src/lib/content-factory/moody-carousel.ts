@@ -100,20 +100,19 @@ ${AUDIENCE_BRIEF[audience]}
 ${opts?.theme ? `\n${opts.theme}\n` : ""}
 ${opts?.sceneBrief ?? SCENE_BRIEF[audience]}
 ${opts?.coverRule ? `\n${opts.coverRule}\n` : ""}
-FORMAT — study this real slide and match its rhythm exactly:
-"Reset day.
-
-Clean your space, organize your room, car, digital files, notes.
-
-Chaos outside = chaos inside.
-
-Bring order back."
+FORMAT — every item slide is a tight three-part build rendered as: bold HEADER, one italic HOOK line, short BODY. Study this example and match its shape exactly:
+name: "The Reset Day"
+lines[0] (hook): "Order outside builds order inside."
+lines[1] (body): "Once a week, clear everything — room, car, files, notes. Chaos has nowhere to live."
 
 RULES:
 - "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act ("EARN YOUR SILENCE", "HOLD THE LINE") or a direct prompt to engage what's inside ("READ THESE SLOWLY", "ANSWER THIS FIRST..."). Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix the example phrases; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item:
-  - "name": 1-3 words + period ("Reset day.", "Go quiet.").
-  - "lines": 2-3 short paragraphs. First expands the item concretely in one sentence (can use lists: "room, car, digital files, notes"). Optional middle line: a compressed truth, equations welcome ("Chaos outside = chaos inside."). Last line: a 2-5 word command ("Bring order back.").
+  - "name": the HEADER — a named concept in Title Case, 2-4 words, NO trailing period ("The Reset Day", "Quiet Hours", "The 90% Rule"). It should feel like naming something real the reader never had words for.
+  - "lines": EXACTLY 2 entries.
+    - lines[0]: the HOOK — ONE short sentence that reframes the header and lands completely on its own (it renders in italics under the header). Compressed truth, equations welcome ("Order outside builds order inside.").
+    - lines[1]: the BODY — 1-2 short sentences, concrete and specific, ending on a command or a plain truth. Lists welcome ("room, car, files, notes").
+- HARD LIMIT: each slide's hook + body totals UNDER 30 words. Long = generic = scrolled past. Short = screenshotted and saved. Cut every word that isn't pulling weight.
 - Every sentence short. No commas chained past two. No metaphors that need decoding. Read it out loud — it should sound inevitable, not written.
 - US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to" or "consider". Never mention any app, product, journaling, or AI.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather, materials) following SCENES above. Every scene in the post is a DIFFERENT location — vary boldly.
@@ -123,7 +122,7 @@ OUTPUT (strict JSON, no markdown):
   "title": "...",
   "coverScene": "...",
   "items": [
-    { "name": "...", "lines": ["...", "...", "..."], "scene": "..." }
+    { "name": "...", "lines": ["hook", "body"], "scene": "..." }
   ]
 }`;
 
@@ -1901,17 +1900,16 @@ VOICE: calm command energy. Short declarative sentences. A mentor stating what t
 
 SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion crossing black dunes at dusk, a stag in blowing snow; the whole animal kingdom, never a recent post's animal; HYPER-REAL weather only — natural light a wildlife photographer could capture, NEVER lightning bolts or painted-on skies), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL armor, seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS — a viking on a windswept grey beach with longships behind, a samurai on a misty bamboo path in rain, a knight leading his horse up a snowy mountain trail, a spartan on sun-bleached coastal rocks; each warrior type gets ITS OWN world, never one generic snowfield, NEVER standing directly on ice or a frozen lake; DOING something powerful — striding into the weather, arms flexed in triumph, sword driven into the earth — a pose that reads in silhouette and radiates strength and drive; hyper-real like a prestige-film still, wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. UNLIMITED LIBRARY RULE: every example is a SEED, not a menu — INVENT a brand-new scene for every slide (new subject, location, season, weather, time, vantage) within these families; never render an example verbatim, never repeat a recent post's scene.
 
-FORMAT — each slide reads like this (match the rhythm):
-"The skill.
-
-One focused hour a day. That's about 100 hours in.
-
-Enough to go from clueless to dangerous. Most people never log ten."
+FORMAT — every slide is a tight three-part build rendered as: bold HEADER, one italic HOOK line, short BODY. Match this shape exactly:
+name: "The Skill"
+lines[0] (hook): "About 100 focused hours banked."
+lines[1] (body): "One hour a day, every day. Enough to go from clueless to dangerous — most people never log ten."
 
 RULES:
 - "title": the cover text is EXACTLY "${interval} OF DISCIPLINE..." — nothing else, all caps, trailing "..." as the swipe bait. Do not add words, do not rephrase.
 - The slides answer the cover: HOW MUCH progress he can actually make in ${interval.toLowerCase()}, area by area. Each item is a DIFFERENT area of life (the body, the bank account, the skill, the mind, the reading, the reputation, the business) — vary the areas post to post and NEVER reuse the mix from the recent-posts list.
-- Each item: "name" = the area, 2-4 words ("The body.", "The bank account."). "lines" = 2-3 short paragraphs: the daily action, the accumulated math over ${interval.toLowerCase()}, and the real expected result. The math must be plausible and scaled to the interval — hedge honest numbers with "about" or "~" (about 100 workouts in 100 days; ~1,800 focused hours in 5 years). Results must be believable, never inflated.
+- Each item: "name" = the HEADER — the area in Title Case, 2-4 words, NO trailing period ("The Body", "The Bank Account"). "lines" = EXACTLY 2 entries: lines[0] = the HOOK — ONE short line stating the accumulated number over ${interval.toLowerCase()} (renders in italics; must land on its own); lines[1] = the BODY — 1-2 short sentences: the daily action and the real expected result. The math must be plausible and scaled to the interval — hedge honest numbers with "about" or "~" (about 100 workouts in 100 days; ~1,800 focused hours in 5 years). Results must be believable, never inflated.
+- HARD LIMIT: each slide's hook + body totals UNDER 30 words. Long = generic = scrolled past. Short = screenshotted and saved.
 - Each item's "scene": one concrete sentence for the photograph, per SCENES above.
 - "coverScene": one scene sentence for the cover.
 - No emojis, no hashtags. Never mention any app, product, journaling, therapy, or AI.
@@ -3018,9 +3016,12 @@ ${men ? rollMenCoverRule(sceneFamily) : rollWomenCoverRule(sceneFamily)}
 
 RULES:
 - "title": the cover text — the chosen issue named so the reader instantly feels seen, in their own plain words. 3-8 words, works in ALL CAPS: either the pain as a direct question ("CAN'T SWITCH OFF AT NIGHT?") or a direct fix promise ("HOW TO GET YOUR EVENINGS BACK"). SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN and name a problem a real person would recognize as theirs — if it reads vague, clever, or garbled without the slides, it is WRONG.
-- The request tells you EXACTLY how many items to write. Each item is ONE step of the fix, in the exact order to do them:
-  - "name": the step as a short imperative + period ("Move the charger.", "Send this one text.", "Pick the night."). 2-5 words.
-  - "lines": 1-2 short paragraphs saying EXACTLY what to do — specific actions, times, amounts, and the exact words to say where a script helps. Vague advice is BANNED: "set boundaries" is WRONG; "text back: i can't take that on this week." is RIGHT.
+- The request tells you EXACTLY how many items to write. Each item is ONE step of the fix, in the exact order to do them. Each slide renders as: bold HEADER, one italic HOOK line, short BODY.
+  - "name": the HEADER — the step as a short imperative in Title Case, 2-4 words, NO trailing period ("Move the Charger", "Send One Text", "Pick the Night").
+  - "lines": EXACTLY 2 entries.
+    - lines[0]: the HOOK — ONE short sentence on why this step works or what it breaks (renders in italics; must land on its own).
+    - lines[1]: the BODY — EXACTLY what to do in 1-2 short sentences: specific actions, times, amounts, and the exact words to say where a script helps. Vague advice is BANNED: "set boundaries" is WRONG; "text back: i can't take that on this week." is RIGHT.
+- HARD LIMIT: each slide's hook + body totals UNDER 30 words. Long = generic = scrolled past. Short = screenshotted and saved.
 - Step 1 must be doable within the hour of reading. The final step may end on what changes after a week of doing this — a plain statement, never a pep talk.
 - Every step is a DIFFERENT physical action. No theory slides, no mindset-only slides — every slide is something to actually DO.
 - US English. No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI — and NEVER mention the research, any community, or trends.
