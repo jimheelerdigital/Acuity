@@ -173,6 +173,8 @@ async function makeSlide(opts: {
   bgPrompt: string;
   /** rgba wash over the photo so text always reads */
   wash: { color: string; opacity: number };
+  /** optional brightness multiplier applied to the photo first */
+  bgBrightness?: number;
   logo: Buffer;
   headline: string;
   headlineColor: string;
@@ -189,6 +191,7 @@ async function makeSlide(opts: {
   const bgRaw = await generateBg(opts.bgCache, opts.bgPrompt);
   const bg = await sharp(bgRaw)
     .resize(W, H, { fit: "cover", position: "centre" })
+    .modulate({ brightness: opts.bgBrightness ?? 1 })
     .toBuffer();
 
   const washSvg = `<svg width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="${opts.wash.color}" fill-opacity="${opts.wash.opacity}"/></svg>`;
@@ -279,7 +282,8 @@ async function main() {
     bgCache: "cta-bg-bwk.png",
     bgPrompt:
       "Dark, dominant, moody minimalist photography: a luxury city skyline at night seen from a high penthouse terrace, cold glass towers, scattered warm window lights, low clouds. Desaturated, near-monochrome color grade — charcoal, slate, black, night-city light. Deep shadows, austere, powerful, cinematic editorial quality. The entire frame is DIM and shadowed, darkest in the center, so clean white text placed at the center would be perfectly legible. No text, no words, no people. 9:16 vertical.",
-    wash: { color: "#0E0D1F", opacity: 0.55 },
+    wash: { color: "#0E0D1F", opacity: 0.22 },
+    bgBrightness: 1.45,
     logo: await whiteLogoAlpha("ripple-lockup-dusk.png", 620),
     headline: "YOUR AI LIFE OPTIMIZER.",
     headlineColor: "#FBFAF6",
