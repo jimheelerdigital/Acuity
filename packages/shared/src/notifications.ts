@@ -337,3 +337,49 @@ export function categoryForReminderKind(
 ): NotificationCategory {
   return kind === "habit" ? "habit_nudge" : "habit_reminder";
 }
+
+
+// ─── Cron tick matching (server reminder dispatcher) ─────────────────────────
+//
+// The dispatcher runs every REMINDER_TICK_MINUTES. A reminder set to any minute
+// (e.g. 09:07) fires exactly once/day: in the tick bucket its time falls into.
+// Pure so the "is this reminder due right now" decision is unit-testable without
+// a cron or a clock.
+
+/** How often the reminder dispatcher cron runs, in minutes. */
+export const REMINDER_TICK_MINUTES = 15;
+
+/** Start minute of the tick bucket containing `nowMinutes` (local mins since midnight). */
+export function floorToTick(
+  nowMinutes: number,
+  tickMinutes: number = REMINDER_TICK_MINUTES
+): number {
+  return Math.floor(nowMinutes / tickMinutes) * tickMinutes;
+}
+
+/** Is `timeHHMM` inside the tick bucket [bucketStartMin, bucketStartMin+tick)? */
+export function isTimeInTick(
+  timeHHMM: string,
+  bucketStartMin: number,
+  tickMinutes: number = REMINDER_TICK_MINUTES
+): boolean {
+  const t = hhmmToMinutes(timeHHMM);
+  if (t === null) return false;
+  return t >= bucketStartMin && t < bucketStartMin + tickMinutes;
+}
+
+/**
+ * Whole "is this reminder due on this tick" decision, minus category/dedup/
+ * skip-if-done (which need I/O). True when the reminder is active on the local
+ * weekday AND its time lands in the current tick bucket.
+ */
+export function isReminderDueOnTick(
+  reminder: { time: string; daysActive: readonly number[]; enabled: boolean },
+  localWeekday: number,
+  nowMinutes: number,
+  tickMinutes: number = REMINDER_TICK_MINUTES
+): boolean {
+  if (!reminder.enabled) return false;
+  if (!reminder.daysActive.includes(localWeekday)) return false;
+  return isTimeInTick(reminder.time, floorToTick(nowMinutes, tickMinutes), tickMinutes);
+}

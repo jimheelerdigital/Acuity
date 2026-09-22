@@ -95,3 +95,50 @@ describe("categoryForReminderKind", () => {
     expect(categoryForReminderKind("habit")).toBe("habit_nudge");
   });
 });
+
+
+import {
+  floorToTick,
+  isReminderDueOnTick,
+  isTimeInTick,
+} from "@acuity/shared";
+
+describe("floorToTick", () => {
+  it("floors to the 15-min bucket", () => {
+    expect(floorToTick(0)).toBe(0);
+    expect(floorToTick(7)).toBe(0);
+    expect(floorToTick(14)).toBe(0);
+    expect(floorToTick(15)).toBe(15);
+    expect(floorToTick(547)).toBe(540); // 09:07 -> 09:00 bucket
+    expect(floorToTick(1439)).toBe(1425); // 23:59 -> 23:45
+  });
+});
+
+describe("isTimeInTick", () => {
+  it("matches a time inside its bucket exactly once", () => {
+    expect(isTimeInTick("09:07", 540)).toBe(true); // 09:00 bucket
+    expect(isTimeInTick("09:00", 540)).toBe(true);
+    expect(isTimeInTick("09:14", 540)).toBe(true);
+    expect(isTimeInTick("09:15", 540)).toBe(false); // next bucket
+    expect(isTimeInTick("08:59", 540)).toBe(false); // prev bucket
+  });
+  it("returns false on malformed time", () => {
+    expect(isTimeInTick("bad", 540)).toBe(false);
+  });
+});
+
+describe("isReminderDueOnTick", () => {
+  const rem = { time: "09:07", daysActive: [1, 2, 3, 4, 5], enabled: true };
+  it("is due when enabled, weekday active, and in the tick bucket", () => {
+    expect(isReminderDueOnTick(rem, 1, 540 + 3)).toBe(true); // Mon 09:03 -> bucket 09:00
+  });
+  it("is not due on an inactive weekday", () => {
+    expect(isReminderDueOnTick(rem, 0, 540 + 3)).toBe(false); // Sunday
+  });
+  it("is not due outside the bucket", () => {
+    expect(isReminderDueOnTick(rem, 1, 555)).toBe(false); // 09:15 bucket
+  });
+  it("is not due when disabled", () => {
+    expect(isReminderDueOnTick({ ...rem, enabled: false }, 1, 543)).toBe(false);
+  });
+});

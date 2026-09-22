@@ -721,6 +721,11 @@ model UserReminder {
   // cascade so deleting a habit cannot cascade-delete a reminder row the
   // scheduler is mid-read on; the API clears it explicitly.
   habitId    String?
+  // Server reminder dispatcher dedup (2026-09). Local YYYY-MM-DD this reminder
+  // last fired on. The dispatcher skips a reminder whose lastFiredLocalDate ==
+  // today (user-local), so a cron retry or two concurrent runs can't double-send
+  // — same idempotency pattern as User.v10Day2PushSentAt. Null = never fired.
+  lastFiredLocalDate String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
