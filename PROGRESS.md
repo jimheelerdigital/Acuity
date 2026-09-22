@@ -60,7 +60,7 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** 2b5a3500
 
 ### In plain English (for Keenan)
 Every slideshow reel we publish now closes on a branded final slide with the Ripple logo and a button-style download CTA. BWK reels get the dark-mode version ("Your AI life optimizer." / "Tracks your habits. Gives you insights on how to be a better you." / "Download in our bio"); Ripple reels get the light orange version ("Take the load off." / "Ripple, your daily life optimizer." / "Download at the link in our bio"). Viewers who watch to the end now always see who made the content and how to get the app.
