@@ -304,7 +304,7 @@ async function main() {
     logo: await colorLogoAlpha("ripple-lockup-cream.png", 660, "#FAF4EF"),
     headline: "Take the load off.",
     headlineColor: CORAL,
-    subline: "Ripple, your daily life optimizer.",
+    subline: "Talk daily, optimize your life.",
     sublineColor: "#4A4438",
     pillText: "Download at the link in our bio",
     pillColor: "#E06A3C",
