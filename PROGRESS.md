@@ -56,6 +56,30 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 - Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
 
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+## [2026-09-22] — "Run now" no longer depends on the silently-broken Inngest function
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5680ee3a
+
+### In plain English (for Keenan)
+The Run-now button on the Audience Pulse tab was handing the job to a background system that was silently ignoring it — you clicked, it said "queued," and nothing ever happened. The button now does the work itself: click it, leave the tab open a few minutes, and it builds both brands' digests and emails you the script report directly.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: `reddit-digest` action now runs `buildDailyDigest("ripple"|"bwk")` in parallel + `sendVideoScriptReport()` inline instead of sending the `content-factory/reddit.digest` event (route already had maxDuration=300)
+- apps/web/src/app/admin/tabs/AudiencePulseTab.tsx: button shows a long-running state and reloads the digest list on completion
+- Evidence for the bypass: 2026-09-22 04:00 UTC cron produced no RedditTrendDigest rows and no ClaudeCallLog entries; a manual event send (~17:05 UTC) also produced nothing — while carousel-daily, its event-triggered generate runs (all 13 lanes), social-publish, and admin_insights all ran normally the same day. The failure is isolated to the reddit-trends-daily function.
+
+### Manual steps needed
+- [ ] Jimmy: check the Inngest dashboard for reddit-trends-daily — is it archived, paused, duplicated across apps, or erroring at trigger registration? The cron path is still wired and should fire Mondays 04:00 UTC once fixed
+- [ ] Keenan: click Run now again after this deploy
+
+### Notes
+- Prime suspect for the function's state: this morning's stale deploy synced an app version that did not contain reddit-trends-daily (the file didn't exist in that tree), which may have archived the function in Inngest; the later re-sync claimed to re-register it, but the event still didn't invoke it. Dashboard will confirm.
+- The inline run loses Inngest's step retries, which is acceptable for a manually-watched admin action. The Monday cron keeps the retryable step-based path.
+
+---
+
 ## [2026-09-22] — Prod rollback recovered: Jimmy's unpushed deploy merged with main
 
 **Requested by:** Keenan
