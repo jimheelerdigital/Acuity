@@ -11,7 +11,7 @@ import OpenAI from "openai";
 import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
-import type { QuoteSurface, TextsLane } from "./moody-carousel";
+import type { QuoteSurface, TextsLane, RippleAvatarLane } from "./moody-carousel";
 import { buildCaption } from "./caption";
 
 let _openai: OpenAI | null = null;
@@ -123,7 +123,7 @@ export async function generateCarousel(
   for (let i = 0; i < topic.reasons.length; i++) {
     const reason = topic.reasons[i];
     const prompt = buildImagePrompt(lanePrefix, reason, topic);
-    const rawBuffer = await generateImage(prompt);
+    const rawBuffer = await generateImage(prompt, "item");
     totalCostCents += estimateImageCost();
     const composed = await composeSlide(rawBuffer, reason, "REASON", i + 1);
     const url = await uploadImage(
@@ -379,46 +379,94 @@ export function buildSelfieImagePrompt(opts: {
 }
 
 /**
- * Keenan's avatar reference photo for BWK lone-man scenes (2026-08-30,
- * per Keenan: "use me as an avatar for pictures that need one").
- * Uploaded once to Supabase storage; cached per lambda instance.
- * Returns null (and the caller falls back to plain generation) if the
- * file is missing — the avatar is an enhancement, never a dependency.
+ * Avatar reference photos, cached per lambda instance. The default
+ * path is Keenan's BWK reference (2026-08-30, per Keenan: "use me as
+ * an avatar for pictures that need one"); the Ripple lane avatars
+ * (2026-09-17) pass their own per-lane paths. Returns null (and the
+ * caller falls back to plain generation) if the file is missing — the
+ * avatar is an enhancement, never a dependency.
  */
 const AVATAR_REFERENCE_PATH = "reference/bwk-avatar.jpg";
-let _avatarCache: Buffer | null | undefined;
-export async function getAvatarReference(): Promise<Buffer | null> {
-  if (_avatarCache !== undefined) return _avatarCache;
+const _avatarCache = new Map<string, Buffer | null>();
+export async function getAvatarReference(
+  path: string = AVATAR_REFERENCE_PATH
+): Promise<Buffer | null> {
+  const cached = _avatarCache.get(path);
+  if (cached !== undefined) return cached;
+  let result: Buffer | null = null;
   try {
     const { supabase } = await import("@/lib/supabase.server");
     const { data, error } = await supabase.storage
       .from("content-factory")
-      .download(AVATAR_REFERENCE_PATH);
+      .download(path);
     if (error || !data) {
-      console.warn(`[carousel] Avatar reference missing: ${error?.message}`);
-      _avatarCache = null;
+      console.warn(
+        `[carousel] Avatar reference missing (${path}): ${error?.message}`
+      );
     } else {
-      _avatarCache = Buffer.from(await data.arrayBuffer());
+      result = Buffer.from(await data.arrayBuffer());
     }
   } catch (e) {
-    console.warn(`[carousel] Avatar reference fetch failed:`, e);
-    _avatarCache = null;
+    console.warn(`[carousel] Avatar reference fetch failed (${path}):`, e);
   }
-  return _avatarCache;
+  _avatarCache.set(path, result);
+  return result;
 }
 
-export async function generateImage(prompt: string): Promise<Buffer> {
+/**
+ * Cost split (2026-09-17, per Keenan: "the FIRST picture of every
+ * generation should use the newest model of chatgpt, and every other
+ * picture in the carousel should revert to the older model"). The
+ * cover is the scroll-stopper — it stays on gpt-image-2; interior
+ * slides render on gpt-image-1 at a fraction of the cost. Baked-TEXT
+ * slides (phone-quote / texts bubbles) intentionally stay on the
+ * cover model: their text is vision-verified and the older model's
+ * typesetting fails verification more often, which costs retries.
+ */
+export type ImageSlot = "cover" | "item";
+
+export async function generateImage(
+  prompt: string,
+  slot: ImageSlot = "cover"
+): Promise<Buffer> {
+  const cover = slot === "cover";
   const response = await openai().images.generate({
-    model: "gpt-image-2",
+    model: cover ? "gpt-image-2" : "gpt-image-1",
     prompt,
     n: 1,
-    size: "1024x1792", // 9:16 portrait — native TikTok carousel dimensions
-    // 2026-09-04, per Keenan's TRUST THE PROCESS reference: "images
-    // need to be this level of quality" — pin max fidelity instead of
-    // the model's default tier. ~3x cost per image (see estimateImageCost).
-    quality: "high",
+    // 9:16 portrait — native TikTok carousel dimensions. gpt-image-1's
+    // tallest size is 1024x1536; composeSlide cover-crops to 1080x1920
+    // downstream either way (same path the edit endpoint already uses).
+    size: cover ? "1024x1792" : "1024x1536",
+    // Covers stay max fidelity (2026-09-04, per Keenan's TRUST THE
+    // PROCESS reference: "images need to be this level of quality") —
+    // they're the scroll-stopper. Interior slides dropped to "medium"
+    // (2026-09-21, per Keenan): they're moody backgrounds behind
+    // composited text, and high on interiors was ~60% of the ~$16/day
+    // image bill. ~25¢ → ~6¢ per interior.
+    quality: cover ? "high" : "medium",
   });
 
+  const b64 = response.data?.[0]?.b64_json;
+  if (!b64) throw new Error("image generation returned no image data");
+  return Buffer.from(b64, "base64");
+}
+
+/**
+ * Small square image for timeline-grid CELLS (2026-09-16). Cells
+ * display at 360×540 inside the 2×3 collage, so quality "medium"
+ * (~4¢) is indistinguishable from "high" (~25¢) at that size — a
+ * 24-cell post at "high" would cost ~$6 in cells alone.
+ */
+export async function generateGridCellImage(prompt: string): Promise<Buffer> {
+  const response = await openai().images.generate({
+    // Cells are item slides — older model per the 2026-09-17 cost split.
+    model: "gpt-image-1",
+    prompt,
+    n: 1,
+    size: "1024x1024",
+    quality: "medium",
+  });
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("gpt-image-2 returned no image data");
   return Buffer.from(b64, "base64");
@@ -436,7 +484,14 @@ export async function generateImageWithReference(
   prompt: string,
   reference: Buffer
 ): Promise<Buffer> {
-  const file = await OpenAI.toFile(reference, "reference.jpg", { type: "image/jpeg" });
+  // BWK reference is JPEG; Ripple lane references are PNG — sniff the
+  // magic bytes so the upload's content type is honest either way.
+  const isPng = reference[0] === 0x89 && reference[1] === 0x50;
+  const file = await OpenAI.toFile(
+    reference,
+    isPng ? "reference.png" : "reference.jpg",
+    { type: isPng ? "image/png" : "image/jpeg" }
+  );
   const response = await openai().images.edit({
     model: "gpt-image-2",
     image: file,
@@ -464,20 +519,40 @@ export async function generateImageWithReference(
  */
 export async function generateMoodyImage(
   prompt: string,
-  withAvatar: boolean
+  withAvatar: boolean,
+  slot: ImageSlot = "cover",
+  // Ripple lane avatars (2026-09-17): when set (and withAvatar is
+  // true), the lane's fictional recurring woman is the reference
+  // instead of the BWK Keenan avatar.
+  rippleAvatarLane?: RippleAvatarLane
 ): Promise<{ buffer: Buffer; prompt: string }> {
   if (withAvatar) {
-    const reference = await getAvatarReference();
-    if (reference) {
-      const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
-      const full = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
-      return {
-        buffer: await generateImageWithReference(full, reference),
-        prompt: full,
-      };
+    if (rippleAvatarLane) {
+      const { buildRippleAvatarPrompt, rippleAvatarReferencePath } =
+        await import("./moody-carousel");
+      const reference = await getAvatarReference(
+        rippleAvatarReferencePath(rippleAvatarLane)
+      );
+      if (reference) {
+        const full = `${prompt}\n${buildRippleAvatarPrompt(rippleAvatarLane)}`;
+        return {
+          buffer: await generateImageWithReference(full, reference),
+          prompt: full,
+        };
+      }
+    } else {
+      const reference = await getAvatarReference();
+      if (reference) {
+        const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
+        const full = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
+        return {
+          buffer: await generateImageWithReference(full, reference),
+          prompt: full,
+        };
+      }
     }
   }
-  return { buffer: await generateImage(prompt), prompt };
+  return { buffer: await generateImage(prompt, slot), prompt };
 }
 
 /** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. */
@@ -720,7 +795,19 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // one of the known lead-ins) so the model isn't told to match a
     // photo that isn't attached.
     if (slide.imagePrompt.includes("reference photo")) {
-      const reference = await getAvatarReference();
+      // Ripple avatar-led lanes (2026-09-17) re-attach the LANE's
+      // reference, not the BWK one — otherwise an edit would swap the
+      // lane's recurring woman for Keenan.
+      const { RIPPLE_AVATAR_LANES, rippleAvatarReferencePath } = await import(
+        "./moody-carousel"
+      );
+      const editLane = slide.carouselPost.lane ?? "";
+      const refPath = (RIPPLE_AVATAR_LANES as readonly string[]).includes(
+        editLane
+      )
+        ? rippleAvatarReferencePath(editLane as RippleAvatarLane)
+        : undefined;
+      const reference = await getAvatarReference(refPath);
       if (reference) {
         rawBuffer = await generateImageWithReference(slide.imagePrompt, reference);
       } else {

@@ -14,10 +14,10 @@ import { SessionUserMenu } from "@/components/user-menu";
 export function AdminTopbar() {
   return (
     <header
-      className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-acuity-line px-4 backdrop-blur-md sm:px-8"
+      className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-acuity-line px-4 backdrop-blur-xl sm:px-8"
       style={{
         background:
-          "color-mix(in oklch, var(--acuity-bg), transparent 15%)",
+          "color-mix(in oklch, var(--acuity-bg), transparent 35%)",
       }}
     >
       <Link
@@ -30,14 +30,33 @@ export function AdminTopbar() {
           className="shrink-0"
           style={{ width: 32, height: 32 }}
         />
-        <span
-          className="font-semibold"
-          style={{ fontSize: 18, letterSpacing: "-0.2px" }}
-        >
-          Ripple Admin
+        <span className="flex items-baseline gap-2">
+          <span
+            className="neo-title font-semibold"
+            style={{ fontSize: 18, letterSpacing: "-0.2px" }}
+          >
+            Ripple Command
+          </span>
+          <span
+            className="hidden font-mono uppercase text-acuity-text-quiet sm:inline"
+            style={{ fontSize: 10, letterSpacing: "2px" }}
+          >
+            Admin
+          </span>
         </span>
       </Link>
-      <SessionUserMenu />
+      <div className="flex items-center gap-4">
+        <span className="hidden items-center gap-2 sm:flex">
+          <span className="neo-live-dot" />
+          <span
+            className="font-mono uppercase text-acuity-text-ter"
+            style={{ fontSize: 10, letterSpacing: "2px" }}
+          >
+            Live
+          </span>
+        </span>
+        <SessionUserMenu />
+      </div>
     </header>
   );
 }

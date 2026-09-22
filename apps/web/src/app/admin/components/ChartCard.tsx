@@ -11,7 +11,7 @@ interface Props {
 export default function ChartCard({ title, children, className, action }: Props) {
   return (
     <div
-      className={`rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft ${className ?? ""}`}
+      className={`neo-edge rounded-acuity-lg border border-acuity-card-border bg-acuity-card-bg shadow-acuity-soft backdrop-blur-md ${className ?? ""}`}
       style={{ padding: 20 }}
     >
       <div className="mb-5 flex items-center justify-between gap-3">

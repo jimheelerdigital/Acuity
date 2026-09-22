@@ -10,11 +10,13 @@
  * - "ripple" — reuses the metrics-refresh creds already in Vercel:
  *     IG_ACCESS_TOKEN (long-lived Page access token), IG_USER_ID
  *   plus one new var: FB_PAGE_ID (the Ripple Facebook Page ID).
- * - "bwk" — optional, for when Build With Key gets its own IG/FB:
+ * - "bwk" — for when Build With Key gets its own IG/FB:
  *     META_BWK_ACCESS_TOKEN, META_BWK_IG_USER_ID, META_BWK_FB_PAGE_ID
- *   Until those exist, BWK lanes FALL BACK to the Ripple account
- *   (Keenan's call 2026-09-10 — capture all markets from one page until
- *   dedicated BWK accounts are set up).
+ *   Until those exist, BWK lanes DO NOT post to IG/FB at all (Keenan's
+ *   call 2026-09-14: "don't post bwk posts across insta/facebook yet" —
+ *   reversing the 2026-09-10 fall-back-to-Ripple decision). BWK is
+ *   TikTok-only until the Meta creds land; adding them to Vercel turns
+ *   BWK IG/FB on with zero code changes.
  *
  * Master switch: SOCIAL_AUTOPUBLISH_ENABLED=1. Everything no-ops without
  * it, so this ships dark until the SocialPublish table is pushed and the
@@ -79,8 +81,108 @@ export function laneWantsReel(lane: string | null): boolean {
   return (REEL_LANES as readonly string[]).includes(lane ?? "");
 }
 
+/**
+ * Trim legacy pick-list posts at publish time (2026-09-15, per Keenan —
+ * a pre-retirement BWK post shipped all 18 slides to TikTok: "it sent 3
+ * separate 'what gets counted' and 15 separate posts as part of it
+ * instead of cutting it down like we discussed").
+ *
+ * Posts generated before the 2026-09-14 pick-list retirement carry 3
+ * duplicate COVER slides + up to 15 items. Multiple covers is the
+ * legacy tell — those posts publish as 1 cover + first 6 items (the
+ * agreed go-live shape). New-format posts (1 cover + 4-7 items) pass
+ * through untouched.
+ */
+export function trimLegacyPickList<T extends { kind: string }>(
+  slides: T[]
+): T[] {
+  const covers = slides.filter((s) => s.kind === "COVER");
+  if (covers.length <= 1) return slides;
+  const items = slides.filter((s) => s.kind !== "COVER");
+  return [covers[0], ...items.slice(0, 6)];
+}
+
 export type SocialAccountKey = "ripple" | "bwk";
 export type SocialPlatform = "instagram" | "facebook" | "tiktok";
+
+// ─── Prime-time scheduling (2026-09-15, per Keenan: "make sure ALL
+// posts on social media are at prime time social media hours for the
+// US") ───────────────────────────────────────────────────────────────
+// Windows are EASTERN time (~47% of the US lives in ET; Central lags by
+// one hour, so ET windows serve both coasts' peaks). Sources: Sprout
+// Social 2026 (2B engagements), Buffer 2026 (7M TikTok posts):
+// - Instagram peaks 9am-1pm + 5-7pm ET weekdays → 12pm-7pm window
+// - Facebook peaks 8am-1pm ET, dead after 6pm → 12pm-6pm window
+// REVISED 2026-09-18, per Keenan: "it's pushing posts at 6 am pst, too
+// early" — the queue is built overnight, so the first post always fired
+// at window-open, and FB's old 9am ET open = 6am PT. Both windows now
+// open at NOON ET (9am PT): nothing ships before 9am anywhere in the
+// continental US, noon-1pm ET still catches the lunchtime peak, and IG
+// keeps its 5-7pm ET evening peak. FB stagger tightened 50→45min so the
+// shorter window still fits all 7 daily Ripple posts (360/45 = 8 slots).
+// - TikTok rows are INBOX DRAFT deliveries, not posts — Keenan posts
+//   them by hand through the day, so they all land FIRST THING IN THE
+//   MORNING (7-10am ET = 6-9am CT, per Keenan 2026-09-15: "tiktok i
+//   want first thing in the morning so i can go in throughout the day
+//   to post them"). Short stagger — delivery time isn't engagement
+//   time.
+export const PLATFORM_WINDOWS: Record<
+  SocialPlatform,
+  { openMin: number; closeMin: number; staggerMs: number }
+> = {
+  instagram: { openMin: 12 * 60, closeMin: 19 * 60, staggerMs: 50 * 60_000 },
+  facebook: { openMin: 12 * 60, closeMin: 18 * 60, staggerMs: 45 * 60_000 },
+  tiktok: { openMin: 7 * 60, closeMin: 10 * 60, staggerMs: 5 * 60_000 },
+};
+
+const ET = "America/New_York";
+
+/** Milliseconds to ADD to a UTC instant to get its ET wall-clock time. */
+function etOffsetMs(d: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: ET,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value])
+  );
+  const asUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour) % 24,
+    Number(parts.minute),
+    Number(parts.second)
+  );
+  return asUtc - d.getTime();
+}
+
+/**
+ * Clamp an instant into the platform's ET posting window: inside the
+ * window → unchanged; before it opens → today's open; after it closes →
+ * tomorrow's open. (DST edge: the offset is taken at `t`, so a slot
+ * computed across a spring-forward/fall-back boundary can be off by an
+ * hour once a year — harmless for posting windows this wide.)
+ */
+export function clampToWindow(t: Date, platform: SocialPlatform): Date {
+  const w = PLATFORM_WINDOWS[platform];
+  const off = etOffsetMs(t);
+  const wall = new Date(t.getTime() + off); // UTC fields = ET wall clock
+  const mod = wall.getUTCHours() * 60 + wall.getUTCMinutes();
+  if (mod >= w.openMin && mod < w.closeMin) return t;
+  let openWallMs =
+    Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate()) +
+    w.openMin * 60_000;
+  if (mod >= w.closeMin) openWallMs += 86_400_000;
+  return new Date(openWallMs - off);
+}
 
 export interface SocialAccount {
   key: SocialAccountKey;
@@ -93,39 +195,82 @@ export function autoPublishEnabled(): boolean {
   return process.env.SOCIAL_AUTOPUBLISH_ENABLED === "1";
 }
 
+/**
+ * Env values get trimmed: a trailing space pasted into a Vercel env var
+ * (live incident 2026-09-14 — IG_USER_ID ended in " " and every Graph
+ * call 404'd with "Object with ID '… ' does not exist") corrupts the
+ * request path silently.
+ */
+function env(name: string): string | null {
+  const v = process.env[name]?.trim();
+  return v ? v : null;
+}
+
 function rippleAccount(): SocialAccount | null {
-  const accessToken = process.env.IG_ACCESS_TOKEN;
+  const accessToken = env("IG_ACCESS_TOKEN");
   if (!accessToken) return null;
   return {
     key: "ripple",
     accessToken,
-    igUserId: process.env.IG_USER_ID ?? null,
-    fbPageId: process.env.FB_PAGE_ID ?? null,
+    igUserId: env("IG_USER_ID"),
+    fbPageId: env("FB_PAGE_ID"),
   };
 }
 
 function bwkAccount(): SocialAccount | null {
-  const accessToken = process.env.META_BWK_ACCESS_TOKEN;
+  const accessToken = env("META_BWK_ACCESS_TOKEN");
   if (!accessToken) return null;
   return {
     key: "bwk",
     accessToken,
-    igUserId: process.env.META_BWK_IG_USER_ID ?? null,
-    fbPageId: process.env.META_BWK_FB_PAGE_ID ?? null,
+    igUserId: env("META_BWK_IG_USER_ID"),
+    fbPageId: env("META_BWK_FB_PAGE_ID"),
   };
 }
 
 /**
- * Which Meta account a lane posts to. BWK lanes prefer the dedicated BWK
- * account but fall back to Ripple until one exists.
+ * Which brand a lane belongs to. Legacy lanes come from the hard-coded
+ * BWK_LANES list; DB-born lanes (lanes-as-data, 2026-09-15) carry
+ * their brand on the ContentLane row. Every lane that can reach
+ * publishing is either legacy-listed or DB-rowed, so the ripple
+ * default only fires for null/historical lanes. The 5-minute cache
+ * keeps the nightly per-post loops from hammering the table.
  */
-export function resolveAccount(lane: string | null): SocialAccount | null {
-  const isBwk = (BWK_LANES as readonly string[]).includes(lane ?? "");
-  if (isBwk) {
-    const bwk = bwkAccount();
-    if (bwk) return bwk;
+let laneBrandCache: { map: Map<string, string>; at: number } | null = null;
+
+export async function laneBrand(
+  lane: string | null
+): Promise<SocialAccountKey> {
+  if (!lane) return "ripple";
+  if ((BWK_LANES as readonly string[]).includes(lane)) return "bwk";
+  if (!laneBrandCache || Date.now() - laneBrandCache.at > 5 * 60_000) {
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const rows = await prisma.contentLane.findMany({
+        select: { key: true, brand: true },
+      });
+      laneBrandCache = {
+        map: new Map(rows.map((r) => [r.key, r.brand])),
+        at: Date.now(),
+      };
+    } catch {
+      // Table missing/unreachable — legacy list already answered above.
+      laneBrandCache = { map: new Map(), at: Date.now() };
+    }
   }
-  return rippleAccount();
+  return laneBrandCache.map.get(lane) === "bwk" ? "bwk" : "ripple";
+}
+
+/**
+ * Which Meta account a lane posts to. BWK lanes use ONLY the dedicated
+ * BWK account — null until META_BWK_* creds exist, which means no IG/FB
+ * for BWK (men's content must never land on Ripple's women-audience
+ * pages; TikTok is BWK's only live platform for now).
+ */
+export async function resolveAccount(
+  lane: string | null
+): Promise<SocialAccount | null> {
+  return (await laneBrand(lane)) === "bwk" ? bwkAccount() : rippleAccount();
 }
 
 async function graphPost(

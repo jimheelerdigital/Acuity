@@ -188,7 +188,7 @@ export function DrilldownModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl rounded-acuity-xl border border-acuity-card-border bg-acuity-card-bg text-acuity-text shadow-acuity-lift"
+        className="neo-edge w-full max-w-4xl rounded-acuity-xl border border-acuity-card-border bg-acuity-card-bg text-acuity-text shadow-acuity-lift backdrop-blur-xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -347,7 +347,7 @@ function UserTable({
         style={{ fontSize: 14 }}
       >
         <thead
-          className="sticky top-0 bg-acuity-card-bg uppercase tracking-wider text-acuity-text-ter"
+          className="sticky top-0 bg-acuity-card-bg-raised uppercase tracking-wider text-acuity-text-ter"
           style={{ fontSize: 13, fontWeight: 500 }}
         >
           <tr className="border-b border-acuity-line-strong">
@@ -506,7 +506,7 @@ function AggregateTable({
       )}
       <table className="w-full text-left" style={{ fontSize: 14 }}>
         <thead
-          className="sticky top-0 bg-acuity-card-bg uppercase tracking-wider text-acuity-text-ter"
+          className="sticky top-0 bg-acuity-card-bg-raised uppercase tracking-wider text-acuity-text-ter"
           style={{ fontSize: 13, fontWeight: 500 }}
         >
           <tr className="border-b border-acuity-line-strong">

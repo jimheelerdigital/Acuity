@@ -5,9 +5,10 @@
  * Instagram's Graph API cannot attach music to photo carousels — music on
  * an API-published post is only possible when the post IS a video with
  * the audio baked in. So Reel-designated lanes get their slides rendered
- * into a 1080x1920 slideshow MP4 (gentle Ken Burns zoom per slide,
- * crossfades between) with a library music track muxed in, published as
- * an IG Reel + FB video instead of a photo carousel.
+ * into a 1080x1920 slideshow MP4 (static slides with a randomized
+ * transition from REEL_TRANSITIONS — zoom removed 2026-09-15 per Keenan)
+ * with a library music track muxed in, published as an IG Reel + FB
+ * video instead of a photo carousel.
  *
  * MUSIC LIBRARY: Keenan uploads royalty-free MP3s to the content-factory
  * bucket under music/ripple/ and music/bwk/ (Supabase dashboard →
@@ -22,10 +23,25 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-/** Seconds each slide is on screen. */
-const SLIDE_SEC = 2.5;
-/** Crossfade length between slides. */
+/** Seconds each slide is on screen (2026-09-14: 2.5 → 3.3; 2026-09-15,
+ * per Keenan: 3.3 → 3.5 — slides need more read time). */
+const SLIDE_SEC = 3.5;
+/** Transition length between slides. */
 const XFADE_SEC = 0.4;
+/** xfade transition pool (2026-09-15, per Keenan: "play around with the
+ * different transitions so we can get valuable data in the feedback
+ * loop"). One is picked at random per render and recorded on
+ * CarouselPost.reelTransition so engagement metrics can rank them —
+ * once a winner emerges, shrink this list to it. All are directional /
+ * reveal styles that read as intentional motion (no plain fade). */
+export const REEL_TRANSITIONS = [
+  "smoothleft", // soft carousel-swipe (the 09-15 baseline)
+  "slideleft", // crisp hard swipe
+  "circleopen", // circular reveal from center
+  "radial", // clock-sweep reveal
+  "hlslice", // horizontal sliced wipe
+] as const;
+export type ReelTransition = (typeof REEL_TRANSITIONS)[number];
 const FPS = 30;
 
 /** Resolve the bundled ffmpeg binary path (null if unavailable). */
@@ -39,7 +55,10 @@ function ffmpegPath(): string | null {
   }
 }
 
-const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg)$/i;
+// .mp4 included (2026-09-14): Meta Sound Collection downloads tracks as
+// audio-in-mp4 — ffmpeg maps only the audio stream ([n:a]), so any video
+// stream in the file is ignored.
+const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|mp4)$/i;
 
 /**
  * Pick a random music track for a lane from the bucket library.
@@ -47,10 +66,14 @@ const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg)$/i;
  */
 export async function pickMusicTrack(lane: string | null): Promise<string | null> {
   const { supabase } = await import("@/lib/supabase.server");
-  const { BWK_LANES } = await import("./social-publish");
+  const { laneBrand } = await import("./social-publish");
 
-  const isBwk = (BWK_LANES as readonly string[]).includes(lane ?? "");
-  const folders = isBwk ? ["music/bwk", "music/ripple"] : ["music/ripple"];
+  const isBwk = (await laneBrand(lane)) === "bwk";
+  // Supabase Storage paths are case-sensitive and the dashboard-created
+  // BWK folder is uppercase — check both spellings.
+  const folders = isBwk
+    ? ["music/bwk", "music/BWK", "music/ripple"]
+    : ["music/ripple"];
 
   for (const folder of folders) {
     const { data, error } = await supabase.storage
@@ -75,15 +98,16 @@ async function download(url: string, dest: string): Promise<void> {
 
 /**
  * Render slide images into a vertical slideshow MP4 with the music track
- * muxed in. Each slide holds SLIDE_SEC with a subtle zoom, slides
- * crossfade, audio fades out over the last second. Returns the MP4
- * buffer. Throws on any failure — callers fall back to the photo
- * carousel.
+ * muxed in. Each slide holds SLIDE_SEC, slides transition with a
+ * randomly-picked style from REEL_TRANSITIONS, audio fades out over the
+ * last second. Returns the MP4 buffer plus the transition used (callers
+ * persist it for the engagement feedback loop). Throws on any failure —
+ * callers fall back to the photo carousel.
  */
 export async function renderSlideshowReel(
   imageUrls: string[],
   musicUrl: string
-): Promise<Buffer> {
+): Promise<{ buf: Buffer; transition: ReelTransition }> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
   if (imageUrls.length === 0) throw new Error("No images to render");
@@ -100,11 +124,16 @@ export async function renderSlideshowReel(
     await download(musicUrl, musicPath);
 
     const n = imgPaths.length;
-    const frames = Math.round(SLIDE_SEC * FPS);
     const totalSec = n * SLIDE_SEC - (n - 1) * XFADE_SEC;
+    const transition =
+      REEL_TRANSITIONS[Math.floor(Math.random() * REEL_TRANSITIONS.length)];
 
     const args: string[] = ["-y", "-loglevel", "warning"];
-    for (const p of imgPaths) args.push("-i", p);
+    // Each still becomes a SLIDE_SEC-long video stream (-loop 1 -t) —
+    // xfade needs finite, timestamped inputs at a common fps.
+    for (const p of imgPaths) {
+      args.push("-loop", "1", "-t", SLIDE_SEC.toFixed(2), "-framerate", String(FPS), "-i", p);
+    }
     // Loop the track in case it's shorter than the video; -shortest ends
     // the encode when the (finite) video stream does.
     args.push("-stream_loop", "-1", "-i", musicPath);
@@ -113,9 +142,7 @@ export async function renderSlideshowReel(
     for (let i = 0; i < n; i++) {
       filters.push(
         `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,` +
-          `crop=1080:1920,setsar=1,` +
-          `zoompan=z='min(zoom+0.0012,1.10)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
-          `d=${frames}:s=1080x1920:fps=${FPS}[v${i}]`
+          `crop=1080:1920,setsar=1,fps=${FPS},format=yuv420p[v${i}]`
       );
     }
     let videoLabel = "[v0]";
@@ -125,7 +152,7 @@ export async function renderSlideshowReel(
         const out = j === n - 2 ? "[vout]" : `[x${j}]`;
         const left = j === 0 ? "[v0]" : `[x${j - 1}]`;
         filters.push(
-          `${left}[v${j + 1}]xfade=transition=fade:duration=${XFADE_SEC}:offset=${offset}${out}`
+          `${left}[v${j + 1}]xfade=transition=${transition}:duration=${XFADE_SEC}:offset=${offset}${out}`
         );
       }
       videoLabel = "[vout]";
@@ -141,11 +168,25 @@ export async function renderSlideshowReel(
       "-map", "[aud]",
       "-c:v", "libx264",
       "-preset", "fast",
-      "-crf", "21",
+      // Target a FAT ~8Mbps master, not CRF (2026-09-16, per Keenan:
+      // "the facebook/insta posts look super blurry"). CRF 21 encoded
+      // these static slides at ~1.4Mbps — pixel-perfect locally, but
+      // Meta ALWAYS re-encodes Reels, and their transcode of a skinny
+      // master turns burned-in text to mush. A high-bitrate source
+      // survives their second compression visibly sharper. ~19MB for a
+      // 19s reel — far under every platform cap.
+      "-b:v", "8M",
+      "-maxrate", "12M",
+      "-bufsize", "16M",
       "-pix_fmt", "yuv420p",
       "-c:a", "aac",
       "-b:a", "128k",
       "-movflags", "+faststart",
+      // Hard duration cap. -shortest alone does NOT stop the encode when
+      // the audio input is -stream_loop -1 through a filter graph (the
+      // looped stream never EOFs — ffmpeg kept encoding past 80MB for a
+      // 16s video when this was tested 2026-09-14). -t is authoritative.
+      "-t", totalSec.toFixed(2),
       "-shortest",
       outPath
     );
@@ -169,9 +210,9 @@ export async function renderSlideshowReel(
       );
     }
     console.log(
-      `[slideshow-reel] Rendered ${n} slides → ${totalSec.toFixed(1)}s, ${out.length} bytes`
+      `[slideshow-reel] Rendered ${n} slides → ${totalSec.toFixed(1)}s, ${out.length} bytes, transition=${transition}`
     );
-    return out;
+    return { buf: out, transition };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

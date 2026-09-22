@@ -38,14 +38,20 @@ export default function TimeRangeSelector({
 }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-0.5 rounded-acuity-pill border border-acuity-line bg-acuity-bg-sub p-1">
+      <div
+        className="flex items-center gap-0.5 rounded-acuity-pill border border-acuity-line p-1 backdrop-blur-md"
+        style={{
+          background:
+            "color-mix(in oklch, var(--acuity-bg-sub), transparent 30%)",
+        }}
+      >
         {OPTIONS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => onChange(opt.value)}
             className={`rounded-acuity-pill px-3.5 py-1.5 text-[13px] font-medium tabular-nums transition duration-acuity-base ease-acuity-standard ${
               value === opt.value
-                ? "bg-acuity-grad-mix text-acuity-text"
+                ? "bg-acuity-primary-soft text-acuity-primary-hi shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--acuity-primary),transparent_65%)]"
                 : "text-acuity-text-sec hover:text-acuity-text"
             }`}
           >

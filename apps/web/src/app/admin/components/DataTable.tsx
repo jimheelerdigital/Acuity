@@ -136,7 +136,7 @@ export default function DataTable<Row>({
       >
         <table className="w-full text-left text-sm">
           <thead className={maxHeight ? "sticky top-0 z-10" : undefined}>
-            <tr className="border-b border-acuity-line-strong bg-acuity-card-bg">
+            <tr className="border-b border-acuity-line-strong bg-acuity-card-bg-raised">
               {columns.map((col) => {
                 const active = sort?.key === col.key;
                 const sortable = col.sortable !== false;

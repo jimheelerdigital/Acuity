@@ -206,6 +206,18 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        // Canonical auth domain. Any getacuity.io host → goripple.io, same
+        // path. Kept IN CODE (not the Vercel dashboard) on purpose: the
+        // dashboard redirect was silently removed 2026-07-28, which re-broke
+        // Google OAuth (state cookie set on getacuity.io, but NEXTAUTH_URL
+        // returns the callback to goripple.io → "state cookie missing").
+        // 308 so the POST to /api/auth/signin/* keeps its method + body.
+        source: "/:path*",
+        has: [{ type: "host", value: "([a-z0-9-]+\\.)?getacuity\\.io" }],
+        destination: "https://goripple.io/:path*",
+        permanent: true,
+      },
+      {
         // /waitlist retired 2026-05-22 (slice 7)
         source: "/waitlist",
         destination: "/start",

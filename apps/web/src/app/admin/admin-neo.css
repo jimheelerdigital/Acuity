@@ -1,0 +1,252 @@
+/**
+ * Admin "Neo" theme (2026-09-17, per Keenan: "completely revamp the
+ * entire back end dashboard... far more futuristic... glassmorphic").
+ * REVISED same day, per Keenan: "less neon, more animation, cleaner
+ * look and feel" — chroma dialed way down (steel-cyan + dusk-violet
+ * instead of electric neon), the grid floor removed, glow shadows
+ * replaced with soft depth, and a motion pass added (fade-up
+ * entrances with stagger, hover lifts) per DESIGN_SYSTEM §6.
+ *
+ * HOW IT WORKS: the admin subtree already forces dark mode via
+ * data-theme="dark". This file adds data-admin-neo on the same wrapper
+ * and OVERRIDES the acuity-* CSS variables inside it — every tab,
+ * table, card, and chart that uses the token system re-skins without
+ * touching its markup. The consumer app is untouched (nothing here
+ * leaks outside [data-admin-neo]).
+ */
+
+[data-theme="dark"][data-admin-neo] {
+  /* ── Muted cool brand ramp ───────────────────────────────────── */
+  --acuity-primary: oklch(0.8 0.085 200);
+  --acuity-primary-hi: oklch(0.88 0.085 200);
+  --acuity-primary-lo: oklch(0.68 0.085 200);
+  --acuity-primary-soft: oklch(0.8 0.085 200 / 0.12);
+  --acuity-secondary: oklch(0.7 0.1 300);
+  --acuity-secondary-hi: oklch(0.78 0.1 300);
+  --acuity-secondary-lo: oklch(0.58 0.1 300);
+  --acuity-secondary-soft: oklch(0.7 0.1 300 / 0.12);
+  --acuity-primary-h: 200;
+  --acuity-secondary-h: 300;
+
+  /* ── Deep, near-neutral surfaces ─────────────────────────────── */
+  --acuity-bg: oklch(0.15 0.014 260);
+  --acuity-bg-sub: oklch(0.185 0.016 260);
+  --acuity-bg-inset: oklch(0.125 0.012 260);
+  /* Cards stay translucent — frosted glass over the soft shell. */
+  --acuity-card-bg: oklch(0.205 0.018 262 / 0.72);
+  --acuity-card-bg-tint: oklch(0.22 0.024 245 / 0.72);
+  --acuity-card-bg-raised: oklch(0.245 0.02 262 / 0.92);
+  --acuity-card-border: oklch(0.9 0.012 220 / 0.09);
+
+  /* ── Text ────────────────────────────────────────────────────── */
+  --acuity-text: oklch(0.97 0.006 220);
+  --acuity-text-sec: oklch(0.78 0.014 220);
+  --acuity-text-ter: oklch(0.6 0.018 230);
+  --acuity-text-quiet: oklch(0.45 0.018 240);
+
+  /* ── Quiet hairlines (near-neutral, no cyan cast) ────────────── */
+  --acuity-line: oklch(0.9 0.01 220 / 0.08);
+  --acuity-line-strong: oklch(0.9 0.015 215 / 0.16);
+
+  /* ── Soft depth, no glow ─────────────────────────────────────── */
+  --acuity-shadow-soft:
+    0 1px 0 0 oklch(1 0 0 / 0.04) inset,
+    0 10px 30px 0 oklch(0 0 0 / 0.4);
+  --acuity-shadow-lift:
+    0 1px 0 0 oklch(1 0 0 / 0.06) inset,
+    0 18px 44px 0 oklch(0 0 0 / 0.5);
+}
+
+/* ── Shell atmosphere — two faint tints, slow drift ─────────────── */
+
+@keyframes neo-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -2.5%, 0);
+  }
+}
+
+[data-admin-neo] .neo-shell-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      60% 45% at 14% -8%,
+      oklch(0.5 0.07 200 / 0.07) 0%,
+      transparent 65%
+    ),
+    radial-gradient(
+      55% 42% at 90% -4%,
+      oklch(0.45 0.09 300 / 0.06) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      75% 60% at 50% 112%,
+      oklch(0.4 0.06 250 / 0.06) 0%,
+      transparent 60%
+    );
+  animation: neo-drift 26s ease-in-out infinite;
+}
+
+/* ── Glass panel ────────────────────────────────────────────────── */
+
+[data-admin-neo] .neo-glass {
+  background: var(--acuity-card-bg);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  border: 1px solid var(--acuity-card-border);
+  transition:
+    border-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Quiet top-edge accent for hero cards (was a neon strip). */
+[data-admin-neo] .neo-edge {
+  position: relative;
+  overflow: hidden;
+}
+[data-admin-neo] .neo-edge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--acuity-primary), transparent 68%) 35%,
+    color-mix(in oklch, var(--acuity-secondary), transparent 70%) 65%,
+    transparent 100%
+  );
+}
+
+/* ── Title + accent text ────────────────────────────────────────── */
+
+[data-admin-neo] .neo-title {
+  background: linear-gradient(
+    100deg,
+    oklch(0.97 0.006 220) 0%,
+    oklch(0.9 0.035 210) 60%,
+    oklch(0.84 0.05 280) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Kept for markup compat — now a whisper, not a glow. */
+[data-admin-neo] .neo-glow-cyan {
+  text-shadow: 0 0 10px color-mix(in oklch, var(--acuity-primary), transparent 78%);
+}
+
+/* ── Motion pass (DESIGN_SYSTEM §6: fade-up, 60ms stagger) ──────── */
+
+@keyframes neo-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tab content re-enters on every tab switch (wrapper is keyed). */
+[data-admin-neo] .acuity-fade-in {
+  animation: neo-fade-up 340ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Cards + panels fade up as they mount… */
+[data-admin-neo] .neo-glass,
+[data-admin-neo] .neo-edge {
+  animation: neo-fade-up 420ms cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+/* …with a 60ms stagger across siblings (first 8; rest land together). */
+[data-admin-neo] :is(.neo-glass, .neo-edge):nth-child(2) { animation-delay: 60ms; }
+[data-admin-neo] :is(.neo-glass, .neo-edge):nth-child(3) { animation-delay: 120ms; }
+[data-admin-neo] :is(.neo-glass, .neo-edge):nth-child(4) { animation-delay: 180ms; }
+[data-admin-neo] :is(.neo-glass, .neo-edge):nth-child(5) { animation-delay: 240ms; }
+[data-admin-neo] :is(.neo-glass, .neo-edge):nth-child(6) { animation-delay: 300ms; }
+[data-admin-neo] :is(.neo-glass, .neo-edge):nth-child(7) { animation-delay: 360ms; }
+[data-admin-neo] :is(.neo-glass, .neo-edge):nth-child(8) { animation-delay: 420ms; }
+
+/* Clickable cards lift slightly on hover (soft depth, never glow). */
+[data-admin-neo] button.neo-edge,
+[data-admin-neo] a.neo-edge {
+  transition:
+    transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+[data-admin-neo] button.neo-edge:hover,
+[data-admin-neo] a.neo-edge:hover {
+  transform: translateY(-2px);
+}
+[data-admin-neo] button.neo-edge:active {
+  transform: translateY(0) scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin-neo] .neo-shell-bg {
+    animation: none;
+  }
+  [data-admin-neo] .acuity-fade-in,
+  [data-admin-neo] .neo-glass,
+  [data-admin-neo] .neo-edge {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+  [data-admin-neo] button.neo-edge:hover,
+  [data-admin-neo] a.neo-edge:hover {
+    transform: none;
+  }
+}
+
+/* ── Status pulse dot ───────────────────────────────────────────── */
+
+@keyframes neo-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.75 0.13 155 / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px oklch(0.75 0.13 155 / 0);
+  }
+}
+
+[data-admin-neo] .neo-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: oklch(0.75 0.13 155);
+  animation: neo-pulse 2.6s ease-in-out infinite;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────── */
+
+[data-admin-neo] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+[data-admin-neo] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-admin-neo] ::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0.02 230 / 0.5);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-admin-neo] ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.55 0.03 220 / 0.6);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}

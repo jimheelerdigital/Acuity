@@ -56,6 +56,798 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 - Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
 
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
+## [2026-09-22] — Prod rollback recovered: Jimmy's unpushed deploy merged with main
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f33fb659 (merge; bd497a0a = recovered tree)
+
+### In plain English (for Keenan)
+This morning production silently rolled back a week: a deploy went out from a machine whose copy of the code was from Sep 14 and had never been pushed to GitHub, so the admin dashboard and all of last week's content-factory work vanished from the live site. Instead of choosing one side, the deployed code was downloaded back out of Vercel and merged with GitHub — so the live site now has BOTH Jimmy's new mobile/habits/notifications work AND everything else. Nothing was lost on either side.
+
+### Technical changes (for Jimmy)
+- Recovered your deployed source tree from Vercel (deployment `acuity-ce38myuz7`, source tarball via API), committed it on branch `recover/jimmy-deploy` at its base commit f1adb2f2, then three-way merged `origin/main` into it — main fast-forwarded to the merge.
+- Your side that's now in main: habits `type` (reflection) feature, `/api/habits/[id]`, `/api/memory-ledger`, `/api/insights/[id]/correction`, `/api/mobile/try-debrief-text`, evidence lib + test suite, notifications-twice-daily overhaul, v10-day2-push cron, packages/shared habits/notifications/evidence, all the apps/mobile v10 onboarding work.
+- Conflicts (5) all resolved toward your deployed tree (it was the newer iteration; apple/google-iap diffs were comment-only).
+- prisma/schema.prisma merged to the union: your `Habit.type` + `UserReminder.lastFiredLocalDate` + relation renames, plus the six content-factory models (ContentLane, RedditTrendDigest, CompetitorAccount, CompetitorPost, HashtagWatch, HashtagVideo). Verified against prod information_schema: **merged schema now matches the live DB** — db:push from main is safe again.
+- PROGRESS.md merge garble fixed (your 08-16 evidence entry moved to date order; duplicate RevenueCat heading removed).
+- New diagnostics: apps/web/scripts/check-pulse-run.ts, check-adlab-columns.ts.
+
+### Manual steps needed
+- [ ] Jimmy: `git pull` before anything else — your unpushed work is now IN main; deploying or pushing schema from the stale checkout will regress prod again
+- [ ] Jimmy: your checkout's schema was missing the six content-factory tables above — a `db push` from it would have dropped live tables. Pull first, always push schema from main (see CLAUDE.md corollary)
+- [ ] Jimmy: check the Inngest dashboard for why `reddit-trends-daily` (cron `0 4 * * 1`) did not fire on 2026-09-22 — no digest rows and no run visible from outside
+- [ ] Keenan: admin → Audience Pulse → "Run now" to fire the missed weekly digest + script report
+
+### Notes
+- Root cause of the rollback: `vercel deploy --prod` from a working tree based on f1adb2f2 (Sep 14) that was never pushed. CLI deploys upload local files; git is bypassed entirely. If we keep deploying via CLI from two machines, "pull before deploy" has to be a hard rule.
+- Typecheck of the merged tree vs main baseline: all merge-related errors resolve after `prisma generate`. Remaining deltas are pre-existing: adlab video fields (`AdLabCreative.videoUrl` etc.) are referenced in code but exist in neither schema.prisma nor the prod DB — dormant/dead code path, predates this merge, left as-is.
+- The generated Prisma client in local node_modules is now from the merged (union) schema — a superset, safe for all existing code.
+
+---
+
+## [2026-09-21] — "Run now" button for the audience pulse + script report
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** d3a28310
+
+### In plain English (for Keenan)
+You can now trigger the Reddit audience-pulse digest (and the talking-head script email that rides along with it) on demand from the admin dashboard — Audience Pulse tab, "Run now" button — instead of waiting for the Monday morning run.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/carousels/route.ts: new POST action `reddit-digest` — sends the `content-factory/reddit.digest` Inngest event (auth: CRON_SECRET bearer or admin session, same as the other actions)
+- apps/web/src/app/admin/tabs/AudiencePulseTab.tsx: "Run now" button (running/queued states), copy updated from "nightly" to the weekly Monday cadence
+
+### Manual steps needed
+- [ ] None beyond the Inngest resync already flagged in the earlier 2026-09-21 entries (`curl -X PUT https://goripple.io/api/inngest` after deploy)
+
+### Notes
+- The event fires the full reddit-trends-daily function: both brand digests rebuild, then the script report emails. A manual run mid-week overwrites nothing — digests are append-only rows keyed by date.
+- CRON_SECRET bearer auth on this route means the digest can also be fired via curl without an admin session.
+
+---
+
+## [2026-09-21] — Weekly talking-head video scripts from the audience pulse
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7a367b5b
+
+### In plain English (for Keenan)
+Every Monday, right after the weekly Reddit audience research runs, you now get an email with 3 camera-ready talking-head TikTok scripts per brand (Ripple and BWK). Each script rides one of that week's strongest audience themes: a scroll-stopping opening line, a few spoken beats, and a soft close, written in each brand's voice. Read them to camera like a voice memo, one take.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/video-scripts.ts`: `generateVideoScripts(brand)` pulls the top 6 themes via `getTopThemes`, has Claude (sonnet-4-6, logged to ClaudeCallLog as `video-scripts-{brand}`) write exactly 3 scripts with the HUMAN_VOICE_RULES prevention layer; `sendVideoScriptReport()` emails both brands' scripts via Resend (same FROM/TO envs as hashtag-trends)
+- `apps/web/src/inngest/functions/reddit-trends-daily.ts`: new `email-video-scripts` step after the two digest steps — soft-fail, never breaks the digest run
+- New `apps/web/scripts/send-script-report.ts`: on-demand local runner (same env-loading pattern as send-welcome-test.ts)
+- Everything is soft: no fresh digest, Claude error, or missing RESEND_API_KEY → no email, run still succeeds
+
+### Manual steps needed
+- [ ] Push + deploy, then `curl -X PUT https://goripple.io/api/inngest` (cron + step changes) — Claude at push time
+- [ ] Trigger `content-factory/reddit.digest` from Inngest after deploy to send Keenan the first report immediately (Claude at push time — Keenan asked for it "now")
+
+### Notes
+- The local ANTHROPIC_API_KEY in apps/web/.env.local AND root .env is stale (401 invalid) — the valid key lives only in Vercel. The on-demand runner therefore can't send from a laptop until someone refreshes the local key; the first send has to go through prod via the manual Inngest event.
+- Scripts deliberately have no product mention and no "follow for more" — organic brand-building only, matching the lanes' rules.
+
+---
+
+## [2026-09-21] — Cheaper interior slides + weekly Reddit pulse
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** dd02aadb (image quality), 6dfd3e1c (weekly pulse)
+
+### In plain English (for Keenan)
+Two cost cuts. First, the image bill (~$16/day) drops by more than half: cover photos and any slide with text baked into the image keep max quality, but the interior background slides now render at medium quality — they sit behind composited text and are seen for a second mid-swipe, so the difference is invisible in practice. Second, the Reddit audience-pulse research now runs once a week (Mondays) instead of every night; posts still use the latest weekly pulse all week long.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `generateImage` quality `"high"` → `cover ? "high" : "medium"` (~25¢ → ~6¢ per interior). Covers, baked phone-quote/texts slides (vision-verified text), and `generateImageWithReference` (avatar/story consistency) unchanged at high.
+- `apps/web/src/inngest/functions/reddit-trends-daily.ts`: cron `0 4 * * *` → `0 4 * * 1` (Mondays); name → "Weekly Reddit Audience Pulse". Function ID unchanged.
+- `apps/web/src/lib/content-factory/reddit-trends.ts`: `getAudiencePulse` + `getTopThemes` digest freshness cutoff 3 → 8 days, so weekly digests cover the whole week (3-day window would have left lanes pulse-blind Thu–Sun).
+- New diagnostic script `apps/web/scripts/lane-audit.ts` (untracked): per-lane generated/posted/engagement rollup from CarouselPost, used for the lane-kill audit.
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` to resync Inngest for the cron change (Claude at push time)
+
+### Notes
+- Lane audit findings (2026-09-21): 454 posts generated in 45 days, 43 with links pasted — ALL Ripple. BWK lanes show zero posted links but Keenan confirms he posts them all on TikTok where they perform well. TikTok metrics have no automated path (Display API unavailable; Apify fallback deliberately scrapped 2026-09-16), so the engagement feedback loop only sees IG/FB. Any lane-kill decision needs Keenan's TikTok analytics, not our DB.
+- This walks back part of the 2026-09-04 "TRUST THE PROCESS" max-fidelity mandate, explicitly approved by Keenan today for interiors only.
+
+---
+
+## [2026-09-21] — Apify scraping cut to once a month, 10 posts per source
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7f5b2fd3
+
+### In plain English (for Keenan)
+We were maxing out our Apify plan because the competitor scrape ran every day and the niche hashtag research ran every night. All three research scrapers (competitor accounts, niche hashtag research, niche discovery) now run once a month and pull 10 posts per account or hashtag instead of 15–20. This drops Apify usage from roughly 11,500 scraped items a month to about 300, so the plan limit should never trip again. The manual "Scrape now" buttons in the admin still work any time you want fresh data on demand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/competitor-scrape-daily.ts`: cron `30 3 * * *` → `30 3 1 * *` (1st of month); display name → "Monthly Competitor Scrape"
+- `apps/web/src/inngest/functions/niche-research-nightly.ts`: cron `0 2 * * *` → `0 2 1 * *` (1st of month); viral IG/TikTok hashtag scrapes 15 → 10 results per tag; display name → "Monthly Research"
+- `apps/web/src/inngest/functions/niche-discovery.ts`: cron `0 2 * * 0` (weekly Sun) → `0 2 15 * *` (15th of month); discovery scrapes 20 → 10 per tag
+- `apps/web/src/lib/content-factory/competitor-mimic.ts`: `POSTS_PER_ACCOUNT` 20 → 10
+- Function IDs unchanged (only crons + display names) so Inngest history is preserved
+- New diagnostic script `apps/web/scripts/apify-usage-check.ts` (untracked) — groupBy counts of CompetitorAccount / HashtagWatch / NicheAccount for future Apify-usage audits
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` to resync Inngest — cron changes do NOT take effect on deploy alone (Keenan or Claude at push time)
+
+### Notes
+- Live counts at time of change: 4 active competitor accounts (all TikTok), 0 hashtag watches, 25 niche accounts (all inactive), 1 niche profile. ~80% of Apify volume was the two nightly hashtag-viral runs (10 tags × 15 results × 2 platforms daily).
+- Mimic briefs (muse lanes) and the viral feed will now refresh monthly — content quality of those lanes depends on month-old competitor data between runs. If that hurts the muse lanes, the levers are the admin "Scrape now" buttons or moving the crons back to weekly.
+- Discovery moved to the 15th (not the 1st) so the two heavy jobs don't share a day.
+
+---
+
+## [2026-09-19] — Reddit-driven lanes now write problem → fix posts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 64394d6b
+
+### In plain English (for Keenan)
+The Pulse lanes (the ones built from what our audiences are talking about on Reddit) used to squeeze the day's hot topic into the lane's usual reflective format. Now every one of those posts is built as its own thing in one consistent shape: the cover names the exact issue people are wrestling with ("CAN'T SWITCH OFF AT NIGHT?"), and each following slide is one concrete step of how to solve it — specific actions, exact times, even the exact words to say. Vague advice like "set boundaries" is explicitly banned; the prompt demands things like the actual text message to send.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/reddit-trends.ts: `getTopTheme` → `getTopThemes(brand, take=4)` — returns the top ranked themes so the writer can pick one that doesn't repeat a recent post (the 7-day rolling blend keeps the same #1 theme around for days)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new `buildRedditSolveSystemPrompt` (THE FIX format — issue-naming title, ordered step slides with "Step name." headers + exact instructions, step 1 doable within the hour, scene briefs + cover-family roll per audience); `generateSpecTopic` branches into it for `spec.redditTheme` lanes, replacing the 09-17 mandated-subject block. No digest = fall through to the base spec theme, unchanged
+- apps/web/src/inngest/functions/carousel-daily.ts: spec lanes render name headers when `spec.redditTheme` even if `spec.named` is false (the seeded women's pulse lane is `named: false`); empty names are filtered so the no-digest fallback still renders cleanly
+- No schema, route, or Inngest trigger changes
+
+### Manual steps needed
+None — takes effect on the next nightly generation after deploy.
+
+### Notes
+- Affects `pulse` (Ripple) and `pulse-men` (BWK) only; the muse (competitor-mimic) lanes are untouched
+- The solve prompt gets the top 4 themes and picks the strongest that avoids the recent-headlines list — without this, the rolling blend would make the lane repeat the same issue several days running
+- The DB lane specs (`named`, theme text) were deliberately NOT migrated — the solve format is enforced in code, and the spec theme now only serves the no-digest fallback
+
+---
+
+## [2026-09-18] — Ripple images now rotate five visual worlds instead of one
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a2a80455
+
+### In plain English (for Keenan)
+Ripple's photos kept coming out as the same warm lamplit-interior theme (tea, silk, candles) because every lane pulled from one scene pool. Now every Ripple post rolls one of five distinct visual worlds for its cover — quiet home after dark, night gardens, dusk water, evening city, or a warm still-life — and the slides inside a post must mix at least three of those worlds. Same soft feminine brand, far more visual variety, exactly like the rotation that already keeps BWK's covers fresh.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts (all changes in this file):
+  - New `WOMEN_COVER_FAMILIES` (5 families) + `rollWomenCoverRule()` — the women's mirror of `rollMenCoverRule`, rolled fresh per generation, supports `forcedFamily` pinning
+  - Rewrote `WOMEN_SCENE_BRIEFS` (light + dark) from one interior pool into the same 5 families, with a FAMILY-SPREAD RULE: item scenes in one post must span ≥3 families
+  - Wired the roll into every live Ripple lane: questions, permission (cover only — items stay theme-matched thresholds), spec lanes (pulse/muse), phone-quote women, texts-younger, and the women's moody path
+  - Memento keeps its dusk-coast cover lock (the winning "do the math" beach identity) but its dark item-scene pool gains beyond-the-house locations
+  - Letter lane untouched — stationery covers are its identity
+- No schema, route, or Inngest changes
+
+### Manual steps needed
+None — takes effect on the next nightly generation after deploy.
+
+### Notes
+- Root cause: Ripple's scheme was pinned to "dark" on 2026-09-03, so every lane drew covers from the single warm-interior pool; BWK never had this problem because its covers roll 4 families
+- The five families were designed to stay inside the existing brand rules: all DIM (white text must read), soft/feminine, no people ever
+- `rollWomenCoverRule()` runs inside builders called from memoized Inngest steps, so replays keep the same family (same behavior as the men's roll)
+
+---
+
+## [2026-09-18] — "Texts to my younger self" covers can no longer be vague
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0233b75c
+
+### In plain English (for Keenan)
+The texts-younger lane produced a cover hook — "the text i keep sending her" — that read like someone texting an ex, not texting their younger self. The AI is now required to name the younger self in every single cover hook ("my younger self", "younger me", "the girl i was", or a specific age), so nobody seeing the cover can misread who the texts are for.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/moody-carousel.ts: rewrote the hook rule in `TEXTS_SYSTEM["texts-younger"]` — the younger-self anchor is now mandatory, unanchored "her"/"she" is explicitly banned, and the two ambiguous example hooks ("if i could reach her...", "she needed to hear these...") were replaced with anchored ones
+- The message-slide screens were already safe — the baked phone UI shows contact name "younger me" at the top of every thread — so only the cover hook needed the fix
+- No schema, route, or Inngest changes
+
+### Manual steps needed
+None — takes effect on the next texts-younger generation after deploy.
+
+### Notes
+- Root cause: the prompt told Claude to "vary the framing every post" and two of the three example hooks used unanchored "her"/"she" pronouns — variation pressure plus vague examples eventually produced a hook with no younger-self anchor at all
+- The vary-the-framing instruction is kept, but now scoped: framing varies, the anchor is non-negotiable
+- future-texts (BWK) checked: its example hooks all name "future self"/"the man you're becoming", so no equivalent risk there
+
+---
+
+## [2026-09-18] — Social posts no longer ship at 6am PST — windows now open 9am PT
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 7379a135
+
+### In plain English (for Keenan)
+Facebook and Instagram posts were firing as early as 6am Pacific because the Facebook posting window opened at 9am Eastern — and since the day's queue is built overnight, the first post always went out the moment the window opened. Both windows now open at noon Eastern (9am Pacific), so nothing ships before 9am anywhere in the continental US. Posting still ends at the same times (Facebook 3pm PT, Instagram 4pm PT). Today's already-queued posts were also rescheduled directly, so the fix took effect immediately — the last early posts were this morning's two.
+
+Also checked "not all posts going out": nothing is failing. Every Ripple post shipped (zero failures in 3 days). The posts that don't go to Instagram/Facebook are all six BWK lanes — that's the hold you asked for on 2026-09-14 ("don't post bwk posts across insta/facebook yet"; BWK has no Meta credentials). BWK reaches you via the daily email for manual TikTok posting. Say the word if you want BWK auto-posting turned on — we'd need the BWK Meta account credentials.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: PLATFORM_WINDOWS — instagram openMin 11:00→12:00 ET (close 19:00 unchanged), facebook openMin 9:00→12:00 ET (close 18:00 unchanged), facebook staggerMs 50→45min so the shorter 6h window still fits 7+ daily posts (8 slots).
+- NEW apps/web/scripts/reschedule-pending-social.ts (one-off, untracked pattern but committed for reuse): re-spaces all PENDING SocialPublish rows into the current windows via clampToWindow. Ran against prod 2026-09-18 — 12 rows moved (first slots now 9:00am PT both platforms).
+- NEW apps/web/scripts/social-publish-diagnostic.ts: dumps 3 days of SocialPublish rows (status/schedule/errors in PT) + DRAFT posts with no queue rows. Used for this diagnosis; keep for future publish debugging.
+
+### Manual steps needed
+- [x] Keenan: said "push it" 2026-09-18 — deployed same day, well before the overnight queue build
+- [x] Keenan: BWK stays email-only for now ("still working on that", 2026-09-18) — revisit when Meta creds are ready
+
+### Notes
+- The DB reschedule fixed TODAY without waiting for a deploy because scheduledAt lives in SocialPublish rows — the cron just reads them. The code change governs how FUTURE rows are scheduled.
+- Diagnostic confirmed the SKIPPED tiktok rows are the retired inbox flow (expected) and the att-2 retry on 09-17 phone-quote IG succeeded on the second attempt — the retry ladder works.
+- FB "peak" per Sprout is 8am-1pm ET; opening at noon keeps only the tail. Deliberate trade: Keenan's no-posts-before-9am-PT requirement wins over the ET morning peak.
+
+---
+
+## [2026-09-17] — "Top Videos" tab: daily top-3 hashtag videos to recreate
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3e4d54d0 (+ ec6e0a8d daily email)
+
+### In plain English (for Keenan)
+There's a new "Top Videos" tab in the admin's Trends section, plus a daily email. You add TikTok hashtags you care about (like #selfdiscipline for BWK or #mentalload for Ripple), and every night the system scrapes those hashtag feeds. Then it emails you "Top hashtag videos to recreate" — the top 3 videos per hashtag, each with a watch link, views, likes, comments, shares, and engagement rate — so your morning inbox is that day's recreate list. The admin tab shows the same data on demand. It ranks recent posts (last few days) by views so the same old mega-video doesn't sit at #1 forever. The "Scrape now" button refreshes on demand; otherwise everything runs nightly at 3:30 UTC alongside the competitor scrape.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: NEW models `HashtagWatch` (tag+brand unique, ACTIVE/PAUSED, lastScrapedAt/scrapeError) and `HashtagVideo` (per-watch upserts on externalId, views/likes/comments/shares, postedAt, cascade delete). Purely additive.
+- NEW apps/web/src/lib/content-factory/hashtag-trends.ts: `scrapeHashtag`/`scrapeAllHashtags` via Apify `clockworks~tiktok-hashtag-scraper` (30 videos/tag), plus `getTopVideos(brand)` — top 3 by views among videos posted in the last 3 days, widening to 7 days if scarce, deduped across tags. All failures soft, recorded on the watch row.
+- competitor-mimic.ts: `runApifyActor` now exported (shared with hashtag-trends).
+- competitor-scrape-daily.ts: new `scrape-hashtags` step inside the existing 3:30 UTC function — no new Inngest function, no cron/trigger change, so no resync needed. The existing manual-scrape event covers hashtags too.
+- NEW apps/web/src/app/api/admin/trends/hashtags/route.ts: GET (watches + top-3 per brand) / POST (add, tag normalized lowercase alnum) / PATCH (pause-resume) / DELETE.
+- hashtag-trends.ts also exports `sendTopVideosEmail()` — top 3 per hashtag (views-ranked, 3-day window, 7-day fallback) grouped by brand, sent via Resend to CONTENT_FACTORY_EMAIL_TO right after the nightly scrape (new `send-top-videos-email` step). Skips silently with no watches/videos/RESEND_API_KEY.
+- NEW apps/web/src/app/admin/tabs/TopVideosTab.tsx + registered as "top-videos" under the Trends nav group in admin-dashboard.tsx.
+
+### Manual steps needed
+- [x] Claude: guarded db:push run from main 2026-09-17 — additive, two new tables live
+- [ ] Keenan: add your first hashtags in the Top Videos tab, hit "Scrape now", confirm links open the right videos
+
+### Notes
+- TikTok-only by design: hashtag feeds there expose real play counts; IG hashtag scraping is unreliable and hides views on static posts.
+- This feed is for HUMAN recreation and deliberately does NOT feed the automated lanes — the competitor-mimic brief pipeline already covers machine-side research. Keeps the two concerns separable.
+- Ranking prefers postedAt within 3 days (fallback 7) rather than pure all-time views, otherwise one evergreen viral video would occupy #1 indefinitely.
+- Apify cost: ~30 results/tag/night on the same pay-per-result billing as the competitor scrape — pennies at a handful of tags.
+
+---
+
+## [2026-09-17] — Admin dashboard restyled: calmer colors, more motion
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 91dc2d47
+
+### In plain English (for Keenan)
+The admin dashboard keeps its new futuristic glass look but drops the neon. Colors are now a muted steel-cyan and dusk-violet instead of electric glow, the grid floor is gone, and the whole thing feels cleaner and more premium. In exchange, there's more motion: cards fade up one after another when a tab opens, tab switches animate, clickable cards lift slightly on hover, and the background tints drift very slowly. Nothing about what the dashboard shows or does changed — only how it looks and moves.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/admin/admin-neo.css: full rewrite. Token overrides dialed down (primary oklch chroma 0.14→0.085, secondary 0.22→0.1), near-neutral hairlines/card borders, shadows rebuilt as soft depth with no glow ring. Grid-floor ::after overlay deleted; shell background is now three half-opacity radial tints with a 26s `neo-drift` animation. New motion pass per DESIGN_SYSTEM §6: `neo-fade-up` keyframes, `.acuity-fade-in` (keyed tab wrapper) 340ms easeStandard, `.neo-glass`/`.neo-edge` 420ms easeEnter with 60ms nth-child stagger (first 8 siblings), hover lift (translateY(-2px)) + active scale on button/anchor cards, full prefers-reduced-motion block. `.neo-glow-cyan` kept for markup compat but reduced to a faint text-shadow; live dot and scrollbars de-saturated.
+- apps/web/src/app/admin/admin-dashboard.tsx: NavButton active state — removed the 18px outer glow from the inline boxShadow, keeping only the 2px inset accent bar.
+- No markup, route, schema, or env changes. All tabs re-skin via the existing acuity-* token override architecture.
+
+### Manual steps needed
+- [ ] Keenan: say "push it" to deploy, then eyeball /admin — confirm the calmer palette and stagger animation feel right
+
+### Notes
+- CompetitorsTab's "Track" button has an inset 1px ring using the primary token — it inherits the muted color, so it was left alone.
+- Typecheck run: no new errors; the `searchParams is possibly null` errors in admin-dashboard.tsx are pre-existing baseline noise.
+- Easing/duration values come straight from _design/DESIGN_SYSTEM.md §6 (easeStandard cubic-bezier(.32,.72,0,1), easeEnter cubic-bezier(.16,.9,.3,1), 60ms stagger, "hover lifts, never glow").
+
+---
+
+## [2026-09-17] — Three Ripple lanes now star their own recurring "avatar" woman on every cover
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4a81d1c4 (+ 82a529ea admin-routes fix)
+
+### In plain English (for Keenan)
+The texts-younger, questions, and memento lanes each now have their own fictional recurring woman — the three avatar photos you approved ("avatars look good and dialed in"). From the next daily run onward, every cover in those lanes features that lane's same woman: same hair, same build, same style, photographed from behind or the side so her face never shows. Followers of a lane will see a consistent character post after post, which reads like a real person's account instead of random stock-style imagery. Interior slides are unchanged, and the BWK lanes still use you at the same rare ≤8% frequency as before. Editing a cover's text in the admin keeps the right woman in the regenerated image.
+
+### Technical changes (for Jimmy)
+- moody-carousel.ts: NEW `RIPPLE_AVATAR_LANES` (["texts-younger","questions","memento"]), `RippleAvatarLane` type, `rippleAvatarReferencePath()`, per-lane identity strings (mirroring scripts/generate-avatar-refs.ts), and `buildRippleAvatarPrompt(lane)` — opens with "EXCEPTION to the no-people rule" and contains the literal "reference photo" phrase so recomposeSlide's existing marker + cut-fallback logic both work.
+- carousel-generate.ts: `getAvatarReference()` generalized from a single BWK-path cache to `getAvatarReference(path?)` with a per-path Map cache; `generateMoodyImage()` gains an optional `rippleAvatarLane` param that routes to the lane's reference + ripple prompt block; `generateImageWithReference()` now sniffs PNG magic bytes (BWK ref is JPEG, ripple refs are PNG); `recomposeSlide()`'s "reference photo" branch picks the reference by `carouselPost.lane` so edits re-attach the lane's woman, not Keenan.
+- carousel-daily.ts: texts-younger cover call flips from `withAvatar=false` to avatar-led (future-texts/BWK unchanged); the shared moody cover loop computes `rippleAvatarLane` for questions/memento and passes avatar-led for EVERY cover candidate (vs. BWK's ≤8% roll, first candidate only). Item slides untouched.
+- Supabase storage: promoted the three approved candidates from reference/candidates/ripple-avatar-*.png to live reference/ripple-avatar-*.png (via scripts/promote-avatar-refs.ts, untracked one-off). Already done — no manual step.
+
+### Manual steps needed
+- [x] Keenan: say "push it" (deploys with the three held commits; no schema change, no env vars, no Inngest sync needed for this one) — pushed + deployed 2026-09-17
+- [ ] Keenan: after the next daily run, eyeball the three lanes' covers — confirm the same woman appears per lane and her face stays hidden
+
+### Notes
+- The avatar is an enhancement, never a dependency: if a reference file is missing from storage, generation falls back to a plain people-free scene (same behavior BWK has always had).
+- Ripple avatar frequency is deliberately NOT rolled: these are fictional lane characters, so avatar-led means every cover. The ≤8% cap only ever existed because the BWK avatar is Keenan's actual face.
+- Identity text lives in both moody-carousel.ts and scripts/generate-avatar-refs.ts — if a reference is ever regenerated, keep the two in sync or the model fights the photo.
+- The live reference uploads are inert until this code deploys; nothing running in prod reads reference/ripple-avatar-*.png yet.
+
+---
+
+## [2026-09-17] — Admin dashboard revamped: neon "Command Center" with a Trends section
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9630a653 (API routes landed in 82a529ea — left untracked in the original commit)
+
+### In plain English (for Keenan)
+The admin dashboard is now the futuristic command center you asked for: deep-space glassmorphic panels, electric cyan + violet neon accents, a grid-floor/aurora backdrop, and glowing highlights — every tab picked up the new look at once. The home screen is a new "Command Center" that shows everything at a glance: business vitals (MRR, signups, trial conversion, churn, AI spend) with trend arrows, a system-status line that turns red if anything's flagged, today's audience pulse per brand, the competitor breakout feed, and a top-content leaderboard. There's also a new Trends section in the sidebar: "Audience Pulse" shows the nightly Reddit digest history with the raw sources, and "Competitors" is where you add the handles to track, pause/remove them, trigger an immediate scrape, and read every mimic brief. Old bookmarked tab links still work — they redirect to the new layout.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/app/admin/admin-neo.css: `[data-theme="dark"][data-admin-neo]` token override (cyan h=195 primary, violet h=305 secondary, translucent deep-space surfaces, glow shadows) — re-skins all existing tabs via the acuity-* token system with zero markup changes. Utility classes: .neo-shell-bg (fixed aurora + 44px grid), .neo-glass, .neo-edge, .neo-title, .neo-glow-cyan, .neo-live-dot.
+- admin/layout.tsx: imports the CSS, adds `data-admin-neo` + the shell background layer; admin-topbar.tsx restyled (gradient "Ripple Command" wordmark, LIVE pulse dot, heavier blur).
+- admin-dashboard.tsx: new nav grouping (Pulse / Trends / Content / Growth / Money / Users / System), new tabs "command" (default), "pulse", "competitors"; legacy "overview" (+ growth/revenue/red-flags) redirect to "command"; neon active states on sidebar + mobile chips.
+- NEW tabs/CommandCenterTab.tsx (vitals via the existing tab=overview metrics API + trends summary fetch), tabs/AudiencePulseTab.tsx (digest history + source audit), tabs/CompetitorsTab.tsx (account CRUD, pause/resume/delete, "Scrape now", outlier feed with expandable briefs).
+- NEW API routes (getServerSession + isAdmin pattern): /api/admin/trends/summary, /api/admin/trends/pulse, /api/admin/trends/competitors (GET/POST/PATCH/DELETE), /api/admin/trends/competitors/scrape (fires the Inngest event).
+- Shared components restyled: MetricCard/ChartCard gain .neo-edge + backdrop blur, DrilldownModal glass panel, DataTable + DrilldownModal sticky headers moved to card-bg-raised (translucent bg was illegible when sticky), TimeRangeSelector neon active pill, EmptyState blur.
+- OverviewTab.tsx is no longer routed (Command Center replaces it) but left in place — the metrics API "overview" payload it defines is still the vitals source.
+
+### Manual steps needed
+- [x] Keenan: say "push it" (deploys together with the competitor-engine commit below) — pushed + deployed 2026-09-17
+- [ ] Keenan: after deploy, hard-refresh /admin and sanity-check the new look on your machine — oklch/color-mix needs a modern browser
+
+### Notes
+- The re-skin strategy was token override, not per-tab edits: every existing tab consumes acuity-* vars, so one scoped CSS file re-themes all of them. Only the shell + 3 new tabs were ground-up.
+- The Trends tabs read the RedditTrendDigest + Competitor tables from the two pipeline commits — they render friendly empty states until the first digest/scrape lands.
+- Pre-existing tsc errors in adlab/experiments and integrations-settings are untouched baseline noise (build has ignoreBuildErrors: true); all new files typecheck clean.
+
+---
+
+## [2026-09-17] — Competitor mimic engine: auto-scrape winning accounts, brief every lane, two new "muse" lanes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c966140f
+
+### In plain English (for Keenan)
+You can now feed the system TikTok and Instagram handles of accounts that are crushing it in niches like ours. Every night it scrapes their recent posts, spots the breakouts (anything doing 3x or better that account's normal views), and Claude writes a "mimic brief" for each one — what the hook mechanic is, what format it uses, why it lands, and how we'd run the same play in our own voice. All 9 daily lanes see the top briefs as background inspiration, and two brand-new lanes (one Ripple, one BWK) build their entire daily post around the single strongest brief — rotating through briefs so they never repeat. Nothing is ever copied word-for-word and the posts never mention the source account or that any research happened. If the scraper token isn't set up yet, everything just generates normally without the competitor signal.
+
+### Technical changes (for Jimmy)
+- NEW prisma models `CompetitorAccount` (unique [platform, handle], status ACTIVE/PAUSED, brand routing) and `CompetitorPost` (unique [accountId, externalId], engagement counts, outlierScore, brief Json, mandatedAt for lane rotation). **NOT yet pushed to prod — needs `npm run db:push` from main (additive only).**
+- NEW apps/web/src/lib/content-factory/competitor-mimic.ts: Apify REST scrape (`clockworks~tiktok-profile-scraper` + `apify~instagram-scraper`, run-sync-get-dataset-items, 240s timeout), outlier detection (views ÷ account median ≥ 3 AND ≥ 10k views), claude-sonnet mimic briefs (max 8/run), `getMimicSignal(brand)` ("WHAT'S WINNING" block, top 3 briefs ≤7 days), `getTopMimicBrief(brand)` with mandatedAt nulls-first rotation. All failures soft — no APIFY_TOKEN just skips.
+- NEW apps/web/src/inngest/functions/competitor-scrape-daily.ts: cron "30 3 * * *" (before the 4 UTC Reddit digest) + manual event "content-factory/competitor.scrape". Registered in api/inngest/route.ts — **needs Inngest resync after deploy**.
+- reddit-trends.ts: `getAudiencePulse` now appends the mimic signal via soft dynamic import — single wiring point, all 9 lanes get both research streams with zero generator edits.
+- moody-carousel.ts: `MoodyLaneSpec.mimicBrief` flag + mandate block in `generateSpecTopic` (runs the brief's MECHANIC in the lane's own voice; skips double pulse injection).
+- Mimic lanes ship as ContentLane rows (no code branch): keys "muse" (ripple) and "muse-men" (bwk), template "moody", spec `{..., mimicBrief: true, tiktokEmail: true}` — created post-deploy.
+
+### Manual steps needed
+- [x] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root — done 2026-09-17
+- [ ] Keenan: add `APIFY_TOKEN` to Vercel env (competitor scrape soft-skips until it exists), then redeploy or wait for the next deploy
+- [x] Claude (post-deploy): `npm run db:push` from main — CompetitorAccount/CompetitorPost are additive — done (guard passed, additive)
+- [x] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — new cron won't fire without resync — done ("Successfully registered", modified:true)
+- [x] Claude (post-deploy): create the 2 ContentLane rows ("muse", "muse-men") in prod — done via scripts/seed-pulse-muse-lanes.ts
+- [ ] Keenan: add the first competitor handles in the new admin Competitors tab, hit "Scrape now"
+
+### Notes
+- Lane keys are "muse"/"muse-men", NOT "mimic-*" or "competitor-*" — lane keys land in public storage URLs and must never hint at the research source (same rule as the "pulse" lanes).
+- Brief rotation uses `mandatedAt` nulls-first ordering so the muse lanes cycle through briefs instead of hammering the top one daily.
+- With the pulse + muse lanes, Ripple is at 7 posts/day and BWK at 6 — approaching the 8-10/day threshold that triggered the 09-16 slim-down. Keenan said volume is OK; flag before adding more.
+- Apify scrape is fire-and-forget sync REST (no webhooks) — a slow actor run past 240s fails soft and retries next night.
+
+---
+
+## [2026-09-17] — Reddit trend engine feeds every lane, two new Reddit-driven lanes, and cheaper inner slides
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0d595a96
+
+### In plain English (for Keenan)
+Every morning, an hour before the first post generates, the system now reads the top posts from the Reddit communities where our two audiences actually hang out, and distills what they're talking about into a ranked list of themes per brand. All 9 daily lanes now see that list as background inspiration — they keep their own format and voice, but lean toward subjects the audience is genuinely worked up about today. On top of that, two brand-new lanes (one Ripple, one BWK, posting at hour 7) take the single strongest theme of the day and write their whole post about it — a "freelance" lane that covers whatever the audience cares about most, fully auto-posted like the others. The posts never mention Reddit or any community. Separately, per your cost instruction: only the first image of every carousel uses the newest (most expensive) image model now; every inner slide uses the older model at roughly a fifth of the cost. One deliberate exception — the slides with words baked INTO the image (the phone-quote quote screen and the texts bubbles) stay on the newer model, because the older one botches lettering often enough that the retries would eat the savings.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/reddit-trends.ts: RSS-only anonymous scraper (JSON endpoints 403 anonymously; RSS works) with 8s spacing + one 30s retry on 429; `buildDailyDigest(brand)` scrapes ~25 top-of-day posts per subreddit and has claude-sonnet distill 8-10 ranked themes, blending today with the trailing 7 days of stored theme names; `getAudiencePulse(brand)` returns an "AUDIENCE PULSE" system-prompt block (top 6 themes, ≤3-day freshness, influence-only); `getTopTheme(brand)` returns the #1 theme for mandate lanes. All failures soft — lanes generate normally without the pulse.
+- NEW prisma model `RedditTrendDigest` (unique [date, brand], themes Json, sourcePosts Json) — already pushed to prod from main this session.
+- NEW apps/web/src/inngest/functions/reddit-trends-daily.ts: cron "0 4 * * *" (1h before the hour-5 lanes) + manual event "content-factory/reddit.digest"; one digest step per brand. Registered in api/inngest/route.ts — **needs Inngest resync after deploy**.
+- moody-carousel.ts: `generateMoodyFamilyTopic` gained `brand` opt → pulse injected for memento (both brands), questions, watching, discipline-real; inline pulse fetch added to generatePhoneQuoteTopic + generateTextsTopic; `MoodyLaneSpec.redditTheme` flag + `generateSpecTopic` mandate block (top theme becomes the post's MANDATED SUBJECT; no double pulse injection).
+- generate-topic.ts (selfie) + timeline-grid.ts (timeline): same soft pulse fetch.
+- carousel-generate.ts: `generateImage(prompt, slot)` — "cover" → gpt-image-2 @1024x1792, "item" → gpt-image-1 @1024x1536, both quality high; `generateMoodyImage` threads the slot; `generateGridCellImage` → gpt-image-1. Item call sites flipped in carousel-generate.ts (reason slides), carousel-daily.ts (grid closer, selfie aesthetic slides, moody item slides), carousel-one-off.ts (reason slides). Covers, baked-text slides (vision-verified lettering), and edit-endpoint reference calls stay gpt-image-2.
+- Freelance lanes ship as ContentLane rows (no code branch): keys "pulse" (ripple) and "pulse-men" (bwk), template "moody", hoursUtc [7], spec `{..., redditTheme: true, tiktokEmail: true}` — rows created post-deploy so tonight's dispatch doesn't run them against old code.
+
+### Manual steps needed
+- [x] Keenan: say "push it" → Claude runs `npx vercel deploy --prod --yes` from repo root — done 2026-09-17
+- [x] Claude (post-deploy): `curl -X PUT https://goripple.io/api/inngest` — REQUIRED, new cron won't fire without resync — done
+- [x] Claude (post-deploy): create the 2 ContentLane rows ("pulse", "pulse-men") in prod — done via scripts/seed-pulse-muse-lanes.ts
+- [ ] Fire "content-factory/reddit.digest" in prod and verify RedditTrendDigest rows land (also proves Vercel IPs aren't RSS-blocked — local IP worked, Vercel unverified). BLOCKED for Claude: INNGEST_EVENT_KEY/SIGNING_KEY are marked sensitive in Vercel (not pullable) — either Keenan invokes reddit-trends-daily from the Inngest dashboard, or tonight's 4 UTC cron is the verification; check the Audience Pulse admin tab after. Pulse lanes fall back soft to the base theme if no digest exists.
+- [x] Keenan: reply to the avatar approval email — avatar-led covers for texts-younger/questions/memento remain blocked on that — approved; shipped in 4a81d1c4
+
+### Notes
+- Reddit JSON endpoints return 403 to anonymous servers; RSS (`/r/X/top/.rss?t=day`) is the reliable anonymous path at ~10 req/min per IP. If Vercel IPs get blocked anyway, next step is routing the scrape through a proxy or authenticated OAuth app.
+- The pulse block is influence-only by design and lane rules always win — Keenan's standing rule that posts never reveal the research source is baked into both the pulse and mandate prompt text.
+- Lane keys are "pulse"/"pulse-men", NOT "reddit-*": the lane key lands in public storage URLs and captions must never hint at Reddit.
+- Baked-text slides staying on gpt-image-2 is a deliberate deviation from the blanket "every other picture" instruction — flagged above; gpt-image-1's lettering failure rate makes vision-verify retries cost more than the model saves.
+- Local ANTHROPIC_API_KEY in the prod env snapshot is invalid (401) — the distill step can only be verified in prod, hence the post-deploy event fire.
+- Hour 7 chosen for both freelance lanes: least-loaded dispatch hour, 3h after the 4 UTC digest.
+
+---
+
+## [2026-09-16] — BWK Timeline lane rebuilt as the photo-collage roadmap format from Keenan's reference screenshots
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f4ee9e31
+
+### In plain English (for Keenan)
+The Timeline lane's first post ("HOLD THE LINE") came out looking like every other dark-quote BWK post instead of the collage account you screenshotted — the lane had the right content idea but rendered through the generic template. The lane is now a faithful rebuild of that reference format: a bold cover slide ("4 MONTHS TO GET YOUR SH*T TOGETHER" style), then one collage slide per phase — six small dark photos in a 2×3 grid, each stamped with a short action label like "Fix your sleep" or "Train consistently", with an italic serif title band across the middle seam ("MONTH 01 / GET YOURSELF TOGETHER") — and a closing slide with a sober two-sentence reframe. Every post invents its own time span and roadmap so the lane never repeats itself. It still emails you for manual TikTok posting and never auto-posts.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/lib/content-factory/timeline-grid.ts: `generateTimelineGridTopic` (claude-sonnet-4-6 topic generator producing 3-4 phases × exactly 6 labeled cells, humanizer gate on title+closer), `composeTimelineGridSlide` (sharp-composited 1080×1080 collage: 360×540 cover-cropped cells, Poppins labels, Playfair italic center band), `parseGridLaneSpec`, and the gpt-image-2 prompt builders
+- apps/web/src/lib/content-factory/carousel-generate.ts: added `generateGridCellImage` — 1024×1024 quality "medium" (~4¢/cell vs ~25¢ for the tall slides; cells display at 360×540 so medium is plenty)
+- apps/web/src/inngest/functions/carousel-daily.ts: new `grid-timeline` template branch (load-grid-lane → topic → cover → per-phase collage steps → closer → save-and-email). Intercepts before bucket fallback — previously a non-"moody" template fell through to the "questions" bucket
+- Prod ContentLane row `timeline` updated: template "moody" → "grid-timeline", spec rewritten to `{theme, minPhases: 3, maxPhases: 4, tiktokEmail: true}`
+- No trigger/cron changes — no Inngest resync needed
+
+### Manual steps needed
+None — lane row updated via script this session; deploy done.
+
+### Notes
+- Collage slides are composed deterministically with sharp from 6 individually generated cell photos. NEVER ask gpt-image-2 for a grid/collage directly — it can't be trusted with geometry or text placement.
+- Full post cost ≈ $1.50 (2 tall "high" images + ~18-24 "medium" cells + Claude), same range as a moody pick-list post.
+- Cell photos may include ONE anonymous figure (from behind / silhouette / hands) — face never visible, per the reference account's style.
+- Today's earlier "HOLD THE LINE" post (cmu4ld0r000008cd8wlpwjrco) was left untouched — Keenan is posting it manually.
+- Renderer was validated locally with placeholder cells (/tmp/grid-test.jpg) before spending image credits — band and label geometry match the reference screenshots.
+
+---
+
+## [2026-09-16] — Slideshow Reels now upload at ~6× the bitrate so Meta's re-compression stops blurring them
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1e875ab2
+
+### In plain English (for Keenan)
+The Reels we auto-post to Instagram and Facebook were coming out blurry — but the video files we create are pixel-sharp (verified frame-by-frame on today's selfie reel). The blur happens when Meta re-compresses every uploaded Reel: our files were so efficiently compressed (~1.4 Mbps) that Meta's second pass turned the text to mush. Reels now upload as much heavier files (~8 Mbps, still tiny by platform limits), which survive Meta's re-compression visibly sharper. Note: Meta also serves lower-quality versions to pages with low engagement, so some softness on the Facebook page may remain until engagement builds.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: renderSlideshowReel x264 args switched from `-crf 21` to `-b:v 8M -maxrate 12M -bufsize 16M` (~19MB for a 19s reel)
+
+### Manual steps needed
+None — takes effect on the next reel render after deploy.
+
+### Notes
+- Verified the root cause by downloading reels/cmu3n5rki000bkdkeyysio0ie.mp4 (the exact file Meta pulled) and extracting frames — sharp at 1080x1920, so the blur is introduced downstream by Meta's transcode of a low-bitrate master.
+- Already-rendered reels in storage keep their old bitrate; reels are memoized per post (HEAD check on reels/{postId}.mp4), so only new posts get the fat master.
+
+---
+
+## [2026-09-16] — Volume cut to 9 lanes, TikTok inbox retired, emails only for the posts Keenan hand-posts to TikTok
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1bc036eb
+
+### In plain English (for Keenan)
+The content machine slimmed way down, on purpose. Research showed our near-zero views weren't caused by HOW we post (APIs aren't penalized) but by posting 8-10 templated posts a day on small accounts — the algorithms read that as mass production and stop showing anyone. So: Ripple now runs 5 lanes a day (Selfie, Texts to Younger Self, Phone Quote, Answer Honestly, Memento) that all still auto-post to Instagram and Facebook, and BWK runs 4 (Memento, Timeline, No One's Watching, Discipline). The TikTok inbox-draft system is gone — it kept hitting TikTok's ~5-pending-drafts-per-day spam cap and jamming the inbox. Instead, the ONLY emails Keenan gets now are the 7 lanes he posts to TikTok by hand (Ripple: Selfie, Texts to Younger Self, Answer Honestly; BWK: all 4). The TikTok metrics scraping plan was scrapped along with it.
+
+### Technical changes (for Jimmy)
+- Prod ContentLane edits (no deploy needed): RETIRED permission, letter, phone-quote-men, protocol, moody-men, future-texts; selfie hoursUtc [5,7]→[5]; spec.tiktokEmail=true flagged on selfie, texts-younger, questions, memento-men, timeline, watching, discipline-real
+- apps/web/src/inngest/functions/social-publish-cron.ts: TikTok removed from enqueue (BWK posts now enqueue nothing) and the whole TikTok publish branch deleted; take is now MAX_POSTS_PER_RUN * 2
+- apps/web/src/lib/content-factory/email.ts: sendCarouselEmail now skips lanes whose ContentLane row lacks spec.tiktokEmail=true; lanes with no ContentLane row (one-offs/specials) and force=true (admin resend) still send
+- apps/web/src/inngest/functions/carousel-metrics-refresh.ts: fetch-tiktok step removed
+- DELETED apps/web/src/lib/content-factory/tiktok-metrics.ts (both the committed video.list version and the uncommitted Apify rewrite)
+- apps/web/src/lib/content-factory/tiktok-publish.ts: TIKTOK_SCOPES reverted to "user.info.basic,video.upload" (video.list broke the entire OAuth connect flow — Display API product not offered to this app); module dormant for a possible Phase-2 DIRECT_POST revival
+- Prod SocialPublish: all 14 remaining PENDING tiktok rows marked SKIPPED
+
+### Manual steps needed
+- [ ] Keenan: post daily from the 7 lane emails to TikTok, using the caption in the email as the caption/title
+- [ ] Keenan: after 2-3 weeks at this volume, judge whether per-post views recovered (the account-suppression diagnostic)
+
+### Notes
+- Reach research (2026-09-16): Meta and TikTok do NOT penalize API-published content (Mosseri on record). Real risks: duplicate content (TikTok unoriginal-content enforcement since Sept 2025; Meta "Rewarding Original Creators" suppresses the whole account), high-volume templated posting on small accounts, and template visual fingerprints. No duplicates ever went live here — the dupes only sat in the inbox.
+- TikTok's `spam_risk_too_many_pending_share` is a documented ~5-pending-drafts-per-rolling-24h cap, NOT an account flag. It made 8 drafts/day structurally impossible anyway.
+- The email gate is data-driven: flipping a lane's email on/off is a spec.tiktokEmail edit on the lanes admin/DB — no deploy.
+- Sunday lane report still works; it just sees IG/FB numbers only (TikTok rows stop accruing).
+- No Inngest resync needed (no cron/trigger changes).
+
+---
+
+## [2026-09-15] — Sunday lane intelligence report: a weekly autopsy email so Keenan can kill and birth lanes with real numbers
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** fa483e44
+
+### In plain English (for Keenan)
+Every Sunday morning you'll get an email that grades every content lane on its last 45 days of real engagement — with TikTok counted extra because that's where we win. It uses medians, so one lucky viral post can't hide a weak lane. The report names kill candidates (only lanes with at least 8 measured posts can be nominated — young lanes get a fair shot), tells you whether each TESTING lane deserves promotion, and pitches exactly 3 new lane ideas complete with sample hooks and a ready-to-use theme. You decide; nothing is ever killed or launched automatically. Acting on a decision is one click on the lanes admin page.
+
+### Technical changes (for Jimmy)
+- NEW apps/web/src/inngest/functions/lane-intelligence-report.ts — cron `0 12 * * 0` (Sundays 7am Central) + manual trigger event "content-factory/lane.report"
+- compute-lane-stats step: per-lane, per-platform engagement (CarouselPost IG columns preferred over the IG SocialPublish mirror row; facebook/tiktok rows summed on top), score = views×0.01 + likes + comments×3 + saves×8 + shares×8, TikTok weighted 1.5×, per-lane weighted MEDIAN (not mean), kill-eligible = ≥8 measured posts and not RETIRED
+- Deterministic plain-text scoreboard built in code; Claude (purpose "lane-intelligence-report") only writes the analysis — kills restricted to kill-eligible lanes, exactly 3 birth candidates in the exact shape the birth API/admin form needs (key, brand, hoursUtc, named, locked THEME, 3 sample hooks)
+- Emailed via Resend using the existing CONTENT_FACTORY_EMAIL_FROM/TO envs; email failure fails the run (the email IS the deliverable, unlike the niche memo which persists to a table)
+- apps/web/src/app/api/inngest/route.ts: registered laneIntelligenceReportFn
+
+### Manual steps needed
+- [ ] Inngest resync after deploy — new cron function: `curl -X PUT https://goripple.io/api/inngest` (Claude, at deploy time)
+
+### Notes
+- Men-audience birth candidates are instructed to always be brand bwk; the birth API enforces it server-side anyway.
+- Medians chosen per the co-pilot design discussion: a lane that went viral once but flops daily should look weak, and a consistent quiet performer should look strong.
+- Report degrades gracefully pre-TikTok-metrics: platform breakdown just shows IG/FB until video.list data lands, then TikTok appears with no changes.
+- First report lands the first Sunday after deploy; can be fired early via the "content-factory/lane.report" event to sanity-check the email.
+
+---
+
+## [2026-09-15] — Content lanes now live in the database: killing or launching a lane is a click, not a code change
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a82c4396
+
+### In plain English (for Keenan)
+Until now, which content lanes run each night was hard-coded — adding or removing a lane meant a code change and a deploy. Now the daily roster lives in the database, and there's a new admin page at /admin/content-factory/lanes where you can retire an underperforming lane (it stops generating that same night), revive it later, or birth a brand-new lane by writing its theme in a form — new lanes run through the same proven generation pipeline that powers the current lanes. This is the machinery half of the weekly self-optimizing lane system we agreed on: the upcoming Sunday report will propose kills and births, and you execute them here. All 14 current lanes were migrated in unchanged — tonight's generation is identical to yesterday's.
+
+### Technical changes (for Jimmy)
+- New Prisma model: ContentLane (key unique, name, brand ripple|bwk, status TESTING|ACTIVE|RETIRED, template moody|code, hoursUtc Int[], spec Json, origin, retiredAt) — table created in prod via additive raw SQL (apps/web/scripts/add-content-lane-table.ts) and back-declared in schema.prisma same session; 14 founding lanes seeded template "code" with exact HOUR_LANES parity (verified per hour)
+- apps/web/src/inngest/functions/carousel-daily.ts: cron dispatch now reads ContentLane (status != RETIRED, hoursUtc has hour) with HOUR_LANES as empty-table fallback; unknown buckets resolve to a "spec lane" (ContentLane template "moody") that routes through the shared moody-family pipeline with audience/named/theme from the row's spec; bad specs throw (never generate off-brand)
+- apps/web/src/lib/content-factory/moody-carousel.ts: new MoodyLaneSpec interface, parseMoodyLaneSpec() validator, generateSpecTopic() (spec-driven twin of the hard-coded theme lanes: men get the BWK cover-family roll, women get the pinned-dark scene brief); buildMoodySystemPrompt gained a sceneBrief override
+- apps/web/src/lib/content-factory/social-publish.ts: new async laneBrand() (BWK_LANES first, then ContentLane lookup, 5-min cache); resolveAccount() is now async; enqueue eligibility = AUTO_LANES ∪ ContentLane keys
+- Async resolveAccount/laneBrand call sites updated: social-publish-cron.ts (enqueue flatMap → for-loop, tiktok accountKey via laneBrand), slideshow-reel.ts music-folder pick, api/admin/carousels route, scripts/test-social-reel.ts
+- apps/web/src/lib/content-factory/email.ts: accountLabel() async — DB-born lanes label [BUILD WITH KEY]/[RIPPLE] correctly
+- New API: /api/admin/content-factory/lanes (GET list w/ 45-day post counts, POST birth — validates spec, forces men-audience → bwk, starts TESTING; PATCH status/hours/name/spec)
+- New admin page: /admin/content-factory/lanes (status badges, Retire/Revive/Promote, birth form)
+
+### Manual steps needed
+- [ ] None for this feature (table already created + seeded in prod; Keenan's home-network `npm run db:push` NOT needed — but the next legitimate db:push from main will see the schema already matches)
+
+### Notes
+- Legacy lanes stay template "code": the DB controls WHETHER and WHEN they run; their bespoke generation branches still control HOW. Only born lanes are spec-driven. Migrating the 9 bespoke lanes to specs would be churn with zero behavior gain.
+- Selfie/phone-quote lanes run twice a day — hence hoursUtc as Int[] (Prisma `has` filter), not a single hour column.
+- The dispatch falls back to HOUR_LANES only if the ContentLane table is empty or unreachable, so a DB outage can't silence a night's generation.
+- Retiring is reversible by design (status flip, retiredAt timestamp) — matches the house rule that dead lanes stay revivable.
+- Seed script is idempotent (ON CONFLICT DO NOTHING) — re-running never clobbers later admin edits.
+
+---
+
+## [2026-09-15] — TikTok engagement numbers now feed the learning loop automatically
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4a3fff5c
+
+### In plain English (for Keenan)
+TikTok is our best-performing platform but the only one whose numbers weren't coming back into the system — the learning loop that decides which topics to make more of was flying blind on exactly the channel where we win. Now, every night, the system pulls view/like/comment/share counts for both TikTok accounts and matches each video back to the draft it came from. Since you post drafts manually from the TikTok inbox, the system matches by the title it stamped on each draft (plus posting time). Drafts you never posted are treated as "no data," never as "zero views," so they can't drag a topic's score down unfairly. Two one-time steps needed from you (below) before the first numbers flow.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/tiktok-metrics.ts (new): `fetchTikTokVideos()` pages `/v2/video/list/` (Display API — works in sandbox for target users, no app review); `refreshTikTokMetrics()` two-pass matcher — pass 1 re-matches previously-matched rows by stored permalink, pass 2 first-time-matches by normalized title/description + createTime ≥ postedAt − 6h, duplicates resolved by time-proximity; writes views/likes/comments/shares + permalink + externalId onto the tiktok SocialPublish rows
+- apps/web/src/lib/content-factory/tiktok-publish.ts: TIKTOK_SCOPES now includes `video.list` — tokens granted before today lack it, so both accounts must reconnect
+- apps/web/src/inngest/functions/carousel-metrics-refresh.ts: new "fetch-tiktok" step after the Facebook step; result added to the function's return. Cron/triggers unchanged — no Inngest resync needed
+- No schema changes — metrics land in existing SocialPublish columns; performance.ts consumes them with zero changes
+
+### Manual steps needed
+- [ ] Keenan: on developers.tiktok.com, add the **video.list** scope to the sandbox app (same place video.upload was added)
+- [ ] Keenan: reconnect BOTH accounts to grant the new scope — logged into TikTok as **Ripple**: https://goripple.io/api/integrations/tiktok/connect — then logged in as **buildwithkey**: https://goripple.io/api/integrations/tiktok/connect?account=bwk
+- [ ] Claude: after reconnect, trigger `content-factory/metrics.refresh` and verify video.list actually returns data in sandbox (≈90% confident; fallback is scraping public video pages)
+
+### Notes
+- The core problem: photo drafts are posted manually from the inbox, so the final video ID is never known at publish time. The matcher leans on `publishTikTokPhotoDraft` slicing the post headline to 90 chars as the draft title — if Keenan retitles a draft in the TikTok editor, it won't match (and stays null, which is correct: missing ≠ zero)
+- TikTok's Display API has no "saves" metric — that column stays null for tiktok rows
+- share_url is persisted to `permalink` on first match so later refreshes re-match by URL, stable against reused headlines
+
+---
+
+## [2026-09-15] — Old-format posts are trimmed to 1 cover + 6 items before publishing
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bb73b614
+
+### In plain English (for Keenan)
+The first TikTok draft delivery exposed a leftover: posts generated before we retired the old "pick-list" format still carried 3 identical cover images plus 15 item images, and the auto-publisher was shipping all 18. Now any old-format post gets cut down at publish time to 1 cover + the first 6 items — the shape we agreed on — before it goes to TikTok, Instagram, or Facebook. Newer posts are unaffected. 7 old-format posts were still waiting in the TikTok queue; they'll all deliver in the trimmed shape.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: new `trimLegacyPickList()` — detects legacy posts by multiple COVER slides, returns [first cover, first 6 non-cover items]; single-cover posts pass through
+- apps/web/src/inngest/functions/social-publish-cron.ts: trim applied in all three slide consumers (TikTok photo draft, IG/FB carousel `imageUrls`, and the reel renderer); slide selects now include `kind`
+- Entire pending TikTok queue held +60 min so nothing else shipped untrimmed pre-deploy
+
+### Manual steps needed
+- [ ] Keenan: reconnect the Ripple TikTok account (both OAuth grants captured the buildwithkey login) — log into tiktok.com as Ripple, then visit https://goripple.io/api/integrations/tiktok/connect
+- [ ] After reconnect: re-slot the held TikTok queue + redeliver the 2 wrongly-shaped/wrongly-routed drafts (Claude, same session)
+
+### Notes
+- The bug: "WHAT GETS COUNTED" (memento-men, generated 09-13, pre-retirement) delivered to the TikTok inbox with all 18 slides. The multi-cover check is the cleanest legacy discriminator — no date cutoff needed.
+- Both delivered drafts went to buildwithkey because the plain /connect URL run while logged into that TikTok account overwrote the ripple token slot. `?account=bwk` is what routes a grant to the BWK slot.
+
+---
+
+## [2026-09-15] — Reel transitions now rotate randomly so we can learn which performs best; TikTok drafts are flowing
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a8f7ef54
+
+### In plain English (for Keenan)
+Instead of every music Reel using the same slide transition, each new Reel now picks one of five styles at random (the smooth swipe, a crisp swipe, a circle reveal, a clock-sweep, and a sliced wipe). Which style each post used is saved with the post, so once engagement numbers come in we can see which transition audiences respond to and lock in the winner. Separately, TikTok is officially live: both accounts (Ripple + buildwithkey) are connected and all 37 queued drafts are being delivered to the TikTok inboxes today — the first two landed at 5:00pm ET.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: fixed TRANSITION const → exported REEL_TRANSITIONS pool (smoothleft, slideleft, circleopen, radial, hlslice); renderSlideshowReel picks one per render and now returns `{ buf, transition }` instead of a bare Buffer
+- apps/web/src/inngest/functions/social-publish-cron.ts: after a successful reel upload, persists the transition to CarouselPost.reelTransition
+- prisma/schema.prisma: new nullable column `CarouselPost.reelTransition` (TEXT) — **already added to prod** via raw ALTER (additive, IF NOT EXISTS) and back-declared in schema same session per the schema rule
+- apps/web/scripts/add-reel-transition-column.ts (one-off DDL runner), apps/web/scripts/requeue-tiktok-today.ts (one-off: verified both SocialToken rows, flipped 16 SKIPPED tiktok rows to PENDING, re-slotted all 37 at a 5-min stagger from 4:54pm ET)
+- apps/web/scripts/test-social-reel.ts: adjusted for the new render return type
+- All five transition names validated against the bundled ffmpeg-static binary before committing
+
+### Manual steps needed
+None. (No db push needed — column already live and declared.)
+
+### Notes
+- Ranking transitions: query POSTED reel posts grouped by reelTransition joined to SocialPublish metrics once ~4+ posts per transition exist; then shrink REEL_TRANSITIONS to the winner(s).
+- Cached reels at reels/{postId}.mp4 keep whatever transition they were rendered with; reelTransition is only written on fresh renders.
+- TikTok connect gotcha: the second OAuth connect initially used the plain /connect URL and silently overwrote the ripple token slot — the `?account=bwk` query param is what routes the grant to the BWK slot. The connected-page ✓ renders as mojibake (missing charset meta on the callback HTML) — cosmetic only.
+- Git gotcha (second dependency wipe today): rebasing with a temp commit that included the tracked node_modules symlink deletion replayed that deletion and deleted the real installed tree. Fixed with `npm install`; `git update-index --skip-worktree node_modules` now applied so git ignores the path entirely.
+
+---
+
+## [2026-09-15] — Reels: 3.5s slides, no zoom, swipe transition
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a6f511f5
+
+### In plain English (for Keenan)
+Future music Reels hold each slide for 3.5 seconds (up from 3.3), the slow zoom-in effect is gone (slides are now perfectly still), and slides change with a smooth swipe — like someone flicking through a real carousel — instead of a plain fade.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: SLIDE_SEC 3.3 → 3.5; zoompan filter removed — stills become finite streams via `-loop 1 -t SLIDE_SEC -framerate 30` per input with scale/crop/fps/format normalization; xfade transition fade → smoothleft (new TRANSITION const)
+- Verified with a full local ffmpeg render (3 test slides + sine-wave track → 9.7s MP4, correct streams) before committing
+
+### Manual steps needed
+None.
+
+### Notes
+- Already-rendered reels cached at reels/{postId}.mp4 are reused as-is — only newly rendered posts get the new look.
+- smoothleft chosen because it mimics the swipe gesture of a real photo carousel; xfade offset math is unchanged (offsets derive from SLIDE_SEC − XFADE_SEC).
+
+---
+
+## [2026-09-15] — All social posts now go out at US prime-time hours
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1d5b4738
+
+### In plain English (for Keenan)
+Auto-published posts no longer fire at whatever odd hour they were generated — every platform now has its own US prime-time window (Eastern Time). Instagram posts go out between 11am and 7pm ET, Facebook between 9am and 6pm ET, and TikTok drafts land in your inbox between 7 and 10am ET so you have the whole day to add audio and post them. Posts queued outside a window wait for the next opening; posts within a window keep a stagger so the accounts never dump everything at once. The ~43 posts already waiting in the queue were re-slotted into these windows too.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: new exported `PLATFORM_WINDOWS` (per-platform openMin/closeMin/staggerMs — IG 11:00–19:00 ET @ 50min, FB 9:00–18:00 ET @ 50min, TikTok 7:00–10:00 ET @ 5min), `etOffsetMs()` (DST-safe via Intl.DateTimeFormat America/New_York), and `clampToWindow(t, platform)` (in-window → unchanged; before open → today's open; after close → tomorrow's open)
+- apps/web/src/inngest/functions/social-publish-cron.ts: enqueue replaced the single 45-min STAGGER_MS with per-platform cursors seeded from the latest PENDING row per platform; each new row gets `scheduledAt: nextSlot(platform)` = clampToWindow(cursor) then cursor += that platform's stagger. Cron trigger unchanged — no Inngest resync needed.
+- apps/web/scripts/reschedule-social-queue.ts: one-off that re-slotted all existing PENDING SocialPublish rows into the new windows, preserving relative order (already run against prod)
+
+### Manual steps needed
+None.
+
+### Notes
+- Window choices from Sprout Social 2026 (2B engagements) + Buffer (7M TikTok posts): IG peaks 9am–1pm + 5–7pm ET weekdays, FB 8am–1pm and dead after 6pm, TikTok engagement peaks evenings — but Keenan explicitly wants TikTok drafts first thing in the morning ("so i can go in throughout the day to post them"), so the TikTok window is a 7–10am ET delivery window for inbox drafts, not an engagement-optimized posting window.
+- clampToWindow works in ET wall-clock minutes and converts back to UTC, so DST transitions are handled by Intl rather than a hardcoded offset.
+
+---
+
+## [2026-09-14] — Slideshow Reel slides hold 3.3s instead of 2.5s
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 036131d6
+
+### In plain English (for Keenan)
+Each slide in the auto-published music Reels (Instagram Reels + Facebook videos) now stays on screen for 3.3 seconds instead of 2.5, giving viewers more time to read before the crossfade. An 8-slide post goes from ~17s to ~23s.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: SLIDE_SEC 2.5 → 3.3 (crossfade offsets and the -t output cap all derive from it, so nothing else changes)
+
+### Manual steps needed
+None.
+
+### Notes
+- Already-rendered reels are cached at reels/{postId}.mp4 and reused (HEAD-check skips re-render) — existing renders keep the old 2.5s timing; every new post renders at 3.3s.
+- TikTok is unaffected (photo drafts have no baked duration) and animated carousels are unaffected (model-generated clips, not fixed stills).
+
+---
+
+## [2026-09-14] — Email notification for every successful auto-publish
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 0010c933
+
+### In plain English (for Keenan)
+Every time the auto-publisher successfully posts something — an Instagram post, a Facebook post, or a draft delivered to a TikTok inbox — you get an email listing exactly what went out: the platform, which brand (Ripple or Build With Key), the post headline, and a direct link to the live post (TikTok drafts say "open the TikTok app inbox" instead, since drafts have no public link yet). If one publishing run ships several things at once, they're bundled into one email instead of flooding your inbox.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/email.ts: new exported sendPublishNotification(successes) — one Resend email per cron run, subject "✅ Auto-published: N Instagram, N Facebook, …", reuses FROM/TO/accountLabel; degrades to a console warn if RESEND_API_KEY is unset
+- apps/web/src/inngest/functions/social-publish-cron.ts: publish steps now return { headline, permalink } on success instead of true; successes collected across the run and sent via a new "email-publish-summary" step (only runs when something published). No trigger changes — no Inngest resync needed.
+
+### Manual steps needed
+None.
+
+### Notes
+- One digest per run (max ~9 platform events), not one email per platform row — consistent with the standing "one email per post" rule for content emails.
+- The `if (ok && typeof ok === "object")` guard exists because the tiktok skip() helper's inferred boolean return widens the step union to include `true`.
+- Same session, ops note: Keenan's go-live flag was typo'd in Vercel (`SOCIAL_AUTOPUBLISHED_ENABLED`) so autopublish silently stayed dark; fixed by adding the correct `SOCIAL_AUTOPUBLISH_ENABLED=1`, deleting the typo'd var, and force-redeploying. Auto-publishing has been LIVE since ~7:50pm PT 2026-09-14.
+
+---
+
+## [2026-09-14] — Facebook metrics + a learning loop that feeds engagement back into topic generation
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** a3101e06
+
+### In plain English (for Keenan)
+The content factory now learns from its own results. Every night it pulls the real engagement numbers (views, likes, comments, shares — and saves on Instagram) for auto-published Facebook posts, alongside the Instagram numbers it was already pulling. Then, when it generates the next day's topics, each lane's generator is shown that lane's recent winners and flops — with the actual numbers — and is told to lean into what worked and avoid what flopped. Saves and shares count far more than views, because those are what the algorithms reward with reach. New lanes are unaffected until they have at least 4 posts with real numbers, so nothing changes until there's something to learn from.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: SocialPublish gained views/likes/comments/shares/saves (Int?) + metricsAt (DateTime?) — per-platform metrics live on the platform rows; CarouselPost columns stay IG-only. **Already pushed to prod from main via `npm run db:push` (guard passed: additive only), client regenerated.**
+- NEW apps/web/src/lib/content-factory/facebook-metrics.ts: fetchFbPostMetrics(externalId, accountKey) — feed posts (id contains "_") read reactions/comments/shares + post_impressions insight; videos/Reels read likes/comments + total_video_views; insights failures degrade to null (read_insights may not be granted). FB has no save metric.
+- apps/web/src/inngest/functions/carousel-metrics-refresh.ts: new "fetch-facebook" step refreshes every POSTED facebook SocialPublish row (externalId set, ≤90 days) nightly; IG metrics now also mirror onto the IG SocialPublish row; IG misconfiguration no longer blocks the FB step
+- NEW apps/web/src/lib/content-factory/performance.ts: getLaneFeedback(lane) — 45-day lookback, sums CarouselPost (IG) + SocialPublish platform rows (deduping the IG mirror row), score = views×0.01 + likes + comments×3 + saves×8 + shares×8, returns an AUDIENCE FEEDBACK prompt block (top-3 WORKING / bottom-3 NOT WORKING with real numbers) or null under 4 scored posts
+- apps/web/src/lib/content-factory/moody-carousel.ts: avoidBlock(recentHeadlines, feedback?) appends the feedback block; optional feedback param threaded through the 10 live generators (moody/watching/memento/questions/protocol/phone-quote/permission/discipline-real/letter/texts)
+- apps/web/src/lib/content-factory/generate-topic.ts: generateSelfieTopic(recentHeadlines, feedback?)
+- apps/web/src/inngest/functions/carousel-daily.ts: all 4 topic steps compute `await getLaneFeedback(bucket)` and pass it to their generator
+
+### Manual steps needed
+None — schema already pushed to prod, no new env vars, no cron/trigger changes (no Inngest resync needed).
+
+### Notes
+- Dormant generators (line/price/prove/rules/etc.) intentionally not threaded — they get feedback wiring if/when revived.
+- TikTok metrics remain blocked on app review; once live, a tiktok-metrics lib writes to the tiktok SocialPublish rows and the learning loop picks them up with zero changes (it already sums all platform rows).
+- The IG-mirror dedupe in performance.ts matches a SocialPublish row whose views/likes/saves equal the CarouselPost columns and skips exactly one such row — avoids double-counting without needing a platform filter that would break if hand-posted IG rows ever appear.
+- Weighting rationale: saves/shares are the strongest reach signals on IG/TikTok; a 500-view post with 40 saves outranks a 5000-view post nobody saved.
+
+---
+
+## [2026-09-14] — BWK posts are TikTok-only until BWK gets Meta accounts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1fe2a25d
+
+### In plain English (for Keenan)
+Build With Key posts no longer fall back to Ripple's Instagram and Facebook pages — men's content will never appear on the women's-audience Ripple accounts. Until BWK gets its own IG/FB accounts, BWK posts go only to the BWK TikTok inbox (as photo slideshows, same as Ripple's TikTok posts). The moment BWK Meta account credentials are added to Vercel, BWK Instagram/Facebook posting turns on by itself — no code changes needed.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/social-publish.ts: resolveAccount no longer falls back to the Ripple account for BWK lanes — returns bwkAccount() (null until META_BWK_* env vars exist); header comment updated
+- apps/web/src/inngest/functions/social-publish-cron.ts: scan-and-enqueue creates only a tiktok row (no instagram/facebook rows) when resolveAccount returns null for a post's lane
+
+### Manual steps needed
+- [ ] (whenever BWK Meta accounts exist) add META_BWK_ACCESS_TOKEN, META_BWK_IG_USER_ID, META_BWK_FB_PAGE_ID to Vercel (Keenan)
+
+### Notes
+- Reverses the 2026-09-10 "capture all markets from one page" fallback decision, per Keenan 2026-09-14: "don't post bwk posts across insta/facebook yet. First focus on TikTok."
+- The publish step already SKIPs rows whose account resolves null, so any pre-existing enqueued BWK IG/FB rows die safely; the enqueue change just stops creating them.
+- TikTok format is unchanged: every lane (both brands) delivers a PHOTO slideshow draft to the brand's TikTok inbox — video never goes to TikTok (suggested audio only exists in photo mode).
+
+---
+
+## [2026-09-14] — Reel pipeline live-test: two real bugs fixed before go-live
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see below)
+
+### In plain English (for Keenan)
+Ran the first real end-to-end test of the music Reel pipeline and it caught two bugs that would have silently broken every auto-published Reel: (1) the music library uploads are .mp4 files, but the code only accepted .mp3-style extensions — so it saw an "empty" library and would have quietly posted silent photo carousels instead of Reels; (2) the video render never stopped — a 17-second Reel kept encoding forever (80MB+ and climbing) and would have timed out every single run in production. Both fixed; the test Reel published to Instagram and Facebook confirms the whole path works.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/slideshow-reel.ts: AUDIO_EXT now includes .mp4 (Meta Sound Collection exports audio-in-mp4; ffmpeg maps only [n:a]); pickMusicTrack checks music/BWK (uppercase — dashboard-created folder, storage paths are case-sensitive); renderSlideshowReel adds `-t <totalSec>` — `-shortest` alone never terminates when the audio input is `-stream_loop -1` through a filter graph
+- apps/web/src/app/api/admin/carousels/route.ts: new POST action "test-social-reel" (CRON_SECRET or admin session) — publishes an already-rendered reels/{postId}.mp4 as IG Reel + FB video via resolveAccount; kept for future one-off format tests
+- apps/web/scripts/test-social-reel.ts: one-off local driver (renders + uploads the reel; publish happens via the API action because Meta env vars are Vercel-sensitive and redacted on `vercel env pull`)
+
+### Manual steps needed
+None.
+
+### Notes
+- Vercel-sensitive env vars pull as the literal string "[SENSITIVE]" — any live test needing IG_ACCESS_TOKEN/IG_USER_ID/FB_PAGE_ID must run server-side (the test-social-reel action exists for exactly this).
+- Music library format: keep uploading Meta Sound Collection .mp4s as-is — no conversion needed.
+- Render cost/time: 8 slides → 17.2s Reel ≈ 60s ffmpeg on a laptop; well inside the 300s serverless ceiling now that the encode terminates.
+
+---
+
 ## [2026-09-14] — Five new carousel lanes: 3 for Ripple, 2 for BWK (17 posts/day)
 
 **Requested by:** Keenan
@@ -140,7 +932,7 @@ The four BWK pick-list lanes (memento-men, moody-men, watching, protocol) no lon
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending — held until "push it")
+**Commit hash:** 22507a14
 
 ### In plain English (for Keenan)
 Locked in the per-platform format split: Instagram/Facebook get the music videos (content intact), TikTok gets photo slideshow drafts — because TikTok's photo mode is where its suggested/auto audio lives. Now EVERY auto-published post (not just memento/selfie) drops its slide images into your TikTok inbox as a ready-to-post photo draft; you open it, TikTok suggests a sound, you paste the caption and post. After the TikTok app audit passes, Phase 2 makes these fully hands-off with TikTok auto-adding music.
@@ -3528,6 +4320,55 @@ Three fixes to the animated covers. First, the animation instructions were rewri
 - Higgsfield's platform API keys are not in the local .env (Vercel only), so the `quality` field could not be verified against the live API — that's why it's env-gated instead of hardcoded. A rejected field would make submits fail and every cover degrade to static; that's the failure mode to watch.
 - Deliberately reverted d137f161's text fade-out: Keenan's 2026-08-10 direction is that the video must never impede the text, so it now stays visible for the full 4 seconds.
 - v10 respects the v9 lesson (long prompts with negative instructions make the model act out the mentioned verbs) — all new lines are short and describe only what SHOULD happen.
+## [2026-08-16] — Evidence-backed insights ("show your receipts") data layer + suite fully green
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 400f8349 (+ 5 prior on feat/evidence-receipts)
+
+### In plain English (for Keenan)
+This builds the foundation for the thing that most sets us apart: when Ripple tells you it noticed a pattern, it can show you the exact words you said that led it there. Receipts.
+
+The important part is what it now refuses to do. Before, an insight was just a sentence in the database with no link back to any recording — so if the AI made something up that sounded plausible, nothing could catch it. Worse, we found the code was literally instructing the AI, on quiet weeks, to "surface whatever pattern reads as meaningful" with no evidence at all. Now every insight has to point at the specific recordings behind it, and **anything it can't point at is never shown as a pattern** — no matter how confident the AI claims to be, and even if the user says it's correct. If we can't show the quote, we don't make the claim.
+
+There's also a new "what Ripple knows about you" data feed: the people you mention, your goals, recurring themes, plus an honest list of things Ripple suspects but can't prove. That last list is the point — a mirror that admits what it's unsure about is more trustworthy than one that quietly rounds a hunch up to a finding.
+
+Nothing is switched on and nothing users see has changed, with one approved exception: the 5 people currently on free trials will get access to the State of Me report, which they should have had all along.
+
+Also: the test suite is fully green for the first time in a while (659 of 659). Six tests had been failing for months — not because anything was broken, but because they were checking for old behavior we'd deliberately changed. A permanently-red suite is dangerous because people stop reading it.
+
+### Technical changes (for Jimmy)
+- **Audit:** `docs/INSIGHT_GENERATION_AUDIT.md` — every generated artifact, its writer, its inputs, file+line refs. Key finding: only themes (`ThemeMention.entryId`) and people (`EntityMention.entryId`) were traceable; `UserInsight` and `WeeklyReport` both build digests that discard entry ids (`compute-user-insights.ts:411-420`, `generate-weekly-report.ts:118-127`). Documents the fabrication path at `compute-user-insights.ts:452`.
+- **Schema (additive, 0 destructive ops in the prod diff):** new `InsightEvidence` (insightId → entryId + excerpt + startIndex/endIndex, `@@unique([insightId, entryId])`, cascades from Entry so deleting a recording retracts its receipts); `UserInsight` + `confidence`, `correctionState`, `correctionNote`, `correctedAt`.
+- **THE RULE:** `packages/shared/src/evidence.ts` `classifyInsightConfidence()` → REFUTED / UNSOURCED / PROVISIONAL / CONFIRMED. A **gate, not a weight** — a weighting lets a confident fabrication through. Zero evidence ⇒ never `surfaceAsPattern`, not overridable by model confidence (swept 0→1) nor by user ACCURATE.
+- **Receipts without sending transcripts to the model:** `buildDigestWithSources()` labels digest lines `[E1]…` and retains ids; the model cites labels + self-reports confidence; `lib/evidence/excerpt.ts` then picks the actual sentence server-side by stemmed token overlap. Verbatim by construction. `resolveEvidence()` drops refs we never issued and entries whose text doesn't support the claim.
+- The stemmer is load-bearing, not cosmetic: model writes "run", user said "running" — without it `selectExcerpt` returned null and well-supported insights were suppressed as unsourced.
+- **APIs (both 404 when flag off):** `POST /api/insights/:id/correction`; `GET /api/memory-ledger` + `lib/evidence/memory-ledger.ts` (people, goals, recurring themes ≥2 mentions, key facts from UserMemory, patterns-with-receipts, uncertainty-with-reasons, corrections, `summary.unassertedShare`).
+- **Flag:** `EVIDENCE_RECEIPTS`, env-based (`lib/evidence/flags.ts`) because it must evaluate inside an Inngest cron where a DB-scoped FeatureFlag lookup has no user. Off path in `compute-user-insights` is byte-identical to before, including the original prompt and the same `createMany`.
+- **`tierMatches` fix (APPROVED, changes live behavior):** `feature-flags.ts` was a second entitlement authority — `requiredTier:"PRO"` compared `subscriptionStatus === "PRO"`, rejecting active trials that `entitlementsFor` grants full access. Now reads `canExtractEntries` off the resolver. FREE branch deliberately unchanged.
+- **Stale tests:** `paywall.test.ts` ×2 (PAST_DUE grace → no-grace, plus a new canRecord companion), `auth-flows.test.ts` ×4 (now assert against `TRIAL_DAYS` / a named reduced constant instead of literals 14 and 3).
+- **Verified:** 659/659 tests; `next build` compiles with both new routes registered; typecheck 137 (unchanged baseline); flag resolves `false` with no env var set anywhere.
+
+### Manual steps needed
+- [ ] `prisma db push` for `InsightEvidence` + the 4 `UserInsight` columns — additive only, 0 destructive ops verified. **Note the CarouselPost hazard: that reconciliation landed on `feat/revenuecat-migration`, not this branch** (Jimmy)
+- [ ] Merge order: **`feat/revenuecat-migration` first**, then this branch — it's based on the RC branch because task 7 needs `lib/entitlements/resolve.ts` (Jimmy)
+- [ ] After deploy, watch State of Me volume + Claude spend (5 newly-eligible trial users, flagship-model call) (Jimmy)
+- [ ] Decide: may a receipt quote a model-written summary, or must it always quote the user's own words? (Jimmy)
+- [ ] Decide: give the heuristic detectors citations? Ids are already in the queries (`:277-319`, `:343-387`) (Jimmy)
+- [ ] Decide: `WeeklyReport.insightBullets` is a bare `String[]` with nowhere to hang provenance — needs a schema call (Jimmy)
+- [ ] Tune `CONFIRMED_MIN_EVIDENCE=2` / `CONFIRMED_MIN_CONFIDENCE=0.7` against real observer output (Jimmy)
+- [ ] Review the ledger payload shape before any UI is designed against it (Both)
+- [ ] NOT PUSHED — `feat/evidence-receipts` is local only, per instruction (Jimmy)
+
+### Notes
+- Unsourced observations are **written and logged, not rejected at generation**. Suppression happens at read time, so observer mode can measure how often the generator over-reaches (`summary.unassertedShare` + the `unsourced observation` log line). Rejecting at write time would hide the very signal we want.
+- Excerpts are **stored, not resolved at read time**. Transcripts can be edited and entries deleted; a receipt that silently changes under a claim is worse than no receipt. Offsets are kept so it can still be highlighted in place when the transcript is unchanged.
+- `selectExcerpt` returning null is a feature — it means nothing in that entry supports the claim, so the citation is dropped. An empty receipt is a fabricated receipt.
+- Prisma rejects `/** */` block comments inside a model body; use `///`. Cost one validation cycle.
+- The `FREE` requiredTier branch was left on raw status on purpose. Re-deriving it from the entitlement would flip TRIAL out of the upgrade-nudge audience and PAST_DUE into it — unrelated product decision. No flag uses `requiredTier:"FREE"` today anyway.
+- Full detail + the 6 open decisions: `docs/EVIDENCE_RECEIPTS_NOTES.md`.
+
+
 ## [2026-08-15] — RevenueCat migration built end-to-end (nothing live yet)
 
 **Requested by:** Jimmy
@@ -11150,7 +11991,7 @@ The seed/default for new projects was already US, CA, GB only — AU was only in
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** f4ee9e31
 
 ### In plain English (for Keenan)
 
@@ -11469,7 +12310,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** PENDING (closes 092f73b → d9e6630 → e6ce183 → this)
+**Commit hash:** f4ee9e31 (closes 092f73b → d9e6630 → e6ce183 → this)
 
 ### In plain English (for Keenan)
 
@@ -11549,7 +12390,7 @@ All 21 events route through the web `VALID_EVENTS` whitelist; the `value` column
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** f4ee9e31
 
 ### In plain English (for Keenan)
 
@@ -11603,7 +12444,7 @@ Meta Pixel events (Lead, CompleteRegistration, StartTrial, Subscribe) now includ
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** PENDING
+**Commit hash:** f4ee9e31
 
 ### In plain English (for Keenan)
 
