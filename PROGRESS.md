@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-23] — Weekly Reddit pulse moved to Saturday 11:59pm
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 738c0212
+
+### In plain English (for Keenan)
+The weekly Reddit audience scrape (and the talking-head script email that rides along with it) now runs Saturday at 11:59pm Central instead of Sunday night. That means the fresh audience-pain digest and the script email are waiting in your inbox when you sit down for Sunday admin work — and it lines up with the upcoming Sunday ad-creative generation, which will build ads from that same fresh digest.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/reddit-trends-daily.ts`: cron `0 4 * * 1` (Mon 04:00 UTC) → `59 4 * * 0` (Sun 04:59 UTC = Sat 11:59pm CDT); doc comment updated
+- No schema changes, no new envs
+- Note: the digest finishes ~05:05 UTC, so Sunday's 5 UTC carousel dispatch hour uses the prior week's digest; the 6–8 UTC dispatch hours get the fresh one (soft-fail behavior unchanged)
+
+### Manual steps needed
+- [ ] Keenan: say "push it", then `vercel deploy --prod` from repo root
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` — REQUIRED for the new cron to take effect (cron changes don't apply until Inngest resync)
+
+### Notes
+- This is groundwork for the Sunday Reddit→AdLab ad-generation pipeline (in progress): scrape Saturday night → 10 ads per audience group generated Sunday morning → Keenan approves in dashboard → approved ads auto-launch with set budget
+- CDT vs CST: in winter (CST), Sun 04:59 UTC = Sat 10:59pm Central. Cron stays fixed in UTC; acceptable drift per prior conventions
+
 ## [2026-09-23] — Fix founder alert emails: silently dead since Aug 25, now sending from goripple.io
 
 **Requested by:** Keenan

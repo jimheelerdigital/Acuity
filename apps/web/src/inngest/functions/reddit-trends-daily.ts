@@ -5,8 +5,11 @@ import { inngest } from "@/inngest/client";
  * from daily to weekly 2026-09-21, per Keenan: "only pull once a week
  * for audience pulse").
  *
- * Runs Mondays at 4 UTC — an hour BEFORE the first carousel dispatch
- * hour (5), so lanes generated that night see a fresh pulse. Scrapes both
+ * Runs Saturday 11:59pm CDT (Sun 04:59 UTC — moved from Mon 04:00 UTC
+ * on 2026-09-23, per Keenan: fresh pulse + script report waiting for his
+ * Sunday admin session, and it feeds the Sunday ad-creative generation).
+ * Note: finishes ~05:05 UTC, so Sunday's 5 UTC carousel dispatch uses the
+ * prior digest; the 6-8 UTC dispatches get the fresh one. Scrapes both
  * brands' subreddit lists via RSS, distills themes with Claude, stores
  * one RedditTrendDigest row per brand. Every failure is soft: a missing
  * digest just means lanes generate without the pulse block that night.
@@ -19,7 +22,7 @@ export const redditTrendsDailyFn = inngest.createFunction(
     name: "Content Factory — Weekly Reddit Audience Pulse",
     retries: 1,
     triggers: [
-      { cron: "0 4 * * 1" },
+      { cron: "59 4 * * 0" },
       { event: "content-factory/reddit.digest" },
     ],
   },
