@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-23] — Phase 1 blog triage executed: 50 posts pruned, 74 rebranded to Ripple, 41 rewritten from real search data
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 89c125fb
+
+### In plain English (for Keenan)
+The blog went through its first data-driven cleanup. The 50 posts nobody was finding were removed and their old links now forward permanently to the closest surviving article, so no dead ends. Every post still using the old Acuity name (74 of them) now says Ripple. The 41 posts that show up in Google searches but weren't earning clicks were rewritten to target the exact searches they already appear for, each with a sharper title, a clean comparison table, an FAQ section, and a proper search-result description. All blog posts also now show a Home › Blog › Post breadcrumb trail, and browser tab titles read "Post Title | Ripple". Everything is live.
+
+### Technical changes (for Jimmy)
+- New Inngest function `apps/web/src/inngest/functions/blog-rewrite-triage.ts` (event `admin/blog-rewrite-triage.requested`): pulls each post's 90-day GSC queries from both properties, then one `step.run` per slug — Claude Opus rewrite with 2 validation attempts (title/meta length, banned phrases, mandatory `<h2>`s + table, no Acuity), saves `title`/`hook`/`targetKeyword`/`faqSchema` and `finalBody` with embedded `<meta name="description">` tag, pings IndexNow. Skips posts that already have `finalBody` unless `force:true`, so runs are resumable
+- New route `apps/web/src/app/api/admin/blog/rewrite-triage/route.ts` (POST, Bearer `CRON_SECRET` or admin session) fires the event; body accepts `{ only, limit, force }`
+- Registered `blogRewriteTriageFn` in `apps/web/src/app/api/inngest/route.ts`
+- `apps/web/src/app/blog/[slug]/page.tsx`: visible `Breadcrumbs` nav (Home › Blog › title) on both static and dynamic posts, replacing "Back to blog"
+- One-time scripts, all executed against prod: `blog-triage.ts` (GSC keep/rewrite/prune report), `blog-phase1-prune.ts` (50 posts → `PRUNED_DAY90` + `redirectTo` by keyword-token overlap + `BlogPrunerRun` audit rows), `blog-rebrand-ripple.ts` (74 posts, word-boundary `\bAcuity\b` only), `fix-lifecoach-rewrite.ts` (hand-rewrote the 1 post that failed validation twice), `check-rewrite-progress.ts` (monitor)
+- No schema changes. Deployed via `vercel deploy --prod` twice + `PUT /api/inngest` resync
+
+### Manual steps needed
+- [ ] Keenan: say "push it" to push the 2 commits to main (prod is already live via Vercel CLI; git push is bookkeeping only)
+
+### Notes
+- The rewrite engine had to run in production via Inngest: both local `ANTHROPIC_API_KEY` copies are stale (401) and the working key is Vercel-sensitive/unpullable. Pattern for future prod-only jobs: Inngest function + CRON_SECRET-protected trigger route
+- Gotcha: my first hardcoded rewrite list drifted from the approved triage output — 17 of its slugs didn't exist anywhere. Authoritative list is the `blog-triage.ts` output (`.tmp/rewrite-slugs.txt`), now baked into `REWRITE_SLUGS` in the Inngest function. Lesson: generate slug lists from the source file, never from memory
+- 1 of 41 (life-coach prompts post) failed validation twice because the SOURCE body contained banned phrases ("brain dump", "60 seconds") the model kept echoing; rewritten manually in `fix-lifecoach-rewrite.ts`
+- Verified: 41/41 have `finalBody` with meta tag + comparison table + FAQ schema, 0 Acuity mentions; prune 308s live; rewrites go live within ~5 min without deploy (blog page `revalidate = 300`)
+- Run pace ~45–60s/post, ~40 min for the full batch. 19 HOLD posts (<30d old, some impressions) left untouched — re-triage next month
+
 ## [2026-09-22] — SEO audit: site indexed but invisible; ping system replaced, duplicate host and mid-word slugs fixed
 
 **Requested by:** Keenan
