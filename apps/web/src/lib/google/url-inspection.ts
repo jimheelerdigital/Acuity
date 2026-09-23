@@ -12,7 +12,7 @@ import { google } from "googleapis";
 import { getGoogleAuthClient } from "./auth";
 
 const SCOPE = "https://www.googleapis.com/auth/webmasters";
-const SITE_URL = "sc-domain:getacuity.io";
+const SITE_URL = process.env.GSC_PROPERTY ?? "sc-domain:goripple.io";
 
 export type CoverageState =
   | "indexed"

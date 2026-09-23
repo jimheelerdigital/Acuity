@@ -2,7 +2,7 @@
  * Google Search Console API integration.
  *
  * Uses the shared service account auth from ./auth.ts with the
- * webmasters.readonly scope. Property: sc-domain:getacuity.io.
+ * webmasters.readonly scope. Property: sc-domain:goripple.io.
  *
  * Both functions return null on failure — callers must handle
  * gracefully (skip pruning, log warning, etc.).
@@ -11,7 +11,10 @@
 import { google } from "googleapis";
 import { getGoogleAuthClient } from "./auth";
 
-const PROPERTY = "sc-domain:getacuity.io";
+// Overridable so a property migration never needs a code change again.
+// The site moved getacuity.io → goripple.io; the old hardcoded property
+// silently returned zero data for every post for months.
+const PROPERTY = process.env.GSC_PROPERTY ?? "sc-domain:goripple.io";
 const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 
 /**

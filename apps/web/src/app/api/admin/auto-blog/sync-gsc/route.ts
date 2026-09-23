@@ -29,7 +29,7 @@ export async function POST() {
     return NextResponse.json(
       {
         error: "GA4_SERVICE_ACCOUNT_KEY is not set",
-        fix: "Add GA4_SERVICE_ACCOUNT_KEY to Vercel environment variables (Production). Value must be the full JSON content of a Google Cloud service account key file. The service account email must be added as a user in Google Search Console for sc-domain:getacuity.io.",
+        fix: "Add GA4_SERVICE_ACCOUNT_KEY to Vercel environment variables (Production). Value must be the full JSON content of a Google Cloud service account key file. The service account email must be added as a user in Google Search Console for sc-domain:goripple.io.",
       },
       { status: 503 }
     );
@@ -87,7 +87,7 @@ export async function POST() {
         error: "GSC API call failed",
         detail,
         serviceAccountEmail,
-        fix: `Check the error detail above. Common causes: (1) Search Console API not enabled in the Google Cloud project — go to APIs & Services → Library → search "Google Search Console API" → Enable. (2) Service account ${serviceAccountEmail} not added as Owner in Search Console for sc-domain:getacuity.io. (3) Domain property mismatch.`,
+        fix: `Check the error detail above. Common causes: (1) Search Console API not enabled in the Google Cloud project — go to APIs & Services → Library → search "Google Search Console API" → Enable. (2) Service account ${serviceAccountEmail} not added as Owner in Search Console for sc-domain:goripple.io. (3) Domain property mismatch.`,
       },
       { status: 502 }
     );
@@ -98,7 +98,7 @@ export async function POST() {
       {
         error: "GSC returned no data (auth may have failed silently)",
         serviceAccountEmail,
-        fix: `Ensure ${serviceAccountEmail} is added as a user (Owner or Full permission) in Google Search Console for the property sc-domain:getacuity.io. Go to Search Console → Settings → Users and permissions → Add user.`,
+        fix: `Ensure ${serviceAccountEmail} is added as a user (Owner or Full permission) in Google Search Console for the property sc-domain:goripple.io. Go to Search Console → Settings → Users and permissions → Add user.`,
       },
       { status: 502 }
     );

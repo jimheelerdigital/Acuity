@@ -12,7 +12,7 @@
  */
 
 import { inngest } from "@/inngest/client";
-import { displayMonthly } from "@/lib/pricing";
+import type { PrismaClient } from "@prisma/client";
 
 // ─── Personas for internal linking ──────────────────────────────────────────
 
@@ -60,7 +60,38 @@ const BANNED_PHRASES = [
   "empower",
   "cutting-edge",
   "leverage",
+  // Positioning rules (docs/acuity-positioning.md): "debrief" not
+  // "brain dump", no fixed-time framing, no duration claims
+  "brain dump",
+  "brain-dump",
+  "60-second",
+  "90-second",
+  "nightly",
+  "before bed",
+  // Statistical AI tells (humanizer skill) — these mark a post as
+  // machine-written to both readers and search quality systems
+  "delve",
+  "tapestry",
+  "testament to",
+  "let's dive",
+  "let's explore",
+  "in the heart of",
+  "isn't just",
+  "is not just",
+  "it's not about",
 ];
+
+/**
+ * Replace em/en dashes with ordinary punctuation. Em dashes are the
+ * single strongest statistical marker of machine-written prose, and the
+ * model slips them in even when told not to. Cheaper to fix than to
+ * burn a retry attempt on it.
+ */
+function stripAiDashes(html: string): string {
+  return html
+    .replace(/\s+[—–]\s+/g, ", ")
+    .replace(/[—–]/g, ", ");
+}
 
 // ─── Blog generation output ─────────────────────────────────────────────────
 
@@ -178,9 +209,11 @@ function validateBlogPost(
   const textBody = post.body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const wordCount = textBody.split(/\s+/).filter(Boolean).length;
 
-  // Comparison posts need more words (feature table + multiple sections)
-  const minWords = searchIntent === "comparison" ? 800 : 540;
-  const maxWords = searchIntent === "comparison" ? 2000 : 1155;
+  // Comparison posts need more words (feature table + multiple sections).
+  // Floor raised from 540: sub-800-word templated posts were sitting in
+  // "crawled - currently not indexed" — thin content at scale.
+  const minWords = searchIntent === "comparison" ? 900 : 810;
+  const maxWords = searchIntent === "comparison" ? 2200 : 1600;
   if (wordCount < minWords || wordCount > maxWords) {
     errors.push(`Word count ${wordCount} outside ${minWords}-${maxWords} range`);
   }
@@ -631,6 +664,13 @@ async function callClaudeForBlog(
     });
 
     const parsed = JSON.parse(extractJson(raw)) as AutoBlogResult;
+    // Safety net: the prompt bans em/en dashes, but strip any that slip
+    // through before validation so published HTML never carries them.
+    parsed.body = stripAiDashes(parsed.body);
+    parsed.title = stripAiDashes(parsed.title);
+    parsed.heroH1 = stripAiDashes(parsed.heroH1);
+    parsed.metaTitle = stripAiDashes(parsed.metaTitle);
+    parsed.metaDescription = stripAiDashes(parsed.metaDescription);
     const validation = validateBlogPost(parsed, blogSlugs, topic.searchIntent);
 
     if (!validation.valid) {
@@ -808,7 +848,7 @@ export const autoBlogPruneFn = inngest.createFunction(
               from: process.env.EMAIL_FROM ?? "noreply@goripple.io",
               to: alertEmail,
               subject: "Blog Pruner: Auth Failure — cannot run",
-              html: `<p>The blog pruner failed its auth pre-check:</p><p><strong>${authError}</strong></p><p>Fix: ensure GA4_SERVICE_ACCOUNT_KEY is set in Vercel env vars with valid JSON containing client_email and private_key. The service account must be added as Owner in Google Search Console for sc-domain:getacuity.io.</p>`,
+              html: `<p>The blog pruner failed its auth pre-check:</p><p><strong>${authError}</strong></p><p>Fix: ensure GA4_SERVICE_ACCOUNT_KEY is set in Vercel env vars with valid JSON containing client_email and private_key. The service account must be added as Owner in Google Search Console for sc-domain:goripple.io.</p>`,
             });
           } catch {
             // Non-fatal
@@ -1234,34 +1274,50 @@ function buildSystemPrompt(
 ): string {
   const currentYear = new Date().getFullYear();
 
-  return `You are writing a blog post for Ripple — a voice journaling app.
+  return `You are writing a blog post for Ripple, a voice self-reflection app, published under the byline of Keenan Assaraf (cofounder). Write it the way a sharp, busy founder writes on his own blog: direct, specific, occasionally first person, with real opinions.
 
 CURRENT YEAR: ${currentYear}. Never reference ${currentYear - 1} or ${currentYear - 2} as the current year. All "best of" or "top X in [year]" content must use ${currentYear}. Do not use outdated years in titles, headings, or body copy.
 
 PRODUCT CONTEXT:
-- Users do a short voice entry (called a "brain dump" in public copy, "debrief" internally)
-- Brain dumps can happen any time of day — never frame as nightly/evening-only
-- AI extracts tasks, tracks goals, detects mood patterns
-- Weekly report every Sunday: 400-word narrative of the user's week
-- Life Matrix: 6 life domains tracked over time
-- Monthly memoir PDF
-- Pricing: ${displayMonthly()}/month after 7-day free trial, no card required
-- First 100 users are Founding Members (${spotsLeft} spots left)
+- Users record a "debrief": they talk, out loud, any time of day, about whatever is in their head
+- Ripple transcribes it, pulls out the to-dos, quietly tracks goals they mention, scores mood, and surfaces patterns across weeks
+- Life Matrix: six life domains tracked over time
+- Weekly report every Sunday: a written narrative of the user's week
+- Ripple is a mirror, not a coach. It reflects the user back to themselves. It never advises or lectures. Copy about Ripple must do the same: describe, never preach.
+- Call the voice entry a "debrief". NEVER call it a "brain dump".
+- Never claim a recording length ("60-second", "two-minute"). Never frame it as a night or bedtime habit. Any time of day.
+- Do not state pricing or "founding member" scarcity in the post body. Evergreen posts outlive prices and promos, and stale claims read as neglect.
 
-VOICE RULES:
-- Direct, specific, zero-fluff. Smart friend explaining, not marketing blog.
-- Short paragraphs (max 2 sentences). Tight. Every sentence earns its place.
-- Specifics over abstractions
-- No fabricated stats — cite real linkable sources or frame qualitatively
-- Get to the point fast — no throat-clearing intros
+WHO READS THIS:
+The paying audience is mostly women around 40 to 50 carrying a heavy mental load: work, family, aging parents, the invisible labor of running other people's lives. They have tried journaling and quit because typing felt like one more chore. Write to a specific person with a full head, not to "users" or "professionals". If the assigned persona differs (a therapist, a founder, a student), keep the same register: capable, busy, tired of tracking everything in their head.
+
+HOW TO WRITE LIKE A PERSON (hard rules, checked by an editor):
+- No em dashes or en dashes anywhere. Use commas, periods, colons, or parentheses.
+- Vary sentence length. Some short. Some that run longer because the thought needs the room. A uniform mid-length cadence is the fastest way to sound like a machine.
+- Vary paragraph shape. Some one sentence, some three or four. Do not cap every paragraph at two sentences.
+- No "It's not X, it's Y" or "not just X but Y" constructions.
+- No forced groups of three ("clarity, calm, and control").
+- Use plain verbs. "Is", "has", "does". Not "serves as", "boasts", "represents".
+- No -ing analysis tails ("...highlighting the importance of self-reflection").
+- No section that just restates its heading in the first sentence.
+- No generic hopeful endings ("The future looks bright"). End on the last concrete, useful point.
+- Sentence-case headings ("Why your to-do list keeps failing"), never Title Case.
+- At least one concrete, specific scenario per post: a named situation with real details (the car pickup line, the 6:40am kitchen, the inbox at 9pm), not "imagine a busy professional".
+- One first-person aside is welcome where it fits ("I resisted this for a year", "this is the part I got wrong"). Zero is fine too. More than two is forced.
+- An opinion is allowed and encouraged. Take a side. Say what does not work and why.
+- No fabricated stats, no "studies show" without a real linked source, no invented user quotes.
 
 BANNED PHRASES (never use these):
 "unlock", "elevate", "journey", "transform", "AI-powered", "seamless", "game-changer",
 "in today's fast-paced world", "revolutionize", "harness the power of", "empower",
-"cutting-edge", "leverage", "it's not X — it's Y" constructions
+"cutting-edge", "leverage", "brain dump", "delve", "tapestry", "testament to",
+"let's dive", "let's explore", "in the heart of", "nightly", "before bed"
 
-NEVER frame Ripple as nightly/evening-only. Brain dumps any time of day.
-"Brain dump" in public copy, "debrief" is internal-only.
+TITLE RULES:
+- Do NOT use the template "How [persona] can use [thing] to [outcome]". Half the archive already looks like that, and Google reads a wall of same-shaped titles as machine output.
+- Match the title to the search intent: a question people type, a claim you defend, a specific list, a mistake and its fix. Examples of shapes (do not copy verbatim): "Why your...", "The [x] that...", "[Thing] vs [thing]:...", "What actually happens when...", "Stop [doing x]. Do [y] instead."
+- Title case is fine for titles; keep headings inside the post sentence case.
+
 Don't position the weekly report as the only value. Rotate emphasis across: task recall,
 goal tracking, pattern detection, weekly reports, Life Matrix, mood scoring.
 
@@ -1270,18 +1326,18 @@ ${
     topic.searchIntent === "comparison"
       ? `This is a COMPARISON post. Follow this exact structure:
 1. Short intro (2-3 sentences: who both apps are for)
-2. Feature comparison TABLE in HTML: side-by-side columns comparing voice input, AI extraction, task tracking, mood tracking, pattern detection, weekly reports, pricing, free trial, platforms. Use <table> with clear headers.
-3. Section "Where [Competitor] wins" — be honest and fair. Never trash them. This builds trust.
-4. Section "Where Ripple wins" — highlight voice-first input, 60-second brain dumps, automatic task extraction, weekly narrative report, Life Matrix, pattern detection.
-5. Section "Who should choose [Competitor]" — be genuine about their strengths
-6. Section "Who should choose Ripple" — people who quit journaling because writing felt like work, people who want patterns surfaced automatically
-7. CTA at bottom: "Try Ripple free for 7 days — no card required" with link to /start
+2. Feature comparison TABLE in HTML: side-by-side columns comparing voice input, AI extraction, task tracking, mood tracking, pattern detection, weekly reports, free trial, platforms. Use <table> with clear headers. Do not put prices in the table; prices go stale.
+3. Section "Where [competitor] wins": be honest and fair. Never trash them. This builds trust.
+4. Section "Where Ripple wins": talking instead of typing, automatic task extraction from a debrief, the weekly narrative report, Life Matrix, pattern detection.
+5. Section "Who should choose [competitor]": be genuine about their strengths
+6. Section "Who should choose Ripple": people who quit journaling because writing felt like work, people who want patterns surfaced automatically
+7. CTA at bottom: a plain sentence linking to /start, e.g. "Try Ripple free for 7 days. No card required."
 8. FAQ section with 3-4 comparison questions
-IMPORTANT: Do NOT fabricate competitor features or pricing. If unsure, say "check their website for current pricing." Be fair and honest — readers respect balanced comparisons.`
+IMPORTANT: Do NOT fabricate competitor features or pricing. If unsure, say "check their website for current pricing." Be fair and honest. Readers respect balanced comparisons.`
       : topic.searchIntent === "informational" ||
         topic.searchIntent === "problem-solving"
-        ? `INCLUDE a CTA around 2/3 of the way down. Phrase as natural next step. Example: "If you've read this far, Ripple is basically what this article describes — a voice entry that pulls out your tasks and tracks the goals you keep circling. First 100 members get early access. ${spotsLeft} spots left." Never CTA in first 40% of post.`
-        : `NO CTA — this topic is a loose tangent. End with 2-3 internal links to related posts.`
+        ? `INCLUDE one CTA around 2/3 of the way down, phrased as a natural next step in the writer's own words. Something like: "This is roughly what Ripple does: you talk for a bit, it pulls out the tasks and tracks the goals you keep circling. There's a 7-day free trial, no card required." Link to /start. No urgency, no scarcity, no member counts. Never place the CTA in the first 40% of the post.`
+        : `NO CTA. This topic is a loose tangent. End with 2-3 internal links to related posts.`
   }
 
 Every post (CTA or not) ends with 2-3 internal links to related posts.
@@ -1324,15 +1380,14 @@ OUTPUT FORMAT — respond with a single JSON object:
 }
 
 REQUIREMENTS:
-- 600 to 1,050 words (shorter posts perform better — get to the point)
+- 900 to 1,400 words. Thin posts get crawled and skipped; padded posts get skipped too. Every section has to earn its place.
 - Primary keyword in H1, first 100 words, and at least one H2
-- At least 2 H2 sections
+- At least 3 H2 sections, sentence case
 - At least 2 internal links to /for/* or /blog/* posts (from the lists above ONLY)
 - 2-4 external citations to authoritative sources (with target="_blank" rel="noopener noreferrer")
-- FAQ section with 3+ questions and answers
+- FAQ section with 3+ questions and answers (visible HTML in the body; the schema goes ONLY in the faqSchema JSON field, never as a script tag in the body)
 - Meta description: exactly 140-160 characters
-- Meta title: exactly 50-60 characters
-- Include JSON-LD FAQPage schema in the body HTML`;
+- Meta title: exactly 50-60 characters`;
 }
 
 function buildUserPrompt(topic: {
@@ -1350,24 +1405,7 @@ Search intent: ${topic.searchIntent}
 Write the post now. Output only the JSON object.`;
 }
 
-async function refillTopicQueue(prisma: {
-  blogTopicQueue: {
-    createMany: (args: {
-      data: Array<{
-        topic: string;
-        persona: string;
-        targetKeyword: string;
-        searchIntent: string;
-      }>;
-    }) => Promise<unknown>;
-  };
-  contentPiece: {
-    findMany: (args: {
-      where: { type: string };
-      select: { title: true };
-    }) => Promise<Array<{ title: string }>>;
-  };
-}) {
+async function refillTopicQueue(prisma: PrismaClient) {
   const { callClaude } = await import("@/lib/content-factory/claude-client");
   const { extractJson } = await import("@/lib/content-factory/generate");
 
@@ -1380,17 +1418,22 @@ async function refillTopicQueue(prisma: {
 
   const raw = await callClaude({
     purpose: "auto-blog-topic-generation",
-    systemPrompt: `You generate blog topic ideas for Ripple, a voice journaling app.
+    systemPrompt: `You generate blog topic ideas for Ripple, a voice self-reflection app. You talk instead of typing; it pulls out your tasks, tracks your goals and mood, and writes a weekly report on your patterns.
 
-Each topic must target a long-tail keyword a real person would Google.
-Cover diverse personas: founders, therapists, knowledge workers, ADHD, sleep-issues,
-parents, students, writers, perfectionists, solopreneurs, creatives, executives,
-coaches, freelancers, recovering-addicts.
+PRIMARY AUDIENCE (at least 60% of topics): women roughly 40 to 50 carrying a heavy mental load. Work, kids' schedules, aging parents, the invisible labor of remembering everything for everyone. They have tried journaling and quit because typing felt like one more chore. Topics for them live in mental load, overwhelm, dropped balls, journaling that never sticks, remembering commitments, feeling scattered.
+
+SECONDARY (the rest): ADHD adults, burned-out professionals, new parents, caregivers, therapists recommending tools to clients. Same register: capable, busy, tired of tracking life in their head.
+
+TOPIC RULES:
+- Each topic targets a long-tail keyword a real person would type into Google. Think questions ("why do I forget things I said I'd do"), specific problems ("journaling apps for people who hate writing"), and comparisons.
+- Vary the title shape. Questions, claims, mistakes-and-fixes, "X vs Y", "what actually happens when...". Do NOT produce a list of 50 titles shaped "How [persona] can use [thing] to [outcome]".
+- No topic should require fabricating statistics or medical claims to write well.
+- Mix search intents: mostly informational and problem-solving, a few comparisons against real journaling/notes apps (Day One, Journey, Reflectly, Notion, Apple Notes, voice memos).
 
 Respond with a JSON array of 50 objects:
 [{
   "topic": "descriptive topic title",
-  "persona": "target persona (e.g., founders, adhd, students)",
+  "persona": "target persona (e.g., mental-load, adhd, new-parents, caregivers)",
   "targetKeyword": "long-tail SEO keyword",
   "searchIntent": "informational | comparison | problem-solving"
 }]`,

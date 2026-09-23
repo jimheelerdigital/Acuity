@@ -25,6 +25,7 @@ interface DynamicPost {
   status: string;
   redirectTo: string | null;
   heroImageUrl: string | null;
+  faqSchema: unknown;
 }
 
 async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
@@ -57,6 +58,7 @@ async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
         status: true,
         redirectTo: true,
         heroImageUrl: true,
+        faqSchema: true,
       },
     }) as DynamicPost | null;
   } catch {
@@ -252,6 +254,44 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
   );
 }
 
+/**
+ * FAQPage structured data from the stored faqSchema field.
+ *
+ * Historical bug: the generation prompt asked Claude to embed FAQPage
+ * JSON-LD inside the body HTML, but sanitizeHtml() strips every <script>
+ * tag — so no dynamic post ever shipped FAQ schema. Rendering from the
+ * structured faqSchema column is the reliable path.
+ */
+function FaqJsonLd({ faqSchema }: { faqSchema: unknown }) {
+  if (!Array.isArray(faqSchema) || faqSchema.length === 0) return null;
+
+  const questions = faqSchema.filter(
+    (q): q is { question: string; answer: string } =>
+      typeof q === "object" &&
+      q !== null &&
+      typeof (q as { question?: unknown }).question === "string" &&
+      typeof (q as { answer?: unknown }).answer === "string"
+  );
+  if (questions.length === 0) return null;
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: questions.map((q) => ({
+      "@type": "Question",
+      name: q.question,
+      acceptedAnswer: { "@type": "Answer", text: q.answer },
+    })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
 // ─── Sanitizer ──────────────────────────────────────────────────────────────
 
 function sanitizeHtml(html: string): string {
@@ -335,7 +375,10 @@ export default async function BlogPostPage({ params }: Props) {
               })}
             </div>
             <BlogCta />
-            <RelatedPosts currentSlug={staticPost.slug} />
+            <RelatedPosts
+              currentSlug={staticPost.slug}
+              currentText={`${staticPost.title} ${staticPost.targetKeyword ?? ""}`}
+            />
           </div>
         </article>
       </>
@@ -366,6 +409,7 @@ export default async function BlogPostPage({ params }: Props) {
   return (
     <>
       <BlogJsonLdDynamic post={dynamicPost} />
+      <FaqJsonLd faqSchema={dynamicPost.faqSchema} />
       <article className="pt-32 pb-24 px-6">
         <div className="mx-auto max-w-3xl">
           <div className="mb-12">
@@ -418,7 +462,10 @@ export default async function BlogPostPage({ params }: Props) {
             dangerouslySetInnerHTML={{ __html: htmlBody }}
           />
           <BlogCta />
-          <RelatedPosts currentSlug={params.slug} />
+          <RelatedPosts
+            currentSlug={params.slug}
+            currentText={`${dynamicPost.title} ${dynamicPost.targetKeyword ?? ""}`}
+          />
         </div>
       </article>
     </>
@@ -432,11 +479,12 @@ function BlogCta() {
     <>
       <div className="mt-16 rounded-xl border border-acuity-primary/30 bg-acuity-card-bg p-8 sm:p-10 text-center">
         <h2 className="text-2xl font-bold mb-3">
-          Brain dump daily. Get your life back.
+          Say it once. Ripple remembers.
         </h2>
         <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-          Try Ripple free for 7 days. Just talk. No typing. Just
-          talk.
+          Talk through your day and Ripple pulls out the tasks, tracks
+          your goals, and shows you your patterns each week. Free for 7
+          days.
         </p>
         <BlogCtaButtons />
         <p className="mt-3 text-xs text-acuity-text-sec">
@@ -455,8 +503,86 @@ function BlogCta() {
   );
 }
 
-function RelatedPosts({ currentSlug }: { currentSlug: string }) {
-  const related = BLOG_POSTS.filter((p) => p.slug !== currentSlug).slice(0, 3);
+const RELATED_STOPWORDS = new Set([
+  "how", "why", "what", "when", "the", "a", "an", "to", "for", "of", "and",
+  "with", "your", "you", "can", "use", "using", "in", "on", "vs", "is",
+]);
+
+function keywordTokens(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/[\s-]+/)
+      .filter((w) => w.length > 2 && !RELATED_STOPWORDS.has(w))
+  );
+}
+
+/**
+ * Related posts drawn from the FULL post pool (dynamic + static),
+ * ranked by keyword overlap with the current post.
+ *
+ * The old version only ever linked the first 3 hardcoded static posts,
+ * so 140+ auto-published posts received zero internal links from other
+ * articles — starving them of the link equity Google uses to decide
+ * what deserves indexing.
+ */
+async function RelatedPosts({
+  currentSlug,
+  currentText,
+}: {
+  currentSlug: string;
+  currentText: string;
+}) {
+  let candidates: Array<{ slug: string; title: string; keyword: string }> = [];
+
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const pieces = await prisma.contentPiece.findMany({
+      where: {
+        type: "BLOG",
+        status: { in: ["DISTRIBUTED", "AUTO_PUBLISHED"] },
+        slug: { not: null },
+      },
+      orderBy: { distributedAt: "desc" },
+      select: { slug: true, title: true, targetKeyword: true },
+    });
+    candidates = pieces.map((p) => ({
+      slug: p.slug!,
+      title: p.title,
+      keyword: p.targetKeyword ?? "",
+    }));
+  } catch {
+    // DB unavailable — fall through to static posts
+  }
+
+  for (const post of BLOG_POSTS) {
+    candidates.push({
+      slug: post.slug,
+      title: post.title,
+      keyword: post.targetKeyword ?? "",
+    });
+  }
+
+  const seen = new Set<string>([currentSlug]);
+  const currentTokens = keywordTokens(currentText);
+
+  const related = candidates
+    .filter((c) => {
+      if (seen.has(c.slug)) return false;
+      seen.add(c.slug);
+      return true;
+    })
+    .map((c, i) => {
+      const tokens = keywordTokens(`${c.title} ${c.keyword}`);
+      let overlap = 0;
+      for (const t of tokens) if (currentTokens.has(t)) overlap++;
+      // Small recency bias so ties favor newer posts (list is newest-first)
+      return { ...c, score: overlap - i * 0.001 };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
   if (related.length === 0) return null;
 
   return (
@@ -469,7 +595,6 @@ function RelatedPosts({ currentSlug }: { currentSlug: string }) {
             href={`/blog/${post.slug}`}
             className="group rounded-lg border border-acuity-line bg-acuity-card-bg p-5 transition hover:border-acuity-primary/40"
           >
-            <p className="text-xs text-acuity-text-sec mb-2">{post.readingTime}</p>
             <h3 className="text-sm font-semibold text-acuity-text group-hover:text-acuity-primary transition-colors leading-snug">
               {post.title}
             </h3>
