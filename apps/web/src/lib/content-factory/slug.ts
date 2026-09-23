@@ -4,11 +4,16 @@
  */
 
 export function slugify(title: string): string {
-  return title
+  const full = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60);
+    .replace(/^-|-$/g, "");
+  if (full.length <= 60) return full;
+  // Truncate at a word boundary instead of mid-word ("...why-self-recorded"
+  // → "...why-self"). Existing slugs are unaffected; this only shapes new ones.
+  const cut = full.slice(0, 60);
+  const lastDash = cut.lastIndexOf("-");
+  return (lastDash > 30 ? cut.slice(0, lastDash) : cut).replace(/-+$/, "");
 }
 
 export async function uniqueSlug(

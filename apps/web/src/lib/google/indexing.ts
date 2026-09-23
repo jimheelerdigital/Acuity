@@ -1,15 +1,29 @@
 /**
- * Google Indexing API integration.
+ * Search engine ping on publish/unpublish — IndexNow protocol.
  *
- * Notifies Google when blog posts are published or unpublished.
+ * HISTORY: this module previously used the Google Indexing API, which
+ * failed with "Permission denied. Failed to verify the URL ownership"
+ * on every call for months (60/60 failures in IndexingLog). Root cause:
+ * the Indexing API is officially restricted to JobPosting/BroadcastEvent
+ * pages and requires the service account to be a delegated OWNER of the
+ * GSC property — regular blog posts are ignored even when it succeeds.
+ *
+ * IndexNow (Bing, Yandex, Seznam, Naver; Google does not consume it) is
+ * the legitimate instant-ping protocol. Google discovery is handled by
+ * the sitemap, which GSC re-fetches daily (verified 2026-09-22).
+ *
+ * Key file: apps/web/public/{INDEXNOW_KEY}.txt must contain the key and
+ * be publicly reachable at https://goripple.io/{INDEXNOW_KEY}.txt.
+ *
  * Fire-and-forget with retry — never blocks the calling flow.
  * Every call is logged to the IndexingLog table.
  */
 
-import { google } from "googleapis";
-import { getGoogleAuthClient } from "./auth";
-
-const SCOPE = "https://www.googleapis.com/auth/indexing";
+// Not a secret: the IndexNow protocol requires this exact value to be
+// publicly served at https://goripple.io/{key}.txt as an ownership proof.
+const INDEXNOW_KEY = "0b3485c1826f46a391a795f4e3d35833"; // gitleaks:allow
+const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
+const HOST = "goripple.io";
 
 interface IndexingResult {
   success: boolean;
@@ -22,13 +36,8 @@ async function sleep(ms: number) {
 
 async function notify(
   url: string,
-  type: "URL_UPDATED" | "URL_DELETED"
+  eventType: "URL_UPDATED" | "URL_DELETED"
 ): Promise<IndexingResult> {
-  const auth = getGoogleAuthClient([SCOPE]);
-  if (!auth) {
-    return { success: false, error: "No auth client — GA4_SERVICE_ACCOUNT_KEY not set" };
-  }
-
   const backoffMs = [1000, 2000, 4000];
   let lastError = "";
   let attempts = 0;
@@ -36,33 +45,33 @@ async function notify(
   for (let i = 0; i < 3; i++) {
     attempts = i + 1;
     try {
-      const indexing = google.indexing({ version: "v3", auth });
-      await indexing.urlNotifications.publish({
-        requestBody: { url, type },
+      const res = await fetch(INDEXNOW_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({
+          host: HOST,
+          key: INDEXNOW_KEY,
+          keyLocation: `https://${HOST}/${INDEXNOW_KEY}.txt`,
+          urlList: [url],
+        }),
       });
 
-      // Success — log and return
-      await logIndexing(url, type, true, null, attempts);
-      return { success: true };
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : String(err);
-      lastError = message;
-
-      // Only retry on 429 or 5xx
-      const status =
-        (err as { code?: number })?.code ??
-        (err as { status?: number })?.status;
-      if (status && status < 500 && status !== 429) {
-        break;
+      // IndexNow: 200/202 = accepted. 4xx = config problem (no retry).
+      if (res.ok || res.status === 202) {
+        await logIndexing(url, `INDEXNOW_${eventType}`, true, null, attempts);
+        return { success: true };
       }
 
-      if (i < 2) await sleep(backoffMs[i]);
+      lastError = `IndexNow HTTP ${res.status}`;
+      if (res.status < 500 && res.status !== 429) break;
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err.message : String(err);
     }
+
+    if (i < 2) await sleep(backoffMs[i]);
   }
 
-  // All retries exhausted or non-retryable error
-  await logIndexing(url, type, false, lastError, attempts);
+  await logIndexing(url, `INDEXNOW_${eventType}`, false, lastError, attempts);
   return { success: false, error: lastError };
 }
 
@@ -84,7 +93,7 @@ async function logIndexing(
 }
 
 /**
- * Notify Google that a URL was published or updated.
+ * Notify search engines that a URL was published or updated.
  * Fire-and-forget — catches all errors internally.
  */
 export async function notifyPublish(url: string): Promise<IndexingResult> {
@@ -98,7 +107,7 @@ export async function notifyPublish(url: string): Promise<IndexingResult> {
 }
 
 /**
- * Notify Google that a URL was removed.
+ * Notify search engines that a URL was removed.
  * Fire-and-forget — catches all errors internally.
  */
 export async function notifyUnpublish(url: string): Promise<IndexingResult> {

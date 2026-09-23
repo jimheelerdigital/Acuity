@@ -218,6 +218,14 @@ const nextConfig = {
         permanent: true,
       },
       {
+        // www → apex. www.goripple.io was serving 200s as a duplicate
+        // host (SEO: splits crawl signals; canonical tag only mitigates).
+        source: "/:path*",
+        has: [{ type: "host", value: "www.goripple.io" }],
+        destination: "https://goripple.io/:path*",
+        permanent: true,
+      },
+      {
         // /waitlist retired 2026-05-22 (slice 7)
         source: "/waitlist",
         destination: "/start",
