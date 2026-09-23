@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-23] — Weekly ad batch images redesigned as real direct-response ads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (fill after commit)
+
+### In plain English (for Keenan)
+The first weekly ad batch came out as pretty mood photos with no headline, no value props, and no call to action baked into the image — they looked like art, not ads. Now every batch image is built like a real Meta ad: five proven formats rotate across the 10 ads (photo with a big hook headline + CTA button, a notes-app-style "ugly ad" with a checklist, a bold text-only statement card, a checklist over a photo, and a phone-in-scene shot), each with the exact ad headline, short value props, and a CTA button rendered in the creative itself. This week's 20 already-generated ads are being regenerated in the new formats right now — copy stays the same, only the images change. Also fixed the compliance checker that was stamping every ad with a useless "check failed" warning: it was running out of room mid-answer; now it completes and gives real per-ad verdicts.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/weekly-batch.ts`: new `AD_FORMATS` (5 direct-response prompt builders) + `buildAdImagePrompt(index, copy, groupKey)` — deterministic, rebuildable from stored copy fields; per-group `photoStyle`, `overlayValueProps`, `cardBackground` added to `BATCH_GROUPS`; `generationPrompt` now built via the format rotation at batch creation; `generateBatchImage` gains `{ force }` (regenerates over an existing image with a timestamped filename to bust CDN cache); Claude batch prompt's `imageScene` instruction reworded to "background scene only"
+- New Inngest fn `adlab-regen-images` (`apps/web/src/inngest/functions/adlab-regen-images.ts`, event `adlab/regen-images.requested`, data `{experimentIds}`): rebuilds prompts from stored copy (no new Claude copy calls), force-regenerates each image as its own step, re-runs compliance. Registered in `api/inngest/route.ts`
+- New route `apps/web/src/app/api/admin/adlab/regen-images/route.ts` — POST `{experimentIds}`, auth = admin session OR Bearer CRON_SECRET, fires the event
+- `apps/web/src/lib/adlab/compliance.ts`: compliance `maxTokens` 2000 → 4000 — 2000 truncated the 10-verdict JSON, the parse failed, and the catch-all stamped every creative with the blanket "Check Failed" warning seen on this week's batch
+- DB cleanup: deleted the two empty orphan experiments created by the failed local run (`cmuegt2ih…`, `cmuegt5d7…`)
+
+### Manual steps needed
+- [ ] Keenan: re-review this week's regenerated ads at goripple.io/admin/adlab/review once the regen email-free run finishes (~10 min after deploy)
+
+### Notes
+- Image cost: regenerating 20 gpt-image-2 images (~same cost as the original batch run). Future weekly batches use the new formats automatically.
+- gpt-image-2 renders baked text reliably when given EXACT quoted strings + "render exactly as written" — same technique the content factory validated for quote carousels. Headlines are ≤40 chars by prompt constraint, which keeps overlay text short enough to render cleanly.
+- The regen path recovers each creative's original `imageScene` by parsing the old `generationPrompt` tail (`Scene: …`); new batches don't need this since prompts are format-built from the start.
+- This week's experiment IDs: women `cmueh6mdc00011489aquog76k`, men `cmuehcnge0002pj8ztck2u3n4`.
+
+---
+
 ## [2026-09-23] — SEO Phase 3: linkable data asset page live + outreach and directory kits drafted in Gmail
 
 **Requested by:** Keenan

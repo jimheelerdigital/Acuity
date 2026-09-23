@@ -36,7 +36,14 @@ interface GroupConfig {
   brandVoiceGuide: string;
   targetAudience: Record<string, unknown>;
   usps: string[];
+  /** Photography direction for background plates (no text rules here). */
+  photoStyle: string;
+  /** photoStyle + no-text clause — stored on the AdLabProject for legacy tooling. */
   imageStylePrompt: string;
+  /** Short lines (≤5 words) baked into checklist/notes ad formats. */
+  overlayValueProps: [string, string, string];
+  /** Flat background color direction for typographic formats. */
+  cardBackground: string;
 }
 
 const PRODUCT_TRUTH = `Ripple is an AI habit tracker & voice journal with life optimization. What it actually does: you record a voice debrief any time of day; it transcribes, pulls out tasks, tracks habits and goals, detects recurring patterns, scores 6 life domains (Life Matrix), and delivers a weekly narrative report. $4.99/month, 7-day free trial. It does NOT diagnose, treat, or replace therapy. Never claim a specific recording duration.`;
@@ -97,8 +104,16 @@ Never promise transformation or wellness outcomes. Show what she'll SEE, not who
       "Life Matrix: 6 life domains, tracked quietly over time",
       "records any time of day, no typing, no blank page",
     ],
+    photoStyle:
+      "Warm editorial photography. Soft lamp light, cozy lived-in interiors, muted warm tones (amber, cream, terracotta). Quiet domestic moments — a mug, a window, an armchair. Minimal composition, gentle contrast.",
     imageStylePrompt:
       "Warm editorial photography. Soft lamp light, cozy lived-in interiors, muted warm tones (amber, cream, terracotta). Quiet domestic moments — a mug, a window, an armchair. Minimal composition, gentle contrast. No text, no logos, no identifiable faces.",
+    overlayValueProps: [
+      "Talk — it's all captured",
+      "Tasks pulled out for you",
+      "A weekly report about you",
+    ],
+    cardBackground: "warm cream paper background with a subtle terracotta accent",
   },
   men: {
     key: "men",
@@ -138,10 +153,122 @@ Never promise transformation. Show the mechanism: spoken debrief → tracked hab
       "pattern detection: see the loop you've been stuck in, in your own words",
       "weekly report: the honest scoreboard of your week",
     ],
+    photoStyle:
+      "Dark, moody editorial photography. Low-key lighting, deep shadows, desaturated tones with a single warm accent. Discipline aesthetics — early morning streets, gym chalk, a desk lamp at night, rain on a window. High contrast, cinematic.",
     imageStylePrompt:
       "Dark, moody editorial photography. Low-key lighting, deep shadows, desaturated tones with a single warm accent. Discipline aesthetics — early morning streets, gym chalk, a desk lamp at night, rain on a window. High contrast, cinematic. No text, no logos, no identifiable faces.",
+    overlayValueProps: [
+      "Say it out loud. Logged.",
+      "Broken promises get caught",
+      "A weekly honest scoreboard",
+    ],
+    cardBackground: "near-black charcoal background with a single warm amber accent",
   },
 };
+
+// ─── Ad-creative image formats (2026-09-23, per Keenan) ───────────────────
+//
+// First batch shipped as pure mood photography — zero hook, value prop, or
+// CTA in the image. Keenan: "these need to be based on true successful ads
+// with CTA, value props, etc. otherwise they won't convert". These five
+// formats mirror proven direct-response static formats for app ads; each
+// bakes the exact ad copy INTO the creative (same exact-text technique the
+// content factory validated for quote carousels). Rotation across a
+// 10-ad batch = each format tested twice per week.
+
+const CTA_LABELS: Record<string, string> = {
+  LEARN_MORE: "Learn more",
+  SIGN_UP: "Start free trial",
+  GET_OFFER: "Try it free",
+  DOWNLOAD: "Get the app",
+  SUBSCRIBE: "Start free trial",
+};
+
+interface AdImageCopy {
+  headline: string;
+  description: string;
+  cta: string;
+  imageScene: string;
+}
+
+const EXACT_TEXT_RULES = `TEXT RENDERING RULES (critical):
+- Render every quoted string EXACTLY as written — correct spelling, no words added, none dropped.
+- Clean modern sans-serif typography, high contrast, easily legible on a phone screen.
+- No other text anywhere in the image beyond the strings specified.
+- No logos, no watermarks, no identifiable faces.
+- Square 1:1 social ad, all text inside safe margins (nothing within 60px of any edge).`;
+
+type AdFormatBuilder = (copy: AdImageCopy, g: GroupConfig) => string;
+
+/** key → prompt builder. Order defines the rotation across a batch. */
+export const AD_FORMATS: Array<{ key: string; build: AdFormatBuilder }> = [
+  {
+    // 1. Classic hook overlay — photo background, big hook, CTA pill
+    key: "hook-overlay",
+    build: (c, g) => `Direct-response social media ad, square 1:1.
+Background photograph: ${g.photoStyle} Scene: ${c.imageScene} Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
+Text baked into the image:
+- Large bold headline across the upper third: "${c.headline}"
+- Rounded solid CTA button pill centered near the bottom with the label: "${ctaLabel(c.cta)}"
+${EXACT_TEXT_RULES}`,
+  },
+  {
+    // 2. Notes-app "ugly ad" — native-feeling checklist screenshot style
+    key: "notes-app",
+    build: (c, g) => `Social media ad styled like a clean screenshot of a minimal phone notes app on a plain ${g.cardBackground}. Native, un-designed, screenshot-like feel — this intentionally does NOT look like a polished ad.
+The note contains, top to bottom:
+- Note title in bold: "${c.headline}"
+- Three checklist lines, each with a small checkbox: "${g.overlayValueProps[0]}", "${g.overlayValueProps[1]}", "${g.overlayValueProps[2]}"
+- A thin divider, then a small button-style bar at the bottom: "${ctaLabel(c.cta)}"
+${EXACT_TEXT_RULES}`,
+  },
+  {
+    // 3. Bold statement card — typographic scroll-stopper
+    key: "statement-card",
+    build: (c, g) => `Typographic direct-response social ad, square 1:1, on a flat ${g.cardBackground}. No photograph — typography IS the creative.
+Text baked into the image:
+- Huge bold statement filling most of the frame: "${c.headline}"
+- Smaller supporting line beneath it: "${c.description}"
+- Small rounded CTA button pill at the bottom: "${ctaLabel(c.cta)}"
+- Tiny brand name bottom corner: "Ripple"
+${EXACT_TEXT_RULES}`,
+  },
+  {
+    // 4. Checklist over photo — hook + value props + CTA
+    key: "checklist-photo",
+    build: (c, g) => `Direct-response social media ad, square 1:1.
+Background photograph, heavily darkened/softened so text dominates: ${g.photoStyle} Scene: ${c.imageScene}
+Text baked into the image:
+- Bold headline at top: "${c.headline}"
+- Three lines below it, each preceded by a small checkmark: "${g.overlayValueProps[0]}", "${g.overlayValueProps[1]}", "${g.overlayValueProps[2]}"
+- Rounded solid CTA button pill at the bottom: "${ctaLabel(c.cta)}"
+${EXACT_TEXT_RULES}`,
+  },
+  {
+    // 5. App-in-scene — phone with minimal record screen + hook
+    key: "app-in-scene",
+    build: (c, g) => `Direct-response social media ad for a voice journaling app, square 1:1.
+Background photograph: ${g.photoStyle} A smartphone rests naturally in the scene (on a table or held, hands only), its screen showing an extremely minimal dark app interface: a large round record button and a soft audio waveform — no readable UI text on the phone screen.
+Text baked into the image:
+- Large bold headline across the top: "${c.headline}"
+- Rounded solid CTA button pill at the bottom: "${ctaLabel(c.cta)}"
+${EXACT_TEXT_RULES}`,
+  },
+];
+
+function ctaLabel(cta: string): string {
+  return CTA_LABELS[cta] ?? "Start free trial";
+}
+
+/**
+ * Deterministic prompt for creative #index of a batch — same builder is used
+ * at batch creation and by the regen path, so prompts can always be rebuilt
+ * from the stored copy fields alone.
+ */
+export function buildAdImagePrompt(index: number, copy: AdImageCopy, groupKey: BatchGroupKey): string {
+  const format = AD_FORMATS[index % AD_FORMATS.length];
+  return format.build(copy, BATCH_GROUPS[groupKey]);
+}
 
 // ─── Project seeding ──────────────────────────────────────────────────────
 
@@ -292,7 +419,7 @@ REQUIREMENTS:
 - primaryText: 1-3 sentences, roughly 80-200 characters.
 - description: max 100 characters.
 - cta: one of LEARN_MORE, SIGN_UP, GET_OFFER, DOWNLOAD, SUBSCRIBE.
-- imageScene: 1-2 sentence visual scene for this ad's image, matching the brand's photography style. No text in image, no faces.
+- imageScene: 1-2 sentence BACKGROUND scene for this ad's image, matching the brand's photography style. Scene only — the headline/CTA overlay is composed separately. No faces.
 
 META POLICY (violations get ads rejected — follow strictly):
 - NEVER use 'you/your' in a way that implies a personal attribute (health condition, mental state, finances). "You feel stuck" is fine; "your anxiety" is not.
@@ -325,7 +452,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
   }
 
   const creativeIds: string[] = [];
-  for (const ad of ads.slice(0, 10)) {
+  for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
     const angle = await prisma.adLabAngle.create({
       data: {
         experimentId: experiment.id,
@@ -344,7 +471,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
         primaryText: ad.primaryText,
         description: ad.description,
         cta: ad.cta,
-        generationPrompt: `${g.imageStylePrompt}\nScene: ${ad.imageScene}`,
+        generationPrompt: buildAdImagePrompt(adIndex, ad, groupKey),
         complianceStatus: "pending",
         approved: false,
       },
@@ -368,13 +495,18 @@ function openai(): OpenAI {
 
 /**
  * Generate + upload the image for one batch creative (its generationPrompt
- * already contains style + scene). Soft-fails: on error the creative keeps
- * imageUrl=null and a note; the review UI shows it without an image.
+ * already contains format + style + baked copy). Soft-fails: on error the
+ * creative keeps imageUrl=null and a note; the review UI shows it without
+ * an image. Pass force=true to regenerate over an existing image (filename
+ * is timestamped so the public URL changes — no stale CDN cache).
  */
-export async function generateBatchImage(creativeId: string): Promise<{ ok: boolean; error?: string }> {
+export async function generateBatchImage(
+  creativeId: string,
+  opts?: { force?: boolean }
+): Promise<{ ok: boolean; error?: string }> {
   const creative = await prisma.adLabCreative.findUnique({ where: { id: creativeId } });
   if (!creative) return { ok: false, error: "creative not found" };
-  if (creative.imageUrl) return { ok: true };
+  if (creative.imageUrl && !opts?.force) return { ok: true };
 
   if (!process.env.ACUITY_ADLAB_OPENAI_KEY) {
     return { ok: false, error: "ACUITY_ADLAB_OPENAI_KEY not configured" };
@@ -392,7 +524,7 @@ export async function generateBatchImage(creativeId: string): Promise<{ ok: bool
     const buffer = Buffer.from(b64, "base64");
 
     const { supabase } = await import("@/lib/supabase.server");
-    const filename = `${creative.id}.png`;
+    const filename = opts?.force ? `${creative.id}-${Date.now()}.png` : `${creative.id}.png`;
     const { error } = await supabase.storage
       .from("adlab-creatives")
       .upload(filename, buffer, { contentType: "image/png", upsert: true });

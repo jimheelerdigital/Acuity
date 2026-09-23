@@ -114,11 +114,14 @@ Return a JSON array with one object per creative:
 If verdict is PASS, issues should be an empty array. Return ONLY the JSON array.`;
 
   try {
+    // 2026-09-23: was 2000, which truncated the JSON for a 10-creative batch
+    // — parse failed and EVERY creative fell back to the blanket "Check
+    // Failed" warning. 10 verdicts with issues need ~3-4k tokens.
     const raw = await callAdLabClaude({
       purpose: "compliance-check",
       systemPrompt: COMPLIANCE_SYSTEM_PROMPT,
       userPrompt,
-      maxTokens: 2000,
+      maxTokens: 4000,
     });
 
     const parsed = JSON.parse(extractJson(raw));

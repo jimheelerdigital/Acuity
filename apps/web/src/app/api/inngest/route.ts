@@ -48,6 +48,7 @@ import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twi
 import { commitExtractionBackstopFn } from "@/inngest/functions/commit-extraction-backstop";
 import { stripeWebhookHealthFn } from "@/inngest/functions/stripe-webhook-health";
 import { entitlementDriftMonitorFn } from "@/inngest/functions/entitlement-drift-monitor";
+import { rcParitySoakFn } from "@/inngest/functions/rc-parity-soak";
 import { entitlementReconcileNightlyFn } from "@/inngest/functions/entitlement-reconcile-nightly";
 import { generateInsightsCronFn } from "@/inngest/functions/generate-insights-cron";
 import { carouselDailyCronFn } from "@/inngest/functions/carousel-daily";
@@ -64,6 +65,7 @@ import { laneIntelligenceReportFn } from "@/inngest/functions/lane-intelligence-
 import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
 import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-daily";
 import { adlabWeeklyBatchFn } from "@/inngest/functions/adlab-weekly-batch";
+import { adlabRegenImagesFn } from "@/inngest/functions/adlab-regen-images";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -100,6 +102,7 @@ const handler = serve({
     trialExpirationCronFn,
     entitlementDriftMonitorFn,
     entitlementReconcileNightlyFn,
+    rcParitySoakFn,
     trialCountdownEmailsCronFn,
     trialCountdownPushCronFn,
     // Flag-gated on ENABLE_V10_DAY2_PUSH; registered always so Inngest
@@ -135,6 +138,7 @@ const handler = serve({
     redditTrendsDailyFn,
     competitorScrapeDailyFn,
     adlabWeeklyBatchFn,
+    adlabRegenImagesFn,
   ],
 });
 
