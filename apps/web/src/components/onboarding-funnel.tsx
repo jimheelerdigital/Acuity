@@ -185,7 +185,10 @@ function useFunnelTracker() {
   const utmRef = useRef<UtmParams>({});
   useEffect(() => { utmRef.current = captureUtmParams(); }, []);
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: "v7", ...props });
+    // Variant suffix so /start vs /start-bwk conversion can be split in
+    // dashboards — the funnels share every event name.
+    const variant = typeof window !== "undefined" && window.location.pathname === "/start-bwk" ? "v7-bwk" : "v7";
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: variant, ...props });
   }, []);
 }
 

@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-23] — Prod trigger for the weekly ad batch + funnel-variant tracking split
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log)
+
+### In plain English (for Keenan)
+This week's ad batch failed when run from the laptop because the Claude API key stored locally is dead — the working key only exists on the live server. There's now a button-press equivalent: a secure endpoint on the live site that kicks off the exact same batch (10 women's ads + 10 men's ads, images, compliance check, review email) using the server's working keys. Also: the two funnels (/start and /start-bwk) now report themselves separately in analytics, so once ads are running you can see which funnel converts better instead of the data being blended together.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/admin/adlab/run-weekly-batch/route.ts` — POST, auth = admin session OR `Bearer CRON_SECRET`, fires the `adlab/weekly-batch.requested` Inngest event (function already had this manual trigger). Mirrors the weekly-seo-report trigger route pattern.
+- `apps/web/src/components/onboarding-funnel.tsx` — `useFunnelTracker` now sends `flowVersion: "v7-bwk"` when `window.location.pathname === "/start-bwk"`, else `"v7"`. Event names stay identical across funnels.
+- New `apps/web/scripts/run-weekly-adlab-batch.ts` — local runner for the batch (kept for reference, but see Notes: it 401s locally).
+
+### Manual steps needed
+None — batch was triggered via the new endpoint this session; verify results at /admin/adlab/review.
+
+### Notes
+- **Both local `ANTHROPIC_API_KEY`s are stale** (apps/web/.env.local AND root .env — both 401 against api.anthropic.com). The valid key is Vercel-only and marked sensitive (unpullable). Any local script needing Claude will fail until someone rotates a valid key into the local env files. This is why the first batch attempt produced the "0 ads ready" failure email.
+- The failed local run only created the two AdLab projects (`ripple-women`, `ripple-men`) — `ensureGroupProject` is find-or-create by slug, and no experiments/creatives were written before the 401, so the re-run is clean with no orphan rows.
+- Trigger recipe: `curl -X POST https://goripple.io/api/admin/adlab/run-weekly-batch -H "Authorization: Bearer $CRON_SECRET"` (CRON_SECRET is pullable via `vercel env pull`).
+
+---
+
 ## [2026-09-23] — New men's onboarding funnel at /start-bwk for the BWK ad lane
 
 **Requested by:** Keenan
