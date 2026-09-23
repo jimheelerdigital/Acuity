@@ -1765,7 +1765,7 @@ You said the drawn phone looked "way too generic" — so the quote slide is now 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The phone-quote lane's second slide is no longer a full-screen Notes page — it's now a photo: a realistic iPhone sitting in a dim, softly blurred scene (warm lamp-lit rooms for Ripple, dark city/desk scenes for BWK), with the Notes screen and your quote showing on the phone's display. The quote is baked into the image. The scene behind the phone is AI-generated, but the phone itself and every word on its screen are drawn by our own code — so the quote can never be misspelled or garbled. If the background generation ever fails mid-run, the post falls back to the old full-screen Notes look instead of dying. Note: the previous Notes-screen redesign from the 4th never went live — those commits were held awaiting your "push it," so production ran the old flat renderer all weekend. This commit joins that queue.
@@ -1789,7 +1789,7 @@ The phone-quote lane's second slide is no longer a full-screen Notes page — it
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Per your directive that every social media post runs through the humanizer before generation: an audit found the nightly lanes were covered but several older paths were not — the admin "generate one carousel" button, the retired sign/aura/quote-video/calm-video formats (still revivable), and the old X/TikTok/Instagram/ad-copy generator behind the admin content dashboard. All of them are now wired the same way: the anti-AI-writing rules ride on the generation prompt, and the finished copy passes through the full humanizer approval gate before it's accepted. Nothing in the system can produce a social post that skips the gate anymore — including anything we revive later.
@@ -1815,7 +1815,7 @@ None — deploy is automatic on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Three quality fixes from today's escalations. First, every piece of post copy (titles, slide text, hooks, quotes, captions) now passes through a final "humanizer" approval gate before it's accepted: a checker armed with the full library of known AI-writing tells (em dashes, "It's not X, it's Y", fake-deep one-liners, forced groups of three, chatbot filler, and ~20 more) that rewrites anything that sounds like a bot wrote it. Second, cover titles now have a hard sense-check rule so a garbled title like "DON'T LIE NOW" can never ship — the title must read as a natural phrase a real person would say, on its own, instantly. Third, the phone-quote lane's second slide is no longer text floating on a blank background: it's now a pixel-perfect fake iOS Notes screenshot (status bar, "< Notes" back button, date line, the quote typed out) — light blue for the women's account, dark with gold for the men's. The phone-quote format is locked exactly as you specified: slide 1 = your hook line on a fresh photo, slide 2 = the quote on the Notes screen, every single time, no variance. The Notes screen is drawn by our own code, not the image AI, so the quote can never be misspelled or garbled.
@@ -1872,7 +1872,7 @@ Nothing changes for existing subscribers: grandfathering is automatic, so everyo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Every generated image now runs at the image model's maximum quality tier instead of its default — this is the single biggest lever for the fidelity you flagged (the TRUST THE PROCESS reference level, and the blurred leaves on the bench photo). On top of that, every image instruction now carries an explicit attention-to-detail rule: individual leaves, fabric weave, wood grain, and background elements must all be fully resolved — no mushy, smeared, or half-melted areas anywhere in the frame, on any lane (scenery, selfies, and aesthetic shots alike). Heads up on cost: max quality is roughly 3x the per-image price — about 25¢ per image instead of 8¢, so a full 9-post day lands around $10-12 in image spend instead of ~$3-4.
@@ -1895,7 +1895,7 @@ None — deploy is automatic on push. Tonight's 5-8 UTC runs pick it up.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The daily content is now built entirely around the posts that already performed. BWK gets 4 posts a day, each anchored on a winner: every discipline post is now a "move in silence" post (EARN YOUR SILENCE family), a new HOLD THE LINE lane always opens on a storm-skyscraper image like the one that got views, the 30 DAYS protocol posts continue unchanged, and there's a new 2-slide quote post ("this quote kept me up all night..." over a night skyline, then a phone notes-screen with the quote). Ripple gets 5 a day: the selfie slideshow now runs TWICE daily with a different photography style per post (golden hour, lamplight, overcast, etc.), the ANSWER HONESTLY-style question posts are back to the dark warm imagery that worked, the DO THE MATH posts always open on a dusk beach like the one that got shares, and Ripple gets its own version of the 2-slide quote post (light-blue notes screen). The lanes that weren't winning — men's life-math, ONE YEAR FROM NOW, THINGS THAT ARE STILL FREE, NOBODY TELLS YOU, DELETE THIS AFTER READING — are paused, not deleted, and can come back anytime. The quote text on the phone-screen slides is typed by code, not drawn by the image AI, so it can never be misspelled. Follow-up (same day): every cover title across all carousel lanes must now be short, sweet, and pull the reader in — a direct command or prompt to engage ("EARN YOUR SILENCE", "ANSWER THESE HONESTLY...") — never a passive topic label; a trailing "..." is allowed as swipe bait. Second follow-up (same day): every generated image on every lane must now look like a real photograph someone actually took — the image instructions explicitly forbid the 3D-render / CGI / too-perfect AI look and demand honest camera behavior (real light, a touch of grain, natural focus). The selfie lanes already worked this way; now the scenery lanes match. Third follow-up (same day): on top of realism, every image must be high quality and CLEAR — tack-sharp, never blurry or hazy — and the variance directive was widened so each image also varies its focal length, camera distance, weather, and light direction (not just the vantage). The mirror-selfie instructions dropped "mild soft focus" for crisp modern-phone clarity.
@@ -1926,7 +1926,7 @@ None — deploy is automatic on push. Tonight's 5-8 UTC runs pick this up automa
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Ripple posts are no longer all light and airy. Each post now flips a coin: half come out in the current bright, soft look with dark charcoal text, and half come out in the original dark look — warm candlelight, lamplit rooms, rain on night windows — with white text. Every Ripple lane (questions, free things, nobody-tells-you, memento mori, delete-after-reading) rolls its own coin per post, so a given day's mix varies naturally. The selfie posts are untouched (they're real-photo style, not scenery). BWK stays all-dark as before.
@@ -1949,7 +1949,7 @@ None — deploy is automatic on push. Tomorrow's 5-8 UTC runs pick this up autom
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The "avatar in every post" problem wasn't the avatar — the database showed your reference photo was only being attached at the capped rate. The real bug: the image instructions always ALLOWED "a lone man" in BWK scenes, so the AI painted a random generic guy into nearly every image, which looks identical to the avatar being everywhere. Now BWK images are people-free by default — empty gyms, glowing laptops, storm ridges with nobody in them — and a man only appears in the ~1-in-12 posts that win the avatar roll (and then it's actually you, on the cover). Also per your ask: the single-image "aura" post type (FINISH WHAT THEY LAUGHED AT) is gone, and two lanes are back on Ripple — the "DO THE MATH" memento-mori life-math posts and the "DELETE THIS AFTER READING" posts, both retuned to Ripple's light, airy look with dark text.
@@ -1974,7 +1974,7 @@ None — deploy is automatic on push; today's BWK posts were regenerated via the
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Every lane now has a much bigger world to draw from — new scene families straight from your two TRUST THE PROCESS references (the dark bedroom looking out over a city skyline at night, the black stone house on the cliff in sea fog), plus an explicit instruction that the example scenes are inspiration, not a menu, so the AI invents new locations every day instead of cycling the same gym/laptop/linen shots. Post length now varies too (4-7 slides on the men's carousels, 4-6 on the women's), and the "don't repeat" instruction got much stronger: a new post can't re-teach the same info under a different title. Your avatar is back, but hard-capped — roughly 1 in 12 posts (under your 10% max) gets you on exactly one slide; everything else renders a generic figure.
@@ -3085,7 +3085,7 @@ The higher-priced subscription products now exist for real in Apple, Google, Str
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Three things shipped and one disaster was caught.
@@ -3142,7 +3142,7 @@ Finally, we found that our database schema description had fallen behind the rea
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Aria came out with a southern drawl ("someone from the bayou"), so the calm and calm-story videos now speak with Rachel — the most widely used calm, neutral-American female narrator in ElevenLabs' library. Everything else about the read stays: the expressive v3 model and the script's full performance direction (tags for softening, whispering, tiredness, pauses, breaths).
@@ -3161,7 +3161,7 @@ Aria came out with a southern drawl ("someone from the bayou"), so the calm and 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The daily carousel's topic brain is now linked to Jim's social research engine (growthos). When growthos has research in it, every carousel topic is generated with that intelligence in front of it: what our posted content's data says works, verified truths about the audience, open content angles the engine surfaced, and which competitor videos are breaking out right now. The AI is told to use it directionally — pick resonant angles, never copy. Right now growthos's database is completely empty (the engine is built but has never been run), so nothing changes in the posts yet; the moment Jim seeds it and the connection keys are added, the research starts flowing in automatically. If growthos is ever empty, slow, or down, carousel generation continues exactly as before — this link can never break a daily post.
@@ -3188,7 +3188,7 @@ The daily carousel's topic brain is now linked to Jim's social research engine (
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The calm and calm-story voice moves off Hope entirely — even the restored "good post" config still sounded bad to you. The new voice is Aria, an expressive middle-aged American female that fits the audience, still on the most emotional v3 mode. The bigger change is that the realism now comes from the script itself: the scriptwriter turns every narration into a marked-up vocal performance — where the voice softens, where it whispers, where it sounds tired, where it pauses, where a real woman would audibly exhale — instead of dropping in a couple of generic "softly" tags. If Aria still isn't right, the voice can be swapped instantly with an env var, no code change needed.
@@ -3210,7 +3210,7 @@ The calm and calm-story voice moves off Hope entirely — even the restored "goo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Earlier today the voice was mistakenly "fixed" by reverting to the very first calm post's setup (a different voice, Matilda, on the older model). You then identified the actual best-sounding post — the Aug 19 "whatever's easiest" video — and its email pinned down the real gold-standard config: Hope on the expressive v3 model with the slow, tagged delivery. That turned out to be the exact setup that was already running, so the mistaken revert is undone and the good config is restored and now marked as locked in the code, with the reference post named so nobody (including future Claude sessions) second-guesses it again. If a post still sounds off with this config, the culprit is take-to-take randomness in the expressive model or the calm-story's scene-by-scene reads — not the settings.
@@ -3232,7 +3232,7 @@ None (auto-deploy; a fresh calm-story and a fresh regular calm post were trigger
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The story and calm videos now write their scripts from your viral style guide: every script speaks to the overloaded woman 35-55, opens with a sharp private-truth hook, grounds itself in a real daily-life moment, lands the deeper truth, reframes her as not-broken, and ends with one soft "follow/send/save" ask — never a product pitch, never app/AI/journaling mentions. Each run also picks one of the five pain branches (mental overload, busy-but-not-moving, repeating patterns, knowing-without-acting, planning-instead-of-progress) so posts stop clustering on the same ache. And the calm story is no longer stuck on the orange/purple look — each one is set in a randomly assigned soothing world: blue sky with clouds, ocean waves, sunset, rain on a window, a fireplace, misty forest, moonlit lake, snowfall, golden fields, or a mountain valley.
@@ -3254,7 +3254,7 @@ None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The calm story is no longer photorealistic — every scene is now rendered like a still from a high-end soft-3D animated film (the same warm Pixar-ish style that's winning on the carousels), and it can never drift into looking like a real photo or live-action footage. The narration is also now recorded scene by scene and the video timeline is built around those exact recordings, so each scene stays on screen for precisely as long as its own lines take to speak — the words you hear always match the scene you're looking at, with a small breathing margin on each side of every crossfade.
@@ -3276,7 +3276,7 @@ None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Captions across every content type are now short. Carousel captions no longer paste the whole numbered list into the caption — the slides carry the content, so the caption is just one hook line, one comment/share ask, the bio plug, and the 5 hashtags. Calm and calm-story captions are now exactly two lines (a hook + a share ask) and the AI is banned from retelling or summarizing what the video already says. Hashtags stay as-is (they're working).
@@ -3297,7 +3297,7 @@ None (deploy is automatic on push; prompts take effect on the next generation).
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Five changes in one overhaul. (1) Captions are no longer assembled from templates — the AI now writes each post's caption in the voice of a real woman who runs the page (texty, lowercase-leaning, personal), with template fallbacks only if it doesn't. (2) Every post gets exactly 5 hashtags: 2 huge-reach tags (#selfcare, #mentalhealth...) + 3 niche tags (#mentalload, #womenover40...), rotating per post; the branded tags are gone. (3) The caption box now sits at the TOP of every content email, so Gmail's "[Message clipped]" can never cut it off again. (4) The old illustrated story video is fully eliminated and replaced by a "calm story": the same soothing Hope voice telling a short story (a mix of she-stories, you-arcs, and parables) across several photoreal scenes — no people ever, so the same-woman problem can't come back — with clean crossfades between scenes, 15-45s, no burned captions. It runs in the story's old 8 UTC slot and its email has a 🎞️ subject. (5) Calm-video loops now dissolve over 1.4s instead of 0.6s and the scene/motion prompts demand one constant endless movement, so the repeat reads as one continuous shot.
@@ -3361,7 +3361,7 @@ Recordings longer than about four minutes were silently failing to upload — th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The cartoonish-realistic look (the soft Pixar-style 3D illustration) is outperforming the other four art styles, so every post — daily carousels, story videos, one-off carousels, and slide regenerations — now uses that style instead of rotating randomly between five looks. It's controlled by a single switch, so when you want variety back (or want to test a different style), it's a one-line change. Calm videos are unaffected — they were never illustrated (real scenery footage).
@@ -3385,7 +3385,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Animated carousel slides kept growing weird moving blinds/curtains behind the woman. The cause: the animation instructions listed examples of background things that were allowed to keep moving — "steam, rain, curtains, dust, screens, reflections" — and this video model treats any object you name as a request to create it. So it invented curtains in scenes that never had any. The instruction now says only movement already in the image may continue and nothing new may appear, without naming a single object. Applies to animated covers, reason slides, and story scenes from the next run onward.
@@ -3403,7 +3403,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Two changes. (1) Every post caption — carousel, story, and calm — now carries exactly 5 hashtags instead of 6 (and the old Instagram generator was told 5 instead of 15-20). (2) Calm videos are now written to land at 20-30 seconds instead of ~40: the script budget dropped from 70-90 words to 50-65, and to keep them from getting thinner, the writer now has hard substance rules — the middle must contain at least 2-3 distinct concrete moments from her real life, every line has to add something new, and there's a test baked in: if she couldn't name something specific she recognized by the end, the script gets rewritten.
@@ -3427,7 +3427,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Two changes. (1) Every content email now includes the post caption ready to copy — the follow-up "Carousel video" email was the one missing it, so you had to go back to the first email to grab the caption. Now it's in all of them. (2) Calm video captions got restructured to read like a person wrote them: the first line is now the question (the only line people see in the feed before "...more"), then one or two plain follow-up lines, then a simple share ask like "Send this to someone who's carrying a lot right now" — no emojis, no "tell me in the comments 👇" bait, then the six reach hashtags. The scriptwriter was also told its caption lines must sound like a text message, not marketing copy.
@@ -3448,7 +3448,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Calm videos are for building a following, not selling the app — so their captions no longer end with the "Ripple — start your free week — link in bio" line, and the branded hashtags (#rippleapp, #voicejournal, #dailydebrief) are gone. What's left is engineered for reach: the hook, a comment question, a save/share ask, and six relatable hashtags like #mentalload and #womenintheirmidlife. The scriptwriter also now has the goal spelled out: success is her sending the video to a friend or tagging her sister — so it picks the most universally relatable version of every idea.
@@ -3469,7 +3469,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Three changes from your feedback on the "version of next year" video. (1) Every calm script now follows a strict arc: it opens with a hook — a direct question or a bold statement — then explains it with concrete, relatable moments from her real life, then lands on a release. There's a coherence test baked in: if a stranger couldn't repeat the point back in one sentence, the script gets rewritten. No more vague poetry. (2) Vanessa is out — every calm video is voiced by Hope (the smoother of the two voices you picked). (3) The delivery got two upgrades: the voice model now runs at its most emotional, expressive setting, and the scriptwriter itself now marks WHERE the voice should soften, sigh, or drop to a whisper — so the inflection follows the meaning of the words instead of being random.
@@ -3492,7 +3492,7 @@ Three changes from your feedback on the "version of next year" video. (1) Every 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The calm video you asked for this morning silently died halfway: the scene it invented was so visually detailed (lots of texture/motion) that the rendered video came out at 52MB, and our storage provider rejects anything over 50MB — so the upload failed and no email went out. The video encoder now caps the file size (~25MB worst case), which also guarantees the video is always small enough to attach directly to your email. Quality is unaffected in practice — Instagram and TikTok compress to about that level anyway.
@@ -3515,7 +3515,7 @@ The calm video you asked for this morning silently died halfway: the scene it in
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Four fixes from your feedback. (1) The scripts for both the story videos and the calm videos are now written the way a real person talks — contractions, sentence fragments, and built-in pauses (ellipses) that the voice actually honors — instead of reading like polished ad copy. (2) The calm-video narrator moved to ElevenLabs' expressive v3 model with a "softly" performance direction, so the read has real tone and inflection instead of a flat synthetic cadence. (3) The calm video no longer fades to black or gets cut mid-motion — it ends exactly where the scene loops back to its start, so it replays cleanly on Instagram/TikTok. (4) The reason you "never received" the calm videos: they were in your inbox wearing the exact same "🎥 Story video" subject line as the daily story emails. Calm videos now arrive as "[Ripple Content] 🌙 Calm video — …" with their own heading, so you can't miss them.
@@ -3538,7 +3538,7 @@ Four fixes from your feedback. (1) The scripts for both the story videos and the
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 After watching the first finished calm video: the narrator now talks noticeably slower and with more natural rise and fall in her voice instead of a flat meditative monotone. Captions are no longer burned into voiced calm videos — the estimated timings didn't line up with the voiceover, so you add captions yourself when posting (the email says so). If the voiceover ever fails, the silent backup video still gets the script burned in as a teleprompter.
@@ -3560,7 +3560,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The first live test of the new calm ambient video got 90% of the way there — the scene image, the moving clip, and the voiceover all generated — but the final assembly step (looping the clip to match the voiceover and burning in captions) took longer than the 5 minutes Vercel allows a single function to run, so it died twice and no email went out. The assembly now does half the redundant video processing and is split into two shorter steps, each safely inside the limit.
@@ -9035,7 +9035,7 @@ Two fixes to the funnel tally and Gap 1 screens. (1) The counter that asks "how 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Three additions to the v4 funnel. (1) After the "what pattern would you like to stop?" question, users now TAP to count how many times it happened last week — a big number they increment with each tap. The count echoes in Gap 1: "7 times last week. At that pace, that's roughly 360 times a year." If she can't count, "Honestly, I've lost count" is also powerful copy. (2) After the "how long" question, a time-math screen translates her duration into evenings — if she said "over a year," she sees a large animated count-up to 365 with the label "evenings." Short durations ("a few weeks") skip this screen entirely since the numbers aren't impactful. (3) The Mirror was cut from 5 dense paragraphs (~200 words) to 3 choreographed beats (~50 words) — the sharpest pain reflection, her Q9 echo, and "You don't have to keep living like this." The original copy is preserved in comments for future use.
@@ -9075,7 +9075,7 @@ Three additions to the v4 funnel. (1) After the "what pattern would you like to 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The three Gap screens between Mirror and Mechanism now feel alive instead of flat. Gap 1 animates each cost word with an orange highlight sweep, then the final line ("Left alone, loops don't loosen") settles with physical weight. Gap 2 swapped the small pill chips for full-width option cards matching every other quiz screen, with an animated checkmark on select and a count that updates live ("3 selected"). Gap 3 plays like a film time-lapse: each future-self scene arrives bright, then dims as the next one takes over, and the final question owns the screen alone. Tapping anywhere skips the animation on all three screens. All motion respects accessibility settings.
@@ -9105,7 +9105,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 Major funnel upgrade. The Gap screen between Mirror and Mechanism is now a three-screen animated sequence: (1) "What it's costing you" personalizes the cost she named in Q6, (2) "How would it feel?" lets her select from 6 feelings chips, and (3) "Your future self" paints her chosen feelings as a vivid future — ending with "Are you ready to make a lasting change?" If she says "no," she gets a warm micro-moment (not a dead-end) and proceeds to Mechanism. The signup screen now shows real App Store ratings, rotating testimonials, and a privacy reassurance note — with zero changes to the actual signup logic. The paywall replaces the fake "47 of 100 spots left" counter with honest founding-rate urgency. The entire funnel now has the marketing site's gradient background. The commit screen copy is reverted to "Hold to commit to 60 seconds a day." The admin dashboard has a V4 toggle, Gap 1/2/3 bars, a "Ready for Change" stat, and a Gap 2 feelings breakdown for ad angle research. flowVersion is now "v4".
@@ -9233,7 +9233,7 @@ No code changes. Audit findings:
 
 - **Requested by:** Jimmy
 - **Committed by:** Claude Code
-- **Commit hash:** f8919bab
+- **Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 The product-tour Next and Back buttons felt cramped on phones. They're now bigger (50pt) with a 20pt gap between them, so they're comfortable to tap. Web is live immediately; the native (iOS/Android) version rides the next app build.
@@ -16663,7 +16663,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -16710,7 +16710,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -16746,7 +16746,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -16780,7 +16780,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -16809,7 +16809,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -16851,7 +16851,7 @@ Second, the social share image (what shows up when you paste an Acuity link in S
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -16892,7 +16892,7 @@ Per-slice gates: vitest 370/370 pass. Mobile tsc baseline 542 → 542 errors (ze
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -16922,7 +16922,7 @@ When someone shares an Acuity link on Facebook, Twitter, LinkedIn, or iMessage, 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -17036,7 +17036,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -17546,7 +17546,7 @@ AdLab is now ready for its first real Meta ad launch. You can set your Facebook 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -17592,7 +17592,7 @@ Per-slice gates: vitest 370/370 pass, web tsc clean for touched files, mobile ts
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -17642,7 +17642,7 @@ Per-slice gates: vitest 370/370 pass, web tsc clean for touched files. Asset leg
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
@@ -17679,7 +17679,7 @@ New email/password signups used to get TWO emails simultaneously — a short "Ve
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
 
