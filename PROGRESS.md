@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (see git log)
+**Commit hash:** d054a7fd
 
 ### In plain English (for Keenan)
 This week's ad batch failed when run from the laptop because the Claude API key stored locally is dead — the working key only exists on the live server. There's now a button-press equivalent: a secure endpoint on the live site that kicks off the exact same batch (10 women's ads + 10 men's ads, images, compliance check, review email) using the server's working keys. Also: the two funnels (/start and /start-bwk) now report themselves separately in analytics, so once ads are running you can see which funnel converts better instead of the data being blended together.
