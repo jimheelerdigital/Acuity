@@ -2626,6 +2626,9 @@ model AdLabCreative {
   complianceNotes  String?               @db.Text
   approved         Boolean               @default(false)
   batchNumber      Int                   @default(0)
+  // Weekly-batch image format (AD_FORMATS key in lib/adlab/weekly-batch.ts).
+  // Null on pre-2026-09-24 creatives — learning infers it from the prompt.
+  formatKey        String?
   createdAt        DateTime              @default(now())
   ads              AdLabAd[]
 
@@ -2684,6 +2687,73 @@ model AdLabDecision {
   @@index([adId])
   @@index([executedAt])
   @@map("adlab_decisions")
+}
+
+// Competitor ads observed in the public Meta Ad Library (US, active only),
+// scraped weekly via Apify — the official API only returns EU-delivered
+// ads for non-political advertisers. One row per library ad; firstSeen/
+// lastSeen plus Meta's own start date give the longevity signal (an ad
+// still running after 30+ days is almost certainly profitable).
+model AdLabCompetitorAd {
+  id            String    @id @default(cuid())
+  groupKey      String // audience it was scraped for: "women" | "men"
+  source        String // "page:<name>" or "keyword:<term>"
+  pageId        String
+  pageName      String
+  adArchiveId   String    @unique
+  adStartedAt   DateTime? // Meta's delivery start date
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  isActive      Boolean   @default(true)
+  bodies        Json? // ad copy variants
+  titles        Json? // link titles / headlines
+  ctaText       String?
+  linkUrl       String?
+  displayFormat String? // IMAGE | VIDEO | CAROUSEL | DCO ...
+  imageUrls     Json?
+  videoUrls     Json?
+  platforms     Json? // publisher platforms
+  variantCount  Int? // "N ads use this creative" — a proxy for spend
+
+  @@index([groupKey, isActive])
+  @@index([pageId, isActive])
+  @@index([lastSeenAt])
+  @@map("adlab_competitor_ads")
+}
+
+// Weekly Claude-distilled "influence brief" from the competitor scan, per
+// audience group. Consumed by the Sunday weekly ad batch (freshest ≤14 days).
+model AdLabCompetitorBrief {
+  id        String   @id @default(cuid())
+  groupKey  String // "women" | "men"
+  date      DateTime @default(now())
+  adCount   Int // active competitor ads observed this scan
+  brief     Json // { patterns, hooks, formats, opportunities, longRunners }
+  createdAt DateTime @default(now())
+
+  @@index([groupKey, date])
+  @@map("adlab_competitor_briefs")
+}
+
+// Weekly learning snapshot per audience group: first-party per-creative
+// performance (spend → funnel landings → signups → Stripe trial starts,
+// joined on utm_content = creative id) plus a Claude-distilled brief.
+// The Sunday weekly batch reads the freshest one (≤14 days) so each week's
+// ads are written with what actually produced trial starts.
+model AdLabLearning {
+  id            String   @id @default(cuid())
+  groupKey      String // "women" | "men"
+  date          DateTime @default(now())
+  creativeCount Int // creatives with enough spend to be judged
+  spendCents    Int
+  signups       Int
+  trials        Int
+  stats         Json // deterministic tables: per-creative + per-dimension
+  brief         Json? // Claude brief; null if the distill call failed
+  createdAt     DateTime @default(now())
+
+  @@index([groupKey, date])
+  @@map("adlab_learnings")
 }
 
 // Admin-sent emails — log of every email sent from the admin dashboard

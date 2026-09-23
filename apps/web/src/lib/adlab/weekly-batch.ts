@@ -261,14 +261,32 @@ function ctaLabel(cta: string): string {
   return CTA_LABELS[cta] ?? "Start free trial";
 }
 
+export const AD_FORMAT_KEYS = AD_FORMATS.map((f) => f.key) as [string, ...string[]];
+
 /**
- * Deterministic prompt for creative #index of a batch — same builder is used
- * at batch creation and by the regen path, so prompts can always be rebuilt
- * from the stored copy fields alone.
+ * Resolve a format by key (stored AdLabCreative.formatKey) or, for rows
+ * without one, by rotation index.
  */
-export function buildAdImagePrompt(index: number, copy: AdImageCopy, groupKey: BatchGroupKey): string {
-  const format = AD_FORMATS[index % AD_FORMATS.length];
-  return format.build(copy, BATCH_GROUPS[groupKey]);
+export function resolveAdFormat(format: string | number): (typeof AD_FORMATS)[number] {
+  if (typeof format === "string") {
+    const f = AD_FORMATS.find((x) => x.key === format);
+    if (f) return f;
+    return AD_FORMATS[0];
+  }
+  return AD_FORMATS[format % AD_FORMATS.length];
+}
+
+/**
+ * Deterministic image prompt — same builder is used at batch creation and by
+ * the regen path, so prompts can always be rebuilt from the stored copy
+ * fields + formatKey alone.
+ */
+export function buildAdImagePrompt(
+  format: string | number,
+  copy: AdImageCopy,
+  groupKey: BatchGroupKey
+): string {
+  return resolveAdFormat(format).build(copy, BATCH_GROUPS[groupKey]);
 }
 
 // ─── Project seeding ──────────────────────────────────────────────────────
@@ -334,6 +352,10 @@ const BatchAdSchema = z.object({
   description: z.string().max(255),
   cta: z.string(),
   imageScene: z.string(),
+  // Learning loop (2026-09-24): which image format carries this ad, and
+  // whether it applies a proven winning pattern or tests something new.
+  format: z.enum(AD_FORMAT_KEYS).optional(),
+  strategy: z.enum(["exploit", "explore"]).optional(),
 });
 
 const BatchAdsSchema = z.array(BatchAdSchema).min(8).max(12);
@@ -370,6 +392,21 @@ export async function createBatchForGroup(
   }
 
   const themes = (digest.themes as unknown as DigestTheme[]).slice(0, 12);
+
+  // Learning loop: our own per-creative trial-start results, and what
+  // long-running competitor ads are doing. Both soft — a missing brief just
+  // means the batch runs on Reddit research alone, as before.
+  const { getLatestLearning, renderLearningForBatch } = await import("@/lib/adlab/learning");
+  const learning = await getLatestLearning(groupKey).catch(() => null);
+  const { section: learningSection, exploitCount } = renderLearningForBatch(learning);
+  const { getLatestCompetitorBrief, renderCompetitorBriefForBatch } = await import(
+    "@/lib/adlab/competitor-research"
+  );
+  const competitorBrief = await getLatestCompetitorBrief(groupKey).catch(() => null);
+  const competitorSection = renderCompetitorBriefForBatch(competitorBrief);
+  const preferredFormats = (learning?.brief?.preferredFormats ?? []).filter((f) =>
+    AD_FORMAT_KEYS.includes(f)
+  );
   const digestDate = digest.date.toISOString().slice(0, 10);
   const weekLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -398,7 +435,7 @@ USPs (pick the one that best answers each pain — don't cram them all in):
 ${JSON.stringify(g.usps, null, 2)}
 
 BANNED PHRASES (never use): ${SHARED_BANNED.join(", ")}
-
+${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}
 THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — every ad MUST be rooted in exactly one of these themes):
 ${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   WHY IT'S LIVE THIS WEEK: ${t.why}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
 
@@ -421,6 +458,8 @@ REQUIREMENTS:
 - description: max 100 characters.
 - cta: one of LEARN_MORE, SIGN_UP, GET_OFFER, DOWNLOAD, SUBSCRIBE.
 - imageScene: 1-2 sentence BACKGROUND scene for this ad's image, matching the brand's photography style. Scene only — the headline/CTA overlay is composed separately. No faces.
+- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo + big hook + CTA pill; notes-app = native-looking phone-notes checklist ("ugly ad"); statement-card = typography-only bold statement; checklist-photo = hook + 3 checkmarked value props over a darkened photo; app-in-scene = phone with the record screen in a real scene. Use at least 3 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
+- strategy: "exploit" or "explore"${exploitCount ? ` — exactly ${exploitCount} exploit (see EXPLOIT / EXPLORE SPLIT)` : ` — no performance history yet, mark all "explore"`}.
 
 META POLICY (violations get ads rejected — follow strictly):
 - NEVER use 'you/your' in a way that implies a personal attribute (health condition, mental state, finances). "You feel stuck" is fine; "your anxiety" is not.
@@ -428,7 +467,7 @@ META POLICY (violations get ads rejected — follow strictly):
 - NEVER use before/after transformation framing or promise wellness outcomes.
 - Use third-person or general framing for sensitive topics: "Most people forget what they promised themselves by Thursday."
 
-Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene`;
+Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, format, strategy`;
 
   const userPrompt = `Generate the 10 ads for this week's batch. Return only the JSON array.`;
 
@@ -446,7 +485,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
     const raw2 = await callAdLabClaude({
       purpose: `weekly-batch-${groupKey}-retry`,
       systemPrompt,
-      userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
+      userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
       maxTokens: 8000,
     });
     ads = BatchAdsSchema.parse(JSON.parse(extractJson(raw2)));
@@ -454,13 +493,16 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
 
   const creativeIds: string[] = [];
   for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
+    const formatKey = ad.format ?? resolveAdFormat(adIndex).key;
+    const strategy = ad.strategy ?? "explore";
     const angle = await prisma.adLabAngle.create({
       data: {
         experimentId: experiment.id,
         hypothesis: ad.hypothesis,
         targetPersona: ad.targetPersona,
         valueSurface: ad.valueSurface,
-        researchNotes: `Reddit theme (${digestDate}): ${ad.theme}`,
+        // "| strategy:" is parsed back by lib/adlab/learning.ts — keep format
+        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}`,
         score: 5,
       },
     });
@@ -472,7 +514,8 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
         primaryText: ad.primaryText,
         description: ad.description,
         cta: ad.cta,
-        generationPrompt: buildAdImagePrompt(adIndex, ad, groupKey),
+        formatKey,
+        generationPrompt: buildAdImagePrompt(formatKey, ad, groupKey),
         complianceStatus: "pending",
         approved: false,
       },

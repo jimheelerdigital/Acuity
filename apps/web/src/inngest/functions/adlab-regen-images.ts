@@ -52,6 +52,7 @@ export const adlabRegenImagesFn = inngest.createFunction(
                     description: true,
                     cta: true,
                     generationPrompt: true,
+                    formatKey: true,
                     createdAt: true,
                   },
                 },
@@ -70,12 +71,13 @@ export const adlabRegenImagesFn = inngest.createFunction(
           .flatMap((a) => a.creatives)
           .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         for (const [i, c] of creatives.entries()) {
-          // Old prompts ended with "Scene: <imageScene>" — recover the scene
-          // for photo-background formats; fall back to the group style alone.
-          const sceneMatch = c.generationPrompt?.match(/Scene: ([\s\S]+)$/);
+          // Recover "Scene: <imageScene>" — it ends the line (or precedes
+          // " Composed with…" in hook-overlay). The old greedy-to-end match
+          // swallowed the text rules into the scene on current-format prompts.
+          const sceneMatch = c.generationPrompt?.match(/Scene: ([^\n]+?)(?: Composed with|\n|$)/);
           const imageScene = sceneMatch ? sceneMatch[1].trim() : "";
           const prompt = buildAdImagePrompt(
-            i,
+            c.formatKey ?? i,
             { headline: c.headline, description: c.description, cta: c.cta, imageScene },
             groupKey
           );

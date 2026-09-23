@@ -8,8 +8,9 @@ import type { GroupBatchSummary } from "@/lib/adlab/weekly-batch";
  * Runs Sunday 10:00 UTC (5am CDT) — after the Saturday 11:59pm CDT Reddit
  * pulse — so 20 fresh Reddit-grounded ads (10 per audience group: women /
  * men) are waiting for Keenan's Sunday admin session:
- *   create batch (copy) → images (one step each, idempotent) → compliance
- *   → review email.
+ *   learning snapshot → create batch (copy, informed by learning + the
+ *   Saturday competitor brief) → images (one step each, idempotent) →
+ *   compliance → review email.
  *
  * MONEY SAFETY: this function never touches Meta. It only writes DB rows
  * (experiments awaiting_approval, creatives approved=false) and images.
@@ -36,6 +37,22 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
     const summaries: GroupBatchSummary[] = [];
 
     for (const groupKey of groups) {
+      // 0. Learning loop — refresh this group's first-party performance
+      // snapshot (spend → signups → trial starts per creative) + Claude
+      // brief, so the copy call below writes with last week's results.
+      // Soft: on failure the batch falls back to the freshest older
+      // snapshot (≤14 days) or runs without one.
+      await step.run(`learning-${groupKey}`, async () => {
+        try {
+          const { runWeeklyLearning } = await import("@/lib/adlab/learning");
+          return await runWeeklyLearning(groupKey);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.warn(`[adlab-weekly] ${groupKey} learning failed: ${msg}`);
+          return { error: msg };
+        }
+      });
+
       // 1. Copy generation (one Claude call → experiment + 10 creatives)
       const batch = await step.run(`create-batch-${groupKey}`, async () => {
         try {

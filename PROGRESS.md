@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-09-24] — AdLab learns from its own trial starts + weekly competitor ad research
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The Sunday ad batch now learns. Before it writes the week's 20 ads, it checks how every past ad actually did (money spent, then signups, then **trial starts**), works out which hooks, angles, formats and buttons produced trials cheaply, and writes most new ads using what won. The rest are deliberate experiments, so it keeps finding new winners. It also gets a new Saturday input: it scrapes the ads competitors and big adjacent brands (Rosebud, Finch, BetterHelp, Midi, Stoic, Opal, and others) are running in the US right now, treats ads that have run 30+ days as proven, and passes along the patterns without copying anyone's words. First finding from your own history: ads with a "Sign up" button produced trials at about $68 each, against about $123 for "Learn more."
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/adlab/learning.ts`: `buildLearningStats(group)` (deterministic, DB only) joins AdLabDailyMetric spend/clicks → OnboardingEvent `funnel_entry_viewed` landings → users (User.signupUtmContent ∪ any utm-attributed OnboardingEvent userId, first-touch dedupe, test emails excluded) → trial = `funnel_payment_completed` event or stripeSubscriptionId → paid = PRO. Score = shrunk trial-equivalents per click (real trials + signups <10 days old × group signup→trial rate; prior 150 clicks), ranked by est. cost/trial; min $15 spend; winners must have ≥1 signup. Roll-ups by value surface / format / CTA / exploit-vs-explore. `runWeeklyLearning` adds one Sonnet distill → `AdLabLearning` row; `renderLearningForBatch` builds the prompt section with an exploit/explore split (4/6/7 exploit by LOW/MEDIUM/HIGH confidence)
+- New `apps/web/src/lib/adlab/competitor-research.ts`: Apify `apify~facebook-ads-scraper` (override via `APIFY_AD_LIBRARY_ACTOR`), US + active + sorted by impressions, 20 ads per source, 8 sources per group (brand sources filtered by page-name regex, keyword sources unfiltered); tolerant camel/snake-case parser; upsert on adArchiveId; unseen rows → isActive=false only when a scrape returned results. `runCompetitorBrief` ranks by days running + variant count → Sonnet brief (hook structures, patterns, offers, long-runners, gaps) → `AdLabCompetitorBrief`
+- New Inngest fn `apps/web/src/inngest/functions/adlab-competitor-research.ts` — cron `0 18 * * 6` (Sat 18:00 UTC) + event `adlab/competitor-research.requested`; one step per source; registered in `api/inngest/route.ts`
+- New route `apps/web/src/app/api/admin/adlab/run-competitor-research/route.ts` (POST, admin session or Bearer CRON_SECRET)
+- `apps/web/src/inngest/functions/adlab-weekly-batch.ts`: new `learning-<group>` step before `create-batch-<group>` (soft)
+- `apps/web/src/lib/adlab/weekly-batch.ts`: batch prompt injects the learning + competitor sections; Claude now picks `format` (AD_FORMATS key) and `strategy` (exploit/explore) per ad; `formatKey` stored on the creative, strategy appended to angle.researchNotes (`| strategy: x`, parsed back by learning); `buildAdImagePrompt` takes a format key or index; new `resolveAdFormat`, `AD_FORMAT_KEYS`
+- `apps/web/src/inngest/functions/adlab-regen-images.ts`: rebuilds from stored `formatKey`; fixed the scene-recovery regex, which on current-format prompts greedily swallowed the text rules into the scene
+- **Prisma (already pushed to prod from main; guard passed, additive only):** `AdLabCreative.formatKey String?`; new models `AdLabLearning` (adlab_learnings), `AdLabCompetitorAd` (adlab_competitor_ads), `AdLabCompetitorBrief` (adlab_competitor_briefs)
+
+### Manual steps needed
+- [ ] Keenan: "push it" → verify the prod build → `curl -X PUT https://goripple.io/api/inngest` (registers the competitor-research cron). **The DB is already ahead of origin/main until this commit is pushed. Don't db:push from anywhere else in the meantime**
+- [ ] After deploy: trigger the first competitor run (`POST /api/admin/adlab/run-competitor-research`, about $1.60 in Apify) and check the Inngest logs for the scraper's field names (first item keys are logged). Brand page-name filters may need tuning (Keenan / Claude)
+- [ ] Audit follow-ups (campaign objective, trial-start tracking, spend cap, engine counting): see the Notes. Tracking fixes touch the Stripe webhook, so **Jimmy review is required**
+
+### Notes
+- History check (prod DB, read-only): women = $1,975.81 → 3,422 clicks → 201 signups ($9.83) → 17 trial starts ($116/trial) → 6 paid; men = no launched ads yet, so the men's batch runs all-explore until data exists
+- First ranking pass floated $5 ads with cheap clicks and **zero signups** to "best" (the shrunk rate collapses to CPC). Fixed with a $15 minimum and a ≥1-signup requirement for winners. The second pass also over-credited old signups that never trialed; only signups <10 days old now count as maybe-trials
+- All May–July ads are format "legacy" (pre-format-system), so format learning starts with the next launched batch
+- Apify is on the Starter plan ($19 prepaid usage/month, overage billed). This scraper is about $0.005/ad at the Bronze tier, about $7/month
+- Pipeline audit (3 read-only agents) found, among others: weekly batches launch as OUTCOME_TRAFFIC/LINK_CLICKS with no pixel promoted_object; Purchase is fired at trial start, browser and server with different event_ids (double count, and the "revenue" isn't real); no server-side StartTrial; no event when a trial converts; the cron sums two registration action types (likely ~2× count); a failed Meta pause is still recorded as killed; nothing caps total spend as weekly ad sets pile up; /start-bwk checkout returns to /start
+
+---
+
 ## [2026-09-23] — AdLab kill engine turned on: daily automated analysis, loser-cutting, and report email
 
 **Requested by:** Keenan
