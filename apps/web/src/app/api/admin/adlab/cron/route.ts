@@ -449,8 +449,7 @@ export async function GET(req: NextRequest) {
 
   // ── Step 4: Build + send daily email ──────────────────────────────
   try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { sendEmailOrThrow } = await import("@/lib/resend");
 
     const sections: string[] = [
       `# AdLab Daily Report — ${dateStr}`,
@@ -515,7 +514,7 @@ export async function GET(req: NextRequest) {
     // Summary line
     sections.push(`\n---\nTotal: ${kills.length} kills, ${scales.length} scales, ${flags.length} flagged, ${concluded.length} experiments concluded`);
 
-    await resend.emails.send({
+    await sendEmailOrThrow({
       from: process.env.EMAIL_FROM || "AdLab <noreply@goripple.io>",
       to: "keenan@heelerdigital.com",
       subject: `AdLab Daily: ${kills.length} kills, ${scales.length} scales${flags.length > 0 ? `, ${flags.length} flagged` : ""}${experimentFlags.some((e) => e.type === "winning") ? " 🏆 WINNER" : ""}`,

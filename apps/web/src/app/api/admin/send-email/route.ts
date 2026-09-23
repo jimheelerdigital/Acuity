@@ -39,8 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Body is required" }, { status: 400 });
   }
 
-  const { getResendClient } = await import("@/lib/resend");
-  const resend = getResendClient();
+  const { sendEmailOrThrow } = await import("@/lib/resend");
 
   if (bulk) {
     // Send to all users, excluding founders
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     for (const user of users) {
       try {
-        await resend.emails.send({
+        await sendEmailOrThrow({
           from: '"Keenan" <keenan@getacuity.io>',
           replyTo: "keenan@getacuity.io",
           to: user.email,
@@ -95,7 +94,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await resend.emails.send({
+    await sendEmailOrThrow({
       from: '"Keenan" <keenan@getacuity.io>',
       replyTo: "keenan@getacuity.io",
       to: to.trim(),

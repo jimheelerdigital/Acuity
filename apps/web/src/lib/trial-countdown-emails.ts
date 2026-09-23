@@ -373,9 +373,8 @@ export async function sendCountdownEmail(
   const { subject, html } = RENDERERS[key](vars);
 
   try {
-    const { getResendClient } = await import("@/lib/resend");
-    const resend = getResendClient();
-    const resp = await resend.emails.send({
+    const { sendEmailOrThrow } = await import("@/lib/resend");
+    const resp = await sendEmailOrThrow({
       // Marketing-style trial nudges — send FROM Keenan (real, monitored
       // inbox), not no-reply. Hardcoded, not env-driven (prod EMAIL_FROM is
       // the system no-reply address). Currently paused via kill switches;
@@ -386,13 +385,9 @@ export async function sendCountdownEmail(
       html,
     });
 
-    // Resend client's `.send` shape varies between versions. Both
-    // legacy {id} and current {data:{id}} are handled defensively.
-    const respUnknown = resp as unknown as {
-      id?: string;
-      data?: { id?: string };
-    };
-    const resendId = respUnknown?.data?.id ?? respUnknown?.id;
+    // sendEmailOrThrow returns Resend's success `data` (or throws on
+    // an API error — the SDK never throws on its own).
+    const resendId = resp?.id;
 
     // Stamp the SentAt column for this key. Field names match
     // schema.prisma exactly. updateMany used so we can re-assert

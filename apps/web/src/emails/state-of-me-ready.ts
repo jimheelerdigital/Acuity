@@ -4,7 +4,7 @@
  * of the closing reflection. CTA deep-links to the detail page.
  */
 
-import { getResendClient } from "@/lib/resend";
+import { sendEmailOrThrow } from "@/lib/resend";
 
 import { emailLayout } from "./layout";
 
@@ -25,9 +25,6 @@ export async function sendStateOfMeReadyEmail(params: {
   headline: string;
   closingReflection: string;
 }) {
-  const resend = getResendClient();
-  if (!resend) return;
-
   const firstName = params.name?.split(" ")[0] ?? "there";
   const preview =
     params.closingReflection.length > 220
@@ -44,7 +41,7 @@ export async function sendStateOfMeReadyEmail(params: {
       "State of Me arrives every ~90 days. You can also request one manually from /insights (once per 30 days).",
   });
 
-  await resend.emails.send({
+  await sendEmailOrThrow({
     from: EMAIL_FROM,
     to: params.to,
     subject: `Your State of Me — ${params.headline}`,

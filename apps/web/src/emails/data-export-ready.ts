@@ -4,7 +4,7 @@
  * download URL + expiry notice.
  */
 
-import { getResendClient } from "@/lib/resend";
+import { sendEmailOrThrow } from "@/lib/resend";
 
 import { emailLayout } from "./layout";
 
@@ -16,9 +16,6 @@ export async function sendDataExportReadyEmail(params: {
   url: string;
   expiresAt: Date;
 }) {
-  const resend = getResendClient();
-  if (!resend) return;
-
   const firstName = params.name?.split(" ")[0] ?? "there";
   const expires = params.expiresAt.toLocaleString("en-US", {
     dateStyle: "long",
@@ -35,7 +32,7 @@ export async function sendDataExportReadyEmail(params: {
       "Missed the window? You can request a new export from Account → Download my data. One request per 7 days.",
   });
 
-  await resend.emails.send({
+  await sendEmailOrThrow({
     from: EMAIL_FROM,
     to: params.to,
     subject: "Your Ripple data export is ready",

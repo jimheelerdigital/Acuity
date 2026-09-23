@@ -252,7 +252,7 @@ export async function bootstrapNewUser(params: {
   if (email && !skipWelcomeEmail && isEmailEnabled("welcome_founder")) {
     try {
       const { welcomeFounderEmail } = await import("@/emails/welcome-founder");
-      const { getResendClient } = await import("@/lib/resend");
+      const { sendEmailOrThrow } = await import("@/lib/resend");
       const { signUnsubscribeToken } = await import("@/lib/email-tokens");
       const { appUrl } = await import("@/emails/digest-layout");
 
@@ -266,7 +266,7 @@ export async function bootstrapNewUser(params: {
         unsubscribeUrl,
       });
 
-      await getResendClient().emails.send({
+      await sendEmailOrThrow({
         from: '"Keenan" <keenan@getacuity.io>',
         replyTo: "keenan@getacuity.io",
         to: email,
@@ -295,7 +295,7 @@ export async function bootstrapNewUser(params: {
       const { founderWelcomeEmail } = await import(
         "@/emails/founder-welcome"
       );
-      const { getResendClient } = await import("@/lib/resend");
+      const { sendEmailOrThrow } = await import("@/lib/resend");
 
       const firstName =
         (userName ?? "").trim().split(/\s+/)[0] || null;
@@ -305,7 +305,7 @@ export async function bootstrapNewUser(params: {
         foundingMemberNumber,
       });
 
-      await getResendClient().emails.send({
+      await sendEmailOrThrow({
         from: '"Keenan" <keenan@getacuity.io>',
         replyTo: "keenan@getacuity.io",
         to: email,

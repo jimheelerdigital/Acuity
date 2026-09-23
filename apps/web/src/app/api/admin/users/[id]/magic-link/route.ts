@@ -58,8 +58,8 @@ export async function POST(
   const origin = req.nextUrl.origin;
   const resetUrl = `${origin}/auth/reset-password?token=${encodeURIComponent(token)}`;
   const { subject, html } = passwordResetEmail(resetUrl);
-  const { getResendClient } = await import("@/lib/resend");
-  await getResendClient().emails.send({
+  const { sendEmailOrThrow } = await import("@/lib/resend");
+  await sendEmailOrThrow({
     from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
     to: user.email,
     subject,

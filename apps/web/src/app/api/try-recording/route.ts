@@ -254,15 +254,14 @@ export async function POST(req: NextRequest) {
 
   // ── 9. Notify Keenan ────────────────────────────────────────────────
   try {
-    const { getResendClient } = await import("@/lib/resend");
-    const resend = getResendClient();
+    const { sendEmailOrThrow } = await import("@/lib/resend");
     const referrer = req.headers.get("referer") ?? "unknown";
     const summary = (extraction.summary as string) ?? "No summary";
     const taskCount = Array.isArray(extraction.tasks) ? extraction.tasks.length : 0;
     const goalCount = Array.isArray(extraction.goals) ? extraction.goals.length : 0;
     const now = new Date();
 
-    await resend.emails.send({
+    await sendEmailOrThrow({
       from: "keenan@getacuity.io",
       to: "keenan@heelerdigital.com",
       subject: "\uD83C\uDFA4 New Try It First recording",

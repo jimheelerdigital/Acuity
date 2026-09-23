@@ -5,7 +5,7 @@
  * weekly — think "scan the changes" rather than "relive the week".
  */
 
-import { getResendClient } from "@/lib/resend";
+import { sendEmailOrThrow } from "@/lib/resend";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
 
 import {
@@ -36,8 +36,6 @@ export interface MonthlyDigestInput {
 }
 
 export async function sendMonthlyDigest(input: MonthlyDigestInput) {
-  const resend = getResendClient();
-  if (!resend) return;
 
   const firstName = input.name?.split(" ")[0] ?? "there";
   const unsubUrl = `${appUrl()}/api/emails/unsubscribe?token=${signUnsubscribeToken(
@@ -100,7 +98,7 @@ export async function sendMonthlyDigest(input: MonthlyDigestInput) {
     ctaUrl: `${appUrl()}/insights`,
   });
 
-  await resend.emails.send({
+  await sendEmailOrThrow({
     from: EMAIL_FROM,
     to: input.to,
     subject: `Your ${input.monthLabel} reflection`,

@@ -30,7 +30,7 @@ export async function POST(
 
   try {
     const { founderWelcomeEmail } = await import("@/emails/founder-welcome");
-    const { getResendClient } = await import("@/lib/resend");
+    const { sendEmailOrThrow } = await import("@/lib/resend");
 
     const firstName = (user.name ?? "").trim().split(/\s+/)[0] || null;
     const { subject, text } = founderWelcomeEmail({
@@ -38,7 +38,7 @@ export async function POST(
       foundingMemberNumber: user.foundingMemberNumber,
     });
 
-    await getResendClient().emails.send({
+    await sendEmailOrThrow({
       from: '"Keenan" <keenan@getacuity.io>',
       replyTo: "keenan@getacuity.io",
       to: user.email,

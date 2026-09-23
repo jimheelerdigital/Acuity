@@ -294,13 +294,12 @@ export const backfillExtractionsFn = inngest.createFunction(
         if (!user?.email) return;
         const firstName =
           (user.name ?? "").split(" ")[0]?.trim() || "there";
-        const { getResendClient } = await import("@/lib/resend");
+        const { sendEmailOrThrow } = await import("@/lib/resend");
         const {
           backfillCompleteHtml,
           backfillCompleteSubject,
         } = await import("@/emails/backfill-complete");
-        const resend = getResendClient();
-        await resend.emails.send({
+        await sendEmailOrThrow({
           from: process.env.EMAIL_FROM || "Ripple <hello@getacuity.io>",
           to: user.email,
           subject: backfillCompleteSubject(),

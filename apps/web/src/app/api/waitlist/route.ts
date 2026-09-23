@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getResendClient } from "@/lib/resend";
+import { sendEmailOrThrow } from "@/lib/resend";
 import {
   checkRateLimit,
   identifierFromRequest,
@@ -62,11 +62,9 @@ export async function POST(req: NextRequest) {
     });
 
     // Send emails — await them so they complete before the response is returned
-    const resend = getResendClient();
-
     try {
       const [notifResult, welcomeResult] = await Promise.allSettled([
-        resend.emails.send({
+        sendEmailOrThrow({
           from: "Ripple <hello@getacuity.io>",
           to: "keenan@heelerdigital.com",
           subject: `New Ripple waitlist signup — ${email}`,
@@ -78,7 +76,7 @@ export async function POST(req: NextRequest) {
             `<p><strong>Total waitlist count:</strong> ${totalCount}</p>`,
           ].join("\n"),
         }),
-        resend.emails.send({
+        sendEmailOrThrow({
           from: "Ripple <hello@getacuity.io>",
           to: email,
           subject: "You're on the Ripple waitlist — here's what's coming",

@@ -294,8 +294,7 @@ Write this week's lane intelligence report.`,
     });
 
     await step.run("email-report", async () => {
-      const { getResendClient } = await import("@/lib/resend");
-      const resend = getResendClient();
+      const { sendEmailOrThrow } = await import("@/lib/resend");
       const today = new Date().toISOString().slice(0, 10);
       const body = `LANE SCOREBOARD — last ${LOOKBACK_DAYS} days
 Score = views×0.01 + likes + comments×3 + saves×8 + shares×8. TikTok weighted 1.5×. Medians, not means.
@@ -307,7 +306,7 @@ ${scoreboard}
 
 ${analysis}
 `;
-      await resend.emails.send({
+      await sendEmailOrThrow({
         from:
           process.env.CONTENT_FACTORY_EMAIL_FROM ??
           '"Ripple Content" <content@getacuity.io>',

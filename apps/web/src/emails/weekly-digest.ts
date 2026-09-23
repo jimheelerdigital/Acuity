@@ -16,7 +16,7 @@
  * of follow-up.
  */
 
-import { getResendClient } from "@/lib/resend";
+import { sendEmailOrThrow } from "@/lib/resend";
 import { signUnsubscribeToken } from "@/lib/email-tokens";
 
 import {
@@ -49,8 +49,6 @@ export interface WeeklyDigestInput {
 }
 
 export async function sendWeeklyDigest(input: WeeklyDigestInput) {
-  const resend = getResendClient();
-  if (!resend) return;
 
   const firstName = input.name?.split(" ")[0] ?? "there";
   const unsubUrl = `${appUrl()}/api/emails/unsubscribe?token=${signUnsubscribeToken(
@@ -133,7 +131,7 @@ export async function sendWeeklyDigest(input: WeeklyDigestInput) {
     ctaUrl: input.reportUrl ?? `${appUrl()}/insights`,
   });
 
-  await resend.emails.send({
+  await sendEmailOrThrow({
     from: EMAIL_FROM,
     to: input.to,
     subject: `Your week in review · ${range}`,

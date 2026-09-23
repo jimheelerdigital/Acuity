@@ -11,7 +11,7 @@
  * "sign in, then hit Manage subscription" hop.
  */
 
-import { getResendClient } from "@/lib/resend";
+import { sendEmailOrThrow } from "@/lib/resend";
 
 import { emailLayout } from "./layout";
 
@@ -24,9 +24,6 @@ export async function sendPaymentFailedEmail({
   to: string;
   name: string | null;
 }) {
-  const resend = getResendClient();
-  if (!resend) return;
-
   const firstName = name?.split(" ")[0] ?? "there";
   const portalUrl = `${appUrl()}/api/stripe/manage`;
 
@@ -40,7 +37,7 @@ export async function sendPaymentFailedEmail({
       "The button above takes you straight to Stripe to update your card. Stripe will retry over the next couple of weeks; nothing gets cut off without another email first.",
   });
 
-  await resend.emails.send({
+  await sendEmailOrThrow({
     from: EMAIL_FROM,
     to,
     subject: "Couldn't charge your card — quick update needed",

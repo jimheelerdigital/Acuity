@@ -141,9 +141,8 @@ Write this week's strategy memo.`,
       });
 
       try {
-        const { getResendClient } = await import("@/lib/resend");
-        const resend = getResendClient();
-        await resend.emails.send({
+        const { sendEmailOrThrow } = await import("@/lib/resend");
+        await sendEmailOrThrow({
           from:
             process.env.CONTENT_FACTORY_EMAIL_FROM ??
             '"Ripple Content" <content@getacuity.io>',

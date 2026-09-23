@@ -231,9 +231,8 @@ export async function sendTrialEmail(
   const html = template.html(vars);
 
   try {
-    const { getResendClient } = await import("@/lib/resend");
-    const resend = getResendClient();
-    const sendResp = await resend.emails.send({
+    const { sendEmailOrThrow } = await import("@/lib/resend");
+    const sendResp = await sendEmailOrThrow({
       from: LIFECYCLE_FROM,
       replyTo: opts.replyTo ?? undefined,
       to: user.email,
@@ -241,11 +240,9 @@ export async function sendTrialEmail(
       html,
     });
 
-    // Resend v6 returns { data: { id }, error } — coerce defensively.
-    const resendId =
-      (sendResp as { data?: { id?: string } }).data?.id ??
-      (sendResp as { id?: string }).id ??
-      null;
+    // sendEmailOrThrow returns Resend's success `data` (or throws on
+    // an API error — the SDK never throws on its own).
+    const resendId = sendResp?.id ?? null;
 
     // Upsert the log row. force=true means we're resending from
     // admin — record a NEW send log instead of overwriting by

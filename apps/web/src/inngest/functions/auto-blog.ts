@@ -850,9 +850,8 @@ export const autoBlogPruneFn = inngest.createFunction(
 
         if (alertEmail) {
           try {
-            const { getResendClient } = await import("@/lib/resend");
-            const resend = getResendClient();
-            await resend.emails.send({
+            const { sendEmailOrThrow } = await import("@/lib/resend");
+            await sendEmailOrThrow({
               from: process.env.EMAIL_FROM ?? "noreply@goripple.io",
               to: alertEmail,
               subject: "Blog Pruner: Auth Failure — cannot run",
@@ -1173,10 +1172,9 @@ export const autoBlogPruneFn = inngest.createFunction(
       if (evaluationResult.trimCandidates.length > pruneCap) {
         // Overflow notification
         try {
-          const { getResendClient } = await import("@/lib/resend");
-          const resend = getResendClient();
+          const { sendEmailOrThrow } = await import("@/lib/resend");
           const overflow = evaluationResult.trimCandidates.slice(pruneCap);
-          await resend.emails.send({
+          await sendEmailOrThrow({
             from: process.env.EMAIL_FROM ?? "noreply@goripple.io",
             to: process.env.ALERT_EMAIL ?? "keenan@getacuity.io",
             subject: `Blog Pruner: ${overflow.length} additional posts need review`,

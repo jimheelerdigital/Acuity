@@ -101,8 +101,8 @@ export async function POST(req: NextRequest) {
   const completeUrl = `${origin}/auth/mobile-complete?token=${encodeURIComponent(token)}`;
   const { subject, html } = magicLinkEmail(completeUrl);
   try {
-    const { getResendClient } = await import("@/lib/resend");
-    await getResendClient().emails.send({
+    const { sendEmailOrThrow } = await import("@/lib/resend");
+    await sendEmailOrThrow({
       from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
       to: email,
       subject,

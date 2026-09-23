@@ -169,9 +169,9 @@ export function getAuthOptions(): NextAuthOptions {
                 const cb = original.searchParams.get("callbackUrl");
                 if (cb) confirm.searchParams.set("callbackUrl", cb);
 
-                const { getResendClient } = await import("@/lib/resend");
+                const { sendEmailOrThrow } = await import("@/lib/resend");
                 const { subject, html } = magicLinkEmail(confirm.toString());
-                await getResendClient().emails.send({
+                await sendEmailOrThrow({
                   from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
                   to: email,
                   subject,

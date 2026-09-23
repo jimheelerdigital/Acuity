@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-23] — Every email send now fails loudly: Resend error sweep across all 40+ call sites
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+Follow-up to this morning's founder-alert fix. The same "email service rejects the send but the code records it as sent" bug pattern existed in every other email the system sends — welcome emails, trial reminder emails, password resets, weekly digests, the admin send-email tool, and more. All of them are working today, but if any ever started failing, nobody would know, exactly like the month of lost founder alerts. Now every email send in the system checks the email service's answer: failures get logged truthfully, retried where a retry system exists, and admin tools report real success/failure counts instead of always claiming success.
+
+### Technical changes (for Jimmy)
+- New `sendEmailOrThrow()` in `apps/web/src/lib/resend.ts` — wraps `resend.emails.send` and throws on the SDK's `{ error }` return (the SDK never throws on API errors). Returns the success `data`. All new email code should use this, never raw `.emails.send`
+- ~25 call sites swapped from raw sends with ignored results to `sendEmailOrThrow`: welcome/founder emails (`bootstrap-user.ts`), magic-link + verification sends (`lib/auth.ts`, auth routes for signup/mobile-signup/mobile-magic-link), digest + notification emails (`emails/payment-failed.ts`, `state-of-me-ready.ts`, `data-export-ready.ts`, `weekly-digest.ts`, `monthly-digest.ts`), Inngest reports (`auto-blog.ts` ×2, `weekly-seo-report.ts`, `lane-intelligence-report.ts`, `niche-strategy-memo.ts`, `backfill-extractions.ts`), `try-recording` claim email, admin routes (`send-email` ×2, `resend-welcome`, `magic-link`, `adlab/cron` — the last also now uses the lib client instead of an inline `new Resend()`)
+- Real bug fixes surfaced by the sweep: `trial-emails.ts`, `trial-countdown-emails.ts`, and `waitlist-reactivation.ts` were stamping SentAt timestamps / `TrialEmailLog` rows / `sent++` counters on unchecked API errors — they now only record a send after a non-error response, and return `{ sent: false, reason: "send_failed" }` on failure. `waitlist/route.ts` was marking `emailSequenceStep: 1` even when the welcome send failed
+- Behavior change to know about: `forgot-password` and admin `magic-link` routes now return 500 if the email fails (previously false `{ ok: true }`); mobile-magic-link keeps its fail-soft-with-Sentry convention
+- Sites that already checked `error` were verified and left alone: adlab `weekly-batch`, content-factory `email.ts`/`hashtag-trends`/`video-scripts`, `rls-audit`, and this morning's founder-alert files
+- No schema changes, no cron/trigger changes (no Inngest resync needed). Deployed via `vercel deploy --prod`
+
+### Manual steps needed
+None
+
+### Notes
+- Two pre-existing type errors in touched files (`resend-welcome/route.ts:36` `text` field, `try-recording/route.ts:247` Prisma JSON) exist at HEAD and are unrelated — Next build passes regardless
+- The uncommitted `onboarding-funnel.tsx` change (BWK funnel-variant tracking) in the working tree belongs to the parallel session that shipped the weekly-ad-batch entry below — deliberately excluded from this commit
+- Rule going forward: never call `resend.emails.send` directly — use `sendEmailOrThrow` from `@/lib/resend`
+
 ## [2026-09-23] — Prod trigger for the weekly ad batch + funnel-variant tracking split
 
 **Requested by:** Keenan

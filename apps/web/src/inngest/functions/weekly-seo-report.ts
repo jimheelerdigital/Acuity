@@ -230,8 +230,7 @@ export const weeklySeoReportFn = inngest.createFunction(
 
     // ── Step 3: compose + send the email ──
     await step.run("send-email", async () => {
-      const { getResendClient } = await import("@/lib/resend");
-      const resend = getResendClient();
+      const { sendEmailOrThrow } = await import("@/lib/resend");
 
       const { weeks, topQueries, topPages, windowEnd, thisWeekStart } = data;
       const cur = weeks[weeks.length - 1];
@@ -317,7 +316,7 @@ export const weeklySeoReportFn = inngest.createFunction(
   <p style="color:#999;font-size:11px;margin-top:24px">Automated Sunday report from the Ripple auto-blog system.</p>
 </div>`;
 
-      await resend.emails.send({
+      await sendEmailOrThrow({
         from:
           process.env.CONTENT_FACTORY_EMAIL_FROM ??
           '"Ripple Content" <content@getacuity.io>',

@@ -85,13 +85,12 @@ export const waitlistReactivationFn = inngest.createFunction(
     // ── Step 2: Send Email 1 to all eligible ─────────────────────────
     const email1Results = await step.run("send-email-1", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const { getResendClient } = await import("@/lib/resend");
+      const { sendEmailOrThrow } = await import("@/lib/resend");
       const {
         waitlistReactivation1Subject,
         waitlistReactivation1Html,
       } = await import("@/emails/waitlist-reactivation");
 
-      const resend = getResendClient();
       let sent = 0;
       let skipped = 0;
 
@@ -116,7 +115,7 @@ export const waitlistReactivationFn = inngest.createFunction(
         const unsubscribeUrl = `${BASE_URL}/api/emails/unsubscribe?token=${encodeURIComponent(unsubToken)}`;
 
         try {
-          const result = await resend.emails.send({
+          const result = await sendEmailOrThrow({
             from: EMAIL_FROM,
             to: w.email,
             subject: waitlistReactivation1Subject(firstName),
@@ -131,7 +130,7 @@ export const waitlistReactivationFn = inngest.createFunction(
             data: {
               waitlistId: w.id,
               emailKey: "waitlist_reactivation_1",
-              resendId: result.data?.id ?? null,
+              resendId: result?.id ?? null,
             },
           });
 
@@ -156,13 +155,12 @@ export const waitlistReactivationFn = inngest.createFunction(
     // ── Step 4: Send Email 2 to those who still haven't signed up ────
     const email2Results = await step.run("send-email-2", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const { getResendClient } = await import("@/lib/resend");
+      const { sendEmailOrThrow } = await import("@/lib/resend");
       const {
         waitlistReactivation2Subject,
         waitlistReactivation2Html,
       } = await import("@/emails/waitlist-reactivation");
 
-      const resend = getResendClient();
       let sent = 0;
       let skipped = 0;
       let converted = 0;
@@ -224,7 +222,7 @@ export const waitlistReactivationFn = inngest.createFunction(
         const unsubscribeUrl = `${BASE_URL}/api/emails/unsubscribe?token=${encodeURIComponent(unsubToken)}`;
 
         try {
-          const result = await resend.emails.send({
+          const result = await sendEmailOrThrow({
             from: EMAIL_FROM,
             to: current.email,
             subject: waitlistReactivation2Subject(),
@@ -239,7 +237,7 @@ export const waitlistReactivationFn = inngest.createFunction(
             data: {
               waitlistId: w.id,
               emailKey: "waitlist_reactivation_2",
-              resendId: result.data?.id ?? null,
+              resendId: result?.id ?? null,
             },
           });
 
