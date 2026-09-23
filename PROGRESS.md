@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-23] — New men's onboarding funnel at /start-bwk for the BWK ad lane
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 33e48452
+
+### In plain English (for Keenan)
+There's now a second onboarding funnel at goripple.io/start-bwk written for the men's/BWK audience. Same 17-screen structure as /start (quiz → pain mirror → pattern result → timeline → account → paywall), but every screen speaks to men: too much coming at him, repeating the same arguments, can't shut his brain off at night, the gap between knowing and doing, and the "I'm good" front. The women's funnel at /start is completely untouched. Also fixed a bug where a man who signed up with Google or Apple partway through /start-bwk would have been dumped back into the women's funnel — he now stays in his own. The Weekly Review page in AdLab now pre-fills each group's destination with the right funnel (men → /start-bwk, women → /start) so you don't have to type URLs when launching.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: new `FunnelVariantConfig` interface + `DEFAULT_FUNNEL_CONFIG` object bundling all 18 existing copy exports/functions. Existing exports untouched — /start is byte-identical.
+- New `apps/web/src/lib/funnel-config-bwk.ts` (~900 lines): `BWK_ENTRY_QUESTION` + `BWK_FUNNEL_CONFIG` with full men's copy — branch questions, pain fragments, relief flips, current/future, transformation rows, pattern names (The Overload / The Loop / The Night Shift / The Gap / The Front), timeline nodes, paywall hooks/headlines. Testimonials reuse the 3 gender-neutral real quotes (James K. first — MechanismScreen renders index 0). No fabricated quotes. Kept shared_q5 "Years" / "As long as I can remember" labels identical because the Stuck Deep override in getPatternLabels matches on them.
+- `apps/web/src/components/onboarding-funnel.tsx`: `FunnelConfigContext` (default = `DEFAULT_FUNNEL_CONFIG`) + exported `FunnelConfigProvider`; all ~20 copy reads across 11 components go through `cfg.`. Fixed six hardcoded `"/start"` paths (OAuth `callbackUrl`, two error-recovery sign-ins, "Already have an account" sign-in, email-signup `landingPath`, set-attribution fallback) → `window.location.pathname`.
+- New `apps/web/src/app/start-bwk/page.tsx` + `client.tsx`: mirrors /start's SSR-entry pattern (inline critical CSS, `?step=` skips SSR, robots noindex/nofollow, attribution cookie, CAPI pageview), wraps `<OnboardingFunnel />` in the BWK provider.
+- `apps/web/src/app/admin/adlab/review/page.tsx`: `customUrl` state prefills from `groupKey` (men → https://goripple.io/start-bwk, women → https://goripple.io/start) when the experiment has no saved URL.
+- No schema changes. Verified: tsc clean on touched files, funnel-config.test.ts 18/18, plus a throwaway script that ran every BWK branch × answer combination through every config function — zero undefined fragments, all PAIN_EMPHASIS phrases match their beats.
+
+### Manual steps needed
+- [ ] Keenan: push + `npx vercel deploy --prod` from repo root (bundled with the two held AdLab commits — happening next in this session)
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` (registers adlab-weekly-batch cron + moved pulse cron from the held commits)
+- [ ] Keenan: smoke-test goripple.io/start-bwk on phone after deploy — tap through one branch to the account screen
+
+### Notes
+- Variant architecture: context default = original config means rendering `<OnboardingFunnel />` bare (as /start does) needs zero changes; only /start-bwk wraps it in a provider. Future funnels (new audiences, A/B copy tests) are one new config file + one route folder.
+- The hardcoded-/start OAuth bug would have silently poisoned the men's funnel: Google/Apple signup returned users to `/start?step=post-signup` (women's copy) and attribution logged the wrong landing path. Any future funnel route gets correct behavior automatically now via `window.location.pathname`.
+- /start's own metadata description says "60-second debrief" — violates the no-duration-claims brand rule. Left as-is for now; flagged for the /start audit Keenan requested (next task). /start-bwk's metadata deliberately has no duration claim.
+- Fragment maps in the BWK config are keyed by EXACT answer-label strings — if you edit an option label, grep the file for the old string and update the matching fragment keys, or copy silently degrades to generic fallbacks.
+
 ## [2026-09-23] — Reddit→AdLab: 20 ready-to-approve ads every Sunday, launch from one screen
 
 **Requested by:** Keenan
