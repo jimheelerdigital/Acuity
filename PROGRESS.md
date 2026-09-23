@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-22] — SEO audit: site indexed but invisible; ping system replaced, duplicate host and mid-word slugs fixed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 9f0ea64f
+
+### In plain English (for Keenan)
+The full audit found the blog IS indexed by Google (154 pages) but ranks for almost nothing — 441 impressions and 5 clicks in 30 days — because posts target searches nobody makes, while the searches people do make need more site authority than a 2-month-old domain has. The system that pings search engines about new posts had failed silently on every attempt for 60 days; it's replaced with one that works (IndexNow, for Bing and friends — Google finds posts via the sitemap it already reads daily). The www version of the site no longer counts as a duplicate site, and new blog URLs stop getting chopped mid-word. Search Console access is now wired up locally, which surfaced the first-ever real ranking data and sets up the data-driven content triage next.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/google/indexing.ts`: rewritten from Google Indexing API (100% failure for 60d, and restricted to job/livestream pages anyway) to IndexNow. Same `notifyPublish`/`notifyUnpublish` exports, all 5 call sites unchanged. Logs `INDEXNOW_*` eventType rows to IndexingLog
+- `apps/web/public/0b3485c1826f46a391a795f4e3d35833.txt`: IndexNow key file (public by protocol; allowlisted in `.gitleaks.toml` + inline `gitleaks:allow`)
+- `apps/web/next.config.js`: host-based 308 www.goripple.io → goripple.io (www was serving 200s as a duplicate host)
+- `apps/web/src/lib/content-factory/slug.ts`: `slugify` truncates at word boundaries under the 60-char cap; existing slugs unaffected
+- Ops (no code): GSC SA `acuity-analytics-reader@acuity-493920.iam.gserviceaccount.com` added as Full user on `sc-domain:goripple.io` + `sc-domain:getacuity.io`; Search Console API enabled in GCP project `acuity-493920`; **Change of Address getacuity.io → goripple.io filed in GSC**; fresh SA key installed in `apps/web/.env.local` (base64)
+- New local diagnostic: `apps/web/scripts/gsc-deep-audit.ts` (untracked, 90-day query+page report per property)
+
+### Manual steps needed
+- [ ] **Keenan:** GSC → both properties → Users and permissions → also add `acuity-analytics-reader@meta-micron-470619-q0.iam.gserviceaccount.com` as Full user. There are TWO same-named SAs in different GCP projects: prod Vercel uses the meta-micron one (per bc842f4d's diagnostic); the acuity-493920 one added tonight only covers local tooling. Until this add, prod's pruner/GSC sync stays blind
+- [ ] Keenan: say push — then `vercel deploy --prod` (git push does not deploy). 2 commits queued: bc842f4d (already deployed via CLI), 9f0ea64f (not deployed)
+- [ ] Verify after deploy: `curl -s https://goripple.io/0b3485c1826f46a391a795f4e3d35833.txt` returns the key; `curl -sI -H "Host: www.goripple.io" https://goripple.io` shows 308
+
+### Notes
+- First-ever GSC 90-day data: goripple.io ~850 impressions / 9 clicks. Head terms ("best journaling app", "ai journaling app") appear only at position 70–95 — right topics, zero authority. Long-tail posts rank pos 3–10 but target near-zero-volume queries. Strategy: mid-tail queries with real demand + authority building; head terms are a 12-month outcome, not a content-calendar item
+- getacuity.io out-earned goripple.io in the same window (1,033 imp / 15 clicks); Change of Address should consolidate that into the new domain
+- GSC Change of Address validation flagged "301-redirects from sample pages" as a warning because ours are 308s — Google accepts 308 as permanent; validation passed
+- This session ran concurrently with the bc842f4d session (below); files touched are disjoint. bc842f4d's "add SA as Owner + submit sitemap" manual steps are superseded: sitemap was already submitted (Jul 27), and Owner isn't needed now that the Indexing API is retired — Full user is enough for Search Analytics reads
+
 ## [2026-09-22] — Auto-blog SEO overhaul: fixed dead Search Console hookup, FAQ schema, related posts, and the writing prompt
 
 **Requested by:** Keenan
