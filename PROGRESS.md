@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-23] — Checkout was still charging $4.99/$39.99 — Stripe price env vars cut over to $9.99/$89.99
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (env-var change in Vercel — no code; this entry committed separately)
+
+### In plain English (for Keenan)
+Discovered that while the site has been DISPLAYING $9.99/month since the Sept 2 pricing flag flip, anyone who actually subscribed through the web funnels would have been CHARGED the old $4.99/$39.99 — the checkout was still pointed at the old Stripe prices. No customer ever hit this (zero web checkouts since Sept 2). Both settings now point at the real $9.99/$89.99 prices and production was redeployed, so display and charge finally match.
+
+### Technical changes (for Jimmy)
+- Vercel env vars `STRIPE_PRICE_MONTHLY` → `price_1U7bBOD9XJakJqj51IdGWDVN` ($9.99/mo) and `STRIPE_PRICE_YEARLY` → `price_1U7bBRD9XJakJqj5uhZY4rgc` ($89.99/yr), production+preview, updated via Vercel REST API (values were last touched 2026-05-25/29 — the V2 cutover on 09-02 flipped `NEW_PRICING_ENABLED` but never updated these)
+- Production redeployed (`vercel redeploy`) so the running lambdas picked up the new values; aliased to goripple.io, verified Ready
+- The `STRIPE_PRICE_MONTHLY_V2` / `STRIPE_PRICE_YEARLY_V2` vars mentioned in `packages/shared/src/pricing-plans.ts` comments were never created — checkout reads the un-suffixed names via `PRICING.*.stripeId` (`apps/web/src/lib/pricing.ts`)
+- Also committed `apps/web/src/inngest/functions/rc-parity-soak.ts` (310de756) — it was imported on main but only ever shipped via manual working-tree deploys, so every git-triggered Vercel build was failing with module-not-found
+
+### Manual steps needed
+- [ ] **Jimmy: confirm the env-var cutover** — new web checkouts now charge V2 prices; legacy $4.99/$39.99 Stripe prices left ACTIVE (required for grandfathered subscribers' renewals). Consider whether a re-subscribing grandfathered user should get legacy price (they currently won't — checkout is env-var driven, not tier-driven). (Jimmy)
+- [ ] Decide whether to create the `*_V2` env vars or update the stale comments in pricing-plans.ts (Jimmy)
+
+### Notes
+- Evidence trail: live Stripe showed the newest consumer subs (July) at 499/3999 cents; V2 prices (999/8999) created 08-23, active, never used; Vercel API `updatedAt` on the price env vars = May 25/29, i.e. pre-cutover. Zero funnel checkout sessions since the 09-02 flag flip, so no one was ever under-charged.
+- Vercel gotcha: `vercel env ls` shows only `createdAt`; sensitive values are unpullable, but the REST API (`/v9/projects/:id/env`) exposes `updatedAt` and supports PATCH with the CLI token — that's how this was both diagnosed and fixed.
+- fbq/CAPI values (fixed earlier today in the pricing sweep) now match what's actually charged.
+
+---
+
 ## [2026-09-23] — Funnel cleanup: 60-second claims removed, StartTrial pixel fixed, habit tracking on the paywall
 
 **Requested by:** Keenan
