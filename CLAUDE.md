@@ -162,7 +162,7 @@ Key rules to internalize (read the full doc for details):
 - ✅ records any time of day — ❌ "nightly," "before bed," any fixed time
 - ❌ no recording-duration claims ("60-second," "90-second," etc.)
 - Value is **multi-surface** (tasks, mood, patterns, Life Matrix, weekly report) — don't frame any single feature as the sole conversion driver.
-- Pricing: **$4.99/month**, $39.99/year, 7-day free trial.
+- Pricing: **$9.99/month**, $89.99/year, 7-day free trial. (Pre-2026-09 subscribers grandfathered at $4.99/$39.99.)
 
 ---
 

@@ -22,6 +22,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { displayAnnual, displayMonthly } from "@/lib/pricing";
 
 // Authoritative list from .tmp/rewrite-slugs.txt (blog-triage.ts output,
 // Keenan sign-off 2026-09-23) — all 41 verified live in prod DB.
@@ -83,7 +84,7 @@ PRODUCT FACTS (never contradict):
 - The product is called Ripple. It is a voice journaling app: you talk through your day, Ripple pulls out tasks, tracks goals, detects mood and life patterns, and sends a weekly report.
 - Ripple is a mirror, not a coach — it reflects, it does not advise.
 - Users can record any time of day. NEVER frame it as a night-time/bedtime habit and NEVER claim a specific recording duration.
-- Pricing: $4.99/month, $39.99/year, 7-day free trial, no credit card required.
+- Pricing: ${displayMonthly()}/month, ${displayAnnual()}/year, 7-day free trial, no credit card required.
 
 BANNED WORDS/PHRASES (never output any of these, any casing): ${BANNED.join(", ")}. The old product name "Acuity" must never appear — the product is Ripple.
 

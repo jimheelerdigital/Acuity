@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { ANNUAL_PRICE_CENTS, ANNUAL_PRICE_DOLLARS, MONTHLY_PRICE_DOLLARS, PRICING, displayAnnual, displayMonthly, formatDollars, planValueDollars } from "@/lib/pricing";
+import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsPct, displayTier, formatDollarsRounded, planValueDollars } from "@/lib/pricing";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
@@ -366,7 +366,7 @@ export function OnboardingFunnel() {
         clearOAuthPending();
       }
       track("funnel_account_created", { value: `method:oauth|${envDiag}` });
-      fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+      fireFbq("StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
       if (typeof window !== "undefined" && "gtag" in window) {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
       }
@@ -842,7 +842,7 @@ export function OnboardingFunnel() {
           track={track}
           onAccountCreated={() => {
             track("funnel_account_created", { value: `method:email|${getSignupEnvDiag()}` });
-            fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+            fireFbq("StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
             }
@@ -2011,7 +2011,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       waitForFbq().then((ready) => {
         if (ready) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
-          fireFbq("StartTrial", { value: MONTHLY_PRICE_DOLLARS, currency: "USD", predicted_ltv: ANNUAL_PRICE_DOLLARS });
+          fireFbq("StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
         }
       });
       // Guard so TrackCompleteRegistration on the savings step doesn't double-fire
@@ -2255,7 +2255,11 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
   const cfg = useFunnelConfig();
-  const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
+  // All savings figures derive from the display tier so a pricing-flag flip
+  // can never leave the paywall advertising math from the old price.
+  const tier = displayTier();
+  const monthlySaveVsAnchor = formatDollarsRounded(1999 - tier.monthlyCents); // vs the $19.99/mo anchor
+  const annualSaveVsAnchor = formatDollarsRounded(19900 - tier.annualCents); // vs the $199/yr anchor
   // What Stripe actually charges after the 7-day trial for the selected plan —
   // drives the reassurance line under the lock-in button so it always matches
   // the checkout the user is about to enter.
@@ -2393,7 +2397,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               </span>
               {/* Savings delta — subtle fade after badge */}
               <p className={`text-[10px] text-emerald-600 font-medium mt-1 transition-opacity duration-500 ${slashPhase >= 3 ? "opacity-100" : "opacity-0"}`}>
-                You save $15/mo
+                You save {monthlySaveVsAnchor}/mo
               </p>
             </button>
             {/* Annual card — staggered 150ms behind monthly */}
@@ -2417,12 +2421,12 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
               {/* Badge — appears after rate lands */}
               <span className={`inline-block mt-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[10px] font-bold ${slashPhase >= 3 ? "" : "opacity-0"}`}
                 style={slashPhase >= 3 && !prefersReduced ? { animation: "pw-badge 300ms ease-out 150ms forwards" } : undefined}>
-                SAVE {PRICING.annual.savingsVsMonthly}
+                SAVE {displaySavingsPct()}
               </span>
               {/* Savings delta */}
               <p className={`text-[10px] text-emerald-600 font-medium mt-1 transition-opacity duration-500 ${slashPhase >= 3 ? "opacity-100" : "opacity-0"}`}
                 style={{ transitionDelay: slashPhase >= 3 ? "150ms" : "0ms" }}>
-                {formatDollars(annualMonthly)}/mo &mdash; save $159/yr
+                {displayAnnualAsMonthly()}/mo &mdash; save {annualSaveVsAnchor}/yr
               </p>
             </button>
           </div>

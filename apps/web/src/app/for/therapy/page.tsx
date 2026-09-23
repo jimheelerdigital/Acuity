@@ -291,8 +291,7 @@ export default function TherapyPage() {
             role: "Designer",
           },
           {
-            quote:
-              "At $4.99/month it's the most affordable mental health tool I've ever used. And the most consistent.",
+            quote: `At ${displayMonthly()}/month it's the most affordable mental health tool I've ever used. And the most consistent.`,
             name: "Jamie L.",
             role: "Teacher",
           },

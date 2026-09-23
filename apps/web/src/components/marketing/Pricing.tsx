@@ -1,6 +1,7 @@
 /**
  * Pricing — single plan card. Ported from the handoff
- * (`marketing.jsx → Pricing`). $4.99/mo, 7-day trial (matches live).
+ * (`marketing.jsx → Pricing`). Price renders via displayMonthly() so it
+ * tracks the NEW_PRICING_ENABLED tier ($9.99/mo as of 2026-09). 7-day trial.
  * "12-axis Life Matrix" corrected to "Life Matrix" (live is 10 axes —
  * see PRODUCT_DRIFT_AUDIT.md; no axis-count claim in marketing).
  */

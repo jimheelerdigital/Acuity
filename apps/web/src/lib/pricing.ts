@@ -92,6 +92,24 @@ export function displayAnnualAsMonthly(): string {
 }
 
 /**
+ * Tier-aware "Save X%" badge for the annual plan vs paying monthly.
+ * LEGACY: 33%. V2: 25%. Replaces PRICING.annual.savingsVsMonthly on
+ * prospect-facing surfaces, which is frozen at the LEGACY percentage.
+ */
+export function displaySavingsPct(): string {
+  const tier = displayTier();
+  const monthlyRun = tier.monthlyCents * 12;
+  const savings = monthlyRun - tier.annualCents;
+  return `${monthlyRun > 0 ? Math.round((savings / monthlyRun) * 100) : 0}%`;
+}
+
+/** Tier-aware dollar savings of annual vs 12x monthly, e.g. "$29.89". */
+export function displaySavingsDollars(): string {
+  const tier = displayTier();
+  return formatDollars(tier.monthlyCents * 12 - tier.annualCents);
+}
+
+/**
  * The LEGACY price, for copy that deliberately speaks about grandfathered
  * subscribers ("existing subscribers keep $4.99"). Named so that using it
  * is a visible decision rather than an accident.
@@ -175,7 +193,12 @@ export function planValueDollars(
   interval: string | null | undefined
 ): number {
   const yearly = interval === "yearly" || interval === "annual" || interval === "year";
-  return (yearly ? ANNUAL_PRICE_CENTS : MONTHLY_PRICE_CENTS) / 100;
+  // Tier-aware (2026-09-23): resolves through displayTier() so Meta gets the
+  // price a prospect is actually charged. When NEW_PRICING_ENABLED flipped,
+  // this function kept reporting the LEGACY $4.99/$39.99 — exactly the stale
+  // revenue reporting it was created to prevent.
+  const tier = displayTier();
+  return (yearly ? tier.annualCents : tier.monthlyCents) / 100;
 }
 
 /** Monthly price in dollars — the `predicted_ltv` / StartTrial value. */

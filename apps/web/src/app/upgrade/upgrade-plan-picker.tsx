@@ -3,7 +3,7 @@
 import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 
-import { ANNUAL_PRICE_CENTS, MONTHLY_PRICE_CENTS, PRICING, displayAnnual, displayAnnualAsMonthly, displayMonthly, formatDollars } from "@/lib/pricing";
+import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsDollars, displaySavingsPct } from "@/lib/pricing";
 
 type Interval = "monthly" | "yearly";
 
@@ -33,11 +33,10 @@ const POLICY_VERSION = "2026-06-03";
  * Stripe Price IDs (env-var-driven; PRICING holds the displayed
  * dollar values).
  */
-const YEARLY_SAVINGS_DOLLARS_ROUNDED = (() => {
-  const monthlyRunCents = MONTHLY_PRICE_CENTS * 12;
-  const savings = monthlyRunCents - ANNUAL_PRICE_CENTS;
-  return formatDollars(savings);
-})();
+// Tier-aware (2026-09-23): the previous version computed from the LEGACY
+// constants, so after NEW_PRICING_ENABLED flipped it kept advertising the
+// $4.99-era savings next to $9.99/$89.99 prices.
+const YEARLY_SAVINGS_DOLLARS_ROUNDED = displaySavingsDollars();
 export function UpgradePlanPicker() {
   const [interval, setInterval] = useState<Interval>("monthly");
   const [loading, setLoading] = useState(false);
@@ -149,7 +148,7 @@ export function UpgradePlanPicker() {
           label="Yearly"
           selected={interval === "yearly"}
           onClick={() => setInterval("yearly")}
-          badge={`Save ${PRICING.annual.savingsVsMonthly}`}
+          badge={`Save ${displaySavingsPct()}`}
         />
       </div>
 

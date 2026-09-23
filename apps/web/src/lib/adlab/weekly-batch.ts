@@ -22,6 +22,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
+import { displayMonthly } from "@/lib/pricing";
 
 // ─── Groups ───────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ interface GroupConfig {
   cardBackground: string;
 }
 
-const PRODUCT_TRUTH = `Ripple is an AI habit tracker & voice journal with life optimization. What it actually does: you record a voice debrief any time of day; it transcribes, pulls out tasks, tracks habits and goals, detects recurring patterns, scores 6 life domains (Life Matrix), and delivers a weekly narrative report. $4.99/month, 7-day free trial. It does NOT diagnose, treat, or replace therapy. Never claim a specific recording duration.`;
+const PRODUCT_TRUTH = `Ripple is an AI habit tracker & voice journal with life optimization. What it actually does: you record a voice debrief any time of day; it transcribes, pulls out tasks, tracks habits and goals, detects recurring patterns, scores 6 life domains (Life Matrix), and delivers a weekly narrative report. ${displayMonthly()}/month, 7-day free trial. It does NOT diagnose, treat, or replace therapy. Never claim a specific recording duration.`;
 
 const SHARED_BANNED = [
   "unlock",
