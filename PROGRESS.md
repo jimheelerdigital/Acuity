@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** debb9cd5
 
 ### In plain English (for Keenan)
 Since August 25, none of the "new signup" or "new payment" alert emails ever reached you or Jimmy — the email service was rejecting them because it wasn't authorized to send from the new goripple.io address, and a bug made the system record every rejected email as "sent," so nothing flagged it. Several behind-the-scenes health alarms (Stripe webhook health, subscription drift, security audit) were muted by the same problem. You authorized goripple.io in the Resend dashboard and created a new API key today; a live test email from hello@goripple.io landed in your inbox. The alerts now send again, failures can no longer masquerade as successes, and replying to any of these alert emails goes to keenan@heelerdigital.com instead of bouncing.
