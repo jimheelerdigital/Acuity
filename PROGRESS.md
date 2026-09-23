@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (fill after commit)
+**Commit hash:** 491b2247
 
 ### In plain English (for Keenan)
 The first weekly ad batch came out as pretty mood photos with no headline, no value props, and no call to action baked into the image — they looked like art, not ads. Now every batch image is built like a real Meta ad: five proven formats rotate across the 10 ads (photo with a big hook headline + CTA button, a notes-app-style "ugly ad" with a checklist, a bold text-only statement card, a checklist over a photo, and a phone-in-scene shot), each with the exact ad headline, short value props, and a CTA button rendered in the creative itself. This week's 20 already-generated ads are being regenerated in the new formats right now — copy stays the same, only the images change. Also fixed the compliance checker that was stamping every ad with a useless "check failed" warning: it was running out of room mid-answer; now it completes and gives real per-ad verdicts.
