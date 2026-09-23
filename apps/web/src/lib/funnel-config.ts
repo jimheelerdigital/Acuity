@@ -1395,23 +1395,6 @@ export const PAYWALL_HOOKS: Record<Branch, string> = {
   mask: "One place you don\u2019t have to perform.",
 };
 
-// Subhead directly under the paywall headline (spec copy, per branch).
-export const PAYWALL_SUBHEAD: Record<Branch, string> = {
-  overload: "Put the list down. Ripple remembers so you don\u2019t have to.",
-  patterns: "See what keeps setting it off \u2014 and finally break the cycle.",
-  rumination: "Give it somewhere to put everything down \u2014 and finally rest.",
-  stuck: "See where your effort actually goes \u2014 and point it somewhere that matters.",
-  mask: "A private place to set the mask down and finally be honest.",
-};
-
-export const PRICING_COPY: Record<Branch, string> = {
-  overload: "Stop white-knuckling your mental to-do list \u2014 for less than a coffee a month.",
-  patterns: "Break the cycle for less than a coffee a week.",
-  rumination: "A quiet mind at night \u2014 for less than a coffee a month.",
-  stuck: "Stop running in place \u2014 for less than a coffee a month.",
-  mask: "A place to be honest \u2014 for less than a coffee a month.",
-};
-
 // ─── Processing Theater Text (Screen 13) ────────────────────────────────────
 
 export const PROCESSING_STAGES: { text: string; endSec: number }[] = [
@@ -1434,18 +1417,6 @@ export function getPaywallHeadline(branch: Branch, _answers: Record<string, stri
     case "rumination": return "Your mind won\u2019t stop because it\u2019s afraid to let go.";
     case "stuck": return "Busy isn\u2019t the same as forward. Let\u2019s find the difference.";
     case "mask": return "You don\u2019t have to hold it together here.";
-  }
-}
-
-// ─── Paywall Cost of Inaction (Screen 16, Section 2) ────────────────────────
-
-export function getCostOfInaction(branch: Branch, _answers: Record<string, string | string[]>): string {
-  switch (branch) {
-    case "overload": return "Every day you carry it all is another day something slips through.";
-    case "patterns": return "Left alone, cycles don\u2019t fade. They dig deeper.";
-    case "rumination": return "Every night it spins is another day you start already tired.";
-    case "stuck": return "Every week on the treadmill is a week you don\u2019t get back.";
-    case "mask": return "The longer you hold it in, the heavier the mask gets.";
   }
 }
 

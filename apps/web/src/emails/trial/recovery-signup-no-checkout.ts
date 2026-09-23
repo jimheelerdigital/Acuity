@@ -48,7 +48,7 @@ export const recoverySignupNoCheckout: TrialEmailTemplate = {
       ${para(`Hey ${name},`)}
       ${para(`You told us ${branchLine(v)}. That took guts.`)}
       ${para(`We built a profile based on what you shared. It\u2019s ready \u2014 but you haven\u2019t started your trial yet.`)}
-      ${para(`Here\u2019s what happens in the first week: you talk for 60 seconds a day. By Day 3, patterns start forming. By Day 7, you get a report that reads like someone who knows you wrote it. Because in a way, you did.`)}
+      ${para(`Here\u2019s what happens in the first week: you talk about your day, once a day. By Day 3, patterns start forming. By Day 7, you get a report that reads like someone who knows you wrote it. Because in a way, you did.`)}
       ${para(`${PRICE}/month after the free trial. Most people know by Day 3 whether it\u2019s worth it.`)}
       <tr>
         <td style="padding-bottom:28px;">

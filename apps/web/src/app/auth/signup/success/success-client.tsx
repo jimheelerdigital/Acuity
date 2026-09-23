@@ -91,7 +91,7 @@ export function SuccessPageClient() {
               number="1"
               icon={<MicIcon />}
               title="Record"
-              description="Hit record and talk about your day — 60 seconds is all it takes."
+              description="Hit record and talk about your day — no prompts, no typing."
             />
             <Step
               number="2"

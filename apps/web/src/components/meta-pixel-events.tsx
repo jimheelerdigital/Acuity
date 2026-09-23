@@ -97,7 +97,10 @@ export function MetaPixelAdvancedMatching() {
 }
 
 /**
- * Fires CompleteRegistration + StartTrial for genuinely new signups.
+ * Fires CompleteRegistration for genuinely new signups.
+ * (StartTrial deliberately NOT fired here — account creation is cardless.
+ * It fires only on verified Stripe checkout success, where a trial
+ * actually begins. Per Keenan, 2026-09-23.)
  *
  * Flow:
  *   1. POSTs to /api/capi/complete-registration — fires CAPI with full
@@ -138,7 +141,6 @@ export function TrackCompleteRegistration() {
         const fbqReady = await waitForFbq();
         if (fbqReady) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, data.eventId);
-          fireFbq("StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
         } else {
           console.warn("[meta-pixel] fbq not available after 5s (no marketing consent?), CAPI-only for this signup");
         }

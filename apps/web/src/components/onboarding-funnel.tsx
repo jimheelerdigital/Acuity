@@ -239,13 +239,6 @@ function clearOAuthPending(): void {
   try { localStorage.removeItem(OAUTH_PENDING_KEY); } catch {}
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function formatTrialEndDate(): string {
-  const d = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-}
-
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export function OnboardingFunnel() {
@@ -340,6 +333,12 @@ export function OnboardingFunnel() {
               setPaymentConfirmed(true);
               setStep("download");
               track("funnel_savings_locked_in", { value: selectedPlan });
+              // StartTrial fires HERE — verified Stripe checkout is the only
+              // moment a 7-day trial actually begins. It must never fire on
+              // mere account creation (per Keenan, 2026-09-23): cardless
+              // signups were inflating StartTrial and polluting Meta's
+              // optimization signal.
+              fireFbq("StartTrial", { value: planValueDollars(selectedPlan), currency: "USD", predicted_ltv: planValueDollars("yearly") });
               fireFbq("Purchase", { value: planValueDollars(selectedPlan), currency: "USD", content_name: "Ripple Pro Subscription" });
             } else {
               setStep("savings");
@@ -366,7 +365,6 @@ export function OnboardingFunnel() {
         clearOAuthPending();
       }
       track("funnel_account_created", { value: `method:oauth|${envDiag}` });
-      fireFbq("StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
       if (typeof window !== "undefined" && "gtag" in window) {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
       }
@@ -842,7 +840,6 @@ export function OnboardingFunnel() {
           track={track}
           onAccountCreated={() => {
             track("funnel_account_created", { value: `method:email|${getSignupEnvDiag()}` });
-            fireFbq("StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
             }
@@ -1640,7 +1637,7 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900 select-none">
       <div className="max-w-md text-center">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit to 60 seconds a day</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit to one debrief a day</h2>
         <div className="relative inline-flex items-center justify-center">
           <svg className="h-40 w-40" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r="54" fill="none" stroke="#d4d4d8" strokeWidth="4" />
@@ -2011,7 +2008,6 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       waitForFbq().then((ready) => {
         if (ready) {
           fireFbq("CompleteRegistration", { content_name: "Free Trial Signup", currency: "USD", value: 0 }, signupData.capiEventId);
-          fireFbq("StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
         }
       });
       // Guard so TrackCompleteRegistration on the savings step doesn't double-fire
@@ -2244,6 +2240,7 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   { name: "Deep Insights", description: "Observations about you that you\u2019d never notice on your own." },
   { name: "Pattern detection", description: "Recurring themes surfaced across your entries." },
+  { name: "Habit tracking", description: "Habits you mention get checked off automatically \u2014 streaks build themselves." },
   { name: "Signals", description: "Next-step guidance based on what you actually said." },
 ];
 

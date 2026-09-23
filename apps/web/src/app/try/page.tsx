@@ -12,7 +12,7 @@ const TryDebriefFlow = dynamic(
 export const metadata: Metadata = {
   title: "Try Ripple — Free",
   description:
-    "Record a 60-second voice debrief and see what Ripple extracts — tasks, goals, mood, and patterns. No signup required.",
+    "Record a voice debrief and see what Ripple extracts — tasks, goals, mood, and patterns. No signup required.",
   robots: { index: false, follow: false },
 };
 

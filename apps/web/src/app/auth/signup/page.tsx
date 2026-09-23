@@ -19,7 +19,6 @@ import { signIn } from "next-auth/react";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { SOCIAL_PROOF } from "@/lib/social-proof";
-import { planValueDollars } from "@/lib/pricing";
 
 const PASSWORD_MIN = 8;
 const REFERRAL_KEY = "acuity_ref_code";
@@ -205,8 +204,8 @@ function SignUpForm() {
           currency: "USD",
           value: 0,
         }, pixelOpts);
-        console.log("[meta-pixel] Firing StartTrial — email signup success");
-        window.fbq("track", "StartTrial", { value: planValueDollars("monthly"), currency: "USD", predicted_ltv: planValueDollars("yearly") });
+        // StartTrial deliberately not fired here — signup is cardless; it
+        // fires only on verified Stripe checkout success (a real trial).
         // Guard so TrackCompleteRegistration on the success page doesn't double-fire
         try { sessionStorage.setItem("acuity_reg_pixel_fired", "1"); } catch {}
       }
@@ -297,7 +296,7 @@ function SignUpForm() {
               icon={<MicIcon />}
               step="1"
               title="Talk"
-              description="Record a 60-second debrief about your day"
+              description="Record a quick debrief about your day"
             />
             <HowItWorksStep
               icon={<SparkleIcon />}
@@ -464,7 +463,7 @@ function SignUpForm() {
               icon={<MicIcon />}
               step="1"
               title="Talk"
-              description="Record a 60-second debrief about your day"
+              description="Record a quick debrief about your day"
             />
             <HowItWorksStep
               icon={<SparkleIcon />}

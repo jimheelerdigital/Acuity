@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-23] — Funnel cleanup: 60-second claims removed, StartTrial pixel fixed, habit tracking on the paywall
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** f2ea9d74
+
+### In plain English (for Keenan)
+Three cleanups from the funnel audit. First, every place we promised users "60 seconds" is gone — the commit screen now says "one debrief a day," and the same fix landed on signup, the how-it-works section, the try page, two trial emails, and two push notifications. We keep the low-effort promise without training people to record thin 60-second entries that make their weekly report worse. Second, Facebook now only hears "StartTrial" when someone actually starts a paid trial through Stripe checkout — not when they merely create a free account. Before this, Meta was optimizing your ad delivery toward people who create accounts but never enter a card. Third, the paywall's Pro feature list now includes habit tracking ("habits you mention get checked off automatically — streaks build themselves"), which the app really does. Per your call: the $19.99/$199 anchor pricing, the "before bed" testimonial, and the therapy price comparison all stay.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: StartTrial fbq moved from account-creation sites (OAuth return, email signup ×2) to the verified-payment success path next to Purchase; CommitmentScreen copy → "one debrief a day"; PRO_FEATURES gains Habit tracking; deleted dead `formatTrialEndDate()` (had wrong 14-day math)
+- `apps/web/src/components/meta-pixel-events.tsx`: TrackCompleteRegistration no longer fires StartTrial (comment documents why)
+- `apps/web/src/app/auth/signup/page.tsx`: removed StartTrial fire + now-unused `planValueDollars` import; "60-second debrief" → "quick debrief" ×2
+- 60-second sweep also in: `start/page.tsx` + `try/page.tsx` metadata, `marketing/HowItWorks.tsx`, `signup/success/success-client.tsx`, `signup/success/first-debrief-flow.tsx`, `try-debrief-flow.tsx`, `emails/trial/recovery-signup-no-checkout.ts`, `emails/trial/recovery-day6-nudge.ts`, `inngest/functions/notifications-twice-daily.ts` (2 push copy variants)
+- `apps/web/src/lib/funnel-config.ts`: deleted unused exports `PAYWALL_SUBHEAD`, `PRICING_COPY`, `getCostOfInaction`
+- Funnel config tests pass (18); tsc clean on touched files (pre-existing errors elsewhere are from a parallel session's in-progress adlab video work)
+
+### Manual steps needed
+- [ ] Push + verify Vercel build goes Ready (Keenan says "push it" / Claude)
+- [ ] Jimmy: heads-up that notifications-twice-daily push copy changed (2 strings) — file header says he owns final wording
+
+### Notes
+- StartTrial now fires with the SELECTED plan's value (monthly or yearly) at checkout-success, alongside Purchase. CompleteRegistration still fires at account creation, so top-of-funnel signal is preserved.
+- Two "two-minute voice debrief" mentions remain in published blog articles (`lib/blog-posts.ts`) — narrative examples in SEO content, left alone deliberately; auto-blog already bans duration claims going forward.
+- Left per Keenan's explicit call: anchor pricing ($19.99/$199), Megan R. "before bed" testimonial, therapy/coach price comparison.
+
+---
+
 ## [2026-09-23] — Pricing sweep: every stale $4.99/$39.99 reference updated to the live $9.99/$89.99 tier
 
 **Requested by:** Keenan

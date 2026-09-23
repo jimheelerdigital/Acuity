@@ -6,7 +6,7 @@ import { ENTRY_QUESTION } from "@/lib/funnel-config";
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
   description:
-    "Start your Ripple journey. See what one 60-second debrief can tell you about your life.",
+    "Start your Ripple journey. See what one voice debrief can tell you about your life.",
   robots: { index: false, follow: false },
 };
 

@@ -27,7 +27,7 @@ const STEPS: Step[] = [
     n: "01",
     icon: "mic",
     title: "Record your day",
-    body: "Tap once and talk for 60 seconds — any time, no prompts, no typing. Just your voice.",
+    body: "Tap once and talk — any time, no prompts, no typing. Just your voice.",
     iconBg: "var(--acuity-grad-primary)",
     blob: "var(--acuity-primary)",
   },

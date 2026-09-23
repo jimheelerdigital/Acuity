@@ -1187,7 +1187,7 @@ function ExtractionScreen({
         {/* Headline */}
         <div className="text-center mb-10 animate-fade-in">
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            That&rsquo;s what 60 seconds gets&nbsp;you.
+            That&rsquo;s what one debrief gets&nbsp;you.
           </h2>
           <p className="mt-3 text-base text-zinc-500 leading-relaxed">
             Do this daily and every Sunday you&rsquo;ll get a report showing how

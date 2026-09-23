@@ -53,13 +53,13 @@ type Copy = { title: string; body: string };
 const DEBRIEF_CARING: Record<"morning" | "midday" | "evening", Copy[]> = {
   morning: [
     { title: "Good morning", body: "What do you want to be clear on today?" },
-    { title: "60 seconds", body: "Set the tone with one quick voice note." },
+    { title: "Quick debrief", body: "Set the tone with one quick voice note." },
     { title: "Morning check-in", body: "What's on your mind before the day starts?" },
   ],
   midday: [
     { title: "Quick check-in", body: "What's surfacing right now?" },
     { title: "Pause for a minute", body: "How's the day actually going?" },
-    { title: "Midday", body: "Get it off your chest — 60 seconds." },
+    { title: "Midday", body: "Get it off your chest — one quick debrief." },
   ],
   evening: [
     { title: "Wind down", body: "How did today actually go?" },
