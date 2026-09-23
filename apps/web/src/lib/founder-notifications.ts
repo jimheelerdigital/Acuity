@@ -17,12 +17,12 @@ const FOUNDER_NOTIFICATION_RECIPIENTS = [
   "jim@heelerdigital.com",
 ];
 
-// goripple.io is DKIM-signed for Resend and its DMARC (p=quarantine,
-// aspf=r) aligns on DKIM alone, so this sends clean. Safe here because
-// this alert only ever goes to the founders' @heelerdigital.com inboxes
-// and nobody replies to it — goripple.io has NO MX, so a reply would
-// bounce. Reply-capable senders stay on getacuity.io until MX exists.
+// goripple.io is verified in Resend (DKIM-signed, DMARC-aligned) as of
+// 2026-09-23 — the API key must be authorized for the domain or Resend
+// returns a 403 in the response's `error` field WITHOUT throwing.
+// goripple.io has NO MX, so replyTo routes replies somewhere real.
 const EMAIL_FROM = "hello@goripple.io";
+const REPLY_TO = "keenan@heelerdigital.com";
 
 export async function notifyFoundersOfSignup(params: {
   userId: string;
@@ -69,12 +69,17 @@ export async function notifyFoundersOfSignup(params: {
 
   try {
     const resend = getResendClient();
-    await resend.emails.send({
+    // The Resend SDK does NOT throw on API errors — it returns { data,
+    // error }. Ignoring `error` is how a 403 got logged as SENT for a
+    // month (2026-08-25 → 09-23). Always check it.
+    const { error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: FOUNDER_NOTIFICATION_RECIPIENTS,
+      replyTo: REPLY_TO,
       subject: founderNotificationSubject(vars),
       html: founderNotificationHtml(vars),
     });
+    if (error) throw new Error(`${error.name}: ${error.message}`);
     success = true;
   } catch (err) {
     errorMessage = err instanceof Error ? err.message : String(err);
@@ -171,9 +176,10 @@ export async function notifyFoundersOfPayment(params: {
     const resend = getResendClient();
     const timeStr = timestamp.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
 
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: EMAIL_FROM,
       to: FOUNDER_NOTIFICATION_RECIPIENTS,
+      replyTo: REPLY_TO,
       subject: `\u{1F4B0} ${headline} — ${email} (${plan})`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
@@ -187,6 +193,7 @@ export async function notifyFoundersOfPayment(params: {
         </div>
       `,
     });
+    if (error) throw new Error(`${error.name}: ${error.message}`);
   } catch (err) {
     console.error("[founder-notification] Payment email failed:", err instanceof Error ? err.message : err);
   }

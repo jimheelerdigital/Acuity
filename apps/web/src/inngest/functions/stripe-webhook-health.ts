@@ -32,10 +32,10 @@ const FOUNDER_RECIPIENTS = [
   "jim@heelerdigital.com",
 ];
 // goripple.io is DKIM-signed for Resend and its DMARC (p=quarantine,
-// aspf=r) aligns on DKIM alone, so this sends clean. Safe here because
-// this alert only ever goes to the founders' @heelerdigital.com inboxes
-// and nobody replies to it — goripple.io has NO MX, so a reply would
-// bounce. Reply-capable senders stay on getacuity.io until MX exists.
+// aspf=r) aligns on DKIM alone, so this sends clean. The Resend API key
+// must be authorized for goripple.io or Resend returns a 403 in the
+// response's `error` field WITHOUT throwing. goripple.io has NO MX, so
+// replyTo routes replies to Keenan.
 const EMAIL_FROM = "hello@goripple.io";
 
 function escapeHtml(value: string): string {
@@ -104,9 +104,10 @@ export const stripeWebhookHealthFn = inngest.createFunction(
       if (process.env.RESEND_API_KEY) {
         const { getResendClient } = await import("@/lib/resend");
         const resend = getResendClient();
-        await resend.emails.send({
+        const { error } = await resend.emails.send({
           from: EMAIL_FROM,
           to: FOUNDER_RECIPIENTS,
+          replyTo: "keenan@heelerdigital.com",
           subject: `[Ripple] 🚨 Stripe webhook failure confirmed (${verdict.findings
             .map((f) => f.kind)
             .join(", ")})`,
@@ -132,6 +133,9 @@ stripe-webhook-health-check Inngest cron. See
 <code>docs/incidents/2026-06-12-stripe-webhook-down.md</code>.</p>
 </div>`,
         });
+        // Resend SDK doesn't throw on API errors — surface them so the
+        // step fails visibly instead of silently dropping the alert.
+        if (error) throw new Error(`${error.name}: ${error.message}`);
       } else {
         // eslint-disable-next-line no-console
         console.error(

@@ -27,11 +27,10 @@ const FOUNDER_RECIPIENTS = [
   "keenan@heelerdigital.com",
   "jim@heelerdigital.com",
 ];
-// goripple.io is DKIM-signed for Resend and its DMARC (p=quarantine,
-// aspf=r) aligns on DKIM alone, so this sends clean. Safe here because
-// this alert only ever goes to the founders' @heelerdigital.com inboxes
-// and nobody replies to it — goripple.io has NO MX, so a reply would
-// bounce. Reply-capable senders stay on getacuity.io until MX exists.
+// goripple.io is verified in Resend (DKIM-signed, DMARC-aligned) as of
+// 2026-09-23 — the API key must be authorized for the domain or Resend
+// returns a 403 in the response's `error` field WITHOUT throwing.
+// goripple.io has NO MX, so replyTo routes replies to Keenan.
 const EMAIL_FROM = "hello@goripple.io";
 
 export const rlsAuditFn = inngest.createFunction(
@@ -111,11 +110,17 @@ for the prevention plan and the 2026-04-29 incident context.
       const result = await resend.emails.send({
         from: EMAIL_FROM,
         to: FOUNDER_RECIPIENTS,
+        replyTo: "keenan@heelerdigital.com",
         subject: `[Ripple] RLS audit — ${exposed.length} ${
           exposed.length === 1 ? "table" : "tables"
         } exposed`,
         html,
       });
+      // Resend SDK doesn't throw on API errors — surface them or the
+      // alert fails silently (this hid a 403 for a month).
+      if (result.error) {
+        throw new Error(`${result.error.name}: ${result.error.message}`);
+      }
       return { sent: true, id: result.data?.id ?? null };
     });
 

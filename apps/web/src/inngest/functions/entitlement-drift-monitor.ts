@@ -22,10 +22,10 @@ import { safeLog } from "@/lib/safe-log";
 
 const FOUNDER_RECIPIENTS = ["keenan@heelerdigital.com", "jim@heelerdigital.com"];
 // goripple.io is DKIM-signed for Resend and its DMARC (p=quarantine,
-// aspf=r) aligns on DKIM alone, so this sends clean. Safe here because
-// this alert only ever goes to the founders' @heelerdigital.com inboxes
-// and nobody replies to it — goripple.io has NO MX, so a reply would
-// bounce. Reply-capable senders stay on getacuity.io until MX exists.
+// aspf=r) aligns on DKIM alone, so this sends clean. The Resend API key
+// must be authorized for goripple.io or Resend returns a 403 in the
+// response's `error` field WITHOUT throwing. goripple.io has NO MX, so
+// replyTo routes replies to Keenan.
 const EMAIL_FROM = "hello@goripple.io";
 const BATCH = 5; // provider-API concurrency cap (Apple/Google quotas)
 
@@ -83,9 +83,10 @@ export const entitlementDriftMonitorFn = inngest.createFunction(
 
       if (process.env.RESEND_API_KEY) {
         const { getResendClient } = await import("@/lib/resend");
-        await getResendClient().emails.send({
+        const { error } = await getResendClient().emails.send({
           from: EMAIL_FROM,
           to: FOUNDER_RECIPIENTS,
+          replyTo: "keenan@heelerdigital.com",
           subject: `[Ripple] ⚠️ Entitlement drift: ${scan.findings.length} user(s) out of sync`,
           html: `<div style="font-family:-apple-system,system-ui,sans-serif;max-width:640px">
 <h2 style="margin:0 0 12px;color:#b45309">Entitlement drift monitor</h2>
@@ -94,6 +95,9 @@ export const entitlementDriftMonitorFn = inngest.createFunction(
 <p style="color:#71717A;font-size:12px">Read-only daily scan. Corrections are the reconciler's job — verify these against the provider dashboard before acting.</p>
 </div>`,
         });
+        // Resend SDK doesn't throw on API errors — surface them so the
+        // step fails visibly instead of silently dropping the alert.
+        if (error) throw new Error(`${error.name}: ${error.message}`);
       }
       return { alerted: true };
     });

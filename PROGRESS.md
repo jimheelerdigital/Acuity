@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-23] — Fix founder alert emails: silently dead since Aug 25, now sending from goripple.io
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (pending)
+
+### In plain English (for Keenan)
+Since August 25, none of the "new signup" or "new payment" alert emails ever reached you or Jimmy — the email service was rejecting them because it wasn't authorized to send from the new goripple.io address, and a bug made the system record every rejected email as "sent," so nothing flagged it. Several behind-the-scenes health alarms (Stripe webhook health, subscription drift, security audit) were muted by the same problem. You authorized goripple.io in the Resend dashboard and created a new API key today; a live test email from hello@goripple.io landed in your inbox. The alerts now send again, failures can no longer masquerade as successes, and replying to any of these alert emails goes to keenan@heelerdigital.com instead of bouncing.
+
+### Technical changes (for Jimmy)
+- Root cause 1 (config, fixed in Resend dashboard by Keenan): the prod `RESEND_API_KEY` was a sending-only key not authorized for the goripple.io domain — every send from `hello@goripple.io` (introduced in PR #45, 2026-08-25) returned `403 not authorized`, while getacuity.io senders kept working. New key authorized for all domains; `RESEND_API_KEY` updated in Vercel; goripple.io shows Verified (us-east-1)
+- Root cause 2 (code): the Resend SDK returns `{ data, error }` and does NOT throw on API errors, so callers logged success on 403s. `FounderNotificationLog` shows `success=true` for all 5 signups since Aug 25 despite zero deliveries
+- `apps/web/src/lib/founder-notifications.ts`: both `notifyFoundersOfSignup` and `notifyFoundersOfPayment` now check the returned `error` and treat it as failure (logged to `FounderNotificationLog` / console); added `replyTo: keenan@heelerdigital.com` (goripple.io has no MX)
+- Same `error`-check + `replyTo` added to the other hardcoded goripple.io senders: `apps/web/src/inngest/functions/rls-audit.ts`, `entitlement-reconcile-nightly.ts`, `entitlement-drift-monitor.ts`, `stripe-webhook-health.ts` (errors now throw inside the step so Inngest retries/surfaces them)
+- Diagnostic script added: `apps/web/scripts/check-founder-notifications.ts` (compares recent User rows to FounderNotificationLog)
+- No schema changes. Deployed via `vercel deploy --prod`
+
+### Manual steps needed
+- [x] Keenan: verify goripple.io domain in Resend + create new all-domains sending key + update `RESEND_API_KEY` in Vercel + redeploy (done 2026-09-23)
+- [ ] Keenan: confirm the next real signup/payment alert lands (first live proof of the full path)
+- [ ] Jimmy: FYI — any Stripe-webhook-health / entitlement-drift / RLS-audit alerts between Aug 25 and Sep 23 were lost; worth a one-time manual check of those dashboards
+
+### Notes
+- The Resend SDK (v6) returning `{ error }` instead of throwing is the footgun that hid this for a month — any new `resend.emails.send` call MUST check `error`. Other call sites (drip emails, weekly reports, content factory) send from getacuity.io via env vars and were unaffected, but most also ignore `error`; worth a sweep later
+- Signups during the outage still bootstrapped fine (notification is fail-soft by design) — only the alert emails were lost. Recent real signups: kaiwilsonviola@gmail.com (09-19), darrylhyaldomroltenb@gmail.com (09-10)
+- Payment notifications were equally dead; check Stripe dashboard for any missed payment events during the window
+- goripple.io DNS (DKIM/SPF/bounce MX) was correct the whole time — the block was purely API-key domain authorization
+
 ## [2026-09-23] — FB carousel videos now publish as Reels for sharper playback
 
 **Requested by:** Keenan
