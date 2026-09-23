@@ -38,6 +38,7 @@ import {
   autoBlogPruneFn,
 } from "@/inngest/functions/auto-blog";
 import { blogRewriteTriageFn } from "@/inngest/functions/blog-rewrite-triage";
+import { weeklySeoReportFn } from "@/inngest/functions/weekly-seo-report";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
 import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
@@ -108,6 +109,7 @@ const handler = serve({
     autoBlogGenerateFn,
     autoBlogPruneFn,
     blogRewriteTriageFn,
+    weeklySeoReportFn,
     waitlistReactivationFn,
     drainPendingCalendarTasksFn,
     backfillExtractionsFn,

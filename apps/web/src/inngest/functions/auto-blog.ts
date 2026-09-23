@@ -79,6 +79,8 @@ const BANNED_PHRASES = [
   "isn't just",
   "is not just",
   "it's not about",
+  // Old product name — the product is Ripple (rebrand, Phase 1 2026-09)
+  "acuity",
 ];
 
 /**
@@ -348,9 +350,12 @@ function validateBlogPost(
 export const autoBlogGenerateFn = inngest.createFunction(
   {
     id: "auto-blog-generate",
-    name: "Auto Blog — Daily Generation",
+    name: "Auto Blog — Mon/Wed/Fri Generation",
     triggers: [
-      { cron: "0 6 * * *" },
+      // Phase 2 (2026-09-23): 3 posts/week instead of 7. Volume without
+      // demand data buried the blog in zero-impression posts (Phase 1
+      // pruned 50 of them); fewer, GSC-grounded posts rank better.
+      { cron: "0 6 * * 1,3,5" },
       { event: "auto-blog/generate.requested" },
     ],
     retries: 1,
@@ -389,7 +394,10 @@ export const autoBlogGenerateFn = inngest.createFunction(
       const queuedCount = await prisma.blogTopicQueue.count({
         where: { status: "QUEUED" },
       });
-      if (queuedCount < 30) {
+      // Phase 2: 3 posts/week — refill when under ~3 weeks of runway.
+      // (Was 30 when we published daily; a GSC-grounded refill yields
+      // ~25 topics, so a 30 threshold would refire every run.)
+      if (queuedCount < 10) {
         await refillTopicQueue(prisma);
       }
       return { queuedCount };
@@ -1311,7 +1319,8 @@ BANNED PHRASES (never use these):
 "unlock", "elevate", "journey", "transform", "AI-powered", "seamless", "game-changer",
 "in today's fast-paced world", "revolutionize", "harness the power of", "empower",
 "cutting-edge", "leverage", "brain dump", "delve", "tapestry", "testament to",
-"let's dive", "let's explore", "in the heart of", "nightly", "before bed"
+"let's dive", "let's explore", "in the heart of", "nightly", "before bed", "Acuity"
+(The product's old name was "Acuity". It must never appear; the product is Ripple.)
 
 TITLE RULES:
 - Do NOT use the template "How [persona] can use [thing] to [outcome]". Half the archive already looks like that, and Google reads a wall of same-shaped titles as machine output.
@@ -1405,6 +1414,79 @@ Search intent: ${topic.searchIntent}
 Write the post now. Output only the JSON object.`;
 }
 
+/**
+ * Phase 2 (2026-09-23): topics are grounded in real GSC demand, not pure
+ * brainstorm. Phase 1 pruned 50 zero-impression posts whose topics were
+ * Claude-invented with no demand data; this prevents regrowing that tail.
+ *
+ * 1. Pull 90d queries from both GSC properties, aggregate impressions.
+ * 2. Drop branded queries and queries an existing post already targets.
+ * 3. Feed the top uncovered real queries to Claude; each topic must
+ *    anchor to one of them (sourceQuery is recorded in searchIntent-
+ *    adjacent metadata via targetKeyword).
+ * 4. If GSC fails or demand is thin, fall back to the old brainstorm.
+ */
+async function pullUncoveredQueries(
+  prisma: PrismaClient
+): Promise<Array<{ query: string; impressions: number; clicks: number; position: number }>> {
+  const { google } = await import("googleapis");
+  const { getGoogleAuthClient } = await import("@/lib/google/auth");
+  const auth = getGoogleAuthClient([
+    "https://www.googleapis.com/auth/webmasters.readonly",
+  ]);
+  if (!auth) throw new Error("No Google auth client (GA4_SERVICE_ACCOUNT_KEY)");
+  const sc = google.searchconsole({ version: "v1", auth });
+  const end = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+  const start = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+
+  const agg = new Map<string, { impressions: number; clicks: number; posW: number }>();
+  for (const prop of ["sc-domain:goripple.io", "sc-domain:getacuity.io"]) {
+    try {
+      const res = await sc.searchanalytics.query({
+        siteUrl: prop,
+        requestBody: { startDate: start, endDate: end, dimensions: ["query"], rowLimit: 1000 },
+      });
+      for (const row of res.data.rows ?? []) {
+        const query = row.keys?.[0]?.toLowerCase().trim();
+        if (!query) continue;
+        const cur = agg.get(query) ?? { impressions: 0, clicks: 0, posW: 0 };
+        cur.impressions += row.impressions ?? 0;
+        cur.clicks += row.clicks ?? 0;
+        cur.posW += (row.position ?? 0) * (row.impressions ?? 0);
+        agg.set(query, cur);
+      }
+    } catch (err) {
+      console.warn(`[auto-blog] GSC pull failed for ${prop}:`, err);
+    }
+  }
+
+  // Queries an existing post already targets (keyword or title overlap)
+  const existing = await prisma.contentPiece.findMany({
+    where: { type: "BLOG", status: { in: ["DISTRIBUTED", "AUTO_PUBLISHED"] } },
+    select: { title: true, targetKeyword: true },
+  });
+  const covered = existing.flatMap((p) =>
+    [p.title, p.targetKeyword].filter((s): s is string => !!s).map((s) => s.toLowerCase())
+  );
+  const branded = /\b(ripple|goripple|acuity|getacuity)\b/;
+
+  return [...agg.entries()]
+    .filter(([query]) => {
+      if (branded.test(query)) return false;
+      if (query.split(/\s+/).length < 3) return false; // head terms: 12-month play, not topic fodder
+      return !covered.some((c) => c.includes(query) || query.includes(c));
+    })
+    .map(([query, v]) => ({
+      query,
+      impressions: v.impressions,
+      clicks: v.clicks,
+      position: v.impressions ? v.posW / v.impressions : 0,
+    }))
+    .filter((q) => q.impressions >= 2)
+    .sort((a, b) => b.impressions - a.impressions)
+    .slice(0, 60);
+}
+
 async function refillTopicQueue(prisma: PrismaClient) {
   const { callClaude } = await import("@/lib/content-factory/claude-client");
   const { extractJson } = await import("@/lib/content-factory/generate");
@@ -1416,8 +1498,26 @@ async function refillTopicQueue(prisma: PrismaClient) {
   });
   const existingTitles = existingPosts.map((p) => p.title.toLowerCase());
 
+  // ── Demand-first path: ground topics in real uncovered GSC queries ──
+  let demandQueries: Awaited<ReturnType<typeof pullUncoveredQueries>> = [];
+  try {
+    demandQueries = await pullUncoveredQueries(prisma);
+  } catch (err) {
+    console.warn("[auto-blog] GSC demand pull failed, falling back to brainstorm:", err);
+  }
+  const demandGrounded = demandQueries.length >= 10;
+
+  const demandBlock = demandGrounded
+    ? `REAL GOOGLE QUERIES the site already earns impressions for but has NO post targeting (90 days, both current and legacy domains). These are proven demand. EVERY topic must anchor to one of these queries (or a close variant a searcher would also type):
+${demandQueries.map((q) => `- "${q.query}" — ${q.impressions} impressions, ${q.clicks} clicks, avg position ${q.position.toFixed(0)}`).join("\n")}
+
+For each topic, set "targetKeyword" to the exact real query it targets (or the closest natural phrasing). Prioritize higher-impression queries. Generate ${Math.min(25, demandQueries.length)} topics, one per distinct query cluster; do not force weak queries into topics.`
+    : "";
+
   const raw = await callClaude({
-    purpose: "auto-blog-topic-generation",
+    purpose: demandGrounded
+      ? "auto-blog-topic-generation-gsc"
+      : "auto-blog-topic-generation",
     systemPrompt: `You generate blog topic ideas for Ripple, a voice self-reflection app. You talk instead of typing; it pulls out your tasks, tracks your goals and mood, and writes a weekly report on your patterns.
 
 PRIMARY AUDIENCE (at least 60% of topics): women roughly 40 to 50 carrying a heavy mental load. Work, kids' schedules, aging parents, the invisible labor of remembering everything for everyone. They have tried journaling and quit because typing felt like one more chore. Topics for them live in mental load, overwhelm, dropped balls, journaling that never sticks, remembering commitments, feeling scattered.
@@ -1428,16 +1528,18 @@ TOPIC RULES:
 - Each topic targets a long-tail keyword a real person would type into Google. Think questions ("why do I forget things I said I'd do"), specific problems ("journaling apps for people who hate writing"), and comparisons.
 - Vary the title shape. Questions, claims, mistakes-and-fixes, "X vs Y", "what actually happens when...". Do NOT produce a list of 50 titles shaped "How [persona] can use [thing] to [outcome]".
 - No topic should require fabricating statistics or medical claims to write well.
-- Mix search intents: mostly informational and problem-solving, a few comparisons against real journaling/notes apps (Day One, Journey, Reflectly, Notion, Apple Notes, voice memos).
+- Mix search intents: mostly informational and problem-solving, a few comparisons against real journaling/notes apps (Day One, Reflectly, Notion, Apple Notes, voice memos).
 
-Respond with a JSON array of 50 objects:
+Respond with a JSON array of objects:
 [{
   "topic": "descriptive topic title",
   "persona": "target persona (e.g., mental-load, adhd, new-parents, caregivers)",
   "targetKeyword": "long-tail SEO keyword",
   "searchIntent": "informational | comparison | problem-solving"
 }]`,
-    userPrompt: `Generate 50 unique blog topic ideas. Avoid topics similar to these existing posts:\n${existingTitles.slice(0, 30).join("\n")}`,
+    userPrompt: demandGrounded
+      ? `${demandBlock}\n\nAvoid topics similar to these existing posts:\n${existingTitles.slice(0, 30).join("\n")}`
+      : `Generate 25 unique blog topic ideas. Avoid topics similar to these existing posts:\n${existingTitles.slice(0, 30).join("\n")}`,
     maxTokens: 8000,
   });
 
