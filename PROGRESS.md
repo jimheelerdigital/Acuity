@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-23] — FB carousel videos now publish as Reels for sharper playback
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 5a89cb42
+
+### In plain English (for Keenan)
+The Facebook videos were still looking soft even though the file we upload is sharp — Facebook was putting them through its harshest old-style "feed video" compression. From now on the same videos are published as Facebook Reels instead, which get Facebook's modern full-screen player and noticeably better quality (this is already how Instagram gets them, which is why IG looked fine). If the Reels upload ever fails, the system automatically falls back to the old method so nothing gets stuck unpublished.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/social-publish.ts`: new `publishFbReel()` — 3-phase FB Reels API (`{page}/video_reels` start → rupload.facebook.com upload-by-`file_url` → finish with `video_state: PUBLISHED`). Permalink `facebook.com/reel/{videoId}`. `publishFbVideo()` kept as documented fallback
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: FB video publishes go through a `publishFbVideoOrReel` wrapper — tries `publishFbReel`, warns + falls back to `publishFbVideo` on error
+- `apps/web/src/app/api/admin/carousels/route.ts`: manual `publish-reel` admin action gets the same Reel-first-with-fallback treatment
+- No schema changes, no new envs (uses existing page tokens; Reels needs the same `pages_manage_posts` scope)
+- Verified today's master file is clean before touching anything: `reels/{id}.mp4` probed at 1080x1920 H.264 High ~4 Mbps 30fps — degradation was Meta-side, on the legacy `/videos` endpoint
+
+### Manual steps needed
+- [ ] Keenan: say "push it", then deploy with `vercel deploy --prod` from repo root (git push does not deploy)
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` to resync the changed Inngest function
+- [ ] Keenan: after tomorrow's cron run, check the Ripple FB page — the video should appear as a Reel and look crisp; `externalId` in the DB will be the Reel video id
+- [ ] Keenan (decision): interior slide images still generate at "medium" quality (your 2026-09-21 cost cut, ~6¢ vs ~25¢ per interior). Bumping back to "high" is the remaining sharpness lever for both photo carousels and reels — say the word if the cost is acceptable
+
+### Notes
+- Root cause chain: master reel verified sharp (8M ABR fix from 09-16 held up) → blur introduced by Meta's re-encode of legacy feed videos. IG never had the problem because it already used `media_type: REELS`
+- FB Reels requirements (9:16, ≥540x960, 3–90s) — our 22s 1080x1920 slideshows fit comfortably
+- The upload phase authenticates with `Authorization: OAuth {token}` + `file_url` header (hosted-URL upload, no local file streaming needed)
+- `facebook-metrics.ts` expects a plain numeric video id, which the Reel id is — metrics collection unaffected
+
 ## [2026-09-23] — Phase 2: demand-driven blog topics, 3-posts/week cadence, Sunday SEO email report
 
 **Requested by:** Keenan

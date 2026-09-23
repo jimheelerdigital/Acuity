@@ -275,7 +275,7 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      const { resolveAccount, publishIgReel, publishFbVideo } = await import(
+      const { resolveAccount, publishIgReel, publishFbReel, publishFbVideo } = await import(
         "@/lib/content-factory/social-publish"
       );
       const account = await resolveAccount(post.lane);
@@ -284,7 +284,15 @@ export async function POST(req: NextRequest) {
       }
       const caption = post.caption ?? post.headline;
       const ig = await publishIgReel(account, videoUrl, caption);
-      const fb = await publishFbVideo(account, videoUrl, caption);
+      let fb;
+      try {
+        fb = await publishFbReel(account, videoUrl, caption);
+      } catch (err) {
+        console.warn(
+          `[admin/carousels] FB Reel publish failed — falling back to feed video: ${err instanceof Error ? err.message : err}`
+        );
+        fb = await publishFbVideo(account, videoUrl, caption);
+      }
       return NextResponse.json({ ok: true, instagram: ig, facebook: fb });
     }
 

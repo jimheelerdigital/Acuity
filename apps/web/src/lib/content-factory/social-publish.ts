@@ -529,8 +529,79 @@ export async function publishIgReel(
 }
 
 /**
+ * Publish the slideshow video to the Facebook Page as a REEL
+ * (2026-09-23, per Keenan: "the fb carousels still look low quality").
+ * The legacy /videos feed endpoint gives 9:16 uploads the old feed
+ * player and Meta's harshest transcode — burned-in text turns to mush.
+ * The Reels surface serves visibly better renditions of the exact same
+ * master. Three-phase flow: start → hand Meta the hosted file_url →
+ * finish/publish. Callers should fall back to publishFbVideo on error.
+ */
+export async function publishFbReel(
+  account: SocialAccount,
+  videoUrl: string,
+  caption: string
+): Promise<PublishResult> {
+  if (!account.fbPageId) {
+    throw new Error(`FB page id not configured for account "${account.key}"`);
+  }
+
+  const start = await graphPost(
+    `${account.fbPageId}/video_reels`,
+    { upload_phase: "start" },
+    account.accessToken
+  );
+  const videoId = String(start.video_id ?? "");
+  const uploadUrl = String(start.upload_url ?? "");
+  if (!videoId || !uploadUrl) {
+    throw new Error(
+      `FB Reels start phase returned no video_id/upload_url: ${JSON.stringify(start).slice(0, 300)}`
+    );
+  }
+
+  // Meta pulls the MP4 from Supabase itself — no byte upload from us.
+  const up = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `OAuth ${account.accessToken}`,
+      file_url: videoUrl,
+    },
+  });
+  const upJson = (await up.json().catch(() => ({}))) as {
+    success?: boolean;
+    debug_info?: unknown;
+  };
+  if (!up.ok || upJson.success !== true) {
+    throw new Error(
+      `FB Reels upload phase failed (HTTP ${up.status}): ${JSON.stringify(upJson).slice(0, 300)}`
+    );
+  }
+
+  await graphPost(
+    `${account.fbPageId}/video_reels`,
+    {
+      upload_phase: "finish",
+      video_id: videoId,
+      video_state: "PUBLISHED",
+      description: caption,
+    },
+    account.accessToken
+  );
+
+  // Reel permalinks are deterministic; processing finishes async on
+  // Meta's side (same fire-and-forget contract as publishFbVideo).
+  return {
+    externalId: videoId,
+    permalink: `https://www.facebook.com/reel/${videoId}`,
+  };
+}
+
+/**
  * Publish the same slideshow video to the Facebook Page as a video post
  * (file_url upload — Meta fetches the MP4 from Supabase itself).
+ * Since 2026-09-23 this is the FALLBACK path — publishFbReel is
+ * preferred (better renditions); this legacy feed-video endpoint stays
+ * for when the Reels flow rejects a file.
  */
 export async function publishFbVideo(
   account: SocialAccount,

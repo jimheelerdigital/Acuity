@@ -284,6 +284,7 @@ export const socialPublishCronFn = inngest.createFunction(
           publishIgCarousel,
           publishFbPhotoPost,
           publishIgReel,
+          publishFbReel,
           publishFbVideo,
           IG_MAX_CAROUSEL_IMAGES,
           trimLegacyPickList,
@@ -333,11 +334,25 @@ export const socialPublishCronFn = inngest.createFunction(
         const imageUrls = trimLegacyPickList(post.slides).map((s) =>
           feedCropUrl(s.imageUrl)
         );
+        // FB videos go out as Reels since 2026-09-23 (per Keenan: "the fb
+        // carousels still look low quality") — the legacy /videos feed
+        // endpoint gets Meta's harshest transcode. Fall back to it only
+        // if the Reels flow rejects the file.
+        const publishFbVideoOrReel = async (url: string, caption: string) => {
+          try {
+            return await publishFbReel(account, url, caption);
+          } catch (err) {
+            console.warn(
+              `[social-publish] FB Reel publish failed — falling back to feed video: ${err instanceof Error ? err.message : err}`
+            );
+            return await publishFbVideo(account, url, caption);
+          }
+        };
         try {
           const result = reelUrl
             ? row.platform === "instagram"
               ? await publishIgReel(account, reelUrl, post.caption)
-              : await publishFbVideo(account, reelUrl, post.caption)
+              : await publishFbVideoOrReel(reelUrl, post.caption)
             : row.platform === "instagram"
               ? await publishIgCarousel(
                   account,
