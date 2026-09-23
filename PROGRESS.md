@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-23] — AdLab kill engine turned on: daily automated analysis, loser-cutting, and report email
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 4ccb2c98
+
+### In plain English (for Keenan)
+The ad system finally polices itself. Every morning it pulls each live ad's real numbers from Meta, kills clear losers (ads burning money with no clicks, terrible click rates, or no signups), flags winners for you to approve a budget increase, and emails you a full report — kills, near-kills, and a stats table for every live ad. This engine was actually built back in May but never switched on; today it was audited, hardened, and scheduled. Also cleaned up 139 old test ads from May that the database still thought were running.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/cron/route.ts` revamped: `DECISIONS_ENABLED` now env-driven (`ADLAB_DECISIONS_ENABLED !== "0"`, i.e. kills ON by default — kills only pause spend); auto-scale gated behind opt-in `ADLAB_AUTOSCALE_ENABLED=1` (only rule that raises spend — winners are flagged "approve manually" until then); metric sync now re-syncs a trailing 3-day window so Meta's late-attributed conversions land; cumulative CTR is now clicks/impressions weighted (was avg of daily CTR rows, which overweights low-volume days); frequency uses `_max` not `_avg`; R2 impressions floor 1000→2000; new zero-delivery flag (live ≥48h, 0 impressions → flagged, never killed); daily email gains a per-ad lifetime stats table sorted by spend
+- New `apps/web/src/app/api/admin/adlab/reconcile/route.ts` (Bearer CRON_SECRET, dry-run default, `?apply=1`): marks DB-live ads killed when Meta says they're not ACTIVE / gone / never launched; concludes experiments with zero remaining live ads; never writes to Meta. Lives as a route because `META_ACCESS_TOKEN` is Vercel-sensitive (unpullable locally)
+- New Inngest fn `apps/web/src/inngest/functions/adlab-daily-cron.ts` — cron `0 9 * * *` UTC + manual event `admin/adlab-daily-cron.requested`, fetches the cron route with `CRON_SECRET`; registered in `src/app/api/inngest/route.ts`
+- No schema changes, no new env vars required (both switches have safe defaults)
+
+### Manual steps needed
+- [ ] Keenan: review/launch this week's 20 ads at goripple.io/admin/adlab/review — the engine only manages ads once they're live
+- [ ] When comfortable with automated budget raises, set `ADLAB_AUTOSCALE_ENABLED=1` in Vercel (Keenan)
+
+### Notes
+- Reconcile against Meta ran post-deploy (dry-run reviewed, then applied) — see follow-up entry/status in chat; the 139 ghosts were May 16–Jun 2 validation ads whose experiments had `campaignName=null`
+- Kill safety rails unchanged and verified: min $10 spend + 500 imps before any decision, max 3 kills/run, never kills the last live ad in an experiment, R6/R7 experiment kills require $50/$100 cumulative spend
+- Chose Inngest over vercel.json cron (only one cron slot there, taken by waitlist drip) — matches every other scheduled job in the app. Inngest sync gotcha applies: `curl -X PUT https://goripple.io/api/inngest` after deploy
+- The cron route's Meta insight calls are now 3× per ad per run (one per window day) — fine at ~20 live ads (~60 calls), which is why the ghost cleanup had to ship in the same change
+
+---
+
 ## [2026-09-23] — Checkout was still charging $4.99/$39.99 — Stripe price env vars cut over to $9.99/$89.99
 
 **Requested by:** Keenan
