@@ -11,7 +11,7 @@
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** (pending)
+**Commit hash:** 1d1b9c6f
 
 ### In plain English (for Keenan)
 Follow-up to this morning's founder-alert fix. The same "email service rejects the send but the code records it as sent" bug pattern existed in every other email the system sends — welcome emails, trial reminder emails, password resets, weekly digests, the admin send-email tool, and more. All of them are working today, but if any ever started failing, nobody would know, exactly like the month of lost founder alerts. Now every email send in the system checks the email service's answer: failures get logged truthfully, retried where a retry system exists, and admin tools report real success/failure counts instead of always claiming success.
