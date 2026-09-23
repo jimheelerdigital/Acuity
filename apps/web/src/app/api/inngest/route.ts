@@ -37,6 +37,7 @@ import {
   autoBlogGenerateFn,
   autoBlogPruneFn,
 } from "@/inngest/functions/auto-blog";
+import { blogRewriteTriageFn } from "@/inngest/functions/blog-rewrite-triage";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
 import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
@@ -106,6 +107,7 @@ const handler = serve({
     peopleBackfillFn,
     autoBlogGenerateFn,
     autoBlogPruneFn,
+    blogRewriteTriageFn,
     waitlistReactivationFn,
     drainPendingCalendarTasksFn,
     backfillExtractionsFn,

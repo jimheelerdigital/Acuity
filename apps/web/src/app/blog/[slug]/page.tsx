@@ -292,6 +292,36 @@ function FaqJsonLd({ faqSchema }: { faqSchema: unknown }) {
   );
 }
 
+// ─── Breadcrumbs ────────────────────────────────────────────────────────────
+// Visible trail matching the BreadcrumbList JSON-LD above.
+
+function Breadcrumbs({ title }: { title: string }) {
+  return (
+    <nav aria-label="Breadcrumb" className="mb-8 text-sm text-acuity-text-sec">
+      <ol className="flex flex-wrap items-center gap-1.5">
+        <li>
+          <Link href="/" className="hover:text-acuity-primary transition-colors">
+            Home
+          </Link>
+        </li>
+        <li aria-hidden="true">›</li>
+        <li>
+          <Link href="/blog" className="hover:text-acuity-primary transition-colors">
+            Blog
+          </Link>
+        </li>
+        <li aria-hidden="true">›</li>
+        <li
+          aria-current="page"
+          className="truncate max-w-[14rem] sm:max-w-md text-acuity-text"
+        >
+          {title}
+        </li>
+      </ol>
+    </nav>
+  );
+}
+
 // ─── Sanitizer ──────────────────────────────────────────────────────────────
 
 function sanitizeHtml(html: string): string {
@@ -316,15 +346,7 @@ export default async function BlogPostPage({ params }: Props) {
         <article className="pt-32 pb-24 px-6">
           <div className="mx-auto max-w-3xl">
             <div className="mb-12">
-              <Link
-                href="/blog"
-                className="inline-flex items-center gap-1.5 text-sm text-acuity-text-sec hover:text-acuity-primary transition-colors mb-8"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to blog
-              </Link>
+              <Breadcrumbs title={staticPost.title} />
               <div className="flex items-center gap-3 text-sm text-acuity-text-sec mb-6">
                 <time dateTime={staticPost.publishedAt}>
                   {new Date(staticPost.publishedAt).toLocaleDateString("en-US", {
@@ -413,15 +435,7 @@ export default async function BlogPostPage({ params }: Props) {
       <article className="pt-32 pb-24 px-6">
         <div className="mx-auto max-w-3xl">
           <div className="mb-12">
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-1.5 text-sm text-acuity-text-sec hover:text-acuity-primary transition-colors mb-8"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to blog
-            </Link>
+            <Breadcrumbs title={dynamicPost.title} />
             <div className="flex items-center gap-3 text-sm text-acuity-text-sec mb-6">
               <time dateTime={publishedAt}>
                 {new Date(publishedAt).toLocaleDateString("en-US", {
