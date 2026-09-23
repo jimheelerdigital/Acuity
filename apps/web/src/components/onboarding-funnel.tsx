@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { ANNUAL_PRICE_CENTS, ANNUAL_PRICE_DOLLARS, MONTHLY_PRICE_DOLLARS, PRICING, displayAnnual, displayMonthly, formatDollars, planValueDollars } from "@/lib/pricing";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
@@ -11,25 +11,26 @@ import { detectBrowserEnv, useAppStoreCta, WebviewBreakout } from "@/components/
 import {
   type Branch,
   type Question,
-  ENTRY_QUESTION,
-  BRANCH_QUESTIONS,
-  SHARED_QUESTIONS,
-  BRANCH_Q6,
-  assemblePainCopy,
-  PAIN_EMPHASIS,
-  RELIEF_FLIP,
-  assembleCurrentFuture,
-  TRANSFORMATION_ROWS,
-  PROCESSING_STAGES,
-  SNAPSHOT_BOTTOM,
-  getTimelineWeeks,
-  PAYWALL_HOOKS,
-  getPaywallHeadline,
-  getCreateAccountHeadline,
-  PAYWALL_TESTIMONIALS_V2,
-  getPaywallTestimonialPool,
-  getPatternLabels,
+  type FunnelVariantConfig,
+  DEFAULT_FUNNEL_CONFIG,
 } from "@/lib/funnel-config";
+
+// ─── Variant config context ─────────────────────────────────────────────────
+//
+// All funnel copy is read through this context. The default value is the
+// original /start (women's) config, so rendering <OnboardingFunnel /> bare is
+// byte-identical to the pre-variant behavior. Alternate funnels (e.g.
+// /start-bwk) wrap the component in <FunnelConfigProvider config={...}>.
+
+const FunnelConfigContext = createContext<FunnelVariantConfig>(DEFAULT_FUNNEL_CONFIG);
+
+export function FunnelConfigProvider({ config, children }: { config: FunnelVariantConfig; children: ReactNode }) {
+  return <FunnelConfigContext.Provider value={config}>{children}</FunnelConfigContext.Provider>;
+}
+
+function useFunnelConfig(): FunnelVariantConfig {
+  return useContext(FunnelConfigContext);
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -245,6 +246,7 @@ function formatTrialEndDate(): string {
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export function OnboardingFunnel() {
+  const cfg = useFunnelConfig();
   const { data: session, status: authStatus } = useSession();
   // Restore persisted state from sessionStorage so refresh doesn't lose progress.
   // URL ?step= params (OAuth/Stripe returns) take priority over stored state.
@@ -477,7 +479,7 @@ export function OnboardingFunnel() {
         body: JSON.stringify({
           utm_source, utm_medium, utm_campaign, utm_content, utm_term,
           referrer: cookieAttr.referrer || document.referrer || undefined,
-          landingPath: cookieAttr.landingPath || "/start",
+          landingPath: cookieAttr.landingPath || window.location.pathname,
         }),
       }).catch(() => {});
     }
@@ -539,15 +541,15 @@ export function OnboardingFunnel() {
 
   // ── Get current question for branch/shared steps ──
   const getCurrentQuestion = (): Question | null => {
-    if (step === "entry") return ENTRY_QUESTION;
-    if (step === "branch-q6" && branch) return BRANCH_Q6[branch];
+    if (step === "entry") return cfg.ENTRY_QUESTION;
+    if (step === "branch-q6" && branch) return cfg.BRANCH_Q6[branch];
     if (step.startsWith("branch-") && branch) {
       const idx = parseInt(step.replace("branch-q", "")) - 2; // q2 → 0, q3 → 1, q4 → 2
-      return BRANCH_QUESTIONS[branch][idx] ?? null;
+      return cfg.BRANCH_QUESTIONS[branch][idx] ?? null;
     }
     if (step.startsWith("shared-")) {
       const idx = parseInt(step.replace("shared-q", "")) - 5; // q5 → 0, q6 → 1, etc.
-      return SHARED_QUESTIONS[idx] ?? null;
+      return cfg.SHARED_QUESTIONS[idx] ?? null;
     }
     return null;
   };
@@ -1065,12 +1067,13 @@ function emphasize(text: string, phrases: string[]): React.ReactNode {
 function PainScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
+  const cfg = useFunnelConfig();
   // Answer-aware: assemblePainCopy stitches the user's Q2/Q3/Q6 selections into
   // an ordered set of beats — [opener, Q2 echo, Q3 amplifier, Q6 cost, closer].
   // Length varies per branch/answers (empty fragments are dropped upstream), so
   // this renders whatever beats it's handed: first = recognition (border-left),
   // last = emphasized closer, middle = body lines.
-  const beats = assemblePainCopy(branch, answers);
+  const beats = cfg.assemblePainCopy(branch, answers);
   const lastIndex = beats.length - 1;
   const ctaPhase = beats.length + 1; // beats reveal 1..length, then CTA
   const [phase, setPhase] = useState(0);
@@ -1090,7 +1093,7 @@ function PainScreen({ branch, answers, onContinue }: {
 
   const skip = () => setPhase(ctaPhase);
   const shown = (n: number) => phase >= n ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]";
-  const emphasis = PAIN_EMPHASIS[branch];
+  const emphasis = cfg.PAIN_EMPHASIS[branch];
 
   // One unified left-aligned column — an intimate reflection, revealed one line
   // at a time. Opener sets the scene, body lines carry the echo, and the closer
@@ -1136,7 +1139,8 @@ function ReliefFlipScreen({ branch, track, onSelect }: {
   track: (event: string, props?: Record<string, unknown>) => void;
   onSelect: (reliefId: string) => void;
 }) {
-  const config = RELIEF_FLIP[branch];
+  const cfg = useFunnelConfig();
+  const config = cfg.RELIEF_FLIP[branch];
   const [chosen, setChosen] = useState<string | null>(null);
 
   const handle = (id: string) => {
@@ -1180,10 +1184,11 @@ function ReliefFlipScreen({ branch, track, onSelect }: {
 function CurrentFutureScreen({ branch, answers, onContinue }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
 }) {
-  const content = assembleCurrentFuture(branch, answers);
+  const cfg = useFunnelConfig();
+  const content = cfg.assembleCurrentFuture(branch, answers);
   // The branch framing pair (formerly the header subtext) now leads the rows as
   // its own paired left→arrow→right row, consistent with the transformation rows.
-  const rows: [string, string][] = [[content.currentSub, content.futureSub], ...TRANSFORMATION_ROWS[branch]];
+  const rows: [string, string][] = [[content.currentSub, content.futureSub], ...cfg.TRANSFORMATION_ROWS[branch]];
   const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   // Row-by-row reveal: activeRow is the highest row index shown (-1 = none);
@@ -1366,6 +1371,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
   branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void;
   track: (event: string, props?: Record<string, unknown>) => void;
 }) {
+  const cfg = useFunnelConfig();
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const content = MECH_CONTENT[branch];
@@ -1472,7 +1478,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
 
       {/* ── Social proof — reused real testimonial validating the weekly-report mechanism ── */}
       <div className="mx-auto mb-6 max-w-md" style={fadeUp(5400)}>
-        <SocialProofQuote track={track} placement="mechanism" testimonial={PAYWALL_TESTIMONIALS_V2[0]} />
+        <SocialProofQuote track={track} placement="mechanism" testimonial={cfg.PAYWALL_TESTIMONIALS_V2[0]} />
       </div>
 
       {/* ── Continue button — always visible from mount, never gated behind animations ── */}
@@ -1657,6 +1663,7 @@ function CommitmentScreen({ track, onComplete }: { track: (event: string) => voi
 // ─── Processing Theater (Screen 12) ─────────────────────────────────────────
 
 function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
+  const cfg = useFunnelConfig();
   const [elapsed, setElapsed] = useState(0);
   const [showSocial, setShowSocial] = useState(false);
   const startRef = useRef(Date.now());
@@ -1671,7 +1678,7 @@ function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
     return () => { clearInterval(interval); clearTimeout(socialTimer); };
   }, [onComplete]);
 
-  const stage = PROCESSING_STAGES.find((s) => elapsed < s.endSec) ?? PROCESSING_STAGES[PROCESSING_STAGES.length - 1];
+  const stage = cfg.PROCESSING_STAGES.find((s) => elapsed < s.endSec) ?? cfg.PROCESSING_STAGES[cfg.PROCESSING_STAGES.length - 1];
   const pct = Math.min(100, (elapsed / 10) * 100);
 
   return (
@@ -1699,7 +1706,8 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
   track: (event: string, props?: Record<string, unknown>) => void;
   onContinue: () => void;
 }) {
-  const labels = getPatternLabels(branch, answers);
+  const cfg = useFunnelConfig();
+  const labels = cfg.getPatternLabels(branch, answers);
   const [vis, setVis] = useState(0);
   const firedRef = useRef(false);
 
@@ -1795,8 +1803,9 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
 // ─── Personalized Timeline (Screen 14 — week-by-week milestone reveal) ───────
 
 function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch; answers: Record<string, string | string[]>; onContinue: () => void; track: (event: string, props?: Record<string, unknown>) => void }) {
-  const weeks = getTimelineWeeks(branch, answers);
-  const bottomLine = SNAPSHOT_BOTTOM[branch];
+  const cfg = useFunnelConfig();
+  const weeks = cfg.getTimelineWeeks(branch, answers);
+  const bottomLine = cfg.SNAPSHOT_BOTTOM[branch];
   const [visibleNodes, setVisibleNodes] = useState(0);
   const [showBottom, setShowBottom] = useState(false);
   const [showBtn, setShowBtn] = useState(false);
@@ -1878,6 +1887,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   track: (event: string, props?: Record<string, unknown>) => void;
   onAccountCreated: () => void;
 }) {
+  const cfg = useFunnelConfig();
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -1885,7 +1895,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   const [signupLoading, setSignupLoading] = useState<"email" | "google" | "apple" | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
 
-  const headline = branch ? getCreateAccountHeadline(branch) : "Your patterns are already forming. Create your free account to see them.";
+  const headline = branch ? cfg.getCreateAccountHeadline(branch) : "Your patterns are already forming. Create your free account to see them.";
 
   // Track whether account was created but signIn failed (Fix 2)
   const [accountCreatedButSigninFailed, setAccountCreatedButSigninFailed] = useState(false);
@@ -1968,7 +1978,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
         ...(funnelUtm.utmCampaign ? { utm_campaign: funnelUtm.utmCampaign } : {}),
         ...(funnelUtm.utmContent ? { utm_content: funnelUtm.utmContent } : {}),
         ...(funnelUtm.fbclid ? { fbclid: funnelUtm.fbclid } : {}),
-        landingPath: "/start",
+        landingPath: window.location.pathname,
       };
       const res = await fetch("/api/auth/signup", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -2087,7 +2097,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     // silent-death we've been unable to see).
     track("funnel_oauth_redirect_started", { value: `${provider}|${envDiag}` });
 
-    await signIn(provider, { callbackUrl: `/start?${params.toString()}` });
+    await signIn(provider, { callbackUrl: `${window.location.pathname}?${params.toString()}` });
   };
 
   return (
@@ -2164,13 +2174,13 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
             <div className={`text-xs px-1 rounded-lg ${accountCreatedButSigninFailed ? "bg-green-50 border border-green-200 p-3 text-green-700" : "text-red-500"}`}>
               <p>{signupError}</p>
               {signupError.includes("already have an account") && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=post-signup" })}
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })}
                   className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
                   Sign in to your existing account
                 </button>
               )}
               {accountCreatedButSigninFailed && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: "/start?step=post-signup" })}
+                <button type="button" onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })}
                   className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
                   Tap here to sign in
                 </button>
@@ -2191,7 +2201,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
         <p className="text-xs text-zinc-400 text-center mt-6">
           Already have an account?{" "}
-          <button onClick={() => signIn(undefined, { callbackUrl: "/start?step=post-signup" })} className="text-acuity-primary font-semibold underline">Sign in</button>
+          <button onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })} className="text-acuity-primary font-semibold underline">Sign in</button>
         </p>
         <p className="text-[11px] text-zinc-400 text-center mt-3 flex items-center justify-center gap-1.5">
           <svg className="h-3 w-3 text-zinc-300" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
@@ -2205,12 +2215,13 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 // ── Signup Testimonial Strip (auto-rotating, doesn't push form below fold) ──
 
 function SignupTestimonialStrip() {
+  const cfg = useFunnelConfig();
   const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % PAYWALL_TESTIMONIALS_V2.length), 4000);
+    const t = setInterval(() => setIdx((i) => (i + 1) % cfg.PAYWALL_TESTIMONIALS_V2.length), 4000);
     return () => clearInterval(t);
-  }, []);
-  const t = PAYWALL_TESTIMONIALS_V2[idx];
+  }, [cfg.PAYWALL_TESTIMONIALS_V2.length]);
+  const t = cfg.PAYWALL_TESTIMONIALS_V2[idx];
   return (
     <div className="mb-5 rounded-xl bg-white/60 border border-zinc-100 px-4 py-3 text-center transition-all duration-300 funnel-card-stagger">
       <p className="text-[13px] text-zinc-600 italic leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
@@ -2240,6 +2251,7 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
+  const cfg = useFunnelConfig();
   const annualMonthly = Math.round(ANNUAL_PRICE_CENTS / 12);
   // What Stripe actually charges after the 7-day trial for the selected plan —
   // drives the reassurance line under the lock-in button so it always matches
@@ -2248,12 +2260,12 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
     ? `${displayAnnual()}/yr`
     : `${displayMonthly()}/mo`;
   // Branch-matched social-proof pool for the "What our users say" popup.
-  const testimonialPool = getPaywallTestimonialPool(branch);
+  const testimonialPool = cfg.getPaywallTestimonialPool(branch);
   const [testimonialsOpen, setTestimonialsOpen] = useState(false);
   // Branch-personalized paywall copy. All fall back to shared defaults when
   // branch is null (ad-deep-link edge case where no entry answer was recorded).
-  const paywallHeadline = branch ? getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
-  const paywallHook = branch ? PAYWALL_HOOKS[branch] : null;
+  const paywallHeadline = branch ? cfg.getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
+  const paywallHook = branch ? cfg.PAYWALL_HOOKS[branch] : null;
   // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
   const [slashPhase, setSlashPhase] = useState(0);
   const pricingRef = useRef<HTMLDivElement>(null);

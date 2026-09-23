@@ -126,7 +126,10 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
     if (exp?.destination === "custom_url") return "custom_url";
     return "custom_url"; // Keenan's default: his own funnels
   });
-  const [customUrl, setCustomUrl] = useState<string>(exp?.destinationUrl ?? "");
+  const [customUrl, setCustomUrl] = useState<string>(
+    exp?.destinationUrl ??
+      (group.groupKey === "men" ? "https://goripple.io/start-bwk" : "https://goripple.io/start")
+  );
 
   const [launching, setLaunching] = useState(false);
   const [launchStep, setLaunchStep] = useState<string | null>(null);

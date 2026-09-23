@@ -1502,3 +1502,55 @@ export function getPaywallTestimonialPool(branch: Branch | null): { quote: strin
     (t, i, arr) => arr.findIndex((x) => x.name === t.name) === i,
   ).slice(0, 3);
 }
+
+// ─── Variant config (swappable copy bundle) ─────────────────────────────────
+//
+// OnboardingFunnel reads all copy through a FunnelVariantConfig so alternate
+// funnels (e.g. /start-bwk, the men's/BWK-lane variant) can swap the entire
+// copy surface without touching component logic. Keys mirror the export names
+// above 1:1 so component call sites are a mechanical `cfg.` prefix.
+// DEFAULT_FUNNEL_CONFIG references the exact objects/functions defined in this
+// file — /start behavior is byte-identical to before this refactor.
+
+export interface FunnelVariantConfig {
+  ENTRY_QUESTION: Question;
+  BRANCH_QUESTIONS: Record<Branch, [Question, Question, Question]>;
+  SHARED_QUESTIONS: Question[];
+  BRANCH_Q6: Record<Branch, Question>;
+  assemblePainCopy: typeof assemblePainCopy;
+  PAIN_EMPHASIS: Record<Branch, string[]>;
+  RELIEF_FLIP: Record<Branch, ReliefFlipConfig>;
+  assembleCurrentFuture: typeof assembleCurrentFuture;
+  TRANSFORMATION_ROWS: Record<Branch, [string, string][]>;
+  PROCESSING_STAGES: { text: string; endSec: number }[];
+  SNAPSHOT_BOTTOM: Record<Branch, string>;
+  getTimelineWeeks: typeof getTimelineWeeks;
+  PAYWALL_HOOKS: Record<Branch, string>;
+  getPaywallHeadline: typeof getPaywallHeadline;
+  getCreateAccountHeadline: typeof getCreateAccountHeadline;
+  /** Index 0 renders on MechanismScreen; rotation cycles the full array. */
+  PAYWALL_TESTIMONIALS_V2: { quote: string; name: string }[];
+  getPaywallTestimonialPool: typeof getPaywallTestimonialPool;
+  getPatternLabels: typeof getPatternLabels;
+}
+
+export const DEFAULT_FUNNEL_CONFIG: FunnelVariantConfig = {
+  ENTRY_QUESTION,
+  BRANCH_QUESTIONS,
+  SHARED_QUESTIONS,
+  BRANCH_Q6,
+  assemblePainCopy,
+  PAIN_EMPHASIS,
+  RELIEF_FLIP,
+  assembleCurrentFuture,
+  TRANSFORMATION_ROWS,
+  PROCESSING_STAGES,
+  SNAPSHOT_BOTTOM,
+  getTimelineWeeks,
+  PAYWALL_HOOKS,
+  getPaywallHeadline,
+  getCreateAccountHeadline,
+  PAYWALL_TESTIMONIALS_V2,
+  getPaywallTestimonialPool,
+  getPatternLabels,
+};
