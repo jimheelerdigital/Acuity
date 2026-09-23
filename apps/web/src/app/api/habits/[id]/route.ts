@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { MAX_ACTIVE_HABITS } from "@acuity/shared";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 /**
  * Edit / archive a single habit.
  *
- * PATCH  /api/habits/[id]  → rename and/or set active days (pause = []).
+ * PATCH  /api/habits/[id]  → rename and/or set active days (pause = []);
+ *                            or { archived: false } to restore (unarchive).
  * DELETE /api/habits/[id]  → archive (soft delete). The check history is
  *                            kept so streak/insight data survives; an
  *                            archived habit simply stops appearing and
@@ -25,6 +27,7 @@ function isFlagOn(): boolean {
 const HABIT_SELECT = {
   id: true,
   name: true,
+  description: true,
   type: true,
   daysActive: true,
   archivedAt: true,
@@ -48,9 +51,65 @@ export async function PATCH(
   const body = (await req.json().catch(() => null)) as {
     name?: unknown;
     daysActive?: unknown;
+    archived?: unknown;
+    description?: unknown;
   } | null;
 
-  const data: { name?: string; daysActive?: number[] } = {};
+  // Restore (unarchive): { archived: false }. Handled first because it targets
+  // an ARCHIVED habit — the opposite of every other PATCH, which only touches
+  // active ones. Only false is meaningful; archiving happens via DELETE.
+  if (body?.archived === false) {
+    const { prisma } = await import("@/lib/prisma");
+
+    const owned = await prisma.habit.findFirst({
+      where: { id, userId, archivedAt: { not: null } },
+      select: { id: true, type: true },
+    });
+    if (!owned) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Restoring counts against the active cap.
+    const active = await prisma.habit.count({
+      where: { userId, archivedAt: null },
+    });
+    if (active >= MAX_ACTIVE_HABITS) {
+      return NextResponse.json(
+        {
+          error: `You can track up to ${MAX_ACTIVE_HABITS} habits at once. Remove one before restoring.`,
+          code: "TOO_MANY_HABITS",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Preserve the one-active-reflection-habit invariant.
+    if (owned.type === "reflection") {
+      const existing = await prisma.habit.findFirst({
+        where: { userId, archivedAt: null, type: "reflection" },
+        select: { id: true },
+      });
+      if (existing) {
+        return NextResponse.json(
+          {
+            error: "You already have an active Daily Reflection habit.",
+            code: "REFLECTION_EXISTS",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const habit = await prisma.habit.update({
+      where: { id },
+      data: { archivedAt: null, updatedAt: new Date() },
+      select: HABIT_SELECT,
+    });
+    return NextResponse.json({ habit });
+  }
+
+  const data: { name?: string; daysActive?: number[]; description?: string | null } =
+    {};
 
   if (body?.name !== undefined) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -61,6 +120,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Name is too long" }, { status: 400 });
     }
     data.name = name;
+  }
+
+  if (body?.description !== undefined) {
+    // Free-text notes. Any string is accepted; empty/blank clears it (null).
+    // Capped so it can't bloat the debrief matcher prompt.
+    const raw = typeof body.description === "string" ? body.description.trim() : "";
+    data.description = raw ? raw.slice(0, 1000) : null;
   }
 
   if (body?.daysActive !== undefined) {
@@ -79,7 +145,11 @@ export async function PATCH(
     data.daysActive = Array.from(new Set(parsed)).sort();
   }
 
-  if (data.name === undefined && data.daysActive === undefined) {
+  if (
+    data.name === undefined &&
+    data.daysActive === undefined &&
+    data.description === undefined
+  ) {
     return NextResponse.json(
       { error: "Nothing to update" },
       { status: 400 }

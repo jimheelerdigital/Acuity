@@ -14,6 +14,8 @@ import { currentStreak, type HabitLike } from "@acuity/shared";
 export interface Habit extends HabitLike {
   id: string;
   name: string;
+  /** Optional free-text notes (what the habit involves). May be null. */
+  description: string | null;
   /** "standard" | "reflection". The reflection habit self-completes on record. */
   type: string;
   daysActive: number[];
@@ -49,6 +51,12 @@ export function todayLocalDate(now: Date = new Date()): string {
 
 export async function fetchHabits(): Promise<HabitsPayload> {
   const res = await api.get<HabitsPayload>("/api/habits");
+  return { habits: res?.habits ?? [], checks: res?.checks ?? [] };
+}
+
+/** Archived (soft-deleted) habits, most-recently-archived first, + checks. */
+export async function fetchArchivedHabits(): Promise<HabitsPayload> {
+  const res = await api.get<HabitsPayload>("/api/habits?archived=1");
   return { habits: res?.habits ?? [], checks: res?.checks ?? [] };
 }
 
@@ -110,10 +118,13 @@ export function streakFor(
   return currentStreak(habit, checks.get(habit.id) ?? new Set(), today);
 }
 
-/** Rename and/or change active days (empty daysActive = paused). */
+/**
+ * Rename, change active days (empty daysActive = paused), and/or set the
+ * description. Pass description: "" to clear it.
+ */
 export async function updateHabit(
   id: string,
-  fields: { name?: string; daysActive?: number[] }
+  fields: { name?: string; daysActive?: number[]; description?: string }
 ): Promise<Habit | null> {
   const res = await api.patch<{ habit: Habit }>(`/api/habits/${id}`, fields);
   return res?.habit ?? null;
@@ -123,6 +134,18 @@ export async function updateHabit(
 export async function archiveHabit(id: string): Promise<boolean> {
   const res = await api.del<{ ok: boolean }>(`/api/habits/${id}`);
   return !!res?.ok;
+}
+
+/**
+ * Restore (unarchive) a previously deleted habit. Throws with the server's
+ * message when it can't (e.g. you're at the active-habit cap), so the caller
+ * can surface it.
+ */
+export async function unarchiveHabit(id: string): Promise<Habit | null> {
+  const res = await api.patch<{ habit: Habit }>(`/api/habits/${id}`, {
+    archived: false,
+  });
+  return res?.habit ?? null;
 }
 
 // ─── Per-habit reminders (nudges) ────────────────────────────────────

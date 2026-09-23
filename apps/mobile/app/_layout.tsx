@@ -380,6 +380,7 @@ function ThemedApp() {
           }}
         />
         <Stack.Screen name="habits" options={{ headerShown: false }} />
+        <Stack.Screen name="habits-archived" options={{ headerShown: false }} />
         <Stack.Screen
           name="insights/theme/[themeId]"
           options={{ headerShown: false }}

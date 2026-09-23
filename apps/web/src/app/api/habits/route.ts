@@ -37,14 +37,22 @@ export async function GET(req: NextRequest) {
 
   const { prisma } = await import("@/lib/prisma");
 
+  // ?archived=1 returns the user's archived (soft-deleted) habits instead of
+  // active ones, so the app can offer a "restore" screen. Checks come back the
+  // same way, so an archived row can still show its history/streak-at-archive.
+  const archivedOnly = req.nextUrl.searchParams.get("archived") === "1";
+
   const cutoff = new Date(Date.now() - CHECK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const [habits, checks] = await Promise.all([
     prisma.habit.findMany({
-      where: { userId, archivedAt: null },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      where: { userId, archivedAt: archivedOnly ? { not: null } : null },
+      orderBy: archivedOnly
+        ? [{ archivedAt: "desc" }]
+        : [{ sortOrder: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
         name: true,
+        description: true,
         type: true,
         daysActive: true,
         archivedAt: true,
@@ -74,6 +82,7 @@ export async function POST(req: NextRequest) {
     name?: unknown;
     daysActive?: unknown;
     type?: unknown;
+    description?: unknown;
   } | null;
 
   const name = typeof body?.name === "string" ? body.name.trim() : "";
@@ -83,6 +92,12 @@ export async function POST(req: NextRequest) {
   if (name.length > 80) {
     return NextResponse.json({ error: "Name is too long" }, { status: 400 });
   }
+
+  // Optional free-text notes. Empty → null; capped so a runaway paste can't
+  // bloat the debrief matcher prompt.
+  const rawDesc =
+    typeof body?.description === "string" ? body.description.trim() : "";
+  const description = rawDesc ? rawDesc.slice(0, 1000) : null;
 
   // Only two habit types exist: the ordinary "standard" habit, and the single
   // self-completing "reflection" habit (Daily Reflection with Ripple). Any
@@ -111,6 +126,7 @@ export async function POST(req: NextRequest) {
       select: {
         id: true,
         name: true,
+        description: true,
         type: true,
         daysActive: true,
         archivedAt: true,
@@ -135,10 +151,11 @@ export async function POST(req: NextRequest) {
   }
 
   const habit = await prisma.habit.create({
-    data: { userId, name, type, daysActive, sortOrder: active },
+    data: { userId, name, description, type, daysActive, sortOrder: active },
     select: {
       id: true,
       name: true,
+      description: true,
       type: true,
       daysActive: true,
       archivedAt: true,

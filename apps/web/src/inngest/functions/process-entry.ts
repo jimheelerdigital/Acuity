@@ -648,7 +648,7 @@ export const processEntryFn = inngest.createFunction(
         entry.dimensionContext ?? null,
         useDispositional,
         calendarContext.promptBlock,
-        activeHabits.map((h) => h.name)
+        activeHabits.map((h) => ({ name: h.name, description: h.description }))
       );
     });
 

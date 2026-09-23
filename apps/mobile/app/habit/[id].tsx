@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -57,13 +58,15 @@ const DAY_LABELS = [
 // 5 weeks covers the 30-day window the completion-rate stat uses.
 const HEATMAP_WEEKS = 5;
 
-// One cell in the history calendar.
-//  done   — a completion was recorded (coral fill)
-//  today  — the current day, not yet marked done (coral ring)
-//  miss   — an expected day that wasn't completed (outlined empty)
-//  off    — a non-active day (grey fill)
-//  future — an upcoming day this week (faint placeholder, keeps rows full)
-type CellState = "done" | "miss" | "off" | "future" | "today";
+// Base state of one cell in the history calendar. "Today" is tracked
+// separately (isToday) so the today ring can layer on top of ANY state —
+// including a completed today — instead of being mutually exclusive with it.
+//  done      — a completion was recorded (accent fill)
+//  off       — a non-scheduled day (solid grey fill)
+//  untracked — a scheduled day with no completion (past OR future): left
+//              blank, just the day number. One neutral state, no "missed"
+//              shaming and no future-specific styling.
+type CellState = "done" | "off" | "untracked";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -79,6 +82,11 @@ export default function HabitDetailScreen() {
   const [habit, setHabit] = useState<Habit | null>(null);
   const [checkSet, setCheckSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  // Notes/description local state (committed via "Save notes").
+  const [desc, setDesc] = useState("");
+  const [savedDesc, setSavedDesc] = useState("");
+  const [savingDesc, setSavingDesc] = useState(false);
 
   // Reminder local state (committed via "Save reminder").
   const [reminderOn, setReminderOn] = useState(false);
@@ -98,6 +106,9 @@ export default function HabitDetailScreen() {
       ]);
       const found = habits.find((h) => h.id === id) ?? null;
       setHabit(found);
+      const initialDesc = found?.description ?? "";
+      setDesc(initialDesc);
+      setSavedDesc(initialDesc);
       const set = checksByHabit(checks).get(id) ?? new Set<string>();
       setCheckSet(set);
       const r = reminders.find((x) => x.habitId === id);
@@ -134,21 +145,28 @@ export default function HabitDetailScreen() {
   const weeks = useMemo(() => {
     const todayDow = dayOfWeek(today);
     const start = shiftDate(today, -((HEATMAP_WEEKS - 1) * 7 + todayDow));
-    const cols: Array<Array<{ date: string; day: number; state: CellState }>> =
-      [];
+    const cols: Array<
+      Array<{ date: string; day: number; state: CellState; isToday: boolean }>
+    > = [];
     let cursor = start;
     for (let w = 0; w < HEATMAP_WEEKS; w += 1) {
-      const col: Array<{ date: string; day: number; state: CellState }> = [];
+      const col: Array<{
+        date: string;
+        day: number;
+        state: CellState;
+        isToday: boolean;
+      }> = [];
       for (let d = 0; d < 7; d += 1) {
+        const isToday = cursor === today;
         let state: CellState;
-        if (cursor > today) state = "future";
-        else if (checkSet.has(cursor)) state = "done";
-        else if (cursor === today) state = "today";
-        else if (habit && isExpectedOn(habit, cursor)) state = "miss";
+        if (checkSet.has(cursor)) state = "done";
+        // Scheduled-but-not-done reads the same whether past or future:
+        // blank. Only genuinely non-scheduled days get the grey "off" fill.
+        else if (habit && isExpectedOn(habit, cursor)) state = "untracked";
         else state = "off";
         // Day-of-month for the in-cell label; "2026-09-07" → 7.
         const day = Number(cursor.slice(8, 10));
-        col.push({ date: cursor, day, state });
+        col.push({ date: cursor, day, state, isToday });
         cursor = shiftDate(cursor, 1);
       }
       cols.push(col);
@@ -173,6 +191,24 @@ export default function HabitDetailScreen() {
       habit.name
     );
   }, [habit]);
+
+  const saveDesc = useCallback(async () => {
+    if (!habit || savingDesc) return;
+    const next = desc.trim();
+    setSavingDesc(true);
+    try {
+      const updated = await updateHabit(habit.id, { description: next });
+      if (updated) {
+        setHabit((h) => (h ? { ...h, ...updated } : h));
+        setSavedDesc(updated.description ?? "");
+        setDesc(updated.description ?? "");
+      }
+    } catch {
+      Alert.alert("Couldn't save notes", "Please try again.");
+    } finally {
+      setSavingDesc(false);
+    }
+  }, [habit, desc, savingDesc]);
 
   const toggleDay = useCallback(
     async (dayIndex: number) => {
@@ -295,35 +331,21 @@ export default function HabitDetailScreen() {
   const hour = Number(reminderTime.split(":")[0]) || 8;
   const minute = Number(reminderTime.split(":")[1]) || 0;
 
-  // Fill for each cell. Missed/today read as outlined empties (borders added
-  // in the render); done is a coral fill; off/future are grey (future is
-  // dimmed via opacity so upcoming days still fill the row).
+  // Fill: done is the accent; off is the one solid grey chip; untracked days
+  // are left blank (just their number).
   const cellBg = (state: CellState): string => {
     switch (state) {
       case "done":
         return tokens.primary;
-      case "today":
-      case "miss":
-        return "transparent";
-      default:
-        // off / future — a clearly filled muted chip, distinct from the
-        // outlined-empty "missed" cell.
+      case "off":
         return tokens.bgInsetStrong;
+      default:
+        return "transparent";
     }
   };
   // Day-of-month label color, tuned for contrast against each fill.
-  const cellText = (state: CellState): string => {
-    switch (state) {
-      case "done":
-        return "#FFFFFF";
-      case "today":
-        return tokens.primary;
-      case "future":
-        return tokens.textQuiet;
-      default:
-        return tokens.textTer;
-    }
-  };
+  const cellText = (state: CellState): string =>
+    state === "done" ? "#FFFFFF" : tokens.textTer;
 
   return (
     <SafeAreaView
@@ -397,20 +419,22 @@ export default function HabitDetailScreen() {
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: cellBg(c.state),
-                    // Upcoming days stay visible but recede, so every row
-                    // renders full instead of trailing off into blanks.
-                    opacity: c.state === "future" ? 0.45 : 1,
-                    borderWidth:
-                      c.state === "today" ? 2 : c.state === "miss" ? 1.5 : 0,
-                    borderColor:
-                      c.state === "today" ? tokens.primary : tokens.lineStrong,
+                    // The only ring is "today" — in the palette's SECONDARY
+                    // accent so it stands out even on a completed (accent-fill)
+                    // day and never blends with "done". Everything else is
+                    // borderless: a fill or a blank numbered cell.
+                    borderWidth: c.isToday ? 2 : 0,
+                    borderColor: c.isToday ? tokens.secondary : "transparent",
                   }}
                 >
                   <Text
                     style={{
                       fontSize: 10,
                       fontWeight: "700",
-                      color: cellText(c.state),
+                      color:
+                        c.isToday && c.state !== "done"
+                          ? tokens.secondary
+                          : cellText(c.state),
                     }}
                   >
                     {c.day}
@@ -432,13 +456,68 @@ export default function HabitDetailScreen() {
         >
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.primary }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Done</Text>
-          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 2, borderColor: tokens.primary, marginLeft: 12 }} />
+          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 2, borderColor: tokens.secondary, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Today</Text>
-          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.5, borderColor: tokens.lineStrong, marginLeft: 12 }} />
-          <Text style={{ color: tokens.textTer, fontSize: 12 }}>Missed</Text>
+          <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1, borderColor: tokens.line, marginLeft: 12 }} />
+          <Text style={{ color: tokens.textTer, fontSize: 12 }}>Not tracked</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInsetStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Off day</Text>
         </View>
+
+        {/* Notes */}
+        <Text style={sectionLabel(tokens)}>Notes</Text>
+        <Text style={{ color: tokens.textSec, fontSize: 13, marginBottom: 12 }}>
+          What this habit involves. Ripple uses this to spot the habit in your
+          recordings — even if you don&apos;t say its name.
+        </Text>
+        <TextInput
+          value={desc}
+          onChangeText={setDesc}
+          placeholder="e.g. hamstring stretch, calf raises, cobra pose"
+          placeholderTextColor={tokens.textTer}
+          multiline
+          maxLength={1000}
+          style={{
+            minHeight: 96,
+            borderWidth: 1,
+            borderColor: tokens.lineStrong,
+            borderRadius: 12,
+            padding: 12,
+            fontFamily: tokens.fontSans,
+            fontSize: 15,
+            lineHeight: 21,
+            color: tokens.text,
+            backgroundColor: tokens.cardBg,
+            textAlignVertical: "top",
+          }}
+        />
+        {desc.trim() !== savedDesc.trim() ? (
+          <Pressable
+            onPress={() => void saveDesc()}
+            disabled={savingDesc}
+            accessibilityRole="button"
+            accessibilityLabel="Save notes"
+            style={{
+              alignSelf: "flex-start",
+              marginTop: 10,
+              paddingHorizontal: 18,
+              paddingVertical: 10,
+              borderRadius: 10,
+              backgroundColor: tokens.primary,
+              opacity: savingDesc ? 0.5 : 1,
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: tokens.fontDisplay,
+                fontSize: 14,
+                color: "#ffffff",
+              }}
+            >
+              {savingDesc ? "Saving…" : "Save notes"}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* Active days */}
         <Text style={sectionLabel(tokens)}>Active days</Text>
