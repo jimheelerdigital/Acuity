@@ -66,6 +66,7 @@ import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
 import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-daily";
 import { adlabWeeklyBatchFn } from "@/inngest/functions/adlab-weekly-batch";
 import { adlabRegenImagesFn } from "@/inngest/functions/adlab-regen-images";
+import { adlabDailyCronFn } from "@/inngest/functions/adlab-daily-cron";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -139,6 +140,7 @@ const handler = serve({
     competitorScrapeDailyFn,
     adlabWeeklyBatchFn,
     adlabRegenImagesFn,
+    adlabDailyCronFn,
   ],
 });
 

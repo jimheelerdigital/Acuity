@@ -2,7 +2,7 @@
  * GET /api/admin/adlab/cron — daily metrics sync + decision engine.
  * Protected by CRON_SECRET. Runs at 09:00 UTC daily.
  *
- * 1. Sync yesterday's metrics from Meta Insights API
+ * 1. Sync a trailing 3-day window of metrics from Meta Insights API
  * 2. Run creative-level kill/scale/maintain decisions
  * 3. Run experiment-level conclusions
  * 4. Send daily summary email via Resend
@@ -22,11 +22,24 @@ export const maxDuration = 300;
 // ── Validation-phase thresholds (all in cents where applicable) ─────
 const VALIDATION_PHASE = true;
 
-// ── KILL/SCALE DECISIONS DISABLED (2026-05-23) ─────────────────────
-// Cron still syncs metrics and sends daily summary email, but takes
-// ZERO automated actions — no pausing, killing, scaling, or budget
-// changes. Set to true to re-enable.
-const DECISIONS_ENABLED = false;
+// ── Decision switches (2026-09-23, per Keenan: "get it going") ──────
+// KILLS are ON unless explicitly disabled — a kill only ever PAUSES
+// spend, so the worst case is pausing a would-be winner early.
+// AUTO-SCALE is opt-in — it's the only rule that INCREASES spend, so
+// winners are flagged in the daily email for manual approval until
+// ADLAB_AUTOSCALE_ENABLED=1 is set.
+const DECISIONS_ENABLED = process.env.ADLAB_DECISIONS_ENABLED !== "0";
+const AUTOSCALE_ENABLED = process.env.ADLAB_AUTOSCALE_ENABLED === "1";
+
+// Meta attributes conversions up to days after the click, so a single
+// "yesterday" sync freezes undercounted numbers. Re-sync a trailing
+// window every run so late attribution lands.
+const SYNC_WINDOW_DAYS = 3;
+
+// Flag (not kill) live ads with zero delivery after this long — stuck
+// in review, rejected, or Learning Limited. They spend nothing, so
+// they're invisible to spend-based kill rules.
+const ZERO_DELIVERY_FLAG_HOURS = 48;
 
 // Safety rails
 const MIN_SPEND_FOR_DECISION = 1000;     // $10 — no decisions below this spend
@@ -38,7 +51,9 @@ const R1_SPEND_FLOOR = 1500;             // $15
 const R1_CLICKS_CEIL = 0;
 
 // Rule 2 — Low CTR
-const R2_IMPRESSIONS_FLOOR = 1000;
+// 2000 imps (was 1000): at 1000 the difference between a 0.7% and a
+// 1.1% ad is ~4 clicks — pure noise. 2000 halves the false-kill odds.
+const R2_IMPRESSIONS_FLOOR = 2000;
 const R2_CTR_CEIL = 0.8;                 // 0.8%
 
 // Rule 3 — Spending with no conversions
@@ -82,6 +97,15 @@ export async function GET(req: NextRequest) {
   yesterday.setDate(yesterday.getDate() - 1);
   const dateStr = yesterday.toISOString().slice(0, 10);
 
+  // Trailing window (oldest → newest) so late-attributed conversions
+  // overwrite the frozen numbers from earlier runs.
+  const syncDates: string[] = [];
+  for (let i = SYNC_WINDOW_DAYS; i >= 1; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    syncDates.push(d.toISOString().slice(0, 10));
+  }
+
   // Load all live/scaled ads with their projects
   const ads = await prisma.adLabAd.findMany({
     where: { status: { in: ["live", "scaled"] } },
@@ -108,55 +132,61 @@ export async function GET(req: NextRequest) {
   const decisions: { adId: string; type: string; rule: string; rationale: string; creativeType: string }[] = [];
   const flags: { adId: string; rule: string; rationale: string }[] = [];
   const experimentFlags: { expId: string; type: string; rule: string; rationale: string }[] = [];
-  const warnings: string[] = [];
+  // Lifetime stats per live ad, filled in Step 2, rendered in the email
+  const adStats: {
+    adId: string; spend: number; imps: number; clicks: number; ctr: number;
+    conv: number; cpl: number | null; freq: number; outcome: string;
+  }[] = [];
 
-  // ── Step 1: Sync metrics ──────────────────────────────────────────
+  // ── Step 1: Sync metrics (trailing window, one row per ad per day) ─
   for (const ad of ads) {
     if (!ad.metaAdId) continue;
 
     try {
-      const insights = await meta.getAdInsights(ad.metaAdId, dateStr, dateStr);
-      const data = insights?.[0] || {};
+      for (const syncDate of syncDates) {
+        const insights = await meta.getAdInsights(ad.metaAdId, syncDate, syncDate);
+        const data = insights?.[0] || {};
 
-      const impressions = parseInt(data.impressions || "0");
-      const clicks = parseInt(data.clicks || "0");
-      const ctr = parseFloat(data.ctr || "0");
-      const spendCents = Math.round(parseFloat(data.spend || "0") * 100);
-      const frequency = parseFloat(data.frequency || "0");
-      const cpcCents = data.cpc ? Math.round(parseFloat(data.cpc) * 100) : null;
+        const impressions = parseInt(data.impressions || "0");
+        const clicks = parseInt(data.clicks || "0");
+        const ctr = parseFloat(data.ctr || "0");
+        const spendCents = Math.round(parseFloat(data.spend || "0") * 100);
+        const frequency = parseFloat(data.frequency || "0");
+        const cpcCents = data.cpc ? Math.round(parseFloat(data.cpc) * 100) : null;
 
-      const projectEvent = ad.creative.angle.experiment.project.conversionEvent;
-      const conversionTypes = [
-        projectEvent,
-        "offsite_conversion.fb_pixel_complete_registration",
-        "complete_registration",
-      ].filter(Boolean) as string[];
+        const projectEvent = ad.creative.angle.experiment.project.conversionEvent;
+        const conversionTypes = [
+          projectEvent,
+          "offsite_conversion.fb_pixel_complete_registration",
+          "complete_registration",
+        ].filter(Boolean) as string[];
 
-      const actions = data.actions || [];
-      const conversions = actions
-        .filter((a: { action_type: string }) => conversionTypes.includes(a.action_type))
-        .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
+        const actions = data.actions || [];
+        const conversions = actions
+          .filter((a: { action_type: string }) => conversionTypes.includes(a.action_type))
+          .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
 
-      const linkClicks = actions
-        .filter((a: { action_type: string }) => a.action_type === "link_click")
-        .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
+        const linkClicks = actions
+          .filter((a: { action_type: string }) => a.action_type === "link_click")
+          .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
 
-      if (actions.length > 0) {
-        const actionTypes = actions.map((a: { action_type: string; value: string }) => `${a.action_type}:${a.value}`);
-        console.log(`[adlab-cron] Ad ${ad.id} actions: ${actionTypes.join(", ")}`);
+        if (actions.length > 0) {
+          const actionTypes = actions.map((a: { action_type: string; value: string }) => `${a.action_type}:${a.value}`);
+          console.log(`[adlab-cron] Ad ${ad.id} ${syncDate} actions: ${actionTypes.join(", ")}`);
+        }
+
+        const finalClicks = clicks > 0 ? clicks : linkClicks;
+        const cplCents = conversions > 0 ? Math.round(spendCents / conversions) : null;
+
+        await prisma.adLabDailyMetric.upsert({
+          where: { adId_date: { adId: ad.id, date: new Date(syncDate) } },
+          create: {
+            adId: ad.id, date: new Date(syncDate),
+            impressions, clicks: finalClicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents,
+          },
+          update: { impressions, clicks: finalClicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents },
+        });
       }
-
-      const finalClicks = clicks > 0 ? clicks : linkClicks;
-      const cplCents = conversions > 0 ? Math.round(spendCents / conversions) : null;
-
-      await prisma.adLabDailyMetric.upsert({
-        where: { adId_date: { adId: ad.id, date: new Date(dateStr) } },
-        create: {
-          adId: ad.id, date: new Date(dateStr),
-          impressions, clicks: finalClicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents,
-        },
-        update: { impressions, clicks: finalClicks, ctr, spendCents, conversions, cplCents, frequency, cpcCents },
-      });
 
       syncResults.push({ adId: ad.id, success: true });
     } catch (err) {
@@ -188,15 +218,20 @@ export async function GET(req: NextRequest) {
     const metrics = await prisma.adLabDailyMetric.aggregate({
       where: { adId: ad.id },
       _sum: { spendCents: true, conversions: true, impressions: true, clicks: true },
-      _avg: { ctr: true, frequency: true },
+      _max: { frequency: true },
     });
 
     const totalSpend = metrics._sum.spendCents || 0;
     const totalConversions = metrics._sum.conversions || 0;
     const totalImpressions = metrics._sum.impressions || 0;
     const totalClicks = metrics._sum.clicks || 0;
-    const avgCtr = metrics._avg.ctr || 0;
-    const avgFrequency = metrics._avg.frequency || 0;
+    // Weighted CTR: total clicks over total impressions. Averaging the
+    // daily CTR column overweights low-volume days (a 10-imp day counts
+    // the same as a 1000-imp day), which skews kill decisions.
+    const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+    // Meta frequency is cumulative-ish per day; max is the closest to
+    // "how fatigued is this audience" — averaging dilutes it.
+    const avgFrequency = metrics._max.frequency || 0;
     const cumulativeCpl = totalConversions > 0 ? Math.round(totalSpend / totalConversions) : null;
 
     let decisionType: "kill" | "scale" | "maintain" | "flag" = "maintain";
@@ -264,6 +299,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // ── Zero-delivery flag (never a kill) ──
+    // Ads stuck in review / rejected / Learning Limited spend nothing,
+    // so spend-based rules never see them. Surface them for a manual look.
+    if (decisionType === "maintain" && totalImpressions === 0 && ad.launchedAt) {
+      const hoursLive = (Date.now() - ad.launchedAt.getTime()) / (1000 * 60 * 60);
+      if (hoursLive >= ZERO_DELIVERY_FLAG_HOURS) {
+        decisionType = "flag";
+        ruleId = "ZERO-DELIVERY";
+        rationale = `Zero delivery — live ${Math.round(hoursLive)}h with 0 impressions. Likely stuck in review, rejected, or the adset isn't delivering. Check Ads Manager.`;
+      }
+    }
+
     // ── Safety rails before execution ──
 
     // Never kill the last active ad in an experiment
@@ -306,6 +353,16 @@ export async function GET(req: NextRequest) {
       const expAds = liveAdsByExp.get(expId);
       if (expAds) liveAdsByExp.set(expId, expAds.filter((id) => id !== ad.id));
 
+    } else if (decisionType === "scale" && !AUTOSCALE_ENABLED) {
+      // Winner found but auto-scale is off — flag for manual approval
+      // instead of touching the budget. Set ADLAB_AUTOSCALE_ENABLED=1
+      // to let the engine raise budgets itself.
+      const approveRationale = `${rationale} AUTO-SCALE OFF — approve manually in Ads Manager or set ADLAB_AUTOSCALE_ENABLED=1.`;
+      await prisma.adLabDecision.create({
+        data: { adId: ad.id, decisionType: "maintain", rationale: approveRationale },
+      });
+      flags.push({ adId: ad.id, rule: `${ruleId}-APPROVE`, rationale: approveRationale });
+
     } else if (decisionType === "scale") {
       const currentBudget = ad.dailyBudgetCents || project.dailyBudgetCentsPerVariant;
       const maxBudget = R5_MAX_BUDGET_MULTIPLE * project.dailyBudgetCentsPerVariant;
@@ -344,6 +401,12 @@ export async function GET(req: NextRequest) {
         });
       }
     }
+
+    adStats.push({
+      adId: ad.id, spend: totalSpend, imps: totalImpressions, clicks: totalClicks,
+      ctr: avgCtr, conv: totalConversions, cpl: cumulativeCpl, freq: avgFrequency,
+      outcome: decisionType,
+    });
   }
 
   // ── Step 3: Experiment-level rules ────────────────────────────────
@@ -454,7 +517,7 @@ export async function GET(req: NextRequest) {
     const sections: string[] = [
       `# AdLab Daily Report — ${dateStr}`,
       `Metrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length} ads`,
-      `Phase: ${VALIDATION_PHASE ? "VALIDATION" : "SCALE"}`,
+      `Phase: ${VALIDATION_PHASE ? "VALIDATION" : "SCALE"} · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
     ];
 
     // Kills
@@ -489,26 +552,27 @@ export async function GET(req: NextRequest) {
 
     // Approaching thresholds (within 20%)
     const approaching: string[] = [];
-    for (const ad of ads) {
-      const m = await prisma.adLabDailyMetric.aggregate({
-        where: { adId: ad.id },
-        _sum: { spendCents: true, conversions: true, impressions: true, clicks: true },
-        _avg: { ctr: true },
-      });
-      const sp = m._sum.spendCents || 0;
-      const conv = m._sum.conversions || 0;
-      const clk = m._sum.clicks || 0;
-      const ctr = m._avg.ctr || 0;
-
-      if (sp >= R1_SPEND_FLOOR * 0.8 && sp < R1_SPEND_FLOOR && clk === 0)
-        approaching.push(`ad ${ad.id.slice(0, 8)}: ${$(sp)} spent, 0 clicks — approaching R1 kill at ${$(R1_SPEND_FLOOR)}`);
-      if (sp >= R3_SPEND_FLOOR * 0.8 && sp < R3_SPEND_FLOOR && conv === 0)
-        approaching.push(`ad ${ad.id.slice(0, 8)}: ${$(sp)} spent, 0 conv — approaching R3 kill at ${$(R3_SPEND_FLOOR)}`);
+    for (const s of adStats) {
+      if (s.spend >= R1_SPEND_FLOOR * 0.8 && s.spend < R1_SPEND_FLOOR && s.clicks === 0)
+        approaching.push(`ad ${s.adId.slice(0, 8)}: ${$(s.spend)} spent, 0 clicks — approaching R1 kill at ${$(R1_SPEND_FLOOR)}`);
+      if (s.spend >= R3_SPEND_FLOOR * 0.8 && s.spend < R3_SPEND_FLOOR && s.conv === 0)
+        approaching.push(`ad ${s.adId.slice(0, 8)}: ${$(s.spend)} spent, 0 conv — approaching R3 kill at ${$(R3_SPEND_FLOOR)}`);
     }
 
     if (approaching.length > 0) {
       sections.push(`\n## 🔜 Approaching Kill Thresholds`);
       approaching.forEach((a) => sections.push(`- ${a}`));
+    }
+
+    // Lifetime stats for every live ad, biggest spenders first
+    if (adStats.length > 0) {
+      sections.push(`\n## 📊 Live Ads — Lifetime Stats`);
+      sections.push(`ad | spend | imps | clicks | CTR | conv | CPL | freq | today`);
+      [...adStats]
+        .sort((a, b) => b.spend - a.spend)
+        .forEach((s) => sections.push(
+          `${s.adId.slice(0, 8)} | ${$(s.spend)} | ${s.imps.toLocaleString()} | ${s.clicks} | ${s.ctr.toFixed(2)}% | ${s.conv} | ${s.cpl ? $(s.cpl) : "—"} | ${s.freq.toFixed(1)} | ${s.outcome}`,
+        ));
     }
 
     // Summary line
