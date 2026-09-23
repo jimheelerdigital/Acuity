@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-09-22] — Auto-blog SEO overhaul: fixed dead Search Console hookup, FAQ schema, related posts, and the writing prompt
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** bc842f4d
+
+### In plain English (for Keenan)
+We found why the blog gets no Google traffic. Every Google Search Console integration was still pointed at the old getacuity.io domain, so the system has been flying blind for months: performance syncs returned zeros, the pruner couldn't tell indexed posts from ignored ones, and all 60 attempts to ask Google to index new posts were rejected. On top of that, 84 posts still had getacuity.io URLs stored in the database, the FAQ rich-result markup was being silently deleted before publishing, every post linked to the same 3 related articles, and the AI prompt was producing samey, robotic posts with stale pricing and fake scarcity baked in. All of that is fixed and deployed. One thing still blocks everything, and only you can do it: Google has never been told our service account may see goripple.io data (it can still only see the dead getacuity.io property). Until you add it in Search Console, Google keeps ignoring us.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/google/search-console.ts` + `url-inspection.ts`: GSC property was hardcoded to `sc-domain:getacuity.io`; now `process.env.GSC_PROPERTY ?? "sc-domain:goripple.io"`
+- `apps/web/src/app/api/admin/auto-blog/gsc-diagnostic/route.ts` (NEW): GET, auth = admin session OR `Bearer CRON_SECRET`. Reports SA email, visible properties, sitemap status, 30-day performance, URL inspection of 3 sample posts. Ran it post-deploy: SA is `acuity-analytics-reader@meta-micron-470619-q0.iam.gserviceaccount.com`, visible properties = ONLY `sc-domain:getacuity.io` (siteOwner). Zero access to goripple.io — root cause of the 60/60 Indexing API "Failed to verify URL ownership" failures in IndexingLog.
+- `apps/web/src/app/blog/[slug]/page.tsx`: new `FaqJsonLd` renders the stored `faqSchema` column (old prompt embedded JSON-LD in body HTML, which sanitizeHtml strips — so no post ever shipped FAQ schema); `RelatedPosts` rebuilt as async server component ranking ALL dynamic + static posts by keyword-token overlap instead of always linking the same 3 static posts; `BlogCta` copy rewritten ("brain dump" violated positioning)
+- `apps/web/src/inngest/functions/auto-blog.ts`: generation prompt rebuilt — ICP (women ~40-50, mental load), humanizer hard rules (no em dashes, no "not X but Y", varied cadence, sentence-case headings, concrete scenarios), title-shape variety (54/141 archive titles used the same "How [persona]..." template), 900-1400 words (was 600-1050), no pricing/scarcity in evergreen bodies, FAQ schema via JSON field only; `stripAiDashes()` safety net applied to parsed output before validation; topic-queue prompt refocused on the ICP; banned phrases extended; `refillTopicQueue` now typed against `PrismaClient` (fixed a pre-existing TS error); removed unused `displayMonthly` import
+- `apps/web/scripts/fix-distributed-urls.ts` (untracked one-off, already run against prod): migrated 84 `ContentPiece.distributedUrl` rows getacuity.io → goripple.io, 0 remaining
+- Deployed via `npx vercel deploy --prod` (dpl_GDuZWrS9yiekeB9DjfzbPD469o3p, READY). No Inngest cron/trigger signatures changed, so no resync needed.
+
+### Manual steps needed
+- [ ] **Keenan (blocks everything):** In Google Search Console, open the goripple.io property (create + DNS-verify `sc-domain:goripple.io` if it doesn't exist) → Settings → Users and permissions → add `acuity-analytics-reader@meta-micron-470619-q0.iam.gserviceaccount.com` as **Owner** (Owner, not Full — the Indexing API requires it)
+- [ ] **Keenan:** In that property, submit the sitemap: `https://goripple.io/sitemap.xml`
+- [ ] **Keenan:** After 1-2 weeks of real GSC data, re-run the diagnostic and decide whether to flip `BLOG_PRUNER_DRY_RUN=false` so the pruner can trim "crawled - currently not indexed" posts
+- [ ] Git push held per workflow — say "push it" when ready (13+ commits queued on main)
+
+### Notes
+- The pruner never destroyed anything; dry-run default saved us while GSC was returning garbage. Keep it dry until real coverage data is reviewed.
+- The Indexing API is officially for JobPosting/BroadcastEvent pages; it sometimes works for blogs but may keep failing even after ownership is granted. Sitemap + internal links is the real path; treat Indexing API success as a bonus.
+- GA4_SERVICE_ACCOUNT_KEY is Vercel-sensitive (unpullable), which is why the diagnostic runs as a prod route gated by CRON_SECRET instead of a local script.
+- Old getacuity.io URLs 308-redirect to goripple.io correctly, so the domain move itself is sound; the problem was that our tooling never followed the move.
+- Archive quality: 141 published posts, many thin/templated with baked-in stale claims ($9.99 pricing, founding-member counts). New prompt stops the bleeding; the pruner (once data flows) handles the backlog. Don't mass-delete before GSC shows what's actually indexed.
+
 ## [2026-09-22] — Slide text is now short, punchy, and formatted like the reference posts
 
 **Requested by:** Keenan
