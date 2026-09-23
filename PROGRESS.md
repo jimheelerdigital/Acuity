@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-09-23] — SEO Phase 3: linkable data asset page live + outreach and directory kits drafted in Gmail
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The site now has a research page other blogs can cite and link to — real findings from 1,117 voice journal entries (people record at every hour of the day, mood dips midweek, 65% of entries contain a to-do). This is the "link magnet" for the backlink phase of the SEO plan. Alongside it, 7 ready-to-go drafts are sitting in your Gmail: 6 personalized pitches to journaling-app roundup sites, and 1 directory-submission pack with paste-ready copy for 8 app directories. Nothing was sent — you review and send.
+
+### Technical changes (for Jimmy)
+- New page: `apps/web/src/app/research/voice-journaling-data/page.tsx` — fully static, all stats baked in as constants (computed 2026-09-23 via one-off local Prisma queries against prod; aggregate-only, no transcripts read, themes reported only at k≥5 distinct users). JSON-LD `@graph` with Article + Dataset (CC BY 4.0), canonical/OG/twitter metadata.
+- `apps/web/src/app/sitemap.ts`: added `/research/voice-journaling-data` (priority 0.8, monthly).
+- No schema changes, no new API routes, no new Inngest functions.
+- Deployed via `npx vercel deploy --prod` and verified live (200 + content match + sitemap entry) at https://goripple.io/research/voice-journaling-data.
+- 7 Gmail drafts created via the Gmail MCP (drafts only, never sent), all addressed to keenan@heelerdigital.com because none of the 6 targets publish a direct email — each draft has a "WHERE TO SEND" header (contact form / newsletter-reply / DM route) plus paste-ready pitch subject and body.
+
+### Manual steps needed
+- [ ] Send the 6 outreach pitches from Gmail drafts via each site's listed route: Journaling Habit, Toolfinder, Choosing Therapy, Tinkering Productivity, ItsRanjana, Arthur Behavioural Health (Keenan)
+- [ ] Work through the [DIRECTORY PACK] draft: submit Ripple to Toolfinder, AlternativeTo, There's An AI For That, Product Hunt, Futurepedia, Mindful Suite, SaaSHub, Slant (Keenan)
+- [ ] Create Featured.com and Qwoted accounts for founder-quote opportunities — needed before the quote-pitching part of Phase 3 can start (Keenan)
+- [ ] Say "push it" to push this commit (Keenan)
+
+### Notes
+- Outreach targets were qualified to exclude competitor-owned listicles (Mindsera, Rosebud, Dayora, MyLifeNote, Reflection.app/Holstee, Lound, Speakwise, Audionotes, Fern, etc. all run their own "best apps" SEO plays — pitching them is pointless).
+- Duration stats were deliberately excluded from the data page (positioning rule: no recording-duration claims). Mood enum mapped GREAT=5 … ROUGH/BAD=1 for the day-of-week averages; entries with null mood excluded (n=1,060 of 1,117).
+- The Vercel CLI "retry deploy" flake happened again (JSON fragment, no deployment created). Recipe: check `vercel ls` for a new deployment; if none, rerun the same command — second attempt worked.
+- This commit also carries a one-line factual correction to the 2026-09-23 AdLab entry's Notes (orphan-experiments detail) that was sitting uncommitted in the working tree.
+
+---
+
 ## [2026-09-23] — Every email send now fails loudly: Resend error sweep across all 40+ call sites
 
 **Requested by:** Keenan
@@ -51,7 +81,7 @@ None — batch was triggered via the new endpoint this session; verify results a
 
 ### Notes
 - **Both local `ANTHROPIC_API_KEY`s are stale** (apps/web/.env.local AND root .env — both 401 against api.anthropic.com). The valid key is Vercel-only and marked sensitive (unpullable). Any local script needing Claude will fail until someone rotates a valid key into the local env files. This is why the first batch attempt produced the "0 ads ready" failure email.
-- The failed local run only created the two AdLab projects (`ripple-women`, `ripple-men`) — `ensureGroupProject` is find-or-create by slug, and no experiments/creatives were written before the 401, so the re-run is clean with no orphan rows.
+- The failed local run created the two AdLab projects (`ripple-women`, `ripple-men` — find-or-create by slug, reused by the re-run) AND two empty experiments (created in `createBatchForGroup` before the Claude call 401'd). The empty orphan experiments were deleted after the prod re-run succeeded.
 - Trigger recipe: `curl -X POST https://goripple.io/api/admin/adlab/run-weekly-batch -H "Authorization: Bearer $CRON_SECRET"` (CRON_SECRET is pullable via `vercel env pull`).
 
 ---
