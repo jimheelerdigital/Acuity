@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-09-23] — Reddit→AdLab: 20 ready-to-approve ads every Sunday, launch from one screen
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3ceb5944
+
+### In plain English (for Keenan)
+Every Sunday morning, the system now takes Saturday night's Reddit audience research and turns it into 20 complete ad creatives — 10 aimed at women carrying the mental load (from the Ripple communities) and 10 aimed at young men focused on discipline (from the BWK communities). Each ad has copy, an image, and a compliance check, and each one is rooted in a real pain theme people were talking about that week. You get an email, open the new "Weekly Review" page in AdLab, approve the ads you like, set the daily budget, pick where clicks go (your own funnel URL for each group, or straight to the App Store), and hit Launch. Nothing spends a cent until you click that button — the click creates the Meta campaign and turns it on in one go.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/adlab/weekly-batch.ts`: BATCH_GROUPS config (women → "ripple-women" project / ripple digest; men → "ripple-men" project / bwk digest), `ensureGroupProject` (auto-creates projects, copies Meta config from the "acuity" project), `createBatchForGroup` (one Claude call → 10 zod-validated angle+creative pairs, experiment status awaiting_approval), `generateBatchImage` (idempotent gpt-image-2 → Supabase adlab-creatives bucket, soft-fail), `sendWeeklyBatchEmail` (Resend, checks error field)
+- New `apps/web/src/inngest/functions/adlab-weekly-batch.ts`: cron `0 10 * * 0` (Sun 10:00 UTC = 5am CDT) + manual event `adlab/weekly-batch.requested`; per group: create-batch → one step per image → compliance → email; groups soft-fail independently; registered in `api/inngest/route.ts`
+- New `apps/web/src/lib/adlab/compliance.ts`: extracted `runComplianceForExperiment`/`checkCreativesBatch` from the compliance route (route is now a thin wrapper) so the batch runs it without HTTP
+- **Fixed latent enum bug:** compliance code wrote `"pass"/"warning"/"fail"` but the `AdLabComplianceStatus` enum is `pending/passed/flagged` — every real compliance write would have thrown a Prisma validation error. Added `failed` to the enum; mapping is now PASS→passed, WARNING→flagged, FAIL→failed; launch route's block-filter fixed from `"fail"` (never matched) to `"failed"`
+- Prisma schema: `AdLabExperiment.destinationUrl String?` (Keenan's custom funnel URLs) + `failed` enum value — **already pushed to prod** (guard passed, additive only)
+- Launch route (`ads/launch/route.ts`): new `custom_url` destination — validates `destinationUrl`, skips landing-page generation, uses the custom URL as link base with same UTM params (image + video branches)
+- New PATCH on `experiments/[id]/route.ts`: accepts `adSetDailyBudgetCents` (min 100), `destination` (direct_funnel|landing_page|custom_url), `destinationUrl` (validated http/https), `campaignType` (website|app_install)
+- New `api/admin/adlab/review/route.ts` (GET): latest awaiting_approval experiment per group with angles+creatives
+- New `/admin/adlab/review` page + "Weekly Review" nav item: ad cards with image/copy/theme/compliance badge, per-card approve toggle (PUT creatives/[id]), budget input, destination selector, confirm dialog, then PATCH settings → POST ads/launch (PAUSED) → POST ads/activate with step-by-step progress; failed-compliance cards are blocked from approval
+- New `apps/web/scripts/check-adlab-columns.ts` (drift inspector, how the enum bug was found)
+
+### Manual steps needed
+- [ ] Keenan: say "push it" → push + `npx vercel deploy --prod` from repo root
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` — registers the new adlab-weekly-batch cron AND applies the moved Reddit-pulse cron from the previous entry (both are waiting on this)
+- [ ] Optional dry run before Sunday: trigger event `adlab/weekly-batch.requested` from the Inngest dashboard (costs ~20 gpt-image-2 images + a few Claude calls)
+- [x] ~~prisma db push~~ — done this session from main (additive: destinationUrl column + failed enum value)
+
+### Notes
+- Money safety: the cron NEVER touches Meta — it only writes DB rows (awaiting_approval, approved=false) and images. The only path to spend is the Launch button on /admin/adlab/review, which confirms with a dialog stating the budget and that spend starts immediately
+- Both groups sell Ripple from the same Meta ad account; the men's group uses BWK-style angles/targeting but links go wherever Keenan sets per launch (his two funnels are per-group custom URLs)
+- Batch requires a RedditTrendDigest ≤14 days old for the group's brand — throws (and emails the failure) if the Saturday scrape didn't land
+- Prod-DB drift discovered while verifying: `adlab_creatives.videoUrl` and several `adlab_angles.video*` fields exist in code paths but NOT in schema/prod — pre-existing dead code (accesses via casts return undefined), untouched; also `adlab_angles` has no `createdAt`, so ordering uses id (cuid ≈ insert order)
+- Old compliance rows in prod: passed=10/flagged=3/pending=370 — proof the enum labels were always passed/flagged and the string-literal code was the regression
+
 ## [2026-09-23] — Weekly Reddit pulse moved to Saturday 11:59pm
 
 **Requested by:** Keenan

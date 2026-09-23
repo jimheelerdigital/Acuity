@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Check compliance — only "fail" status blocks launch
-  const failedCompliance = approvedCreatives.filter((c) => c.complianceStatus === "fail");
-  const launchableCreatives = approvedCreatives.filter((c) => c.complianceStatus !== "fail");
+  const failedCompliance = approvedCreatives.filter((c) => c.complianceStatus === "failed");
+  const launchableCreatives = approvedCreatives.filter((c) => c.complianceStatus !== "failed");
 
   if (launchableCreatives.length === 0) {
     return NextResponse.json(
@@ -100,6 +100,20 @@ export async function POST(req: NextRequest) {
   }
 
   const isAppInstall = (experiment as Record<string, unknown>).campaignType === "app_install";
+
+  // destination "custom_url" sends traffic to experiment.destinationUrl
+  // (Keenan's own funnels — weekly Reddit batches, 2026-09-23) instead of
+  // a generated /for/* landing page. UTM params still appended per ad.
+  const customDestinationUrl =
+    !isAppInstall && experiment.destination === "custom_url"
+      ? (experiment as Record<string, unknown>).destinationUrl as string | null
+      : null;
+  if (!isAppInstall && experiment.destination === "custom_url" && !customDestinationUrl) {
+    return NextResponse.json(
+      { error: "destination is custom_url but destinationUrl is not set" },
+      { status: 400 }
+    );
+  }
 
   // Determine campaign objective early for validation
   const expCampaignObjective = (experiment as Record<string, unknown>).campaignObjective as string | null;
@@ -120,7 +134,7 @@ export async function POST(req: NextRequest) {
   const missingFields: string[] = [];
   if (!metaPageId) missingFields.push("metaPageId");
   if (isAppInstall && !metaAppId) missingFields.push("metaAppId");
-  if (!isAppInstall && !landingPageUrl) missingFields.push("landingPageUrl");
+  if (!isAppInstall && !customDestinationUrl && !landingPageUrl) missingFields.push("landingPageUrl");
   if (missingFields.length > 0) {
     return NextResponse.json({ error: `Project missing: ${missingFields.join(", ")}` }, { status: 400 });
   }
@@ -159,7 +173,7 @@ export async function POST(req: NextRequest) {
 
   // Auto-generate landing page for website campaigns
   let generatedLandingPage: { slug: string } | null = null;
-  if (!isAppInstall && !experiment.landingPage) {
+  if (!isAppInstall && !customDestinationUrl && !experiment.landingPage) {
     try {
       generatedLandingPage = await generateLandingPage(experimentId);
       console.log("[adlab-launch] Landing page generated:", generatedLandingPage.slug);
@@ -310,6 +324,14 @@ export async function POST(req: NextRequest) {
         let adLinkUrl: string;
         if (isAppInstall) {
           adLinkUrl = APP_STORE_URL;
+        } else if (customDestinationUrl) {
+          // Keenan's own funnel URL, UTMs appended
+          const linkUrl = new URL(customDestinationUrl);
+          linkUrl.searchParams.set("utm_source", "meta");
+          linkUrl.searchParams.set("utm_medium", "paid");
+          linkUrl.searchParams.set("utm_campaign", experiment.campaignName ?? experiment.id);
+          linkUrl.searchParams.set("utm_content", creative.id);
+          adLinkUrl = linkUrl.toString();
         } else if (experiment.destination === "direct_funnel") {
           // Send directly to /start onboarding funnel
           const linkUrl = new URL("https://goripple.io/start");
@@ -440,9 +462,11 @@ export async function POST(req: NextRequest) {
         if (isAppInstall) {
           adLinkUrl = APP_STORE_URL;
         } else {
-          const baseUrl = effectiveLandingPage?.slug
-            ? `https://goripple.io/for/${effectiveLandingPage.slug}`
-            : landingPageUrl!;
+          const baseUrl =
+            customDestinationUrl ??
+            (effectiveLandingPage?.slug
+              ? `https://goripple.io/for/${effectiveLandingPage.slug}`
+              : landingPageUrl!);
           const linkUrl = new URL(baseUrl);
           linkUrl.searchParams.set("utm_source", "meta");
           linkUrl.searchParams.set("utm_medium", "paid");

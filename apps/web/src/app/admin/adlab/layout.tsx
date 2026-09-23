@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   FlaskConical,
+  ClipboardCheck,
   BarChart3,
   Settings,
   ArrowLeft,
@@ -13,6 +14,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "/admin/adlab", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/adlab/review", label: "Weekly Review", icon: ClipboardCheck },
   { href: "/admin/adlab/projects", label: "Projects", icon: FolderKanban },
   { href: "/admin/adlab/experiments", label: "Experiments", icon: FlaskConical },
   { href: "/admin/adlab/performance", label: "Performance", icon: BarChart3 },

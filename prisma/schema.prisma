@@ -2471,6 +2471,9 @@ enum AdLabComplianceStatus {
   pending
   passed
   flagged
+  // Hard Meta-policy violation — blocks launch (added 2026-09-23 for the
+  // weekly Reddit batch; "flagged" = warning tier, launchable)
+  failed
 }
 
 enum AdLabAdStatus {
@@ -2531,8 +2534,11 @@ model AdLabExperiment {
   campaignName          String?
   campaignObjective     String?
   campaignType          String                @default("website")
-  // "landing_page" = send to generated /for/* page, "direct_funnel" = send directly to /start
+  // "landing_page" = send to generated /for/* page, "direct_funnel" = send directly to /start,
+  // "custom_url" = send to destinationUrl (Keenan's own funnels, 2026-09-23 weekly ad batches)
   destination           String                @default("direct_funnel")
+  // Base URL for destination="custom_url" (UTM params appended at launch)
+  destinationUrl        String?
   specialAdCategories   String[]              @default([])
   campaignTags          String[]              @default([])
   adSetDailyBudgetCents Int?

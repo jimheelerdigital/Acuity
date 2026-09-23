@@ -63,6 +63,7 @@ import { socialPublishCronFn } from "@/inngest/functions/social-publish-cron";
 import { laneIntelligenceReportFn } from "@/inngest/functions/lane-intelligence-report";
 import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
 import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-daily";
+import { adlabWeeklyBatchFn } from "@/inngest/functions/adlab-weekly-batch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -133,6 +134,7 @@ const handler = serve({
     laneIntelligenceReportFn,
     redditTrendsDailyFn,
     competitorScrapeDailyFn,
+    adlabWeeklyBatchFn,
   ],
 });
 

@@ -1,5 +1,7 @@
 /**
  * GET    /api/admin/adlab/experiments/[id] — get experiment with angles
+ * PATCH  /api/admin/adlab/experiments/[id] — update launch settings
+ *        (budget, destination, destinationUrl, campaignType)
  * DELETE /api/admin/adlab/experiments/[id] — delete experiment and all related data
  */
 
@@ -77,6 +79,79 @@ export async function GET(
   }
 
   return NextResponse.json(experiment);
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const body = await req.json();
+  const data: Record<string, unknown> = {};
+
+  if (body.adSetDailyBudgetCents !== undefined) {
+    const cents = Number(body.adSetDailyBudgetCents);
+    if (!Number.isInteger(cents) || cents < 100) {
+      return NextResponse.json(
+        { error: "adSetDailyBudgetCents must be an integer >= 100 ($1/day minimum)" },
+        { status: 400 }
+      );
+    }
+    data.adSetDailyBudgetCents = cents;
+  }
+
+  if (body.destination !== undefined) {
+    if (!["direct_funnel", "landing_page", "custom_url"].includes(body.destination)) {
+      return NextResponse.json(
+        { error: "destination must be direct_funnel, landing_page, or custom_url" },
+        { status: 400 }
+      );
+    }
+    data.destination = body.destination;
+  }
+
+  if (body.destinationUrl !== undefined) {
+    if (body.destinationUrl === null || body.destinationUrl === "") {
+      data.destinationUrl = null;
+    } else {
+      try {
+        const parsed = new URL(String(body.destinationUrl));
+        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("bad protocol");
+        data.destinationUrl = parsed.toString();
+      } catch {
+        return NextResponse.json(
+          { error: "destinationUrl must be a valid http(s) URL" },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
+  if (body.campaignType !== undefined) {
+    if (!["website", "app_install"].includes(body.campaignType)) {
+      return NextResponse.json(
+        { error: "campaignType must be website or app_install" },
+        { status: 400 }
+      );
+    }
+    data.campaignType = body.campaignType;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
+  try {
+    const experiment = await prisma.adLabExperiment.update({
+      where: { id: params.id },
+      data,
+    });
+    return NextResponse.json(experiment);
+  } catch {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 }
 
 export async function DELETE(
