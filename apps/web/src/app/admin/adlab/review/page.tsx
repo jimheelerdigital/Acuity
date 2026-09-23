@@ -56,6 +56,8 @@ interface Group {
   groupKey: "women" | "men";
   projectName: string;
   defaultBudgetCents?: number;
+  /** Fixed daily budget of the group's evergreen ad set (website launches). */
+  evergreenBudgetCents?: number;
   experiment: Experiment | null;
 }
 
@@ -177,11 +179,17 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
     setTogglingId(null);
   }
 
+  // Website launches add ads to the group's always-on ad set, whose budget
+  // is fixed in code — only App Store launches still take a budget here.
+  const evergreen = destination !== "app_install" && !!group.evergreenBudgetCents;
+
   async function launchApproved() {
     if (!exp) return;
     setLaunchError(null);
 
-    const budgetCents = Math.round(parseFloat(budgetDollars) * 100);
+    const budgetCents = evergreen
+      ? group.evergreenBudgetCents!
+      : Math.round(parseFloat(budgetDollars) * 100);
     if (!Number.isFinite(budgetCents) || budgetCents < 100) {
       setLaunchError("Daily budget must be at least $1.00");
       return;
@@ -208,7 +216,9 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
           : "the /start direct funnel";
     if (
       !confirm(
-        `Launch ${approvedCount} ad(s) LIVE for ${group.projectName}?\n\nDaily budget: $${(budgetCents / 100).toFixed(2)}\nDestination: ${destLabel}\n\nThis creates the Meta campaign and activates it immediately — it will start spending.`
+        evergreen
+          ? `Add ${approvedCount} ad(s) LIVE to the always-on ${group.projectName} campaign?\n\nShared daily budget: $${(budgetCents / 100).toFixed(2)} (fixed — this does not add spend)\nOptimizing for: signups\nDestination: ${destLabel}\n\nThe weakest live ads are paused so the ad set stays at 8 or fewer. New ads start spending immediately.`
+          : `Launch ${approvedCount} ad(s) LIVE for ${group.projectName}?\n\nDaily budget: $${(budgetCents / 100).toFixed(2)}\nDestination: ${destLabel}\n\nThis creates the Meta campaign and activates it immediately — it will start spending.`
       )
     ) {
       return;
@@ -362,6 +372,12 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
         <div className="flex flex-wrap items-end gap-4">
           <div>
             <label className="block text-[11px] text-acuity-text-ter mb-1">Daily budget ($/day)</label>
+            {evergreen ? (
+              <p className="py-2 text-sm text-white">
+                ${(group.evergreenBudgetCents! / 100).toFixed(0)}/day{" "}
+                <span className="text-acuity-text-ter">shared, always-on · optimizes for signups</span>
+              </p>
+            ) : (
             <input
               type="number"
               min="1"
@@ -371,6 +387,7 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
               disabled={launching}
               className="w-28 rounded-lg border border-acuity-line bg-acuity-bg-inset px-3 py-2 text-sm text-white focus:border-acuity-primary focus:outline-none"
             />
+            )}
           </div>
           <div>
             <label className="block text-[11px] text-acuity-text-ter mb-1">Destination</label>

@@ -7,20 +7,24 @@
  * 3. Run experiment-level conclusions
  * 4. Send daily summary email via Resend
  *
- * VALIDATION PHASE thresholds — tuned for low-volume Traffic campaigns.
- * Flip VALIDATION_PHASE to false when switching to Conversions objective.
+ * Thresholds retuned 2026-09-24 for the evergreen structure: $100/day
+ * total ($60 women / $40 men), ad sets optimizing for signups
+ * (CompleteRegistration), ≤8 live ads per ad set. "Conversions" = Meta-
+ * reported registrations; "clicks" = LINK clicks (not likes/expands).
+ * Trial starts are judged at the angle/format level by the weekly learning
+ * loop (lib/adlab/learning.ts) — too rare to judge single ads on.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
+import { evergreenAdsetIds } from "@/lib/adlab/evergreen";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// ── Validation-phase thresholds (all in cents where applicable) ─────
-const VALIDATION_PHASE = true;
+// ── Thresholds (all in cents where applicable) ──────────────────────
 
 // ── Decision switches (2026-09-23, per Keenan: "get it going") ──────
 // KILLS are ON unless explicitly disabled — a kill only ever PAUSES
@@ -42,31 +46,45 @@ const SYNC_WINDOW_DAYS = 3;
 const ZERO_DELIVERY_FLAG_HOURS = 48;
 
 // Safety rails
-const MIN_SPEND_FOR_DECISION = 1000;     // $10 — no decisions below this spend
+const MIN_SPEND_FOR_DECISION = 1500;     // $15 — no decisions below this spend
 const MIN_IMPRESSIONS_FOR_DECISION = 500; // AND this many impressions
+const MIN_HOURS_LIVE_FOR_DECISION = 72;  // AND out of Meta's first-days learning
 const MAX_KILLS_PER_RUN = 3;             // daily cap to prevent wipeouts
+// If more than this share of ads fail to sync (expired token, API outage),
+// skip ALL decisions this run — deciding on stale rows is worse than waiting.
+const MAX_SYNC_FAILURE_RATE = 0.2;
+
+// Meta reports one registration under several action types
+// (offsite_conversion.fb_pixel_complete_registration, complete_registration,
+// omni_complete_registration). Summing them double-counted every signup.
+// Take the FIRST type present, in this order.
+const CONVERSION_ACTION_PRIORITY = [
+  "offsite_conversion.fb_pixel_complete_registration",
+  "omni_complete_registration",
+  "complete_registration",
+];
 
 // Rule 1 — Dead creative (no clicks)
 const R1_SPEND_FLOOR = 1500;             // $15
 const R1_CLICKS_CEIL = 0;
 
-// Rule 2 — Low CTR
-// 2000 imps (was 1000): at 1000 the difference between a 0.7% and a
-// 1.1% ad is ~4 clicks — pure noise. 2000 halves the false-kill odds.
-const R2_IMPRESSIONS_FLOOR = 2000;
-const R2_CTR_CEIL = 0.8;                 // 0.8%
+// Rule 2 — Low LINK CTR (was 0.8% on all-clicks CTR, which counts likes
+// and "see more" taps). 3000 imps keeps the false-kill odds low.
+const R2_IMPRESSIONS_FLOOR = 3000;
+const R2_CTR_CEIL = 0.5;                 // 0.5% link CTR
 
-// Rule 3 — Spending with no conversions
-const R3_SPEND_FLOOR = 3000;             // $30
+// Rule 3 — Spending with no signups. Historical cost/signup ≈ $10, so
+// $35 with zero is ~3.5 expected signups missing (≈3% false-kill odds).
+const R3_SPEND_FLOOR = 3500;             // $35
 const R3_CONVERSIONS_CEIL = 0;
 
-// Rule 4 — Expensive conversions
-const R4_SPEND_FLOOR = 4500;             // $45
-const R4_CPL_CEIL = 3000;               // $30
+// Rule 4 — Expensive signups (≈2.5× historical cost/signup)
+const R4_SPEND_FLOOR = 5000;             // $50
+const R4_CPL_CEIL = 2500;               // $25
 
-// Rule 5 — Scale winner
-const R5_CONVERSIONS_FLOOR = 3;
-const R5_CPL_CEIL = 1000;               // $10
+// Rule 5 — Scale winner (flag-only on evergreen ad sets: fixed budget)
+const R5_CONVERSIONS_FLOOR = 4;
+const R5_CPL_CEIL = 900;                // $9
 const R5_FREQUENCY_CEIL = 2.5;
 const R5_BUDGET_MULTIPLIER = 1.2;       // +20%
 const R5_MAX_BUDGET_MULTIPLE = 3;       // 3x initial (validation phase)
@@ -148,34 +166,31 @@ export async function GET(req: NextRequest) {
         const data = insights?.[0] || {};
 
         const impressions = parseInt(data.impressions || "0");
-        const clicks = parseInt(data.clicks || "0");
-        const ctr = parseFloat(data.ctr || "0");
+        const allClicks = parseInt(data.clicks || "0");
         const spendCents = Math.round(parseFloat(data.spend || "0") * 100);
         const frequency = parseFloat(data.frequency || "0");
         const cpcCents = data.cpc ? Math.round(parseFloat(data.cpc) * 100) : null;
 
-        const projectEvent = ad.creative.angle.experiment.project.conversionEvent;
-        const conversionTypes = [
-          projectEvent,
-          "offsite_conversion.fb_pixel_complete_registration",
-          "complete_registration",
-        ].filter(Boolean) as string[];
+        const actions: { action_type: string; value: string }[] = data.actions || [];
+        const convType = CONVERSION_ACTION_PRIORITY.find((t) => actions.some((a) => a.action_type === t));
+        const conversions = convType
+          ? parseInt(actions.find((a) => a.action_type === convType)!.value || "0")
+          : 0;
 
-        const actions = data.actions || [];
-        const conversions = actions
-          .filter((a: { action_type: string }) => conversionTypes.includes(a.action_type))
-          .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
-
-        const linkClicks = actions
-          .filter((a: { action_type: string }) => a.action_type === "link_click")
-          .reduce((sum: number, a: { value: string }) => sum + parseInt(a.value || "0"), 0);
+        const linkClickAction = actions.find((a) => a.action_type === "link_click");
+        const linkClicks = data.inline_link_clicks
+          ? parseInt(data.inline_link_clicks)
+          : linkClickAction
+            ? parseInt(linkClickAction.value || "0")
+            : allClicks;
 
         if (actions.length > 0) {
           const actionTypes = actions.map((a: { action_type: string; value: string }) => `${a.action_type}:${a.value}`);
           console.log(`[adlab-cron] Ad ${ad.id} ${syncDate} actions: ${actionTypes.join(", ")}`);
         }
 
-        const finalClicks = clicks > 0 ? clicks : linkClicks;
+        const finalClicks = linkClicks;
+        const ctr = impressions > 0 ? (finalClicks / impressions) * 100 : 0;
         const cplCents = conversions > 0 ? Math.round(spendCents / conversions) : null;
 
         await prisma.adLabDailyMetric.upsert({
@@ -196,14 +211,27 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Step 2: Creative-level decisions ──────────────────────────────
+  const syncFailures = syncResults.filter((r) => !r.success).length;
+  const syncHealthy = syncResults.length === 0 || syncFailures / syncResults.length <= MAX_SYNC_FAILURE_RATE;
+  const decisionsOn = DECISIONS_ENABLED && syncHealthy;
   if (!DECISIONS_ENABLED) {
     console.log("[adlab-cron] Decisions disabled — skipping kill/scale/experiment rules. Metrics synced.");
+  } else if (!syncHealthy) {
+    console.error(`[adlab-cron] ${syncFailures}/${syncResults.length} metric syncs failed — skipping ALL decisions this run`);
+    flags.push({
+      adId: "(all)",
+      rule: "SYNC-FAILED",
+      rationale: `${syncFailures} of ${syncResults.length} Meta metric syncs failed (token expired or API outage?). No kills or scales were made this run — decisions on stale data would be wrong. Check META_ACCESS_TOKEN.`,
+    });
   }
 
-  // Count live ads per experiment for "last active ad" safety rail
+  const evergreenAdsets = await evergreenAdsetIds();
+
+  // Count live ads per ad set (falls back to experiment) for the "last
+  // active ad" safety rail — evergreen ad sets span many experiments.
   const liveAdsByExp = new Map<string, string[]>();
   for (const ad of ads) {
-    const expId = ad.creative.angle.experiment.id;
+    const expId = ad.metaAdsetId ?? ad.creative.angle.experiment.id;
     const list = liveAdsByExp.get(expId) ?? [];
     list.push(ad.id);
     liveAdsByExp.set(expId, list);
@@ -213,7 +241,7 @@ export async function GET(req: NextRequest) {
 
   for (const ad of ads) {
     const project = ad.creative.angle.experiment.project;
-    const expId = ad.creative.angle.experiment.id;
+    const expId = ad.metaAdsetId ?? ad.creative.angle.experiment.id;
 
     const metrics = await prisma.adLabDailyMetric.aggregate({
       where: { adId: ad.id },
@@ -239,9 +267,13 @@ export async function GET(req: NextRequest) {
     let ruleId = "";
 
     // ── Safety rail: minimum data ──
-    const hasMinData = totalSpend >= MIN_SPEND_FOR_DECISION && totalImpressions >= MIN_IMPRESSIONS_FOR_DECISION;
+    const hoursLive = ad.launchedAt ? (Date.now() - ad.launchedAt.getTime()) / 3_600_000 : 0;
+    const hasMinData =
+      totalSpend >= MIN_SPEND_FOR_DECISION &&
+      totalImpressions >= MIN_IMPRESSIONS_FOR_DECISION &&
+      hoursLive >= MIN_HOURS_LIVE_FOR_DECISION;
 
-    if (DECISIONS_ENABLED && hasMinData) {
+    if (decisionsOn && hasMinData) {
       // ── KILL RULES (checked in order, first match wins) ──
 
       // Rule 1 — Dead creative (no clicks)
@@ -254,13 +286,13 @@ export async function GET(req: NextRequest) {
       else if (totalImpressions >= R2_IMPRESSIONS_FLOOR && avgCtr < R2_CTR_CEIL) {
         decisionType = "kill";
         ruleId = "R2";
-        rationale = `R2: Low CTR — ${avgCtr.toFixed(2)}% CTR (threshold: ${R2_CTR_CEIL}%) over ${totalImpressions.toLocaleString()} impressions. Spent ${$(totalSpend)}.`;
+        rationale = `R2: Low link CTR — ${avgCtr.toFixed(2)}% link CTR (threshold: ${R2_CTR_CEIL}%) over ${totalImpressions.toLocaleString()} impressions. Spent ${$(totalSpend)}.`;
       }
       // Rule 3 — Spending with no conversions
       else if (totalSpend >= R3_SPEND_FLOOR && totalConversions <= R3_CONVERSIONS_CEIL) {
         decisionType = "kill";
         ruleId = "R3";
-        rationale = `R3: No conversions — spent ${$(totalSpend)} (threshold: ${$(R3_SPEND_FLOOR)}) with ${totalClicks} clicks but 0 conversions.`;
+        rationale = `R3: No signups — spent ${$(totalSpend)} (threshold: ${$(R3_SPEND_FLOOR)}) with ${totalClicks} clicks but 0 conversions.`;
       }
       // Rule 4 — Expensive conversions
       else if (totalSpend >= R4_SPEND_FLOOR && cumulativeCpl && cumulativeCpl > R4_CPL_CEIL) {
@@ -331,14 +363,21 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Execute decision ──
-    if (decisionType === "kill") {
-      if (ad.metaAdId) {
-        try {
-          await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
-        } catch (err) {
-          console.error(`[adlab-cron] Failed to pause ad ${ad.metaAdId}:`, err);
-        }
+    // A kill is only recorded once Meta confirms the pause. Previously a
+    // failed pause was still marked "killed", which dropped the ad from
+    // syncing while it kept spending.
+    if (decisionType === "kill" && ad.metaAdId) {
+      try {
+        await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
+      } catch (err) {
+        console.error(`[adlab-cron] Failed to pause ad ${ad.metaAdId}:`, err);
+        decisionType = "flag";
+        ruleId = `${ruleId}-PAUSE-FAILED`;
+        rationale = `${rationale} PAUSE FAILED on Meta — ad is STILL LIVE. Pause it manually in Ads Manager; will retry next run.`;
       }
+    }
+
+    if (decisionType === "kill") {
       await prisma.adLabAd.update({
         where: { id: ad.id },
         data: { status: "killed", decisionReason: rationale },
@@ -352,6 +391,15 @@ export async function GET(req: NextRequest) {
       // Remove from live list so "last active ad" check updates mid-run
       const expAds = liveAdsByExp.get(expId);
       if (expAds) liveAdsByExp.set(expId, expAds.filter((id) => id !== ad.id));
+
+    } else if (decisionType === "scale" && ad.metaAdsetId && evergreenAdsets.has(ad.metaAdsetId)) {
+      // Evergreen ad sets have a fixed group budget (lib/adlab/evergreen.ts)
+      // — Meta already shifts spend toward the winner inside the ad set.
+      const winRationale = `${rationale.replace(/Budget .*$/, "")}Evergreen ad set — budget is fixed at the group level; Meta shifts spend to this ad automatically.`;
+      await prisma.adLabDecision.create({
+        data: { adId: ad.id, decisionType: "maintain", rationale: winRationale },
+      });
+      flags.push({ adId: ad.id, rule: `${ruleId}-WINNER`, rationale: winRationale });
 
     } else if (decisionType === "scale" && !AUTOSCALE_ENABLED) {
       // Winner found but auto-scale is off — flag for manual approval
@@ -373,6 +421,12 @@ export async function GET(req: NextRequest) {
           await meta.updateAdSetBudget(ad.metaAdsetId, newBudget);
         } catch (err) {
           console.error(`[adlab-cron] Failed to update budget for adset ${ad.metaAdsetId}:`, err);
+          flags.push({ adId: ad.id, rule: "R5-FAILED", rationale: `${rationale} Budget update FAILED on Meta — nothing changed.` });
+          adStats.push({
+            adId: ad.id, spend: totalSpend, imps: totalImpressions, clicks: totalClicks,
+            ctr: avgCtr, conv: totalConversions, cpl: cumulativeCpl, freq: avgFrequency, outcome: "flag",
+          });
+          continue;
         }
       }
       await prisma.adLabAd.update({
@@ -427,7 +481,7 @@ export async function GET(req: NextRequest) {
   const concluded: string[] = [];
 
   for (const exp of liveExperiments) {
-    if (!DECISIONS_ENABLED) continue;
+    if (!decisionsOn) continue;
 
     const allAds = exp.angles.flatMap((a) => a.creatives.flatMap((c) => c.ads));
     const allMetrics = allAds.flatMap((a) => a.metrics);
@@ -453,7 +507,13 @@ export async function GET(req: NextRequest) {
       // Pause remaining live ads
       for (const ad of allAds.filter((a) => a.status === "live" || a.status === "scaled")) {
         if (ad.metaAdId) {
-          try { await meta.setStatus(ad.metaAdId, "ad", "PAUSED"); } catch {}
+          try {
+            await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
+          } catch (err) {
+            console.error(`[adlab-cron] R6 pause failed for ${ad.metaAdId}:`, err);
+            flags.push({ adId: ad.id, rule: "R6-PAUSE-FAILED", rationale: "R6 pause FAILED on Meta — ad is STILL LIVE. Pause manually." });
+            continue;
+          }
         }
         await prisma.adLabAd.update({ where: { id: ad.id }, data: { status: "killed", decisionReason: "R6: Experiment concluded as failed" } });
       }
@@ -517,7 +577,7 @@ export async function GET(req: NextRequest) {
     const sections: string[] = [
       `# AdLab Daily Report — ${dateStr}`,
       `Metrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length} ads`,
-      `Phase: ${VALIDATION_PHASE ? "VALIDATION" : "SCALE"} · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
+      `Optimizing: signups (evergreen $60 women / $40 men) · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
     ];
 
     // Kills

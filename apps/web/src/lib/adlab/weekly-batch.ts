@@ -11,9 +11,10 @@
  *   - men:   BWK digest (young men, discipline / knowing-doing gap)
  *
  * NOTHING here touches Meta. Experiments land as awaiting_approval with
- * approved=false creatives; Keenan reviews at /admin/adlab/review, sets
- * budget + destination, and his "Launch approved" click is the only path
- * to spend (existing /ads/launch + /ads/activate routes).
+ * approved=false creatives; Keenan reviews at /admin/adlab/review, picks the
+ * destination, and his "Launch approved" click is the only path to spend —
+ * it adds the approved ads to the group's evergreen ad set (fixed budget,
+ * optimizing for signups; lib/adlab/evergreen.ts).
  */
 
 import { z } from "zod";
@@ -416,7 +417,10 @@ export async function createBatchForGroup(
       topicBrief: `Weekly Reddit-grounded batch (${weekLabel}) — 10 ads from the ${digestDate} audience pulse for ${g.audienceLabel}. Each ad bridges one Reddit pain theme to what Ripple does.`,
       status: "awaiting_approval",
       campaignName: `${g.projectName} | Reddit batch ${weekLabel}`,
-      campaignObjective: "OUTCOME_TRAFFIC",
+      // Informational: launches go into the group's evergreen ad set, which
+      // optimizes for signups regardless (lib/adlab/evergreen.ts).
+      campaignObjective: "OUTCOME_SALES",
+      optimizationEvent: "COMPLETE_REGISTRATION",
       campaignTags: ["weekly-reddit-batch", groupKey],
     },
   });

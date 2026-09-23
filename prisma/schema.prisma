@@ -2518,6 +2518,11 @@ model AdLabProject {
   metaAppId                  String?
   targetInterests            Json?
   imageEnabled               Boolean           @default(true)
+  // Evergreen Meta campaign + ad set (2026-09-24): weekly-batch ads are
+  // added here instead of a new campaign each week, so the group's daily
+  // budget is fixed and Meta's learning carries over. See lib/adlab/evergreen.ts.
+  evergreenCampaignId        String?
+  evergreenAdsetId           String?
   createdAt                  DateTime          @default(now())
   experiments                AdLabExperiment[]
 

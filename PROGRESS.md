@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-09-24] — Ads now optimize for signups on a fixed $100/day, and the daily engine counts correctly
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Until now every weekly batch launched as its own campaign that told Meta to find **cheap clickers**, and each week's campaign kept spending on top of the last one. Now each audience has one always-on campaign that tells Meta to find **people who sign up**, with a fixed budget: $60/day for women and $40/day for men, $100/day total. When you launch a week's ads they're added to that campaign, and the weakest older ads are paused so it never runs more than 8 at once. Spend can't creep past $100/day, and Meta's learning carries over week to week. The daily cutting engine was also fixed. It was counting each signup about twice, judging ads on likes and "see more" taps instead of real link clicks, and marking ads as cut even when Meta refused to pause them, so they kept spending unwatched. It now waits 3 days before judging any ad, and it skips all decisions on a day Meta's data doesn't come through.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` {women 6000, men 4000}; `ensureEvergreenAdSet` creates (or re-verifies) one OUTCOME_SALES campaign + OFFSITE_CONVERSIONS ad set per group with promoted_object pixel + `COMPLETE_REGISTRATION`, and re-asserts the budget on every launch; `makeRoomInAdSet` pauses the weakest live ads (fewest signups/$, ads <72h retired last) to keep ≤`MAX_ACTIVE_ADS`=8, writing DB status only after Meta confirms; `evergreenAdsetIds`
+- `ads/launch/route.ts`: weekly-batch experiments (tag `weekly-reddit-batch` + group, non-app-install) skip campaign/ad set creation and add ads to the evergreen ad set. The orphan-campaign cleanup and the "all ads failed → delete campaign" path are now skipped for evergreen (they would have deleted the shared campaign)
+- `ads/activate/route.ts`: activates only `paused` ads (a re-click could previously revive engine-killed ads); evergreen → `makeRoomInAdSet` before activating; activation-failure reason now carries the real error
+- `admin/adlab/review/page.tsx` + `api/admin/adlab/review/route.ts`: website launches show the fixed evergreen budget (no input); new confirm copy; API returns `evergreenBudgetCents`
+- `cron/route.ts`: conversions = first present of `offsite_conversion.fb_pixel_complete_registration` → `omni_complete_registration` → `complete_registration` (was a sum of several → ~2×); clicks = `inline_link_clicks` (new field in `meta.getAdInsights`) and CTR recomputed as link CTR; decisions need $15 + 500 imps + **72h live**; R2 link CTR <0.5% @3000 imps, R3 0 signups @$35, R4 CPL >$25 @$50, R5 ≥4 signups @<$9; kills and R6 pauses recorded only after Meta confirms (else flagged "PAUSE-FAILED, still live"); R5 failures no longer write DB; R5 on evergreen ad sets → flag only (budget fixed); "last live ad" rail keyed by ad set; if >20% of metric syncs fail, ALL decisions are skipped and a SYNC-FAILED flag is emailed; `VALIDATION_PHASE` removed
+- `lib/adlab/weekly-batch.ts`: new experiments record OUTCOME_SALES / COMPLETE_REGISTRATION (informational; evergreen decides)
+- **Prisma (already pushed to prod from main; guard passed, additive only):** `AdLabProject.evergreenCampaignId String?`, `AdLabProject.evergreenAdsetId String?`
+
+### Manual steps needed
+- [ ] Keenan: "push it" → verify the prod build → `curl -X PUT https://goripple.io/api/inngest`. **The DB is again ahead of origin/main until pushed**
+- [ ] Keenan: launch this week's batch at /admin/adlab/review. The first launch per group creates the evergreen campaign ($60 women / $40 men). Approve about 6 of the 10 per group: the ad set holds 8
+- [ ] Old per-week traffic campaigns: none are live (the 09-23 reconcile retired all ghosts), so nothing to clean up. If one is started by hand, the engine still manages its ads under the old rules
+- [ ] Trial-start signal (server StartTrial + dedupe + real Purchase on first charge): scoped in chat on 09-24, **not built**, needs Jimmy review (Stripe webhook)
+
+### Notes
+- Why signups and not trials as Meta's target: Meta needs ~50 optimization events/week per ad set; history is ~3 trials/week at $50/day. To switch later, create a NEW ad set with `START_TRIAL` (promoted_object is locked after launch) once the server-side StartTrial signal exists
+- Budgets are code constants on purpose: a spend change is a reviewed commit, and every launch re-asserts them, so an Ads Manager edit doesn't silently stick
+- Men's targeting still goes out as 18–65 (Advantage+ audience forces age_max ≥ 65 in `meta.createAdSet`). Age is a suggestion under Advantage+, and the creative does the steering; revisit if men's CPL is poor
+- Historical AdLabDailyMetric rows used all-clicks; new syncs store link clicks. Lifetime CTR for ads spanning the change is mixed, but only affects ads already live (none today)
+- Frequency still uses the max daily value (the audit flagged lifetime frequency as more correct); R5 is flag-only on evergreen, so it's harmless for now
+
+---
+
 ## [2026-09-24] — AdLab learns from its own trial starts + weekly competitor ad research
 
 **Requested by:** Keenan

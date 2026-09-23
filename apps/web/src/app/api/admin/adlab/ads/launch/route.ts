@@ -5,6 +5,10 @@
  * Structure: 1 campaign → 1 ad set → N ads (one per creative).
  * Meta's algorithm distributes spend to the best-performing ads within the ad set.
  *
+ * Weekly-batch experiments (2026-09-24) skip campaign/ad set creation: their
+ * ads go into the group's EVERGREEN campaign + ad set (fixed budget,
+ * optimizing for signups) — see lib/adlab/evergreen.ts.
+ *
  * HARD RULE: This endpoint creates everything PAUSED. The user must explicitly click
  * "Launch Live" to activate. Never auto-launch on creative approval.
  */
@@ -16,6 +20,7 @@ import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
 import { redactAccessToken } from "@/lib/adlab/meta";
 import { generateLandingPage } from "@/lib/adlab/landing-page";
+import { ensureEvergreenAdSet, weeklyBatchGroup } from "@/lib/adlab/evergreen";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min — launching many creatives takes time with rate limiting
@@ -100,6 +105,9 @@ export async function POST(req: NextRequest) {
   }
 
   const isAppInstall = (experiment as Record<string, unknown>).campaignType === "app_install";
+  // App-install launches keep the legacy per-experiment structure — the
+  // evergreen ad set optimizes website signups.
+  const evergreenGroup = isAppInstall ? null : weeklyBatchGroup(experiment.campaignTags);
 
   // destination "custom_url" sends traffic to experiment.destinationUrl
   // (Keenan's own funnels — weekly Reddit batches, 2026-09-23) instead of
@@ -160,7 +168,9 @@ export async function POST(req: NextRequest) {
 
   // Clean up orphaned campaign from a prior failed launch
   const existingCampaignId = (experiment as Record<string, unknown>).metaCampaignId as string | null;
-  if (existingCampaignId) {
+  // Never for evergreen: metaCampaignId is then the shared evergreen
+  // campaign, and deleting it would take every live ad in the group down.
+  if (existingCampaignId && !evergreenGroup) {
     const adsWithAdsets = await prisma.adLabAd.count({
       where: { metaCampaignId: existingCampaignId, metaAdsetId: { not: null } },
     });
@@ -187,12 +197,41 @@ export async function POST(req: NextRequest) {
   const created: { creativeId: string; adId: string; adsetId: string }[] = [];
 
   try {
+    const topicSlug = slug(experiment.topicBrief, 50);
+    let campaignId: string;
+    let campaignName: string;
+    let adsetId: string;
+    let adsetBudget: number;
+
+    if (evergreenGroup) {
+    // ═══════════════════════════════════════════
+    // EVERGREEN: reuse the group's campaign + ad set
+    // ═══════════════════════════════════════════
+    try {
+      const eg = await ensureEvergreenAdSet(evergreenGroup, project.id);
+      campaignId = eg.campaignId;
+      adsetId = eg.adsetId;
+      console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, ad set ${adsetId}${eg.created ? " (created)" : ""}`);
+    } catch (err) {
+      logMetaError("Evergreen campaign/ad set", err);
+      return NextResponse.json(
+        { error: "Evergreen campaign/ad set setup failed", detail: extractErrorDetail(err) },
+        { status: 500 }
+      );
+    }
+    const { GROUP_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
+    adsetBudget = GROUP_DAILY_BUDGET_CENTS[evergreenGroup];
+    campaignName = experiment.campaignName ?? `${project.name} | evergreen`;
+    await prisma.adLabExperiment.update({
+      where: { id: experimentId },
+      data: { metaCampaignId: campaignId, adSetDailyBudgetCents: adsetBudget },
+    });
+    } else {
     // ═══════════════════════════════════════════
     // STEP 1: Create ONE campaign
     // ═══════════════════════════════════════════
-    const topicSlug = slug(experiment.topicBrief, 50);
     const month = new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
-    const campaignName = (experiment as Record<string, unknown>).campaignName as string
+    campaignName = (experiment as Record<string, unknown>).campaignName as string
       || `${project.name} | ${topicSlug} | ${month}`;
     // Default to OUTCOME_TRAFFIC for website campaigns — delivers immediately.
     // OUTCOME_SALES requires 50+ weekly conversion events on the pixel.
@@ -204,7 +243,6 @@ export async function POST(req: NextRequest) {
 
     console.log("[adlab-launch] Creating campaign:", { campaignName, campaignObjective });
 
-    let campaignId: string;
     try {
       campaignId = await withRetry(
         () => meta.createCampaign({ name: campaignName, objective: campaignObjective }),
@@ -231,7 +269,7 @@ export async function POST(req: NextRequest) {
     // ═══════════════════════════════════════════
     const audience = project.targetAudience as Record<string, unknown>;
     const expRecord = experiment as Record<string, unknown>;
-    const adsetBudget = (expRecord.adSetDailyBudgetCents as number) || project.dailyBudgetCentsPerVariant;
+    adsetBudget = (expRecord.adSetDailyBudgetCents as number) || project.dailyBudgetCentsPerVariant;
     const isTraffic = campaignObjective === "OUTCOME_TRAFFIC" || campaignObjective === "OUTCOME_TRAFFIC_LPV";
     const isLPV = campaignObjective === "OUTCOME_TRAFFIC_LPV";
     const convEvent = isTraffic ? undefined : ((expRecord.optimizationEvent as string) || project.conversionEvent || "Lead");
@@ -241,7 +279,6 @@ export async function POST(req: NextRequest) {
 
     console.log("[adlab-launch] Creating single ad set:", { adsetName, adsetBudget, optimizationGoal, convEvent });
 
-    let adsetId: string;
     try {
       const projectInterests = (project as Record<string, unknown>).targetInterests as { id: string; name: string }[] | null;
       const placementType = (expRecord.placementType as string) || null;
@@ -276,6 +313,8 @@ export async function POST(req: NextRequest) {
         { error: "Ad set creation failed after 3 retries", detail: extractErrorDetail(err) },
         { status: 500 }
       );
+    }
+
     }
 
     await delay(1000);
@@ -539,7 +578,11 @@ export async function POST(req: NextRequest) {
 
     console.log(`[adlab-launch] Done. Created: ${created.length}/${launchableCreatives.length + anglesWithVideo.length}, Errors: ${errors.length}`);
 
-    // If ALL ads failed, clean up the orphaned campaign + ad set
+    // If ALL ads failed, clean up the orphaned campaign + ad set — never
+    // the evergreen one, which carries the group's other live ads.
+    if (created.length === 0 && errors.length > 0 && evergreenGroup) {
+      return NextResponse.json({ error: "All ads failed to create (evergreen ad set untouched)", errors }, { status: 500 });
+    }
     if (created.length === 0 && errors.length > 0) {
       console.log("[adlab-launch] All ads failed — cleaning up campaign:", campaignId);
       try { await meta.deleteCampaign(campaignId); } catch {}

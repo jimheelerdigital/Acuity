@@ -3,6 +3,11 @@
  * Accepts { experimentId }.
  *
  * HARD RULE: Only callable via explicit user click. Never auto-triggered.
+ *
+ * Only ads still in "paused" (freshly launched) are activated — ads the
+ * engine killed must never be revived by a re-click. For weekly-batch
+ * experiments (evergreen ad set) the weakest live ads are retired first so
+ * the ad set stays within MAX_ACTIVE_ADS.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -11,6 +16,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
 import { redactAccessToken } from "@/lib/adlab/meta";
+import { makeRoomInAdSet, weeklyBatchGroup } from "@/lib/adlab/evergreen";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -38,9 +44,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No campaign found for this experiment" }, { status: 400 });
   }
 
-  const ads = experiment.angles.flatMap((a) => a.creatives.flatMap((c) => c.ads));
+  const ads = experiment.angles
+    .flatMap((a) => a.creatives.flatMap((c) => c.ads))
+    .filter((a) => a.status === "paused");
   const now = new Date();
   const errors: { objectId: string; type: string; error: string }[] = [];
+
+  if (ads.length === 0) {
+    return NextResponse.json({ error: "No paused ads to activate for this experiment" }, { status: 400 });
+  }
+
+  // Evergreen: retire the weakest live ads so the new ones fit.
+  let retired: Array<{ adId: string; reason: string }> = [];
+  if (weeklyBatchGroup(experiment.campaignTags)) {
+    const adsetId = ads.find((a) => a.metaAdsetId)?.metaAdsetId;
+    if (adsetId) {
+      const room = await makeRoomInAdSet(adsetId, ads.length);
+      retired = room.retired;
+      if (room.failed.length > 0) {
+        errors.push(...room.failed.map((id) => ({ objectId: id, type: "ad", error: "rotation pause failed — still live" })));
+      }
+    }
+  }
 
   // Step 1: Verify campaign exists on Meta before attempting activation
   const campaignCheck = await meta.verifyObjectOnMeta(experiment.metaCampaignId, "campaign");
@@ -106,7 +131,7 @@ export async function POST(req: NextRequest) {
         });
         await prisma.adLabAd.update({
           where: { id: ad.id },
-          data: { status: "killed", decisionReason: "Meta verification failed — object not found" },
+          data: { status: "killed", decisionReason: `Activation failed: ${redactAccessToken(errMsg)}`.slice(0, 500) },
         });
       }
     }
@@ -126,6 +151,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       activated: activatedCount,
+      retired: retired.length,
       ...(errors.length > 0 ? { errors } : {}),
     });
   } catch (err) {

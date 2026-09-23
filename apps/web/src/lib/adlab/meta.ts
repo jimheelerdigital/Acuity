@@ -414,7 +414,7 @@ export async function getAdInsights(adId: string, since: string, until: string) 
   const ad = new bizSdk.Ad(adId);
 
   const insights = await ad.getInsights(
-    ["impressions", "clicks", "ctr", "spend", "actions", "frequency", "cpc"],
+    ["impressions", "clicks", "inline_link_clicks", "ctr", "spend", "actions", "frequency", "cpc"],
     {
       time_range: { since, until },
       level: "ad",

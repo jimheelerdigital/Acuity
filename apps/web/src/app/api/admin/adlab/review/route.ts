@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 import { BATCH_GROUPS, type BatchGroupKey } from "@/lib/adlab/weekly-batch";
+import { GROUP_DAILY_BUDGET_CENTS } from "@/lib/adlab/evergreen";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -60,7 +61,10 @@ export async function GET() {
         groupKey,
         projectName: project.name,
         projectSlug: project.slug,
-        defaultBudgetCents: project.dailyBudgetCentsPerVariant,
+        // Website launches go into the group's evergreen ad set, whose
+        // budget is fixed in code (lib/adlab/evergreen.ts).
+        defaultBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
+        evergreenBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
         experiment,
       };
     })
