@@ -135,12 +135,22 @@ export async function createAdSet(params: AdSetParams) {
 
   const targeting: Record<string, unknown> = {};
 
-  if (params.targetAudience.ageMin) targeting.age_min = params.targetAudience.ageMin;
-  // Advantage+ audience requires age_max >= 65; the algorithm still optimizes
-  // toward the actual target range, this is just Meta's floor requirement.
+  // Advantage+ audience rules (Meta docs, confirmed 2026-09-24): the hard
+  // age_min must be 18-25 and age_max is fixed at 65. The real target range
+  // goes in `age_range` as a SUGGESTION. The women's project (38-55) was
+  // sending age_min 38, so Meta rejected the evergreen ad set outright
+  // ("Evergreen campaign/ad set setup failed"); the men's (18-34) passed.
   const useAdvantageAudience = true; // matches targeting_automation below
+  const ageMin = params.targetAudience.ageMin;
   const ageMax = params.targetAudience.ageMax;
-  if (ageMax) targeting.age_max = useAdvantageAudience ? Math.max(ageMax, 65) : ageMax;
+  if (useAdvantageAudience) {
+    if (ageMin) targeting.age_min = Math.min(Math.max(ageMin, 18), 25);
+    targeting.age_max = 65;
+    if (ageMin || ageMax) targeting.age_range = [ageMin || 18, ageMax || 65];
+  } else {
+    if (ageMin) targeting.age_min = ageMin;
+    if (ageMax) targeting.age_max = ageMax;
+  }
   // Always target US. Additional countries can be added via geo param.
   const geoCountries = params.targetAudience.geo?.length
     ? normalizeCountryCodes(params.targetAudience.geo)

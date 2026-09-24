@@ -263,8 +263,25 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
         body: JSON.stringify({ experimentId: exp.id }),
       });
       const launchData = await launchRes.json().catch(() => ({}));
+      // Show Meta's actual reason, not just the summary (2026-09-24: both
+      // launches failed with only "setup failed" / "All ads failed" and the
+      // real Meta message was sitting unseen in the response body).
+      const metaReason = (raw: unknown): string => {
+        const text = typeof raw === "string" ? raw : raw ? JSON.stringify(raw) : "";
+        try {
+          const e = JSON.parse(text)?.error;
+          if (e) return [e.error_user_title, e.error_user_msg || e.message].filter(Boolean).join(": ");
+        } catch {}
+        return text.slice(0, 300);
+      };
+      const firstDetail =
+        launchData.detail ??
+        (Array.isArray(launchData.errors) && launchData.errors[0]?.error);
       if (!launchRes.ok) {
-        throw new Error(launchData.error || "Campaign creation failed");
+        const reason = firstDetail ? metaReason(firstDetail) : "";
+        throw new Error(
+          (launchData.error || "Campaign creation failed") + (reason ? ` — Meta says: ${reason}` : "")
+        );
       }
       if (launchData.errors?.length > 0) {
         console.warn("[review] partial launch errors:", launchData.errors);

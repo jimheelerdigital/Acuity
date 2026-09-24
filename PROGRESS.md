@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-24] — Ad launch fixes: women's campaign age targeting, and the review page shows Meta's real error
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Launching this week's ads failed for both groups. The women's campaign never got created because we asked Meta to hard-target ages 38–55. With Meta's "Advantage+ audience" (which we use), the hard minimum age can't be above 25. We now pass 38–55 as Meta's preferred range, which is how Meta wants it. The men's campaign was created, but every ad was rejected, and the page only said "All ads failed" without Meta's reason. The page now shows Meta's actual message whenever a launch fails. Relaunch both after this deploy: the women's should work, and if the men's still fails, the screen will say why.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/meta.ts` `createAdSet`: with `advantage_audience: 1`, sends `age_min` clamped to 18–25, `age_max: 65`, and `age_range: [ageMin, ageMax]` as the suggestion (Meta docs: targeting-expansion/advantage-audience). Previously it sent the project's raw `age_min` (38 for ripple-women)
+- `apps/web/src/app/admin/adlab/review/page.tsx`: on a failed launch, parses `detail` / `errors[0].error` (Meta error JSON) and appends "Meta says: <error_user_title>: <error_user_msg|message>"
+
+### Manual steps needed
+- [ ] After deploy, relaunch women's and men's at /admin/adlab/review. If men's fails again, send Claude the "Meta says:" text (Keenan)
+
+### Notes
+- DB state at time of fix: ripple-men already has evergreen campaign 120254810048990581 / ad set 120254810049210581 (created on the failed attempt; it's reused). ripple-women has none (the code deleted the orphan campaign after the ad set failed)
+- The men's per-ad failure cause is still unknown. Both the placement creative and the feed-only fallback failed for every creative, which points at something shared (page, pixel/ad set, or account/app permissions) rather than the new 4:5/9:16 payload. The ads token is Vercel-sensitive and can't be pulled locally, so the call couldn't be replayed from here
+
+---
+
 ## [2026-09-24] — Image quality round 2: every slide on gpt-image-2 high, a quality check per image, native Instagram/Facebook crops, cheaper text edits
 
 **Requested by:** Keenan
