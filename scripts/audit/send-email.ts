@@ -12,7 +12,7 @@
  *      (writes audits/out/email.html instead of sending).
  * Exits non-zero only when the email itself could not be sent.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -131,6 +131,10 @@ async function main() {
     ({ subject, html, text } = failureBody());
   }
 
+  // The collector can fail before audits/out/ is ever created (run-audit.sh
+  // exits early when there's no LATEST). Guarantee the dir so the failure
+  // email itself never crashes — "always email, even on failure" is the point.
+  mkdirSync(path.join(root, "audits", "out"), { recursive: true });
   writeFileSync(out("email.html"), html);
   console.log(`[email] ${ok ? "report" : "FAILURE notice"} · ${Math.round(html.length / 1024)}KB · subject: ${subject}`);
   if (process.env.AUDIT_DRY_RUN === "1") return;
