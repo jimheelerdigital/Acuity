@@ -29,7 +29,12 @@ import { z } from "zod";
 
 import { CLAUDE_FLAGSHIP_MODEL, CLAUDE_FLAGSHIP_MAX_TOKENS } from "@acuity/shared";
 
-import { cosine, embedText } from "@/lib/embeddings";
+import {
+  retrieveRelevantEntries,
+  buildContextBlock,
+  toCitations,
+  type RankedEntry,
+} from "@/lib/journal-query";
 import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { rateLimitedResponse, checkRateLimit, limiters } from "@/lib/rate-limit";
@@ -105,30 +110,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(hit.body);
   }
 
-  const { prisma } = await import("@/lib/prisma");
+  // Retrieval via the shared journal query core (per-user scoped). Same
+  // behavior as before — top-K semantic rank over the user's 500 most recent
+  // COMPLETE, embedded entries — now reused by MCP + native Ask Yourself.
+  let ranked: RankedEntry[] = [];
+  let totalEmbedded = 0;
+  try {
+    const res = await retrieveRelevantEntries(userId, question, {
+      topK: TOP_K,
+      candidateLimit: 500,
+    });
+    ranked = res.ranked;
+    totalEmbedded = res.totalEmbedded;
+  } catch (err) {
+    console.error("[ask-past] retrieval failed:", err);
+    return NextResponse.json({ error: "EmbeddingFailed" }, { status: 503 });
+  }
 
-  // Pull the user's embedded entries. Filter at the DB to rows that
-  // actually have an embedding array (Prisma `Float[]` returns [] for
-  // missing; we skip those client-side). Select minimal fields for
-  // ranking + citation rendering.
-  const entries = await prisma.entry.findMany({
-    where: { userId, status: "COMPLETE" },
-    select: {
-      id: true,
-      createdAt: true,
-      summary: true,
-      transcript: true,
-      embedding: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 500, // hard cap on per-user ranking cost
-  });
-
-  const embeddedEntries = entries.filter(
-    (e) => Array.isArray(e.embedding) && e.embedding.length > 0
-  );
-
-  if (embeddedEntries.length === 0) {
+  if (totalEmbedded === 0) {
     return NextResponse.json(
       {
         answer:
@@ -139,33 +138,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let questionVec: number[];
-  try {
-    questionVec = await embedText(question);
-  } catch (err) {
-    console.error("[ask-past] embed failed:", err);
-    return NextResponse.json(
-      { error: "EmbeddingFailed" },
-      { status: 503 }
-    );
-  }
-
-  const ranked = embeddedEntries
-    .map((e) => ({
-      entry: e,
-      score: cosine(questionVec, e.embedding as number[]),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, TOP_K);
-
-  const contextBlock = ranked
-    .map((r) => {
-      const date = r.entry.createdAt.toISOString().slice(0, 10);
-      const text = r.entry.summary ?? r.entry.transcript ?? "";
-      const excerpt = text.length > 400 ? `${text.slice(0, 400)}…` : text;
-      return `[${date}] ${excerpt}`;
-    })
-    .join("\n\n");
+  const contextBlock = buildContextBlock(ranked);
 
   let answer: string;
   try {
@@ -192,17 +165,9 @@ export async function POST(req: NextRequest) {
 
   const result = {
     answer,
-    citedEntries: ranked.map((r) => {
-      const raw = r.entry.summary ?? r.entry.transcript ?? "";
-      return {
-        id: r.entry.id,
-        createdAt: r.entry.createdAt.toISOString(),
-        excerpt: raw.length > 200 ? `${raw.slice(0, 200)}…` : raw,
-        score: Number(r.score.toFixed(3)),
-      };
-    }),
+    citedEntries: toCitations(ranked),
     meta: {
-      totalEmbeddedEntries: embeddedEntries.length,
+      totalEmbeddedEntries: totalEmbedded,
     },
   };
 
