@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-24] — Paywall follow-up emails reach funnel signups again; paywall back button + reassurance
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (this entry is amended into the commit)
+
+### In plain English (for Keenan)
+People who sign up through the ad funnel but don't start the free week now get emailed about it. They were getting nothing because the email system was still looking for trial accounts and an old signup signal. The email arrives a few hours after signup ("Your free week of Pro is still here"), or 30 minutes after someone abandons Stripe checkout ("You were almost there"). Its button drops them right back on the paywall. The paywall also lost its back arrow, which was sending people to a sign-up form they'd already filled in, and now says "We'll email you before you're charged."
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/recovery-email-orchestrator.ts`: SIGNUP NO CHECKOUT now queries `event in [funnel_signup_completed, funnel_account_created]` (v8 funnels never emit the former, so 0 candidates) and skips PRO / stripeSubscriptionId users; NEVER RECORDED 24h/48h use `subscriptionStatus in [TRIAL, FREE]`
+- `apps/web/src/lib/email-enabled.ts`: `recovery_signup_no_checkout` and `recovery_checkout_abandoned` flipped to true
+- `apps/web/src/emails/trial/recovery-signup-no-checkout.ts`, `recovery-checkout-abandoned.ts`: rewritten copy; removed the branch line (TrialVars never carried branch, so everyone got "overload") and the false "cancel with one tap"
+- `apps/web/src/app/pro-trial/route.ts` (new): GET → signin if logged out; /home if Pro; else `/start-bwk` or `/start` `?step=savings` picked from the user's latest OnboardingEvent.flowVersion, UTMs passed through
+- `apps/web/src/components/onboarding-funnel.tsx`: back button hidden on `savings`; footer line "$0 today. We'll email you before you're charged. Then $X. Cancel anytime from your account." (these two edits landed inside 34bcb43d from a parallel session)
+- Email copy scan: rescue_*, stall_*, keep_momentum, winback_*, nr_winback_* have no trial wording and no plan filter, so FREE funnel users already got them
+
+### Manual steps needed
+- [ ] Confirm the LIVE Stripe webhook endpoint has `customer.subscription.trial_will_end` enabled. The paywall and both emails promise "we email you before you're charged", and that email only sends on this event. The local key is test mode, and the test endpoint is MISSING it. (Keenan)
+- [ ] Jimmy review: the /pro-trial route sends users into the card-trial checkout (Jimmy)
+
+### Notes
+- Why /pro-trial and not /upgrade: /api/stripe/checkout (in-app upgrade) charges immediately with no trial. The 7-day card trial exists only in /api/onboarding/create-checkout from the funnel paywall.
+- Per-user 24h throttle in the recovery orchestrator: signup_no_checkout (1–4h) goes first, and never_recorded_24h / rescue_* follow a day later. There's no extra stacking.
+- The trial-email-orchestrator sequence (pattern_tease etc.) is still paused in email-enabled.ts and TRIAL-only. That's deliberate; don't assume it covers FREE.
+
 ## [2026-09-24] — Funnel screen 1 explains Ripple, cookie banner gone, admin funnel split Ripple vs BWK
 
 **Requested by:** Keenan

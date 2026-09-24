@@ -1,7 +1,7 @@
 /**
  * Never-Recorded Sequence — Email 2 (48h)
  *
- * Trigger: TRIAL user, ~48h after signup, totalRecordings = 0.
+ * Trigger: TRIAL or FREE (funnel) user, ~48h after signup, totalRecordings = 0.
  *          Sent to ALL trial users (card on file or not).
  * Subject: "uh oh... did you forget?"
  */

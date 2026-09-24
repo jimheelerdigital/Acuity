@@ -6,36 +6,21 @@
  * Subject: "You were almost there"
  * From: Keenan from Ripple <keenan@getacuity.io> (set centrally in sendTrialEmail)
  *
- * Dynamic per diagnostic branch — the one-liner references what they
- * told us during the quiz to make it feel personal, not automated.
+ * 2026-09-24: dropped the per-branch quiz line. TrialVars never carried the
+ * branch, so every user got the "overload" line whatever they answered.
+ * Links to /pro-trial (the funnel paywall, where the card trial lives).
  */
 
 import { escapeHtml } from "@/lib/escape-html";
 import { keenanSignature, trialButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-type Branch = "overload" | "patterns" | "rumination" | "stuck" | "mask";
-
-const BRANCH_SUMMARIES: Record<Branch, string> = {
-  overload: "your days have been blurring together",
-  patterns: "the same argument keeps happening",
-  rumination: "your brain won\u2019t quiet down at night",
-  stuck: "you\u2019ve tried other things and they didn\u2019t stick",
-  mask: "you\u2019ve been holding it together on the outside",
-};
-
-function branchLine(v: TrialVars): string {
-  const branch = (v as TrialVars & { branch?: string }).branch as Branch | undefined;
-  return BRANCH_SUMMARIES[branch ?? "overload"] ?? BRANCH_SUMMARIES.overload;
-}
-
-
 export const recoveryCheckoutAbandoned: TrialEmailTemplate = {
   subject: () => "You were almost there",
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
-    const startUrl = `${appUrl}/start?utm_source=email&utm_medium=recovery&utm_campaign=checkout_abandoned`;
+    const trialUrl = `${appUrl}/pro-trial?utm_source=email&utm_medium=recovery&utm_campaign=checkout_abandoned`;
 
     const content = `
       <tr>
@@ -47,12 +32,12 @@ export const recoveryCheckoutAbandoned: TrialEmailTemplate = {
       </tr>
       ${para(`Hey ${name},`)}
       ${para(`I\u2019m Keenan, one of the founders of Ripple.`)}
-      ${para(`You went through our whole quiz. You told us ${branchLine(v)}. We built your insight profile.`)}
-      ${para(`Then something stopped you at checkout. No pressure \u2014 but your profile is still here.`)}
-      ${para(`7-day free trial. You won\u2019t be charged today. If it\u2019s not useful by Day 5, cancel with one tap.`)}
+      ${para(`You got as far as checkout and stopped. That\u2019s fine. Maybe the timing was off, or you wanted to think it over.`)}
+      ${para(`Your free week of Pro is still waiting. $0 today, we email you before you\u2019re charged, and you can cancel anytime from your account.`)}
+      ${para(`If something at checkout didn\u2019t work, just reply to this email and I\u2019ll sort it out myself.`)}
       <tr>
         <td style="padding-bottom:28px;">
-          ${trialButton(startUrl, "Pick up where I left off")}
+          ${trialButton(trialUrl, "Start my free 7 days")}
         </td>
       </tr>
       ${keenanSignature()}
@@ -61,7 +46,7 @@ export const recoveryCheckoutAbandoned: TrialEmailTemplate = {
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "Your insight profile is still here. Pick up where you left off.",
+      preheader: "Your free week of Pro is still waiting.",
     });
   },
 };

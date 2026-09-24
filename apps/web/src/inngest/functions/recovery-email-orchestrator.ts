@@ -187,9 +187,12 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
           lte: new Date(now.getTime() - 1 * 60 * 60 * 1000),
         };
 
+        // funnel_account_created is what the v8 funnels emit. The old
+        // funnel_signup_completed stopped firing in the rebuild, which left
+        // this email with zero candidates (found 2026-09-24).
         const signupNoCheckout = await prisma.onboardingEvent.findMany({
           where: {
-            event: "funnel_signup_completed",
+            event: { in: ["funnel_signup_completed", "funnel_account_created"] },
             createdAt: signupWindow,
             userId: { not: null },
           },
@@ -205,6 +208,11 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
             "funnel_checkout_started"
           );
           if (didCheckout) continue;
+          const user = await prisma.user.findUnique({
+            where: { id: row.userId },
+            select: { subscriptionStatus: true, stripeSubscriptionId: true },
+          });
+          if (!user || user.subscriptionStatus === "PRO" || user.stripeSubscriptionId) continue;
           await trySend(row.userId, "recovery_signup_no_checkout");
         }
       }
@@ -410,10 +418,14 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       //    Forward-only guard: createdAt must be after enablement.
       // ═══════════════════════════════════════════════════════════
       if (hasGlobalBudget() || config.dryRun) {
-        // #13 — 24h: created 20–48h ago, TRIAL, 0 recordings
+        // #13 — 24h: created 20–48h ago, TRIAL or FREE, 0 recordings.
+        // FREE since 2026-09-24: web funnel signups start on the free plan
+        // (api/onboarding/funnel-free-plan) and were silently excluded. A
+        // FREE account this young can only be one of those — trials last 7
+        // days, so no expired trial falls inside these windows.
         const nr24h = await prisma.user.findMany({
           where: {
-            subscriptionStatus: "TRIAL",
+            subscriptionStatus: { in: ["TRIAL", "FREE"] },
             totalRecordings: 0,
             createdAt: {
               gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
@@ -429,10 +441,10 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
           await trySend(user.id, "never_recorded_24h");
         }
 
-        // #14 — 48h: created 44–96h ago
+        // #14 — 48h: created 44–96h ago (TRIAL or FREE, see #13)
         const nr48h = await prisma.user.findMany({
           where: {
-            subscriptionStatus: "TRIAL",
+            subscriptionStatus: { in: ["TRIAL", "FREE"] },
             totalRecordings: 0,
             createdAt: {
               gte: new Date(now.getTime() - 96 * 60 * 60 * 1000),

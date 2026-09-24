@@ -44,8 +44,8 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   rescue_viewed_no_tap: true, // download rescue #2: viewed download, didn't tap
   rescue_tapped_app_store: true, // download rescue #3: tapped App Store, never opened app
   rescue_webview_blocked: true, // download rescue #4: stuck in IG/FB webview
-  never_recorded_24h: true, // never-recorded #1: 24h after signup, 0 recordings (all trial)
-  never_recorded_48h: true, // never-recorded #2: 48h after signup, 0 recordings (all trial)
+  never_recorded_24h: true, // never-recorded #1: 24h after signup, 0 recordings (trial + funnel free)
+  never_recorded_48h: true, // never-recorded #2: 48h after signup, 0 recordings (trial + funnel free)
   never_recorded_3day: true, // never-recorded #3: 3 days before trial end, 0 recordings (no-card only)
   never_recorded_lastday: true, // never-recorded #4: last day of trial, 0 recordings (no-card only)
   stall_1rec: true, // stall re-engagement: 1 recording, 48h+ silent
@@ -93,9 +93,13 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   power_deepen: false,
   power_referral_tease: false,
 
+  // ── ON since 2026-09-24 — rewritten for the card-trial funnel ───
+  // Funnel signups land on FREE; these two are the only follow-up that
+  // offers the 7-day card trial again. Both link to /pro-trial.
+  recovery_checkout_abandoned: true, // hit Stripe checkout, didn't finish (30m–2h)
+  recovery_signup_no_checkout: true, // funnel account, never went to checkout (1–4h)
+
   // ── PAUSED — registry recovery emails (not kept) ────────────────
-  recovery_checkout_abandoned: false,
-  recovery_signup_no_checkout: false,
   recovery_day6_nudge: false,
 
   // ── PAUSED — countdown cron (sendCountdownEmail), all 4 off ──────

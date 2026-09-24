@@ -1,9 +1,14 @@
 /**
  * Recovery Email 2 — Signed Up But No Checkout
  *
- * Trigger: User has funnel_signup_completed but no funnel_checkout_started.
- *          1 hour after signup.
- * Subject: "Your insight profile is waiting"
+ * Trigger: web funnel account created (funnel_account_created, or legacy
+ *          funnel_signup_completed), no funnel_checkout_started, not Pro.
+ *          1–4 hours after signup.
+ * Subject: "Your free week of Pro is still here"
+ *
+ * 2026-09-24: rewritten for the FREE-plan funnel. Funnel signups land on the
+ * free plan; the 7-day trial needs a card. Links to /pro-trial, which sends
+ * them to their funnel's paywall (the only place the card trial exists).
  * From: Keenan from Ripple <keenan@getacuity.io> (set centrally in sendTrialEmail)
  */
 
@@ -12,47 +17,30 @@ import { displayMonthly } from "@/lib/pricing";
 import { keenanSignature, trialButton, trialLayout , para } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-type Branch = "overload" | "patterns" | "rumination" | "stuck" | "mask";
-
-const BRANCH_SUMMARIES: Record<Branch, string> = {
-  overload: "your days have been blurring together",
-  patterns: "the same fights keep happening",
-  rumination: "your mind won\u2019t stop replaying things",
-  stuck: "you\u2019ve tried other things and they didn\u2019t stick",
-  mask: "you keep it together on the outside but something\u2019s off",
-};
-
-function branchLine(v: TrialVars): string {
-  const branch = (v as TrialVars & { branch?: string }).branch as Branch | undefined;
-  return BRANCH_SUMMARIES[branch ?? "overload"] ?? BRANCH_SUMMARIES.overload;
-}
-
 const PRICE = displayMonthly();
 
-
 export const recoverySignupNoCheckout: TrialEmailTemplate = {
-  subject: () => "Your insight profile is waiting",
+  subject: () => "Your free week of Pro is still here",
   html: (v: TrialVars) => {
     const name = escapeHtml(v.firstName);
     const appUrl = escapeHtml(v.appUrl);
-    const startUrl = `${appUrl}/start?utm_source=email&utm_medium=recovery&utm_campaign=signup_no_checkout`;
+    const trialUrl = `${appUrl}/pro-trial?utm_source=email&utm_medium=recovery&utm_campaign=signup_no_checkout`;
 
     const content = `
       <tr>
         <td style="padding-bottom:24px;">
           <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            Your insight profile is waiting.
+            Your free week of Pro is still here.
           </h1>
         </td>
       </tr>
       ${para(`Hey ${name},`)}
-      ${para(`You told us ${branchLine(v)}. That took guts.`)}
-      ${para(`We built a profile based on what you shared. It\u2019s ready \u2014 but you haven\u2019t started your trial yet.`)}
-      ${para(`Here\u2019s what happens in the first week: you talk about your day, once a day. By Day 3, patterns start forming. By Day 7, you get a report that reads like someone who knows you wrote it. Because in a way, you did.`)}
-      ${para(`${PRICE}/month after the free trial. Most people know by Day 3 whether it\u2019s worth it.`)}
+      ${para(`Your Ripple account is set up, and you can record debriefs on the free plan whenever you like.`)}
+      ${para(`What you haven\u2019t opened yet is Pro. It turns what you say into a to-do list that writes itself, tracks the habits you\u2019re building, and shows you the patterns you can\u2019t see from inside your own week.`)}
+      ${para(`The first 7 days are free. $0 today, we email you before you\u2019re charged, and you can cancel anytime from your account. After that it\u2019s ${PRICE}/month.`)}
       <tr>
         <td style="padding-bottom:28px;">
-          ${trialButton(startUrl, "Start my free trial")}
+          ${trialButton(trialUrl, "Start my free 7 days")}
         </td>
       </tr>
       ${keenanSignature()}
@@ -61,7 +49,7 @@ export const recoverySignupNoCheckout: TrialEmailTemplate = {
     return trialLayout({
       content,
       unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You shared something real. Your profile is ready.",
+      preheader: "7 days of Pro, $0 today. We remind you before you\u2019re charged.",
     });
   },
 };

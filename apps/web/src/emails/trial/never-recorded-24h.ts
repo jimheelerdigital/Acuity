@@ -1,7 +1,7 @@
 /**
  * Never-Recorded Sequence — Email 1 (24h)
  *
- * Trigger: TRIAL user, ~24h after signup, totalRecordings = 0.
+ * Trigger: TRIAL or FREE (funnel) user, ~24h after signup, totalRecordings = 0.
  *          Sent to ALL trial users (card on file or not).
  * Subject: "you dropped this..."
  */
