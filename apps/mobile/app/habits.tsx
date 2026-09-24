@@ -25,6 +25,7 @@ import {
   type HabitCheckRow,
 } from "@/lib/habits-api";
 import { MAX_ACTIVE_HABITS, isExpectedOn, isPaused } from "@acuity/shared";
+import { publishHabitsToWidget } from "@/lib/widget-data";
 
 /**
  * Habits — create, check off, see a streak.
@@ -67,6 +68,13 @@ export default function HabitsScreen() {
   }, [load]);
 
   const byHabit = useMemo(() => checksByHabit(checks), [checks]);
+
+  // Keep the home-screen widget's data in sync with whatever the user sees
+  // here — runs on load, create, and every check toggle (incl. optimistic
+  // updates and reverts). No-op on Android.
+  useEffect(() => {
+    publishHabitsToWidget(habits, checks);
+  }, [habits, checks]);
 
   const onCreate = useCallback(async () => {
     const trimmed = name.trim();
