@@ -161,6 +161,13 @@ export async function POST(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function extractErrorDetail(err: any): string {
+    // facebook-nodejs-business-sdk's FacebookRequestError puts Meta's error
+    // object (message, code, error_subcode, error_user_title, error_user_msg)
+    // on err.response itself — not err.response.body. Reading only .body
+    // reduced every launch failure to "Invalid parameter" (2026-09-24).
+    if (err?.name === "FacebookRequestError" && err?.response && typeof err.response === "object" && !err.response.body) {
+      return redactAccessToken(JSON.stringify({ error: err.response }));
+    }
     const body = err?.response?.body || err?.body || err?._data;
     const raw = body ? (typeof body === "string" ? body : JSON.stringify(body)) : (err?.message || String(err));
     return redactAccessToken(raw);
@@ -413,6 +420,7 @@ export async function POST(req: NextRequest) {
         const angleSlug = slug(creative.angle.hypothesis, 50);
         let metaCreativeId: string | undefined;
         const creativeName = `${project.name} | ${surface}: ${angleSlug} | "${slug(creative.headline, 40)}"`;
+        let usedPlacementCreative = false;
         if (imageHash && storyImageHash) {
           try {
             metaCreativeId = await meta.createPlacementAdCreative({
@@ -426,6 +434,7 @@ export async function POST(req: NextRequest) {
               cta: creative.cta,
               linkUrl: adLinkUrl,
             });
+            usedPlacementCreative = true;
           } catch (err) {
             logMetaError(`Placement creative ${creativeLabel} (falling back to feed-only)`, err);
           }
@@ -463,8 +472,43 @@ export async function POST(req: NextRequest) {
           );
         } catch (err) {
           logMetaError(`Ad ${creativeLabel}`, err);
-          errors.push({ creativeId: creative.id, error: `Ad creation failed: ${extractErrorDetail(err)}` });
-          continue;
+          // A placement (feed + story) creative can be CREATED fine and
+          // still be rejected when attached to the ad set — the old fallback
+          // only covered creative creation, so every ad failed (2026-09-24).
+          // Retry once with a plain feed-only creative.
+          if (usedPlacementCreative) {
+            try {
+              const feedOnlyId = await withRetry(
+                () => meta.createAdCreative({
+                  name: creativeName,
+                  pageId: metaPageId!,
+                  imageHash,
+                  videoId,
+                  headline: creative.headline,
+                  primaryText: creative.primaryText,
+                  description: creative.description,
+                  cta: isAppInstall ? "DOWNLOAD" : creative.cta,
+                  linkUrl: adLinkUrl,
+                }),
+                { label: `Feed-only creative ${creativeLabel}` }
+              );
+              metaAdId = await withRetry(
+                () => meta.createAd({ name: adName, adsetId, creativeId: feedOnlyId }),
+                { label: `Ad (feed-only) ${creativeLabel}` }
+              );
+              console.warn(`[adlab-launch] ${creativeLabel}: placement ad rejected (${extractErrorDetail(err)}); launched feed-only`);
+            } catch (err2) {
+              logMetaError(`Ad (feed-only retry) ${creativeLabel}`, err2);
+              errors.push({
+                creativeId: creative.id,
+                error: `Ad creation failed: ${extractErrorDetail(err2)} (placement version: ${extractErrorDetail(err)})`,
+              });
+              continue;
+            }
+          } else {
+            errors.push({ creativeId: creative.id, error: `Ad creation failed: ${extractErrorDetail(err)}` });
+            continue;
+          }
         }
 
         // Save to database

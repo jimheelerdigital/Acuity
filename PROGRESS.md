@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-24] — Ad launch: fall back to a plain feed ad when Meta rejects the feed+story ad, and show Meta's full error
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Both groups' launches failed with "Ad creation failed: Invalid parameter". Since last night, each ad is sent to Meta with two images, one for the feed and one for Stories. Meta accepted the combined ad but refused to attach it to the campaign, and our backup plan (a plain feed-only ad) only kicked in at an earlier step, so it never ran. Now, if Meta refuses the combined ad at that point, the launch automatically retries with the plain feed ad. The page also shows Meta's full explanation and error codes instead of just "Invalid parameter", so if anything still fails we'll know exactly why.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`:
+  - `extractErrorDetail`: for `FacebookRequestError`, serialize `err.response` (the SDK puts Meta's error object there, not `err.response.body`)
+  - track `usedPlacementCreative`; on a `createAd` failure with a placement creative, create a feed-only creative and retry `createAd` once, recording both errors if that also fails
+- `apps/web/src/app/admin/adlab/review/page.tsx` `metaReason`: parses the Meta JSON after the "Ad creation failed:" prefix and appends code/subcode
+
+### Manual steps needed
+- [ ] After deploy: relaunch both groups at /admin/adlab/review. If either still fails, send Claude the full "Meta says:" line (it will now include code/subcode) (Keenan)
+
+### Notes
+- SDK: facebook-nodejs-business-sdk `FacebookRequestError` sets `this.response = constructErrorResponse(...).body`, which is the Meta `error` object. `.message` is only the short text ("Invalid parameter")
+- If the feed-only retry also fails, the cause isn't the placement payload. Candidates: page/ad-account permissions, the evergreen ad set, or the destination URL/pixel. The codes will say which
+
+---
+
 ## [2026-09-24] — Fix: women's ad batch failed on one bad field; remake one group at a time
 
 **Requested by:** Keenan

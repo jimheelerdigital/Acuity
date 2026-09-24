@@ -333,11 +333,19 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
       // real Meta message was sitting unseen in the response body).
       const metaReason = (raw: unknown): string => {
         const text = typeof raw === "string" ? raw : raw ? JSON.stringify(raw) : "";
+        // The server prefixes the Meta JSON ("Ad creation failed: {…}") —
+        // parse from the first brace, and include code/sub-code so a generic
+        // "Invalid parameter" is still diagnosable.
+        const brace = text.indexOf("{");
         try {
-          const e = JSON.parse(text)?.error;
-          if (e) return [e.error_user_title, e.error_user_msg || e.message].filter(Boolean).join(": ");
+          const e = JSON.parse(brace >= 0 ? text.slice(brace, text.lastIndexOf("}") + 1) : text)?.error;
+          if (e) {
+            const head = brace > 0 ? text.slice(0, brace).trim() : "";
+            const codes = [e.code && `code ${e.code}`, e.error_subcode && `subcode ${e.error_subcode}`].filter(Boolean).join(", ");
+            return [head, e.error_user_title, e.error_user_msg || e.message, codes && `(${codes})`].filter(Boolean).join(" ");
+          }
         } catch {}
-        return text.slice(0, 300);
+        return text.slice(0, 400);
       };
       const firstDetail =
         launchData.detail ??
