@@ -10,6 +10,32 @@
 ## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
 
 **Requested by:** Jimmy
+## [2026-09-24] — BWK posts now auto-post to bwk.motivation (Instagram) and the Build with Key Facebook page
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+BWK posts now go out automatically to Instagram (bwk.motivation) and Facebook (Build with Key) in the same afternoon windows as Ripple. Each brand has its own schedule, so BWK never delays Ripple's posts. Posting starts with tonight's batch; the older unposted BWK posts aren't dumped onto the new accounts. BWK has no music library, so its posts go out as swipeable photo carousels.
+
+### Technical changes (for Jimmy)
+- Vercel prod envs added by Keenan: `META_BWK_ACCESS_TOKEN` (permanent PAGE token for Build with Key, derived from a long-lived user token; `debug_token` shows expires never and all six scopes), `META_BWK_IG_USER_ID=17841449744843044`, `META_BWK_FB_PAGE_ID=107591574942445`. `resolveAccount` already routes BWK lanes once these exist
+- `apps/web/src/inngest/functions/social-publish-cron.ts`:
+  - publish cursors are now per `platform:accountKey` (were per platform, so both brands shared ~9 IG slots/day)
+  - new `BWK_META_START` (2026-09-25T00:00Z): BWK posts generated before it are never enqueued to IG/FB
+
+### Manual steps needed
+- [ ] Keenan: set `META_BWK_ACCESS_TOKEN` in Vercel to the PAGE token Claude gave in session (not the pasted user token), then "push it" to deploy
+- [ ] After tomorrow's first IG/FB window (12pm ET): confirm posts landed on bwk.motivation and the FB page (admin carousels publish status) (Claude)
+
+### Notes
+- Meta token flow that worked: Graph API Explorer user token (the app has no `pages_show_list` / `business_management` to add, and that's fine). The BWK page had to be added under facebook.com/settings?tab=business_tools → Ripple Post Publisher → View and edit, because the Explorer skipped the page picker after the 09-14 grant. Then Access Token Debugger → Extend → GET /{page-id}?fields=access_token gives a PAGE token with expires_at 0. Never "Remove" the app there: it would revoke Ripple's token
+- Verified before handoff: IG `content_publishing_limit` readable with the page token (quota 100/day, 0 used)
+- Temp token files were kept only in the session scratchpad and deleted after handoff. The user tokens Keenan pasted remain valid (the extended one is long-lived); he can revoke by removing and re-adding pages in Business integrations if ever needed
+
+---
+
 ## [2026-09-24] — BWK: one theme per lane, command covers, new fantasy lane, sharper and more legible images
 
 **Requested by:** Keenan

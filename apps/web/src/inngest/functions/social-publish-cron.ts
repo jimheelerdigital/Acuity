@@ -61,6 +61,10 @@ const MAX_ATTEMPTS = 3;
 /** Max posts published per cron run (IG flow is slow). */
 const MAX_POSTS_PER_RUN = 3;
 
+// First BWK batch that goes to the new bwk.motivation IG + Build with Key
+// FB page (2026-09-24). Earlier BWK posts stay email/TikTok-only.
+const BWK_META_START = new Date("2026-09-25T00:00:00Z");
+
 export const socialPublishCronFn = inngest.createFunction(
   {
     id: "social-publish-cron",
@@ -114,7 +118,7 @@ export const socialPublishCronFn = inngest.createFunction(
           slides: { none: { imagePrompt: { contains: "TEXT-UNVERIFIED" } } },
         },
         orderBy: { createdAt: "asc" },
-        select: { id: true, lane: true, headline: true },
+        select: { id: true, lane: true, headline: true, generatedFor: true },
       });
       if (candidates.length === 0) return 0;
 
@@ -137,28 +141,31 @@ export const socialPublishCronFn = inngest.createFunction(
       // has its own ET window (see PLATFORM_WINDOWS) and its own queue
       // cursor, seeded after the latest already-pending row so a new
       // batch never front-runs or piles onto the existing queue.
-      const cursors = {} as Record<QueuePlatform, number>;
-      for (const platform of [
-        "instagram",
-        "facebook",
-        "threads",
-        "youtube",
-      ] as const) {
-        const latest = await prisma.socialPublish.findFirst({
-          where: { status: "PENDING", platform },
-          orderBy: { scheduledAt: "desc" },
-          select: { scheduledAt: true },
-        });
-        cursors[platform] = Math.max(
-          Date.now(),
-          latest
-            ? latest.scheduledAt.getTime() + PLATFORM_WINDOWS[platform].staggerMs
-            : 0
-        );
-      }
-      const nextSlot = (platform: QueuePlatform) => {
-        const slot = clampToWindow(new Date(cursors[platform]), platform);
-        cursors[platform] = slot.getTime() + PLATFORM_WINDOWS[platform].staggerMs;
+      // Per ACCOUNT since 2026-09-24 (BWK got its own IG/FB): one shared
+      // cursor per platform made Ripple and BWK compete for ~9 IG slots a
+      // day at ~14 posts a day combined, so the queue would grow forever.
+      // Each brand now runs its own schedule inside the same window.
+      const cursors = new Map<string, number>();
+      const nextSlot = async (platform: QueuePlatform, accountKey: string) => {
+        const key = `${platform}:${accountKey}`;
+        if (!cursors.has(key)) {
+          const latest = await prisma.socialPublish.findFirst({
+            where: { status: "PENDING", platform, accountKey },
+            orderBy: { scheduledAt: "desc" },
+            select: { scheduledAt: true },
+          });
+          cursors.set(
+            key,
+            Math.max(
+              Date.now(),
+              latest
+                ? latest.scheduledAt.getTime() + PLATFORM_WINDOWS[platform].staggerMs
+                : 0
+            )
+          );
+        }
+        const slot = clampToWindow(new Date(cursors.get(key)!), platform);
+        cursors.set(key, slot.getTime() + PLATFORM_WINDOWS[platform].staggerMs);
         return slot;
       };
 
@@ -175,7 +182,12 @@ export const socialPublishCronFn = inngest.createFunction(
         // nothing — they reach Keenan via the daily email only.
         const brand = await laneBrand(post.lane);
         const platforms: QueuePlatform[] = [];
-        if (await resolveAccount(post.lane)) {
+        // BWK IG/FB went live 2026-09-24: start fresh from that night's
+        // batch instead of flooding the new account with the unposted
+        // backlog (15 posts), which would push new posts back ~a week.
+        const bwkBacklog =
+          brand === "bwk" && post.generatedFor < BWK_META_START;
+        if (!bwkBacklog && (await resolveAccount(post.lane))) {
           platforms.push("instagram", "facebook");
         }
         // Threads + YouTube have their own per-brand creds (2026-09-23)
@@ -189,7 +201,7 @@ export const socialPublishCronFn = inngest.createFunction(
             carouselPostId: post.id,
             platform,
             accountKey: brand,
-            scheduledAt: nextSlot(platform),
+            scheduledAt: await nextSlot(platform, brand),
           });
         }
       }
