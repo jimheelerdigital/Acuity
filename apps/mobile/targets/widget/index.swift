@@ -122,19 +122,79 @@ struct MediumView: View {
     }
 }
 
+// ── Lock Screen (accessory) views ────────────────────────────────────
+// iOS renders these monochrome/tinted to match the clock, so we keep them
+// to text + one SF Symbol. AccentColor won't show as coral here — that's
+// expected on the Lock Screen.
+
+private func remainingCount(_ entry: RippleEntry) -> Int {
+    entry.habits.filter { $0.done == 0 }.count
+}
+
+private func habitsSummary(_ entry: RippleEntry) -> String {
+    if entry.habits.isEmpty { return "tap to reflect" }
+    let left = remainingCount(entry)
+    return left == 0 ? "all done ✓" : "\(left) habit\(left == 1 ? "" : "s") left"
+}
+
+// Circular: streak number under a small flame (sits in the clock strip).
+struct CircularView: View {
+    let entry: RippleEntry
+    var body: some View {
+        VStack(spacing: -1) {
+            Image(systemName: "flame.fill").font(.system(size: 11))
+            Text("\(entry.streak)").font(.system(size: 17, weight: .bold, design: .rounded))
+        }
+    }
+}
+
+// Rectangular: streak + today's habit status, a couple of lines.
+struct RectangularView: View {
+    let entry: RippleEntry
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label("\(entry.streak)-day streak", systemImage: "flame.fill")
+                .font(.headline)
+            Text(habitsSummary(entry).prefix(1).uppercased() + habitsSummary(entry).dropFirst())
+                .font(.caption)
+        }
+    }
+}
+
+// Inline: single line above the clock.
+struct InlineView: View {
+    let entry: RippleEntry
+    var body: some View {
+        Label("Ripple: \(habitsSummary(entry))", systemImage: "flame.fill")
+    }
+}
+
 struct RippleWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     let entry: RippleEntry
 
     var body: some View {
-        Group {
-            switch family {
-            case .systemSmall: SmallView(entry: entry)
-            default: MediumView(entry: entry)
-            }
+        switch family {
+        case .accessoryCircular:
+            CircularView(entry: entry)
+                .widgetURL(RECORD_URL)
+                .containerBackground(for: .widget) { AccessoryWidgetBackground() }
+        case .accessoryRectangular:
+            RectangularView(entry: entry)
+                .widgetURL(RECORD_URL)
+                .containerBackground(for: .widget) { Color.clear }
+        case .accessoryInline:
+            InlineView(entry: entry)
+                .widgetURL(RECORD_URL)
+        case .systemSmall:
+            SmallView(entry: entry)
+                .widgetURL(RECORD_URL)
+                .containerBackground(for: .widget) { Color(.systemBackground) }
+        default:
+            MediumView(entry: entry)
+                .widgetURL(RECORD_URL)
+                .containerBackground(for: .widget) { Color(.systemBackground) }
         }
-        .widgetURL(RECORD_URL)
-        .containerBackground(for: .widget) { Color(.systemBackground) }
     }
 }
 
@@ -146,7 +206,13 @@ struct RippleWidget: Widget {
         }
         .configurationDisplayName("Ripple")
         .description("Your streak and today's habits. Tap to record.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall,
+            .systemMedium,
+            .accessoryCircular,
+            .accessoryRectangular,
+            .accessoryInline,
+        ])
     }
 }
 
