@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { AppearanceSection } from "./_components/appearance-section";
 import { CalendarIntegrationSection } from "./_components/calendar-integration-section";
+import { McpSection } from "./_components/mcp-section";
 import { TrialStatusCard } from "./_components/trial-status-card";
 
 import {
@@ -209,6 +210,13 @@ export default function AccountClient({
             lastSyncedAt={calendarIntegration.lastSyncedAt}
             statusFlash={calendarStatusFlash}
           />
+        </div>
+
+        {/* Ripple 1.8 — Connect your AI (MCP). Bring-your-own-AI over
+            a read-only, per-user, revocable token. Self-contained;
+            fetches /api/mcp-tokens itself. Pro-gated via isProLocked. */}
+        <div id="mcp" className="scroll-mt-24">
+          <McpSection isProLocked={isProLocked} />
         </div>
 
         {/* Slice 5 — "Process older entries" surface. Persistent
