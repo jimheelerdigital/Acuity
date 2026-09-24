@@ -434,17 +434,18 @@ export async function generateImage(
 ): Promise<Buffer> {
   const cover = slot === "cover";
   const response = await openai().images.generate({
-    // Every slide on gpt-image-2 at "high" (2026-09-24, per Keenan: "if
-    // you need better quality images then use the high quality chatgpt
-    // images"). Supersedes the 09-17 cheaper-model split and the 09-21
-    // "medium" interiors: slide 2 onward visibly changed look from the
-    // cover. Items stay 2:3 (1024x1536) so the native 4:5 feed version
-    // keeps the full width; covers stay 1024x1792.
+    // Top quality is for the COVER only on social posts (2026-09-24, per
+    // Keenan: "image quality being top quality is ONLY for adlab, not for
+    // the social media posts. only first picture for social media posts").
+    // Interiors: gpt-image-2 at "medium" — ~4.1¢ vs ~6.3¢ for the old
+    // gpt-image-1 medium, so cheaper than the 09-17/09-21 cost setup, and
+    // the same model as the cover so the look doesn't shift after slide 1.
+    // Items stay 2:3 (1024x1536) so the native 4:5 feed keeps full width.
     model: "gpt-image-2",
     prompt,
     n: 1,
     size: cover ? "1024x1792" : "1024x1536",
-    quality: "high",
+    quality: cover ? "high" : "medium",
   });
 
   const b64 = response.data?.[0]?.b64_json;
@@ -617,7 +618,7 @@ export async function uploadOverlaySlide(
   return { imageUrl, rawImageUrl };
 }
 
-/** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. Every slide is "high" since 2026-09-24. */
+/** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. Covers only; interiors are "medium" (~4¢). */
 function estimateImageCost(): number {
   return 25; // 25 cents per image at quality "high"
 }

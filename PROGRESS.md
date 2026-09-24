@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-24] — Correction: top image quality is for ads and social covers only
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The earlier change today put every social slide on the top image quality. That wasn't what you meant: top quality is for AdLab ads and the first picture of each social post only. Inside slides are back to a cheaper setting. They now use the same newer model as the cover at medium quality, which is actually a little cheaper per slide than before today (~4¢ vs ~6¢). AdLab stays on top quality for every image.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts` `generateImage`: interiors `gpt-image-2` quality `"medium"` (were `"high"` for a few hours; before today `gpt-image-1` medium). Covers unchanged (`gpt-image-2` high)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: cost estimates → moody `covers*26 + items*5 + 2`, selfie `25 + steps*4 + 2`
+- AdLab `quality: "high"` (earlier commit) is unchanged
+
+### Manual steps needed
+- None
+
+### Notes
+- Only generation between the earlier push and this deploy would have used "high" interiors. The nightly batch runs 5–8 UTC, after this deploy, so likely none did
+- Rule of record: top quality = AdLab (all images) + social covers. Social interiors are never "high"
+
+---
+
 ## [2026-09-24] — Ad launch fixes: women's campaign age targeting, and the review page shows Meta's real error
 
 **Requested by:** Keenan

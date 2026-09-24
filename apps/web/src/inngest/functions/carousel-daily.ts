@@ -810,8 +810,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         return {
           postId: post.id,
           slideCount: stepSlides.length + 1,
-          // Every slide gpt-image-2 "high" (~25¢) since 2026-09-24.
-          estimatedCostCents: (stepSlides.length + 1) * 25 + 2,
+          // Cover gpt-image-2 high (~25¢), steps gpt-image-2 medium (~4¢).
+          estimatedCostCents: 25 + stepSlides.length * 4 + 2,
         };
       });
 
@@ -1599,10 +1599,10 @@ export const carouselDailyCronFn = inngest.createFunction(
       return {
         postId: post.id,
         slideCount: moodySlides.length + moodyCovers.length,
-        // ~25¢ per gpt-image-2 "high" image + ~1¢ vision quality check
-        // (2026-09-24; the old *8 undercounted covers all along).
+        // Covers gpt-image-2 high (~25¢), items gpt-image-2 medium (~4¢),
+        // +~1¢ vision quality check each (2026-09-24).
         estimatedCostCents:
-          (moodySlides.length + moodyCovers.length) * 26 + 2,
+          moodyCovers.length * 26 + moodySlides.length * 5 + 2,
       };
     });
 
