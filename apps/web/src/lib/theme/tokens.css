@@ -72,6 +72,12 @@
   --acuity-bg: oklch(0.975 0.005 285);
   --acuity-bg-sub: oklch(0.96 0.007 285);
   --acuity-bg-inset: oklch(0.95 0.008 285);
+  /* A visibly-darker inset than bg-inset, for solid chips that must read as
+     "filled" against the near-white page (e.g. the habit history calendar's
+     off-day cells). Mirrors mobile's tokens.bgInsetStrong — added because
+     bg-inset (0.95) sits too close to bg (0.975) and a faint chip reads as
+     "missed". */
+  --acuity-bg-inset-strong: oklch(0.89 0.012 285);
   --acuity-card-bg: oklch(1 0 0);
   /* Subtle palette-tinted card surface. color-mix gives 4% primary
      against pure white, so the tint shifts when the palette changes
@@ -194,6 +200,8 @@
   --acuity-bg: oklch(0.21 0.022 290);
   --acuity-bg-sub: oklch(0.235 0.024 290);
   --acuity-bg-inset: oklch(0.185 0.020 285);
+  /* Dark-mode counterpart of bg-inset-strong (mirrors mobile). */
+  --acuity-bg-inset-strong: oklch(0.32 0.02 285);
   --acuity-card-bg: oklch(0.245 0.024 290);
   --acuity-card-bg-tint: color-mix(
     in oklch,
