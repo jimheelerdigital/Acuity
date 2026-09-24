@@ -357,6 +357,21 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // 9:16 Stories/Reels rendition (2026-09-24) — optional: on failure
+        // the ad still launches with the feed image everywhere.
+        let storyImageHash: string | undefined;
+        if (imageHash && creative.storyImageUrl) {
+          try {
+            await delay(1000);
+            storyImageHash = await withRetry(
+              () => meta.uploadImage(creative.storyImageUrl!),
+              { label: `Story image upload ${creativeLabel}` }
+            );
+          } catch (err) {
+            logMetaError(`Story image upload ${creativeLabel} (continuing feed-only)`, err);
+          }
+        }
+
         await delay(1000);
 
         // Build destination URL
@@ -396,11 +411,29 @@ export async function POST(req: NextRequest) {
         // Create ad creative object on Meta
         const surface = creative.angle.valueSurface;
         const angleSlug = slug(creative.angle.hypothesis, 50);
-        let metaCreativeId: string;
+        let metaCreativeId: string | undefined;
+        const creativeName = `${project.name} | ${surface}: ${angleSlug} | "${slug(creative.headline, 40)}"`;
+        if (imageHash && storyImageHash) {
+          try {
+            metaCreativeId = await meta.createPlacementAdCreative({
+              name: creativeName,
+              pageId: metaPageId!,
+              feedImageHash: imageHash,
+              storyImageHash,
+              headline: creative.headline,
+              primaryText: creative.primaryText,
+              description: creative.description,
+              cta: creative.cta,
+              linkUrl: adLinkUrl,
+            });
+          } catch (err) {
+            logMetaError(`Placement creative ${creativeLabel} (falling back to feed-only)`, err);
+          }
+        }
         try {
-          metaCreativeId = await withRetry(
+          metaCreativeId ??= await withRetry(
             () => meta.createAdCreative({
-              name: `${project.name} | ${surface}: ${angleSlug} | "${slug(creative.headline, 40)}"`,
+              name: creativeName,
               pageId: metaPageId!,
               imageHash,
               videoId,
@@ -425,7 +458,7 @@ export async function POST(req: NextRequest) {
         let metaAdId: string;
         try {
           metaAdId = await withRetry(
-            () => meta.createAd({ name: adName, adsetId, creativeId: metaCreativeId }),
+            () => meta.createAd({ name: adName, adsetId, creativeId: metaCreativeId! }),
             { label: `Ad ${creativeLabel}` }
           );
         } catch (err) {

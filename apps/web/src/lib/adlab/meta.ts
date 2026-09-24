@@ -349,6 +349,70 @@ export async function createAdCreative(params: AdCreativeParams) {
   return id;
 }
 
+/**
+ * Single-image creative with PLACEMENT ASSET CUSTOMIZATION (2026-09-24):
+ * the 4:5 image serves feeds, the 9:16 image serves Stories + Reels, so
+ * neither placement letterboxes. Callers should fall back to
+ * createAdCreative (feed image everywhere) if Meta rejects the spec.
+ */
+export async function createPlacementAdCreative(params: {
+  name: string;
+  pageId: string;
+  feedImageHash: string;
+  storyImageHash: string;
+  headline: string;
+  primaryText: string;
+  description: string;
+  cta: string;
+  linkUrl: string;
+}) {
+  await getApi();
+  const account = await getAdAccount();
+
+  const payload = {
+    name: params.name,
+    object_story_spec: { page_id: params.pageId },
+    asset_feed_spec: {
+      images: [
+        { hash: params.feedImageHash, adlabels: [{ name: "feed_img" }] },
+        { hash: params.storyImageHash, adlabels: [{ name: "story_img" }] },
+      ],
+      bodies: [{ text: params.primaryText }],
+      titles: [{ text: params.headline }],
+      descriptions: [{ text: params.description }],
+      link_urls: [{ website_url: params.linkUrl }],
+      call_to_action_types: [mapCtaType(params.cta)],
+      ad_formats: ["SINGLE_IMAGE"],
+      optimization_type: "PLACEMENT",
+      asset_customization_rules: [
+        {
+          customization_spec: {
+            publisher_platforms: ["facebook", "instagram", "messenger"],
+            facebook_positions: ["story", "facebook_reels"],
+            instagram_positions: ["story", "reels"],
+            messenger_positions: ["story"],
+          },
+          image_label: { name: "story_img" },
+          priority: 1,
+        },
+        {
+          customization_spec: {
+            publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
+          },
+          image_label: { name: "feed_img" },
+          priority: 2,
+        },
+      ],
+    },
+  };
+  console.log("[adlab-meta] Placement creative payload:", JSON.stringify(payload, null, 2));
+
+  const creative = await account.createAdCreative([], payload);
+  const id = creative?.id ?? creative?._data?.id;
+  if (!id) throw new Error("Meta API returned no creative ID — placement creative was not created");
+  return id;
+}
+
 interface CreateAdParams {
   name: string;
   adsetId: string;

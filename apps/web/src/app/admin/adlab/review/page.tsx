@@ -27,6 +27,7 @@ interface Creative {
   description: string;
   cta: string;
   imageUrl: string | null;
+  storyImageUrl?: string | null;
   complianceStatus: string;
   complianceNotes: string | null;
   approved: boolean;
@@ -317,12 +318,28 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
             className="flex max-h-full w-full max-w-5xl flex-col gap-4 overflow-y-auto md:flex-row"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={preview.imageUrl}
-              alt={preview.headline}
-              className="max-h-[85vh] w-full rounded-acuity-lg object-contain md:w-auto"
-            />
+            <div className="flex shrink-0 gap-3">
+              <figure className="flex flex-col items-center gap-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={preview.imageUrl}
+                  alt={preview.headline}
+                  className="max-h-[80vh] w-full rounded-acuity-lg object-contain md:w-auto"
+                />
+                <figcaption className="text-[10px] uppercase tracking-wide text-acuity-text-ter">Feed</figcaption>
+              </figure>
+              {preview.storyImageUrl && (
+                <figure className="flex flex-col items-center gap-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={preview.storyImageUrl}
+                    alt={`${preview.headline} (Stories)`}
+                    className="max-h-[80vh] rounded-acuity-lg object-contain"
+                  />
+                  <figcaption className="text-[10px] uppercase tracking-wide text-acuity-text-ter">Stories / Reels</figcaption>
+                </figure>
+              )}
+            </div>
             <div className="min-w-0 flex-1 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-4 text-sm">
               <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">Primary text</p>
               <p className="text-white whitespace-pre-wrap mb-3">{preview.primaryText}</p>

@@ -45,6 +45,7 @@ export async function GET() {
                   description: true,
                   cta: true,
                   imageUrl: true,
+                  storyImageUrl: true,
                   complianceStatus: true,
                   complianceNotes: true,
                   approved: true,

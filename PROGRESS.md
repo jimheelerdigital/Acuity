@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-09-24] — Ads in the right sizes for every placement, real-app-screenshot format, "Start free trial" everywhere
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+- **Two sizes per ad:** a 4:5 version for Facebook/Instagram feeds (it fills more of the screen) and a tall 9:16 version for Stories and Reels (no more letterboxed squares). Meta is told which to show where.
+- **New "app-proof" format** built from real screenshots of the app: the Life Matrix for women and the Theme Map for men, using the demo account, never your data. It shows people the actual product.
+- **Every ad's button is now "Start free trial"** (Sign up). In our own history that got trials at about half the cost of "Learn more".
+- The review page preview shows both sizes side by side.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/adlab/ad-render.ts`: `cutPlacements` (1024×1536 source → feed 1080×1350 centre crop + story 1080×1920 centre crop), `SAFE_ZONE_RULES` prompt clause, `renderAppProofPlacements` (sharp + Pango/Poppins via content-factory `ensureFontFile`; real screenshot + headline + subline + CTA pill, native layout per size; story keeps the top 250px / bottom 340px clear of UI chrome)
+- New assets `apps/web/public/ad-assets/phone-life-matrix.png`, `phone-theme-map.png` (cropped + rounded-alpha from `docs/play-store-listing/phone-screenshots-v1.3.4`, demo user "Jordan")
+- `lib/adlab/weekly-batch.ts`: format prompts are 2:3 portrait with the safe zone; new `app-proof` AD_FORMAT (marker prompt; 2 of 10 per batch); `generateBatchImage` renders both placements (gpt-image-2 at 1024x1536, or code-composed app-proof) → uploads `-feed-`/`-story-` JPEGs → `imageUrl` / `storyImageUrl`; CTA forced to SIGN_UP
+- `lib/adlab/meta.ts`: new `createPlacementAdCreative` (asset_feed_spec, optimization_type PLACEMENT, asset_customization_rules: story/reels → story_img, everything else → feed_img)
+- `ads/launch/route.ts`: uploads the story image when present and tries the placement creative first; on any failure it falls back to the old single-image creative (feed image everywhere)
+- Review API + page: `storyImageUrl` selected; preview shows Feed + Stories/Reels
+- **Prisma (already pushed from main, guard passed, additive):** `AdLabCreative.storyImageUrl String?`
+
+### Manual steps needed
+- [ ] Keenan: review the regenerated batch at /admin/adlab/review (click to see both sizes) and launch
+
+### Notes
+- The placement-customization payload hasn't been exercised against Meta yet (the token is prod-only). If Meta rejects it, the launch log shows "Placement creative … (falling back to feed-only)" and the ad still goes live with the 4:5 image everywhere. Check the first launch's logs
+- The 4:5 crop trims about 8% off the top and bottom of the AI render, and the 9:16 crop trims about 8% off each side. The prompt keeps text inside a safe zone that allows for both, but gpt-image may still drift, so eyeball both sizes in the preview before launching
+- The play-store home screenshot was excluded: it says "14 nights" / "LAST NIGHT", which conflicts with the no-fixed-time positioning rule
+
+---
+
 ## [2026-09-24] — Ad review: click any ad to see the full image and full copy
 
 **Requested by:** Keenan

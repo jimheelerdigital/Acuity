@@ -24,6 +24,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
 import { displayMonthly } from "@/lib/pricing";
+import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements } from "@/lib/adlab/ad-render";
 
 // ─── Groups ───────────────────────────────────────────────────────────────
 
@@ -198,16 +199,18 @@ const EXACT_TEXT_RULES = `TEXT RENDERING RULES (critical):
 - Clean modern sans-serif typography, high contrast, easily legible on a phone screen.
 - No other text anywhere in the image beyond the strings specified.
 - No logos, no watermarks, no identifiable faces.
-- Square 1:1 social ad, all text inside safe margins (nothing within 60px of any edge).`;
+- ${SAFE_ZONE_RULES}`;
 
 type AdFormatBuilder = (copy: AdImageCopy, g: GroupConfig) => string;
+
+export const APP_PROOF_FORMAT = "app-proof";
 
 /** key → prompt builder. Order defines the rotation across a batch. */
 export const AD_FORMATS: Array<{ key: string; build: AdFormatBuilder }> = [
   {
     // 1. Classic hook overlay — photo background, big hook, CTA pill
     key: "hook-overlay",
-    build: (c, g) => `Direct-response social media ad, square 1:1.
+    build: (c, g) => `Direct-response social media ad, vertical 2:3 portrait.
 Background photograph: ${g.photoStyle} Scene: ${c.imageScene} Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
 Text baked into the image:
 - Large bold headline across the upper third: "${c.headline}"
@@ -227,7 +230,7 @@ ${EXACT_TEXT_RULES}`,
   {
     // 3. Bold statement card — typographic scroll-stopper
     key: "statement-card",
-    build: (c, g) => `Typographic direct-response social ad, square 1:1, on a flat ${g.cardBackground}. No photograph — typography IS the creative.
+    build: (c, g) => `Typographic direct-response social ad, vertical 2:3 portrait, on a flat ${g.cardBackground}. No photograph — typography IS the creative.
 Text baked into the image:
 - Huge bold statement filling most of the frame: "${c.headline}"
 - Smaller supporting line beneath it: "${c.description}"
@@ -238,7 +241,7 @@ ${EXACT_TEXT_RULES}`,
   {
     // 4. Checklist over photo — hook + value props + CTA
     key: "checklist-photo",
-    build: (c, g) => `Direct-response social media ad, square 1:1.
+    build: (c, g) => `Direct-response social media ad, vertical 2:3 portrait.
 Background photograph, heavily darkened/softened so text dominates: ${g.photoStyle} Scene: ${c.imageScene}
 Text baked into the image:
 - Bold headline at top: "${c.headline}"
@@ -249,12 +252,19 @@ ${EXACT_TEXT_RULES}`,
   {
     // 5. App-in-scene — phone with minimal record screen + hook
     key: "app-in-scene",
-    build: (c, g) => `Direct-response social media ad for a voice journaling app, square 1:1.
+    build: (c, g) => `Direct-response social media ad for a voice journaling app, vertical 2:3 portrait.
 Background photograph: ${g.photoStyle} A smartphone rests naturally in the scene (on a table or held, hands only), its screen showing an extremely minimal dark app interface: a large round record button and a soft audio waveform — no readable UI text on the phone screen.
 Text baked into the image:
 - Large bold headline across the top: "${c.headline}"
 - Rounded solid CTA button pill at the bottom: "${ctaLabel(c.cta)}"
 ${EXACT_TEXT_RULES}`,
+  },
+  {
+    // 6. App-proof (2026-09-24) — a REAL app screenshot under the hook.
+    // Composed in code (lib/adlab/ad-render.ts), not by the image model,
+    // which can't draw our UI; this "prompt" is only a stored marker.
+    key: APP_PROOF_FORMAT,
+    build: (c) => `APP_PROOF (composed in code, no image model): headline "${c.headline}", subline "${c.description}", CTA "${ctaLabel(c.cta)}".`,
   },
 ];
 
@@ -460,9 +470,9 @@ REQUIREMENTS:
 - headline: HARD max 40 characters, count them (mobile truncation).
 - primaryText: 1-2 sentences, HARD max 125 characters — Meta cuts to "…more" after that and compliance flags anything longer.
 - description: max 100 characters.
-- cta: one of LEARN_MORE, SIGN_UP, GET_OFFER, DOWNLOAD, SUBSCRIBE.
+- cta: always "SIGN_UP" (renders as "Start free trial"). In our own data SIGN_UP ads produced trial starts at roughly half the cost of LEARN_MORE.
 - imageScene: 1-2 sentence BACKGROUND scene for this ad's image, matching the brand's photography style. Scene only — the headline/CTA overlay is composed separately. No faces.
-- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo + big hook + CTA pill; notes-app = native-looking phone-notes checklist ("ugly ad"); statement-card = typography-only bold statement; checklist-photo = hook + 3 checkmarked value props over a darkened photo; app-in-scene = phone with the record screen in a real scene. Use at least 3 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
+- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo + big hook + CTA pill; notes-app = native-looking phone-notes checklist ("ugly ad"); statement-card = typography-only bold statement; checklist-photo = hook + 3 checkmarked value props over a darkened photo; app-in-scene = phone with the record screen in a real scene; app-proof = the hook above a REAL screenshot of the app (${groupKey === "women" ? "the Life Matrix: 6 life areas scored over time" : "the Theme Map: the recurring themes in what he says"}) — the headline must set up what the screenshot proves, and the description becomes the one-line subline under it (≤60 chars). Use app-proof for 2 of the 10. Use at least 4 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
 - strategy: "exploit" or "explore"${exploitCount ? ` — exactly ${exploitCount} exploit (see EXPLOIT / EXPLORE SPLIT)` : ` — no performance history yet, mark all "explore"`}.
 
 META POLICY (violations get ads rejected — follow strictly):
@@ -498,6 +508,9 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
   const creativeIds: string[] = [];
   for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
     const formatKey = ad.format ?? resolveAdFormat(adIndex).key;
+    // SIGN_UP everywhere (2026-09-24): ~$68/trial vs ~$123 for LEARN_MORE
+    // in our own history. The prompt asks for it; this guarantees it.
+    ad.cta = "SIGN_UP";
     const strategy = ad.strategy ?? "explore";
     const angle = await prisma.adLabAngle.create({
       data: {
@@ -552,36 +565,61 @@ export async function generateBatchImage(
   creativeId: string,
   opts?: { force?: boolean }
 ): Promise<{ ok: boolean; error?: string }> {
-  const creative = await prisma.adLabCreative.findUnique({ where: { id: creativeId } });
+  const creative = await prisma.adLabCreative.findUnique({
+    where: { id: creativeId },
+    include: { angle: { select: { experiment: { select: { campaignTags: true } } } } },
+  });
   if (!creative) return { ok: false, error: "creative not found" };
-  if (creative.imageUrl && !opts?.force) return { ok: true };
-
-  if (!process.env.ACUITY_ADLAB_OPENAI_KEY) {
-    return { ok: false, error: "ACUITY_ADLAB_OPENAI_KEY not configured" };
-  }
+  if (creative.imageUrl && creative.storyImageUrl && !opts?.force) return { ok: true };
 
   try {
-    const response = await openai().images.generate({
-      model: "gpt-image-2",
-      prompt: creative.generationPrompt ?? creative.headline,
-      n: 1,
-      size: "1024x1024",
-    });
-    const b64 = response.data?.[0]?.b64_json;
-    if (!b64) throw new Error("gpt-image-2 returned no image data");
-    const buffer = Buffer.from(b64, "base64");
+    // Both placements (2026-09-24): feed 4:5 → imageUrl, story 9:16 →
+    // storyImageUrl. App-proof is composed in code from a real app
+    // screenshot; every other format is one 2:3 portrait render from the
+    // image model, cut into the two crops (prompts keep text in the
+    // shared safe zone — see ad-render.ts).
+    let placements: { feed: Buffer; story: Buffer };
+    if (creative.formatKey === APP_PROOF_FORMAT) {
+      const tags = creative.angle.experiment.campaignTags;
+      const groupKey: BatchGroupKey = tags.includes("men") ? "men" : "women";
+      placements = await renderAppProofPlacements(groupKey, {
+        headline: creative.headline,
+        subline: creative.description,
+        ctaLabel: ctaLabel(creative.cta),
+      });
+    } else {
+      if (!process.env.ACUITY_ADLAB_OPENAI_KEY) {
+        return { ok: false, error: "ACUITY_ADLAB_OPENAI_KEY not configured" };
+      }
+      const response = await openai().images.generate({
+        model: "gpt-image-2",
+        prompt: creative.generationPrompt ?? creative.headline,
+        n: 1,
+        size: SOURCE_SIZE,
+      });
+      const b64 = response.data?.[0]?.b64_json;
+      if (!b64) throw new Error("gpt-image-2 returned no image data");
+      placements = await cutPlacements(Buffer.from(b64, "base64"));
+    }
 
     const { supabase } = await import("@/lib/supabase.server");
-    const filename = opts?.force ? `${creative.id}-${Date.now()}.png` : `${creative.id}.png`;
-    const { error } = await supabase.storage
-      .from("adlab-creatives")
-      .upload(filename, buffer, { contentType: "image/png", upsert: true });
-    if (error) throw new Error(`Supabase upload failed: ${error.message}`);
-
-    const { data } = supabase.storage.from("adlab-creatives").getPublicUrl(filename);
+    // Timestamped names: a regen gets a fresh public URL (no stale CDN).
+    const stamp = Date.now();
+    const upload = async (suffix: string, buf: Buffer) => {
+      const filename = `${creative.id}-${suffix}-${stamp}.jpg`;
+      const { error } = await supabase.storage
+        .from("adlab-creatives")
+        .upload(filename, buf, { contentType: "image/jpeg", upsert: true });
+      if (error) throw new Error(`Supabase upload failed: ${error.message}`);
+      return supabase.storage.from("adlab-creatives").getPublicUrl(filename).data.publicUrl;
+    };
+    const [imageUrl, storyImageUrl] = await Promise.all([
+      upload("feed", placements.feed),
+      upload("story", placements.story),
+    ]);
     await prisma.adLabCreative.update({
       where: { id: creativeId },
-      data: { imageUrl: data.publicUrl },
+      data: { imageUrl, storyImageUrl },
     });
     return { ok: true };
   } catch (err) {

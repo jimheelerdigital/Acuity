@@ -2664,7 +2664,10 @@ model AdLabCreative {
   primaryText      String                @db.Text
   description      String
   cta              String
-  imageUrl         String?
+  imageUrl         String? // feed rendition (4:5 1080×1350 since 2026-09-24; older rows 1:1)
+  // 9:16 1080×1920 Stories/Reels rendition (2026-09-24). Null on older
+  // creatives — launch then sends imageUrl to every placement.
+  storyImageUrl    String?
   generationPrompt String?               @db.Text
   complianceStatus AdLabComplianceStatus @default(pending)
   complianceNotes  String?               @db.Text
