@@ -1258,8 +1258,18 @@ const BWK_TESTIMONIALS = [
   DEFAULT_TESTIMONIALS[2], // Priya R.
 ];
 
+// Paywall quote for the men's funnel: a real US App Store review (reviewer
+// "KeysCoins", 5 stars, pulled 2026-09-24), quoted verbatim from its last two
+// sentences. Direct and about not dropping things, which is the BWK angle,
+// where James K.'s therapist quote read soft. Credited as "App Store review"
+// because the username doesn't identify a person.
+const BWK_PAYWALL_QUOTE = {
+  quote: "The task manager is a lifesaver!! I never forget anything anymore",
+  name: "App Store review",
+};
+
 function bwkGetPaywallTestimonialPool(_branch: Branch | null): { quote: string; name: string }[] {
-  return [...BWK_TESTIMONIALS];
+  return [BWK_PAYWALL_QUOTE, ...BWK_TESTIMONIALS];
 }
 
 // ─── Mechanism screen examples (Screen 6) ───────────────────────────────────

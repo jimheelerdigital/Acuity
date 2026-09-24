@@ -10,6 +10,9 @@
 ## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
 
 **Requested by:** Jimmy
+## [2026-09-24] — Men's paywall gets its own real review quote
+
+**Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** (this commit)
 
@@ -28,6 +31,17 @@ The automated weekly business audit (emails a full report every Saturday 9pm Cen
 - Entry themes are k-anonymized: this week 96 distinct themes, 95 suppressed for appearing under 2 distinct users. No raw entry text, emails, names, or ids ever leave the DB. Confirmed.
 - Audit prompt (`audits/WEEKLY_AUDIT_PROMPT.md`) matches the requested spec word-for-word. Workflow is read-only on the codebase; reports publish only to the orphan `audits` branch, never main.
 - Committed on branch `feat/weekly-audit-system` (NOT pushed) — waiting on "push it".
+The /start-bwk paywall now quotes a real 5-star App Store review, "The task manager is a lifesaver!! I never forget anything anymore", instead of the therapist quote, which read soft for men. The women's funnel is unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config-bwk.ts`: new `BWK_PAYWALL_QUOTE`; `bwkGetPaywallTestimonialPool` returns it first (the paywall renders pool[0])
+
+### Manual steps needed
+- None
+
+### Notes
+- Verbatim from the US App Store review by "KeysCoins" (5 stars, fetched from the iTunes review RSS on 2026-09-24). Credited as "App Store review" because the username doesn't identify a person. BWK's real-quotes-only rule still holds
+- The mechanism screen and signup strip on /start-bwk still rotate James K. / Sarah M. / Priya R. from `BWK_TESTIMONIALS`
 
 ---
 
