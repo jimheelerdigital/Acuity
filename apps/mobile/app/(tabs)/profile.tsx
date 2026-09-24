@@ -394,6 +394,14 @@ export default function ProfileTab() {
             sublabel="Reminders, nudges, tone & quiet hours"
             onPress={() => router.push("/notification-preferences" as never)}
           />
+          {/* Set up Ripple everywhere (1.7) — Action Button, Siri,
+              widgets, and the mic/notification permission jumps. */}
+          <MenuItem
+            icon="apps-outline"
+            label="Set up Ripple everywhere"
+            sublabel="Action Button, Siri, widgets & permissions"
+            onPress={() => router.push("/setup" as never)}
+          />
           {/* Replay product tour — clears User.tourCompletedAt + the
               local AsyncStorage marker, then bounces to home so the
               tour fires on the next mount. Keeps the guided_start
