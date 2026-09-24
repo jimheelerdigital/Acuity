@@ -227,6 +227,14 @@ function clearOAuthPending(): void {
   try { localStorage.removeItem(OAUTH_PENDING_KEY); } catch {}
 }
 
+// Web funnel accounts start on the FREE plan; the 7-day Pro trial needs a card
+// (see /api/onboarding/funnel-free-plan for the why). Fire-and-forget: the
+// route only touches a brand-new, still-TRIAL, card-less account, so calling it
+// on an existing user's sign-in return is a no-op.
+function moveNewAccountToFreePlan(): void {
+  fetch("/api/onboarding/funnel-free-plan", { method: "POST", keepalive: true }).catch(() => {});
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export function OnboardingFunnel() {
@@ -337,7 +345,7 @@ export function OnboardingFunnel() {
               fireFbq("Purchase", { value: planValueDollars(selectedPlan), currency: "USD", content_name: "Ripple Pro Subscription" });
             } else {
               setStep("savings");
-              setApiError("Payment incomplete. Try again or continue with your free trial.");
+              setApiError("Payment didn\u2019t go through. Try again, or continue with the free plan.");
             }
           })
           .catch(() => {
@@ -360,6 +368,7 @@ export function OnboardingFunnel() {
         clearOAuthPending();
       }
       track("funnel_account_created", { value: `method:oauth|${envDiag}` });
+      moveNewAccountToFreePlan();
       if (typeof window !== "undefined" && "gtag" in window) {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "oauth" });
       }
@@ -870,6 +879,7 @@ export function OnboardingFunnel() {
           track={track}
           onAccountCreated={() => {
             track("funnel_account_created", { value: `method:email|${getSignupEnvDiag()}` });
+            moveNewAccountToFreePlan();
             if (typeof window !== "undefined" && "gtag" in window) {
               (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "sign_up", { method: "email" });
             }
@@ -2025,7 +2035,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       <div className="max-w-md w-full funnel-screen">
         <section className="text-center mb-7">
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">{headline}</h2>
-          <p className="text-[15px] text-acuity-text-sec mt-3">Free. No credit card. Your 7 free days start now.</p>
+          <p className="text-[15px] text-acuity-text-sec mt-3">Create your account. Next, start your 7 days of Pro free.</p>
         </section>
 
         {/* Social proof — auto-rotating testimonials */}
@@ -2086,137 +2096,108 @@ function SignupTestimonialStrip() {
 
 // ─── Lock In Your Savings (Screen 17 — optional paywall) ──────────────────
 
-// ─── Paywall Feature Data (trimmed Free-vs-Pro split) ────────────────────────
+// ─── Paywall (v8.1, 2026-09-24) ─────────────────────────────────────────────
+//
+// The 7-day Pro trial now requires a card on the web funnels (new accounts
+// start FREE). So the page sells the trial itself: trial is the headline,
+// the Today / Day 4 / Day 7 timeline sits right under it, the plan picker is
+// a compact toggle, and Pro is three things people can picture. Habit
+// tracking leads (key feature for both audiences). "Signals" was cut: it's
+// coaching language, and Ripple is a mirror, not a coach.
 
-const FREE_FEATURES = [
-  { name: "Voice debrief & task extraction", description: "Talk instead of type; your action items pulled out automatically." },
-];
-
-// Habit tracking leads: it's a key feature for both audiences (Keenan,
-// 2026-09-24) and the easiest one to picture.
 const PRO_FEATURES = [
   { name: "Habit tracking", description: "Set your habits. When a debrief mentions one, it\u2019s checked off for you and the streak keeps going." },
-  { name: "Deep Insights", description: "Observations about you that you\u2019d never notice on your own." },
-  { name: "Pattern detection", description: "Recurring themes surfaced across your entries." },
-  { name: "Signals", description: "Next-step guidance based on what you actually said." },
+  { name: "Tasks and patterns", description: "The to-dos in what you say get pulled out, and the themes that keep coming back get named." },
+  { name: "Weekly report", description: "A written read on your week: what changed and what keeps repeating." },
 ];
 
-function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
+function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {
   branch: Branch | null;
   answers: Record<string, string | string[]>;
   track: (event: string, props?: Record<string, unknown>) => void;
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
-  // v8 paywall (2026-09-24), shared by both funnels. What changed vs v7 and why:
-  // - No crossed-out "$19.99 / $199" anchors, no "founding rate, locked in for
-  //   life", no therapy/coach/coffee comparison. Invented anchors read as a
-  //   fake discount to this audience, and "less than a coffee" isn't true at
-  //   the V2 price. Every number here comes from the display tier.
-  // - One clear primary action + a quiet free path, instead of two equal
-  //   buttons. v6-v7: ~55% of paywall viewers picked neither.
-  // - A plain Today / Day 7 timeline so "$0 today" is concrete.
-  // - One inline testimonial instead of a mid-screen modal.
-  // Event names are unchanged (lock_in_selected / continue_selected) so the
-  // admin funnel split keeps working.
+  // Event names are unchanged (lock_in_selected / continue_selected /
+  // plan_selected) so the admin funnel split keeps working.
   const cfg = useFunnelConfig();
   const afterTrialPrice = selectedPlan === "yearly"
     ? `${displayAnnual()}/yr`
     : `${displayMonthly()}/mo`;
   const testimonial = cfg.getPaywallTestimonialPool(branch)[0];
-  const paywallHeadline = branch ? cfg.getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
   const paywallHook = branch ? cfg.PAYWALL_HOOKS[branch] : null;
 
-  const plans: { id: "monthly" | "yearly"; label: string; price: string; note: string; badge?: string }[] = [
-    { id: "monthly", label: "Monthly", price: `${displayMonthly()}/mo`, note: "Billed monthly" },
-    { id: "yearly", label: "Yearly", price: `${displayAnnual()}/yr`, note: `${displayAnnualAsMonthly()}/mo, billed yearly`, badge: `Save ${displaySavingsPct()}` },
+  const pickPlan = (p: "monthly" | "yearly") => { onPlanChange(p); track("funnel_paywall_plan_selected", { value: p }); };
+  const segment = (on: boolean) =>
+    `flex-1 rounded-full px-3 py-2.5 text-center transition ${on ? "bg-acuity-card-bg text-acuity-text" : "text-acuity-text-sec"}`;
+
+  const timeline: { label: string; text: string }[] = [
+    { label: "Today", text: "Full Pro access. $0." },
+    { label: "Day 4", text: "We email you a reminder." },
+    { label: "Day 7", text: `${afterTrialPrice} starts. Cancel before then and you pay nothing.` },
   ];
 
   return (
-    <div className="min-h-screen pb-56">
+    <div className="min-h-screen pb-60">
       <div className="max-w-lg mx-auto px-6 pt-20">
 
-        {/* Header — branch-personalized (pt-20 clears the fixed back button) */}
-        <section className="text-center mb-7 funnel-screen">
+        {/* Header — the trial is the offer */}
+        <section className="text-center mb-6 funnel-screen">
           {paywallHook && (
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-primary mb-3">{paywallHook}</p>
           )}
-          <h2 className="text-[24px] sm:text-[28px] font-bold tracking-tight leading-snug">{paywallHeadline}</h2>
-          <p className="text-[15px] text-acuity-text-sec mt-3">Your 7 free days have started. Pro keeps everything running after day 7.</p>
+          <h2 className="text-[28px] sm:text-[32px] font-bold tracking-tight leading-tight text-balance">Try Ripple Pro free for 7 days</h2>
+          <p className="text-[15px] text-acuity-text-sec mt-3">$0 today. Cancel anytime before day 7 and you pay nothing.</p>
         </section>
 
-        {/* What you get — the real free vs Pro split */}
-        <section className="mb-5 rounded-[22px] f-card overflow-hidden funnel-card-stagger" style={{ animationDelay: "80ms" }}>
-          <div className="px-5 pt-4 pb-3">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-good mb-2">Free forever</p>
-            {FREE_FEATURES.map((f) => (
-              <div key={f.name} className="flex items-start gap-3 py-1.5">
-                <span className="text-acuity-good text-sm mt-0.5 leading-none">&#10003;</span>
-                <div>
-                  <p className="text-[15px] font-semibold leading-tight">{f.name}</p>
-                  <p className="text-[13px] text-acuity-text-sec leading-snug mt-0.5">{f.description}</p>
+        {/* How the trial works — first, because it answers "will I be charged?" */}
+        <section className="mb-5 rounded-[22px] f-card px-5 py-4 funnel-card-stagger" style={{ animationDelay: "80ms" }}>
+          <ol>
+            {timeline.map((t, i) => (
+              <li key={t.label} className="flex gap-3">
+                <div className="flex flex-col items-center pt-1.5">
+                  <span className={`h-2.5 w-2.5 rounded-full ${i === 0 ? "bg-acuity-primary" : "border border-acuity-line-strong"}`} />
+                  {i < timeline.length - 1 && <span className="w-px flex-1 bg-acuity-line-strong my-1" />}
                 </div>
-              </div>
-            ))}
-          </div>
-          <div className="px-5 pt-3 pb-4 border-t border-acuity-line f-sub">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-primary mb-2">Pro adds</p>
-            {PRO_FEATURES.map((f) => (
-              <div key={f.name} className="flex items-start gap-3 py-1.5">
-                <span className="text-acuity-primary text-sm mt-0.5 leading-none">&#10003;</span>
-                <div>
-                  <p className="text-[15px] font-semibold leading-tight">{f.name}</p>
-                  <p className="text-[13px] text-acuity-text-sec leading-snug mt-0.5">{f.description}</p>
+                <div className={i < timeline.length - 1 ? "pb-3" : ""}>
+                  <p className="text-[15px] font-semibold">{t.label}</p>
+                  <p className="text-[13px] text-acuity-text-sec tabular-nums">{t.text}</p>
                 </div>
-              </div>
+              </li>
             ))}
+          </ol>
+        </section>
+
+        {/* Plan toggle — monthly first and default (never lead with annual) */}
+        <section className="mb-5 funnel-card-stagger" style={{ animationDelay: "160ms" }}>
+          <div className="flex gap-1 rounded-full f-sub p-1" role="radiogroup" aria-label="Choose a plan">
+            <button type="button" role="radio" aria-checked={selectedPlan === "monthly"} onClick={() => pickPlan("monthly")}
+              className={segment(selectedPlan === "monthly")}
+              style={selectedPlan === "monthly" ? { boxShadow: "inset 0 0 0 1px var(--acuity-primary)" } : undefined}>
+              <span className="block text-[14px] font-semibold">Monthly</span>
+              <span className="block text-[12px] tabular-nums">{displayMonthly()}/mo</span>
+            </button>
+            <button type="button" role="radio" aria-checked={selectedPlan === "yearly"} onClick={() => pickPlan("yearly")}
+              className={segment(selectedPlan === "yearly")}
+              style={selectedPlan === "yearly" ? { boxShadow: "inset 0 0 0 1px var(--acuity-primary)" } : undefined}>
+              <span className="block text-[14px] font-semibold">Yearly <span className="text-acuity-good">&middot; save {displaySavingsPct()}</span></span>
+              <span className="block text-[12px] tabular-nums">{displayAnnual()}/yr ({displayAnnualAsMonthly()}/mo)</span>
+            </button>
           </div>
         </section>
 
-        {/* Plan picker — monthly first and default (never lead with annual) */}
-        <section className="mb-5 space-y-3 funnel-card-stagger" style={{ animationDelay: "160ms" }} role="radiogroup" aria-label="Choose a plan">
-          {plans.map((p) => {
-            const on = selectedPlan === p.id;
-            return (
-              <button key={p.id} type="button" role="radio" aria-checked={on}
-                onClick={() => { onPlanChange(p.id); track("funnel_paywall_plan_selected", { value: p.id }); }}
-                className={`w-full flex items-center gap-4 rounded-[18px] px-5 py-4 text-left transition ${on ? "f-tint" : "f-card"}`}
-                style={on ? { boxShadow: "inset 0 0 0 1px var(--acuity-primary)" } : undefined}>
-                <span className="funnel-marker" data-on={on ? "1" : undefined} />
-                <span className="flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="text-[15px] font-semibold">{p.label}</span>
-                    {p.badge && (
-                      <span className="rounded-full bg-acuity-good-soft px-2 py-0.5 text-[11px] font-semibold text-acuity-good">{p.badge}</span>
-                    )}
-                  </span>
-                  <span className="block text-[13px] text-acuity-text-sec mt-0.5">{p.note}</span>
-                </span>
-                <span className="text-[17px] font-bold tabular-nums">{p.price}</span>
-              </button>
-            );
-          })}
-        </section>
-
-        {/* How the trial works — concrete, no surprises */}
-        <section className="mb-6 rounded-[22px] f-card px-5 py-4 funnel-card-stagger" style={{ animationDelay: "240ms" }}>
-          <div className="flex gap-3">
-            <div className="flex flex-col items-center pt-1">
-              <span className="h-2.5 w-2.5 rounded-full bg-acuity-primary" />
-              <span className="w-px flex-1 bg-acuity-line-strong my-1" />
-              <span className="h-2.5 w-2.5 rounded-full border border-acuity-line-strong" />
-            </div>
-            <div className="flex-1 space-y-4">
+        {/* What Pro gives you — three things, habit tracking first */}
+        <section className="mb-5 rounded-[22px] f-card px-5 py-4 funnel-card-stagger" style={{ animationDelay: "240ms" }}>
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-primary mb-2">What Pro gives you</p>
+          {PRO_FEATURES.map((f) => (
+            <div key={f.name} className="flex items-start gap-3 py-1.5">
+              <span className="text-acuity-primary text-sm mt-0.5 leading-none">&#10003;</span>
               <div>
-                <p className="text-[15px] font-semibold">Today</p>
-                <p className="text-[13px] text-acuity-text-sec">Everything in Pro. $0.</p>
-              </div>
-              <div>
-                <p className="text-[15px] font-semibold">Day 7</p>
-                <p className="text-[13px] text-acuity-text-sec">{afterTrialPrice} starts. Cancel before then and you pay nothing.</p>
+                <p className="text-[15px] font-semibold leading-tight">{f.name}</p>
+                <p className="text-[13px] text-acuity-text-sec leading-snug mt-0.5">{f.description}</p>
               </div>
             </div>
-          </div>
+          ))}
         </section>
 
         {/* Social proof — the brand's rating line + one real quote */}
@@ -2234,21 +2215,24 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
         </section>
       </div>
 
-      {/* Sticky footer — one primary action, the free path as a quiet link */}
+      {/* Sticky footer — one primary action, the free plan as a quiet link */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-acuity-bg border-t border-acuity-line px-6 pt-3 pb-4 safe-area-pb">
         <div className="max-w-lg mx-auto">
           {error && <p className="text-xs text-acuity-bad text-center mb-2">{error}</p>}
           <button onClick={onCheckout} disabled={loading}
             className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50">
-            {loading ? "Loading\u2026" : "Start free trial"}
+            {loading ? "Loading\u2026" : "Start my free 7 days"}
           </button>
           <p className="text-[12px] text-center mt-2 text-acuity-text-sec tabular-nums">
-            <span className="font-semibold text-acuity-text">$0 today.</span> {afterTrialPrice} after day 7. Cancel anytime.
+            <span className="font-semibold text-acuity-text">$0 today.</span> Then {afterTrialPrice}. Cancel anytime.
           </p>
           <button onClick={onSkip} disabled={loading}
-            className="w-full mt-2 py-2 text-[14px] font-medium text-acuity-text-sec underline-offset-4 hover:underline disabled:opacity-50">
-            Continue without a card
+            className="w-full mt-2 py-1.5 text-[14px] font-medium text-acuity-text-sec underline-offset-4 hover:underline disabled:opacity-50">
+            Continue with the free plan
           </button>
+          {/* Exactly what FREE gets (lib/entitlements.ts: record + one-line
+              summary + history; extraction is Pro). */}
+          <p className="text-[11px] text-center text-acuity-text-ter">Record debriefs and get a one-line summary. No card.</p>
           <p className="text-[10px] text-acuity-text-quiet text-center mt-1">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>
       </div>
@@ -2333,8 +2317,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </>
         ) : (
           <>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is active.</h2>
-            <p className="text-sm text-acuity-text-ter mb-2">You have 7 days to explore everything Ripple offers.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free account is ready.</h2>
             <p className="text-sm text-acuity-text-ter mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         )}
@@ -2420,7 +2403,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 
         {!paymentConfirmed && (
           <p className="mt-8 text-xs text-acuity-text-ter">
-            You can keep Pro any time before your trial ends, in the app or on the web.
+            Want tasks, habits and your weekly report? You can upgrade to Pro any time in the app.
           </p>
         )}
 

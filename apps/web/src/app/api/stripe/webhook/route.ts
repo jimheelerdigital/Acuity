@@ -844,6 +844,37 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    case "customer.subscription.trial_will_end": {
+      // Stripe fires this 3 days before a trial ends (day 4 of the 7-day
+      // web trial). The funnel paywall promises this reminder. Best-effort:
+      // a send failure is logged, never retried into a duplicate (the
+      // StripeEvent dedupe above already guards redelivery).
+      const sub = event.data.object as Stripe.Subscription;
+      try {
+        const users = await prisma.user.findMany({
+          where: { stripeCustomerId: sub.customer as string },
+          select: { email: true, name: true },
+        });
+        const item = sub.items?.data?.[0]?.price;
+        const amount = item?.unit_amount != null ? `$${(item.unit_amount / 100).toFixed(2)}` : null;
+        const per = item?.recurring?.interval === "year" ? "year" : "month";
+        const priceText = amount ? `${amount}/${per}` : "the plan you picked";
+        const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
+        if (trialEnd && sub.status === "trialing") {
+          const { sendTrialReminderEmail } = await import("@/emails/trial-reminder");
+          for (const u of users) {
+            if (u.email) await sendTrialReminderEmail({ to: u.email, name: u.name, trialEnd, priceText });
+          }
+        }
+      } catch (err) {
+        safeLog.warn("stripe-webhook.trial-reminder-failed", {
+          subscriptionId: sub.id,
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+      break;
+    }
+
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
       try {

@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-09-24] — Web funnels: the 7-day Pro trial now needs a card, paywall rebuilt around the trial
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+New accounts from /start and /start-bwk now start on the free plan. The 7-day Pro trial comes only through "Start my free 7 days", which takes a card and charges nothing today. Until now, every signup got 7 free days of Pro without a card, so the paywall's card ask gave them nothing extra. Over the last 150 days, 305 no-card trials produced 1 paying customer, while 36 card trials produced 11. The paywall now leads with "Try Ripple Pro free for 7 days". Right under it is the Today → Day 4 reminder → Day 7 timeline, then a compact Monthly/Yearly toggle and three Pro features (habit tracking first). Card-trial users now get a reminder email 3 days before they're charged, as the paywall promises. The paywall also no longer claims free accounts get task extraction, which they don't.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/onboarding/funnel-free-plan/route.ts` (POST): sets `subscriptionStatus: "FREE"`, `trialEndsAt: now` for the session user, only if created < 60 min ago, still TRIAL, `stripeSubscriptionId` null, and not an IAP source (`NOT_IAP_SOURCE_WHERE`). `trialExpiredAt` is left null on purpose, so the T+0 / T+3 "trial ended" email + push cohorts never fire for these users
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - `moveNewAccountToFreePlan()` fires after email account creation and on the OAuth `post-signup` return
+  - Paywall rebuilt: trial headline, 3-row timeline (Today / Day 4 reminder / Day 7), segmented plan toggle, 3 Pro features (Habit tracking / Tasks and patterns / Weekly report; "Deep Insights" and "Signals" cut)
+  - CTA "Start my free 7 days"; skip link "Continue with the free plan" + "Record debriefs and get a one-line summary. No card."
+  - Removed the false "Free forever: Voice debrief & task extraction" (FREE has `canExtractEntries: false`)
+  - Create-account subline, download screen (skip path) and the payment-error copy no longer promise a cardless trial
+- New `apps/web/src/emails/trial-reminder.ts` + `customer.subscription.trial_will_end` case in `apps/web/src/app/api/stripe/webhook/route.ts`: emails every user on that Stripe customer (date, price from the subscription item, cancel link to `/api/stripe/manage`). Best-effort, logged on failure, deduped by the existing StripeEvent guard
+- `apps/web/src/emails/trial/welcome-day0.ts`, `apps/web/src/emails/welcome-verify.ts`: dropped "7 days free, no card required" from the P.S., which is no longer true for funnel signups (both emails send before the funnel can downgrade the account)
+
+### Manual steps needed
+- [ ] Stripe dashboard → Developers → Webhooks → the goripple.io endpoint → add the event `customer.subscription.trial_will_end`. Without it the Day 4 reminder the paywall promises never sends (Keenan / Jimmy)
+- [ ] Review before push: entitlement change (funnel-free-plan route), Stripe webhook case, paywall copy (Jimmy)
+- [ ] After deploy: sign up via /start with a new email, confirm the account shows FREE before paying and PRO after the Stripe card trial (Keenan / Claude)
+
+### Notes
+- Why a narrow downgrade route instead of changing `bootstrapNewUser`: bootstrap runs inside NextAuth's `events.createUser` for OAuth, where we can't tell a funnel signup from a mobile one. Mobile signups keep the cardless 7-day trial
+- Signup runs `bootstrapNewUser` synchronously (email route awaits it; NextAuth awaits `events.createUser`), so the TRIAL row exists before the funnel calls the route. No race
+- A Stripe card trial maps `trialing` → PRO in `applySubscriptionState`, so paying users are PRO immediately
+- Stripe fires `trial_will_end` 3 days before trial end, which is day 4 of a 7-day trial. That's where the paywall's "Day 4" comes from. If the trial length changes, change that copy
+- Data behind the decision (users created in the last 150 days, trial ended): no card = 305 users, 1 paying now, 18% ever recorded. Card = 36 users, 11 paying, 42% recorded
+
+---
+
 ## [2026-09-24] — Both sign-up funnels cut to 11 steps, men's funnel goes dark, new paywall, habit tracking featured, sign-in fixes
 
 **Requested by:** Keenan
