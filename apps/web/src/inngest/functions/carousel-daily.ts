@@ -810,7 +810,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         return {
           postId: post.id,
           slideCount: stepSlides.length + 1,
-          estimatedCostCents: (stepSlides.length + 1) * 8 + 2,
+          // Every slide gpt-image-2 "high" (~25¢) since 2026-09-24.
+          estimatedCostCents: (stepSlides.length + 1) * 25 + 2,
         };
       });
 
@@ -1442,12 +1443,13 @@ export const carouselDailyCronFn = inngest.createFunction(
 
     const moodyCovers: {
       imageUrl: string;
+      rawImageUrl: string;
       overlayText: string;
       imagePrompt: string;
     }[] = [];
     for (let c = 0; c < coverScenes.length; c++) {
       const cover = await step.run(`generate-moody-cover-${c}`, async () => {
-        const { generateMoodyImage, uploadImage } = await import(
+        const { generateCheckedMoodyImage, uploadOverlaySlide } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildMoodyImagePrompt } = await import(
@@ -1459,7 +1461,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         // BWK: avatar only when this post won the ≤8% roll AND the
         // cover is the chosen slide (2026-08-31 cap) — first candidate
         // only. Ripple avatar lanes: every cover candidate.
-        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+        const { buffer: rawBuffer, prompt, qc } = await generateCheckedMoodyImage(
           buildMoodyImagePrompt(
             imageAudience,
             coverScenes[c],
@@ -1468,31 +1470,35 @@ export const carouselDailyCronFn = inngest.createFunction(
           (moody.avatarSlideIndex === 0 && c === 0) ||
             rippleAvatarLane !== undefined,
           "cover",
+          coverScenes[c],
           rippleAvatarLane
         );
+        logger.info(`[carousel-cron] cover ${c} quality: ${qc}`);
         const overlay = await renderMoodyTextOverlay(
           [moody.title],
           "COVER",
           textTone
         );
-        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
-        const imageUrl = await uploadImage(
-          composed,
+        // 9:16 + native 4:5 feed + text-free raw (2026-09-24).
+        const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+          rawBuffer,
+          overlay,
           `carousels/${dateStr}/${slug}/slide-cover-${c}.jpg`
         );
-        return { imageUrl, overlayText: moody.title, imagePrompt: prompt };
+        return { imageUrl, rawImageUrl, overlayText: moody.title, imagePrompt: prompt };
       });
       moodyCovers.push(cover);
     }
 
     const moodySlides: {
       imageUrl: string;
+      rawImageUrl: string;
       overlayText: string;
       imagePrompt: string;
     }[] = [];
     for (let i = 0; i < moody.items.length; i++) {
       const slide = await step.run(`generate-moody-item-${i}`, async () => {
-        const { generateMoodyImage, uploadImage } = await import(
+        const { generateCheckedMoodyImage, uploadOverlaySlide } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildMoodyImagePrompt } = await import(
@@ -1507,23 +1513,27 @@ export const carouselDailyCronFn = inngest.createFunction(
           : item.lines;
         // Avatar only when this post won the ≤8% roll AND this is the
         // chosen slide (2026-08-31 cap).
-        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+        const { buffer: rawBuffer, prompt, qc } = await generateCheckedMoodyImage(
           buildMoodyImagePrompt(imageAudience, item.scene, moody.scheme ?? "light"),
           moody.avatarSlideIndex === i + 1,
-          "item"
+          "item",
+          item.scene
         );
+        logger.info(`[carousel-cron] item ${i + 1} quality: ${qc}`);
         const overlay = await renderMoodyTextOverlay(
           paragraphs,
           itemKind,
           textTone
         );
-        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
-        const imageUrl = await uploadImage(
-          composed,
+        // 9:16 + native 4:5 feed + text-free raw (2026-09-24).
+        const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+          rawBuffer,
+          overlay,
           `carousels/${dateStr}/${slug}/slide-${i + 1}-item.jpg`
         );
         return {
           imageUrl,
+          rawImageUrl,
           overlayText: paragraphs.join("\n\n"),
           imagePrompt: prompt,
         };
@@ -1567,6 +1577,7 @@ export const carouselDailyCronFn = inngest.createFunction(
                 overlayText: cvr.overlayText,
                 imagePrompt: cvr.imagePrompt,
                 imageUrl: cvr.imageUrl,
+                rawImageUrl: cvr.rawImageUrl,
               })),
               ...moodySlides.map((s, i) => ({
                 order: moodyCovers.length + i,
@@ -1574,6 +1585,7 @@ export const carouselDailyCronFn = inngest.createFunction(
                 overlayText: s.overlayText,
                 imagePrompt: s.imagePrompt,
                 imageUrl: s.imageUrl,
+                rawImageUrl: s.rawImageUrl,
               })),
             ],
           },
@@ -1587,8 +1599,10 @@ export const carouselDailyCronFn = inngest.createFunction(
       return {
         postId: post.id,
         slideCount: moodySlides.length + moodyCovers.length,
+        // ~25¢ per gpt-image-2 "high" image + ~1¢ vision quality check
+        // (2026-09-24; the old *8 undercounted covers all along).
         estimatedCostCents:
-          (moodySlides.length + moodyCovers.length) * 8 + 2,
+          (moodySlides.length + moodyCovers.length) * 26 + 2,
       };
     });
 

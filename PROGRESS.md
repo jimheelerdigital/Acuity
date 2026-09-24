@@ -7,6 +7,52 @@
 
 ---
 
+## [2026-09-24] — Image quality round 2: every slide on gpt-image-2 high, a quality check per image, native Instagram/Facebook crops, cheaper text edits
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+- **Top model everywhere:** every slide, not just the cover, now uses ChatGPT's newest image model at its highest quality, so slides 2+ match the cover. All AdLab ad images are locked to that same highest-quality setting.
+- **Quality check:** each carousel photo gets a quick AI check before it ships (fake/CGI look, smeared or garbled areas, stray text, people who shouldn't be there, too dark to see). A failing image is regenerated once.
+- **Proper feed images:** Instagram and Facebook now get their own full-quality 4:5 version of each slide instead of a zoomed-in crop of the tall TikTok image.
+- **Cheaper, faithful text edits:** editing a slide's words keeps the same photo, instead of paying for a new one that looks different.
+
+Cost: roughly +$10–15/day in images. Inside slides went from ~6¢ to ~25¢ each, plus ~1¢ per check.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/carousel-generate.ts`:
+  - `generateImage` "item" slot: `gpt-image-1`/medium → `gpt-image-2`/high (items stay 1024x1536)
+  - new `generateCheckedMoodyImage` (generate → vision check → regenerate once; retry skipped after 120s)
+  - new `uploadOverlaySlide` (uploads `<path>`, `<path>-feed.jpg`, `<path>-raw.jpg`)
+  - `recomposeSlide`: any slide with a "DIM and shadowed"/"SOFT and LIGHT" marker takes the overlay path (pulse/muse/fantasy-men/etc. were falling into the legacy bake-text path); reuses `rawImageUrl` when present; uploads an `-feed.jpg` for edits; stores raw on overlay slides of any kind
+  - OpenAI client unchanged from earlier today (90s, 1 retry)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: new `checkMoodyImageQuality(image, scene, {personAllowed})`
+  - `claude-opus-5` at `output_config.effort: "low"` (cast; SDK 0.27.3 predates the type), image sent at 768px wide
+  - PASS / FAIL: reason; fail-open on error or refusal
+- `apps/web/src/lib/content-factory/compose.ts`: new `composeFeedWithOverlay` (raw 2:3 → 1080x1350 cover-fit, overlay cropped to its middle 1350 rows, adaptive scrim, q92 4:4:4)
+- `apps/web/src/app/api/content-factory/image/[...path]/route.ts`: `?ar=4x5` serves `<name>-feed.jpg` when present, else crops as before
+- `apps/web/src/inngest/functions/carousel-daily.ts`: main moody cover/item steps use `generateCheckedMoodyImage` + `uploadOverlaySlide`, save `rawImageUrl`, log the verdict. Cost estimates updated (moody `*26+2`, selfie steps `*25+2`)
+- AdLab: `quality: "high"` added to all five gpt-image-2 calls:
+  - `lib/adlab/weekly-batch.ts`
+  - `app/api/admin/adlab/creatives/generate/route.ts` (edit + generate)
+  - `app/api/admin/adlab/creatives/generate-more/route.ts` (edit + generate)
+  - They had no quality set, so OpenAI's "auto" picked
+
+### Manual steps needed
+- [ ] After tonight's run: check Inngest logs for "quality:" lines on moody steps, and make sure there are none reading "Image quality check failed (treating as pass)". The check couldn't be live-tested locally: both local ANTHROPIC_API_KEYs return 401 (Claude)
+- [ ] After tomorrow's first IG/FB posts: confirm the feed images come from `-feed.jpg` (proxy) and look right (Claude)
+- [ ] Decide whether the image check should move to a cheaper model (Haiku ~0.2¢ vs ~1¢). Claude defaulted to claude-opus-5 per the API guidance (Keenan)
+
+### Notes
+- Price check (third-party calculators, Sept 2026): gpt-image-2 medium 1024x1536 ≈ 4.1¢; high ≈ 16–25¢. Timeline grid cells stay gpt-image-1 medium (they display at 360x540)
+- The @anthropic-ai/sdk here is 0.27.3. Server-side refusal fallbacks and typed `output_config` need a newer SDK, so the check fails open instead
+- The feed file is keyed to the image path, so an edited slide (new path) never serves a stale feed version: with no `-feed.jpg` at the new path, the proxy crops the new final
+- Selfie-lane slides already stored raws; baked-text slides (phone-quote, texts) are unchanged (text lives in the image)
+
+---
+
 ## [2026-09-24] — Men's funnel no longer shows the "download the app" banner
 
 **Requested by:** Keenan

@@ -1676,6 +1676,38 @@ export async function composeSlideWithOverlay(
 }
 
 /**
+ * Native 4:5 feed rendition for Instagram/Facebook (2026-09-24 audit
+ * fix). The publisher used to center-crop the finished 9:16 slide, which
+ * meant feeds showed ~864x1080 source pixels upscaled to 1080x1350. This
+ * builds the 4:5 straight from the raw 2:3 image (a ~1.05x resize, full
+ * width kept) and lays on the same text overlay cropped to its middle
+ * 1350 rows — the overlay already keeps text inside that band
+ * (FEED_SAFE_H). The image proxy serves this file for ?ar=4x5.
+ */
+export async function composeFeedWithOverlay(
+  rawImage: Buffer,
+  overlayPng: Buffer
+): Promise<Buffer> {
+  const FEED_H = 1350;
+  const base = await sharp(rawImage)
+    .resize(OUTPUT_W, FEED_H, { fit: "cover", position: "centre" })
+    .sharpen({ sigma: 0.5 })
+    .toBuffer();
+  const overlay = await sharp(overlayPng)
+    .extract({ left: 0, top: Math.round((OUTPUT_H - FEED_H) / 2), width: OUTPUT_W, height: FEED_H })
+    .png()
+    .toBuffer();
+  const scrim = await buildAdaptiveScrim(base, overlay).catch(() => null);
+  return sharp(base)
+    .composite([
+      ...(scrim ? [{ input: scrim, top: 0, left: 0 }] : []),
+      { input: overlay, top: 0, left: 0 },
+    ])
+    .jpeg({ quality: 92, chromaSubsampling: "4:4:4" })
+    .toBuffer();
+}
+
+/**
  * Adaptive text scrim (2026-09-24 image-quality pass). Legibility used to
  * rest entirely on the photo being dark ("the entire frame is DIM"),
  * which pushed every image flat and murky. Now a soft, feathered cloud

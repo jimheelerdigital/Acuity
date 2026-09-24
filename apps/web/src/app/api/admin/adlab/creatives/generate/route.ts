@@ -55,6 +55,9 @@ async function generateImage(prompt: string, referenceImageUrl?: string): Promis
 
           const response = await openai().images.edit({
             model: "gpt-image-2",
+            // Always max fidelity for ads (2026-09-24, per Keenan: "all adlab images
+            // should be generated with the high quality images from the gpt2 api").
+            quality: "high",
             image: file,
             prompt,
             n: 1,
@@ -74,6 +77,9 @@ async function generateImage(prompt: string, referenceImageUrl?: string): Promis
     // Standard generation (no reference image or fallback)
     const response = await openai().images.generate({
       model: "gpt-image-2",
+      // Always max fidelity for ads (2026-09-24, per Keenan: "all adlab images
+      // should be generated with the high quality images from the gpt2 api").
+      quality: "high",
       prompt,
       n: 1,
       size: "1024x1024",

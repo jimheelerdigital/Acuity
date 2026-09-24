@@ -434,20 +434,17 @@ export async function generateImage(
 ): Promise<Buffer> {
   const cover = slot === "cover";
   const response = await openai().images.generate({
-    model: cover ? "gpt-image-2" : "gpt-image-1",
+    // Every slide on gpt-image-2 at "high" (2026-09-24, per Keenan: "if
+    // you need better quality images then use the high quality chatgpt
+    // images"). Supersedes the 09-17 cheaper-model split and the 09-21
+    // "medium" interiors: slide 2 onward visibly changed look from the
+    // cover. Items stay 2:3 (1024x1536) so the native 4:5 feed version
+    // keeps the full width; covers stay 1024x1792.
+    model: "gpt-image-2",
     prompt,
     n: 1,
-    // 9:16 portrait — native TikTok carousel dimensions. gpt-image-1's
-    // tallest size is 1024x1536; composeSlide cover-crops to 1080x1920
-    // downstream either way (same path the edit endpoint already uses).
     size: cover ? "1024x1792" : "1024x1536",
-    // Covers stay max fidelity (2026-09-04, per Keenan's TRUST THE
-    // PROCESS reference: "images need to be this level of quality") —
-    // they're the scroll-stopper. Interior slides dropped to "medium"
-    // (2026-09-21, per Keenan): they're moody backgrounds behind
-    // composited text, and high on interiors was ~60% of the ~$16/day
-    // image bill. ~25¢ → ~6¢ per interior.
-    quality: cover ? "high" : "medium",
+    quality: "high",
   });
 
   const b64 = response.data?.[0]?.b64_json;
@@ -558,7 +555,69 @@ export async function generateMoodyImage(
   return { buffer: await generateImage(prompt, slot), prompt };
 }
 
-/** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. */
+/**
+ * generateMoodyImage + a vision quality gate (2026-09-24 audit). On a
+ * FAIL (CGI look, garbled areas, stray text, unwanted people, murk) the
+ * image is regenerated once and the retry ships regardless. The retry is
+ * skipped when the step has already used ~120s, so a slow night can't
+ * push the step past the 300s function cap.
+ */
+export async function generateCheckedMoodyImage(
+  prompt: string,
+  withAvatar: boolean,
+  slot: ImageSlot,
+  scene: string,
+  rippleAvatarLane?: RippleAvatarLane
+): Promise<{ buffer: Buffer; prompt: string; qc: string }> {
+  const started = Date.now();
+  const first = await generateMoodyImage(prompt, withAvatar, slot, rippleAvatarLane);
+  const { checkMoodyImageQuality } = await import("./moody-carousel");
+  const verdict = await checkMoodyImageQuality(first.buffer, scene, {
+    personAllowed: withAvatar,
+  });
+  if (verdict.ok) return { ...first, qc: verdict.reason };
+  console.warn(`[carousel] Image failed quality check (${verdict.reason}) — regenerating once`);
+  if (Date.now() - started > 120_000) {
+    return { ...first, qc: `failed, no time to retry: ${verdict.reason}` };
+  }
+  try {
+    const second = await generateMoodyImage(prompt, withAvatar, slot, rippleAvatarLane);
+    return { ...second, qc: `regenerated after: ${verdict.reason}` };
+  } catch {
+    return { ...first, qc: `failed, retry errored: ${verdict.reason}` };
+  }
+}
+
+/**
+ * Compose + upload one overlay slide in all three renditions (2026-09-24
+ * audit):
+ *   <path>           9:16 final (TikTok / email)
+ *   <path>-feed.jpg  native 4:5 for IG/FB (the image proxy serves it for ?ar=4x5)
+ *   <path>-raw.jpg   the text-free photo, so a text edit re-renders the
+ *                    overlay on the SAME photo instead of paying for a new one
+ */
+export async function uploadOverlaySlide(
+  raw: Buffer,
+  overlay: Buffer,
+  path: string
+): Promise<{ imageUrl: string; rawImageUrl: string }> {
+  const { composeSlideWithOverlay, composeFeedWithOverlay } = await import("./compose");
+  const { default: sharp } = await import("sharp");
+  const base = path.replace(/\.jpg$/, "");
+  const [final, feed, rawJpeg] = await Promise.all([
+    composeSlideWithOverlay(raw, overlay),
+    composeFeedWithOverlay(raw, overlay),
+    sharp(raw).jpeg({ quality: 92 }).toBuffer(),
+  ]);
+  const [imageUrl, rawImageUrl] = await Promise.all([
+    uploadImage(final, path),
+    uploadImage(rawJpeg, `${base}-raw.jpg`),
+    uploadImage(feed, `${base}-feed.jpg`),
+  ]);
+  return { imageUrl, rawImageUrl };
+}
+
+/** gpt-image-2 at quality "high" costs ~$0.19-0.25 per image (2026-09-04 fidelity bump). Estimate conservatively. Every slide is "high" since 2026-09-24. */
 function estimateImageCost(): number {
   return 25; // 25 cents per image at quality "high"
 }
@@ -653,6 +712,11 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
 
   let composed: Buffer;
   let rawBuffer: Buffer | null = null;
+  // Overlay (moody-family) slides also get a native 4:5 feed rendition and
+  // keep their text-free raw (2026-09-24). rawReused = the edit re-rendered
+  // text on the stored photo instead of generating a new one.
+  let feedBuffer: Buffer | null = null;
+  let rawReused = false;
 
   // Moody-family lanes (live + dead) render text as a sharp/Pango overlay
   // — NOT baked into the AI image. Editing one of these must re-run
@@ -785,10 +849,28 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
       slide.carouselPost.lane === "phone-quote-men" ? "men" : "women",
       background
     );
-  } else if (MOODY_LANES.has(slide.carouselPost.lane ?? "")) {
-    // Regenerate the scene from the stored prompt (scenes are text-free),
-    // then re-render the overlay with the new text.
-    const { renderMoodyTextOverlay, composeSlideWithOverlay } = await import("./compose");
+  } else if (
+    MOODY_LANES.has(slide.carouselPost.lane ?? "") ||
+    // Any overlay slide carries a tone marker in its image prompt — this
+    // catches lanes missing from the list (pulse, muse, fantasy-men, …),
+    // which used to fall through to the legacy bake-text-into-image path.
+    /DIM and shadowed|SOFT and LIGHT/.test(slide.imagePrompt ?? "")
+  ) {
+    // Re-render the overlay with the new text. Reuse the stored text-free
+    // photo when there is one (2026-09-24) — same picture, no new image
+    // cost; otherwise regenerate the scene from the stored prompt.
+    const { renderMoodyTextOverlay, composeSlideWithOverlay, composeFeedWithOverlay } = await import("./compose");
+    if (slide.rawImageUrl) {
+      try {
+        const res = await fetch(slide.rawImageUrl);
+        if (res.ok) {
+          rawBuffer = Buffer.from(await res.arrayBuffer());
+          rawReused = true;
+        }
+      } catch {
+        // fall through to regeneration
+      }
+    }
     // Avatar slides (capped at ≤8% of posts since 2026-08-31) store an
     // avatar block mentioning the "reference photo" in their prompt —
     // re-attach the reference on edit so the man stays Keenan. Match on
@@ -797,7 +879,9 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     // If the reference is missing, cut the block (it always starts at
     // one of the known lead-ins) so the model isn't told to match a
     // photo that isn't attached.
-    if (slide.imagePrompt.includes("reference photo")) {
+    if (rawReused) {
+      // photo kept — nothing to generate
+    } else if (slide.imagePrompt.includes("reference photo")) {
       // Ripple avatar-led lanes (2026-09-17) re-attach the LANE's
       // reference, not the BWK one — otherwise an edit would swap the
       // lane's recurring woman for Keenan.
@@ -871,7 +955,8 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
       moodyKind,
       tone
     );
-    composed = await composeSlideWithOverlay(rawBuffer, overlay);
+    composed = await composeSlideWithOverlay(rawBuffer!, overlay);
+    feedBuffer = await composeFeedWithOverlay(rawBuffer!, overlay);
   } else {
     // Legacy lanes bake text into the AI image via gpt-image-2 — regenerate
     // the underlying image with the new text. This costs ~$0.08 but gives a
@@ -893,9 +978,18 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     `carousels/edit/${slide.carouselPostId}/${slideId}.jpg`
   );
 
+  if (feedBuffer) {
+    await uploadImage(
+      feedBuffer,
+      `carousels/edit/${slide.carouselPostId}/${slideId}-feed.jpg`
+    );
+  }
+
   // COVER: keep the new raw image for animation, clear the now-stale video.
-  let rawImageUrl: string | undefined;
-  if (slide.kind === "COVER" && rawBuffer) {
+  // Overlay slides of any kind keep their raw too (so the next edit reuses
+  // it); a reused raw keeps its existing URL.
+  let rawImageUrl: string | undefined = rawReused ? slide.rawImageUrl ?? undefined : undefined;
+  if (!rawReused && rawBuffer && (slide.kind === "COVER" || feedBuffer)) {
     rawImageUrl = await uploadImage(
       rawBuffer,
       `carousels/edit/${slide.carouselPostId}/${slideId}-raw.jpg`
@@ -907,7 +1001,11 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
     data: {
       overlayText: newText,
       imageUrl: url,
-      ...(slide.kind === "COVER" ? { rawImageUrl, videoUrl: null } : {}),
+      ...(slide.kind === "COVER"
+        ? { rawImageUrl, videoUrl: null }
+        : feedBuffer && rawImageUrl
+          ? { rawImageUrl }
+          : {}),
     },
   });
 

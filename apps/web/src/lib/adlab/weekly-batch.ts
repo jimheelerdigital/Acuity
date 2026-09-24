@@ -594,6 +594,9 @@ export async function generateBatchImage(
       }
       const response = await openai().images.generate({
         model: "gpt-image-2",
+        // Always max fidelity for ads (2026-09-24, per Keenan: "all adlab images
+        // should be generated with the high quality images from the gpt2 api").
+        quality: "high",
         prompt: creative.generationPrompt ?? creative.headline,
         n: 1,
         size: SOURCE_SIZE,

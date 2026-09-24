@@ -2709,6 +2709,69 @@ export async function verifyBakedQuote(
   }
 }
 
+// ─── Image quality gate (2026-09-24 audit) ──────────────────────────
+// Only baked-in text was ever verified; a murky, CGI-looking, garbled, or
+// people-leaking moody image shipped as-is. One short vision review per
+// image; carousel-generate regenerates once on a FAIL. Fail-OPEN: any
+// error or refusal counts as a pass so the check can never block a post.
+// Model: claude-opus-5 at low effort (the claude-api default; a cheaper
+// model is Keenan's call to make). Sent at 768px wide to keep it cheap.
+export async function checkMoodyImageQuality(
+  image: Buffer,
+  scene: string,
+  opts: { personAllowed: boolean }
+): Promise<{ ok: boolean; reason: string }> {
+  try {
+    const { default: sharp } = await import("sharp");
+    const small = await sharp(image).resize({ width: 768 }).jpeg({ quality: 85 }).toBuffer();
+    const response = await anthropic.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 2000,
+      // effort is newer than this SDK version's types; the API accepts it.
+      ...({ output_config: { effort: "low" } } as Record<string, unknown>),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/jpeg", data: small.toString("base64") },
+            },
+            {
+              type: "text",
+              text: `You are a photo editor checking one AI-generated background photo before it is posted. The intended scene: "${scene}"
+
+FAIL it if ANY of these is clearly true:
+1. It looks like CGI, a 3D render, an illustration, or a painting rather than a real photograph.
+2. There are smeared, melted, garbled, or malformed areas (warped objects, broken anatomy, mangled hands or faces).
+3. Any readable text, letters, numbers, logos, or watermarks appear.
+4. ${opts.personAllowed ? "More than the people the scene describes appear." : "A person appears, unless the scene explicitly describes a distant armored warrior, a rider, or a statue."}
+5. It is so dark or murky that the main subject cannot be made out.
+6. It clearly does not show the intended scene's main subject.
+
+Otherwise PASS. Reply with exactly PASS, or FAIL: followed by a few words naming the problem.`,
+            },
+          ],
+        },
+      ],
+    });
+    if ((response as { stop_reason?: string }).stop_reason === "refusal") {
+      return { ok: true, reason: "check refused — passed through" };
+    }
+    const text = response.content
+      .map((b) => (b.type === "text" ? b.text : ""))
+      .join("")
+      .trim();
+    if (/^fail/i.test(text)) return { ok: false, reason: text.replace(/^fail:?\s*/i, "").slice(0, 160) };
+    return { ok: true, reason: "pass" };
+  } catch (err) {
+    console.warn(
+      `[carousel] Image quality check failed (treating as pass): ${err instanceof Error ? err.message : err}`
+    );
+    return { ok: true, reason: "check errored — passed through" };
+  }
+}
+
 // ─── Five new lanes (2026-09-14 night, per Keenan: "do 1, 2, 3 for
 // ripple, and 3. and 4. for bwk") ────────────────────────────────────
 // Ripple: TEXTS-YOUNGER ("texts to my younger self"), PERMISSION

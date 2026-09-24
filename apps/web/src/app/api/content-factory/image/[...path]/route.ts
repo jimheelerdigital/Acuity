@@ -41,6 +41,22 @@ export async function GET(
 
   const ar = new URL(req.url).searchParams.get("ar");
   const crop = ar ? CROPS[ar] : undefined;
+
+  // Native 4:5 rendition (2026-09-24): overlay slides now upload a
+  // "<name>-feed.jpg" built from the raw 2:3 photo, which keeps the full
+  // width and far more real pixels than center-cropping the 9:16 final.
+  // Serve it when it exists; otherwise crop as before.
+  if (ar === "4x5" && /\.jpg$/i.test(path)) {
+    const feed = await fetch(upstream.replace(/\.jpg$/i, "-feed.jpg"));
+    if (feed.ok && feed.body) {
+      return new Response(feed.body, {
+        headers: {
+          "content-type": "image/jpeg",
+          "cache-control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
+  }
   if (!crop) {
     return new Response(res.body, {
       headers: {
