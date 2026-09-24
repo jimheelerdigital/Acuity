@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@acuity/shared": "*",
+    "@bacons/apple-targets": "^5.0.0",
     "@expo-google-fonts/geist-mono": "^0.4.2",
     "@expo-google-fonts/manrope": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
@@ -72,7 +73,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
-    "@bacons/apple-targets": "^5.0.0",
     "@types/react": "~19.1.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
     "tailwindcss": "^3.4.4",
