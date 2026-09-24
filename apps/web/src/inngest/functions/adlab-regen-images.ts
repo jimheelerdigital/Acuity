@@ -14,7 +14,7 @@ import { inngest } from "@/inngest/client";
  * click.
  *
  * Trigger: event "adlab/regen-images.requested" with
- * data.experimentIds: string[].
+ * data.experimentIds: string[] (+ optional data.creativeIds: string[]).
  */
 export const adlabRegenImagesFn = inngest.createFunction(
   {
@@ -26,6 +26,9 @@ export const adlabRegenImagesFn = inngest.createFunction(
   },
   async ({ event, step, logger }) => {
     const experimentIds: string[] = event.data?.experimentIds ?? [];
+    // Optional (2026-09-24): only these creatives — redo a few bad renders
+    // without replacing the good ones Keenan may already have approved.
+    const onlyCreativeIds: string[] | null = event.data?.creativeIds?.length ? event.data.creativeIds : null;
     if (!experimentIds.length) {
       return { error: "no experimentIds provided" };
     }
@@ -67,9 +70,12 @@ export const adlabRegenImagesFn = inngest.createFunction(
         );
         if (!groupKey) return { error: `experiment ${experimentId} has no group tag` } as const;
 
-        const creatives = experiment.angles
+        const allCreatives = experiment.angles
           .flatMap((a) => a.creatives)
           .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        const creatives = onlyCreativeIds
+          ? allCreatives.filter((c) => onlyCreativeIds.includes(c.id))
+          : allCreatives;
         for (const [i, c] of creatives.entries()) {
           // Recover "Scene: <imageScene>" — it ends the line (or precedes
           // " Composed with…" in hook-overlay). The old greedy-to-end match

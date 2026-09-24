@@ -6,7 +6,9 @@
  * Reels (a square gets letterboxed there). Every AI-generated creative is
  * now rendered once as a 1024×1536 portrait with all text inside a central
  * safe zone, then turned into both placements:
- *   feed  4:5  — detail-aware 1024×1280 crop → 1080×1350
+ *   feed  4:5  — detail-aware 1024×1280 crop → 1080×1350, vision-checked;
+ *                if text touches an edge, the whole image fitted over a
+ *                blurred fill instead
  *   story 9:16 — whole image fitted to the width over a blurred fill
  *                (never side-cropped) → 1080×1920
  * The launch route sends both to Meta with placement asset customization.
@@ -90,12 +92,68 @@ async function storyFit(source: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
+/**
+ * Feed 4:5 without cropping: the whole 2:3 source scaled to the feed height
+ * and centred on a blurred fill (side bands ~8% each). Used when the crop
+ * would jam text or the CTA against an edge.
+ */
+async function feedFit(source: Buffer): Promise<Buffer> {
+  const fg = await sharp(source).resize({ height: FEED.h }).toBuffer();
+  const fgW = (await sharp(fg).metadata()).width ?? FEED.w;
+  const bg = await sharp(source)
+    .resize(FEED.w, FEED.h, { fit: "cover" })
+    .blur(40)
+    .modulate({ brightness: 0.55 })
+    .toBuffer();
+  return sharp(bg)
+    .composite([{ input: fg, top: 0, left: Math.max(0, Math.round((FEED.w - fgW) / 2)) }])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+/**
+ * Vision check on the cropped feed image: is any text/button cut off or
+ * jammed against the top or bottom edge? Pixel-energy heuristics couldn't
+ * tell headline text from photo texture (calibrated on the 09-24 batch),
+ * so one cheap Claude call decides. Any error → treated as NOT clean, so
+ * the safe no-crop fit is used.
+ */
+async function feedCropIsClean(feed: Buffer): Promise<boolean> {
+  try {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const anthropic = new Anthropic();
+    const small = await sharp(feed).resize({ width: 540 }).jpeg({ quality: 80 }).toBuffer();
+    const res = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 100,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: small.toString("base64") } },
+            {
+              type: "text",
+              text: 'This is a cropped 4:5 social ad. Is ANY text, letter, button, or logo cut off at the top or bottom edge, or touching it (closer than ~2% of the height)? Reply ONLY JSON: {"clean": true|false}',
+            },
+          ],
+        },
+      ],
+    });
+    const text = res.content.filter((c) => c.type === "text").map((c) => c.text).join("");
+    return /"clean"\s*:\s*true/.test(text);
+  } catch (err) {
+    console.warn(`[ad-render] feed crop check failed — using no-crop fit: ${err instanceof Error ? err.message : err}`);
+    return false;
+  }
+}
+
 /** Cut a 1024×1536 portrait into the feed (4:5) and story (9:16) renditions. */
 export async function cutPlacements(source: Buffer): Promise<{ feed: Buffer; story: Buffer }> {
   const meta = await sharp(source).metadata();
   const W = meta.width ?? 1024;
   const H = meta.height ?? 1536;
-  const [feed, story] = await Promise.all([smartFeedCrop(source, W, H), storyFit(source)]);
+  const [cropped, story] = await Promise.all([smartFeedCrop(source, W, H), storyFit(source)]);
+  const feed = (await feedCropIsClean(cropped)) ? cropped : await feedFit(source);
   return { feed, story };
 }
 

@@ -51,6 +51,28 @@ Every Saturday at 9 PM Central a robot audits all of Ripple and emails you the r
 
 ---
 
+## [2026-09-24] — Vision-checked feed crops + regenerate individual ads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+A few feed-size ads still had a headline or button jammed against the edge. Each cropped feed image is now checked by AI before it's saved. If any text or button touches an edge, the whole image is used instead, with soft blurred bands at the sides, so no words are ever cut. Single ads can now be regenerated without redoing the whole batch, which is how "Day 1 is easy…" and "23 and already behind?" were fixed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/ad-render.ts`: `feedCropIsClean` (Sonnet 4.6 vision on a 540px JPEG, returns `{clean}`; any error → not clean) and `feedFit` (whole 2:3 source scaled to 1350 high over a blurred cover fill); `cutPlacements` uses the crop only when clean
+- `inngest/functions/adlab-regen-images.ts` + `api/admin/adlab/regen-images/route.ts`: optional `creativeIds` filter
+- Calibration note: row-gradient "text near the edge" heuristics couldn't separate headline text from photo texture on the 09-24 batch (the bad and good crops had overlapping scores), hence the vision call (~$0.005/ad)
+
+### Manual steps needed
+None
+
+### Notes
+- Regen triggered for 2 men's creatives ("Day 1 is easy…", "23 and already behind?"). The other two tight ones ("One minute…" duration claim, "Journaling asked…" compliance FAIL) shouldn't run anyway
+
+---
+
 ## [2026-09-24] — Fix placement crops cutting words; ban medical props in ad images
 
 **Requested by:** Keenan

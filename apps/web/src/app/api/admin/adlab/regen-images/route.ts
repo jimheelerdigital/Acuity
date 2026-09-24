@@ -33,7 +33,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { inngest } = await import("@/inngest/client");
-  await inngest.send({ name: "adlab/regen-images.requested", data: { experimentIds } });
+  const creativeIds: string[] | undefined = Array.isArray(body?.creativeIds)
+    ? body.creativeIds.filter((id: unknown) => typeof id === "string")
+    : undefined;
+  await inngest.send({ name: "adlab/regen-images.requested", data: { experimentIds, creativeIds } });
 
-  return NextResponse.json({ ok: true, experimentIds });
+  return NextResponse.json({ ok: true, experimentIds, creativeIds });
 }
