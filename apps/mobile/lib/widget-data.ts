@@ -8,6 +8,7 @@ import {
   type Habit,
   type HabitCheckRow,
 } from "@/lib/habits-api";
+import { publishSiriHabits } from "@/lib/siri-shortcuts-data";
 
 /**
  * Publishes the home-screen widget's data into the shared App Group so the
@@ -43,6 +44,9 @@ export function publishHabitsToWidget(
     storage.set("habitsToday", habitsToday);
     storage.set("updatedAt", Date.now());
     ExtensionStorage.reloadWidget();
+    // Also publish the full active-habit list (id + name) so the Siri
+    // "check off <habit>" intent can resolve what the user says.
+    publishSiriHabits(habits);
   } catch {
     // Widget data is best-effort; never let it break the app.
   }
