@@ -2103,12 +2103,19 @@ function SignupTestimonialStrip() {
 // the Today / Day 4 / Day 7 timeline sits right under it, the plan picker is
 // a compact toggle, and Pro is three things people can picture. Habit
 // tracking leads (key feature for both audiences). "Signals" was cut: it's
-// coaching language, and Ripple is a mirror, not a coach.
+// coaching language, and Ripple is a mirror, not a coach. Weekly report was
+// cut on 2026-09-24 (see PRO_FEATURES).
 
+// Ordered by where users actually get value (prod data, 2026-09-24):
+// users with 5+ debriefs completed 1,095 of 1,634 extracted tasks (67%), and
+// 3 of 4 App Store reviews name the task list. Patterns / Life Matrix is the
+// other thing reviews praise ("surprisingly spot on"). Weekly report was cut:
+// no review mentions it and nothing shows people reading it. Habit tracking
+// stays first by Keenan's call (key feature for both audiences).
 const PRO_FEATURES = [
   { name: "Habit tracking", description: "Set your habits. When a debrief mentions one, it\u2019s checked off for you and the streak keeps going." },
-  { name: "Tasks and patterns", description: "The to-dos in what you say get pulled out, and the themes that keep coming back get named." },
-  { name: "Weekly report", description: "A written read on your week: what changed and what keeps repeating." },
+  { name: "A to-do list that writes itself", description: "Every task you mention is pulled out and kept on one list until it\u2019s done. Nothing slips." },
+  { name: "Patterns you can\u2019t see from inside", description: "Your mood, the themes that keep coming back, and your Life Matrix show what\u2019s working and what isn\u2019t." },
 ];
 
 function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanChange, onCheckout, onSkip, loading, error }: {

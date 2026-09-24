@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-24] — Paywall features re-picked from real usage: weekly report out, task list and patterns in
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The paywall's "What Pro gives you" list now shows what people actually use and praise. The weekly report is off the list. The new list is habit tracking, "A to-do list that writes itself" and "Patterns you can't see from inside". People with 5+ debriefs have finished 1,095 of the 1,634 tasks Ripple pulled out for them, and 3 of the 4 App Store reviews talk about the task list. Nobody mentions the weekly report.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/onboarding-funnel.tsx`: `PRO_FEATURES` = Habit tracking / "A to-do list that writes itself" / "Patterns you can't see from inside" (mood, recurring themes, Life Matrix). Comment records the evidence
+
+### Manual steps needed
+- None
+
+### Notes
+- Evidence (prod DB, all-time): 18 paying users average 50 debriefs. 13 of them have completed tasks, 15 have people tracked, all 18 have insights, only 10 have any weekly report row, and only 2 have habit checks
+- Users with 5+ debriefs (27): 67% of extracted tasks get completed. That's the strongest signal of repeat value in the product
+- App Store reviews (US, 4 total): "The task manager is a lifesaver!! I never forget anything anymore", "pulls all todos… creates a task list", "keeps me super organized", "life and mental health profile… surprisingly spot on". None mention the weekly report
+- Habit tracking stays first by Keenan's call, even though usage is still tiny (2 paying users). Worth re-checking once more people have habits set up
+- The weekly report still appears lightly elsewhere: the "Weekly insight" card on the mechanism screen and "weekly mirror" in the pattern-result list. Not changed here
+- `_design/DESIGN_SYSTEM.md` §7.6 still says "Hero driver is the weekly report". This data argues against that; worth revisiting with Keenan
+
+---
+
 ## [2026-09-24] — Web funnels: the 7-day Pro trial now needs a card, paywall rebuilt around the trial
 
 **Requested by:** Keenan
