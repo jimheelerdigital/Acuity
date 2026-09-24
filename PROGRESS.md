@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-09-24] — Men's funnel no longer shows the "download the app" banner
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The "Ripple is better in the app — Download on the App Store" bar was showing across the top of every screen of the men's funnel (/start-bwk), pulling people away before they finished. It's gone. The women's funnel was already free of it. The only place to get the app is now the last screen, after signup.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/install-banner.tsx`: added `/start-bwk` to `EXCLUDED_PREFIXES`. The prefix check matches `p` or `p + "/"`, so `/start` never covered `/start-bwk`
+
+### Manual steps needed
+- None
+
+### Notes
+- Any new top-level funnel route needs its own entry in `EXCLUDED_PREFIXES`; prefix matching is path-segment based
+
+---
+
 ## [2026-09-24] — BWK posts now auto-post to bwk.motivation (Instagram) and the Build with Key Facebook page
 
 **Requested by:** Keenan

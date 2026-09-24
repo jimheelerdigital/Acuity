@@ -46,9 +46,13 @@ const EXCLUDED_PREFIXES = [
   "/achievements",
   "/actions",
   "/delete-account",
-  // /start is the web onboarding funnel — it has its own download step at the
-  // end, so a competing App Store banner up top would pull users out early.
+  // /start and /start-bwk are the web onboarding funnels — they have their
+  // own download step at the end, so a competing App Store banner up top
+  // would pull users out early. (/start-bwk needs its own entry: the prefix
+  // check only matches "/start" or "/start/…", so the men's funnel was
+  // showing the banner on every screen until 2026-09-24.)
   "/start",
+  "/start-bwk",
 ];
 
 function isEligibleRoute(pathname: string): boolean {
