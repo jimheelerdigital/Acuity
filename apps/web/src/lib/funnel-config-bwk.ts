@@ -5,7 +5,8 @@
 // Core angle: the knowing-doing gap, the load men carry silently, and the
 // "I'm good" front — reflected back, never coached.
 //
-// STRUCTURE RULES (same mechanics as funnel-config.ts — do not diverge):
+// STRUCTURE RULES (same mechanics as funnel-config.ts — do not diverge,
+// except STEP_ORDER, which is picked per audience):
 // - Same 5 Branch keys, remapped to men's meanings:
 //     overload   = too much coming at him (work / money / family logistics)
 //     patterns   = same arguments, habits, moods on repeat
@@ -29,8 +30,22 @@ import {
   type PatternLabels,
   type TimelineWeek,
   type FunnelVariantConfig,
+  type FunnelStep,
   PAYWALL_TESTIMONIALS_V2 as DEFAULT_TESTIMONIALS,
 } from "./funnel-config";
+
+// ─── Step order (v8, 11 steps) ──────────────────────────────────────────────
+//
+// Men respond to a diagnosis and a plan more than to an emotional before/after.
+// So this funnel drops the current-future "shift" screen that /start keeps, and
+// ends the story on the Week 1 / Month 1 / Year 1 timeline right after the
+// pattern result: here's what's going on, here's what changes.
+const BWK_STEP_ORDER: FunnelStep[] = [
+  "entry", "branch-q2", "branch-q3", "branch-q6",
+  "pain", "mechanism",
+  "processing", "pattern-result", "timeline",
+  "create-account", "savings",
+];
 
 // ─── Entry Question (Screen 1) ──────────────────────────────────────────────
 
@@ -1221,11 +1236,11 @@ function bwkGetCreateAccountHeadline(branch: Branch): string {
 // ─── Processing Theater (Screen 13) ─────────────────────────────────────────
 
 const BWK_PROCESSING_STAGES: { text: string; endSec: number }[] = [
-  { text: "Analyzing your answers…", endSec: 3 },
-  { text: "Mapping where it repeats…", endSec: 5 },
-  { text: "Finding what to track first…", endSec: 7 },
-  { text: "Building your plan…", endSec: 9 },
-  { text: "Your profile is ready.", endSec: 10 },
+  { text: "Analyzing your answers…", endSec: 1.6 },
+  { text: "Mapping where it repeats…", endSec: 3 },
+  { text: "Finding what to track first…", endSec: 4.3 },
+  { text: "Building your plan…", endSec: 5.4 },
+  { text: "Your profile is ready.", endSec: 6 },
 ];
 
 // ─── Testimonials — REAL quotes only ────────────────────────────────────────
@@ -1247,9 +1262,67 @@ function bwkGetPaywallTestimonialPool(_branch: Branch | null): { quote: string; 
   return [...BWK_TESTIMONIALS];
 }
 
+// ─── Mechanism screen examples (Screen 6) ───────────────────────────────────
+//
+// /start's examples are women-coded ("Call the pharmacy about Mom's refill").
+// Same four-card shape per branch: a task, a goal, a mood shift, a pattern.
+// Examples of what Ripple would pull out, never advice.
+
+const BWK_MECHANISM_CONTENT: Record<Branch, { cards: string[]; insight: string }> = {
+  overload: {
+    cards: [
+      "Send the invoice you said you\u2019d send Friday",
+      "Get back to the project you keep pushing \u2014 Day 1",
+      "Stretched \u2192 Steady",
+      "You mentioned 3 of these last week and still haven\u2019t closed them",
+    ],
+    insight: "In one debrief you named 7 things you were on the hook for. Ripple caught them all, and flagged 3 you\u2019d said before and still hadn\u2019t closed.",
+  },
+  patterns: {
+    cards: [
+      "Note what set it off before it turned into a fight",
+      "Catch the buildup before the blowup \u2014 Day 1",
+      "Reactive \u2192 Aware",
+      "The tension started 2 days before the argument, every time",
+    ],
+    insight: "The argument happened Tuesday. The tension started Sunday. Same pattern, 3 weeks in a row.",
+  },
+  rumination: {
+    cards: [
+      "Answer the email that\u2019s been sitting in your head",
+      "Set the day down before it piles up \u2014 Day 1",
+      "Racing \u2192 Settled",
+      "The late-night loop starts with something from 8 hours earlier",
+    ],
+    insight: "You were calmest on the days you got it out before the evening piled up.",
+  },
+  stuck: {
+    cards: [
+      "Make the one call that moves the plan forward",
+      "Put an hour on the thing you keep saying you\u2019ll start \u2014 Day 1",
+      "Knowing \u2192 Doing",
+      "You said you\u2019d start it in 4 debriefs. Nothing on the calendar yet.",
+    ],
+    insight: "You mentioned the same plan in 4 debriefs this month. Every time, something else took the hour.",
+  },
+  mask: {
+    cards: [
+      "Tell one person how things actually are",
+      "Check in with how you actually feel \u2014 Day 1",
+      "\u201CI\u2019m good\u201D \u2192 Honest",
+      "You said \u2018I\u2019m good\u2019 on your lowest days. Every time.",
+    ],
+    insight: "In every debrief this week you got to everyone else\u2019s day before your own. Yours came last, and lowest.",
+  },
+};
+
 // ─── Variant config bundle ──────────────────────────────────────────────────
 
 export const BWK_FUNNEL_CONFIG: FunnelVariantConfig = {
+  STEP_ORDER: BWK_STEP_ORDER,
+  theme: "dusk",
+  flowVersion: "v8-bwk",
+  path: "/start-bwk",
   ENTRY_QUESTION: BWK_ENTRY_QUESTION,
   BRANCH_QUESTIONS: BWK_BRANCH_QUESTIONS,
   SHARED_QUESTIONS: BWK_SHARED_QUESTIONS,
@@ -1268,4 +1341,5 @@ export const BWK_FUNNEL_CONFIG: FunnelVariantConfig = {
   PAYWALL_TESTIMONIALS_V2: BWK_TESTIMONIALS,
   getPaywallTestimonialPool: bwkGetPaywallTestimonialPool,
   getPatternLabels: bwkGetPatternLabels,
+  MECHANISM_CONTENT: BWK_MECHANISM_CONTENT,
 };

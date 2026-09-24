@@ -10,7 +10,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
   const [sortDir, setSortDir] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showPageLoadOnly, setShowPageLoadOnly] = useState(false);
-  const [flowVersion, setFlowVersion] = useState<"v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all">("v7");
+  const [flowVersion, setFlowVersion] = useState<"v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all">("v8");
 
   useEffect(() => {
     setLoading(true);
@@ -93,13 +93,13 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 4 }}>
-          {(["v7", "v6", "v5", "v4", "v3", "v2", "v1", "all"] as const).map((v) => (
+          {(["v8", "v8-bwk", "v7", "v6", "v5", "v4", "v3", "v2", "v1", "all"] as const).map((v) => (
             <button key={v} onClick={() => setFlowVersion(v)}
-              title={v === "v7" ? "V7 — two-equal-buttons paywall (current live funnel)" : v === "v6" ? "V6 — post-rebuild" : undefined}
+              title={v === "v8" ? "V8 — /start, 11 steps (live)" : v === "v8-bwk" ? "V8 — /start-bwk men's funnel, 11 steps (live)" : v === "v7" ? "V7 — two-equal-buttons paywall" : v === "v6" ? "V6 — post-rebuild" : undefined}
               style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
                 background: flowVersion === v ? "var(--acuity-primary)" : "var(--acuity-bg-inset)",
                 color: flowVersion === v ? "var(--acuity-text)" : "var(--acuity-text-quiet)" }}>
-              {v === "all" ? "All" : v === "v7" ? "V7 — paywall split" : v === "v6" ? "V6 — post-rebuild" : v.toUpperCase()}
+              {v === "all" ? "All" : v === "v8" ? "V8 /start" : v === "v8-bwk" ? "V8 /start-bwk" : v === "v7" ? "V7 — paywall split" : v === "v6" ? "V6 — post-rebuild" : v.toUpperCase()}
             </button>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getPatternLabels, type Branch } from "./funnel-config";
+import { getPatternLabels, DEFAULT_FUNNEL_CONFIG, type Branch } from "./funnel-config";
+import { BWK_FUNNEL_CONFIG } from "./funnel-config-bwk";
 
 function makeAnswers(overrides: Record<string, string | string[]> = {}): Record<string, string | string[]> {
   return {
@@ -102,5 +103,43 @@ describe("getPatternLabels", () => {
     const result = getPatternLabels("overload", makeAnswers({ branch_q6: "My confidence in myself" }));
     expect(result.area).toBe("Confidence");
     expect(result.areaFallback).toBe(false);
+  });
+});
+
+// ─── v8: both funnels are exactly 11 steps, paywall included ──────────────
+describe("v8 step orders", () => {
+  const variants = [
+    ["/start", DEFAULT_FUNNEL_CONFIG],
+    ["/start-bwk", BWK_FUNNEL_CONFIG],
+  ] as const;
+
+  for (const [name, cfg] of variants) {
+    it(`${name} has 11 unique steps from entry to the paywall`, () => {
+      expect(cfg.STEP_ORDER).toHaveLength(11);
+      expect(new Set(cfg.STEP_ORDER).size).toBe(11);
+      expect(cfg.STEP_ORDER[0]).toBe("entry");
+      expect(cfg.STEP_ORDER.slice(-2)).toEqual(["create-account", "savings"]);
+      expect(cfg.STEP_ORDER).not.toContain("download");
+      expect(cfg.STEP_ORDER).toContain("pattern-result");
+    });
+
+    it(`${name} processing screen runs 6s`, () => {
+      expect(cfg.PROCESSING_STAGES[cfg.PROCESSING_STAGES.length - 1].endSec).toBe(6);
+    });
+  }
+
+  it("each funnel keeps its own audience screen", () => {
+    expect(DEFAULT_FUNNEL_CONFIG.STEP_ORDER).toContain("current-future");
+    expect(DEFAULT_FUNNEL_CONFIG.STEP_ORDER).not.toContain("timeline");
+    expect(BWK_FUNNEL_CONFIG.STEP_ORDER).toContain("timeline");
+    expect(BWK_FUNNEL_CONFIG.STEP_ORDER).not.toContain("current-future");
+  });
+
+  it("funnels are separate cohorts on separate paths with separate themes", () => {
+    expect(DEFAULT_FUNNEL_CONFIG.flowVersion).not.toBe(BWK_FUNNEL_CONFIG.flowVersion);
+    expect(DEFAULT_FUNNEL_CONFIG.path).toBe("/start");
+    expect(BWK_FUNNEL_CONFIG.path).toBe("/start-bwk");
+    expect(DEFAULT_FUNNEL_CONFIG.theme).toBe("light");
+    expect(BWK_FUNNEL_CONFIG.theme).toBe("dusk");
   });
 });

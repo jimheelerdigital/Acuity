@@ -5,37 +5,60 @@
  * Kept in a separate file so copy can be edited without touching
  * component logic.
  *
- * ─── SKELETON v6 (2026-07-01, structure-only restructure) ──────────────────
- * The funnel is a locked 17-screen skeleton. Branch CONTENT for the NEW
- * surfaces (branched Q6, Relief Flip, Current-vs-Future) is scaffolded with
- * clearly-marked TODO placeholders — the branching hooks and answer-passing
- * are wired end-to-end; per-branch copy is filled in follow-up commits.
+ * ─── SKELETON v8 (2026-09-24, 11-step cut) ─────────────────────────────────
+ * v7 ran 17 screens before the paywall and leaked people on every "story"
+ * screen (5-8% each). v8 cuts every funnel to exactly 11 steps, paywall
+ * included. Each variant owns its own STEP_ORDER, so /start and /start-bwk
+ * can pick different screens for their audience:
  *
- * Screen order:
- *   1  entry            (branched — 5 branches)
- *   2  branch-q2        (branched)
- *   3  branch-q3        (branched)
- *   4  branch-q4        (branched)
- *   5  shared-q5        (SHARED — "how long have you felt this way?")
- *   6  branch-q6        (branched — "what's it costing you most?")
- *   7  pain             (branched + answer-aware — assembled from Q2+Q3+Q6)
- *   8  relief-flip      (NEW — branched — "imagine it wasn't there…")
- *   9  current-future   (NEW — branched + answer-aware — Q2 pain vs Q6 relief)
- *   10 mechanism        (branched)
- *   11 value            (SHARED — Life Matrix item removed)
- *   12 commit           (shared)
- *   13 processing       (shared)
- *   14 pattern-result   (branched)
- *   15 timeline         (branched — "one week" block removed)
- *   16 savings/paywall  (branched)
- *   17 create-account   (branched headline)
+ *   /start (women)                 /start-bwk (men)
+ *   1  entry                       1  entry
+ *   2  branch-q2                   2  branch-q2
+ *   3  branch-q3                   3  branch-q3
+ *   4  branch-q6 (cost)            4  branch-q6 (cost)
+ *   5  pain (mirror)               5  pain (mirror)
+ *   6  current-future (the shift)  6  mechanism
+ *   7  mechanism                   7  processing
+ *   8  processing                  8  pattern-result
+ *   9  pattern-result              9  timeline (the plan)
+ *   10 create-account              10 create-account
+ *   11 savings (paywall)           11 savings (paywall)
+ *   → download (post-conversion handoff, not counted)
  *
- * Branch taxonomy changed 6→5: blur→overload, graveyard→stuck, drift dropped.
+ * Cut from both: branch-q4, shared-q5 (duration), relief-flip, value, commit.
+ * Their copy banks below (Q4 in BRANCH_QUESTIONS, SHARED_QUESTIONS,
+ * RELIEF_FLIP) stay in place so a cut screen can come back as a test without
+ * rewriting copy. Nothing reads them at runtime in v8.
+ *
+ * Branch taxonomy (v6+): overload, patterns, rumination, stuck, mask.
  */
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type Branch = "overload" | "patterns" | "rumination" | "stuck" | "mask";
+
+/** Every screen the funnel component can render. */
+export type FunnelStep =
+  | "entry"
+  | "branch-q2" | "branch-q3" | "branch-q6"
+  | "pain"
+  | "current-future"
+  | "mechanism"
+  | "processing"
+  | "pattern-result"
+  | "timeline"
+  | "create-account"
+  | "savings"
+  | "download";
+
+// The 11 counted steps for /start. Women convert on relief and on being seen,
+// so the before/after "shift" screen stays and the timeline goes.
+export const STEP_ORDER: FunnelStep[] = [
+  "entry", "branch-q2", "branch-q3", "branch-q6",
+  "pain", "current-future", "mechanism",
+  "processing", "pattern-result",
+  "create-account", "savings",
+];
 
 export interface QuestionOption {
   label: string;
@@ -1397,12 +1420,14 @@ export const PAYWALL_HOOKS: Record<Branch, string> = {
 
 // ─── Processing Theater Text (Screen 13) ────────────────────────────────────
 
+// v8: 10s → 6s. The screen only has to feel considered; the extra four
+// seconds were pure waiting. The last stage's endSec is the screen length.
 export const PROCESSING_STAGES: { text: string; endSec: number }[] = [
-  { text: "Analyzing your patterns\u2026", endSec: 3 },
-  { text: "Mapping your blind spots\u2026", endSec: 5 },
-  { text: "Identifying what to track first\u2026", endSec: 7 },
-  { text: "Preparing your personalized plan\u2026", endSec: 9 },
-  { text: "Your profile is ready.", endSec: 10 },
+  { text: "Analyzing your patterns\u2026", endSec: 1.6 },
+  { text: "Mapping your blind spots\u2026", endSec: 3 },
+  { text: "Identifying what to track first\u2026", endSec: 4.3 },
+  { text: "Preparing your personalized plan\u2026", endSec: 5.4 },
+  { text: "Your profile is ready.", endSec: 6 },
 ];
 
 // ─── Paywall Headline (Screen 16, Section 1) ────────────────────────────────
@@ -1484,6 +1509,14 @@ export function getPaywallTestimonialPool(branch: Branch | null): { quote: strin
 // file — /start behavior is byte-identical to before this refactor.
 
 export interface FunnelVariantConfig {
+  /** The 11 counted steps, in order. download follows savings implicitly. */
+  STEP_ORDER: FunnelStep[];
+  /** "light" = coral on white (/start). "dusk" = the dark logo scheme (/start-bwk). */
+  theme: "light" | "dusk";
+  /** OnboardingEvent.flowVersion tag, so each funnel reads as its own cohort. */
+  flowVersion: string;
+  /** Route the funnel lives on. OAuth, Stripe and the auth error page return here. */
+  path: "/start" | "/start-bwk";
   ENTRY_QUESTION: Question;
   BRANCH_QUESTIONS: Record<Branch, [Question, Question, Question]>;
   SHARED_QUESTIONS: Question[];
@@ -1499,6 +1532,9 @@ export interface FunnelVariantConfig {
   PAYWALL_HOOKS: Record<Branch, string>;
   getPaywallHeadline: typeof getPaywallHeadline;
   getCreateAccountHeadline: typeof getCreateAccountHeadline;
+  /** Mechanism screen example cards + weekly insight, per branch. Omitted =
+   *  the /start (women's) examples built into the component. */
+  MECHANISM_CONTENT?: Record<Branch, { cards: string[]; insight: string }>;
   /** Index 0 renders on MechanismScreen; rotation cycles the full array. */
   PAYWALL_TESTIMONIALS_V2: { quote: string; name: string }[];
   getPaywallTestimonialPool: typeof getPaywallTestimonialPool;
@@ -1506,6 +1542,10 @@ export interface FunnelVariantConfig {
 }
 
 export const DEFAULT_FUNNEL_CONFIG: FunnelVariantConfig = {
+  STEP_ORDER,
+  theme: "light",
+  flowVersion: "v8",
+  path: "/start",
   ENTRY_QUESTION,
   BRANCH_QUESTIONS,
   SHARED_QUESTIONS,

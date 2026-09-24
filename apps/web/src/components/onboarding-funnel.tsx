@@ -2,15 +2,17 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsPct, displayTier, formatDollarsRounded, planValueDollars } from "@/lib/pricing";
+import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsPct, planValueDollars } from "@/lib/pricing";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
-import { MoodDot, AppleLogo, GoogleLogo } from "@/components/debrief-shared";
+import { GoogleLogo } from "@/components/debrief-shared";
 import { fireFbq, waitForFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
 import { detectBrowserEnv, useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
+import { PRE_TAP_KEY } from "@/components/funnel-ssr-entry";
 import {
   type Branch,
   type Question,
+  type FunnelStep,
   type FunnelVariantConfig,
   DEFAULT_FUNNEL_CONFIG,
 } from "@/lib/funnel-config";
@@ -33,34 +35,19 @@ function useFunnelConfig(): FunnelVariantConfig {
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
+//
+// The step ORDER is per variant (cfg.STEP_ORDER, 11 steps each since v8).
+// ALL_STEPS is just the set of screens this component can render, used to
+// validate ?step= params and restored state.
 
-type Step =
-  | "entry"
-  | "branch-q2" | "branch-q3" | "branch-q4"
-  | "shared-q5"
-  | "branch-q6"
-  | "pain"
-  | "relief-flip"
-  | "current-future"
-  | "mechanism"
-  | "value"
-  | "commit"
-  | "processing"
-  | "pattern-result"
-  | "timeline"
-  | "create-account"
-  | "savings"
-  | "download";
+type Step = FunnelStep;
 
-const STEP_ORDER: Step[] = [
-  "entry", "branch-q2", "branch-q3", "branch-q4",
-  "shared-q5", "branch-q6",
-  "pain", "relief-flip", "current-future", "mechanism", "value", "commit",
+const ALL_STEPS: Step[] = [
+  "entry", "branch-q2", "branch-q3", "branch-q6",
+  "pain", "current-future", "mechanism",
   "processing", "pattern-result", "timeline",
   "create-account", "savings", "download",
 ];
-
-const TOTAL_STEPS = STEP_ORDER.length;
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -87,9 +74,9 @@ function SocialProofRating({ track, placement, className }: {
 }) {
   useEffect(() => { track("funnel_social_proof_viewed", { value: placement }); }, []);
   return (
-    <p className={`text-[13px] font-semibold text-zinc-500 ${className ?? ""}`}>
-      4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
-      <span className="font-medium text-zinc-400">from 127+ users</span>
+    <p className={`text-[13px] font-semibold text-acuity-text-ter ${className ?? ""}`}>
+      4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
+      <span className="font-medium text-acuity-text-ter">from 127+ users</span>
     </p>
   );
 }
@@ -103,9 +90,9 @@ function SocialProofQuote({ track, placement, testimonial, className, style }: {
 }) {
   useEffect(() => { track("funnel_social_proof_viewed", { value: placement }); }, []);
   return (
-    <div className={`rounded-xl border border-zinc-100 bg-white/60 px-4 py-3 text-center ${className ?? ""}`} style={style}>
-      <p className="text-[13px] italic leading-relaxed text-zinc-600">&ldquo;{testimonial.quote}&rdquo;</p>
-      <p className="mt-1.5 text-[11px] font-semibold text-zinc-400">&mdash; {testimonial.name}</p>
+    <div className={`rounded-xl border border-acuity-line-strong bg-acuity-card-bg px-4 py-3 text-center ${className ?? ""}`} style={style}>
+      <p className="text-[13px] italic leading-relaxed text-acuity-text-sec">&ldquo;{testimonial.quote}&rdquo;</p>
+      <p className="mt-1.5 text-[11px] font-semibold text-acuity-text-ter">&mdash; {testimonial.name}</p>
     </div>
   );
 }
@@ -120,7 +107,7 @@ const FUNNEL_STATE_KEY = "acuity_funnel_state";
 // Saves step + branch + answers + selectedPlan to sessionStorage so the user
 // can refresh or use browser back without losing their place.
 
-const STEP_SET = new Set<string>(STEP_ORDER);
+const STEP_SET = new Set<string>(ALL_STEPS);
 
 interface FunnelState {
   step: Step;
@@ -129,13 +116,15 @@ interface FunnelState {
   selectedPlan: "monthly" | "yearly";
 }
 
-function saveFunnelState(state: FunnelState): void {
-  try { sessionStorage.setItem(FUNNEL_STATE_KEY, JSON.stringify(state)); } catch {}
+// Keyed per funnel path so a visitor who opens /start and /start-bwk in the
+// same tab never resumes one funnel with the other's answers.
+function saveFunnelState(path: string, state: FunnelState): void {
+  try { sessionStorage.setItem(`${FUNNEL_STATE_KEY}:${path}`, JSON.stringify(state)); } catch {}
 }
 
-function loadFunnelState(): FunnelState | null {
+function loadFunnelState(path: string): FunnelState | null {
   try {
-    const raw = sessionStorage.getItem(FUNNEL_STATE_KEY);
+    const raw = sessionStorage.getItem(`${FUNNEL_STATE_KEY}:${path}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && STEP_SET.has(parsed.step)) return parsed as FunnelState;
@@ -180,16 +169,15 @@ function getOrCreateSessionId(): string {
   return id;
 }
 
-function useFunnelTracker() {
+function useFunnelTracker(flowVersion: string) {
   const sessionId = useRef(getOrCreateSessionId());
   const utmRef = useRef<UtmParams>({});
   useEffect(() => { utmRef.current = captureUtmParams(); }, []);
   return useCallback((event: string, props?: Record<string, unknown>) => {
-    // Variant suffix so /start vs /start-bwk conversion can be split in
-    // dashboards — the funnels share every event name.
-    const variant = typeof window !== "undefined" && window.location.pathname === "/start-bwk" ? "v7-bwk" : "v7";
-    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion: variant, ...props });
-  }, []);
+    // flowVersion comes from the variant config ("v8" / "v8-bwk") so /start and
+    // /start-bwk read as separate cohorts. The funnels share every event name.
+    trackOnboardingEvent(event, { sessionToken: sessionId.current, utm: utmRef.current, flowVersion, ...props });
+  }, [flowVersion]);
 }
 
 // ─── WebView Detection ──────────────────────────────────────────────────────
@@ -224,7 +212,7 @@ const OAUTH_PENDING_KEY = "acuity_oauth_pending";
 // silent stall ("never returned" in spirit) rather than a quick error bounce.
 const OAUTH_NEVER_RETURNED_MS = 60_000;
 
-interface OAuthPending { provider: string; ts: number; env: string; }
+interface OAuthPending { provider: string; ts: number; env: string; path?: string; }
 
 function readOAuthPending(): OAuthPending | null {
   try {
@@ -246,7 +234,14 @@ export function OnboardingFunnel() {
   const { data: session, status: authStatus } = useSession();
   // Restore persisted state from sessionStorage so refresh doesn't lose progress.
   // URL ?step= params (OAuth/Stripe returns) take priority over stored state.
-  const saved = typeof window !== "undefined" ? loadFunnelState() : null;
+  const order = cfg.STEP_ORDER;
+  const inFunnel = (s: string): s is Step => s === "download" || (order as string[]).includes(s);
+  // Position used for progress + forward-only resume. download sits after the
+  // last counted step.
+  const rank = (s: Step) => (s === "download" ? order.length : order.indexOf(s));
+  const nextOf = (s: Step): Step => order[order.indexOf(s) + 1] ?? "download";
+  const savedRaw = typeof window !== "undefined" ? loadFunnelState(cfg.path) : null;
+  const saved = savedRaw && inFunnel(savedRaw.step) ? savedRaw : null;
   const [step, setStepRaw] = useState<Step>(saved?.step ?? "entry");
   const [branch, setBranch] = useState<Branch | null>(saved?.branch ?? null);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>(saved?.answers ?? {});
@@ -264,7 +259,7 @@ export function OnboardingFunnel() {
   // would otherwise reappear as the default. Always lead with monthly on load;
   // the user can still switch, and the switch persists within the session.
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
-  const track = useFunnelTracker();
+  const track = useFunnelTracker(cfg.flowVersion);
 
   // Wrap setStep to persist state + push browser history on every transition.
   // This makes both refresh AND browser-back work correctly.
@@ -284,14 +279,14 @@ export function OnboardingFunnel() {
   useEffect(() => {
     const onPopState = (e: PopStateEvent) => {
       const targetStep = e.state?.funnelStep as Step | undefined;
-      if (targetStep && STEP_SET.has(targetStep)) {
+      if (targetStep && inFunnel(targetStep)) {
         isPopstateNav.current = true;
         setStepRaw(targetStep);
       } else {
         // Fallback: read step from URL
         const params = new URLSearchParams(window.location.search);
         const urlStep = params.get("step");
-        if (urlStep && STEP_SET.has(urlStep)) {
+        if (urlStep && inFunnel(urlStep)) {
           isPopstateNav.current = true;
           setStepRaw(urlStep as Step);
         } else {
@@ -306,7 +301,7 @@ export function OnboardingFunnel() {
 
   // Persist full state to sessionStorage whenever step/branch/answers/plan change
   useEffect(() => {
-    saveFunnelState({ step, branch, answers, selectedPlan });
+    saveFunnelState(cfg.path, { step, branch, answers, selectedPlan });
   }, [step, branch, answers, selectedPlan]);
 
   // Payment confirmation state — true when Stripe checkout completed successfully
@@ -381,7 +376,7 @@ export function OnboardingFunnel() {
     } else if (stepParam === "paywall") {
       resolvedStep = "savings";
       setStepRaw("savings");
-    } else if (stepParam && STEP_SET.has(stepParam)) {
+    } else if (stepParam && inFunnel(stepParam)) {
       resolvedStep = stepParam as Step;
       setStepRaw(stepParam as Step);
     }
@@ -416,11 +411,11 @@ export function OnboardingFunnel() {
         if (data?.subscriptionStatus === "PRO") {
           setPaymentConfirmed(true);
         }
-        if (hasStepParam || !serverStep || !STEP_SET.has(serverStep)) return;
+        if (hasStepParam || !serverStep || !inFunnel(serverStep)) return;
         // Only advance forward: never send a user back to an earlier step than
         // the one they're already viewing (e.g. don't pull "download" → "savings").
         setStepRaw((current) => {
-          if (STEP_ORDER.indexOf(serverStep) <= STEP_ORDER.indexOf(current)) {
+          if (rank(serverStep) <= rank(current)) {
             return current;
           }
           window.history.replaceState({ funnelStep: serverStep }, "", buildStepUrl(serverStep));
@@ -495,15 +490,10 @@ export function OnboardingFunnel() {
       entry: "funnel_entry_viewed",
       "branch-q2": "funnel_branch_q2_viewed",
       "branch-q3": "funnel_branch_q3_viewed",
-      "branch-q4": "funnel_branch_q4_viewed",
-      "shared-q5": "funnel_shared_q5_viewed",
       "branch-q6": "funnel_branch_q6_viewed",
       pain: "funnel_pain_viewed",
-      "relief-flip": "funnel_relief_flip_viewed",
       "current-future": "funnel_current_future_viewed",
       mechanism: "funnel_mechanism_viewed",
-      value: "funnel_value_viewed",
-      commit: "funnel_commit_viewed",
       processing: "funnel_processing_viewed",
       "pattern-result": "funnel_pattern_result_viewed",
       timeline: "funnel_timeline_viewed",
@@ -513,10 +503,11 @@ export function OnboardingFunnel() {
     };
     if (eventMap[step]) {
       track(eventMap[step], step === "entry" && adMatchBranch ? { value: `ad_match:${adMatchBranch}` } : undefined);
-      // Lead fires on the timeline step — a mid-funnel signal showing the
-      // user reached the value-reveal screens. Moved from create-account
-      // (which inflated Lead count for users who merely saw the form).
-      if (step === "timeline") fireFbq("Lead", { content_name: "Funnel Timeline Reached" });
+      // Lead fires on the pattern result — the value-reveal moment, and the one
+      // late screen both v8 funnels share (v7 fired it on timeline, which
+      // /start no longer shows). Never on create-account, which inflated Lead
+      // for users who merely saw the form.
+      if (step === "pattern-result") fireFbq("Lead", { content_name: "Funnel Pattern Result Reached" });
       // Signal to the cookie consent banner that the user has progressed
       // far enough for consent to be shown without competing with content.
       if (step === "create-account") {
@@ -528,11 +519,38 @@ export function OnboardingFunnel() {
   useEffect(() => { window.scrollTo(0, 0); }, [step]);
 
   const goBack = () => {
-    const idx = STEP_ORDER.indexOf(step);
-    if (idx > 0) setStep(STEP_ORDER[idx - 1]);
+    const idx = order.indexOf(step);
+    if (idx > 0) setStep(order[idx - 1]);
+  };
+  const advance = () => setStep(nextOf(step));
+
+  const progressPct = step === "download" ? 100 : ((order.indexOf(step) + 1) / order.length) * 100;
+
+  // ── Entry answer — shared by the live screen and the pre-hydration tap ──
+  const selectEntry = (opt: { label: string; branch?: Branch }, via: "tap" | "pretap") => {
+    if (!opt.branch) return;
+    setBranch(opt.branch);
+    handleAnswer("entry", opt.label, "funnel_entry_selected");
+    track("funnel_entry_selected", { value: opt.branch });
+    if (via === "pretap") track("funnel_entry_pretap_used", { value: opt.branch });
+    if (adMatchBranch) {
+      track("funnel_ad_match", { value: opt.branch === adMatchBranch ? "matched" : "different" });
+    }
   };
 
-  const progressPct = ((STEP_ORDER.indexOf(step) + 1) / TOTAL_STEPS) * 100;
+  // A tap on the server-rendered Screen 1 before JS loaded (see
+  // FunnelSsrEntry). Apply it once, as if it happened here.
+  const preTapApplied = useRef(false);
+  useEffect(() => {
+    if (preTapApplied.current || step !== "entry") return;
+    preTapApplied.current = true;
+    const pre = (window as unknown as Record<string, { branch?: string } | undefined>)[PRE_TAP_KEY];
+    const opt = pre?.branch ? cfg.ENTRY_QUESTION.options.find((o) => o.branch === pre.branch) : undefined;
+    if (!opt) return;
+    selectEntry(opt, "pretap");
+    setStep(nextOf("entry"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Quiz answer handler ──
   const handleAnswer = (questionId: string, value: string | string[], eventName: string) => {
@@ -545,12 +563,8 @@ export function OnboardingFunnel() {
     if (step === "entry") return cfg.ENTRY_QUESTION;
     if (step === "branch-q6" && branch) return cfg.BRANCH_Q6[branch];
     if (step.startsWith("branch-") && branch) {
-      const idx = parseInt(step.replace("branch-q", "")) - 2; // q2 → 0, q3 → 1, q4 → 2
+      const idx = parseInt(step.replace("branch-q", "")) - 2; // q2 → 0, q3 → 1
       return cfg.BRANCH_QUESTIONS[branch][idx] ?? null;
-    }
-    if (step.startsWith("shared-")) {
-      const idx = parseInt(step.replace("shared-q", "")) - 5; // q5 → 0, q6 → 1, etc.
-      return cfg.SHARED_QUESTIONS[idx] ?? null;
     }
     return null;
   };
@@ -563,7 +577,9 @@ export function OnboardingFunnel() {
       const res = await fetch("/api/onboarding/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval: selectedPlan }),
+        // funnel = the path Stripe returns to, so /start-bwk buyers land back
+        // in /start-bwk (server allowlists it).
+        body: JSON.stringify({ interval: selectedPlan, funnel: cfg.path }),
       });
       const data = await res.json();
       if (data.url) {
@@ -581,8 +597,46 @@ export function OnboardingFunnel() {
   };
 
   return (
-    <div className="min-h-screen bg-acuity-hero-grad">
+    <div
+      className="funnel-root min-h-screen bg-acuity-hero-grad text-acuity-text"
+      data-theme={cfg.theme === "dusk" ? "dark" : undefined}
+      data-funnel-theme={cfg.theme}>
       <style dangerouslySetInnerHTML={{ __html: `
+        /* ── Dusk theme (/start-bwk) — the dark logo scheme: near-black navy
+           (#0E0C1E, ripple-lockup-dusk.png) with white type and the indigo of
+           ripple-mark-indigo.png as the accent. data-theme="dark" on the same
+           element pulls in the dark text/hairline/shadow tokens; this block
+           swaps the palette. Gradient + glow tokens are declared at :root with
+           var() inside, so they resolve to coral there — re-declared here so
+           they pick up the indigo. */
+        [data-funnel-theme="dusk"] {
+          --acuity-primary: oklch(0.64 0.16 292);
+          --acuity-primary-hi: oklch(0.74 0.14 293);
+          --acuity-primary-lo: oklch(0.54 0.19 291);
+          --acuity-primary-soft: oklch(0.64 0.16 292 / 0.18);
+          --acuity-primary-h: 292;
+          --acuity-secondary-h: 287;
+          --acuity-bg: oklch(0.168 0.037 287);
+          --acuity-bg-sub: oklch(0.2 0.042 287);
+          --acuity-bg-inset: oklch(0.14 0.03 287);
+          --acuity-card-bg: oklch(0.215 0.048 287);
+          --acuity-grad-primary: linear-gradient(135deg, var(--acuity-primary-hi) 0%, var(--acuity-primary) 55%, var(--acuity-primary-lo) 100%);
+          --acuity-glow-primary: 0 0 16px 0 color-mix(in oklch, var(--acuity-primary), transparent 70%), 0 8px 18px 0 color-mix(in oklch, var(--acuity-primary-lo), transparent 78%);
+          --acuity-glow-soft: 0 6px 18px 0 color-mix(in oklch, var(--acuity-primary), transparent 82%);
+          --acuity-hero-grad:
+            radial-gradient(120% 70% at 50% 0%, oklch(0.34 0.12 292 / 0.35) 0%, transparent 60%),
+            linear-gradient(180deg, oklch(0.19 0.042 287) 0%, oklch(0.168 0.037 287) 100%);
+          color-scheme: dark;
+        }
+        /* Semantic surfaces — every screen reads these instead of zinc/white,
+           so both themes come from the same markup. (Tailwind's /opacity
+           modifier does not work on the var()-based acuity colors, so tints
+           live here as color-mix.) */
+        .funnel-root .f-card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); }
+        .funnel-root .f-sub { background: var(--acuity-bg-sub); border: 1px solid var(--acuity-line); }
+        .funnel-root .f-tint { background: color-mix(in oklch, var(--acuity-primary) 8%, transparent); border: 1px solid color-mix(in oklch, var(--acuity-primary) 32%, transparent); }
+        .funnel-root .f-track { background: color-mix(in oklch, var(--acuity-primary) 14%, transparent); }
+        .funnel-root .f-grad-text { background-image: var(--acuity-grad-primary); -webkit-background-clip: text; background-clip: text; color: transparent; }
         @keyframes funnel-glow {
           0%, 100% { box-shadow: 0 4px 16px var(--acuity-glow-soft); }
           50% { box-shadow: 0 4px 28px var(--acuity-glow-primary), 0 0 8px var(--acuity-glow-soft); }
@@ -642,7 +696,7 @@ export function OnboardingFunnel() {
           50% { transform: scale(1.05); }
         }
         .gap-highlight {
-          background-image: linear-gradient(to right, oklch(0.88 0.10 38 / 0.55), oklch(0.85 0.12 38 / 0.45));
+          background-image: linear-gradient(to right, color-mix(in oklch, var(--acuity-primary) 45%, transparent), color-mix(in oklch, var(--acuity-primary) 35%, transparent));
           background-repeat: no-repeat;
           background-position: 0% 50%;
           background-size: 0% 100%;
@@ -658,29 +712,29 @@ export function OnboardingFunnel() {
            choice screen (Q2-Q6 + Relief Flip) pulls from. ── */
         .funnel-choice {
           -webkit-tap-highlight-color: transparent;
-          border: 1px solid oklch(0.86 0.055 38 / 0.6);
-          background: oklch(0.995 0.012 60 / 0.85);
-          box-shadow: 0 1px 2px oklch(0.55 0.05 38 / 0.06);
+          border: 1px solid color-mix(in oklch, var(--acuity-primary) 28%, var(--acuity-line-strong));
+          background: color-mix(in oklch, var(--acuity-card-bg) 88%, transparent);
+          box-shadow: 0 1px 2px oklch(0 0 0 / 0.06);
           transition: transform 200ms cubic-bezier(.32,.72,0,1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease, opacity 200ms ease;
         }
         @media (hover: hover) {
           .funnel-choice:not(.funnel-choice-selected):not(.funnel-choice-dim):hover {
             background: var(--acuity-primary-soft);
-            border-color: oklch(0.80 0.11 38 / 0.5);
+            border-color: color-mix(in oklch, var(--acuity-primary) 50%, transparent);
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px oklch(0.70 0.14 38 / 0.16);
+            box-shadow: var(--acuity-glow-soft);
           }
         }
         .funnel-choice:active { transform: translateY(0) scale(0.985); }
         .funnel-choice-selected {
           border-color: var(--acuity-primary);
           background: var(--acuity-primary-soft);
-          box-shadow: 0 6px 22px oklch(0.70 0.15 38 / 0.28), inset 0 0 0 1px var(--acuity-primary);
+          box-shadow: var(--acuity-glow-soft), inset 0 0 0 1px var(--acuity-primary);
         }
         .funnel-choice-dim { opacity: 0.4; }
         /* Ad-match hint on entry — coral-tinted but softer than a full selection. */
         .funnel-choice-hint {
-          border-color: oklch(0.80 0.11 38 / 0.5);
+          border-color: color-mix(in oklch, var(--acuity-primary) 50%, transparent);
           background: var(--acuity-primary-soft);
         }
         /* Coral left marker — a guided ring that fills on selection. */
@@ -688,7 +742,7 @@ export function OnboardingFunnel() {
           flex-shrink: 0;
           width: 9px; height: 9px;
           border-radius: 9999px;
-          border: 1.5px solid oklch(0.80 0.10 38 / 0.55);
+          border: 1.5px solid color-mix(in oklch, var(--acuity-primary) 55%, transparent);
           background: transparent;
           transition: background 200ms ease, border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
         }
@@ -708,14 +762,14 @@ export function OnboardingFunnel() {
       `}} />
 
       {/* Progress bar */}
-      <div className="fixed top-[var(--install-banner-h)] inset-x-0 z-50 h-[3px] bg-acuity-primary/10">
+      <div className="fixed top-[var(--install-banner-h)] inset-x-0 z-50 h-[3px] f-track">
         <div className="h-full bg-acuity-primary transition-all duration-700 ease-out"
           style={{ width: `${progressPct}%`, boxShadow: "0 0 8px var(--acuity-glow-primary)" }} />
       </div>
 
       {/* Back button — hidden on entry and download */}
       {step !== "entry" && step !== "download" && (
-        <button onClick={goBack} className="fixed top-5 left-5 z-50 rounded-full bg-zinc-100/80 p-2 text-zinc-400 hover:text-zinc-700 transition" aria-label="Go back">
+        <button onClick={goBack} className="fixed top-5 left-5 z-50 rounded-full bg-acuity-bg-sub p-2 text-acuity-text-ter hover:text-acuity-text transition" aria-label="Go back">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -723,18 +777,15 @@ export function OnboardingFunnel() {
       )}
 
       {/* ── Question Screens (Entry, Branch, Shared) ── */}
-      {(step === "entry" || step.startsWith("branch-") || step.startsWith("shared-")) && (() => {
+      {(step === "entry" || step.startsWith("branch-")) && (() => {
         const q = getCurrentQuestion();
         if (!q) return null;
         const isEntry = step === "entry";
 
-        const nextStep = (): Step => {
-          const idx = STEP_ORDER.indexOf(step);
-          return STEP_ORDER[idx + 1] ?? "pain";
-        };
+        const nextStep = (): Step => nextOf(step);
 
-        const eventBase = isEntry ? "funnel_entry" : step.startsWith("branch-") ? `funnel_${step.replace("-", "_")}` : `funnel_${step.replace("-", "_")}`;
-        const answerKey = isEntry ? "entry" : step.replace("branch-", "branch_").replace("shared-", "shared_");
+        const eventBase = isEntry ? "funnel_entry" : `funnel_${step.replace("-", "_")}`;
+        const answerKey = isEntry ? "entry" : step.replace("branch-", "branch_");
 
         if (q.multiSelect) {
           return (
@@ -759,15 +810,15 @@ export function OnboardingFunnel() {
             options={q.options}
             normalization={q.normalization}
             highlightBranch={isEntry ? adMatchBranch : undefined}
-            topSlot={isEntry ? <SocialProofRating track={track} placement="entry" /> : undefined}
+            topSlot={isEntry ? (
+              <div className="text-center">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-text-ter mb-2">Ripple &middot; 2-minute check-in</p>
+                <SocialProofRating track={track} placement="entry" />
+              </div>
+            ) : undefined}
             onSelect={(opt) => {
               if (isEntry && opt.branch) {
-                setBranch(opt.branch);
-                handleAnswer("entry", opt.label, "funnel_entry_selected");
-                track("funnel_entry_selected", { value: opt.branch });
-                if (adMatchBranch) {
-                  track("funnel_ad_match", { value: opt.branch === adMatchBranch ? "matched" : "different" });
-                }
+                selectEntry(opt, "tap");
               } else {
                 handleAnswer(answerKey, opt.label, `${eventBase}_selected`);
               }
@@ -777,55 +828,34 @@ export function OnboardingFunnel() {
         );
       })()}
 
-      {/* ── Pain / Mirror (Screen 7 — answer-aware, assembled from Q2+Q3+Q6) ── */}
+      {/* ── Pain / Mirror (answer-aware, assembled from Q2+Q3+Q6) ── */}
       {step === "pain" && branch && (
-        <PainScreen key="pain" branch={branch} answers={answers} onContinue={() => setStep("relief-flip")} />
+        <PainScreen key="pain" branch={branch} answers={answers} onContinue={advance} />
       )}
 
-      {/* ── Relief Flip (Screen 8 — imagine the pain gone, how would you feel?) ── */}
-      {step === "relief-flip" && branch && (
-        <ReliefFlipScreen key="relief-flip" branch={branch} track={track}
-          onSelect={(reliefId) => {
-            setAnswers((a) => ({ ...a, relief_flip: reliefId }));
-            track("funnel_relief_flip_selected", { value: reliefId });
-            setStep("current-future");
-          }}
-        />
-      )}
-
-      {/* ── Current You vs Future You (Screen 9 — answer-aware two-state contrast) ── */}
+      {/* ── Current You vs Future You (/start only — answer-aware contrast) ── */}
       {step === "current-future" && branch && (
-        <CurrentFutureScreen key="current-future" branch={branch} answers={answers} onContinue={() => setStep("mechanism")} />
+        <CurrentFutureScreen key="current-future" branch={branch} answers={answers} onContinue={advance} />
       )}
 
-      {/* ── Mechanism / Product Explainer (Screen 11) ── */}
+      {/* ── Mechanism / Product Explainer ── */}
       {step === "mechanism" && branch && (
-        <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={() => setStep("value")} track={track} />
+        <MechanismScreen key="mechanism" branch={branch} answers={answers} onContinue={advance} track={track} />
       )}
 
-      {/* ── What It Gives You (Screen 11b — value surfaces) ── */}
-      {step === "value" && (
-        <ValueScreen key="value" onContinue={() => setStep("commit")} />
-      )}
-
-      {/* ── Hold-to-Commit (Screen 12) ── */}
-      {step === "commit" && (
-        <CommitmentScreen key="commit" track={track} onComplete={() => setStep("processing")} />
-      )}
-
-      {/* ── Processing Theater (Screen 12) ── */}
+      {/* ── Processing Theater ── */}
       {step === "processing" && (
-        <ProcessingTheater key="processing" onComplete={() => setStep("pattern-result")} />
+        <ProcessingTheater key="processing" onComplete={advance} />
       )}
 
-      {/* ── Pattern Result (Screen 13 — deterministic label reveal) ── */}
+      {/* ── Pattern Result (deterministic label reveal) ── */}
       {step === "pattern-result" && branch && (
-        <PatternResultScreen key="pattern-result" branch={branch} answers={answers} track={track} onContinue={() => setStep("timeline")} />
+        <PatternResultScreen key="pattern-result" branch={branch} answers={answers} track={track} onContinue={advance} />
       )}
 
-      {/* ── Personalized Timeline (Screen 14 — includes weekly-report previews) ── */}
+      {/* ── Personalized Timeline (/start-bwk only — the Week 1 / Month 1 / Year 1 plan) ── */}
       {step === "timeline" && branch && (
-        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={() => setStep("create-account")} track={track} />
+        <TimelineScreen key="timeline" branch={branch} answers={answers} onContinue={advance} track={track} />
       )}
 
       {/* ── Create Account (Screen 15 — now BEFORE the paywall) ──
@@ -866,8 +896,8 @@ export function OnboardingFunnel() {
           selectedPlan={selectedPlan}
           onPlanChange={setSelectedPlan}
           onCheckout={() => {
-            // "Lock in founders rate" — the account already exists, so go
-            // straight to Stripe checkout (no account-creation detour).
+            // "Start free trial" — the account already exists, so go straight
+            // to Stripe checkout (no account-creation detour).
             // paid_selected kept for legacy dashboards; lock_in_selected is the
             // v7 split event for the two-equal-buttons layout.
             track("funnel_paywall_paid_selected", { value: selectedPlan });
@@ -915,7 +945,7 @@ export function OnboardingFunnel() {
 // (single, multi, relief flip) composes from this one string + the stateful
 // .funnel-choice-* / .funnel-marker classes defined in the global style block.
 const CHOICE_BASE =
-  "funnel-choice funnel-card-stagger w-full text-left rounded-2xl px-5 py-4 text-[15px] flex items-center gap-3 text-zinc-800";
+  "funnel-choice funnel-card-stagger w-full text-left rounded-2xl px-5 py-4 text-[15px] flex items-center gap-3 text-acuity-text";
 
 // ─── Single Select Question Screen ──────────────────────────────────────────
 
@@ -938,7 +968,7 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-acuity-text">
       <div className="max-w-md w-full">
         {topSlot && (
           <div className="mb-7 flex justify-center funnel-screen">{topSlot}</div>
@@ -977,7 +1007,7 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
           })}
         </div>
         {normalization && (
-          <p className="mt-6 text-center text-xs italic text-zinc-400 funnel-screen" style={{ animationDelay: `${options.length * 100 + 200}ms` }}>
+          <p className="mt-6 text-center text-xs italic text-acuity-text-ter funnel-screen" style={{ animationDelay: `${options.length * 100 + 200}ms` }}>
             {normalization}
           </p>
         )}
@@ -1006,7 +1036,7 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-acuity-text">
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 funnel-screen">{question}</h2>
         <div className="space-y-3" style={{ minHeight: `${options.length * 64}px` }}>
@@ -1028,7 +1058,7 @@ function MultiSelectScreen({ question, options, normalization, onSubmit }: {
           })}
         </div>
         {normalization && (
-          <p className="mt-4 text-center text-xs italic text-zinc-400">{normalization}</p>
+          <p className="mt-4 text-center text-xs italic text-acuity-text-ter">{normalization}</p>
         )}
         {selected.size > 0 && (
           <div className="mt-6 text-center funnel-bounce">
@@ -1100,7 +1130,7 @@ function PainScreen({ branch, answers, onContinue }: {
   // lands as a set-apart payoff beat. Clean background (page gradient only) so
   // the words are the sole focus.
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-16 text-zinc-900"
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-16 text-acuity-text"
       onClick={phase < ctaPhase ? skip : undefined}>
       <div className="relative z-10 max-w-md w-full text-left">
 
@@ -1109,10 +1139,10 @@ function PainScreen({ branch, answers, onContinue }: {
           const isOpener = i === 0;
           const isCloser = i === lastIndex;
           const cls = isCloser
-            ? "mt-9 text-[17px] sm:text-lg font-medium text-zinc-900 leading-[1.65]"
+            ? "mt-9 text-[17px] sm:text-lg font-medium text-acuity-text leading-[1.65]"
             : isOpener
-              ? "mb-6 text-[17px] sm:text-lg text-zinc-800 leading-[1.65]"
-              : "mb-6 text-[15px] sm:text-base text-zinc-600 leading-[1.7]";
+              ? "mb-6 text-[17px] sm:text-lg text-acuity-text leading-[1.65]"
+              : "mb-6 text-[15px] sm:text-base text-acuity-text-sec leading-[1.7]";
           return (
             <p key={i} className={`transition-all duration-[650ms] ease-out ${revealed} ${cls}`}>
               {emphasize(text, emphasis)}
@@ -1126,53 +1156,6 @@ function PainScreen({ branch, answers, onContinue }: {
             className="funnel-cta rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98]">
             Keep going
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Relief Flip (Screen 8 — imagine the pain gone, how would you feel?) ─────
-
-function ReliefFlipScreen({ branch, track, onSelect }: {
-  branch: Branch;
-  track: (event: string, props?: Record<string, unknown>) => void;
-  onSelect: (reliefId: string) => void;
-}) {
-  const cfg = useFunnelConfig();
-  const config = cfg.RELIEF_FLIP[branch];
-  const [chosen, setChosen] = useState<string | null>(null);
-
-  const handle = (id: string) => {
-    if (chosen) return;
-    setChosen(id);
-    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
-    // Tap-to-advance: brief highlight, then continue.
-    setTimeout(() => onSelect(id), 350);
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
-      <div className="max-w-md w-full">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 leading-snug funnel-screen">{config.prompt}</h2>
-        <div className="space-y-3">
-          {config.options.map((o, i) => {
-            const isChosen = chosen === o.id;
-            return (
-              <button key={o.id} onClick={() => handle(o.id)}
-                className={`${CHOICE_BASE} ${isChosen ? "funnel-choice-selected" : ""}`}
-                style={{ animationDelay: `${i * 80}ms` }}>
-                <span className="funnel-marker" data-on={isChosen ? "1" : undefined} />
-                <span className="flex-1">{o.label}</span>
-                {isChosen && (
-                  <span className="ml-1 flex-shrink-0 text-acuity-primary"
-                    style={{ animation: "funnel-check-pop 250ms ease-out both" }}>
-                    &#10003;
-                  </span>
-                )}
-              </button>
-            );
-          })}
         </div>
       </div>
     </div>
@@ -1222,7 +1205,7 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
   const grid = "grid grid-cols-[1fr_30px_1fr] sm:grid-cols-[1fr_46px_1fr]";
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-5 py-16 text-zinc-900"
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-5 py-16 text-acuity-text"
       onClick={!done ? skip : undefined}>
       <div className="w-full max-w-md">
 
@@ -1234,9 +1217,9 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
         <div className="relative">
           {/* Background panel layer — same grid so panels align under columns */}
           <div className={`absolute inset-0 ${grid}`} aria-hidden>
-            <div className="rounded-2xl bg-zinc-100/90 ring-1 ring-zinc-200/70" />
+            <div className="rounded-2xl bg-acuity-bg-inset ring-1 ring-acuity-line-strong" />
             <div />
-            <div className="rounded-2xl bg-acuity-primary/[0.06] ring-1 ring-acuity-primary/20 shadow-acuity-glow-soft" />
+            <div className="rounded-2xl f-tint" />
           </div>
 
           {/* Foreground — labels + rows, padded so text breathes inside panels */}
@@ -1249,12 +1232,12 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                 ~380px without breaking the divider. */}
             <div className={`${grid} mb-4`}>
               {/* left: standalone centered header, divider under it */}
-              <div className="px-3 pb-2 border-b border-zinc-300">
-                <p className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-zinc-400">{content.currentLabel}</p>
+              <div className="px-3 pb-2 border-b border-acuity-line-strong">
+                <p className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-acuity-text-ter">{content.currentLabel}</p>
               </div>
               <span />
               {/* right: standalone centered header, coral divider */}
-              <div className="px-3 pb-2 border-b border-acuity-primary/30">
+              <div className="px-3 pb-2 border-b border-acuity-primary">
                 <p className="text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] leading-tight text-acuity-primary">{content.futureLabel}</p>
               </div>
             </div>
@@ -1266,7 +1249,7 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                 return (
                   <div key={i} className={`${grid} items-center`}>
                     {/* left — "you now" (black) */}
-                    <p className={`text-center px-2.5 sm:px-3 text-[11px] sm:text-[12.5px] leading-snug text-zinc-900 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}>
+                    <p className={`text-center px-2.5 sm:px-3 text-[11px] sm:text-[12.5px] leading-snug text-acuity-text break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px]"}`}>
                       {before}
                     </p>
                     {/* arrow — bridges the gap left → right */}
@@ -1278,7 +1261,7 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
                       </svg>
                     </span>
                     {/* right — "you, a few weeks in" pop (black) */}
-                    <p className={`text-center px-2.5 sm:px-3 text-[11.5px] sm:text-[13px] font-semibold leading-snug text-zinc-900 break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
+                    <p className={`text-center px-2.5 sm:px-3 text-[11.5px] sm:text-[13px] font-semibold leading-snug text-acuity-text break-words transition-all duration-1000 ease-out ${on ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-[6px] scale-95"}`}
                       style={{ transitionDelay: "720ms", transformOrigin: "center" }}>
                       {after}
                     </p>
@@ -1290,7 +1273,7 @@ function CurrentFutureScreen({ branch, answers, onContinue }: {
         </div>
 
         {/* Footer */}
-        <p className={`text-center text-[14px] text-zinc-600 leading-relaxed mt-7 transition-all duration-500 ${done ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[8px]"}`}>{content.footer}</p>
+        <p className={`text-center text-[14px] text-acuity-text-sec leading-relaxed mt-7 transition-all duration-500 ${done ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[8px]"}`}>{content.footer}</p>
 
         {/* CTA */}
         <div className={`text-center mt-6 transition-all duration-500 ${done ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[12px]"}`}>
@@ -1374,9 +1357,14 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
   const cfg = useFunnelConfig();
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const content = MECH_CONTENT[branch];
   const q2 = typeof answers.branch_q2 === "string" ? answers.branch_q2 : "";
-  const cards = content.cards(q2);
+  // Variant examples (e.g. /start-bwk) reuse the default card icons in order.
+  const override = cfg.MECHANISM_CONTENT?.[branch];
+  const base = MECH_CONTENT[branch];
+  const cards = override
+    ? override.cards.map((text, i) => ({ text, icon: base.cards(q2)[i]?.icon ?? "\u25A1" }))
+    : base.cards(q2);
+  const content = { insight: override?.insight ?? base.insight };
 
   const mechanismStyles = `
     @keyframes mech-wave {
@@ -1399,19 +1387,19 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
     ? {} : { animation: `funnel-slide-up 400ms cubic-bezier(0.215,0.61,0.355,1) ${delay}ms both` };
 
   return (
-    <div className="min-h-[100dvh] overflow-y-auto px-6 py-10 bg-white text-zinc-900">
+    <div className="min-h-[100dvh] overflow-y-auto px-6 py-10 text-acuity-text">
       <style dangerouslySetInnerHTML={{ __html: mechanismStyles }} />
 
       {/* Headline */}
-      <h2 className="mb-9 text-center text-[26px] font-bold leading-[33px] tracking-tight text-zinc-900" style={fadeUp(0)}>
-        A few minutes. Every day.<br />That&rsquo;s all it takes.
+      <h2 className="mb-9 text-center text-[26px] font-bold leading-[33px] tracking-tight text-acuity-text" style={fadeUp(0)}>
+        Talk it out.<br />Ripple does the rest.
       </h2>
 
       {/* ── STEP 1: TALK ── */}
       <div className="mb-8" style={fadeUp(800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 1</p>
-        <p className="mb-1.5 text-xl font-bold text-zinc-900">Just say what&rsquo;s on your mind.</p>
-        <p className="mb-4 text-sm leading-5 text-zinc-500">About whatever&rsquo;s on your mind &mdash; and get it out of your head, where it&rsquo;s been costing you sleep and patience.</p>
+        <p className="mb-1.5 text-xl font-bold text-acuity-text">Just say what&rsquo;s on your mind.</p>
+        <p className="mb-4 text-sm leading-5 text-acuity-text-ter">About whatever&rsquo;s on your mind &mdash; and get it out of your head, where it&rsquo;s been costing you sleep and patience.</p>
         <div className="flex items-end gap-[4px]" style={{ height: 40 }}>
           {MECHANISM_WAVE_HEIGHTS.map((h, i) => (
             <div key={i} className="w-[3px] origin-bottom rounded-full bg-acuity-primary-hi"
@@ -1423,14 +1411,14 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
       {/* ── STEP 2: WE EXTRACT (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(2200)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 2</p>
-        <p className="mb-1.5 text-xl font-bold text-zinc-900">Ripple pulls out what matters.</p>
-        <p className="mb-4 text-sm leading-5 text-zinc-500">Tasks, goals, moods, patterns &mdash; so nothing you said falls through the cracks, and nothing sits on your shoulders alone.</p>
+        <p className="mb-1.5 text-xl font-bold text-acuity-text">Ripple pulls out what matters.</p>
+        <p className="mb-4 text-sm leading-5 text-acuity-text-ter">Tasks, goals, moods, patterns &mdash; so nothing you said falls through the cracks, and nothing sits on your shoulders alone.</p>
         <div className="space-y-2">
           {cards.map((c, i) => (
-            <div key={i} className="flex items-center rounded-xl border-l-[3px] border-acuity-primary bg-white px-3.5 py-3 shadow-sm"
+            <div key={i} className="flex items-center rounded-xl border-l-[3px] border-acuity-primary bg-acuity-card-bg px-3.5 py-3 shadow-sm"
               style={fadeUpShort(2200 + 600 + i * 200)}>
               <span className="mr-2.5 text-[13px] font-semibold text-acuity-primary">{c.icon}</span>
-              <span className="text-[13px] font-medium leading-[18px] text-zinc-900">{c.text}</span>
+              <span className="text-[13px] font-medium leading-[18px] text-acuity-text">{c.text}</span>
             </div>
           ))}
         </div>
@@ -1439,8 +1427,8 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
       {/* ── STEP 3: YOUR PICTURE (branch-personalized) ── */}
       <div className="mb-8" style={fadeUp(3800)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 3</p>
-        <p className="mb-1.5 text-xl font-bold text-zinc-900">See the patterns running your weeks.</p>
-        <p className="mb-5 text-sm leading-5 text-zinc-500">Within a few debriefs, Ripple starts showing you the patterns you can&rsquo;t see from inside them. Seeing them is how they finally change.</p>
+        <p className="mb-1.5 text-xl font-bold text-acuity-text">See the patterns running your weeks.</p>
+        <p className="mb-5 text-sm leading-5 text-acuity-text-ter">Within a few debriefs, Ripple starts showing you the patterns you can&rsquo;t see from inside them. Seeing them is how they finally change.</p>
         <div className="mb-4 flex items-center justify-between px-2">
           {["M","T","W","T","F","S","S"].map((d, i) => {
             const filled = i < 5;
@@ -1448,7 +1436,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
             return (
               <div key={i} className="flex flex-col items-center">
                 <div className="relative flex items-center">
-                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] ${filled ? "border-acuity-primary-hi" : "border-zinc-200"}`}>
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] ${filled ? "border-acuity-primary-hi" : "border-acuity-line-strong"}`}>
                     {filled && (
                       <div className="h-[18px] w-[18px] rounded-full bg-acuity-primary"
                         style={prefersReducedMotion ? {} : { animation: `mech-dot-fill 300ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay}ms both` }} />
@@ -1459,7 +1447,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
                       style={prefersReducedMotion ? {} : { animation: `mech-line-grow 200ms cubic-bezier(0.215,0.61,0.355,1) ${dotDelay + 200}ms both` }} />
                   )}
                 </div>
-                <span className={`mt-1 text-[9px] font-semibold ${filled ? "text-zinc-500" : "text-zinc-400"}`}>{d}</span>
+                <span className={`mt-1 text-[9px] font-semibold ${filled ? "text-acuity-text-ter" : "text-acuity-text-ter"}`}>{d}</span>
               </div>
             );
           })}
@@ -1467,12 +1455,12 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
         <div className="rounded-xl border-l-[3px] border-acuity-primary bg-acuity-primary-soft px-3.5 py-3"
           style={fadeUpShort(3800 + 600 + 500 + 500)}>
           <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.06em] text-acuity-primary">Weekly insight</p>
-          <p className="text-[13px] font-medium leading-[18px] text-zinc-900">{content.insight}</p>
+          <p className="text-[13px] font-medium leading-[18px] text-acuity-text">{content.insight}</p>
         </div>
       </div>
 
       {/* ── Closing line ── */}
-      <p className="mb-6 text-center text-base font-bold italic text-zinc-900" style={fadeUp(5000)}>
+      <p className="mb-6 text-center text-base font-bold italic text-acuity-text" style={fadeUp(5000)}>
         You already think about your life every day. Ripple just makes sure it counts.
       </p>
 
@@ -1492,174 +1480,6 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
   );
 }
 
-// ─── What It Gives You (Screen 11b — value surfaces) ────────────────────────
-
-const VALUE_FEATURES = [
-  {
-    icon: "\u25C8",
-    title: "Deep life insights",
-    description: "What\u2019s driving you, what\u2019s holding you back \u2014 true insight into the patterns you can\u2019t see from inside your own life.",
-  },
-  {
-    icon: "\u2611",
-    title: "Active task tracking",
-    description: "Tasks pulled from your words, tracked until done. Your life stops falling through the cracks.",
-  },
-  {
-    icon: "\u2B06",
-    title: "Habit tracking and goal achievement",
-    description: "Goals you mention get tracked without you managing them. Streaks and milestones reinforce the habit.",
-  },
-  {
-    icon: "\u25A8",
-    title: "Weekly report",
-    description: "A written narrative of your week \u2014 the throughline you\u2019d never assemble yourself. Delivered every Sunday.",
-  },
-  {
-    icon: "\u25C6",
-    title: "Signals",
-    description: "Next-step guidance that monitors the patterns running underneath \u2014 the ones you can\u2019t see from inside them.",
-  },
-];
-
-function ValueScreen({ onContinue }: { onContinue: () => void }) {
-  const [vis, setVis] = useState(0);
-  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-  useEffect(() => {
-    if (prefersReduced) { setVis(VALUE_FEATURES.length + 1); return; }
-    const t: ReturnType<typeof setTimeout>[] = [];
-    VALUE_FEATURES.forEach((_, i) => {
-      t.push(setTimeout(() => setVis(i + 1), 400 + i * 350));
-    });
-    // CTA after all features
-    t.push(setTimeout(() => setVis(VALUE_FEATURES.length + 1), 400 + VALUE_FEATURES.length * 350 + 300));
-    return () => t.forEach(clearTimeout);
-  }, [prefersReduced]);
-
-  return (
-    <div className="min-h-[100dvh] overflow-y-auto px-6 py-10 bg-white text-zinc-900">
-      <h2 className="mb-2 text-center text-[26px] font-bold leading-[33px] tracking-tight text-zinc-900 funnel-screen">
-        What it gives you.
-      </h2>
-      <p className="mb-8 text-center text-sm text-zinc-500">Every debrief builds a clearer picture of your life.</p>
-
-      <div className="max-w-md mx-auto space-y-4 mb-10">
-        {VALUE_FEATURES.map((f, i) => (
-          <div key={i}
-            className={`rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm transition-all duration-500 ${vis > i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <div className="flex items-start gap-3">
-              <span className="text-lg text-acuity-primary mt-0.5 flex-shrink-0">{f.icon}</span>
-              <div>
-                <p className="text-[14px] font-bold text-zinc-900 leading-tight">{f.title}</p>
-                <p className="text-[13px] text-zinc-500 leading-snug mt-1">{f.description}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className={`text-center transition-all duration-500 ${vis > VALUE_FEATURES.length ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-        <button onClick={onContinue}
-          className="rounded-full bg-acuity-primary px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] animate-[funnel-glow_2s_ease-in-out_infinite]">
-          Continue
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Hold-to-Commit Screen (Screen 12) ──────────────────────────────────────
-
-function CommitmentScreen({ track, onComplete }: { track: (event: string) => void; onComplete: () => void }) {
-  const [holding, setHolding] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [abandonCount, setAbandonCount] = useState(0);
-  const ringRef = useRef<SVGCircleElement>(null);
-  const rafRef = useRef<number>(0);
-  const startTimeRef = useRef(0);
-  const holdingRef = useRef(false);
-  const completedRef = useRef(false);
-
-  const CIRCUMFERENCE = 2 * Math.PI * 54;
-  const DURATION = 3000;
-
-  const animateRing = () => {
-    if (!holdingRef.current || completedRef.current) return;
-    const elapsed = Date.now() - startTimeRef.current;
-    const pct = Math.min(1, elapsed / DURATION);
-    if (ringRef.current) {
-      ringRef.current.style.strokeDashoffset = `${CIRCUMFERENCE * (1 - pct)}`;
-    }
-    if (pct >= 1) {
-      completedRef.current = true;
-      holdingRef.current = false;
-      setHolding(false);
-      setCompleted(true);
-      track("funnel_commit_completed");
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([30, 50, 30]);
-      import("canvas-confetti").then((mod) => {
-        const confetti = mod.default;
-        confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 }, colors: ["#8E6FE6", "#A78BFA", "#C4B5FD", "#F59E0B", "#22C55E"] });
-        setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.3 } }), 200);
-        setTimeout(() => confetti({ particleCount: 50, spread: 100, origin: { y: 0.4, x: 0.7 } }), 350);
-      });
-      setTimeout(onComplete, 800);
-      return;
-    }
-    rafRef.current = requestAnimationFrame(animateRing);
-  };
-
-  const startHold = () => {
-    if (completedRef.current) return;
-    holdingRef.current = true;
-    setHolding(true);
-    startTimeRef.current = Date.now();
-    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([10, 50, 10, 50, 10]);
-    rafRef.current = requestAnimationFrame(animateRing);
-  };
-
-  const endHold = () => {
-    if (!holdingRef.current || completedRef.current) return;
-    holdingRef.current = false;
-    setHolding(false);
-    cancelAnimationFrame(rafRef.current);
-    if (ringRef.current) {
-      ringRef.current.style.transition = "stroke-dashoffset 0.3s ease-out";
-      ringRef.current.style.strokeDashoffset = `${CIRCUMFERENCE}`;
-      setTimeout(() => { if (ringRef.current) ringRef.current.style.transition = ""; }, 300);
-    }
-    setAbandonCount((c) => { const n = c + 1; if (n >= 3) track("funnel_commit_abandoned"); return n; });
-  };
-
-  useEffect(() => { return () => cancelAnimationFrame(rafRef.current); }, []);
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900 select-none">
-      <div className="max-w-md text-center">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-12">Hold to commit to one debrief a day</h2>
-        <div className="relative inline-flex items-center justify-center">
-          <svg className="h-40 w-40" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="54" fill="none" stroke="#d4d4d8" strokeWidth="4" />
-            <circle ref={ringRef} cx="60" cy="60" r="54" fill="none" stroke="var(--acuity-primary)" strokeWidth="4" strokeLinecap="round"
-              strokeDasharray={CIRCUMFERENCE} strokeDashoffset={CIRCUMFERENCE}
-              transform="rotate(-90 60 60)" />
-          </svg>
-          <button
-            onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold} onPointerCancel={endHold}
-            onTouchStart={(e) => { e.preventDefault(); startHold(); }} onTouchEnd={endHold}
-            onContextMenu={(e) => e.preventDefault()}
-            className={`absolute inset-4 rounded-full bg-acuity-primary/10 border-2 border-zinc-300 flex items-center justify-center transition active:bg-acuity-primary/15 ${!holding && !completed ? "animate-[funnel-breathe_2s_ease-in-out_infinite]" : ""}`}
-            aria-label="Hold to commit" style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}>
-            <span className="text-3xl">{completed ? "\u2713" : ""}</span>
-          </button>
-        </div>
-        <p className="mt-8 text-xs text-zinc-400">{holding ? "Keep holding\u2026" : "Press and hold the circle"}</p>
-      </div>
-    </div>
-  );
-}
-
 // ─── Processing Theater (Screen 12) ─────────────────────────────────────────
 
 function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
@@ -1668,31 +1488,40 @@ function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
   const [showSocial, setShowSocial] = useState(false);
   const startRef = useRef(Date.now());
 
+  // Screen length = the last stage's endSec (6s in v8, was a fixed 10s).
+  const totalSec = cfg.PROCESSING_STAGES[cfg.PROCESSING_STAGES.length - 1].endSec;
+  // onComplete is a fresh closure every parent render; read it through a ref
+  // so re-renders don't restart the timer.
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   useEffect(() => {
     const interval = setInterval(() => {
       const s = (Date.now() - startRef.current) / 1000;
       setElapsed(s);
-      if (s >= 10) { clearInterval(interval); onComplete(); }
+      if (s >= totalSec) { clearInterval(interval); onCompleteRef.current(); }
     }, 100);
-    const socialTimer = setTimeout(() => setShowSocial(true), 4000);
+    const socialTimer = setTimeout(() => setShowSocial(true), (totalSec * 1000) / 2.5);
     return () => { clearInterval(interval); clearTimeout(socialTimer); };
-  }, [onComplete]);
+  }, [totalSec]);
 
   const stage = cfg.PROCESSING_STAGES.find((s) => elapsed < s.endSec) ?? cfg.PROCESSING_STAGES[cfg.PROCESSING_STAGES.length - 1];
-  const pct = Math.min(100, (elapsed / 10) * 100);
+  const pct = Math.min(100, (elapsed / totalSec) * 100);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-acuity-text">
       <div className="max-w-md w-full text-center funnel-screen">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-8">Building your insight profile&hellip;</h2>
         <div className="mx-auto w-64 mb-6">
-          <div className="h-2 w-full rounded-full bg-zinc-200 overflow-hidden">
+          <div className="h-2 w-full rounded-full bg-acuity-line-strong overflow-hidden">
             <div className="h-full bg-acuity-primary rounded-full transition-all duration-300 ease-out" style={{ width: `${pct}%` }} />
           </div>
         </div>
-        <p className="text-sm text-zinc-500 h-6 transition-opacity duration-300">{stage.text}</p>
+        <p className="text-sm text-acuity-text-ter h-6 transition-opacity duration-300">{stage.text}</p>
         <div className={`mt-10 transition-all duration-500 ${showSocial ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
-          <p className="text-xs text-zinc-400 italic">Join thousands who discovered patterns they couldn&rsquo;t see.</p>
+          <p className="text-xs text-acuity-text-ter">
+            4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
+          </p>
         </div>
       </div>
     </div>
@@ -1737,40 +1566,40 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
   const show = (at: number) => vis >= at ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4";
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-6 py-12 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center px-6 py-12 text-acuity-text">
       <div className="max-w-md w-full">
 
         {/* ── Hero: Primary Pattern in its own box (the centerpiece) ── */}
-        <div className={`mb-6 rounded-2xl border-2 border-acuity-primary/30 bg-acuity-primary/5 px-6 py-7 text-center transition-all duration-[800ms] ${show(1)}`}>
+        <div className={`mb-6 rounded-[22px] f-tint px-6 py-7 text-center transition-all duration-[800ms] ${show(1)}`}>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-acuity-primary mb-3">Your pattern</p>
-          <h2 className="text-[32px] sm:text-[40px] font-extrabold tracking-tight text-zinc-900 leading-[1.1]">{labels.primary}</h2>
+          <h2 className="text-[32px] sm:text-[40px] font-extrabold tracking-tight text-acuity-text leading-[1.1]">{labels.primary}</h2>
         </div>
 
         {/* ── Description: loop line + reframe, directly under the pattern ── */}
-        <div className={`mb-6 rounded-xl bg-zinc-50 border border-zinc-200 px-5 py-4 transition-all duration-[800ms] ${show(2)}`}>
-          <p className="text-center text-[15px] font-semibold italic text-zinc-700 leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
+        <div className={`mb-6 rounded-xl bg-acuity-bg-sub border border-acuity-line-strong px-5 py-4 transition-all duration-[800ms] ${show(2)}`}>
+          <p className="text-center text-[15px] font-semibold italic text-acuity-text-sec leading-relaxed">&ldquo;{labels.loopLine}&rdquo;</p>
         </div>
         <div className={`mb-8 transition-all duration-[800ms] ${show(3)}`}>
-          <p className="text-[15px] text-zinc-700 leading-relaxed">{labels.bodyCopy}</p>
+          <p className="text-[15px] text-acuity-text-sec leading-relaxed">{labels.bodyCopy}</p>
         </div>
 
         {/* ── Secondary + Area — prominent cards side by side ── */}
         <div className={`grid ${labels.secondaryVisible && labels.secondary ? "grid-cols-2" : "grid-cols-1"} gap-3 mb-8 transition-all duration-[800ms] ${show(4)}`}>
           {labels.secondaryVisible && labels.secondary && (
-            <div className="rounded-xl border-2 border-zinc-200 bg-zinc-50/80 p-4 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1.5">Secondary signal</p>
-              <p className="text-lg font-bold text-zinc-800">{labels.secondary}</p>
+            <div className="rounded-[18px] f-sub p-4 text-center">
+              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-acuity-text-ter mb-1.5">Secondary signal</p>
+              <p className="text-lg font-bold text-acuity-text">{labels.secondary}</p>
             </div>
           )}
-          <div className="rounded-xl border-2 border-acuity-primary/30 bg-acuity-primary/5 p-4 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-1.5">Most affected area</p>
+          <div className="rounded-[18px] f-tint p-4 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-acuity-text-ter mb-1.5">Most affected area</p>
             <p className="text-lg font-bold text-acuity-primary">{labels.area}</p>
           </div>
         </div>
 
         {/* ── How Ripple Helps — actionable, breaking-free focused ── */}
         <div className={`mb-10 transition-all duration-[800ms] ${show(5)}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 mb-4">How Ripple helps</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-acuity-text-ter mb-4">How Ripple helps</p>
           <div className="space-y-3">
             {[
               { label: "Surface the triggers you can\u2019t see from inside the pattern", icon: "\u25C6" },
@@ -1782,7 +1611,7 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
               <div key={i} className={`flex items-start gap-3 transition-all duration-500 ${vis >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
                 style={{ transitionDelay: `${i * 120}ms` }}>
                 <span className="text-acuity-primary text-sm mt-0.5 flex-shrink-0">{item.icon}</span>
-                <p className="text-[14px] text-zinc-700 leading-snug">{item.label}</p>
+                <p className="text-[14px] text-acuity-text-sec leading-snug">{item.label}</p>
               </div>
             ))}
           </div>
@@ -1824,7 +1653,7 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
   }, [weeks.length]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-6 py-16 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center px-6 py-16 text-acuity-text">
       <div className="max-w-md w-full">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-10 funnel-screen">
           This is what changes.
@@ -1832,14 +1661,14 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
 
         {/* Week-by-week timeline */}
         <div className="relative mb-10">
-          <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-zinc-200 overflow-hidden">
+          <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-acuity-line-strong overflow-hidden">
             <div className="w-full bg-acuity-primary transition-all duration-700" style={{ height: `${(visibleNodes / weeks.length) * 100}%` }} />
           </div>
           <div className="space-y-6">
             {weeks.map((w, i) => (
               <div key={i} className={`relative pl-10 transition-all duration-500 ${i < visibleNodes ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
                 <div className={`absolute left-1 top-1 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                  i < visibleNodes ? "border-acuity-primary bg-acuity-primary/10 scale-100" : "border-zinc-200 bg-white scale-75"
+                  i < visibleNodes ? "border-acuity-primary bg-acuity-primary-soft scale-100" : "border-acuity-line-strong bg-acuity-card-bg scale-75"
                 }`}>
                   {i === 0 && visibleNodes > 0 ? (
                     <svg className="h-3 w-3 text-acuity-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -1849,7 +1678,7 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
                     <span className="h-1.5 w-1.5 rounded-full bg-acuity-primary" />
                   )}
                 </div>
-                <p className="text-sm text-zinc-700"><span className="font-bold">{w.week}:</span> {w.text}</p>
+                <p className="text-sm text-acuity-text-sec"><span className="font-bold">{w.week}:</span> {w.text}</p>
                 {w.badge && <span className="text-[11px] text-acuity-primary font-medium">{w.badge}</span>}
               </div>
             ))}
@@ -1858,7 +1687,7 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
 
         {/* Bottom line — branch-specific closer */}
         <div className={`mb-8 text-center transition-all duration-[800ms] ${showBottom ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-          <p className="text-base font-semibold text-zinc-900 leading-relaxed">{bottomLine}</p>
+          <p className="text-base font-semibold text-acuity-text leading-relaxed">{bottomLine}</p>
         </div>
 
         {/* Social proof — the 4.9 / 127+ reviews rating (mirrors the Download screen) */}
@@ -1892,8 +1721,16 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [signupLoading, setSignupLoading] = useState<"email" | "google" | "apple" | null>(null);
+  const [signupLoading, setSignupLoading] = useState<"email" | "google" | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
+  // In-app browsers (FB/IG) put email first: email signup succeeded 21/21
+  // there, Google 42/67 (v6-v7 data). Set after mount — the UA isn't known
+  // during SSR.
+  const [inApp, setInApp] = useState(false);
+  // True when the visitor just came back from a Google attempt that didn't
+  // finish (bounced back here, or sent back by /auth/error). We say so and
+  // point at the email form instead of leaving them on a silent form.
+  const [oauthFailed, setOauthFailed] = useState(false);
 
   const headline = branch ? cfg.getCreateAccountHeadline(branch) : "Your patterns are already forming. Create your free account to see them.";
 
@@ -1910,6 +1747,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   useEffect(() => {
     const env = detectBrowserEnv();
     const envDiag = getSignupEnvDiag();
+    setInApp(env.isWebView);
     track("funnel_signup_screen_viewed", { value: envDiag });
     if (env.isWebView) {
       const os = /iPhone|iPad|iPod/i.test(env.ua) ? "ios" : /Android/i.test(env.ua) ? "android" : "other";
@@ -1934,6 +1772,11 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       const errPart = errCode ? `|error:${errCode.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 60)}` : "";
       track(evt, { value: `${pending.provider}|${pending.env}|awayMs:${awayMs}${errPart}` });
       clearOAuthPending();
+      setOauthFailed(true);
+    } else if (qs.get("oauth") === "failed") {
+      // Sent back by /auth/error. The pending marker may be gone (webview
+      // storage partitioning), so the URL flag alone is enough to show the note.
+      setOauthFailed(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2042,11 +1885,13 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     }
   };
 
-  const handleOAuthSignup = async (provider: "google" | "apple") => {
+  // Apple was removed from the web funnels on 2026-09-24: 1 success in 15
+  // attempts (0/10 inside FB/IG). Apple returns via a cross-site form POST;
+  // see the oauth check-cookie notes in lib/auth.ts.
+  const handleOAuthSignup = async (provider: "google") => {
     track("funnel_signup_started", { value: provider });
-    // Env-tagged tap event — lets us see Apple-vs-Google attempts per environment.
     const envDiag = getSignupEnvDiag();
-    track(provider === "apple" ? "funnel_oauth_apple_tapped" : "funnel_oauth_google_tapped", { value: envDiag });
+    track("funnel_oauth_google_tapped", { value: envDiag });
     setSignupLoading(provider);
 
     // Carry attribution through the OAuth round-trip on the callbackUrl.
@@ -2089,7 +1934,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     // to localStorage because in-app webviews partition sessionStorage across the
     // provider redirect — localStorage is the store most likely to survive.
     try {
-      localStorage.setItem(OAUTH_PENDING_KEY, JSON.stringify({ provider, ts: Date.now(), env: envDiag }));
+      localStorage.setItem(OAUTH_PENDING_KEY, JSON.stringify({ provider, ts: Date.now(), env: envDiag, path: cfg.path }));
     } catch {}
     // Confirm we actually reached the provider hand-off (if this fires but no
     // return event ever does, the death happened at the provider — the exact
@@ -2099,111 +1944,115 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     await signIn(provider, { callbackUrl: `${window.location.pathname}?${params.toString()}` });
   };
 
+  const googleButton = (
+    <button
+      onClick={() => handleOAuthSignup("google")}
+      disabled={signupLoading !== null}
+      className="w-full flex items-center justify-center gap-3 rounded-full f-card px-4 py-3.5 text-[15px] font-semibold text-acuity-text transition hover:bg-acuity-bg-sub active:scale-[0.98] disabled:opacity-50"
+    >
+      {signupLoading === "google" ? (
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-acuity-line-strong border-t-acuity-text" />
+      ) : (
+        <GoogleLogo />
+      )}
+      Continue with Google
+    </button>
+  );
+
+  const divider = (
+    <div className="flex items-center gap-3 my-6">
+      <div className="flex-1 h-px bg-acuity-line-strong" />
+      <span className="text-xs text-acuity-text-ter">or</span>
+      <div className="flex-1 h-px bg-acuity-line-strong" />
+    </div>
+  );
+
+  const inputClass = "w-full rounded-[14px] bg-acuity-bg-inset border border-acuity-line-strong px-4 py-3.5 text-[15px] text-acuity-text placeholder:text-acuity-text-ter outline-none focus:border-acuity-primary";
+
+  const emailForm = (
+    <form onSubmit={handleSignup} className="space-y-3">
+      <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="First name (optional)" autoComplete="given-name"
+        className={inputClass} />
+      <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="Email address" autoComplete="email" inputMode="email"
+        className={inputClass} />
+      <div className="relative">
+        <input type={showPassword ? "text" : "password"} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password"
+          className={`${inputClass} pr-16`} />
+        <button type="button" onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-acuity-text-ter hover:text-acuity-text font-medium">
+          {showPassword ? "Hide" : "Show"}
+        </button>
+      </div>
+
+      {signupError && (
+        <div className={`text-xs px-1 rounded-lg ${accountCreatedButSigninFailed ? "f-sub p-3 text-acuity-good" : "text-acuity-bad"}`}>
+          <p>{signupError}</p>
+          {signupError.includes("already have an account") && (
+            <button type="button" onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })}
+              className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
+              Sign in to your existing account
+            </button>
+          )}
+          {accountCreatedButSigninFailed && (
+            <button type="button" onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })}
+              className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
+              Tap here to sign in
+            </button>
+          )}
+        </div>
+      )}
+
+      <button type="submit" disabled={signupLoading !== null}
+        className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 funnel-cta">
+        {signupLoading === "email" ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            Creating your account...
+          </span>
+        ) : "Create my free account"}
+      </button>
+    </form>
+  );
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <div className="max-w-md w-full funnel-screen">
-        <section className="text-center mb-8">
-          {/* App Store rating badge */}
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/70 py-1.5 pl-2.5 pr-3.5 shadow-sm">
-            <span className="inline-flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <svg key={i} className="h-3 w-3 text-acuity-primary" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-            </span>
-            <span className="text-[12px] font-semibold text-zinc-500">5.0 on the App Store</span>
-          </div>
+        <section className="text-center mb-7">
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">{headline}</h2>
-          <p className="text-sm text-zinc-500 mt-3">Free. No credit card required. Takes 10 seconds.</p>
+          <p className="text-[15px] text-acuity-text-sec mt-3">Free. No credit card. Your 7 free days start now.</p>
         </section>
 
         {/* Social proof — auto-rotating testimonials */}
         <SignupTestimonialStrip />
 
-        <div className="space-y-3 mb-6">
-          <button
-            onClick={() => handleOAuthSignup("apple")}
-            disabled={signupLoading !== null}
-            className="w-full flex items-center justify-center gap-3 rounded-full bg-zinc-900 px-4 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50"
-          >
-            {signupLoading === "apple" ? (
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-600 border-t-white" />
-            ) : (
-              <AppleLogo />
-            )}
-            Continue with Apple
-          </button>
-
-          <button
-            onClick={() => handleOAuthSignup("google")}
-            disabled={signupLoading !== null}
-            className="w-full flex items-center justify-center gap-3 rounded-full bg-white border border-zinc-200 px-4 py-3.5 text-[15px] font-semibold text-zinc-700 transition hover:bg-zinc-50 hover:border-zinc-300 active:scale-[0.98] disabled:opacity-50"
-          >
-            {signupLoading === "google" ? (
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600" />
-            ) : (
-              <GoogleLogo />
-            )}
-            Continue with Google
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px bg-zinc-200" />
-          <span className="text-xs text-zinc-400">or</span>
-          <div className="flex-1 h-px bg-zinc-200" />
-        </div>
-
-        <form onSubmit={handleSignup} className="space-y-3">
-          <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="Full name (optional)" autoComplete="name"
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
-          <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="Email address" autoComplete="email"
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
-          <div className="relative">
-            <input type={showPassword ? "text" : "password"} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-sm text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-acuity-primary focus:ring-2 focus:ring-acuity-primary/20" />
-            <button type="button" onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600 font-medium">
-              {showPassword ? "Hide" : "Show"}
-            </button>
+        {oauthFailed && (
+          <div className="mb-5 rounded-[14px] f-tint px-4 py-3 text-[13px] leading-snug text-acuity-text" role="status">
+            Google sign-in didn&rsquo;t go through{inApp ? " inside this app" : ""}. Use your email below instead. It works everywhere.
           </div>
+        )}
 
-          {signupError && (
-            <div className={`text-xs px-1 rounded-lg ${accountCreatedButSigninFailed ? "bg-green-50 border border-green-200 p-3 text-green-700" : "text-red-500"}`}>
-              <p>{signupError}</p>
-              {signupError.includes("already have an account") && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })}
-                  className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
-                  Sign in to your existing account
-                </button>
-              )}
-              {accountCreatedButSigninFailed && (
-                <button type="button" onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })}
-                  className="mt-1.5 inline-block text-acuity-primary font-semibold underline">
-                  Tap here to sign in
-                </button>
-              )}
-            </div>
-          )}
+        {/* In FB/IG in-app browsers email leads (it never fails there);
+            everywhere else Google leads. Google is still offered in both. */}
+        {inApp ? (
+          <>
+            {emailForm}
+            {divider}
+            {googleButton}
+          </>
+        ) : (
+          <>
+            {googleButton}
+            {divider}
+            {emailForm}
+          </>
+        )}
 
-          <button type="submit" disabled={signupLoading !== null}
-            className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50 shadow-acuity-glow-soft animate-[funnel-glow_2s_ease-in-out_infinite]">
-            {signupLoading === "email" ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                Creating your account...
-              </span>
-            ) : "Create My Free Account"}
-          </button>
-        </form>
-
-        <p className="text-xs text-zinc-400 text-center mt-6">
+        <p className="text-xs text-acuity-text-ter text-center mt-6">
           Already have an account?{" "}
           <button onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=post-signup` })} className="text-acuity-primary font-semibold underline">Sign in</button>
         </p>
-        <p className="text-[11px] text-zinc-400 text-center mt-3 flex items-center justify-center gap-1.5">
-          <svg className="h-3 w-3 text-zinc-300" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+        <p className="text-[11px] text-acuity-text-ter text-center mt-3 flex items-center justify-center gap-1.5">
+          <svg className="h-3 w-3 text-acuity-text-quiet" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
           Private by design. Your debriefs are yours alone.
         </p>
       </div>
@@ -2222,9 +2071,9 @@ function SignupTestimonialStrip() {
   }, [cfg.PAYWALL_TESTIMONIALS_V2.length]);
   const t = cfg.PAYWALL_TESTIMONIALS_V2[idx];
   return (
-    <div className="mb-5 rounded-xl bg-white/60 border border-zinc-100 px-4 py-3 text-center transition-all duration-300 funnel-card-stagger">
-      <p className="text-[13px] text-zinc-600 italic leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-      <p className="text-[11px] text-zinc-400 font-semibold mt-1.5">&mdash; {t.name}</p>
+    <div className="mb-5 rounded-xl bg-acuity-card-bg border border-acuity-line-strong px-4 py-3 text-center transition-all duration-300 funnel-card-stagger">
+      <p className="text-[13px] text-acuity-text-sec italic leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+      <p className="text-[11px] text-acuity-text-ter font-semibold mt-1.5">&mdash; {t.name}</p>
     </div>
   );
 }
@@ -2251,283 +2100,150 @@ function SavingsScreen({ branch, answers, track, selectedPlan, onPlanChange, onC
   selectedPlan: "monthly" | "yearly"; onPlanChange: (p: "monthly" | "yearly") => void;
   onCheckout: () => void; onSkip: () => void; loading: boolean; error: string | null;
 }) {
+  // v8 paywall (2026-09-24), shared by both funnels. What changed vs v7 and why:
+  // - No crossed-out "$19.99 / $199" anchors, no "founding rate, locked in for
+  //   life", no therapy/coach/coffee comparison. Invented anchors read as a
+  //   fake discount to this audience, and "less than a coffee" isn't true at
+  //   the V2 price. Every number here comes from the display tier.
+  // - One clear primary action + a quiet free path, instead of two equal
+  //   buttons. v6-v7: ~55% of paywall viewers picked neither.
+  // - A plain Today / Day 7 timeline so "$0 today" is concrete.
+  // - One inline testimonial instead of a mid-screen modal.
+  // Event names are unchanged (lock_in_selected / continue_selected) so the
+  // admin funnel split keeps working.
   const cfg = useFunnelConfig();
-  // All savings figures derive from the display tier so a pricing-flag flip
-  // can never leave the paywall advertising math from the old price.
-  const tier = displayTier();
-  const monthlySaveVsAnchor = formatDollarsRounded(1999 - tier.monthlyCents); // vs the $19.99/mo anchor
-  const annualSaveVsAnchor = formatDollarsRounded(19900 - tier.annualCents); // vs the $199/yr anchor
-  // What Stripe actually charges after the 7-day trial for the selected plan —
-  // drives the reassurance line under the lock-in button so it always matches
-  // the checkout the user is about to enter.
   const afterTrialPrice = selectedPlan === "yearly"
     ? `${displayAnnual()}/yr`
     : `${displayMonthly()}/mo`;
-  // Branch-matched social-proof pool for the "What our users say" popup.
-  const testimonialPool = cfg.getPaywallTestimonialPool(branch);
-  const [testimonialsOpen, setTestimonialsOpen] = useState(false);
-  // Branch-personalized paywall copy. All fall back to shared defaults when
-  // branch is null (ad-deep-link edge case where no entry answer was recorded).
+  const testimonial = cfg.getPaywallTestimonialPool(branch)[0];
   const paywallHeadline = branch ? cfg.getPaywallHeadline(branch, answers) : "Everything\u2019s ready when you are.";
   const paywallHook = branch ? cfg.PAYWALL_HOOKS[branch] : null;
-  // Price-slash animation phase: 0=showing regular price, 1=slash started, 2=founding rate landed, 3=badges visible
-  const [slashPhase, setSlashPhase] = useState(0);
-  const pricingRef = useRef<HTMLDivElement>(null);
-  const slashTriggered = useRef(false);
-  const prefersReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  // Trigger the slash animation only when the pricing section scrolls into view
-  useEffect(() => {
-    if (prefersReduced) { setSlashPhase(3); return; }
-    const el = pricingRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !slashTriggered.current) {
-        slashTriggered.current = true;
-        const t: ReturnType<typeof setTimeout>[] = [];
-        t.push(setTimeout(() => setSlashPhase(1), 400));    // strikethrough draws after 400ms in view
-        t.push(setTimeout(() => setSlashPhase(2), 1200));   // founding rate lands at 1.2s
-        t.push(setTimeout(() => setSlashPhase(3), 2000));   // badges appear at 2s
-        // Cleanup not critical — one-shot
-      }
-    }, { threshold: 0.3 }); // trigger when 30% of the pricing section is visible
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [prefersReduced]);
+  const plans: { id: "monthly" | "yearly"; label: string; price: string; note: string; badge?: string }[] = [
+    { id: "monthly", label: "Monthly", price: `${displayMonthly()}/mo`, note: "Billed monthly" },
+    { id: "yearly", label: "Yearly", price: `${displayAnnual()}/yr`, note: `${displayAnnualAsMonthly()}/mo, billed yearly`, badge: `Save ${displaySavingsPct()}` },
+  ];
 
   return (
-    <div className="min-h-screen text-zinc-900 pb-32">
-      {/* Scoped, restrained entrance/emphasis animations. Global reduced-motion
-          rule (* { animation-duration: 0.01ms }) neutralizes all of these, and
-          none gate interaction — the sticky CTA is always immediately tappable. */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pw-row-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pw-cta-shimmer { 0% { transform: translateX(-140%) skewX(-18deg); } 100% { transform: translateX(140%) skewX(-18deg); } }
-        @keyframes pw-free-pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
-        @keyframes pw-select-glow { 0% { box-shadow: 0 0 0 0 rgba(233,116,81,0.0); } 35% { box-shadow: 0 0 0 4px rgba(233,116,81,0.28); } 100% { box-shadow: 0 0 0 0 rgba(233,116,81,0.0); } }
-        .pw-row { animation: pw-row-in 0.4s ease-out both; }
-        .pw-select-glow { animation: pw-select-glow 1.6s ease-out 0.5s 2; }
-      `}} />
-      <div className="max-w-lg mx-auto px-6 pt-10">
+    <div className="min-h-screen pb-56">
+      <div className="max-w-lg mx-auto px-6 pt-20">
 
-        {/* Section 1 — Warm, free-forward positioning header (branch-personalized) */}
-        <section className="text-center mb-6 funnel-screen">
+        {/* Header — branch-personalized (pt-20 clears the fixed back button) */}
+        <section className="text-center mb-7 funnel-screen">
           {paywallHook && (
-            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-acuity-primary mb-2">{paywallHook}</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-primary mb-3">{paywallHook}</p>
           )}
-          <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">{paywallHeadline}</h2>
-          <p className="text-sm text-zinc-500 mt-3">Try all of Ripple <span className="font-semibold text-zinc-700">free for 7 days</span>. Keep what you love.</p>
+          <h2 className="text-[24px] sm:text-[28px] font-bold tracking-tight leading-snug">{paywallHeadline}</h2>
+          <p className="text-[15px] text-acuity-text-sec mt-3">Your 7 free days have started. Pro keeps everything running after day 7.</p>
         </section>
 
-        {/* Section 2 — Free vs Pro split (trimmed, no table) */}
-        <section className="mb-6 rounded-xl bg-white border border-zinc-200 shadow-sm overflow-hidden funnel-card-stagger" style={{ animationDelay: "120ms" }}>
-          {/* Free group */}
-          <div className="px-5 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-emerald-600 mb-3">Free forever</p>
-            {FREE_FEATURES.map((f, i) => (
-              <div key={f.name} className="pw-row flex items-start gap-3 py-1.5" style={{ animationDelay: `${220 + i * 70}ms` }}>
-                <span className="text-emerald-500 text-sm mt-0.5 leading-none">&#10003;</span>
+        {/* What you get — the real free vs Pro split */}
+        <section className="mb-5 rounded-[22px] f-card overflow-hidden funnel-card-stagger" style={{ animationDelay: "80ms" }}>
+          <div className="px-5 pt-4 pb-3">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-good mb-2">Free forever</p>
+            {FREE_FEATURES.map((f) => (
+              <div key={f.name} className="flex items-start gap-3 py-1.5">
+                <span className="text-acuity-good text-sm mt-0.5 leading-none">&#10003;</span>
                 <div>
-                  <p className="text-[14px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
-                  <p className="text-[12px] text-zinc-500 leading-snug mt-0.5">{f.description}</p>
+                  <p className="text-[15px] font-semibold leading-tight">{f.name}</p>
+                  <p className="text-[13px] text-acuity-text-sec leading-snug mt-0.5">{f.description}</p>
                 </div>
               </div>
             ))}
           </div>
-          {/* Pro group */}
-          <div className="px-5 py-4 border-t border-zinc-100 bg-zinc-50/40">
-            <p className="text-[11px] font-bold uppercase tracking-[0.1em] mb-3 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">The insight layer &mdash; with Pro</p>
-            {PRO_FEATURES.map((f, i) => (
-              <div key={f.name} className="pw-row flex items-start gap-3 py-1.5" style={{ animationDelay: `${360 + i * 70}ms` }}>
+          <div className="px-5 pt-3 pb-4 border-t border-acuity-line f-sub">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-primary mb-2">Pro adds</p>
+            {PRO_FEATURES.map((f) => (
+              <div key={f.name} className="flex items-start gap-3 py-1.5">
                 <span className="text-acuity-primary text-sm mt-0.5 leading-none">&#10003;</span>
                 <div>
-                  <p className="text-[14px] font-semibold text-zinc-900 leading-tight">{f.name}</p>
-                  <p className="text-[12px] text-zinc-500 leading-snug mt-0.5">{f.description}</p>
+                  <p className="text-[15px] font-semibold leading-tight">{f.name}</p>
+                  <p className="text-[13px] text-acuity-text-sec leading-snug mt-0.5">{f.description}</p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Section 3 — Cost comparison */}
-        <section className="mb-6 rounded-xl border border-zinc-200 bg-white px-5 py-4 text-center funnel-card-stagger" style={{ animationDelay: "180ms" }}>
-          <p className="text-[15px] font-semibold text-zinc-900 leading-relaxed">
-            <span className="text-zinc-500 font-semibold">Therapy: $150/session.</span>{" "}
-            <span className="text-zinc-500 font-semibold">A coach: $200/month.</span>
-          </p>
-          <p className="text-[17px] font-bold mt-1 bg-gradient-to-r from-orange-400 to-orange-500 bg-clip-text text-transparent">Ripple: less than a coffee a month.</p>
-        </section>
-
-        {/* Section 4 — Pricing cards with price-slash animation */}
-        <section ref={pricingRef} className="mb-6 rounded-xl bg-white border border-zinc-200 px-5 py-5 shadow-sm funnel-card-stagger" style={{ animationDelay: "240ms" }}>
-          <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes pw-strike { from { width: 0; } to { width: 100%; } }
-            @keyframes pw-shrink-text { from { font-size: 1.5rem; } to { font-size: 0.875rem; } }
-            @keyframes pw-shrink { from { font-size: inherit; opacity: 1; } to { font-size: 0.875rem; opacity: 0.7; } }
-            @keyframes pw-land { from { opacity: 0; transform: scale(0.7) translateY(-8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-            @keyframes pw-badge { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-            @keyframes pw-save { from { opacity: 0; } to { opacity: 1; } }
-          `}} />
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {/* Monthly card */}
-            <button onClick={() => { onPlanChange("monthly"); track("funnel_paywall_plan_selected", { value: "monthly" }); }}
-              className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "monthly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02] pw-select-glow" : "border border-zinc-200 bg-white scale-100"}`}>
-              <p className="text-xs text-zinc-500 mb-1">Monthly</p>
-              {/* Regular price — starts as hero, shrinks to anchor on slash */}
-              <p className={`font-semibold relative inline-block transition-all duration-500 ${slashPhase >= 1 ? "text-sm text-red-400" : "text-2xl text-zinc-900 font-extrabold"}`}>
-                <span>$19.99</span><span className={`font-normal ${slashPhase >= 1 ? "text-xs" : "text-sm text-zinc-400"}`}>/mo</span>
-                {/* Strikethrough line — draws left-to-right */}
-                {slashPhase >= 1 && (
-                  <span className="absolute left-0 top-1/2 h-[2px] bg-red-400"
-                    style={{ animation: prefersReduced ? "none" : "pw-strike 600ms ease-out forwards", width: prefersReduced ? "100%" : undefined }} />
-                )}
-              </p>
-              {/* Founding rate — lands after slash */}
-              <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
-                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 600ms cubic-bezier(0.34,1.56,0.64,1) forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
-                {displayMonthly()}<span className="text-sm font-normal text-zinc-400">/mo</span>
-              </p>
-              {/* Badge — appears after rate lands */}
-              <span className={`inline-block mt-2 rounded-full bg-acuity-primary text-white px-3 py-1 text-[10px] font-bold tracking-wide shadow-sm ${slashPhase >= 3 ? "" : "opacity-0"}`}
-                style={slashPhase >= 3 && !prefersReduced ? { animation: "pw-badge 300ms ease-out forwards" } : undefined}>
-                FOUNDING RATE
-              </span>
-              {/* Savings delta — subtle fade after badge */}
-              <p className={`text-[10px] text-emerald-600 font-medium mt-1 transition-opacity duration-500 ${slashPhase >= 3 ? "opacity-100" : "opacity-0"}`}>
-                You save {monthlySaveVsAnchor}/mo
-              </p>
-            </button>
-            {/* Annual card — staggered 150ms behind monthly */}
-            <button onClick={() => { onPlanChange("yearly"); track("funnel_paywall_plan_selected", { value: "yearly" }); }}
-              className={`rounded-xl p-4 text-center transition-all duration-300 relative ${selectedPlan === "yearly" ? "border-2 border-acuity-primary bg-gradient-to-b from-acuity-primary/10 to-acuity-primary/5 shadow-acuity-glow-soft scale-[1.02]" : "border border-zinc-200 bg-white scale-100"}`}>
-              <p className="text-xs text-zinc-500 mb-1">Annual</p>
-              {/* Regular price — starts as hero, shrinks to anchor on slash */}
-              <p className={`font-semibold relative inline-block transition-all duration-500 ${slashPhase >= 1 ? "text-sm text-red-400" : "text-2xl text-zinc-900 font-extrabold"}`}
-                style={{ transitionDelay: slashPhase >= 1 ? "150ms" : "0ms" }}>
-                <span>$199</span><span className={`font-normal ${slashPhase >= 1 ? "text-xs" : "text-sm text-zinc-400"}`}>/yr</span>
-                {slashPhase >= 1 && (
-                  <span className="absolute left-0 top-1/2 h-[2px] bg-red-400"
-                    style={{ animation: prefersReduced ? "none" : "pw-strike 600ms ease-out 200ms forwards", width: prefersReduced ? "100%" : undefined }} />
-                )}
-              </p>
-              {/* Founding rate — lands after slash */}
-              <p className={`text-2xl font-extrabold text-zinc-900 ${slashPhase >= 2 ? "" : "opacity-0 scale-75"}`}
-                style={slashPhase >= 2 && !prefersReduced ? { animation: "pw-land 600ms cubic-bezier(0.34,1.56,0.64,1) 200ms forwards" } : slashPhase >= 2 ? {} : { height: 0, overflow: "hidden" }}>
-                {displayAnnual()}<span className="text-sm font-normal text-zinc-400">/yr</span>
-              </p>
-              {/* Badge — appears after rate lands */}
-              <span className={`inline-block mt-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[10px] font-bold ${slashPhase >= 3 ? "" : "opacity-0"}`}
-                style={slashPhase >= 3 && !prefersReduced ? { animation: "pw-badge 300ms ease-out 150ms forwards" } : undefined}>
-                SAVE {displaySavingsPct()}
-              </span>
-              {/* Savings delta */}
-              <p className={`text-[10px] text-emerald-600 font-medium mt-1 transition-opacity duration-500 ${slashPhase >= 3 ? "opacity-100" : "opacity-0"}`}
-                style={{ transitionDelay: slashPhase >= 3 ? "150ms" : "0ms" }}>
-                {displayAnnualAsMonthly()}/mo &mdash; save {annualSaveVsAnchor}/yr
-              </p>
-            </button>
-          </div>
-
-          {/* Founding rate urgency (honest — no fake countdown or spots) */}
-          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-center">
-            <p className="text-xs text-emerald-800 font-semibold">Founding rate &mdash; locked in for life if you start today.</p>
-            <p className="text-[10px] text-emerald-600 mt-0.5">This price rises as we grow.</p>
-          </div>
-
-          {/* Compact social proof — stars + tappable "What our users say" */}
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <span className="text-acuity-primary text-[16px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-            <button
-              type="button"
-              onClick={() => { const next = !testimonialsOpen; setTestimonialsOpen(next); if (next) track("funnel_testimonials_opened", { value: branch ?? "unknown" }); }}
-              aria-expanded={testimonialsOpen}
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[12px] font-semibold text-zinc-700 shadow-sm transition hover:border-acuity-primary hover:text-acuity-primary active:scale-[0.98]">
-              What our users say
-              {/* Chevron affordance — signals the pill expands, rotates when open */}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${testimonialsOpen ? "rotate-180" : ""}`} aria-hidden>
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Charge-timing reassurance intentionally moved to sit directly under
-              the "Lock in founders rate" button — the cardless "Continue"
-              path needs no charge warning. */}
-        </section>
-      </div>
-
-      {/* Sticky two-equal-choice footer + crisis line. Both buttons are the
-          same size and weight — no primary/secondary hierarchy, no shame copy.
-          Lock-in leads to Stripe (7-day trial); Continue is the cardless free
-          path straight to download. */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-zinc-100 px-6 py-3 safe-area-pb">
-        <div className="max-w-lg mx-auto">
-          {error && <p className="text-xs text-red-500 text-center mb-1">{error}</p>}
-          <div className="flex flex-col gap-2.5">
-            {/* Choice A — Lock in founders rate (→ Stripe Checkout, trial_period_days:7) */}
-            <button onClick={onCheckout} disabled={loading}
-              className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50">
-              {loading ? "Loading\u2026" : "Lock in founders rate"}
-            </button>
-            {/* Charge-timing reassurance — scoped to the lock-in path only, and
-                matches the Stripe checkout the user is about to enter. */}
-            <p className="text-[12px] text-center -mt-0.5 text-zinc-500">
-              <span className="font-semibold text-zinc-700">$0 today.</span> {afterTrialPrice} after your free week. Cancel anytime.
-            </p>
-            {/* Choice B — Continue to download (cardless free path, no charge) */}
-            <button onClick={onSkip} disabled={loading}
-              className="w-full rounded-full bg-zinc-900 py-3.5 text-[15px] font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50">
-              Continue to download
-            </button>
-            {/* Free-version reassurance — a real free tier exists post-trial
-                (verified via entitlementsFor: canRecord + one-line summary +
-                canViewHistory stay true on FREE). Claims only what's true —
-                extraction/insights are Pro. */}
-            <p className="text-[12px] text-center -mt-0.5 text-zinc-500">
-              There&rsquo;s a free version too &mdash; <span className="font-semibold text-zinc-700">you never need to pay to keep using Ripple.</span> Record any time, get a quick summary, and revisit your history for free.
-            </p>
-          </div>
-          <p className="text-[9px] text-zinc-300 text-center mt-2">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
-        </div>
-      </div>
-
-      {/* "What our users say" — dismissable, on-brand testimonial modal */}
-      {testimonialsOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4 py-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label="What our users say"
-          onClick={() => setTestimonialsOpen(false)}>
-          <div
-            className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-zinc-100 max-h-[85vh] overflow-y-auto"
-            style={prefersReduced ? undefined : { animation: "pw-land 320ms cubic-bezier(0.34,1.56,0.64,1) both" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2">
-                <span className="text-acuity-primary text-[14px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-                <p className="text-[14px] font-bold text-zinc-900">What our users say</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setTestimonialsOpen(false)}
-                aria-label="Close"
-                className="rounded-full h-7 w-7 flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition">
-                &#10005;
+        {/* Plan picker — monthly first and default (never lead with annual) */}
+        <section className="mb-5 space-y-3 funnel-card-stagger" style={{ animationDelay: "160ms" }} role="radiogroup" aria-label="Choose a plan">
+          {plans.map((p) => {
+            const on = selectedPlan === p.id;
+            return (
+              <button key={p.id} type="button" role="radio" aria-checked={on}
+                onClick={() => { onPlanChange(p.id); track("funnel_paywall_plan_selected", { value: p.id }); }}
+                className={`w-full flex items-center gap-4 rounded-[18px] px-5 py-4 text-left transition ${on ? "f-tint" : "f-card"}`}
+                style={on ? { boxShadow: "inset 0 0 0 1px var(--acuity-primary)" } : undefined}>
+                <span className="funnel-marker" data-on={on ? "1" : undefined} />
+                <span className="flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="text-[15px] font-semibold">{p.label}</span>
+                    {p.badge && (
+                      <span className="rounded-full bg-acuity-good-soft px-2 py-0.5 text-[11px] font-semibold text-acuity-good">{p.badge}</span>
+                    )}
+                  </span>
+                  <span className="block text-[13px] text-acuity-text-sec mt-0.5">{p.note}</span>
+                </span>
+                <span className="text-[17px] font-bold tabular-nums">{p.price}</span>
               </button>
+            );
+          })}
+        </section>
+
+        {/* How the trial works — concrete, no surprises */}
+        <section className="mb-6 rounded-[22px] f-card px-5 py-4 funnel-card-stagger" style={{ animationDelay: "240ms" }}>
+          <div className="flex gap-3">
+            <div className="flex flex-col items-center pt-1">
+              <span className="h-2.5 w-2.5 rounded-full bg-acuity-primary" />
+              <span className="w-px flex-1 bg-acuity-line-strong my-1" />
+              <span className="h-2.5 w-2.5 rounded-full border border-acuity-line-strong" />
             </div>
-            <div className="px-5 py-4 space-y-4">
-              {testimonialPool.map((t) => (
-                <figure key={t.name} className="rounded-xl border border-zinc-100 bg-zinc-50/60 px-4 py-3">
-                  <span className="text-acuity-primary text-[12px] tracking-[0.15em] leading-none" aria-hidden>&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-                  <blockquote className="text-[13px] text-zinc-700 leading-relaxed mt-1.5">&ldquo;{t.quote}&rdquo;</blockquote>
-                  <figcaption className="text-[12px] font-semibold text-zinc-500 mt-2">&mdash; {t.name}</figcaption>
-                </figure>
-              ))}
+            <div className="flex-1 space-y-4">
+              <div>
+                <p className="text-[15px] font-semibold">Today</p>
+                <p className="text-[13px] text-acuity-text-sec">Everything in Pro. $0.</p>
+              </div>
+              <div>
+                <p className="text-[15px] font-semibold">Day 7</p>
+                <p className="text-[13px] text-acuity-text-sec">{afterTrialPrice} starts. Cancel before then and you pay nothing.</p>
+              </div>
             </div>
           </div>
+        </section>
+
+        {/* Social proof — the brand's rating line + one real quote */}
+        <section className="text-center mb-4 funnel-card-stagger" style={{ animationDelay: "320ms" }}>
+          <p className="text-[13px] font-semibold text-acuity-text-sec">
+            4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
+            <span className="font-medium text-acuity-text-ter">from 127+ users</span>
+          </p>
+          {testimonial && (
+            <figure className="mt-3 rounded-[18px] f-sub px-4 py-3">
+              <blockquote className="text-[14px] italic leading-relaxed text-acuity-text-sec">&ldquo;{testimonial.quote}&rdquo;</blockquote>
+              <figcaption className="mt-1.5 text-[12px] font-semibold text-acuity-text-ter">&mdash; {testimonial.name}</figcaption>
+            </figure>
+          )}
+        </section>
+      </div>
+
+      {/* Sticky footer — one primary action, the free path as a quiet link */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-acuity-bg border-t border-acuity-line px-6 pt-3 pb-4 safe-area-pb">
+        <div className="max-w-lg mx-auto">
+          {error && <p className="text-xs text-acuity-bad text-center mb-2">{error}</p>}
+          <button onClick={onCheckout} disabled={loading}
+            className="w-full rounded-full bg-acuity-primary py-3.5 text-[15px] font-semibold text-white transition hover:bg-acuity-primary-lo active:scale-[0.98] disabled:opacity-50">
+            {loading ? "Loading\u2026" : "Start free trial"}
+          </button>
+          <p className="text-[12px] text-center mt-2 text-acuity-text-sec tabular-nums">
+            <span className="font-semibold text-acuity-text">$0 today.</span> {afterTrialPrice} after day 7. Cancel anytime.
+          </p>
+          <button onClick={onSkip} disabled={loading}
+            className="w-full mt-2 py-2 text-[14px] font-medium text-acuity-text-sec underline-offset-4 hover:underline disabled:opacity-50">
+            Continue without a card
+          </button>
+          <p className="text-[10px] text-acuity-text-quiet text-center mt-1">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -2599,18 +2315,19 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   const planPrice = selectedPlan === "yearly" ? displayAnnual() + "/yr" : displayMonthly() + "/mo";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-zinc-900">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-acuity-text">
       <div className="max-w-sm w-full text-center funnel-screen">
         {paymentConfirmed ? (
           <>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">You&rsquo;re locked in at {planPrice}. Welcome to Ripple.</h2>
-            <p className="text-sm text-zinc-500 mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is on. Welcome to Ripple.</h2>
+            <p className="text-sm text-acuity-text-ter mb-2 tabular-nums">$0 today, then {planPrice} after day 7.</p>
+            <p className="text-sm text-acuity-text-ter mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         ) : (
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is active.</h2>
-            <p className="text-sm text-zinc-500 mb-2">You have 7 days to explore everything Ripple offers.</p>
-            <p className="text-sm text-zinc-500 mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
+            <p className="text-sm text-acuity-text-ter mb-2">You have 7 days to explore everything Ripple offers.</p>
+            <p className="text-sm text-acuity-text-ter mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
           </>
         )}
 
@@ -2680,33 +2397,33 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
               window.location.href = "/home";
             }
           }}
-          className="w-full mt-3 rounded-full border-2 border-acuity-primary px-8 py-3.5 text-[15px] font-semibold text-acuity-primary text-center transition hover:bg-acuity-primary/5 active:scale-[0.98]"
+          className="w-full mt-3 rounded-full border-2 border-acuity-primary px-8 py-3.5 text-[15px] font-semibold text-acuity-primary text-center transition hover:bg-acuity-primary-soft active:scale-[0.98]"
         >
           Continue in the Web App
-          <span className="block text-[11px] font-normal text-zinc-400 mt-0.5">Record your first debrief right now &mdash; no download needed.</span>
+          <span className="block text-[11px] font-normal text-acuity-text-ter mt-0.5">Record your first debrief right now &mdash; no download needed.</span>
         </button>
 
         {/* QR code — desktop only */}
         <div className="mt-8 hidden sm:block">
-          <p className="text-xs text-zinc-400 mb-3">Or scan with your phone</p>
+          <p className="text-xs text-acuity-text-ter mb-3">Or scan with your phone</p>
           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(APP_STORE_URL)}&bgcolor=ffffff&color=181614`}
             alt="QR code" width={140} height={140} className="mx-auto rounded-lg" />
         </div>
 
         {!paymentConfirmed && (
-          <p className="mt-8 text-xs text-zinc-400">
-            You can lock in founding member pricing anytime in the app before your trial ends.
+          <p className="mt-8 text-xs text-acuity-text-ter">
+            You can keep Pro any time before your trial ends, in the app or on the web.
           </p>
         )}
 
         <div className="mt-8">
-          <p className="text-sm font-semibold text-zinc-500 mb-1">
-            4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
+          <p className="text-sm font-semibold text-acuity-text-ter mb-1">
+            4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
           </p>
           <div className="mt-3 min-h-[60px] relative">
             {DOWNLOAD_TESTIMONIALS.map((t, i) => (
               <div key={i} className={`transition-opacity duration-500 ${i === testimonialIdx ? "opacity-100" : "opacity-0 absolute inset-0"}`}>
-                <p className="text-xs italic text-zinc-400">&ldquo;{t.quote}&rdquo; &mdash; {t.name}</p>
+                <p className="text-xs italic text-acuity-text-ter">&ldquo;{t.quote}&rdquo; &mdash; {t.name}</p>
               </div>
             ))}
           </div>

@@ -149,8 +149,8 @@ export async function GET(req: NextRequest) {
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
-          const flow = req.nextUrl.searchParams.get("flow") as "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
-          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v7");
+          const flow = req.nextUrl.searchParams.get("flow") as "v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
+          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v8");
         }
         case "guide":
           return getGuide();
@@ -1908,7 +1908,7 @@ export async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, 
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
 const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v7") {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8") {
  try {
   // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
   // and "all" (floor at v2 epoch to exclude ancient v1 diagnostic events).
@@ -1995,6 +1995,46 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "lock_in_selected", event: "funnel_paywall_lock_in_selected", label: "Locked in (paid)" },
     { key: "continue_selected", event: "funnel_paywall_continue_selected", label: "Continued (free)" },
     { key: "download", event: "funnel_download_viewed", label: "Download" },
+  ];
+
+  // v8 (2026-09-24) — both funnels cut to 11 steps, each its own cohort.
+  // "v8" = /start (women), "v8-bwk" = /start-bwk (men). Cut vs v7: Q4, Q5,
+  // Relief Flip, Value, Commit; plus current-future (men) or timeline (women).
+  // Paywall is one primary "Start free trial" (lock_in_selected) + a quiet
+  // "Continue without a card" (continue_selected).
+  const FUNNEL_STEPS_V8_TAIL = [
+    { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account" },
+    { key: "account_created", event: "funnel_account_created", label: "Account Created" },
+    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall" },
+    { key: "lock_in_selected", event: "funnel_paywall_lock_in_selected", label: "Start trial tapped" },
+    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout opened" },
+    { key: "trial_started", event: "funnel_savings_locked_in", label: "Card trial started" },
+    { key: "continue_selected", event: "funnel_paywall_continue_selected", label: "No card (free)" },
+    { key: "download", event: "funnel_download_viewed", label: "Download" },
+  ];
+  const FUNNEL_STEPS_V8 = [
+    { key: "entry", event: "funnel_entry_selected", label: "Entry" },
+    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Q2" },
+    { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
+    { key: "branch_q6", event: "funnel_branch_q6_viewed", label: "Q6 (Cost)" },
+    { key: "pain", event: "funnel_pain_viewed", label: "Pain / Mirror" },
+    { key: "current_future", event: "funnel_current_future_viewed", label: "Current vs Future" },
+    { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
+    { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
+    { key: "pattern_result", event: "funnel_pattern_result_viewed", label: "Pattern Result" },
+    ...FUNNEL_STEPS_V8_TAIL,
+  ];
+  const FUNNEL_STEPS_V8_BWK = [
+    { key: "entry", event: "funnel_entry_selected", label: "Entry" },
+    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Q2" },
+    { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
+    { key: "branch_q6", event: "funnel_branch_q6_viewed", label: "Q6 (Cost)" },
+    { key: "pain", event: "funnel_pain_viewed", label: "Pain / Mirror" },
+    { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
+    { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
+    { key: "pattern_result", event: "funnel_pattern_result_viewed", label: "Pattern Result" },
+    { key: "timeline", event: "funnel_timeline_viewed", label: "Timeline" },
+    ...FUNNEL_STEPS_V8_TAIL,
   ];
 
   const FUNNEL_STEPS_V5 = [
@@ -2129,13 +2169,15 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
 
-  const FUNNEL_STEPS = flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v7" ? FUNNEL_STEPS_V7 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
+  const FUNNEL_STEPS = flowVersion === "v8" ? FUNNEL_STEPS_V8 : flowVersion === "v8-bwk" ? FUNNEL_STEPS_V8_BWK : flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v7" ? FUNNEL_STEPS_V7 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
 
   // flowVersion filter — v1/v2/v3 filter strictly on the column.
   // "all" returns everything. v1 events have flowVersion=null or "v1".
   // For v1 we need OR logic for null; Prisma requires AND+OR nesting.
   const flowVersionWhere =
-    flowVersion === "v7" ? { flowVersion: "v7" as const }
+    flowVersion === "v8" ? { flowVersion: "v8" as const }
+    : flowVersion === "v8-bwk" ? { flowVersion: "v8-bwk" as const }
+    : flowVersion === "v7" ? { flowVersion: "v7" as const }
     : flowVersion === "v6" ? { flowVersion: "v6" as const }
     : flowVersion === "v5" ? { flowVersion: "v5" as const }
     : flowVersion === "v4" ? { flowVersion: "v4" as const }

@@ -20,6 +20,11 @@ export const dynamic = "force-dynamic";
 
 type Interval = "monthly" | "yearly";
 
+// Funnel paths Stripe may send the buyer back to. Allowlisted so the request
+// body can't point success_url anywhere else. /start-bwk buyers used to land
+// on /start (women's copy, wrong cohort tag) after paying.
+const FUNNEL_PATHS = new Set(["/start", "/start-bwk"]);
+
 export async function POST(req: NextRequest) {
   // TODO: v1.4 GDPR — If this checkout ever switches from deferred
   // (trial) to immediate charge, add the 14-day withdrawal
@@ -32,9 +37,11 @@ export async function POST(req: NextRequest) {
   }
 
   let interval: Interval = "monthly";
+  let funnelPath = "/start";
   try {
-    const body = (await req.json()) as { interval?: Interval } | null;
+    const body = (await req.json()) as { interval?: Interval; funnel?: string } | null;
     if (body?.interval === "yearly") interval = "yearly";
+    if (body?.funnel && FUNNEL_PATHS.has(body.funnel)) funnelPath = body.funnel;
   } catch {}
 
   // Use PRICING config which includes env-var fallbacks for local dev
@@ -72,7 +79,9 @@ export async function POST(req: NextRequest) {
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
-      payment_method_types: ["card"],
+      // No payment_method_types: Checkout then offers every method enabled in
+      // the Stripe dashboard (card, Apple Pay, Google Pay, Link) instead of
+      // card-only. v6-v7: only 43% of people who opened Checkout finished.
       customer: user?.stripeCustomerId ?? undefined,
       customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
       client_reference_id: session.user.id,
@@ -81,8 +90,11 @@ export async function POST(req: NextRequest) {
         trial_period_days: trialDays,
         metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
       },
-      success_url: `${process.env.NEXTAUTH_URL}/start?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/start?step=download`,
+      success_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      // Back from Checkout = back to the paywall, where they can switch plan
+      // or take the no-card path. (Was step=download, which dropped them past
+      // the choice with no way back.)
+      cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=savings`,
       metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
     });
 
