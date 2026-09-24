@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-24] — Weekly ad batch regenerated from Reddit + competitor + own-results data
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+This week's 20 ads were regenerated using the Reddit research, what our own past ads produced, and the new competitor briefs. The women's set is 6 ads built on proven patterns and 4 experiments; the men's set is all experiments, since men's ads have never run. They're waiting at /admin/adlab/review. Two women's ads were blocked for implying the reader has menopause symptoms, which Meta prohibits. Last week's un-launched batch was retired. Next week's copy will also respect Meta's 125-character text limit.
+
+### Technical changes (for Jimmy)
+- Triggered `POST /api/admin/adlab/run-weekly-batch` on prod → experiments "Reddit batch Sep 24, 2026" (women + men), 10 creatives each, all images generated; formats spread across all 5 AD_FORMATS; strategy women 6/4, men 10 explore
+- Retired the 09-23 experiments `cmueh6mdc…` / `cmuehcnge…` (awaiting_approval → concluded, "Superseded")
+- `lib/adlab/weekly-batch.ts`: prompt now says headline HARD max 40, primaryText HARD max 125 (was 80–200 chars, which caused 17/20 compliance WARNINGs)
+
+### Manual steps needed
+- [ ] Keenan: review and launch at goripple.io/admin/adlab/review (about 6 per audience; launch creates the $60 / $40 evergreen campaigns)
+
+### Notes
+- This run's learning brief was null (the 3000-token truncation fixed in 88cbee2a), so the women's batch used the raw performance tables without the analyst summary. Next Sunday's run gets both
+- Compliance WARNINGs don't block launch; FAILs do
+
+---
+
 ## [2026-09-24] — Social metrics finally flow (IG/FB/TikTok), bio links go straight to the funnel, AI-written captions
 
 **Requested by:** Keenan

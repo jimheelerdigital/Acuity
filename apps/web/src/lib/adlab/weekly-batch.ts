@@ -457,8 +457,8 @@ REQUIREMENTS:
 - EXACTLY 10 ads. Each rooted in a DIFFERENT theme where possible (reuse a theme only if there are fewer than 10).
 - The 10 must span at least 6 different valueSurface values — every ad should feel like a different TYPE of ad, not a rewrite.
 - Each ad must bridge: their pain (in language echoing THEIR OWN PHRASES) → what Ripple concretely does about it. The bridge is the ad.
-- headline: max 40 characters (mobile truncation).
-- primaryText: 1-3 sentences, roughly 80-200 characters.
+- headline: HARD max 40 characters, count them (mobile truncation).
+- primaryText: 1-2 sentences, HARD max 125 characters — Meta cuts to "…more" after that and compliance flags anything longer.
 - description: max 100 characters.
 - cta: one of LEARN_MORE, SIGN_UP, GET_OFFER, DOWNLOAD, SUBSCRIBE.
 - imageScene: 1-2 sentence BACKGROUND scene for this ad's image, matching the brand's photography style. Scene only — the headline/CTA overlay is composed separately. No faces.
