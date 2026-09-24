@@ -11,7 +11,7 @@
  */
 module.exports = {
   type: "widget",
-  name: "Ripple",
+  name: "RippleWidget",
   deploymentTarget: "17.0",
   colors: {
     // Coral accent (matches the app's primary). Referenced in Swift as
