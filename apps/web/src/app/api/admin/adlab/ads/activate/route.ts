@@ -19,7 +19,9 @@ import { redactAccessToken } from "@/lib/adlab/meta";
 import { makeRoomInAdSet, weeklyBatchGroup } from "@/lib/adlab/evergreen";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// 300s (was 60): Meta's per-object status limit can require ~30s waits
+// between retries (2026-09-24, error #613).
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
@@ -97,12 +99,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 4: Activate all ad sets and ads, verifying each
+    // Step 4: Activate ad sets (once each) and ads, verifying each.
+    // 2026-09-24: 7 of 11 ads failed with Meta #613 "exceeded the concurrent
+    // request rate limit of 1 calls per 30 seconds" — the loop re-activated
+    // the shared evergreen ad set once PER AD and fired status changes back
+    // to back. Now: each ad set once, a short gap between ads, and a 31s
+    // wait-and-retry on #613 instead of killing the ad.
+    const isRateLimited = (err: unknown) => {
+      const e = err as { message?: string; response?: { code?: number } };
+      return e?.response?.code === 613 || /\(#613\)|rate limit/i.test(e?.message ?? "");
+    };
+    const withRateLimitRetry = async (fn: () => Promise<unknown>) => {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await fn();
+        } catch (err) {
+          if (!isRateLimited(err) || attempt >= 3) throw err;
+          await new Promise((r) => setTimeout(r, 31_000));
+        }
+      }
+    };
+    for (const adsetId of [...new Set(ads.map((a) => a.metaAdsetId).filter(Boolean) as string[])]) {
+      await withRateLimitRetry(() => meta.setStatus(adsetId, "adset", "ACTIVE"));
+    }
+
     let activatedCount = 0;
-    for (const ad of ads) {
+    for (const [i, ad] of ads.entries()) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 2_000));
       try {
-        if (ad.metaAdsetId) await meta.setStatus(ad.metaAdsetId, "adset", "ACTIVE");
-        if (ad.metaAdId) await meta.setStatus(ad.metaAdId, "ad", "ACTIVE");
+        if (ad.metaAdId) await withRateLimitRetry(() => meta.setStatus(ad.metaAdId!, "ad", "ACTIVE"));
 
         // Verify the ad is actually active on Meta
         if (ad.metaAdId) {
@@ -129,9 +154,11 @@ export async function POST(req: NextRequest) {
           type: "ad",
           error: redactAccessToken(errMsg),
         });
+        // Stays "paused" (not "killed"): the ad exists on Meta and a later
+        // activation run can still turn it on. Killing it hid 7 good ads.
         await prisma.adLabAd.update({
           where: { id: ad.id },
-          data: { status: "killed", decisionReason: `Activation failed: ${redactAccessToken(errMsg)}`.slice(0, 500) },
+          data: { status: "paused", decisionReason: `Activation failed (retryable): ${redactAccessToken(errMsg)}`.slice(0, 500) },
         });
       }
     }

@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-24] — Ad activation no longer trips Meta's rate limit (only 2 ads per group turned on)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Both launches worked, but only 2 ads in each group switched on. After those, Meta refused the rest with "too many requests, wait 30 seconds", and our system wrongly marked those ads as dead. The 7 ads are fine on Meta (just switched off), and they're marked live again on our side. Future launches pace themselves, wait and retry when Meta says slow down, and never mark an ad dead because of a rate limit.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/ads/activate/route.ts`:
+  - activates each ad set once (was once per ad, which kept re-hitting the shared evergreen ad set)
+  - 2s gap between ads
+  - `withRateLimitRetry`: on Meta #613, wait 31s and retry, up to 3 attempts
+  - a failed ad stays `paused` with a "retryable" reason instead of `killed`
+  - `maxDuration` 60 → 300
+- Data fix (prod): 7 `AdLabAd` rows killed with "(#613)" set back to `live` with `launchedAt` = now
+
+### Manual steps needed
+- [ ] Turn on the 7 "Off" ads in Meta Ads Manager (3 women, 4 men); they're built and approved (Keenan)
+
+### Notes
+- Meta error seen: "(#613) Calls to this API have exceeded the concurrent request rate limit of 1 calls per 30 seconds." It applies to rapid status changes on the same objects
+- No code path lets Keenan re-run activation alone after a partial failure. With failed ads now left `paused`, a future "turn on remaining ads" button could call /ads/activate for the experiment
+
+---
+
 ## [2026-09-24] — Ad launch: fall back to a plain feed ad when Meta rejects the feed+story ad, and show Meta's full error
 
 **Requested by:** Keenan
