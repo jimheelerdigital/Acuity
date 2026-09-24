@@ -1,0 +1,157 @@
+name: Weekly audit
+
+# Audits the whole business once a week and emails Keenan the report.
+#
+#   1. audit   (contents: READ) — collect metrics → Claude Code headless writes the report
+#   2. publish (contents: write) — commit report + data to the `audits` branch, send the email
+#
+# The audit job can't write to the repo: its token is read-only, and the
+# publish job only copies audits/out/* + this week's data file onto the
+# orphan `audits` branch. Nothing here touches main, opens PRs, or deploys.
+#
+# Edit what the audit covers in audits/WEEKLY_AUDIT_PROMPT.md (on main).
+# Mechanics (file paths, output contract) are in scripts/audit/RUNNER.md.
+
+on:
+  schedule:
+    # Saturday 9:00 PM Central during CDT (Mar–Nov) = Sunday 02:00 UTC.
+    # During CST (Nov–Mar) this same cron fires at Saturday 8:00 PM Central.
+    # Reporting week = Sunday 00:00 → Saturday 23:59 America/Chicago.
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+    inputs:
+      week_end:
+        description: "Saturday (YYYY-MM-DD) ending the week to audit. Blank = latest week."
+        required: false
+        default: ""
+      model:
+        description: "Claude model override (blank = repo variable AUDIT_MODEL or claude-fable-5-1)"
+        required: false
+        default: ""
+      send_email:
+        description: "Send the email"
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: weekly-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      date: ${{ steps.collect.outputs.date }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 300 # git log for "what shipped" + prior-week comparisons
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: scripts/audit/package-lock.json
+
+      # Self-contained deps (pg, marked, tsx) — never installs the monorepo.
+      - name: Install audit deps
+        run: npm ci --prefix scripts/audit --no-audit --no-fund
+
+      - name: Restore past audits from the audits branch
+        run: |
+          if git fetch --depth=1 origin audits; then
+            git checkout FETCH_HEAD -- audits/ && echo "Restored $(ls audits/*.md 2>/dev/null | wc -l) report file(s)"
+          else
+            echo "No audits branch yet — first run."
+          fi
+
+      - name: Collect metrics
+        id: collect
+        timeout-minutes: 10
+        continue-on-error: true
+        env:
+          AUDIT_WEEK_END: ${{ inputs.week_end }}
+          AUDIT_DATABASE_URL: ${{ secrets.AUDIT_DATABASE_URL }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
+          REVENUECAT_PROJECT_ID: ${{ secrets.REVENUECAT_PROJECT_ID }}
+          STRIPE_RESTRICTED_KEY: ${{ secrets.STRIPE_RESTRICTED_KEY }}
+          ANTHROPIC_ADMIN_KEY: ${{ secrets.ANTHROPIC_ADMIN_KEY }}
+          OPENAI_ADMIN_KEY: ${{ secrets.OPENAI_ADMIN_KEY }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          scripts/audit/node_modules/.bin/tsx scripts/audit/collect-metrics.ts
+          echo "date=$(cat audits/data/LATEST)" >> "$GITHUB_OUTPUT"
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      # Only ANTHROPIC_API_KEY is exposed to this step — Claude never sees
+      # the data-source secrets above.
+      - name: Run audit (Claude Code headless)
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AUDIT_MODEL: ${{ inputs.model || vars.AUDIT_MODEL || 'claude-fable-5-1' }}
+          AUDIT_TIMEOUT: 38m
+        run: bash scripts/audit/run-audit.sh
+
+      - name: Upload audit output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-output
+          path: |
+            audits/out/
+            audits/data/
+          include-hidden-files: false
+          retention-days: 30
+          if-no-files-found: warn
+
+  publish:
+    needs: audit
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # pushes the `audits` branch only (see publish-to-branch.sh)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: scripts/audit/package-lock.json
+
+      - name: Install audit deps
+        run: npm ci --prefix scripts/audit --no-audit --no-fund
+
+      - name: Download audit output
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: audit-output
+          path: audits
+
+      - name: Commit report to the audits branch
+        continue-on-error: true
+        run: |
+          if [ -f audits/data/LATEST ]; then bash scripts/audit/publish-to-branch.sh; else echo "No data to publish"; fi
+
+      - name: Email the report (or what broke)
+        if: ${{ github.event_name == 'schedule' || inputs.send_email }}
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          AUDIT_EMAIL_TO: ${{ vars.AUDIT_EMAIL_TO || 'keenan@heelerdigital.com' }}
+          AUDIT_JOB_RESULT: ${{ needs.audit.result }}
+          AUDIT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: scripts/audit/node_modules/.bin/tsx scripts/audit/send-email.ts

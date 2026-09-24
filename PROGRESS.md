@@ -7,6 +7,47 @@
 
 ---
 
+## [2026-09-23] — Weekly business audit runs itself every Saturday night and emails the report
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every Saturday at 9 PM Central a robot audits all of Ripple and emails you the report. It covers users, retention, subscriptions, costs, app reviews, the codebase, competitors and new AI tools. You get a verdict, the one big move for the week, a scorecard, and ready-to-paste Claude Code prompts. If a run breaks, you get an email saying what broke instead of silence. The first test run used real data and landed in your inbox: "Four signups recorded nothing. Fix day one". It won't run on its own until this is pushed and the GitHub secrets below are added.
+
+### Technical changes (for Jimmy)
+- New `.github/workflows/weekly-audit.yml`: cron `0 2 * * 0` (Sat 9 PM CDT / 8 PM CST) + `workflow_dispatch` (inputs: week_end, model, send_email). Two jobs:
+  - `audit` (`contents: read`, 45-min timeout): collect metrics → `claude -p` headless
+  - `publish` (`contents: write`, `if: always()`): commit to orphan branch `audits` + Resend email
+  - Chose `claude -p` over claude-code-action: no GitHub App needed, and the tool allowlist is explicit
+- New `scripts/audit/` (self-contained `package.json` with pg, marked, tsx, so CI never installs the monorepo):
+  - `collect-metrics.ts` writes `audits/data/<sat>.json`. Sources: Supabase (read-only session, `default_transaction_read_only`), RevenueCat v2 overview/revenue/charts (+ store segment, 2.6 s pacing for the 25/min limit), Stripe (subs, charges, refunds, balance-txn fees; refuses test keys), Anthropic cost_report / ClaudeCallLog fallback, OpenAI org costs / Whisper estimate, iTunes lookup + review RSS, Play reviews API + listing JSON-LD, git log
+  - Every source is wrapped. A failure goes to `blind_spots` and the run never crashes
+  - Themes: k≥2 distinct users, exact labels + word-level counts; no entry text, ids or emails
+  - `RUNNER.md` holds the mechanics (paths, output contract, positioning-doc rule for copy). `run-audit.sh` does the prompt assembly, tool allowlist, 38-min timeout and salvage-from-final-message. `publish-to-branch.sh` uses a temp worktree and never touches main. `send-email.ts` renders the report or a failure notice; checks the Resend response body; attaches the .md
+- New `audits/WEEKLY_AUDIT_PROMPT.md` (Keenan's prompt, word for word; edit on main to change the audit) and `audits/manual-costs.json` template
+- `.gitignore`: `audits/data/`, `audits/out/`, `scripts/audit/node_modules/` (generated files only live on the `audits` branch)
+- Model default `claude-fable-5-1`; override with repo variable `AUDIT_MODEL` (e.g. `claude-opus-5-5`, about half the cost)
+
+### Manual steps needed
+- [ ] Say "push it". The workflow only exists for GitHub after it's on main (Keenan)
+- [ ] Add GitHub repo secrets (Settings → Secrets and variables → Actions): `ANTHROPIC_API_KEY`, `RESEND_API_KEY` (the current goripple.io-authorized key), `AUDIT_DATABASE_URL` (read-only role), `STRIPE_RESTRICTED_KEY` (live `rk_live_`), `REVENUECAT_API_KEY` + `REVENUECAT_PROJECT_ID` (Keenan; DB role: Jimmy)
+- [ ] Optional secrets: `ANTHROPIC_ADMIN_KEY`, `OPENAI_ADMIN_KEY`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (Keenan)
+- [ ] Create the read-only Postgres role for `AUDIT_DATABASE_URL` (SQL in the hand-off message) (Jimmy)
+- [ ] Fill `monthly_usd` values in `audits/manual-costs.json` (Keenan)
+- [ ] After push + secrets: Actions → Weekly audit → Run workflow, then confirm the email arrives from goripple.io and the `audits` branch appears (Keenan / Claude)
+
+### Notes
+- Test run 2026-09-23 against real prod data for week 09-13..09-19: collector OK (Supabase, App Store). Stripe was skipped because the local key is TEST mode, and RevenueCat because no key is set locally. Claude run 12m44s, about 22 web searches, $10.79 at list price on Fable 5.1. Email delivered to Keenan's inbox and verified via Gmail. Layout checked at 390px, no horizontal page scroll, HTML 48KB (under Gmail's 102KB clip)
+- The local `RESEND_API_KEY` is the pre-rotation key and gets 403 from goripple.io, so the test email went from hello@getacuity.io. CI uses the secret and sends from goripple.io with reply-to Keenan
+- The audit prompt says "nightly voice brain dump", which `docs/acuity-positioning.md` bans. The prompt is saved verbatim as asked. `RUNNER.md` makes all customer-facing copy in the report follow the positioning doc, and the audit flags the conflict once in its backlog
+- The test report was not pushed to the `audits` branch (no pushes before "push it"). The first Actions run creates the branch
+- Publish script tested end-to-end against a throwaway bare remote: orphan create, append, history restore. `git worktree add --orphan` needs git ≥2.42, so the script uses detach + `checkout --orphan` instead
+- Retention cohorts are tiny (0–3 users). The data file includes both day-n and week-window variants plus cohort sizes so the audit doesn't over-read them
+
+---
+
 ## [2026-09-24] — Ad review previews look like Meta (feed post + story), batch regenerated in both sizes
 
 **Requested by:** Keenan

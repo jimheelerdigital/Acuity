@@ -1,0 +1,14 @@
+{
+  "_instructions": "Monthly USD cost per service for anything the weekly audit can't pull by API. Edit on main; the collector converts to a weekly figure (x 7/30.44). Leave a value null if unknown; it shows up as a blind spot in the report. Update 'as_of' when you change numbers.",
+  "as_of": null,
+  "vercel": { "monthly_usd": null, "plan": null, "where": "vercel.com → Team → Settings → Billing" },
+  "supabase": { "monthly_usd": null, "plan": null, "where": "supabase.com → Organization → Billing" },
+  "expo_eas": { "monthly_usd": null, "plan": null, "where": "expo.dev → Account → Billing" },
+  "resend": { "monthly_usd": null, "plan": null, "where": "resend.com → Settings → Billing" },
+  "revenuecat": { "monthly_usd": null, "pct_of_revenue": null, "where": "RevenueCat → Billing. Use monthly_usd for a flat bill, or pct_of_revenue (e.g. 0.01) to estimate from tracked revenue" },
+  "openai": { "whisper_usd_per_minute": 0.006, "note": "Used only when OPENAI_ADMIN_KEY is not set, to estimate transcription cost from audio minutes" },
+  "apple_developer": { "monthly_usd": 8.25, "note": "$99/year" },
+  "google_play": { "monthly_usd": 0, "note": "One-time $25 registration" },
+  "domains": { "monthly_usd": null },
+  "other": { "monthly_usd": null, "items": [] }
+}

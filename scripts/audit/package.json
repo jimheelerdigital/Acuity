@@ -1,0 +1,15 @@
+{
+  "name": "ripple-weekly-audit",
+  "private": true,
+  "description": "Weekly audit pipeline: metrics collector, email sender. Self-contained so CI never installs the full monorepo.",
+  "type": "module",
+  "scripts": {
+    "collect": "tsx collect-metrics.ts",
+    "email": "tsx send-email.ts"
+  },
+  "dependencies": {
+    "marked": "^14.1.0",
+    "pg": "^8.13.0",
+    "tsx": "^4.21.0"
+  }
+}

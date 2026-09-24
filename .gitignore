@@ -73,3 +73,8 @@ apps/mobile/dist/
 # Android-launch suppression list — real bounced/unsubscribed addresses
 # exported from Resend. Never commit real user emails.
 apps/web/scripts/android-launch-suppression.txt
+
+# Weekly audit — generated per run; committed only to the `audits` branch
+audits/data/
+audits/out/
+scripts/audit/node_modules/
