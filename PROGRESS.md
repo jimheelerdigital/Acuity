@@ -7,6 +7,72 @@
 
 ---
 
+## [2026-09-24] — Funnel screen 1 explains Ripple, cookie banner gone, admin funnel split Ripple vs BWK
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 34bcb43d (screen 1 + rating + Apple), 13819b31 (cookie banner), 60dd573f (admin funnel)
+
+### In plain English (for Keenan)
+The first screen of both ad funnels now says what Ripple is before asking anything: "You say it. Ripple catches it.", with a real example of something said out loud turning into checked-off tasks, then "Answer 4 questions. See your pattern." The star line everywhere in the funnels and signup flow now reads "★★★★★ on the App Store" with no number or user count.
+
+The cookie banner is gone. It was covering the "Create my free account" button. It was also stopping Meta's tracking pixel from loading for almost every ad visitor, so Meta could barely see who its ads sent. US visitors are now tracked by default, and there's a "Cookie settings" link in the site footer to opt out. Visitors in Europe/UK aren't tracked.
+
+The admin Funnel tab now has a Ripple / BWK / side-by-side switch, each with its own real steps. By default it hides crawler visits. About 90 of today's 108 "visitors" were Meta's ad-review bots, not people. Real Instagram/Facebook visitors to /start answered the first question 4 times out of 11, not 7 out of 115.
+
+The Apple sign-in button is built but hidden, because Apple sign-in isn't set up on the live site. It appears on its own once Jimmy adds the Apple settings.
+
+### Technical changes (for Jimmy)
+- Screen 1 (both funnels):
+  - New `apps/web/src/components/funnel-entry-intro.tsx`: server-safe, no hooks, scoped CSS. Rendered by `FunnelSsrEntry` and by `OnboardingFunnel`'s entry `topSlot` (`EntryIntroSlot`), so the SSR→hydrated hand-off matches
+  - `EntryIntro` type + `ENTRY_INTRO` in `lib/funnel-config.ts`, `BWK_ENTRY_INTRO` in `lib/funnel-config-bwk.ts`, and a `FunnelVariantConfig.ENTRY_INTRO` field
+  - `ENTRY_THEMES` moved out of `funnel-ssr-entry.tsx`
+  - `SingleSelectScreen` gained `compactQuestion`: the entry question is now an h2, since the intro holds the h1
+  - The "2-minute check-in" eyebrow is removed
+- Rating line: new `APP_STORE_RATING_LABEL` in `lib/social-proof.ts`. Used in the funnel (entry, processing, timeline, paywall, download), `first-debrief-flow.tsx`, `try-session-claimer.tsx` (the animated 0→127 counters were removed), `auth/signup/page.tsx` and `for/[slug]/dynamic-landing-client.tsx`. The rule line in `docs/acuity-positioning.md` is updated to match
+- Apple on CreateAccountScreen:
+  - Shown only when `getProviders()` returns `apple`
+  - Order is Apple then Google when not in a webview; in a webview the email form comes first, then Apple and Google
+  - The OAuth failure note names the failed provider
+  - Prod `/api/auth/providers` currently lists only google, credentials and email: `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` are not set in Vercel
+- New `scripts/generate-apple-client-secret.ts`: builds the ES256 JWT from the .p8 key (max 180 days). Verified against a throwaway key
+- Consent:
+  - New `lib/cookie-consent-defaults.ts` with `readConsent` and `effectiveConsent`: a stored choice wins; otherwise off for `Europe/*` and European Atlantic time zones, off when Global Privacy Control is sent, off if the time zone is unreadable, and on otherwise. Tests in `cookie-consent-defaults.test.ts`
+  - `consent-gated-trackers.tsx` and `posthog-provider.tsx` use `effectiveConsent`
+  - Contentsquare session recording requires an explicit saved opt-in
+  - `cookie-consent.tsx` became a preferences panel opened by the `acuity:open-consent` event, via `CookieSettingsLink` in `landing-shared.tsx` and `marketing/Footer.tsx`, or the Account button
+  - `privacy/page.tsx` section 9 rewritten; last-updated date is now 2026-09-24
+- Admin funnel:
+  - `api/admin/metrics/route.ts`: per-funnel v8 step lists
+  - Post-paywall branch rows: trial tapped, checkout, card trial, free plan, download
+  - `traffic=inapp` filter: a session counts if any of its events has an FBAN|FBAV|FB_IAB|Instagram|musical_ly|TikTok UA. Off by default on the API; the tab requests it
+  - `:renewal` payments no longer count as conversions, and free-plan choosers no longer count as card trials
+  - `admin/tabs/FunnelAnalyticsTab.tsx`: Ripple/BWK/side-by-side switch, legacy versions dropdown, traffic toggle with a hidden-session count, v8 per-answer and campaign tables
+- Tests: funnel-config 27/27 (3 new copy-rule tests), consent 4/4, ad-formats 7/7. `tsc` shows no new errors in touched files; the repo's pre-existing errors are unchanged
+
+### Manual steps needed
+- [ ] Say "push it". Nothing is pushed yet (Keenan)
+- [ ] Set up web Sign in with Apple (Jimmy):
+  - Apple Developer → Services ID with domain `goripple.io` and return URL `https://goripple.io/api/auth/callback/apple`, plus a Sign in with Apple key (.p8)
+  - `npx tsx scripts/generate-apple-client-secret.ts --team … --key … --client … --p8 …`
+  - Add `APPLE_CLIENT_ID` + `APPLE_CLIENT_SECRET` to Vercel Production and redeploy
+  - Put a calendar reminder at the printed expiry date (≤6 months)
+- [ ] Once Apple is on: on your iPhone, open goripple.io/start from inside Instagram and sign up with Apple end to end, then once more in Safari. If either fails, send Claude the time (Keenan)
+- [ ] After deploy: Meta Events Manager → the pixel should show PageView on /start and /start-bwk for ad traffic within the hour. Before, it fired only after "Accept all" (Keenan)
+- [ ] Ads Manager: compare "Landing page views" with the admin tab's in-app "Landed" count to confirm the crawler read (Keenan)
+
+### Notes
+- Crawler traffic: 34 sessions on 09-24 shared one identical `iPhone OS 18_7 … Version/26.6.1` UA, and others claimed Firefox 59 / iOS 13. All fired only entry_viewed + social_proof_viewed. This is consistent with Meta ad review / link preloading. Judge screen 1 from the in-app view, not raw sessions
+- The earlier "115 landed, 7 answered" read (30 days) was mostly these crawler sessions from 09-24, when v8 went live with ads on
+- Apple history: pulled from the funnel on 09-24 at 1/15 (0/10 in FB/IG), with the PKCE SameSite=None cookie fix shipped the same day. The fix has never met real traffic, and prod lacks the env vars anyway. Apple's client secret expires every ≤6 months, which is a likely reason it went dark
+- A 09-24 Android FB-webview session went paywall → create-account 4s after signup, then nothing. It looks like the hardware back button (popstate → previous history entry), not a code bug. Consider skipping create-account on back once an account exists
+- `funnel_entry_selected` fires twice per tap (branch key + label). Step counts are per session so they're unaffected; the per-answer table prefers the branch key
+- The results screen line "In a single debrief, you mentioned 7 things…" is fixed copy per branch, not computed from the visitor's answers. Left as-is per Keenan
+- The homepage still shows `SOCIAL_PROOF.rating` "4.9 ★" and "127+ Early users". Only the funnels, signup flow and /for/* were changed
+- Local dev with Playwright blocked `/api/onboarding-events`, `/api/capi`, `/api/onboarding/*`, Meta, PostHog and Contentsquare, because the local env points at the prod DB. Bot-UA events are dropped server-side, so today's prod walks left no rows
+
+---
+
 ## [2026-09-24] — Ad activation no longer trips Meta's rate limit (only 2 ads per group turned on)
 
 **Requested by:** Keenan
