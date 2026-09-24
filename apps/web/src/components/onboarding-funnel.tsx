@@ -99,13 +99,19 @@ function SocialProofQuote({ track, placement, testimonial, className, style }: {
   );
 }
 
-// Screen 1 intro (what Ripple is + a say/catch example + rating line). Same
-// component the server renders in FunnelSsrEntry, so hydration doesn't shift.
+// Screen 1 intro: what Ripple is + rating line above the question, the
+// say/catch example below the answers. Same component the server renders in
+// FunnelSsrEntry, so hydration doesn't shift.
 // Keeps the funnel_social_proof_viewed "entry" event the old rating line fired.
 function EntryIntroSlot({ track }: { track: (event: string, props?: Record<string, unknown>) => void }) {
   const cfg = useFunnelConfig();
   useEffect(() => { track("funnel_social_proof_viewed", { value: "entry" }); }, []);
-  return <FunnelEntryIntro intro={cfg.ENTRY_INTRO} theme={cfg.theme} />;
+  return <FunnelEntryIntro intro={cfg.ENTRY_INTRO} theme={cfg.theme} part="top" />;
+}
+
+function EntryExampleSlot() {
+  const cfg = useFunnelConfig();
+  return <FunnelEntryIntro intro={cfg.ENTRY_INTRO} theme={cfg.theme} part="bottom" />;
 }
 
 // ─── Session Tracking ───────────────────────────────────────────────────────
@@ -834,6 +840,7 @@ export function OnboardingFunnel() {
             normalization={q.normalization}
             highlightBranch={isEntry ? adMatchBranch : undefined}
             topSlot={isEntry ? <EntryIntroSlot track={track} /> : undefined}
+            bottomSlot={isEntry ? <EntryExampleSlot /> : undefined}
             onSelect={(opt) => {
               if (isEntry && opt.branch) {
                 selectEntry(opt, "tap");
@@ -968,7 +975,7 @@ const CHOICE_BASE =
 
 // ─── Single Select Question Screen ──────────────────────────────────────────
 
-function SingleSelectScreen({ question, questionLarge, compactQuestion, options, normalization, onSelect, highlightBranch, topSlot }: {
+function SingleSelectScreen({ question, questionLarge, compactQuestion, options, normalization, onSelect, highlightBranch, topSlot, bottomSlot }: {
   question?: string;
   questionLarge?: string;
   /** Screen 1: the intro above holds the h1, so the question sits closer to the options. */
@@ -978,6 +985,7 @@ function SingleSelectScreen({ question, questionLarge, compactQuestion, options,
   onSelect: (opt: { label: string; branch?: Branch }) => void;
   highlightBranch?: Branch;
   topSlot?: React.ReactNode;
+  bottomSlot?: React.ReactNode;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -1032,6 +1040,7 @@ function SingleSelectScreen({ question, questionLarge, compactQuestion, options,
             {normalization}
           </p>
         )}
+        {bottomSlot && <div className="w-full">{bottomSlot}</div>}
       </div>
     </div>
   );

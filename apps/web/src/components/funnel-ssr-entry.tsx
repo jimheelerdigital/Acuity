@@ -11,9 +11,9 @@ import { ENTRY_THEMES, FunnelEntryIntro, type EntryTheme } from "@/components/fu
  * tap on window.__funnelPreTap. OnboardingFunnel picks it up on mount and
  * treats it as the entry answer, so a fast tapper isn't silently dropped.
  *
- * v8.2 (2026-09-24): the intro (what Ripple is + a say/catch example) sits
- * above the question. It's the shared FunnelEntryIntro, so this server copy
- * and the hydrated screen match.
+ * v8.2 (2026-09-24): the shared FunnelEntryIntro wraps the question: what
+ * Ripple is above it, the say/catch example below the answers. Same component
+ * as the hydrated screen, so the two match.
  */
 
 export const PRE_TAP_KEY = "__funnelPreTap";
@@ -44,7 +44,7 @@ export function FunnelSsrEntry({ question, intro, theme, totalSteps }: {
       <div id="ssr-entry" className="ssr-entry">
         <div className="ssr-entry__progress"><div className="ssr-entry__progress-bar" /></div>
         <div className="ssr-entry__inner">
-          <FunnelEntryIntro intro={intro} theme={theme} />
+          <FunnelEntryIntro intro={intro} theme={theme} part="top" />
           <h2>{question.text}</h2>
           <div>
             {question.options.map((opt) => (
@@ -53,6 +53,7 @@ export function FunnelSsrEntry({ question, intro, theme, totalSteps }: {
               </button>
             ))}
           </div>
+          <FunnelEntryIntro intro={intro} theme={theme} part="bottom" />
         </div>
       </div>
       <script dangerouslySetInnerHTML={{ __html: preTap }} />
