@@ -199,6 +199,7 @@ const EXACT_TEXT_RULES = `TEXT RENDERING RULES (critical):
 - Clean modern sans-serif typography, high contrast, easily legible on a phone screen.
 - No other text anywhere in the image beyond the strings specified.
 - No logos, no watermarks, no identifiable faces.
+- No medicine, pills, pill bottles, supplements or medical objects anywhere in the image (Meta health policy — they imply a condition).
 - ${SAFE_ZONE_RULES}`;
 
 type AdFormatBuilder = (copy: AdImageCopy, g: GroupConfig) => string;

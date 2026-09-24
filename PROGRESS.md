@@ -48,6 +48,28 @@ Every Saturday at 9 PM Central a robot audits all of Ripple and emails you the r
 
 ---
 
+## [2026-09-24] — Fix placement crops cutting words; ban medical props in ad images
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The first two-size batch had flaws: the Stories versions cut letters off headlines at the sides, some feed versions crowded the top edge, and one image had pill bottles in it again. Stories versions now keep the whole image, with soft blurred fill above and below. That's where Instagram's buttons sit anyway, so no words can be lost. Feed versions trim from whichever edge is emptiest. Pills and medical objects are banned from ad images. This week's images were regenerated with the fix; the copy is unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/ad-render.ts`: `smartFeedCrop` (greyscale row-gradient energy; picks the 4:5 offset that removes the least detail) and `storyFit` (full 2:3 scaled to 1080 wide over a blurred, darkened cover fill, no side crop); SAFE_ZONE_RULES updated to match (≥12% top/bottom, ≥8% sides)
+- `apps/web/src/lib/adlab/weekly-batch.ts`: EXACT_TEXT_RULES bans medicine/pills/medical objects
+- Prod: `POST /api/admin/adlab/regen-images` for the current women + men experiments (copy untouched)
+
+### Manual steps needed
+- [ ] Keenan: skip "One minute that belongs to nobody else" (duration claim), then review and launch
+
+### Notes
+- The 2:3 source render isn't stored, so any re-cut means a regen (about 20 image calls). Worth storing the source if cropping gets tuned again
+
+---
+
 ## [2026-09-24] — Ad review previews look like Meta (feed post + story), batch regenerated in both sizes
 
 **Requested by:** Keenan

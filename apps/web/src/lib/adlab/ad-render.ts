@@ -5,9 +5,10 @@
  * 4:5 in the feed (more screen, better performance) and 9:16 in Stories/
  * Reels (a square gets letterboxed there). Every AI-generated creative is
  * now rendered once as a 1024×1536 portrait with all text inside a central
- * safe zone, then cut into both placements:
- *   feed  4:5  — centre 1024×1280 → 1080×1350
- *   story 9:16 — centre 864×1536  → 1080×1920
+ * safe zone, then turned into both placements:
+ *   feed  4:5  — detail-aware 1024×1280 crop → 1080×1350
+ *   story 9:16 — whole image fitted to the width over a blurred fill
+ *                (never side-cropped) → 1080×1920
  * The launch route sends both to Meta with placement asset customization.
  *
  * APP-PROOF. The image model can't draw our real UI, so this format is
@@ -30,30 +31,76 @@ export const SOURCE_SIZE = "1024x1536" as const;
 export const FEED = { w: 1080, h: 1350 };
 export const STORY = { w: 1080, h: 1920 };
 
+/**
+ * Feed 4:5: a SMART vertical crop of the 2:3 source. Removing 256px of
+ * height is unavoidable; instead of trimming 128 top + 128 bottom blindly
+ * (which clipped headlines that sat high), pick the offset whose removed
+ * rows carry the least detail — text and edges are high-gradient, empty
+ * sky / table / backdrop is low. First pass at even crops cut words (09-24).
+ */
+async function smartFeedCrop(source: Buffer, W: number, H: number): Promise<Buffer> {
+  const feedH = Math.min(H, Math.round((W * 5) / 4));
+  const spare = H - feedH;
+  let top = Math.round(spare / 2);
+  if (spare > 0) {
+    const { data, info } = await sharp(source).greyscale().raw().toBuffer({ resolveWithObject: true });
+    const rowEnergy = new Float64Array(info.height);
+    for (let y = 0; y < info.height; y++) {
+      let e = 0;
+      const row = y * info.width;
+      for (let x = 1; x < info.width; x++) e += Math.abs(data[row + x] - data[row + x - 1]);
+      if (y > 0) for (let x = 0; x < info.width; x += 2) e += Math.abs(data[row + x] - data[row - info.width + x]);
+      rowEnergy[y] = e;
+    }
+    const prefix = new Float64Array(info.height + 1);
+    for (let y = 0; y < info.height; y++) prefix[y + 1] = prefix[y] + rowEnergy[y];
+    let best = Infinity;
+    for (let t = 0; t <= spare; t += 4) {
+      const removed = prefix[t] + (prefix[info.height] - prefix[t + feedH]);
+      if (removed < best) {
+        best = removed;
+        top = t;
+      }
+    }
+  }
+  return sharp(source)
+    .extract({ left: 0, top, width: W, height: feedH })
+    .resize(FEED.w, FEED.h)
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+/**
+ * Story 9:16: NO crop. The full 2:3 source is scaled to the story width and
+ * centred on a blurred, darkened copy of itself that fills the top and
+ * bottom bands — exactly where IG/FB story chrome (profile header, CTA)
+ * sits, so every word survives. Side-cropping clipped headlines (09-24).
+ */
+async function storyFit(source: Buffer): Promise<Buffer> {
+  const fg = await sharp(source).resize({ width: STORY.w }).toBuffer();
+  const fgH = (await sharp(fg).metadata()).height ?? STORY.h;
+  const bg = await sharp(source)
+    .resize(STORY.w, STORY.h, { fit: "cover" })
+    .blur(40)
+    .modulate({ brightness: 0.55 })
+    .toBuffer();
+  return sharp(bg)
+    .composite([{ input: fg, top: Math.max(0, Math.round((STORY.h - fgH) / 2)), left: 0 }])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
 /** Cut a 1024×1536 portrait into the feed (4:5) and story (9:16) renditions. */
 export async function cutPlacements(source: Buffer): Promise<{ feed: Buffer; story: Buffer }> {
   const meta = await sharp(source).metadata();
   const W = meta.width ?? 1024;
   const H = meta.height ?? 1536;
-  // 4:5 — full width, trim top/bottom evenly
-  const feedH = Math.min(H, Math.round((W * 5) / 4));
-  const feed = await sharp(source)
-    .extract({ left: 0, top: Math.round((H - feedH) / 2), width: W, height: feedH })
-    .resize(FEED.w, FEED.h)
-    .jpeg({ quality: 92 })
-    .toBuffer();
-  // 9:16 — full height, trim sides evenly
-  const storyW = Math.min(W, Math.round((H * 9) / 16));
-  const story = await sharp(source)
-    .extract({ left: Math.round((W - storyW) / 2), top: 0, width: storyW, height: H })
-    .resize(STORY.w, STORY.h)
-    .jpeg({ quality: 92 })
-    .toBuffer();
+  const [feed, story] = await Promise.all([smartFeedCrop(source, W, H), storyFit(source)]);
   return { feed, story };
 }
 
 /** Prompt clause for the portrait render so both crops keep every word. */
-export const SAFE_ZONE_RULES = `CANVAS + SAFE ZONE (critical): vertical 2:3 portrait. This image is later cropped to 4:5 (top and bottom ~9% cut) and to 9:16 (left and right ~8% cut). Keep EVERY piece of text and the CTA button inside the central safe area — at least 12% of the height clear of text at the top and bottom, and at least 11% of the width clear at the left and right. Backgrounds and photography extend to all edges; only text and buttons stay inside.`;
+export const SAFE_ZONE_RULES = `CANVAS + SAFE ZONE (critical): vertical 2:3 portrait. This image is later cropped to 4:5 (up to ~17% of the height trimmed from the top and/or bottom). Keep EVERY piece of text, the CTA button and any brand mark inside the central safe area — at least 12% of the height clear of text at the top AND at the bottom, and at least 8% of the width clear at each side. Backgrounds and photography extend to all edges; only text and buttons stay inside.`;
 
 // ─── App-proof format ─────────────────────────────────────────────────────
 
