@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-09-24] — Social Phase 1: metrics dashboard, full TikTok history, health alerts, "Posted ✓", YouTube/Threads, no repeat headlines
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Phase 1 of the social audit is done.
+- **Metrics dashboard** at /admin/content-factory/metrics: every account's views, likes, comments, shares and saves, which lanes win, the top posts, and every TikTok video. TikTok now pulls each account's full history weekly instead of only the latest 30 videos, which is why BWK's numbers looked low. The numbers were checked against TikTok's own page and match exactly.
+- **Health email** that only arrives when something breaks.
+- **"✓ I posted this on TikTok" button** in each TikTok email. Tapping it records the post, and that night's scrape links the video and its numbers back to it.
+- **YouTube Shorts and Threads** publishing, built but off until you add their logins.
+- **No more recycled headlines:** every generator now sees the last 60 days of headlines across all lanes and retries if it repeats one. "EARN YOUR SILENCE" and similar titles are retired, the selfie lane no longer opens every post with "this is how i stopped…", and fake "found this note / overheard this" hooks are banned.
+
+### Technical changes (for Jimmy)
+- New `app/admin/content-factory/metrics/page.tsx` (server component) + `refresh-buttons.tsx`; "Social metrics" link in `admin-dashboard.tsx` TOOL_LINKS
+- `lib/content-factory/tiktok-metrics.ts`: daily latest 40, full history (limit 500) on Sundays UTC or `?full=1` / event `{full:true}`; new `matchByPostedTap` fallback (video published ≤6h before a Posted-✓ tap)
+- New `lib/content-factory/posted-link.ts` (HMAC-SHA256 with CRON_SECRET) + `app/api/content-factory/tiktok-posted/route.ts` (GET, signed, upserts SocialPublish tiktok POSTED); button added to all three manual-TikTok email templates in `email.ts`; PLATFORM_LABEL gains youtube/threads
+- New Inngest fn `social-health-check` (cron `0 14 * * *` + event `content-factory/health.check`), emails only on problems: FAILED/SKIPPED rows 24h, nothing published 24h, IG Graph token check, IG metrics >36h, TikTok scrape >36h, Reddit digest >8d, CompetitorAccount scrapeError, AdLab competitor brief >9d
+- New `lib/content-factory/youtube-publish.ts` (OAuth refresh → resumable upload, #shorts title) + `threads-publish.ts` (carousel ≤20 / video, container polling, 500-char fit); `social-publish-cron.ts` enqueues threads/youtube rows only when that brand's creds exist, and the publish step is refactored into a per-platform switch (IG/FB behaviour unchanged; reviewed); `social-publish.ts` platform union + windows, `env()` exported
+- New `lib/content-factory/headline-history.ts` (60-day cross-lane normalized history, 5-min cache, `recentHeadlinesPromptBlock`, `withHeadlineRetry` = one retry on an exact repeat, `fakeCandidFeedback`); wired into moody-carousel (all moody-family + DB lanes; protocol opts out), generate-topic, timeline-grid, quote-loop, ambient-video; copied example titles replaced with structural descriptions; selfie opener template replaced by 8 structures; humanizer pattern #24 bans found-object / overheard hooks
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` (registers social-health-check) (Claude)
+- [ ] Keenan (optional): YouTube + Threads logins. Env vars: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_RIPPLE_REFRESH_TOKEN`, `YOUTUBE_BWK_REFRESH_TOKEN`, `THREADS_RIPPLE_USER_ID`, `THREADS_RIPPLE_ACCESS_TOKEN` (+ BWK). Threads tokens expire after 60 days. Unaudited YouTube API projects may upload as private until the audit is approved
+- [ ] Keenan: use the "✓ I posted this" button on each TikTok you post
+
+### Notes
+- YouTube/Threads metrics aren't collected yet (the refresh ignores those rows)
+- The headline retry path hasn't run live yet; tonight's generation is its first real test. It never fails a lane: after one retry it logs and ships
+- Protocol-lane repeats ("5 YEARS OF DISCIPLINE…") are by design and exempt
+- Adds ~650 input tokens per generation call; a retry roughly doubles that post's generation cost
+
+---
+
 ## [2026-09-24] — Weekly ad batch regenerated from Reddit + competitor + own-results data
 
 **Requested by:** Keenan

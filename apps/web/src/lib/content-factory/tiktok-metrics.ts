@@ -5,11 +5,11 @@
  * TikTok posting is manual and the official Display API isn't offered to
  * our app, so a public-profile scrape is the only source of views/likes/
  * shares/saves for @getripple and @buildwithkey. Daily, latest
- * VIDEOS_PER_ACCOUNT videos per account — numbers keep updating while a
- * video is still climbing.
+ * VIDEOS_PER_ACCOUNT videos per account, plus the full history on Sundays.
  *
  * Cost: clockworks~tiktok-profile-scraper is pay-per-result, $0.002/video
- * (Bronze). 2 accounts × 30 videos × 30 days ≈ $3.60/month.
+ * (Bronze). Daily 2 × 40 ≈ $4.80/month + weekly full (~400 videos, $0.80)
+ * ≈ $3.50/month.
  *
  * Matching: a scraped video is tied to the CarouselPost it came from by
  * caption (Keenan pastes the emailed caption). A match stamps
@@ -23,7 +23,15 @@
 import { prisma } from "@/lib/prisma";
 
 const APIFY_BASE = "https://api.apify.com/v2/acts";
-const VIDEOS_PER_ACCOUNT = 30;
+/** Daily: the newest videos, which are still climbing. */
+const VIDEOS_PER_ACCOUNT = 40;
+/**
+ * Weekly (Sundays) / on demand: EVERY video, so older winners' numbers stay
+ * current too — the latest-40 window alone is ~6 days of BWK and hid its
+ * best performers (Keenan, 2026-09-24: "the bwk has way more saves, shares").
+ * Public counts were verified identical to TikTok's own video page.
+ */
+const FULL_HISTORY_LIMIT = 500;
 
 export const TIKTOK_ACCOUNTS: Array<{ key: "ripple" | "bwk"; handle: string }> = [
   { key: "ripple", handle: process.env.TIKTOK_RIPPLE_HANDLE?.trim() || "getripple" },
@@ -44,7 +52,7 @@ export function normalizeCaption(caption: string | null | undefined): string {
     .trim();
 }
 
-async function scrapeAccount(handle: string): Promise<Raw[]> {
+async function scrapeAccount(handle: string, limit: number): Promise<Raw[]> {
   const token = process.env.APIFY_TOKEN?.trim();
   if (!token) throw new Error("APIFY_TOKEN not set");
   const res = await fetch(
@@ -54,7 +62,7 @@ async function scrapeAccount(handle: string): Promise<Raw[]> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         profiles: [handle],
-        resultsPerPage: VIDEOS_PER_ACCOUNT,
+        resultsPerPage: limit,
         profileScrapeSections: ["videos"],
         profileSorting: "latest",
         shouldDownloadVideos: false,
@@ -80,10 +88,10 @@ async function matchCarouselPost(
   caption: string,
   postedAt: Date | null
 ): Promise<string | null> {
-  const norm = normalizeCaption(caption);
-  if (norm.length < 20) return null; // hashtag-only / too short to match safely
-  const key = norm.slice(0, 40);
   const anchor = postedAt ?? new Date();
+  const norm = normalizeCaption(caption);
+  if (norm.length < 20) return matchByPostedTap(accountKey, postedAt); // hashtag-only / too short
+  const key = norm.slice(0, 40);
   const candidates = await prisma.carouselPost.findMany({
     where: {
       generatedFor: {
@@ -99,7 +107,34 @@ async function matchCarouselPost(
     if ((await laneBrand(c.lane)) !== accountKey) continue;
     return c.id;
   }
-  return null;
+  return matchByPostedTap(accountKey, postedAt);
+}
+
+/**
+ * Fallback match: the "✓ I posted this on TikTok" email button records a
+ * tap time on an otherwise empty TikTok SocialPublish row. The video whose
+ * publish time falls within 6h BEFORE that tap is almost certainly it
+ * (Keenan posts, then taps). Closest tap wins; each row is claimed once
+ * because a matched row gets its externalId set.
+ */
+async function matchByPostedTap(
+  accountKey: "ripple" | "bwk",
+  postedAt: Date | null
+): Promise<string | null> {
+  if (!postedAt) return null;
+  const taps = await prisma.socialPublish.findMany({
+    where: {
+      platform: "tiktok",
+      accountKey,
+      status: "POSTED",
+      externalId: null,
+      postedAt: { gte: postedAt, lte: new Date(postedAt.getTime() + 6 * 3_600_000) },
+    },
+    orderBy: { postedAt: "asc" },
+    select: { carouselPostId: true },
+    take: 1,
+  });
+  return taps[0]?.carouselPostId ?? null;
 }
 
 export interface TikTokRefreshResult {
@@ -109,13 +144,13 @@ export interface TikTokRefreshResult {
   error?: string;
 }
 
-export async function refreshTikTokAccount(account: {
-  key: "ripple" | "bwk";
-  handle: string;
-}): Promise<TikTokRefreshResult> {
+export async function refreshTikTokAccount(
+  account: { key: "ripple" | "bwk"; handle: string },
+  opts: { full?: boolean } = {}
+): Promise<TikTokRefreshResult> {
   let items: Raw[];
   try {
-    items = await scrapeAccount(account.handle);
+    items = await scrapeAccount(account.handle, opts.full ? FULL_HISTORY_LIMIT : VIDEOS_PER_ACCOUNT);
   } catch (err) {
     return { account: account.handle, fetched: 0, matched: 0, error: err instanceof Error ? err.message : String(err) };
   }

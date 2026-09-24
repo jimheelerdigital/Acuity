@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
   }
 
   const { inngest } = await import("@/inngest/client");
-  await inngest.send({ name: "content-factory/metrics.refresh", data: {} });
+  // ?full=1 → scrape every TikTok video, not just the latest 40
+  const full = req.nextUrl.searchParams.get("full") === "1";
+  await inngest.send({ name: "content-factory/metrics.refresh", data: { full } });
 
   return NextResponse.json({ ok: true });
 }

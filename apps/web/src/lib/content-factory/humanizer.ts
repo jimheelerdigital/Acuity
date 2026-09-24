@@ -41,6 +41,7 @@ export const HUMAN_VOICE_RULES = `HUMAN VOICE — HARD BANS (the copy must read 
 - NO forced groups of three ("No excuses. No shortcuts. No mercy."). Vary the count: two beats, or four.
 - BANNED WORDS: delve, testament, tapestry, unlock, unleash, harness, elevate, empower, embrace, thrive, game-changer, journey (figurative), landscape (figurative), navigate (figurative).
 - NO fake-candid openers: "Honestly?", "Let's be honest", "Here's the thing", "Real talk".
+- NO invented provenance for a quote or line: "found this in/inside...", "found this folded...", "overheard this...", "a stranger/woman i barely know said...", "wrote it on my hand/a napkin/a receipt", "someone left this...". Readers clock these as made up.
 - NO generic uplift endings ("Your best days are ahead."). End on something concrete.
 - Read every line aloud. If it sounds like a chatbot or a poster, rewrite it plainer.`;
 
@@ -82,7 +83,7 @@ STYLE TELLS
 21. Announcing the next point — watch: let's dive in, let's break this down, here's what you need to know, quick note. State the point, never announce it.
 22. Forced punchlines and stacked dramatic fragments — a row of clipped fragments for drama ("No aesthetic prior. No nostalgia. The old rules were gone."). One short sentence is emphasis; a stack is a tell.
 23. Formulaic sayings — watch: X is the Y of Z, X becomes a trap, X is not a tool but a mirror, the language/currency/architecture of. Replace the saying with the specific claim.
-24. Fake-candid openings — watch: Honestly?, Look, Here's the thing, Let's be honest, Real talk as standalone hooks.
+24. Fake-candid openings — watch: Honestly?, Look, Here's the thing, Let's be honest, Real talk as standalone hooks. ALSO invented provenance stories for a quote or line (added 2026-09-23 — these read as fabricated): found-object framing ("found this in/inside...", "found this folded inside a library book", "someone left this on..."), overheard strangers ("overheard this in a car park", "a woman i barely know said this"), copied-down props ("wrote it on my hand", "wrote this on a napkin"). Rewrite the hook around the writer's own reaction to the words, keeping the same length, case, and trailing "...". A first-person letter or text the writer says they wrote and never sent is the format, not provenance — leave it.
 25. Answering objections no one raised — watch: this isn't really about, I'm not saying, to be clear, don't get me wrong, some might say... but.
 26. Rejecting fake alternatives — watch: a tempting approach would be, one might be tempted to, you might think... but. Cut the fake option; state the real point.
 

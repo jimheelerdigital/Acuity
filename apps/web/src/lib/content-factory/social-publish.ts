@@ -122,7 +122,12 @@ export function feedCropUrl(imageUrl: string, ar: "4x5" | "1x1" = "4x5"): string
 }
 
 export type SocialAccountKey = "ripple" | "bwk";
-export type SocialPlatform = "instagram" | "facebook" | "tiktok";
+export type SocialPlatform =
+  | "instagram"
+  | "facebook"
+  | "tiktok"
+  | "youtube"
+  | "threads";
 
 // ─── Prime-time scheduling (2026-09-15, per Keenan: "make sure ALL
 // posts on social media are at prime time social media hours for the
@@ -145,6 +150,11 @@ export type SocialPlatform = "instagram" | "facebook" | "tiktok";
 //   want first thing in the morning so i can go in throughout the day
 //   to post them"). Short stagger — delivery time isn't engagement
 //   time.
+// - Threads (2026-09-23) rides IG's window — same Meta audience, same
+//   lunchtime + evening peaks.
+// - YouTube Shorts (2026-09-23) skew to afternoon/evening viewing, so
+//   the window runs noon-9pm ET with an hourly stagger. Only reel lanes
+//   upload (~2/day), well under the API's ~6 uploads/day quota.
 export const PLATFORM_WINDOWS: Record<
   SocialPlatform,
   { openMin: number; closeMin: number; staggerMs: number }
@@ -152,6 +162,8 @@ export const PLATFORM_WINDOWS: Record<
   instagram: { openMin: 12 * 60, closeMin: 19 * 60, staggerMs: 50 * 60_000 },
   facebook: { openMin: 12 * 60, closeMin: 18 * 60, staggerMs: 45 * 60_000 },
   tiktok: { openMin: 7 * 60, closeMin: 10 * 60, staggerMs: 5 * 60_000 },
+  threads: { openMin: 12 * 60, closeMin: 19 * 60, staggerMs: 50 * 60_000 },
+  youtube: { openMin: 12 * 60, closeMin: 21 * 60, staggerMs: 60 * 60_000 },
 };
 
 const ET = "America/New_York";
@@ -220,7 +232,7 @@ export function autoPublishEnabled(): boolean {
  * call 404'd with "Object with ID '… ' does not exist") corrupts the
  * request path silently.
  */
-function env(name: string): string | null {
+export function env(name: string): string | null {
   const v = process.env[name]?.trim();
   return v ? v : null;
 }

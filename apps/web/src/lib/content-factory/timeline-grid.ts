@@ -33,6 +33,7 @@ import sharp from "sharp";
 import Anthropic from "@anthropic-ai/sdk";
 import { ensureFontFile } from "./compose";
 import { HUMAN_VOICE_RULES, humanizePass } from "./humanizer";
+import { withHeadlineRetry } from "./headline-history";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -93,7 +94,7 @@ const SYSTEM = `You write photo-carousel roadmap posts for a men's discipline ac
 ${VOICE_LINE}
 
 FORMAT — the post is a span-of-time roadmap:
-- "title": the cover headline. Punchy, ALL CAPS register (you write it in normal case, it renders uppercase), 4-9 words naming the span and the mission, e.g. "4 months to get your sh*t together" or "one year to become hard to beat". Mild censored profanity (sh*t) is allowed sparingly, never required.
+- "title": the cover headline. Punchy, ALL CAPS register (you write it in normal case, it renders uppercase), 4-9 words naming the span and the mission, shape: "[span] to [mission]" (e.g. "4 months to get your sh*t together"; the example is the SHAPE only, never reuse its words). Mild censored profanity (sh*t) is allowed sparingly, never required.
 - "phases": one entry per sequential phase of the span, in order, no gaps.
   - "header": the phase window, e.g. "MONTH 01", "MONTHS 4-6", "YEAR 2".
   - "bandTitle": that phase's mission in 3-5 words, caps register, following a consistent family across the post (reference: "GET YOURSELF TOGETHER" / "GET YOUR MIND TOGETHER" / "GET YOUR MONEY TOGETHER" / "GET YOUR FUTURE TOGETHER"). Invent your own family each post, do not copy that one.
@@ -117,10 +118,26 @@ OUTPUT (strict JSON, no markdown):
   ]
 }`;
 
+/** Cross-lane headline dedupe (2026-09-23): recent-headlines block on
+ *  the request, one retry with feedback on an exact repeat title. */
 export async function generateTimelineGridTopic(
   spec: GridLaneSpec,
   recentHeadlines: string[],
   feedback?: string | null
+): Promise<TimelineGridTopic> {
+  return withHeadlineRetry({
+    label: "timeline-grid-topic",
+    generate: (extra) =>
+      generateTimelineGridTopicOnce(spec, recentHeadlines, feedback, extra),
+    headlineOf: (t) => t.title,
+  });
+}
+
+async function generateTimelineGridTopicOnce(
+  spec: GridLaneSpec,
+  recentHeadlines: string[],
+  feedback: string | null | undefined,
+  extra: string
 ): Promise<TimelineGridTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
@@ -153,7 +170,7 @@ export async function generateTimelineGridTopic(
       messages: [
         {
           role: "user",
-          content: `${spec.theme}\n\nWrite today's post with between ${spec.minPhases} and ${spec.maxPhases} phases (the span decides: a 4-month span = 4 monthly phases, a 1-year span = 4 quarterly phases, a 6-month span = 3 two-month phases).${avoid}${fb}`,
+          content: `${spec.theme}\n\nWrite today's post with between ${spec.minPhases} and ${spec.maxPhases} phases (the span decides: a 4-month span = 4 monthly phases, a 1-year span = 4 quarterly phases, a 6-month span = 3 two-month phases).${avoid}${fb}${extra}`,
         },
       ],
     });

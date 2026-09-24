@@ -28,6 +28,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { VoiceoverOptions } from "./story-video";
 import { humanizePass } from "./humanizer";
+import { withHeadlineRetry } from "./headline-history";
 import {
   SCRIPT_STYLE_GUIDE,
   pickPainBranch,
@@ -165,6 +166,19 @@ export async function generateAmbientScript(input: {
   /** Recent themes + headlines the new concept must not resemble. */
   avoid: string[];
 }): Promise<AmbientScript> {
+  // Cross-lane headline dedupe (2026-09-23) — one retry with feedback
+  // when the title comes back as an exact recent repeat.
+  return withHeadlineRetry({
+    label: "ambient-video-script",
+    generate: (extra) => generateAmbientScriptOnce(input, extra),
+    headlineOf: (s) => s.title,
+  });
+}
+
+async function generateAmbientScriptOnce(
+  input: { avoid: string[] },
+  extra: string
+): Promise<AmbientScript> {
   const { prisma } = await import("@/lib/prisma");
 
   const branch = pickPainBranch();
@@ -173,7 +187,7 @@ export async function generateAmbientScript(input: {
       ? `\n\nDo NOT reuse or closely resemble any of these recent concepts and headlines:\n${input.avoid.map((a) => `- ${a}`).join("\n")}`
       : "";
 
-  const userPrompt = `Write one new calm-video script for this audience.${avoidBlock}
+  const userPrompt = `Write one new calm-video script for this audience.${avoidBlock}${extra}
 
 Return ONLY valid JSON.`;
 

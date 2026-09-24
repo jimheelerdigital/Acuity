@@ -25,6 +25,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AUDIENCE_BRIEF, SCENE_BRIEF, type MoodyAudience } from "./moody-carousel";
 import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
+import { withHeadlineRetry } from "./headline-history";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -90,10 +91,24 @@ OUTPUT (strict JSON, no markdown):
   "motion": "..."
 }`;
 
-/** Generate one quote-loop concept for the given funnel. */
+/** Generate one quote-loop concept for the given funnel. 2026-09-23:
+ *  cross-lane headline dedupe (the quote IS the post headline) — one
+ *  retry with feedback on an exact repeat. */
 export async function generateQuoteConcept(
   audience: MoodyAudience,
   avoid: string[]
+): Promise<QuoteConcept> {
+  return withHeadlineRetry({
+    label: `quote-loop-concept-${audience}`,
+    generate: (extra) => generateQuoteConceptOnce(audience, avoid, extra),
+    headlineOf: (c) => c.quote,
+  });
+}
+
+async function generateQuoteConceptOnce(
+  audience: MoodyAudience,
+  avoid: string[],
+  extra: string
 ): Promise<QuoteConcept> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -101,7 +116,7 @@ export async function generateQuoteConcept(
     avoid.length > 0
       ? `\n\nDo NOT repeat or closely resemble any of these recent quotes/themes:\n${avoid.map((h) => `- ${h}`).join("\n")}`
       : "";
-  const userPrompt = `Write one new quote video for the ${audience === "men" ? "young aspiring men" : "women 40-50"} funnel.${avoidBlock}\n\nReturn ONLY valid JSON.`;
+  const userPrompt = `Write one new quote video for the ${audience === "men" ? "young aspiring men" : "women 40-50"} funnel.${avoidBlock}${extra}\n\nReturn ONLY valid JSON.`;
 
   const start = Date.now();
   try {

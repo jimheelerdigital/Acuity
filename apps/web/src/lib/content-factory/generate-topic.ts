@@ -17,6 +17,7 @@ import {
 import type { SlideEmotion } from "./animate-cover";
 import { fetchGrowthosResearch, growthosResearchBlock } from "./growthos-research";
 import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
+import { withHeadlineRetry } from "./headline-history";
 
 const anthropic = new Anthropic();
 
@@ -197,7 +198,7 @@ Generate 5-10 items per topic. Vary the count each time.`;
 
 export interface GeneratedSelfieTopic {
   slug: string;
-  /** First-person cover line, e.g. "this is how i stopped running on empty". */
+  /** First-person cover line, e.g. "the night i realized i was running on empty". */
   headline: string;
   /** First-person step lines, e.g. "i started saying no without a speech". */
   steps: string[];
@@ -227,10 +228,20 @@ FORMAT: a swipeable image slideshow. Slide 1 (cover) is a mirror selfie of her �
 AUDIENCE: women ~40-50 exactly like her. They should feel "she's me, and she figured something out" — never lectured.
 
 THE PROBLEM: pick ONE BIG, UNIVERSAL problem per post — something millions of women ~40-50 would instantly recognize as their own life (running on empty, doom-scrolling at midnight, snapping at everyone, losing herself in the roles, saying yes to everything, the 3am spiral, never having a minute alone, feeling invisible, being tired all the time). The problem must pass this test: would a MILLION tired women read the cover and think "that's me"? If it's a quirky micro-habit only some people have, it fails.
-- NEVER build a post around a niche, oddly-specific behavior. BAD (real failure): "this is how i stopped eating lunch standing up" — that is a weird detail, not a universal problem. BAD: anything about one specific meal, one chore, one app, one room.
+- NEVER build a post around a niche, oddly-specific behavior. BAD (real failure): a post about "eating lunch standing up" — that is a weird detail, not a universal problem. BAD: anything about one specific meal, one chore, one app, one room.
 - The specificity belongs in the STEPS and DETAILS — the cover stays broad, the slides get concrete. (A "standing up at lunch" moment can be one step's detail inside a broad "running on empty" post — never the headline.)
 
-HEADLINE (cover text): first person, lowercase-leaning, starts with "this is how i" — e.g. "this is how i stopped running on empty" or "this is how i got my evenings back". Broad and mass-appeal, per the problem test above. Under 55 characters. It must create the itch to swipe. No numbers required, no emojis.
+HEADLINE (cover text): first person, lowercase-leaning, broad and mass-appeal per the problem test above. Under 55 characters. It must create the itch to swipe. No numbers required, no emojis.
+OPENER VARIETY (2026-09-23 — every past post opened "this is how i stopped...", and the sameness reads as a bot): do NOT open with "this is how i". Pick ONE of these structures, a different one from the recent-posts list, and write fresh words for it:
+  1. The turning moment — the day or night she noticed ("the night i realized i was running on empty").
+  2. Before/after in one line — what used to be true vs now ("i used to dread sundays. now they're mine.").
+  3. The confession — admitting the problem plainly ("i said yes to everything for 20 years").
+  4. The small thing that changed it — a result first, cause teased ("what finally got my evenings back").
+  5. The permission she gave herself — ("i stopped waiting for a quiet house to rest").
+  6. A question she asked herself — ("when did i stop being a person and start being a schedule").
+  7. The time marker — how long, or when, it took ("six months ago i couldn't sit still for ten minutes").
+  8. What she'd tell a friend — ("if you're tired all the time, read this").
+The examples show the SHAPE only; never copy their words.
 
 STEPS (one per slide, 4-6 total):
 - Each step is a short first-person line, 3-8 words, lowercase-leaning: "i started leaving my phone in the kitchen", "i stopped apologizing for resting".
@@ -254,7 +265,7 @@ TONE TEST: read every line as a tired real woman at 9pm. If anything sounds like
 
 OUTPUT (strict JSON, no markdown):
 {
-  "headline": "this is how i ...",
+  "headline": "first-person cover line, one of the opener structures above",
   "problem": "the one problem in a few words",
   "steps": ["i ...", ...],
   "details": ["one sentence", ...],
@@ -267,14 +278,32 @@ OUTPUT (strict JSON, no markdown):
 "details" and "stepShots" MUST each have exactly one entry per step, in order.`;
 
 /**
- * Generate a first-person "this is how i ..." selfie-slideshow topic
- * (2026-08-25, per Keenan: realistic mirror-selfie avatar slideshow —
- * same list mechanics as the "7 ways" posts but told as HER story,
- * with steps that fix the problem).
+ * Generate a first-person selfie-slideshow topic (2026-08-25, per
+ * Keenan: realistic mirror-selfie avatar slideshow — same list
+ * mechanics as the "7 ways" posts but told as HER story, with steps
+ * that fix the problem). 2026-09-23: cross-lane headline dedupe, and
+ * the old "this is how i..." opener (all 46 posts to date) is rejected
+ * with one retry so the rotating opener structures actually rotate.
  */
 export async function generateSelfieTopic(
   recentHeadlines: string[],
   feedback?: string | null
+): Promise<GeneratedSelfieTopic> {
+  return withHeadlineRetry({
+    label: "selfie-topic",
+    generate: (extra) => generateSelfieTopicOnce(recentHeadlines, feedback, extra),
+    headlineOf: (t) => t.headline,
+    reject: (t) =>
+      /^\s*this is how i\b/i.test(t.headline)
+        ? `\n\nREJECTED: your headline "${t.headline}" opens with "this is how i", which every past post used. Pick a different opener structure from the list.`
+        : null,
+  });
+}
+
+async function generateSelfieTopicOnce(
+  recentHeadlines: string[],
+  feedback: string | null | undefined,
+  extra: string
 ): Promise<GeneratedSelfieTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -285,7 +314,7 @@ export async function generateSelfieTopic(
 
   // Learning loop (2026-09-14): real engagement numbers from
   // performance.ts, so topics lean into what the audience rewards.
-  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}${feedback ?? ""}\n\nReturn ONLY valid JSON, no other text.`;
+  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}${feedback ?? ""}${extra}\n\nReturn ONLY valid JSON, no other text.`;
 
   // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
   let pulse = "";
@@ -465,9 +494,7 @@ export async function generateSelfieTopic(
  * headline/angle instead of inventing its own. Niche data otherwise never
  * touches automatic generation.
  */
-export async function generateTopic(
-  recentHeadlines: string[],
-  opts?: {
+type GenerateTopicOpts = {
     maxReasons?: number;
     performance?: { top: string[]; bottom: string[] };
     /**
@@ -486,7 +513,26 @@ export async function generateTopic(
      * the scene-direction block of the prompt. Defaults to "aesthetic".
      */
     visualStyle?: CarouselVisualStyle;
-  }
+};
+
+export async function generateTopic(
+  recentHeadlines: string[],
+  opts?: GenerateTopicOpts
+): Promise<GeneratedTopic> {
+  // Cross-lane headline dedupe (2026-09-23) — skipped for a mandated
+  // topic: Keenan picked that headline on purpose.
+  if (opts?.mandate) return generateTopicOnce(recentHeadlines, opts, "");
+  return withHeadlineRetry({
+    label: "carousel-topic",
+    generate: (extra) => generateTopicOnce(recentHeadlines, opts, extra),
+    headlineOf: (t) => t.headline,
+  });
+}
+
+async function generateTopicOnce(
+  recentHeadlines: string[],
+  opts: GenerateTopicOpts | undefined,
+  extra: string
 ): Promise<GeneratedTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -535,7 +581,7 @@ export async function generateTopic(
     ? `\n\nMANDATED TOPIC (overrides everything else, including the avoid list): write THIS exact topic — headline: "${opts.mandate.headline}"${opts.mandate.angle ? `\nAngle to lean into: ${opts.mandate.angle}` : ""}\nYou may lightly polish the headline's wording (and adjust its number to match your reason count), but the subject and angle must stay exactly this.`
     : "";
 
-  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${archetypeBlock}${performanceBlock}${researchBlock}${mandateBlock}
+  const userPrompt = `Generate one new carousel topic for Ripple's Instagram/TikTok.${avoidList}${reasonCap}${archetypeBlock}${performanceBlock}${researchBlock}${mandateBlock}${extra}
 
 Return ONLY valid JSON, no other text.`;
 

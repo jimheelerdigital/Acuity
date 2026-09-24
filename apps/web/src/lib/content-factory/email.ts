@@ -91,6 +91,8 @@ const PLATFORM_LABEL: Record<string, string> = {
   instagram: "Instagram",
   facebook: "Facebook",
   tiktok: "TikTok (inbox draft)",
+  youtube: "YouTube Shorts",
+  threads: "Threads",
 };
 
 /**
@@ -340,6 +342,11 @@ export async function sendCarouselEmail(
         .map((s) => `<p style="font-size:12px;"><a href="${escapeHtml(s.url)}" style="color:#F97E4E;">${escapeHtml(s.filename)}</a></p>`)
         .join("\n");
 
+  // One-tap "posted on TikTok" (2026-09-24) — see posted-link.ts
+  const { tiktokPostedButton } = await import("./posted-link");
+  const { laneBrand: brandOf } = await import("./social-publish");
+  const postedButton = tiktokPostedButton(post.id, await brandOf(post.lane ?? null));
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -359,6 +366,8 @@ export async function sendCarouselEmail(
       <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
+
+    ${postedButton}
 
     ${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="Cover" style="width:100%;border-radius:12px;margin-bottom:16px;" />` : ""}
 
@@ -521,6 +530,11 @@ async function sendStitchedVideoEmail(
         .map((s) => `<p style="font-size:13px;"><a href="${escapeHtml(forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))}" style="color:#F97E4E;">Download slide ${s.order + 1} animation</a></p>`)
         .join("\n");
 
+  // One-tap "posted on TikTok" (2026-09-24) — see posted-link.ts
+  const { tiktokPostedButton } = await import("./posted-link");
+  const { laneBrand: brandOf } = await import("./social-publish");
+  const postedButton = tiktokPostedButton(post.id, await brandOf(post.lane ?? null));
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -534,6 +548,8 @@ async function sendStitchedVideoEmail(
       <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
+
+    ${postedButton}
     <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0 0 16px;">
       ${
         attachment
@@ -719,6 +735,11 @@ export async function sendStoryVideoEmail(
     </div>`
     : "";
 
+  // One-tap "posted on TikTok" (2026-09-24) — see posted-link.ts
+  const { tiktokPostedButton } = await import("./posted-link");
+  const { laneBrand: brandOf } = await import("./social-publish");
+  const postedButton = tiktokPostedButton(carouselPostId, await brandOf(post.lane ?? null));
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -738,6 +759,8 @@ export async function sendStoryVideoEmail(
       <p style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#666;margin:0 0 8px;font-family:monospace;">Caption (select all to copy)</p>
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
+
+    ${postedButton}
 
     <p style="font-size:14px;color:#DDD;line-height:1.6;">
       ${opts.quote ? "Seamlessly looping quote video (silent — add audio when you post)" : opts.calm ? "Looping calm video" : "Fully stitched ~30s vertical video"}${opts.quote ? "" : opts.selfVoice ? " — clean visual, ready for your voiceover" : opts.silent ? (captioned ? " with the script burned in as captions (no audio)" : " (no audio, no captions)") : captioned ? " with voiceover and burned-in captions" : opts.captionsByHand ? " with voiceover — no captions burned in, add them when you post" : " with voiceover (captions failed — audio only)"} — ${videoBuf ? "attached below. <strong>Tap and hold → Save Video</strong> to add it to your camera roll." : "download it with the button below."} No clipping needed.

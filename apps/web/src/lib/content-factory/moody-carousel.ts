@@ -25,6 +25,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
+import { withHeadlineRetry, fakeCandidFeedback } from "./headline-history";
 
 const anthropic = new Anthropic();
 const CLAUDE_MODEL = "claude-sonnet-4-6";
@@ -106,7 +107,7 @@ lines[0] (hook): "Order outside builds order inside."
 lines[1] (body): "Once a week, clear everything — room, car, files, notes. Chaos has nowhere to live."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act ("EARN YOUR SILENCE", "HOLD THE LINE") or a direct prompt to engage what's inside ("READ THESE SLOWLY", "ANSWER THIS FIRST..."). Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix the example phrases; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act (the shape: VERB + an object that names what the slides are about) or a direct prompt to engage what's inside (the shape: an instruction for HOW to read or answer the slides, often ending "..."). Invent the words for THIS post's subject every time. Past covers like "EARN YOUR SILENCE", "HOLD THE LINE", "READ THESE SLOWLY" and "YOU ALREADY KNOW" are SPENT — never reuse them, and never reuse any title from the recent-headlines list. Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix spent titles; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item:
   - "name": the HEADER — a named concept in Title Case, 2-4 words, NO trailing period ("The Reset Day", "Quiet Hours", "The 90% Rule"). It should feel like naming something real the reader never had words for.
   - "lines": EXACTLY 2 entries.
@@ -133,7 +134,7 @@ OUTPUT (strict JSON, no markdown):
  * slides carry no "N. Name." header (memento/questions); `minLines`
  * allows single-line slides (questions).
  */
-async function generateMoodyFamilyTopic(opts: {
+type MoodyFamilyOpts = {
   purpose: string;
   system: string;
   user: string;
@@ -156,7 +157,38 @@ async function generateMoodyFamilyTopic(opts: {
    *  prompt as angle inspiration. Soft: missing digest / any error =
    *  no block, generation unchanged. */
   brand?: "ripple" | "bwk";
-}): Promise<MoodyTopic> {
+  /** false = skip the cross-lane headline dedupe (history block +
+   *  retry). Only for lanes whose cover title is FIXED by the format
+   *  (protocol's "{INTERVAL} OF DISCIPLINE...") — a retry there would
+   *  fight the prompt for no gain. */
+  headlineDedupe?: boolean;
+};
+
+/**
+ * Cross-lane headline dedupe (2026-09-23): every moody-family lane gets
+ * the shared recent-headlines block appended to its request, and one
+ * retry with explicit feedback if the cover title still comes back as an
+ * exact recent repeat. See headline-history.ts.
+ */
+async function generateMoodyFamilyTopic(opts: MoodyFamilyOpts): Promise<MoodyTopic> {
+  if (opts.headlineDedupe === false) return generateMoodyFamilyTopicOnce(opts);
+  return withHeadlineRetry({
+    label: opts.purpose,
+    generate: (extra) =>
+      generateMoodyFamilyTopicOnce({ ...opts, user: insertBeforeJsonTail(opts.user, extra) }),
+    headlineOf: (t) => t.title,
+  });
+}
+
+/** Splice `extra` in ahead of the closing "Return ONLY valid JSON." line. */
+function insertBeforeJsonTail(user: string, extra: string): string {
+  const tail = "\n\nReturn ONLY valid JSON.";
+  return user.endsWith(tail)
+    ? user.slice(0, -tail.length) + extra + tail
+    : user + extra;
+}
+
+async function generateMoodyFamilyTopicOnce(opts: MoodyFamilyOpts): Promise<MoodyTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   let pulse = "";
@@ -351,23 +383,23 @@ function avoidBlock(
 // winning family: moody-men = SILENCE, line = HOLD THE LINE
 // (storm-skyscraper covers), protocol = 30 DAYS (already the winner
 // format, unchanged).
-const SILENCE_THEME = `THEME — every post belongs to the SILENCE family: moving in silence, building in private, working unseen, no announcements, letting results speak. Rotate the angle every post — going quiet for a season, killing announcement culture, private standards nobody sees, disappearing to build, the quiet hours before the world wakes, winning without telling anyone — so no two posts repeat, but every post is unmistakably a silence post. Titles live in the family too ("EARN YOUR SILENCE" energy) without repeating a recent title.`;
+const SILENCE_THEME = `THEME — every post belongs to the SILENCE family: moving in silence, building in private, working unseen, no announcements, letting results speak. Rotate the angle every post — going quiet for a season, killing announcement culture, private standards nobody sees, disappearing to build, the quiet hours before the world wakes, winning without telling anyone — so no two posts repeat, but every post is unmistakably a silence post. Titles live in the family too (a short command about quiet, privacy, or working unseen, in brand-new words for this post's angle; "EARN YOUR SILENCE" is spent, never reuse it) without repeating a recent title.`;
 
 // DORMANT 2026-09-10 (per Keenan: "change 'hold the line' to a
 // new-style discipline line" — replaced by the WATCHING lane below).
 // Kept for revival, like every retired format.
-const LINE_THEME = `THEME — every post belongs to the HOLD THE LINE family: endurance, standards that do not move, staying when it gets hard, refusing to break the streak, holding position when motivation dies. Rotate the angle every post — holding the morning line, standards under pressure, the days nobody claps, finishing what the first week started, never negotiating with yourself — so no two posts repeat, but every post is unmistakably a hold-the-line post. Titles live in the family too ("HOLD THE LINE" energy) without repeating a recent title.`;
+const LINE_THEME = `THEME — every post belongs to the HOLD THE LINE family: endurance, standards that do not move, staying when it gets hard, refusing to break the streak, holding position when motivation dies. Rotate the angle every post — holding the morning line, standards under pressure, the days nobody claps, finishing what the first week started, never negotiating with yourself — so no two posts repeat, but every post is unmistakably a hold-the-line post. Titles live in the family too (a short command about endurance or standards, in brand-new words for this post's angle; "HOLD THE LINE" is spent, never reuse it) without repeating a recent title.`;
 
 // ─── Three discipline lanes (2026-09-10, per Keenan) ─────────────────
 // "replace [hold the line] with 2 [WHEN NO ONE'S WATCHING], and also
 // add 'pay the price' line, and a 'prove it' one too." All three are
 // moody-family men's lanes sharing the BWK visual DNA + cover-family
 // rotation; each has its own locked theme.
-const WATCHING_THEME = `THEME — every post belongs to the WHEN NO ONE'S WATCHING family: private discipline — what a man does when nobody would ever know either way. Every item is a private test: the bed made in an empty house, the workout that never gets posted, the alarm kept on a free morning, the food logged with no one checking, the promise kept to himself alone at midnight. The tension is always integrity vs audience — who he is when there is no camera, no story, no applause. Rotate the angle every post — the 5am hours nobody sees, standards kept in hotel rooms, what he does after everyone is asleep, the reps counted honestly when lying would be free — so no two posts repeat, but every post is unmistakably about the unwatched hours. Titles live in the family too ("WHEN NO ONE'S WATCHING..." energy) without repeating a recent title.`;
+const WATCHING_THEME = `THEME — every post belongs to the WHEN NO ONE'S WATCHING family: private discipline — what a man does when nobody would ever know either way. Every item is a private test: the bed made in an empty house, the workout that never gets posted, the alarm kept on a free morning, the food logged with no one checking, the promise kept to himself alone at midnight. The tension is always integrity vs audience — who he is when there is no camera, no story, no applause. Rotate the angle every post — the 5am hours nobody sees, standards kept in hotel rooms, what he does after everyone is asleep, the reps counted honestly when lying would be free — so no two posts repeat, but every post is unmistakably about the unwatched hours. Titles live in the family too (style reference: "WHEN NO ONE'S WATCHING..." energy, never those exact words; write new words for this post's angle) without repeating a recent title.`;
 
-const PRICE_THEME = `THEME — every post belongs to the PAY THE PRICE family: naming the REAL cost of the life he says he wants — the sleep, the comfort, the nights out declined, the friends who stop calling, the opinions ignored, the years of looking stupid before it works. Each item names ONE price in plain, unsentimental terms: what exactly gets paid, and what paying it buys. No romanticizing — it should read like an itemized bill. EXCEPTION to the last-line rule: the FINAL item's last line must be exactly "Still want it?" — the one place a command becomes a question. Rotate the goal every post — the body, the money, the freedom, the skill, the name — so no two posts repeat. Titles live in the family too ("PAY THE PRICE." energy) without repeating a recent title.`;
+const PRICE_THEME = `THEME — every post belongs to the PAY THE PRICE family: naming the REAL cost of the life he says he wants — the sleep, the comfort, the nights out declined, the friends who stop calling, the opinions ignored, the years of looking stupid before it works. Each item names ONE price in plain, unsentimental terms: what exactly gets paid, and what paying it buys. No romanticizing — it should read like an itemized bill. EXCEPTION to the last-line rule: the FINAL item's last line must be exactly "Still want it?" — the one place a command becomes a question. Rotate the goal every post — the body, the money, the freedom, the skill, the name — so no two posts repeat. Titles live in the family too (style reference: "PAY THE PRICE." energy, never those exact words; write new words for this post's angle) without repeating a recent title.`;
 
-const PROVE_THEME = `THEME — every post belongs to the PROVE IT family: call-out energy. Every item takes a claim men love to make and turns it into what TODAY has to look like if the claim is true. EXCEPTION to the name rule: each item's "name" is the claim itself, 3-6 words ending with a period ("I want the money.", "I'm built different.", "I want the body.") — no quotation marks. The lines then convert the claim into one concrete, checkable action for today (a time, a count, a rule) and close on a short command with "prove it" energy ("Prove it before noon."). The unspoken thesis of every post: talk is free, the calendar doesn't lie. Rotate the claims every post — money, physique, discipline, skill, independence, focus — so no two posts repeat. Titles live in the family too ("PROVE IT." energy) without repeating a recent title.`;
+const PROVE_THEME = `THEME — every post belongs to the PROVE IT family: call-out energy. Every item takes a claim men love to make and turns it into what TODAY has to look like if the claim is true. EXCEPTION to the name rule: each item's "name" is the claim itself, 3-6 words ending with a period ("I want the money.", "I'm built different.", "I want the body.") — no quotation marks. The lines then convert the claim into one concrete, checkable action for today (a time, a count, a rule) and close on a short command with "prove it" energy ("Prove it before noon."). The unspoken thesis of every post: talk is free, the calendar doesn't lie. Rotate the claims every post — money, physique, discipline, skill, independence, focus — so no two posts repeat. Titles live in the family too (style reference: "PROVE IT." energy, never those exact words; write new words for this post's angle) without repeating a recent title.`;
 
 // BWK image library v3 (2026-09-10, per Keenan: "these photos are all
 // too bland/boring... focus on these when building posts for BWK -
@@ -828,7 +860,7 @@ That's the whole number. Not this year's.
 Stop giving them away."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides ("DO THE MATH", "COUNT THESE HONESTLY...", "LOOK AT THE CLOCK"). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix the example phrases; if a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides (the shape: an imperative about counting, time, or looking honestly at the numbers, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix spent titles; if a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
   - First line: ONE life-scale number — anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
@@ -862,7 +894,7 @@ That number only goes down.
 Stop wasting them."
 
 RULES:
-- "title": the cover text. 2-5 words, commanding, works in ALL CAPS ("YOU'RE ON THE CLOCK", "DO THE MATH"). No number in the title.
+- "title": the cover text. 2-5 words, commanding, works in ALL CAPS (the shape: a blunt statement or imperative about time running out, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). No number in the title.
 - The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
   - First line: ONE life-scale number — anchored to his age, measured against an average lifespan or an ending that is coming ("At 30, you have about 2,500 weekends left. On average.", "You'll see your parents about 20 more times before they're gone."). GO BIG: the number must reframe his whole remaining life, not just this month. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
@@ -952,7 +984,7 @@ ${WOMEN_SCENE_BRIEFS[scheme]}
 ${rollWomenCoverRule()}
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS ("ANSWER THESE HONESTLY...", "READ THESE SLOWLY", "DON'T LOOK AWAY"). Not itself a question. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must clearly set up questions to answer. Do NOT stitch together or remix the example phrases; "DON'T LIE NOW" is the kind of garbled title that gets a post killed — if a title reads odd or random without the slides, it is WRONG — write a different one.
+- "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS (the shape: an instruction for HOW to face the questions, often ending "...", in new words each post; "READ THESE SLOWLY", "YOU ALREADY KNOW" and "WHOSE LIFE IS THIS" are spent, never reuse them or any recent title). Not itself a question. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must clearly set up questions to answer. Do NOT stitch together or remix spent titles; "DON'T LIE NOW" is the kind of garbled title that gets a post killed — if a title reads odd or random without the slides, it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the question. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise.
 - Each question hits a DIFFERENT nerve: identity, resentment, time, what she's postponing, what she'd never admit. Never two questions on the same nerve.
 - The questions must be answerable only by the reader — never rhetorical, never yes-obvious.
@@ -1943,6 +1975,8 @@ export async function generateProtocolTopic(
     minLines: 2,
     minItems: 4,
     maxItems: itemCount,
+    // Title is fixed ("{INTERVAL} OF DISCIPLINE...") — repeats by design.
+    headlineDedupe: false,
   });
 }
 
@@ -1971,7 +2005,8 @@ export interface PhoneQuoteTopic {
 const PHONE_QUOTE_SYSTEM: Record<MoodyAudience, string> = {
   women: `You write 2-slide quote posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
 
-- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "someone sent me this and i can't stop thinking about it...", "i found this at exactly the right moment..."). Vary the framing every post — never reuse a recent hook's framing.
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it teases the quote without revealing it. Rotate the STRUCTURE every post, never reuse a recent hook's framing: what it did to her ("this quote kept me up all night..." shape), when it landed (a moment in her day or week), who it made her think of, how long it took to sink in, what she did after reading it, or who she wishes had read it sooner. Invent new words each time; those are shapes, not lines to copy.
+- NO FAKE-CANDID PROVENANCE in the hook (2026-09-23 audit — hooks like "overheard this in a car park and wrote it on my hand..." and "found this folded inside a library book..." read as invented, and this audience clocks them as fake/AI). NEVER claim where the quote physically came from: no found-object stories ("found this in/inside...", "someone left this..."), no overheard strangers ("overheard this...", "a woman i barely know said..."), no copied-down props ("wrote it on my hand / a napkin / a receipt"). The hook is about HER honest reaction to the words, not a backstory for them.
 - "quote": 15-40 words, ALL lowercase. Motivational and developmental — self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands the reader her power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or change; the last flips it into quiet permission or hope. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a real person would screenshot and send a friend at 2am: warm, plain words, second person welcome, no clichés stacked on clichés. NO attribution, NO quotation marks, NO emojis, NO hashtags.
 - "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, warm, intimate, NO people. Vary the location every post.
 - Never mention any app, product, journaling, therapy, or AI.
@@ -1980,7 +2015,8 @@ OUTPUT (strict JSON, no markdown):
 { "hook": "...", "coverScene": "...", "quote": "..." }`,
   men: `You write 2-slide quote posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
 
-- "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." — it teases the quote without revealing it ("this quote kept me up all night...", "read this before you quit...", "someone sent me this at 2am..."). Vary the framing every post — never reuse a recent hook's framing.
+- "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." — it teases the quote without revealing it. Rotate the STRUCTURE every post, never reuse a recent hook's framing: what it did to him ("this quote kept me up all night..." shape), a direct instruction before a decision ("read this before you quit..." shape), the moment it applies to, the cost of learning it late, who needs to hear it, or what changed after he took it seriously. Invent new words each time; those are shapes, not lines to copy.
+- NO FAKE-CANDID PROVENANCE in the hook (2026-09-23 audit — hooks like "overheard this in a car park and wrote it on my hand..." and "found this folded inside a library book..." read as invented, and this audience clocks them as fake/AI). NEVER claim where the quote physically came from: no found-object stories ("found this in/inside...", "someone left this..."), no overheard strangers ("overheard this...", "an old man told me..."), no copied-down props ("wrote it on my hand / a napkin / a receipt"). The hook is about HIS honest reaction to the words, not a backstory for them.
 - "quote": 15-40 words, ALL lowercase. Motivational and developmental — discipline, patience, building in silence, becoming the man who keeps his word, delayed gratification, standards. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands him his power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or the cost of waiting; the last flips it into quiet resolve or possibility. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a man would screenshot and set as his lock screen: calm command energy, plain declarative words, second person welcome, never bro-slang, never yelling. NO attribution, NO quotation marks, NO emojis, NO hashtags.
 - "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, desaturated, NO people. Vary the location every post.
 - Never mention any app, product, journaling, therapy, or AI.
@@ -1989,11 +2025,29 @@ OUTPUT (strict JSON, no markdown):
 { "hook": "...", "coverScene": "...", "quote": "..." }`,
 };
 
-/** Generate one phone-quote topic (2-slide format) for either funnel. */
+/** Generate one phone-quote topic (2-slide format) for either funnel.
+ *  2026-09-23: cross-lane headline dedupe + fake-candid hook check —
+ *  one retry with feedback if the hook repeats a recent headline or
+ *  invents a found/overheard provenance. */
 export async function generatePhoneQuoteTopic(
   audience: MoodyAudience,
   recentHeadlines: string[],
   feedback?: string | null
+): Promise<PhoneQuoteTopic> {
+  return withHeadlineRetry({
+    label: audience === "men" ? "phone-quote-men-topic" : "phone-quote-topic",
+    generate: (extra) =>
+      generatePhoneQuoteTopicOnce(audience, recentHeadlines, feedback, extra),
+    headlineOf: (t) => t.hook,
+    reject: (t) => fakeCandidFeedback(t.hook),
+  });
+}
+
+async function generatePhoneQuoteTopicOnce(
+  audience: MoodyAudience,
+  recentHeadlines: string[],
+  feedback: string | null | undefined,
+  extra: string
 ): Promise<PhoneQuoteTopic> {
   const { prisma } = await import("@/lib/prisma");
   const purpose =
@@ -2017,7 +2071,7 @@ export async function generatePhoneQuoteTopic(
       messages: [
         {
           role: "user",
-          content: `Write one new phone-quote post.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
+          content: `Write one new phone-quote post.${avoidBlock(recentHeadlines, feedback)}${extra}\n\nReturn ONLY valid JSON.`,
         },
       ],
     });
@@ -2576,10 +2630,23 @@ const LETTER_SYSTEM_PROMPT = `You write 2-slide posts for a soft, feminine accou
 OUTPUT (strict JSON, no markdown):
 { "hook": "...", "coverScene": "...", "letter": "..." }`;
 
-/** Generate one unsent-letter topic (women / Ripple, 2-slide). */
+/** Generate one unsent-letter topic (women / Ripple, 2-slide).
+ *  2026-09-23: cross-lane headline dedupe, one retry on a repeat hook. */
 export async function generateLetterTopic(
   recentHeadlines: string[],
   feedback?: string | null
+): Promise<PhoneQuoteTopic> {
+  return withHeadlineRetry({
+    label: "letter-carousel-topic",
+    generate: (extra) => generateLetterTopicOnce(recentHeadlines, feedback, extra),
+    headlineOf: (t) => t.hook,
+  });
+}
+
+async function generateLetterTopicOnce(
+  recentHeadlines: string[],
+  feedback: string | null | undefined,
+  extra: string
 ): Promise<PhoneQuoteTopic> {
   const { prisma } = await import("@/lib/prisma");
   const purpose = "letter-carousel-topic";
@@ -2592,7 +2659,7 @@ export async function generateLetterTopic(
       messages: [
         {
           role: "user",
-          content: `Write one new unsent-letter post.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
+          content: `Write one new unsent-letter post.${avoidBlock(recentHeadlines, feedback)}${extra}\n\nReturn ONLY valid JSON.`,
         },
       ],
     });
@@ -2732,11 +2799,25 @@ OUTPUT (strict JSON, no markdown):
 { "hook": "...", "coverScene": "...", "messages": ["..."] }`,
 };
 
-/** Generate one text-message topic for either texts lane. */
+/** Generate one text-message topic for either texts lane.
+ *  2026-09-23: cross-lane headline dedupe, one retry on a repeat hook. */
 export async function generateTextsTopic(
   lane: TextsLane,
   recentHeadlines: string[],
   feedback?: string | null
+): Promise<TextsTopic> {
+  return withHeadlineRetry({
+    label: `${lane}-topic`,
+    generate: (extra) => generateTextsTopicOnce(lane, recentHeadlines, feedback, extra),
+    headlineOf: (t) => t.hook,
+  });
+}
+
+async function generateTextsTopicOnce(
+  lane: TextsLane,
+  recentHeadlines: string[],
+  feedback: string | null | undefined,
+  extra: string
 ): Promise<TextsTopic> {
   const { prisma } = await import("@/lib/prisma");
   const purpose = `${lane}-topic`;
@@ -2762,7 +2843,7 @@ export async function generateTextsTopic(
       messages: [
         {
           role: "user",
-          content: `Write one new post.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
+          content: `Write one new post.${avoidBlock(recentHeadlines, feedback)}${extra}\n\nReturn ONLY valid JSON.`,
         },
       ],
     });

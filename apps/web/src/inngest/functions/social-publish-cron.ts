@@ -1,4 +1,5 @@
 import { inngest } from "@/inngest/client";
+import type { PublishResult } from "@/lib/content-factory/social-publish";
 
 /**
  * Social auto-publish cron (2026-09-10) — posts finished photo carousels
@@ -39,6 +40,14 @@ import { inngest } from "@/inngest/client";
  *    natively. No tiktok rows are enqueued anymore; tiktok-publish.ts
  *    and the OAuth connect route stay dormant in case Phase 2
  *    (post-audit DIRECT_POST) ever revives.
+ *
+ * YOUTUBE SHORTS + THREADS (2026-09-23): posts also queue a "threads" row
+ *    (everything IG gets — carousel, or the reel MP4 as a VIDEO) and, for
+ *    REEL_LANES only, a "youtube" row that uploads the same reel as a
+ *    Short. Rows are created ONLY when that brand's credentials exist
+ *    (youtubeAccount / threadsAccount), so both platforms stay invisible
+ *    until Keenan adds the env vars. A youtube row whose reel render fell
+ *    back to a photo carousel is SKIPPED (Shorts needs a video).
  *
  * DARK BY DEFAULT: everything no-ops unless SOCIAL_AUTOPUBLISH_ENABLED=1.
  * That keeps this cron safe to deploy before the SocialPublish table is
@@ -103,15 +112,32 @@ export const socialPublishCronFn = inngest.createFunction(
       });
       if (candidates.length === 0) return 0;
 
-      const { resolveAccount, PLATFORM_WINDOWS, clampToWindow } =
-        await import("@/lib/content-factory/social-publish");
+      const {
+        resolveAccount,
+        laneBrand,
+        laneWantsReel,
+        PLATFORM_WINDOWS,
+        clampToWindow,
+      } = await import("@/lib/content-factory/social-publish");
+      const { youtubeAccount } = await import(
+        "@/lib/content-factory/youtube-publish"
+      );
+      const { threadsAccount } = await import(
+        "@/lib/content-factory/threads-publish"
+      );
+      type QueuePlatform = "instagram" | "facebook" | "threads" | "youtube";
 
       // Prime-time scheduling (2026-09-15, per Keenan): each platform
       // has its own ET window (see PLATFORM_WINDOWS) and its own queue
       // cursor, seeded after the latest already-pending row so a new
       // batch never front-runs or piles onto the existing queue.
-      const cursors = {} as Record<"instagram" | "facebook", number>;
-      for (const platform of ["instagram", "facebook"] as const) {
+      const cursors = {} as Record<QueuePlatform, number>;
+      for (const platform of [
+        "instagram",
+        "facebook",
+        "threads",
+        "youtube",
+      ] as const) {
         const latest = await prisma.socialPublish.findFirst({
           where: { status: "PENDING", platform },
           orderBy: { scheduledAt: "desc" },
@@ -124,7 +150,7 @@ export const socialPublishCronFn = inngest.createFunction(
             : 0
         );
       }
-      const nextSlot = (platform: "instagram" | "facebook") => {
+      const nextSlot = (platform: QueuePlatform) => {
         const slot = clampToWindow(new Date(cursors[platform]), platform);
         cursors[platform] = slot.getTime() + PLATFORM_WINDOWS[platform].staggerMs;
         return slot;
@@ -132,7 +158,7 @@ export const socialPublishCronFn = inngest.createFunction(
 
       const rows: {
         carouselPostId: string;
-        platform: "instagram" | "facebook";
+        platform: QueuePlatform;
         accountKey: string;
         scheduledAt: Date;
       }[] = [];
@@ -141,13 +167,22 @@ export const socialPublishCronFn = inngest.createFunction(
         // per Keenan: "don't post bwk posts across insta/facebook yet").
         // With the TikTok inbox retired (2026-09-16), BWK posts enqueue
         // nothing — they reach Keenan via the daily email only.
-        const account = await resolveAccount(post.lane);
-        if (!account) continue;
-        for (const platform of ["instagram", "facebook"] as const) {
+        const brand = await laneBrand(post.lane);
+        const platforms: QueuePlatform[] = [];
+        if (await resolveAccount(post.lane)) {
+          platforms.push("instagram", "facebook");
+        }
+        // Threads + YouTube have their own per-brand creds (2026-09-23)
+        // and only get rows when those exist — no SKIPPED noise.
+        if (threadsAccount(brand)) platforms.push("threads");
+        if (laneWantsReel(post.lane) && youtubeAccount(brand)) {
+          platforms.push("youtube");
+        }
+        for (const platform of platforms) {
           rows.push({
             carouselPostId: post.id,
             platform,
-            accountKey: account.key,
+            accountKey: brand,
             scheduledAt: nextSlot(platform),
           });
         }
@@ -174,7 +209,8 @@ export const socialPublishCronFn = inngest.createFunction(
           attempts: { lt: MAX_ATTEMPTS },
         },
         orderBy: { scheduledAt: "asc" },
-        take: MAX_POSTS_PER_RUN * 2, // IG + FB rows share a scheduledAt
+        // Up to one row per platform per post (IG, FB, Threads, YouTube).
+        take: MAX_POSTS_PER_RUN * 4,
         select: {
           id: true,
           platform: true,
@@ -194,8 +230,10 @@ export const socialPublishCronFn = inngest.createFunction(
     }[] = [];
     for (const row of dueRows) {
       // ── Reel lanes: render the slideshow video once per post ──────
-      // (step id keyed on the post, so the IG and FB rows memoize to
-      // the same render). null → fall back to the photo-carousel path.
+      // (step id keyed on the post, so the IG/FB/Threads/YouTube rows
+      // memoize to the same render — and later runs reuse the uploaded
+      // MP4 via the HEAD check). null → fall back to the photo-carousel
+      // path (YouTube rows SKIP instead).
       let reelUrl: string | null = null;
       const { laneWantsReel } = await import(
         "@/lib/content-factory/social-publish"
@@ -281,6 +319,7 @@ export const socialPublishCronFn = inngest.createFunction(
         const { prisma } = await import("@/lib/prisma");
         const {
           resolveAccount,
+          laneBrand,
           publishIgCarousel,
           publishFbPhotoPost,
           publishIgReel,
@@ -290,6 +329,12 @@ export const socialPublishCronFn = inngest.createFunction(
           trimLegacyPickList,
           feedCropUrl,
         } = await import("@/lib/content-factory/social-publish");
+        const { youtubeAccount, publishYoutubeShort } = await import(
+          "@/lib/content-factory/youtube-publish"
+        );
+        const { threadsAccount, publishThreadsCarousel, publishThreadsVideo } =
+          await import("@/lib/content-factory/threads-publish");
+        const video = reelUrl;
 
         const post = await prisma.carouselPost.findUnique({
           where: { id: row.carouselPostId },
@@ -318,53 +363,72 @@ export const socialPublishCronFn = inngest.createFunction(
         const { ensureWrittenCaption } = await import("@/lib/content-factory/caption-writer");
         post.caption = (await ensureWrittenCaption(row.carouselPostId)) ?? post.caption;
 
-        const account = await resolveAccount(post.lane);
-        const missing =
-          !account ||
-          (row.platform === "instagram" && !account.igUserId) ||
-          (row.platform === "facebook" && !account.fbPageId);
-        if (missing) {
+        // IG/FB feed posts get the 4:5 rendition so they fill the feed
+        // frame (2026-09-22, per Keenan) — TikTok emails/reels keep 9:16.
+        // Threads reuses the same 4:5 set.
+        const imageUrls = trimLegacyPickList(post.slides).map((s) =>
+          feedCropUrl(s.imageUrl)
+        );
+        const caption = post.caption;
+
+        // Resolve the platform's publisher, or a reason to SKIP the row.
+        let publish: (() => Promise<PublishResult>) | null = null;
+        let skipReason = `No ${row.platform} credentials configured`;
+        if (row.platform === "instagram" || row.platform === "facebook") {
+          const account = await resolveAccount(post.lane);
+          if (account && row.platform === "instagram" && account.igUserId) {
+            publish = () =>
+              video
+                ? publishIgReel(account, video, caption)
+                : publishIgCarousel(
+                    account,
+                    imageUrls.slice(0, IG_MAX_CAROUSEL_IMAGES),
+                    caption
+                  );
+          } else if (account && row.platform === "facebook" && account.fbPageId) {
+            // FB videos go out as Reels since 2026-09-23 (per Keenan: "the
+            // fb carousels still look low quality") — the legacy /videos
+            // feed endpoint gets Meta's harshest transcode. Fall back to
+            // it only if the Reels flow rejects the file.
+            publish = async () => {
+              if (!video) return publishFbPhotoPost(account, imageUrls, caption);
+              try {
+                return await publishFbReel(account, video, caption);
+              } catch (err) {
+                console.warn(
+                  `[social-publish] FB Reel publish failed — falling back to feed video: ${err instanceof Error ? err.message : err}`
+                );
+                return await publishFbVideo(account, video, caption);
+              }
+            };
+          }
+        } else if (row.platform === "youtube") {
+          const yt = youtubeAccount(await laneBrand(post.lane));
+          if (yt && !video) {
+            skipReason = "No reel MP4 rendered (render failed or no music) — Shorts need a video";
+          } else if (yt && video) {
+            publish = () =>
+              publishYoutubeShort(yt, video, { headline: post.headline, caption });
+          }
+        } else if (row.platform === "threads") {
+          const th = threadsAccount(await laneBrand(post.lane));
+          if (th) {
+            publish = () =>
+              video
+                ? publishThreadsVideo(th, video, caption)
+                : publishThreadsCarousel(th, imageUrls, caption);
+          }
+        }
+        if (!publish) {
           await prisma.socialPublish.update({
             where: { id: row.id },
-            data: {
-              status: "SKIPPED",
-              error: `No ${row.platform} credentials configured`,
-            },
+            data: { status: "SKIPPED", error: skipReason },
           });
           return false;
         }
 
-        // IG/FB feed posts get the 4:5 rendition so they fill the feed
-        // frame (2026-09-22, per Keenan) — TikTok emails/reels keep 9:16.
-        const imageUrls = trimLegacyPickList(post.slides).map((s) =>
-          feedCropUrl(s.imageUrl)
-        );
-        // FB videos go out as Reels since 2026-09-23 (per Keenan: "the fb
-        // carousels still look low quality") — the legacy /videos feed
-        // endpoint gets Meta's harshest transcode. Fall back to it only
-        // if the Reels flow rejects the file.
-        const publishFbVideoOrReel = async (url: string, caption: string) => {
-          try {
-            return await publishFbReel(account, url, caption);
-          } catch (err) {
-            console.warn(
-              `[social-publish] FB Reel publish failed — falling back to feed video: ${err instanceof Error ? err.message : err}`
-            );
-            return await publishFbVideo(account, url, caption);
-          }
-        };
         try {
-          const result = reelUrl
-            ? row.platform === "instagram"
-              ? await publishIgReel(account, reelUrl, post.caption)
-              : await publishFbVideoOrReel(reelUrl, post.caption)
-            : row.platform === "instagram"
-              ? await publishIgCarousel(
-                  account,
-                  imageUrls.slice(0, IG_MAX_CAROUSEL_IMAGES),
-                  post.caption
-                )
-              : await publishFbPhotoPost(account, imageUrls, post.caption);
+          const result = await publish();
 
           await prisma.socialPublish.update({
             where: { id: row.id },
@@ -391,7 +455,7 @@ export const socialPublishCronFn = inngest.createFunction(
             });
           }
           console.log(
-            `[social-publish] POSTED ${row.platform}/${account.key}: "${post.headline}" → ${result.permalink ?? result.externalId}`
+            `[social-publish] POSTED ${row.platform}/${row.accountKey}: "${post.headline}" → ${result.permalink ?? result.externalId}`
           );
           return {
             headline: post.headline ?? "",

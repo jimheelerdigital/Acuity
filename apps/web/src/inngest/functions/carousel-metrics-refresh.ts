@@ -38,7 +38,7 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
       { event: "content-factory/metrics.refresh" },
     ],
   },
-  async ({ step, logger }) => {
+  async ({ event, step, logger }) => {
     const ig = await step.run("fetch-instagram", async () => {
       const { prisma } = await import("@/lib/prisma");
       const igLib = await import("@/lib/content-factory/instagram-metrics");
@@ -166,12 +166,15 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
     logger.info(`[metrics-refresh] Facebook: ${fb.refreshed}/${fb.candidates}`);
 
     // One step per account — an Apify run-sync call can take minutes.
+    // Full history on Sundays (UTC) or when requested ({ full: true }).
+    const full =
+      (event.data as { full?: boolean } | undefined)?.full === true || new Date(event.ts ?? Date.now()).getUTCDay() === 0;
     const { TIKTOK_ACCOUNTS } = await import("@/lib/content-factory/tiktok-metrics");
     const tiktok: Array<{ account: string; fetched: number; matched: number; error?: string }> = [];
     for (const account of TIKTOK_ACCOUNTS) {
       const r = await step.run(`fetch-tiktok-${account.key}`, async () => {
         const { refreshTikTokAccount } = await import("@/lib/content-factory/tiktok-metrics");
-        return refreshTikTokAccount(account);
+        return refreshTikTokAccount(account, { full });
       });
       logger.info(`[metrics-refresh] TikTok @${r.account}: ${r.fetched} videos, ${r.matched} matched${r.error ? ` — ${r.error}` : ""}`);
       tiktok.push(r);
