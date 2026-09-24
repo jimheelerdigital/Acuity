@@ -1,5 +1,6 @@
 "use client";
 
+import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import {
@@ -625,11 +626,10 @@ function RecordScreen({
           >
             <div className="mb-6">
               <p className="text-sm font-medium text-zinc-400 mb-2">
-                4.9{" "}
                 <span className="text-amber-400">
                   &#9733;&#9733;&#9733;&#9733;&#9733;
                 </span>{" "}
-                from 127+ users
+                {APP_STORE_RATING_LABEL}
               </p>
               <div className="relative h-10 overflow-hidden">
                 {MINI_TESTIMONIALS.map((t, i) => (
@@ -1352,7 +1352,6 @@ const CTA_TESTIMONIALS = STATIC_CAROUSEL_TESTIMONIALS.map((t) => ({
 function CTAScreen({ userId }: { userId: string | null }) {
   const [showSection, setShowSection] = useState(0);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
-  const [counter, setCounter] = useState(0);
 
   // Shared App Store CTA webview handling (see components/app-store-cta.tsx):
   // in IG/FB webviews, drop target="_blank", auto-copy the link, show breakout
@@ -1386,23 +1385,6 @@ function CTAScreen({ userId }: { userId: string | null }) {
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
-
-  // Animated counter: 0 → 127 over 1.5s
-  useEffect(() => {
-    if (showSection < 4) return;
-    const target = 127;
-    const duration = 1500;
-    const startTime = Date.now();
-    const frame = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease-out
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCounter(Math.round(eased * target));
-      if (progress < 1) requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
-  }, [showSection]);
 
   // Rotate testimonials every 4 seconds
   useEffect(() => {
@@ -1521,10 +1503,9 @@ function CTAScreen({ userId }: { userId: string | null }) {
           ))}
         </div>
 
-        {/* Social proof counter */}
+        {/* Social proof — App Store rating line */}
         <div className={`text-center mb-8 transition-all duration-700 ${vis(4)}`}>
           <div className="flex items-center justify-center gap-1.5 mb-1">
-            <span className="text-2xl font-bold text-zinc-900">4.9</span>
             {[0, 1, 2, 3, 4].map((i) => (
               <span
                 key={i}
@@ -1538,10 +1519,7 @@ function CTAScreen({ userId }: { userId: string | null }) {
               </span>
             ))}
           </div>
-          <p className="text-sm text-zinc-500">
-            <span className="font-semibold text-zinc-700 tabular-nums">{counter}+</span>{" "}
-            users
-          </p>
+          <p className="text-sm text-zinc-500">{APP_STORE_RATING_LABEL}</p>
         </div>
 
         {/* Testimonial carousel — single card, auto-cycling */}

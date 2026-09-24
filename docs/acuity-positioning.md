@@ -75,4 +75,4 @@ These apply to all customer-facing copy — site, ads, app, emails, blog, push n
 - ❌ no recording-duration claims ("60-second," "90-second," etc.)
 - Pricing: **$9.99/month** (default) and $89.99/year, 7-day free trial. Never lead with annual; never quote stale prices ($4.99, $12.99 eras). Subscribers from before the 2026-09 price change are grandfathered at $4.99/$39.99 — only mention that in copy aimed at EXISTING subscribers.
 - Voice: a **mirror, not a coach** — reflect, don't advise.
-- Keep "4.9 stars from 127+ users" social proof as-is.
+- Social proof rating line: five stars "on the App Store", no number and no user count (Keenan, 2026-09-24; replaces the old "4.9 stars from 127+ users" line).

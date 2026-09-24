@@ -74,6 +74,33 @@ export interface Question {
   normalization?: string;
 }
 
+// ─── Entry Intro (Screen 1, above the question) ─────────────────────────────
+//
+// v8.2 (2026-09-24): Screen 1 used to open cold on a personal question from a
+// brand the visitor had never heard of. Real in-app ad visitors answered it
+// 4 of 11 times, against roughly half for typical quiz funnels. The intro says
+// what Ripple is and shows it working (the same "you say it → Ripple catches
+// it" shape as the say-catch ads), then asks the question.
+
+export interface EntryIntro {
+  headline: string;
+  sub: string;
+  /** What a person says out loud. Rendered as a quote. */
+  said: string;
+  /** What Ripple pulls out of it. Rendered as checked items. */
+  caught: string[];
+  /** Line above the question: how long the quiz is and what they get. */
+  quizLine: string;
+}
+
+export const ENTRY_INTRO: EntryIntro = {
+  headline: "You say it. Ripple catches it.",
+  sub: "Your to-dos, your moods and the patterns you keep repeating, pulled from your own words.",
+  said: "Mom\u2019s refill is due Friday, and I still haven\u2019t booked Emma\u2019s dentist\u2026",
+  caught: ["Call about Mom\u2019s refill \u00b7 Fri", "Book Emma\u2019s dentist"],
+  quizLine: "Answer 4 questions. See your pattern.",
+};
+
 // ─── Entry Question (Screen 1) ──────────────────────────────────────────────
 
 export const ENTRY_QUESTION: Question = {
@@ -1518,6 +1545,7 @@ export interface FunnelVariantConfig {
   /** Route the funnel lives on. OAuth, Stripe and the auth error page return here. */
   path: "/start" | "/start-bwk";
   ENTRY_QUESTION: Question;
+  ENTRY_INTRO: EntryIntro;
   BRANCH_QUESTIONS: Record<Branch, [Question, Question, Question]>;
   SHARED_QUESTIONS: Question[];
   BRANCH_Q6: Record<Branch, Question>;
@@ -1547,6 +1575,7 @@ export const DEFAULT_FUNNEL_CONFIG: FunnelVariantConfig = {
   flowVersion: "v8",
   path: "/start",
   ENTRY_QUESTION,
+  ENTRY_INTRO,
   BRANCH_QUESTIONS,
   SHARED_QUESTIONS,
   BRANCH_Q6,

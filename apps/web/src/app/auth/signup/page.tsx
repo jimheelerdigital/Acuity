@@ -18,7 +18,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Suspense, useEffect, useRef, useState } from "react";
 
-import { SOCIAL_PROOF } from "@/lib/social-proof";
+import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 
 const PASSWORD_MIN = 8;
 const REFERRAL_KEY = "acuity_ref_code";
@@ -282,7 +282,7 @@ function SignUpForm() {
             <div className="flex items-center gap-1.5">
               <span className="text-amber-400 text-sm">★★★★★</span>
               <span className="text-xs font-medium text-zinc-600">
-                {SOCIAL_PROOF.rating} from {SOCIAL_PROOF.users} users
+                {APP_STORE_RATING_LABEL}
               </span>
             </div>
             <span className="text-xs font-medium text-acuity-primary">

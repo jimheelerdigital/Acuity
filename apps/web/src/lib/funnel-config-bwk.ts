@@ -24,6 +24,7 @@
 import {
   type Branch,
   type Question,
+  type EntryIntro,
   type PainFragments,
   type ReliefFlipConfig,
   type CurrentFutureContent,
@@ -46,6 +47,17 @@ const BWK_STEP_ORDER: FunnelStep[] = [
   "processing", "pattern-result", "timeline",
   "create-account", "savings",
 ];
+
+// ─── Entry Intro (Screen 1, above the question) ─────────────────────────────
+// Same shape as /start's (see ENTRY_INTRO in funnel-config.ts), men's examples.
+
+export const BWK_ENTRY_INTRO: EntryIntro = {
+  headline: "You say it. Ripple catches it.",
+  sub: "The tasks, the pressure and the stuff you keep putting off, pulled from your own words.",
+  said: "Dave\u2019s invoice goes out Friday, and I still haven\u2019t called about the truck\u2026",
+  caught: ["Send Dave\u2019s invoice \u00b7 Fri", "Call about the truck"],
+  quizLine: "Answer 4 questions. See your pattern.",
+};
 
 // ─── Entry Question (Screen 1) ──────────────────────────────────────────────
 
@@ -1340,6 +1352,7 @@ export const BWK_FUNNEL_CONFIG: FunnelVariantConfig = {
   flowVersion: "v8-bwk",
   path: "/start-bwk",
   ENTRY_QUESTION: BWK_ENTRY_QUESTION,
+  ENTRY_INTRO: BWK_ENTRY_INTRO,
   BRANCH_QUESTIONS: BWK_BRANCH_QUESTIONS,
   SHARED_QUESTIONS: BWK_SHARED_QUESTIONS,
   BRANCH_Q6: BWK_BRANCH_Q6,

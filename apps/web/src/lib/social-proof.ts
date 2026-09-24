@@ -20,6 +20,14 @@ export const SOCIAL_PROOF = {
   secondsPerEntry: "60s",
 } as const;
 
+/**
+ * The rating line shown in the ad funnels and signup flows (Keenan's call,
+ * 2026-09-24): five stars "on the App Store", no number and no user count.
+ * The old "4.9 from 127+ users" line didn't match the App Store, which shows
+ * a 5.0 average from a handful of ratings.
+ */
+export const APP_STORE_RATING_LABEL = "on the App Store";
+
 /** One item in the landing page's stats ticker. */
 export type StatStripItem = {
   value: number;

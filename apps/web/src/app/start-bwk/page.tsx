@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { StartBwkPageClient } from "./client";
-import { BWK_ENTRY_QUESTION, BWK_FUNNEL_CONFIG } from "@/lib/funnel-config-bwk";
+import { BWK_ENTRY_QUESTION, BWK_ENTRY_INTRO, BWK_FUNNEL_CONFIG } from "@/lib/funnel-config-bwk";
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
 
 export const metadata: Metadata = {
@@ -43,7 +43,7 @@ export default async function StartBwkPage({
   return (
     <>
       {bodyBg}
-      <FunnelSsrEntry question={BWK_ENTRY_QUESTION} theme="dusk" totalSteps={BWK_FUNNEL_CONFIG.STEP_ORDER.length} />
+      <FunnelSsrEntry question={BWK_ENTRY_QUESTION} intro={BWK_ENTRY_INTRO} theme="dusk" totalSteps={BWK_FUNNEL_CONFIG.STEP_ORDER.length} />
 
       {/* Client component hydrates on top — hides SSR content and takes over */}
       <StartBwkPageClient />

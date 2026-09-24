@@ -1,14 +1,16 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { getProviders, signIn, useSession } from "next-auth/react";
 import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsPct, planValueDollars } from "@/lib/pricing";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import { PRIORITY_COLOR } from "@acuity/shared";
-import { GoogleLogo } from "@/components/debrief-shared";
+import { AppleLogo, GoogleLogo } from "@/components/debrief-shared";
 import { fireFbq, waitForFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
 import { detectBrowserEnv, useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
 import { PRE_TAP_KEY } from "@/components/funnel-ssr-entry";
+import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
+import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import {
   type Branch,
   type Question,
@@ -61,9 +63,9 @@ const DOWNLOAD_TESTIMONIALS = [
   { quote: "Week 3, Ripple connected my mom to my work stress. A year of therapy never did.", name: "Priya R." },
 ];
 
-// ── Reusable social proof (reuses the EXISTING 4.9/127+ rating + real testimonials) ──
-// Rating value, star markup, and "127+ users" copy mirror the Download screen exactly
-// and must not change (brand rule). Testimonial quotes are reused from the real
+// ── Reusable social proof (App Store rating line + real testimonials) ──
+// The rating line is five stars "on the App Store", no number or user count
+// (Keenan, 2026-09-24; see APP_STORE_RATING_LABEL). Testimonial quotes are reused from the real
 // PAYWALL_TESTIMONIALS_V2 set — no new or fabricated copy. Each element fires
 // funnel_social_proof_viewed with its placement so we can measure step drop-off.
 
@@ -75,8 +77,8 @@ function SocialProofRating({ track, placement, className }: {
   useEffect(() => { track("funnel_social_proof_viewed", { value: placement }); }, []);
   return (
     <p className={`text-[13px] font-semibold text-acuity-text-ter ${className ?? ""}`}>
-      4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
-      <span className="font-medium text-acuity-text-ter">from 127+ users</span>
+      <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
+      <span className="font-medium text-acuity-text-ter">{APP_STORE_RATING_LABEL}</span>
     </p>
   );
 }
@@ -95,6 +97,15 @@ function SocialProofQuote({ track, placement, testimonial, className, style }: {
       <p className="mt-1.5 text-[11px] font-semibold text-acuity-text-ter">&mdash; {testimonial.name}</p>
     </div>
   );
+}
+
+// Screen 1 intro (what Ripple is + a say/catch example + rating line). Same
+// component the server renders in FunnelSsrEntry, so hydration doesn't shift.
+// Keeps the funnel_social_proof_viewed "entry" event the old rating line fired.
+function EntryIntroSlot({ track }: { track: (event: string, props?: Record<string, unknown>) => void }) {
+  const cfg = useFunnelConfig();
+  useEffect(() => { track("funnel_social_proof_viewed", { value: "entry" }); }, []);
+  return <FunnelEntryIntro intro={cfg.ENTRY_INTRO} theme={cfg.theme} />;
 }
 
 // ─── Session Tracking ───────────────────────────────────────────────────────
@@ -776,8 +787,11 @@ export function OnboardingFunnel() {
           style={{ width: `${progressPct}%`, boxShadow: "0 0 8px var(--acuity-glow-primary)" }} />
       </div>
 
-      {/* Back button — hidden on entry and download */}
-      {step !== "entry" && step !== "download" && (
+      {/* Back button — hidden on entry, savings and download. On savings the
+          account already exists, so "back" landed people on a sign-up form
+          they'd just completed — a dead end (09-24: a paid Meta signup tapped
+          it 4s into the paywall and left). */}
+      {step !== "entry" && step !== "savings" && step !== "download" && (
         <button onClick={goBack} className="fixed top-5 left-5 z-50 rounded-full bg-acuity-bg-sub p-2 text-acuity-text-ter hover:text-acuity-text transition" aria-label="Go back">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -814,17 +828,12 @@ export function OnboardingFunnel() {
         return (
           <SingleSelectScreen
             key={step}
-            question={isEntry ? undefined : q.text}
-            questionLarge={isEntry ? q.text : undefined}
+            question={q.text}
+            compactQuestion={isEntry}
             options={q.options}
             normalization={q.normalization}
             highlightBranch={isEntry ? adMatchBranch : undefined}
-            topSlot={isEntry ? (
-              <div className="text-center">
-                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-acuity-text-ter mb-2">Ripple &middot; 2-minute check-in</p>
-                <SocialProofRating track={track} placement="entry" />
-              </div>
-            ) : undefined}
+            topSlot={isEntry ? <EntryIntroSlot track={track} /> : undefined}
             onSelect={(opt) => {
               if (isEntry && opt.branch) {
                 selectEntry(opt, "tap");
@@ -959,9 +968,11 @@ const CHOICE_BASE =
 
 // ─── Single Select Question Screen ──────────────────────────────────────────
 
-function SingleSelectScreen({ question, questionLarge, options, normalization, onSelect, highlightBranch, topSlot }: {
+function SingleSelectScreen({ question, questionLarge, compactQuestion, options, normalization, onSelect, highlightBranch, topSlot }: {
   question?: string;
   questionLarge?: string;
+  /** Screen 1: the intro above holds the h1, so the question sits closer to the options. */
+  compactQuestion?: boolean;
   options: { label: string; branch?: Branch }[];
   normalization?: string;
   onSelect: (opt: { label: string; branch?: Branch }) => void;
@@ -978,15 +989,15 @@ function SingleSelectScreen({ question, questionLarge, options, normalization, o
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-acuity-text">
+    <div className={`min-h-screen flex flex-col items-center justify-center px-6 text-acuity-text ${compactQuestion ? "pt-8 pb-8" : ""}`}>
       <div className="max-w-md w-full">
         {topSlot && (
-          <div className="mb-7 flex justify-center funnel-screen">{topSlot}</div>
+          <div className={compactQuestion ? "w-full funnel-screen" : "mb-7 flex justify-center funnel-screen"}>{topSlot}</div>
         )}
         {questionLarge ? (
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10 funnel-screen">{questionLarge}</h1>
         ) : question ? (
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center mb-8 funnel-screen">{question}</h2>
+          <h2 className={`text-xl sm:text-2xl font-bold tracking-tight text-center funnel-screen ${compactQuestion ? "mb-5" : "mb-8"}`}>{question}</h2>
         ) : null}
         <div className="space-y-3" style={{ minHeight: `${options.length * 64}px` }}>
           {options.map((opt, i) => {
@@ -1535,7 +1546,7 @@ function ProcessingTheater({ onComplete }: { onComplete: () => void }) {
         <p className="text-sm text-acuity-text-ter h-6 transition-opacity duration-300">{stage.text}</p>
         <div className={`mt-10 transition-all duration-500 ${showSocial ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
           <p className="text-xs text-acuity-text-ter">
-            4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
+            <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span> {APP_STORE_RATING_LABEL}
           </p>
         </div>
       </div>
@@ -1706,7 +1717,7 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
           <p className="text-base font-semibold text-acuity-text leading-relaxed">{bottomLine}</p>
         </div>
 
-        {/* Social proof — the 4.9 / 127+ reviews rating (mirrors the Download screen) */}
+        {/* Social proof — the App Store rating line */}
         {showBottom && (
           <div className="mb-8 text-center funnel-screen">
             <SocialProofRating track={track} placement="timeline" />
@@ -1737,7 +1748,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [signupLoading, setSignupLoading] = useState<"email" | "google" | null>(null);
+  const [signupLoading, setSignupLoading] = useState<"email" | "google" | "apple" | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
   // In-app browsers (FB/IG) put email first: email signup succeeded 21/21
   // there, Google 42/67 (v6-v7 data). Set after mount — the UA isn't known
@@ -1747,6 +1758,14 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   // finish (bounced back here, or sent back by /auth/error). We say so and
   // point at the email form instead of leaving them on a silent form.
   const [oauthFailed, setOauthFailed] = useState(false);
+  // Which provider failed, for the note ("Google" / "Apple"). Null when we
+  // only know *a* sign-in failed (the /auth/error bounce loses the marker).
+  const [failedProvider, setFailedProvider] = useState<string | null>(null);
+  // Apple shows only when the server actually has the Apple provider
+  // configured (APPLE_CLIENT_ID + APPLE_CLIENT_SECRET). As of 2026-09-24 prod
+  // doesn't, so the button stays hidden instead of leading to an error page,
+  // and appears on its own once the env vars are set.
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
   const headline = branch ? cfg.getCreateAccountHeadline(branch) : "Your patterns are already forming. Create your free account to see them.";
 
@@ -1789,12 +1808,21 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       track(evt, { value: `${pending.provider}|${pending.env}|awayMs:${awayMs}${errPart}` });
       clearOAuthPending();
       setOauthFailed(true);
+      setFailedProvider(pending.provider);
     } else if (qs.get("oauth") === "failed") {
       // Sent back by /auth/error. The pending marker may be gone (webview
       // storage partitioning), so the URL flag alone is enough to show the note.
       setOauthFailed(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProviders()
+      .then((p) => { if (!cancelled && p?.apple) setAppleAvailable(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -1901,13 +1929,15 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
     }
   };
 
-  // Apple was removed from the web funnels on 2026-09-24: 1 success in 15
-  // attempts (0/10 inside FB/IG). Apple returns via a cross-site form POST;
-  // see the oauth check-cookie notes in lib/auth.ts.
-  const handleOAuthSignup = async (provider: "google") => {
+  // Apple: pulled on 2026-09-24 after 1 success in 15 (0/10 inside FB/IG).
+  // The cause was the PKCE cookie being SameSite=Lax on Apple's cross-site
+  // form POST (fixed in lib/auth.ts the same day). Back from v8.2, shown only
+  // when the provider is configured (appleAvailable). If an Apple attempt
+  // bounces, the same "use your email" note as Google appears.
+  const handleOAuthSignup = async (provider: "google" | "apple") => {
     track("funnel_signup_started", { value: provider });
     const envDiag = getSignupEnvDiag();
-    track("funnel_oauth_google_tapped", { value: envDiag });
+    track(`funnel_oauth_${provider}_tapped`, { value: envDiag });
     setSignupLoading(provider);
 
     // Carry attribution through the OAuth round-trip on the callbackUrl.
@@ -1973,6 +2003,30 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       )}
       Continue with Google
     </button>
+  );
+
+  // Apple's guidelines: black button with white text on light backgrounds,
+  // white with black text on dark ones (the dusk /start-bwk theme).
+  const appleButton = appleAvailable ? (
+    <button
+      onClick={() => handleOAuthSignup("apple")}
+      disabled={signupLoading !== null}
+      className={`w-full flex items-center justify-center gap-3 rounded-full px-4 py-3.5 text-[15px] font-semibold transition active:scale-[0.98] disabled:opacity-50 ${cfg.theme === "dusk" ? "bg-white text-black hover:bg-zinc-100" : "bg-black text-white hover:bg-zinc-800"}`}
+    >
+      {signupLoading === "apple" ? (
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      ) : (
+        <AppleLogo />
+      )}
+      Continue with Apple
+    </button>
+  ) : null;
+
+  const oauthButtons = (
+    <div className="space-y-3">
+      {appleButton}
+      {googleButton}
+    </div>
   );
 
   const divider = (
@@ -2043,21 +2097,22 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
         {oauthFailed && (
           <div className="mb-5 rounded-[14px] f-tint px-4 py-3 text-[13px] leading-snug text-acuity-text" role="status">
-            Google sign-in didn&rsquo;t go through{inApp ? " inside this app" : ""}. Use your email below instead. It works everywhere.
+            {failedProvider === "apple" ? "Apple" : failedProvider === "google" ? "Google" : "That"} sign-in didn&rsquo;t go through{inApp ? " inside this app" : ""}. Use your email below instead. It works everywhere.
           </div>
         )}
 
         {/* In FB/IG in-app browsers email leads (it never fails there);
-            everywhere else Google leads. Google is still offered in both. */}
+            everywhere else the one-tap buttons lead (Apple, then Google).
+            Both are offered in both. */}
         {inApp ? (
           <>
             {emailForm}
             {divider}
-            {googleButton}
+            {oauthButtons}
           </>
         ) : (
           <>
-            {googleButton}
+            {oauthButtons}
             {divider}
             {emailForm}
           </>
@@ -2207,11 +2262,11 @@ function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanC
           ))}
         </section>
 
-        {/* Social proof — the brand's rating line + one real quote */}
+        {/* Social proof — the App Store rating line + one real quote */}
         <section className="text-center mb-4 funnel-card-stagger" style={{ animationDelay: "320ms" }}>
           <p className="text-[13px] font-semibold text-acuity-text-sec">
-            4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
-            <span className="font-medium text-acuity-text-ter">from 127+ users</span>
+            <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span>{" "}
+            <span className="font-medium text-acuity-text-ter">{APP_STORE_RATING_LABEL}</span>
           </p>
           {testimonial && (
             <figure className="mt-3 rounded-[18px] f-sub px-4 py-3">
@@ -2231,7 +2286,8 @@ function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanC
             {loading ? "Loading\u2026" : "Start my free 7 days"}
           </button>
           <p className="text-[12px] text-center mt-2 text-acuity-text-sec tabular-nums">
-            <span className="font-semibold text-acuity-text">$0 today.</span> Then {afterTrialPrice}. Cancel anytime.
+            <span className="font-semibold text-acuity-text">$0 today.</span> We&rsquo;ll email you before you&rsquo;re charged.
+            <span className="block">Then {afterTrialPrice}. Cancel anytime from your account.</span>
           </p>
           <button onClick={onSkip} disabled={loading}
             className="w-full mt-2 py-1.5 text-[14px] font-medium text-acuity-text-sec underline-offset-4 hover:underline disabled:opacity-50">
@@ -2416,7 +2472,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 
         <div className="mt-8">
           <p className="text-sm font-semibold text-acuity-text-ter mb-1">
-            4.9 <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
+            <span className="text-acuity-warn">&#9733;&#9733;&#9733;&#9733;&#9733;</span> {APP_STORE_RATING_LABEL}
           </p>
           <div className="mt-3 min-h-[60px] relative">
             {DOWNLOAD_TESTIMONIALS.map((t, i) => (

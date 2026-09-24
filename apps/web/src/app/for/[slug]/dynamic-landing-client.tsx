@@ -199,7 +199,7 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                 No credit card. Cancel anytime.
               </p>
               <p className="mt-4 text-xs text-acuity-text-sec/60">
-                <span className="text-amber-400">4.9 ★</span> on the App Store
+                <span className="text-amber-400">★★★★★</span> on the App Store
               </p>
             </div>
           </div>

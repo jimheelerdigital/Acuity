@@ -1,5 +1,6 @@
 "use client";
 
+import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
@@ -117,7 +118,6 @@ const CTA_TESTIMONIALS = STATIC_CAROUSEL_TESTIMONIALS.map((t) => ({
 function DownloadCTAScreen() {
   const [showSection, setShowSection] = useState(0);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
-  const [counter, setCounter] = useState(0);
 
   // Shared App Store CTA webview handling (see components/app-store-cta.tsx):
   // in IG/FB webviews, drop target="_blank", auto-copy the link, show breakout
@@ -147,21 +147,6 @@ function DownloadCTAScreen() {
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
-
-  useEffect(() => {
-    if (showSection < 4) return;
-    const target = 127;
-    const duration = 1500;
-    const startTime = Date.now();
-    const frame = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCounter(Math.round(eased * target));
-      if (progress < 1) requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
-  }, [showSection]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -231,12 +216,11 @@ function DownloadCTAScreen() {
 
         <div className={`text-center mb-8 transition-all duration-700 ${vis(4)}`}>
           <div className="flex items-center justify-center gap-1.5 mb-1">
-            <span className="text-2xl font-bold text-zinc-900">4.9</span>
             {[0, 1, 2, 3, 4].map((i) => (
               <span key={i} className="text-xl text-amber-400" style={{ animation: `star-twinkle 2s ease-in-out infinite`, animationDelay: `${i * 0.3}s` }}>&#9733;</span>
             ))}
           </div>
-          <p className="text-sm text-zinc-500"><span className="font-semibold text-zinc-700 tabular-nums">{counter}+</span> users</p>
+          <p className="text-sm text-zinc-500">{APP_STORE_RATING_LABEL}</p>
         </div>
 
         <div className={`mb-10 transition-all duration-700 ${vis(5)}`}>
