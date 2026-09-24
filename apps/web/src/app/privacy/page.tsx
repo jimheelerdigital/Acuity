@@ -7,11 +7,13 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "June 3, 2026";
+const LAST_UPDATED = "September 24, 2026";
 
 /**
  * Privacy Policy — GDPR + UK GDPR compliant rewrite for Phase 1
  * international launch (UK / IE / AU / NZ). v1.4 (2026-06-03).
+ * v1.5 (2026-09-24): no first-visit cookie banner; §9 describes the
+ * region/GPC defaults from components/cookie-consent.tsx.
  *
  * Sections required for compliance and present below:
  *   1. Data we collect (categories + sources)
@@ -131,8 +133,8 @@ export default function PrivacyPage() {
                 hash of your email &mdash; this is pseudonymisation, not
                 anonymisation, and the hash remains personal data.
                 Transcripts, audio, and free-text content are never
-                included. On the web these load only after you grant
-                cookie consent. In the app we measure how features are
+                included. On the web these follow your cookie
+                settings (see Section 9). In the app we measure how features are
                 used to improve them; you can opt out at any time via
                 Settings &rarr; Privacy &rarr; Product analytics.
                 Pre-signup funnel measurement (anonymous, used for ad
@@ -252,8 +254,8 @@ export default function PrivacyPage() {
                       Art. 6(1)(a) &mdash; consent
                     </td>
                     <td className="py-2 align-top">
-                      Loaded only after you accept analytics cookies on
-                      the web.
+                      Off in Europe/UK unless you opt in; on by default
+                      elsewhere and can be turned off (Section 9).
                     </td>
                   </tr>
                   <tr className="border-b border-acuity-line">
@@ -493,7 +495,7 @@ export default function PrivacyPage() {
                       Meta (Pixel)
                     </td>
                     <td className="py-2 pr-4 align-top">
-                      Marketing attribution on consenting visitors only
+                      Ad measurement on the website (see Section 9 for when it loads)
                     </td>
                     <td className="py-2 pr-4 align-top">US / Ireland</td>
                     <td className="py-2 align-top">SCCs + UK IDTA + DPF</td>
@@ -758,12 +760,24 @@ export default function PrivacyPage() {
               function without them.
             </p>
             <p className="mt-4">
-              All non-essential tracking &mdash; Google Analytics, the
-              Meta Pixel, session-recording tools, and PostHog product
-              analytics &mdash; loads only after you accept cookies on
-              the banner shown to first-time visitors. You can change
-              your choice at any time via the &ldquo;Cookie settings&rdquo;
-              link in the footer.
+              Non-essential tracking on the website means Google
+              Analytics, PostHog product analytics and a
+              session-recording tool (&ldquo;analytics&rdquo;), and the
+              Meta Pixel, which tells Meta which ads led to a visit or
+              signup (&ldquo;ad measurement&rdquo;).
+            </p>
+            <p className="mt-4">
+              If your browser is set to a time zone in Europe or the
+              UK, none of it loads unless you turn it on. If your
+              browser sends a Global Privacy Control signal, none of
+              it loads either. Everywhere else, including the US, both
+              are on by default, except the session-recording tool,
+              which only runs if you turn analytics on yourself in
+              Cookie settings. You can turn either one off at any
+              time via &ldquo;Cookie settings&rdquo; in the site footer
+              or Account &rarr; Manage cookie preferences. Your choice
+              is saved in your browser and, when you&rsquo;re signed in,
+              on your account.
             </p>
           </Section>
 

@@ -14,6 +14,7 @@ import {
 import { LifeDimensionsSection } from "./life-dimensions-section";
 import { NotificationPreferencesSection } from "./notification-preferences-section";
 import { BackfillOlderEntriesCard } from "./backfill-older-card";
+import { openConsentPreferences } from "@/components/cookie-consent";
 
 interface Props {
   email: string;
@@ -282,20 +283,12 @@ export default function AccountClient({
             Privacy choices
           </h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Revisit what categories of cookies you&rsquo;ve accepted (analytics +
-            marketing). Strictly-necessary cookies for sign-in + recording are
-            always on — the app doesn&rsquo;t function without them.
+            Turn analytics and ad measurement (Meta Pixel) on or off.
+            Strictly-necessary cookies for sign-in + recording are always
+            on — the app doesn&rsquo;t function without them.
           </p>
           <button
-            onClick={() => {
-              try {
-                window.localStorage.removeItem("acuity_consent");
-                window.dispatchEvent(new CustomEvent("acuity:consent-changed"));
-                window.location.reload();
-              } catch {
-                // ignore
-              }
-            }}
+            onClick={openConsentPreferences}
             className="mt-4 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-white/10 dark:bg-acuity-card-bg dark:text-zinc-200 dark:hover:bg-white/5"
           >
             Manage cookie preferences

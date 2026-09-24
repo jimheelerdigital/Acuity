@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
+
+import { CookieSettingsLink } from "@/components/cookie-consent";
 import { displayMonthly } from "@/lib/pricing";
 import { SOCIAL_PROOF } from "@/lib/social-proof";
 
@@ -639,6 +641,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-acuity-text-sec">
               <li><a href="/terms" className="transition hover:text-acuity-text">Terms</a></li>
               <li><a href="/privacy" className="transition hover:text-acuity-text">Privacy</a></li>
+              <li><CookieSettingsLink className="transition hover:text-acuity-text" /></li>
               <li><a href="mailto:hello@getacuity.io" className="transition hover:text-acuity-text">Contact</a></li>
             </ul>
           </div>

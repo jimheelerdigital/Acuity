@@ -4,7 +4,7 @@ import posthog from "posthog-js";
 import { PostHogProvider as PostHogReactProvider } from "posthog-js/react";
 import { useEffect, useState } from "react";
 
-import { readConsent } from "@/components/cookie-consent";
+import { effectiveConsent } from "@/components/cookie-consent";
 
 /**
  * Client-side PostHog initialization. Mounted once in the root
@@ -18,10 +18,11 @@ import { readConsent } from "@/components/cookie-consent";
  *   NEXT_PUBLIC_POSTHOG_HOST — optional proxy host. Defaults to
  *                              https://us.i.posthog.com.
  *
- * CONSENT: PostHog counts as Analytics under our cookie banner. It
- * will not initialize until the user has accepted analytics via
- * CookieConsentBanner. Until then, PostHogReactProvider still mounts
- * but posthog.capture() calls are no-ops because .init() never ran.
+ * CONSENT: PostHog counts as Analytics. It initializes only when
+ * effectiveConsent().analytics is true (on by default outside
+ * Europe/UK unless GPC is sent or the visitor turned it off; see
+ * cookie-consent.tsx). Otherwise PostHogReactProvider still mounts but
+ * posthog.capture() calls are no-ops because .init() never ran.
  *
  * No-op when NEXT_PUBLIC_POSTHOG_KEY is unset — safe to ship without
  * PostHog provisioned (dev, staging, and the first production deploy
@@ -35,7 +36,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   // revocation in sync without a page reload.
   useEffect(() => {
     const sync = () => {
-      setAnalyticsConsent(readConsent()?.analytics === true);
+      setAnalyticsConsent(effectiveConsent().analytics);
     };
     sync();
     window.addEventListener("acuity:consent-changed", sync);

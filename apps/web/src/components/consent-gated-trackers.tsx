@@ -3,7 +3,7 @@
 import Script from "next/script";
 import { useEffect, useState } from "react";
 
-import { readConsent } from "@/components/cookie-consent";
+import { effectiveConsent, readConsent } from "@/components/cookie-consent";
 
 /**
  * Consent-gated tracking script loader.
@@ -17,13 +17,18 @@ import { readConsent } from "@/components/cookie-consent";
  * lawful basis short of consent for non-essential marketing
  * attribution.
  *
- * What loads when:
- *   - GA4 + session recording: ONLY after `consent.analytics === true`.
- *   - Meta Pixel: ONLY after `consent.marketing === true`.
+ * What loads when (2026-09-24, no first-visit banner):
+ *   - GA4: when effectiveConsent().analytics.
+ *   - Session recording (Contentsquare): only on an explicit saved opt-in.
+ *   - Meta Pixel: when effectiveConsent().marketing.
+ * effectiveConsent() = the visitor's explicit choice if they made one,
+ * else ON for US/most visitors and OFF for Europe/UK time zones or a
+ * Global Privacy Control signal. So US ad traffic gets the pixel on the
+ * first page view of /start and /start-bwk. See cookie-consent.tsx.
  *
  * Consent state is read on mount and on every
  * `acuity:consent-changed` event (fired by cookie-consent.tsx after
- * the user picks an option or changes one mid-session).
+ * the user saves preferences).
  */
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
@@ -32,12 +37,14 @@ const META_PIXEL_ID = "869829585445303";
 export function ConsentGatedTrackers() {
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   useEffect(() => {
     const sync = () => {
-      const c = readConsent();
-      setAnalytics(c?.analytics === true);
-      setMarketing(c?.marketing === true);
+      const c = effectiveConsent();
+      setAnalytics(c.analytics);
+      setMarketing(c.marketing);
+      setRecording(readConsent()?.analytics === true);
     };
     sync();
     window.addEventListener("acuity:consent-changed", sync);
@@ -69,12 +76,10 @@ export function ConsentGatedTrackers() {
         </>
       )}
 
-      {/* Meta Pixel — marketing consent gated (v1.5, 2026-06-13).
-          Previously loaded unconditionally, which was non-compliant
-          for EU/UK visitors under GDPR Art. 6(1)(a). Now loads only
-          after the user grants marketing consent on the cookie banner.
-          CAPI server-side events will still fire via the API route
-          (with fbp/fbc from cookies if available). */}
+      {/* Meta Pixel — gated on effectiveConsent().marketing: on by
+          default outside Europe/UK unless GPC is sent or the visitor
+          turned it off. CAPI server-side events still fire via the API
+          route (with fbp/fbc from cookies if available). */}
       {marketing && (
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
@@ -92,10 +97,12 @@ export function ConsentGatedTrackers() {
         </Script>
       )}
 
-      {/* Session recording (Contentsquare) — analytics consent
-          gated. Records user sessions, so requires consent under
-          ePrivacy + UK PECR even with IP anonymisation. */}
-      {analytics && (
+      {/* Session recording (Contentsquare) — EXPLICIT opt-in only, never
+          the default. It records screens, and logged-in pages show debrief
+          transcripts, so it must not switch on for everyone just because
+          the analytics default is on (2026-09-24, banner removal). Loads
+          only when a visitor has saved analytics = on in Cookie settings. */}
+      {recording && (
         <Script
           src="https://t.contentsquare.net/uxa/b1a44cfc8f53e.js"
           strategy="afterInteractive"

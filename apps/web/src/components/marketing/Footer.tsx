@@ -1,9 +1,12 @@
 /**
  * Footer — brand blurb + link columns + legal row. Ported from the
  * handoff (`marketing.jsx → Footer`). On-page anchors for product links;
- * real routes for Privacy/Terms.
+ * real routes for Privacy/Terms. "Cookie settings" in the legal row
+ * opens the consent preferences panel (see cookie-consent.tsx).
  */
 import Image from "next/image";
+
+import { CookieSettingsLink } from "@/components/cookie-consent";
 
 const COLS: { head: string; links: [string, string][] }[] = [
   {
@@ -54,7 +57,10 @@ export function Footer() {
         ))}
       </div>
       <div className="mx-auto mt-10 flex max-w-[1180px] flex-wrap justify-between gap-3 border-t border-acuity-line pt-6">
-        <span className="font-sans text-[13.5px] text-acuity-text-ter">© 2026 Ripple. All rights reserved.</span>
+        <span className="font-sans text-[13.5px] text-acuity-text-ter">
+          © 2026 Ripple. All rights reserved. ·{" "}
+          <CookieSettingsLink className="transition-colors hover:text-acuity-text" />
+        </span>
         <span className="font-sans text-[13.5px] text-acuity-text-ter">Made for quiet, consistent reflection.</span>
       </div>
     </footer>
