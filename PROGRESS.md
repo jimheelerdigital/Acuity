@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-09-24] — Ad review: click any ad to see the full image and full copy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+On the weekly ad review page, clicking an ad's thumbnail now opens the image full size next to the complete ad text (primary text, headline, description, CTA), which the cards cut off. Press Esc or click outside to close.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/admin/adlab/review/page.tsx`: thumbnail wrapped in a button; `preview` state + Esc listener (declared above the early return, so hook order is stable); fixed overlay with the `object-contain` image, full copy, "Open original" link
+
+### Manual steps needed
+None
+
+### Notes
+- Discussed but not built yet: generating 4:5 (feed) and 9:16 (Stories/Reels) versions instead of the current 1024×1024 square, using Meta placement asset customization; defaulting the CTA to SIGN_UP (history: ~$68/trial vs ~$123 for LEARN_MORE); a format built around a real app screenshot
+
+---
+
 ## [2026-09-24] — Social Phase 1: metrics dashboard, full TikTok history, health alerts, "Posted ✓", YouTube/Threads, no repeat headlines
 
 **Requested by:** Keenan

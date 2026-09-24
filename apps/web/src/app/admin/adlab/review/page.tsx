@@ -137,6 +137,17 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
   const [launchStep, setLaunchStep] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [launchDone, setLaunchDone] = useState(false);
+  // Full-size preview (2026-09-24, per Keenan: "a way to view the entire
+  // image where it's clickable") — shows the image at full resolution
+  // plus the complete, untruncated ad copy.
+  const [preview, setPreview] = useState<Creative | null>(null);
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPreview(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   if (!exp) {
     return (
@@ -295,6 +306,54 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
         </span>
       </div>
 
+      {preview?.imageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setPreview(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="flex max-h-full w-full max-w-5xl flex-col gap-4 overflow-y-auto md:flex-row"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={preview.imageUrl}
+              alt={preview.headline}
+              className="max-h-[85vh] w-full rounded-acuity-lg object-contain md:w-auto"
+            />
+            <div className="min-w-0 flex-1 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-4 text-sm">
+              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">Primary text</p>
+              <p className="text-white whitespace-pre-wrap mb-3">{preview.primaryText}</p>
+              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">Headline</p>
+              <p className="text-white font-semibold mb-3">{preview.headline}</p>
+              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">Description</p>
+              <p className="text-acuity-text-sec mb-3">{preview.description}</p>
+              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">CTA</p>
+              <p className="text-acuity-text-sec mb-4">{preview.cta.replace("_", " ")}</p>
+              <div className="flex gap-2">
+                <a
+                  href={preview.imageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg bg-acuity-bg-inset px-3 py-1.5 text-xs text-white"
+                >
+                  Open original
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="rounded-lg bg-acuity-bg-inset px-3 py-1.5 text-xs text-white"
+                >
+                  Close (Esc)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Ad cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
         {allCreatives.map((c) => {
@@ -313,8 +372,15 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
               <div className="flex">
                 <div className="w-28 h-28 shrink-0 bg-acuity-bg-inset flex items-center justify-center">
                   {c.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.imageUrl} alt={c.headline} className="w-28 h-28 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPreview(c)}
+                      className="block cursor-zoom-in"
+                      aria-label={`View full image: ${c.headline}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={c.imageUrl} alt={c.headline} className="w-28 h-28 object-cover" />
+                    </button>
                   ) : (
                     <ImageOff className="h-6 w-6 text-acuity-text-ter" />
                   )}
