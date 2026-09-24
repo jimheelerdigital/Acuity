@@ -29,7 +29,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
+import { callAdLabClaude, extractJsonObject } from "@/lib/adlab/claude";
 import type { BatchGroupKey } from "@/lib/adlab/weekly-batch";
 
 // ─── Tunables ─────────────────────────────────────────────────────────────
@@ -484,9 +484,9 @@ Rules:
 
 Return ONLY JSON: {"summary": string (3-5 sentences), "winningPatterns": [{"pattern": string, "evidence": string}], "losingPatterns": [{"pattern": string, "evidence": string}], "doubleDown": string[] (3-6), "avoid": string[] (3-6), "exploreNext": string[] (2-4 untested hypotheses worth a test), "preferredFormats": string[]}`,
         userPrompt: renderStatsForPrompt(stats),
-        maxTokens: 3000,
+        maxTokens: 6000,
       });
-      brief = JSON.parse(extractJson(raw)) as LearningBrief;
+      brief = JSON.parse(extractJsonObject(raw)) as LearningBrief;
     } catch (err) {
       console.error(`[adlab-learning] ${groupKey} distill failed:`, err instanceof Error ? err.message : err);
     }

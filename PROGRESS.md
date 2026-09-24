@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-09-24] — Social metrics finally flow (IG/FB/TikTok), bio links go straight to the funnel, AI-written captions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Three fixes from the social audit. **Metrics:** the nightly job that pulls likes, views, saves and shares had never saved a single number, because of a stray space in one Instagram setting. It now pulls Instagram (plus reach, profile visits, follows and Reel watch time), Facebook, and both TikTok accounts (via Apify, about $3.60/month), and emails you if a platform comes back empty. **Bio links:** each profile gets its own link that goes straight to the right funnel, women to /start and men to /start-bwk, so signups from social finally get tracked. **Captions:** every post now gets a full caption written for search. The first line uses words the audience actually types, then a relatable line, a question that invites comments, and 4 targeted hashtags. No #fyp, and no app plug, since the end slide carries the CTA. The TikTok email and Instagram/Facebook use the same caption.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/carousel-metrics-refresh.ts` rebuilt: separate soft steps `fetch-instagram` (by `SocialPublish.externalId`; legacy pasted-URL index fallback), `fetch-facebook`, `fetch-tiktok-<account>`, `alert-on-zero` (sendEmailOrThrow when a platform had candidates but 0 refreshed, or TikTok returned 0/errored). Per-row failures go to `SocialPublish.metricsError`
+- `lib/content-factory/instagram-metrics.ts`: env **trimmed** (root cause: IG_USER_ID has a trailing space in Vercel, per the 09-14 incident note in social-publish.ts; this file never trimmed); new `fetchIgMetricsById` (REELS: views, reach, saved, shares, ig_reels_avg_watch_time; FEED: views, reach, saved, shares, profile_visits, follows)
+- New `lib/content-factory/tiktok-metrics.ts`: Apify `clockworks~tiktok-profile-scraper`, latest 30 videos for @getripple / @buildwithkey (override `TIKTOK_RIPPLE_HANDLE` / `TIKTOK_BWK_HANDLE`); upserts `TikTokVideo`; matches a video to its CarouselPost by normalized caption (first 40 chars, same brand, ≤10 days); a match sets `CarouselPost.tiktokUrl` and upserts a SocialPublish `tiktok` row with metrics, so the lane learning loop counts it
+- New route `api/admin/content-factory/metrics-refresh` (POST, admin or Bearer CRON_SECRET) fires `content-factory/metrics.refresh`
+- `app/go/[channel]/route.ts`: redirects to `/start` (Ripple) or `/start-bwk` (`bwk-` prefix) with utm_source=channel, utm_medium=social, utm_campaign=bio-link, utm_content=ripple|bwk (was the homepage, which dropped UTMs)
+- New `lib/content-factory/caption-writer.ts`: `ensureWrittenCaption(postId)`, Sonnet 4.6, brand voice + keyword seeds + positioning bans; writes once to `CarouselPost.caption` (+ `captionWrittenAt`); soft fallback to the original. Called in `sendCarouselEmail` (email.ts) and the social publish cron before IG/FB publish
+- AdLab: `extractJsonObject` in `lib/adlab/claude.ts` (extractJson preferred `[...]`, returning an inner-array fragment for unfenced objects); learning + competitor brief maxTokens → 6000 (the learning distill truncated at 3000 today → brief=null)
+- **Prisma (already pushed to prod from main, guard passed, additive):** SocialPublish `reach`, `profileVisits`, `follows`, `avgWatchMs`, `metricsError`; CarouselPost `captionWrittenAt`; new model `TikTokVideo`
+
+### Manual steps needed
+- [ ] Keenan: update each profile's bio link: Ripple TikTok → `goripple.io/go/tiktok`, Ripple IG → `goripple.io/go/instagram`, Ripple FB → `goripple.io/go/facebook`; BWK TikTok → `goripple.io/go/bwk-tiktok` (and `bwk-instagram` / `bwk-youtube` etc. as accounts exist)
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest`, then trigger the metrics refresh and confirm numbers land (Claude)
+
+### Notes
+- TikTok reality check (public profile, 09-24): @buildwithkey 2,147 followers / 30.3k likes / 222 videos; @getripple 9 followers / 260 likes / 170 videos. BWK TikTok has traction; Ripple TikTok effectively has none
+- Caption rules changed per Keenan's 09-24 request. This supersedes the 08-28 "one question + hashtags only" and "hashtag-only moody captions" rules. Still no app plug in captions (the end-slide CTA covers it)
+- Hashtag-only TikTok captions can't be matched to posts. From now on the written captions make matching work, as long as the emailed caption is pasted
+
+---
+
 ## [2026-09-24] — First competitor ad scrape ran; brand-rule guard on competitor ideas
 
 **Requested by:** Keenan

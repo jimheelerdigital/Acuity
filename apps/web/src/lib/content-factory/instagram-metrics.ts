@@ -15,8 +15,19 @@
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
+/**
+ * Env values are TRIMMED — IG_USER_ID was pasted into Vercel with a
+ * trailing space (incident 2026-09-14). social-publish.ts trims, this file
+ * didn't: every `${IG_USER_ID}/media` call 404'd, the refresh step threw,
+ * and not one metric was ever saved (found 2026-09-24).
+ */
+function igEnv(name: "IG_ACCESS_TOKEN" | "IG_USER_ID"): string | null {
+  const v = process.env[name]?.trim();
+  return v ? v : null;
+}
+
 export function instagramConfigured(): boolean {
-  return !!process.env.IG_ACCESS_TOKEN && !!process.env.IG_USER_ID;
+  return !!igEnv("IG_ACCESS_TOKEN") && !!igEnv("IG_USER_ID");
 }
 
 export interface IgMetrics {
@@ -50,7 +61,7 @@ function normalizeIgUrl(url: string): string {
 }
 
 async function graphGet(path: string, params: Record<string, string>): Promise<any> {
-  const token = process.env.IG_ACCESS_TOKEN!;
+  const token = igEnv("IG_ACCESS_TOKEN")!;
   const qs = new URLSearchParams({ ...params, access_token: token });
   const res = await fetch(`${GRAPH}/${path}?${qs}`);
   const json = await res.json();
@@ -67,7 +78,7 @@ async function graphGet(path: string, params: Record<string, string>): Promise<a
  * permalink. One call per refresh run, shared across all posts.
  */
 export async function fetchIgMediaIndex(): Promise<Map<string, IgMedia>> {
-  const igUserId = process.env.IG_USER_ID!;
+  const igUserId = igEnv("IG_USER_ID")!;
   const index = new Map<string, IgMedia>();
 
   let json = await graphGet(`${igUserId}/media`, {
@@ -149,3 +160,70 @@ export function matchIgMedia(
 ): IgMedia | null {
   return index.get(normalizeIgUrl(pastedUrl)) ?? null;
 }
+
+// ─── Lookup by media ID (2026-09-24) ─────────────────────────────────────
+//
+// Auto-published posts store their IG media ID on SocialPublish.externalId,
+// so there's no need to page the media list and match permalinks (which
+// also capped out at the ~200 most recent media).
+
+export interface IgDeepMetrics extends IgMetrics {
+  reach: number | null;
+  profileVisits: number | null;
+  follows: number | null;
+  avgWatchMs: number | null;
+}
+
+/**
+ * Metric names differ by media product type (REELS vs FEED carousel/image).
+ * Each is fetched in one call, falling back to one-by-one when Meta rejects
+ * the batch because a single metric is unsupported.
+ */
+const REELS_METRICS = ["views", "reach", "saved", "shares", "ig_reels_avg_watch_time"];
+const FEED_METRICS = ["views", "reach", "saved", "shares", "profile_visits", "follows"];
+
+export async function fetchIgMetricsById(mediaId: string): Promise<IgDeepMetrics> {
+  const media = await graphGet(mediaId, {
+    fields: "like_count,comments_count,media_product_type",
+  });
+  const out: IgDeepMetrics = {
+    views: null,
+    likes: media.like_count ?? null,
+    comments: media.comments_count ?? null,
+    saves: null,
+    shares: null,
+    reach: null,
+    profileVisits: null,
+    follows: null,
+    avgWatchMs: null,
+  };
+  const metrics = media.media_product_type === "REELS" ? REELS_METRICS : FEED_METRICS;
+
+  const apply = (json: any) => {
+    for (const item of json.data ?? []) {
+      const value = item.values?.[0]?.value ?? item.total_value?.value;
+      if (typeof value !== "number") continue;
+      if (item.name === "views") out.views = value;
+      else if (item.name === "reach") out.reach = value;
+      else if (item.name === "saved") out.saves = value;
+      else if (item.name === "shares") out.shares = value;
+      else if (item.name === "profile_visits") out.profileVisits = value;
+      else if (item.name === "follows") out.follows = value;
+      else if (item.name === "ig_reels_avg_watch_time") out.avgWatchMs = value;
+    }
+  };
+
+  try {
+    apply(await graphGet(`${mediaId}/insights`, { metric: metrics.join(",") }));
+  } catch {
+    for (const m of metrics) {
+      try {
+        apply(await graphGet(`${mediaId}/insights`, { metric: m }));
+      } catch {
+        // unsupported for this media — leave null
+      }
+    }
+  }
+  return out;
+}
+

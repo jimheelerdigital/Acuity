@@ -1439,6 +1439,9 @@ model CarouselPost {
   saves          Int?
   shares         Int?
   metricsAt      DateTime? // When metrics were last entered/refreshed
+  // Set when the caption writer (lib/content-factory/caption-writer.ts)
+  // replaced the generator's caption — never rewrite twice.
+  captionWrittenAt DateTime?
   slides         CarouselSlide[]
   socialPublishes SocialPublish[] // Auto-posting queue rows (2026-09-10)
   createdAt      DateTime           @default(now())
@@ -1517,9 +1520,45 @@ model SocialPublish {
   shares    Int?
   saves     Int? // IG only — FB has no save metric
   metricsAt DateTime?
+  // Deeper IG insights (2026-09-24): reach = unique accounts; profile
+  // visits + follows are the post-level signals closest to conversion;
+  // avgWatchMs is Reels-only (TikTok rows: null).
+  reach         Int?
+  profileVisits Int?
+  follows       Int?
+  avgWatchMs    Int?
+  metricsError  String? // last metrics-refresh failure for this row
 
   @@unique([carouselPostId, platform, accountKey])
   @@index([status, scheduledAt])
+}
+
+// Every video on our own TikTok accounts (@getripple, @buildwithkey),
+// scraped daily via Apify (2026-09-24). TikTok posting is manual and the
+// official API isn't available to us, so this is the only source of
+// TikTok numbers. Matched to the CarouselPost it came from by caption
+// where possible; a match mirrors the numbers onto a SocialPublish
+// (platform "tiktok") row so the lane learning loop counts them.
+model TikTokVideo {
+  id             String    @id @default(cuid())
+  videoId        String    @unique
+  accountKey     String // "ripple" | "bwk"
+  handle         String
+  url            String
+  caption        String?   @db.Text
+  postedAt       DateTime?
+  views          Int?
+  likes          Int?
+  comments       Int?
+  shares         Int?
+  saves          Int?
+  durationSec    Int?
+  carouselPostId String? // matched source post, if any
+  lastScrapedAt  DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  @@index([accountKey, postedAt])
+  @@index([carouselPostId])
 }
 
 enum SocialPublishStatus {

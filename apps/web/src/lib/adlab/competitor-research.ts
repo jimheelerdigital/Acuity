@@ -23,7 +23,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
+import { callAdLabClaude, extractJsonObject } from "@/lib/adlab/claude";
 import type { BatchGroupKey } from "@/lib/adlab/weekly-batch";
 
 const APIFY_BASE = "https://api.apify.com/v2/acts";
@@ -318,9 +318,9 @@ Extract what makes the proven ads work: hook structures, emotional angles, speci
 
 Return ONLY JSON: {"summary": string (3-5 sentences), "hooks": string[] (5-8 hook STRUCTURES as fill-in templates, e.g. "Name a tiny specific moment → reveal the hidden cost"), "patterns": [{"pattern": string, "evidence": string (which advertisers / how long running)}], "formats": string[] (visual/format approaches that dominate proven ads), "offers": string[] (how proven ads frame the trial/price/risk reversal), "longRunners": [{"pageName": string, "daysRunning": number, "hook": string (paraphrased gist), "whyItWorks": string}] (up to 6), "opportunities": string[] (3-5 gaps nobody is covering that Ripple could own)}`,
       userPrompt: `${ranked.length} active competitor ads (of ${ads.length}), longest-running first:\n\n${adLines}`,
-      maxTokens: 3500,
+      maxTokens: 6000,
     });
-    brief = JSON.parse(extractJson(raw)) as CompetitorBrief;
+    brief = JSON.parse(extractJsonObject(raw)) as CompetitorBrief;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[competitor-research] ${groupKey} brief failed: ${msg}`);

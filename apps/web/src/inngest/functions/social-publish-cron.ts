@@ -313,6 +313,11 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
 
+        // Written, search-friendly caption (2026-09-24) — same one the
+        // TikTok email used; written here first if the post never emailed.
+        const { ensureWrittenCaption } = await import("@/lib/content-factory/caption-writer");
+        post.caption = (await ensureWrittenCaption(row.carouselPostId)) ?? post.caption;
+
         const account = await resolveAccount(post.lane);
         const missing =
           !account ||

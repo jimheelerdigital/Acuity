@@ -255,6 +255,11 @@ export async function sendCarouselEmail(
     }
   }
 
+  // Written, search-friendly caption (2026-09-24) — saved on the post so
+  // the IG/FB auto-publish uses the same one. Falls back to the original.
+  const { ensureWrittenCaption } = await import("@/lib/content-factory/caption-writer");
+  post.caption = (await ensureWrittenCaption(post.id)) ?? post.caption;
+
   const dateStr = post.generatedFor.toISOString().slice(0, 10);
   const lane = post.topicSlug;
 

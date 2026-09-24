@@ -87,3 +87,16 @@ export function extractJson(raw: string): string {
   if (braceMatch) return braceMatch[0];
   return raw.trim();
 }
+
+/**
+ * Like extractJson, but for a top-level OBJECT. extractJson tries `[...]`
+ * before `{...}`, so an unfenced object containing arrays comes back as an
+ * inner array fragment.
+ */
+export function extractJsonObject(raw: string): string {
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fenceMatch ? fenceMatch[1] : raw;
+  const start = body.indexOf("{");
+  const end = body.lastIndexOf("}");
+  return start >= 0 && end > start ? body.slice(start, end + 1) : body.trim();
+}
