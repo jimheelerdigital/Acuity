@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The automated weekly business audit (emails a full report every Saturday 9pm Central) was already built earlier today. Jimmy asked to build it, so instead of rebuilding, we reviewed the whole thing against the spec, ran the metrics collector against the real database to prove it works, and fixed one bug. It's ready to go live as soon as the API keys are added in GitHub — see the handoff Jimmy has.
+
+### Technical changes (for Jimmy)
+- `scripts/audit/send-email.ts`: create `audits/out/` before writing `email.html`. Root-cause fix for a hole in the "always email, even on failure" guarantee — when `collect-metrics` fails hard, `run-audit.sh` exits before it `mkdir`s that dir, so the failure-notice email itself would have crashed with ENOENT and Keenan would get silence. Now guaranteed to send.
+
+### Manual steps needed
+- Add the GitHub **secrets** and **variables** listed in the handoff (RevenueCat, Stripe restricted, read-only DB URL, Resend, Anthropic; optional cost/admin keys). Set repo variable `AUDIT_MODEL` to the strongest available model — the default `claude-fable-5-1` is a placeholder, not the strongest.
+- Then run it once: GitHub → Actions → **Weekly audit** → **Run workflow** → confirm the email arrives and renders on mobile.
+
+### Notes
+- Verified locally against the real DB (read-only) for week 2026-09-13→19: 4 signups, 5 weekly active recorders, 27 entries, median 282 words, 60% recording 3+ days; 5-week series so the 4-week trend works from day one. App Store data live (Ripple 1.6.0, 5★ ×7). RevenueCat, Stripe, and paid-cost sources correctly degrade to `blind_spots` when their keys are absent — the run never crashes.
+- Entry themes are k-anonymized: this week 96 distinct themes, 95 suppressed for appearing under 2 distinct users. No raw entry text, emails, names, or ids ever leave the DB. Confirmed.
+- Audit prompt (`audits/WEEKLY_AUDIT_PROMPT.md`) matches the requested spec word-for-word. Workflow is read-only on the codebase; reports publish only to the orphan `audits` branch, never main.
+- Committed on branch `feat/weekly-audit-system` (NOT pushed) — waiting on "push it".
+
+---
+
 ## [2026-09-24] — Paywall features re-picked from real usage: weekly report out, task list and patterns in
 
 **Requested by:** Keenan
