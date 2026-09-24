@@ -1,30 +1,29 @@
 #!/usr/bin/env bash
 #
-# deploy-main.sh — push main + trigger a Production deploy on Vercel.
+# deploy-main.sh — ship main to Production the safe way: a *guarded* push.
 #
-# Temporary workaround for 2026-04-20 finding: Vercel's GitHub
-# auto-deploy webhook has not been firing for this project (suspected
-# webhook-delivery breakage after the repo transfer from keypicksem →
-# jimheelerdigital). Pushes to main land on GitHub but don't trigger
-# Vercel Production builds. Until that's fixed, run this script
-# instead of `git push origin main` when you want the push live.
+# ── How prod deploys work now (verified 2026-09-23) ──────────────────
+# Vercel's GitHub integration is connected (jimheelerdigital/Acuity,
+# reconnected 2026-04-21) with Production Branch = main. A push to main
+# triggers a Production build FROM GITHUB; a PR push builds a Preview.
+# Confirmed live: a PR push built a Preview and main pushes build prod.
+#
+# This retires the old workaround. Between 2026-04-20 and now this script
+# ended with `vercel --prod`, which deploys the ON-DISK working tree —
+# NOT what's on GitHub. Running that from a checkout that was behind
+# origin/main (or had uncommitted edits) overwrote prod with stale code:
+# that is the clobber Keenan hit. We no longer deploy from local disk.
+#
+# THE RULE: deploy by getting code onto main (push, or merge a PR). Never
+# run `vercel --prod` from a local checkout for a routine deploy — it
+# bypasses Git and can clobber newer work. Reserve the Vercel CLI /
+# dashboard "Promote" for an intentional emergency rollback only.
 #
 # Usage:
-#   ./scripts/deploy-main.sh            # clean-tree push + deploy
+#   ./scripts/deploy-main.sh            # guarded push of main (Vercel builds)
 #   ./scripts/deploy-main.sh --dry-run  # show what would happen
 #
-# Prerequisites:
-#   - Current branch must be `main` (otherwise the script refuses —
-#     it won't silently push a non-main branch to main).
-#   - `vercel` CLI installed and authenticated as a member of
-#     keypicksems-projects (`vercel whoami`).
-#   - Working tree should be clean; the script warns but doesn't block
-#     on dirty trees — Vercel will build whatever's on disk, which
-#     may diverge from what just got pushed to GitHub.
-#
-# Retire this script when Vercel auto-deploy is restored. The
-# blocker diagnosis + recovery path is in PROGRESS.md under
-# "Blocked on Inngest verification" (2026-04-20).
+# Prereqs: current branch is main; tree clean; up to date with origin/main.
 
 set -euo pipefail
 
@@ -33,7 +32,6 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   DRY_RUN=1
 fi
 
-# Resolve repo root so the script works from any cwd.
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -41,57 +39,60 @@ cd "$REPO_ROOT"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [[ "$BRANCH" != "main" ]]; then
   echo "❌ Current branch is '$BRANCH', not 'main'. Refusing to deploy." >&2
-  echo "   This script only deploys main — check out main first." >&2
+  echo "   This script only deploys main — check out main first, or open" >&2
+  echo "   a PR and merge it (PRs build a Vercel Preview automatically)." >&2
   exit 1
 fi
 
-# Guard 2: working tree clean (warn-only).
+# Guard 2: working tree must be CLEAN (now blocks, was warn-only).
+# Only committed code should reach main/prod; a clean tree is the honest
+# signal that what you're pushing is exactly what you've committed.
 if [[ -n "$(git status --porcelain)" ]]; then
-  echo "⚠️  Working tree has uncommitted changes. Vercel will build" >&2
-  echo "    the on-disk state, which diverges from what'll be on" >&2
-  echo "    GitHub after this push. Consider committing first." >&2
-  echo "" >&2
+  echo "❌ Working tree has uncommitted changes. Commit or stash first —" >&2
+  echo "   only committed code should reach main/prod." >&2
+  exit 1
 fi
 
-# Guard 3: ahead/behind origin/main.
+# Guard 3: must be up to date with origin/main (never deploy stale).
 git fetch origin main --quiet
 BEHIND="$(git rev-list --count main..origin/main)"
 if [[ "$BEHIND" -gt 0 ]]; then
   echo "❌ Local main is $BEHIND commit(s) behind origin/main." >&2
-  echo "   Pull first: git pull --ff-only origin main" >&2
+  echo "   Pull first so you don't ship a stale tree:" >&2
+  echo "     git pull --ff-only origin main" >&2
   exit 1
 fi
 
 AHEAD="$(git rev-list --count origin/main..main)"
 
 echo "──────────────────────────────────────────────"
-echo " Deploy Plan"
+echo " Deploy Plan (Git-triggered — Vercel builds from GitHub)"
 echo "──────────────────────────────────────────────"
 echo " Branch:          main"
 echo " Commits ahead:   $AHEAD (will push to origin/main)"
-echo " Working tree:    $([[ -z "$(git status --porcelain)" ]] && echo 'clean' || echo 'DIRTY')"
-echo " Vercel project:  acuity-web (keypicksems-projects)"
+echo " Working tree:    clean"
+echo " Vercel project:  acuity-web (heelerdigital) — auto-deploys main"
 echo "──────────────────────────────────────────────"
 
+if [[ "$AHEAD" -eq 0 ]]; then
+  echo "ℹ️  Nothing to push — origin/main already matches. Prod is current."
+  exit 0
+fi
+
 if [[ "$DRY_RUN" == "1" ]]; then
-  echo " [DRY RUN] Would run:"
-  echo "   git push origin main"
-  echo "   vercel --prod"
+  echo " [DRY RUN] Would run: git push origin main"
+  echo "           (Vercel then builds Production from the new commit.)"
   exit 0
 fi
 
 echo ""
-echo "▶️  Pushing to origin/main..."
+echo "▶️  Pushing to origin/main (Vercel will build Production)…"
 git push origin main
 
 echo ""
-echo "▶️  Triggering Vercel Production deploy..."
-echo "    (This returns as soon as the build is queued; watch progress"
-echo "     in the Vercel dashboard or with \`vercel logs --prod\`.)"
+echo "✅ Pushed. Vercel is building Production from GitHub now."
+echo "   Watch:  https://vercel.com/heelerdigital/acuity-web/deployments"
+echo "   or:     vercel ls --prod"
 echo ""
-vercel --prod
-
-echo ""
-echo "✅ Done. Verify with:"
-echo "   curl -sI https://goripple.io/api/inngest"
-echo "   (expect 503 with ENABLE_INNGEST_PIPELINE unset — NOT 404)"
+echo "   Do NOT run 'vercel --prod' to 'make it live' — the push already"
+echo "   did. That command deploys your local disk and can clobber prod."

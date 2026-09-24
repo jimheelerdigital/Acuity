@@ -60,6 +60,7 @@ const config: Config = {
           bg: "var(--acuity-bg)",
           "bg-sub": "var(--acuity-bg-sub)",
           "bg-inset": "var(--acuity-bg-inset)",
+          "bg-inset-strong": "var(--acuity-bg-inset-strong)",
           "card-bg": "var(--acuity-card-bg)",
           "card-bg-tint": "var(--acuity-card-bg-tint)",
           "card-bg-raised": "var(--acuity-card-bg-raised)",

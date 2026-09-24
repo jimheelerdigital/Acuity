@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/home", label: "Home" },
   { href: "/tasks", label: "Tasks" },
   { href: "/goals", label: "Goals" },
+  { href: "/habits", label: "Habits" },
   { href: "/insights", label: "Insights" },
   { href: "/achievements", label: "Achievements" },
 ];
