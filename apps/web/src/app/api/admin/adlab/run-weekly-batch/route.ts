@@ -28,7 +28,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { inngest } = await import("@/inngest/client");
-  await inngest.send({ name: "adlab/weekly-batch.requested", data: {} });
+  // Optional { groups: ["women"] } to remake just one group.
+  const body = (await req.json().catch(() => ({}))) as { groups?: string[] };
+  const groups = (body.groups ?? []).filter((g) => g === "women" || g === "men");
+  await inngest.send({ name: "adlab/weekly-batch.requested", data: groups.length ? { groups } : {} });
 
   return NextResponse.json({ ok: true });
 }

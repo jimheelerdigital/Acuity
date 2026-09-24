@@ -32,8 +32,13 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
       { event: "adlab/weekly-batch.requested" },
     ],
   },
-  async ({ step, logger }) => {
-    const groups = ["women", "men"] as const;
+  async ({ event, step, logger }) => {
+    // On-demand runs can target one group (2026-09-24): remaking the
+    // women's batch shouldn't replace the men's ads Keenan already liked.
+    const requested = ((event?.data as { groups?: string[] } | undefined)?.groups ?? []).filter(
+      (g): g is "women" | "men" => g === "women" || g === "men"
+    );
+    const groups = requested.length ? requested : (["women", "men"] as const);
     const summaries: GroupBatchSummary[] = [];
 
     for (const groupKey of groups) {

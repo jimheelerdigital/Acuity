@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-24] — Fix: women's ad batch failed on one bad field; remake one group at a time
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The women's new ads never showed up. The AI wrote 10 ads, but on one of them it put the ad style ("app-proof") in the box meant for the ad's angle. A strict check then threw away all 10, twice. Now a slip like that is corrected automatically, and any single broken ad is dropped instead of sinking the whole batch. An empty batch also can no longer blank out a group on the review page. Each group now has its own "Remake these ads" link, so you can redo the women's ads without replacing the men's.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/weekly-batch.ts`:
+  - new exported `parseBatchAds`: per-ad `safeParse`; coerces an invalid `valueSurface` (format names → "mechanism", else "problem"); keeps valid ads; throws only under 6
+  - hard caps on the new fields loosened (solutionLine 160, benefits 70, said 240, caught 80; arrays min 3, trimmed to 3); the prompt keeps the tighter targets
+  - `adLabExperiment.create` moved to after the copy parses
+- `apps/web/src/inngest/functions/adlab-weekly-batch.ts`: optional `event.data.groups` runs just those groups
+- `apps/web/src/app/api/admin/adlab/run-weekly-batch/route.ts`: accepts `{ groups }`
+- `apps/web/src/app/admin/adlab/review/page.tsx`: per-group "Remake these ads" (`RemakeGroupButton`)
+- `apps/web/src/lib/adlab/ad-formats.test.ts`: +3 parser tests (7 total)
+
+### Manual steps needed
+- [ ] After deploy: on the Women group press "Remake these ads", wait ~10 min, review, launch (Keenan)
+
+### Notes
+- The failing run left an empty women experiment (`cmufsbe3w00031qndek5fa4dq`, 0 angles). It's harmless: the next women batch is newer and replaces it on the review page
+- The men's batch passed only on its retry for the same class of reason. The tolerant parser should make first-try passes the norm
+
+---
+
 ## [2026-09-24] — Ads now show the pain → how Ripple fixes it, plus a "Make new ads" button
 
 **Requested by:** Keenan

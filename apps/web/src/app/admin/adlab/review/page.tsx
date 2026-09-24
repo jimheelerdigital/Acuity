@@ -146,6 +146,33 @@ export default function ReviewPage() {
   );
 }
 
+/** Remake just this group's batch (2026-09-24) — leaves the other group's ads alone. */
+function RemakeGroupButton({ groupKey, label }: { groupKey: string; label: string }) {
+  const [state, setState] = useState<"idle" | "sending" | "queued" | "error">("idle");
+  const run = async () => {
+    if (!confirm(`Make a fresh set of ${label} ads? About 10 minutes; it replaces the ${label} ads shown here. Nothing goes to Meta until you launch.`)) return;
+    setState("sending");
+    try {
+      const res = await fetch("/api/admin/adlab/run-weekly-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groups: [groupKey] }),
+      });
+      setState(res.ok ? "queued" : "error");
+    } catch {
+      setState("error");
+    }
+  };
+  return (
+    <button
+      onClick={run}
+      disabled={state === "sending" || state === "queued"}
+      className="text-xs font-medium text-acuity-text-sec underline-offset-2 hover:underline disabled:opacity-60">
+      {state === "queued" ? "Remaking — refresh in ~10 min" : state === "error" ? "Couldn't start — retry" : state === "sending" ? "Starting…" : "Remake these ads"}
+    </button>
+  );
+}
+
 function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => void }) {
   const exp = group.experiment;
   const [creatives, setCreatives] = useState<Map<string, boolean>>(
@@ -188,7 +215,10 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
   if (!exp) {
     return (
       <section>
-        <h2 className="text-lg font-semibold text-white mb-3">{group.projectName}</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-white">{group.projectName}</h2>
+          <RemakeGroupButton groupKey={group.groupKey} label={group.groupKey} />
+        </div>
         <div className="rounded-acuity-lg border border-dashed border-acuity-line-strong bg-acuity-card-bg p-10 text-center">
           <p className="text-sm text-acuity-text-ter">
             No batch awaiting review. The next one generates Sunday morning.
@@ -354,9 +384,12 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
           <h2 className="text-lg font-semibold text-white">{group.projectName}</h2>
           <p className="text-xs text-acuity-text-ter mt-0.5">{exp.topicBrief}</p>
         </div>
-        <span className="text-xs text-acuity-text-ter shrink-0">
-          {approvedCount}/{allCreatives.length} approved
-        </span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-xs text-acuity-text-ter">
+            {approvedCount}/{allCreatives.length} approved
+          </span>
+          <RemakeGroupButton groupKey={group.groupKey} label={group.groupKey} />
+        </div>
       </div>
 
       {preview?.imageUrl && (

@@ -8,6 +8,7 @@ import {
   buildAdImagePrompt,
   decodeAdCopy,
   stripAdCopy,
+  parseBatchAds,
 } from "./weekly-batch";
 
 // 2026-09-24: every ad carries the pain → fix bridge; the extra copy rides
@@ -47,5 +48,32 @@ describe("ad formats v2", () => {
     void solutionLine; void benefits; void said; void caught;
     const prompt = stripAdCopy(buildAdImagePrompt("statement-card", old, "men"));
     expect(prompt).toContain(old.description);
+  });
+});
+
+describe("parseBatchAds", () => {
+  const ad = (over: Record<string, unknown> = {}) => ({
+    theme: "t", hypothesis: "h", targetPersona: "p", valueSurface: "problem",
+    headline: "Still holding everyone's to-do list?", primaryText: "x", description: "d",
+    cta: "SIGN_UP", imageScene: "s", solutionLine: "Say it once.",
+    benefits: ["a", "b", "c"], said: "Emma's slip is due Friday.", caught: ["x", "y", "z"],
+    format: "say-catch", strategy: "explore", ...over,
+  });
+
+  it("repairs a format name in valueSurface (the 2026-09-24 women's failure)", () => {
+    const ads = Array.from({ length: 10 }, (_, i) => ad(i === 8 ? { valueSurface: "app-proof" } : {}));
+    const out = parseBatchAds(JSON.stringify(ads));
+    expect(out).toHaveLength(10);
+    expect(out[8].valueSurface).toBe("mechanism");
+  });
+
+  it("drops a broken ad instead of failing the batch", () => {
+    const ads = Array.from({ length: 10 }, (_, i) => ad(i === 3 ? { caught: ["only one"] } : {}));
+    expect(parseBatchAds(JSON.stringify(ads))).toHaveLength(9);
+  });
+
+  it("still fails when most ads are broken", () => {
+    const ads = Array.from({ length: 10 }, (_, i) => ad(i < 6 ? { headline: undefined } : {}));
+    expect(() => parseBatchAds(JSON.stringify(ads))).toThrow(/only 4 valid/);
   });
 });

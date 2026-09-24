@@ -429,17 +429,42 @@ const BatchAdSchema = z.object({
   cta: z.string(),
   imageScene: z.string(),
   // Pain → fix bridge (2026-09-24)
-  solutionLine: z.string().max(90),
-  benefits: z.array(z.string().max(40)).length(3),
-  said: z.string().max(140),
-  caught: z.array(z.string().max(44)).length(3),
+  // Hard caps are roomier than the prompt's targets: one long line used to
+  // reject the whole 10-ad batch (2026-09-24 women's run). Renderers wrap.
+  solutionLine: z.string().max(160),
+  benefits: z.array(z.string().max(70)).min(3).transform((b) => b.slice(0, 3)),
+  said: z.string().max(240),
+  caught: z.array(z.string().max(80)).min(3).transform((c) => c.slice(0, 3)),
   // Learning loop (2026-09-24): which image format carries this ad, and
   // whether it applies a proven winning pattern or tests something new.
   format: z.enum(AD_FORMAT_KEYS).optional(),
   strategy: z.enum(["exploit", "explore"]).optional(),
 });
 
-const BatchAdsSchema = z.array(BatchAdSchema).min(8).max(12);
+/**
+ * Per-ad tolerant parse (2026-09-24): the women's batch failed outright
+ * because ONE ad put a format name ("app-proof") in valueSurface. Coerce
+ * that known slip, keep every ad that validates, and only fail when fewer
+ * than 6 survive.
+ */
+export function parseBatchAds(raw: string): z.infer<typeof BatchAdSchema>[] {
+  const arr = JSON.parse(extractJson(raw));
+  if (!Array.isArray(arr)) throw new Error("batch copy is not a JSON array");
+  const ok: z.infer<typeof BatchAdSchema>[] = [];
+  const problems: string[] = [];
+  arr.forEach((item: Record<string, unknown>, i: number) => {
+    if (item && typeof item === "object" && !VALUE_SURFACES.includes(item.valueSurface as (typeof VALUE_SURFACES)[number])) {
+      // A format key or anything else in the wrong field → nearest surface.
+      item.valueSurface = typeof item.valueSurface === "string" && /proof|catch|mechanism/i.test(item.valueSurface) ? "mechanism" : "problem";
+    }
+    const r = BatchAdSchema.safeParse(item);
+    if (r.success) ok.push(r.data);
+    else problems.push(`ad ${i + 1}: ${r.error.issues.map((x) => `${x.path.join(".")} ${x.message}`).join("; ")}`);
+  });
+  if (problems.length) console.warn(`[adlab-weekly] dropped ${problems.length} invalid ad(s): ${problems.join(" | ").slice(0, 800)}`);
+  if (ok.length < 6) throw new Error(`only ${ok.length} valid ads — ${problems.join(" | ").slice(0, 600)}`);
+  return ok;
+}
 
 interface DigestTheme {
   theme: string;
@@ -491,19 +516,6 @@ export async function createBatchForGroup(
   const digestDate = digest.date.toISOString().slice(0, 10);
   const weekLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  const experiment = await prisma.adLabExperiment.create({
-    data: {
-      projectId,
-      topicBrief: `Weekly Reddit-grounded batch (${weekLabel}) — 10 ads from the ${digestDate} audience pulse for ${g.audienceLabel}. Each ad bridges one Reddit pain theme to what Ripple does.`,
-      status: "awaiting_approval",
-      campaignName: `${g.projectName} | Reddit batch ${weekLabel}`,
-      // Informational: launches go into the group's evergreen ad set, which
-      // optimizes for signups regardless (lib/adlab/evergreen.ts).
-      campaignObjective: "OUTCOME_SALES",
-      optimizationEvent: "COMPLETE_REGISTRATION",
-      campaignTags: ["weekly-reddit-batch", groupKey],
-    },
-  });
 
   const systemPrompt = `You are an expert direct-response Meta ads copywriter. Generate 10 COMPLETE, DISTINCT ad creatives grounded in real audience research.
 
@@ -560,7 +572,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
 
   const userPrompt = `Generate the 10 ads for this week's batch. Return only the JSON array.`;
 
-  let ads: z.infer<typeof BatchAdsSchema>;
+  let ads: z.infer<typeof BatchAdSchema>[];
   try {
     const raw = await callAdLabClaude({
       purpose: `weekly-batch-${groupKey}`,
@@ -568,7 +580,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
       userPrompt,
       maxTokens: 8000,
     });
-    ads = BatchAdsSchema.parse(JSON.parse(extractJson(raw)));
+    ads = parseBatchAds(raw);
   } catch (err1) {
     // One retry with error feedback
     const raw2 = await callAdLabClaude({
@@ -577,8 +589,25 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
       userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits (3), said, caught (3), format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
       maxTokens: 8000,
     });
-    ads = BatchAdsSchema.parse(JSON.parse(extractJson(raw2)));
+    ads = parseBatchAds(raw2);
   }
+
+  // Created only once the copy is good (2026-09-24): an experiment made
+  // first and left empty by a failed parse became the "latest" batch and
+  // blanked the group on the review page.
+  const experiment = await prisma.adLabExperiment.create({
+    data: {
+      projectId,
+      topicBrief: `Weekly Reddit-grounded batch (${weekLabel}) — 10 ads from the ${digestDate} audience pulse for ${g.audienceLabel}. Each ad bridges one Reddit pain theme to what Ripple does.`,
+      status: "awaiting_approval",
+      campaignName: `${g.projectName} | Reddit batch ${weekLabel}`,
+      // Informational: launches go into the group's evergreen ad set, which
+      // optimizes for signups regardless (lib/adlab/evergreen.ts).
+      campaignObjective: "OUTCOME_SALES",
+      optimizationEvent: "COMPLETE_REGISTRATION",
+      campaignTags: ["weekly-reddit-batch", groupKey],
+    },
+  });
 
   const creativeIds: string[] = [];
   for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
