@@ -8,6 +8,10 @@
 // before any production deploy.
 //
 // Past regressions:
+//   - 2026-09-24: web Apple sign-in succeeded 1 time in 15. Apple returns via
+//     a cross-site form POST, and the PKCE / callback-url cookies were
+//     SameSite=Lax, so the browser dropped them on that POST and the callback
+//     failed its PKCE check. Those two cookies are now SameSite=None in prod.
 //   - 2026-04-28: User.signupUtm* schema drift cascaded from PrismaAdapter
 //     .createUser through bootstrap-user → web OAuth ?error=Callback.
 //     Hardened in 04b729f.
@@ -48,10 +52,14 @@ export function getAuthOptions(): NextAuthOptions {
         // Allow users who signed up with email/password to later sign in
         // with Google (same email) — links the accounts automatically.
         allowDangerousEmailAccountLinking: true,
+        // select_account, not consent: "consent" forced the permissions
+        // screen on every sign-in, one more page for Google to fail on inside
+        // the FB/IG in-app browsers. access_type=offline was dropped too:
+        // nothing reads NextAuth's Google refresh token (calendar sync runs its
+        // own OAuth in /api/calendar/callback).
         authorization: {
           params: {
-            prompt: "consent",
-            access_type: "offline",
+            prompt: "select_account",
             response_type: "code",
           },
         },
@@ -205,6 +213,36 @@ export function getAuthOptions(): NextAuthOptions {
         options: {
           httpOnly: true,
           sameSite: "lax",
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+        },
+      },
+      // Apple's callback is a cross-site POST (response_mode=form_post). A
+      // SameSite=Lax cookie is not sent on it, so the PKCE verifier and the
+      // callback URL went missing and Apple sign-in failed. None + Secure lets
+      // them through. Both are short-lived and httpOnly. Dev keeps Lax
+      // because None requires Secure (https). Names match NextAuth's defaults.
+      pkceCodeVerifier: {
+        name:
+          process.env.NODE_ENV === "production"
+            ? "__Secure-next-auth.pkce.code_verifier"
+            : "next-auth.pkce.code_verifier",
+        options: {
+          httpOnly: true,
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 60 * 15,
+        },
+      },
+      callbackUrl: {
+        name:
+          process.env.NODE_ENV === "production"
+            ? "__Secure-next-auth.callback-url"
+            : "next-auth.callback-url",
+        options: {
+          httpOnly: true,
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
           path: "/",
           secure: process.env.NODE_ENV === "production",
         },

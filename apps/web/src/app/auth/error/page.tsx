@@ -4,6 +4,26 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
+// Mirrors OAUTH_PENDING_KEY in components/onboarding-funnel.tsx. The funnel
+// writes it right before handing off to Google.
+const FUNNEL_OAUTH_PENDING_KEY = "acuity_oauth_pending";
+const FUNNEL_PATHS = new Set(["/start", "/start-bwk"]);
+
+/** The funnel this failed OAuth attempt started from, if any. */
+function pendingFunnelPath(): string | null {
+  try {
+    const raw = localStorage.getItem(FUNNEL_OAUTH_PENDING_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { path?: string; ts?: number };
+    // Only a recent attempt counts. A stale marker must not hijack a later,
+    // unrelated sign-in error on /auth/signin.
+    const fresh = typeof p.ts === "number" && Date.now() - p.ts < 30 * 60 * 1000;
+    return fresh && p.path && FUNNEL_PATHS.has(p.path) ? p.path : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * NextAuth redirects here with ?error=<ErrorCode> when auth fails.
  * Logs the error code + URL to console (visible in Vercel logs via
@@ -31,6 +51,17 @@ function AuthErrorContent() {
       body: payload,
       keepalive: true,
     }).catch(() => {});
+
+    // Funnel visitors (the /start and /start-bwk sign-up step) go straight
+    // back to that step instead of stopping on this page. The funnel reads
+    // oauth=failed + error, logs funnel_oauth_returned_error with the code,
+    // and points them at the email form. Before this, a failed Google attempt
+    // from an ad ended here.
+    const funnelPath = pendingFunnelPath();
+    if (funnelPath) {
+      const qs = new URLSearchParams({ step: "create-account", oauth: "failed", error: errorCode });
+      window.location.replace(`${funnelPath}?${qs.toString()}`);
+    }
   }, [errorCode]);
 
   return (

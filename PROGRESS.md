@@ -7,6 +7,65 @@
 
 ---
 
+## [2026-09-24] — Both sign-up funnels cut to 11 steps, men's funnel goes dark, new paywall, sign-in fixes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Both ad funnels (goripple.io/start for women, /start-bwk for men) are now 11 steps, paywall included. They were 18, and people dropped off on every extra screen. Each funnel keeps the screens that suit its audience. The women's funnel keeps the "here's the shift" before/after screen. The men's funnel ends on the Week 1 / Month 1 / Year 1 plan instead. The men's funnel now uses the dark navy-and-indigo look of the dark logo instead of orange. The paywall is rebuilt for both. The fake crossed-out prices, "founding rate for life" and "less than a coffee" lines are gone. It now shows the real price, a plain "Today $0 → Day 7 billing starts" timeline and one clear "Start free trial" button, with "Continue without a card" as a quiet link. Apple sign-in is removed from the funnels (it worked 1 time in 15). Inside Facebook and Instagram, email sign-up now comes first (it never failed there), and anyone whose Google sign-in fails is sent back with a note to use email instead of hitting a dead-end error page.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-config.ts`: new `FunnelStep` type + `STEP_ORDER` (11 steps); `FunnelVariantConfig` gains `STEP_ORDER`, `theme` ("light" | "dusk"), `flowVersion`, `path`, optional `MECHANISM_CONTENT`. `PROCESSING_STAGES` 10s → 6s. Header skeleton rewritten for v8
+  - /start: entry, q2, q3, q6, pain, current-future, mechanism, processing, pattern-result, create-account, savings (→ download)
+  - /start-bwk: entry, q2, q3, q6, pain, mechanism, processing, pattern-result, timeline, create-account, savings (→ download)
+  - Cut from both: branch-q4, shared-q5, relief-flip, value, commit. Their copy banks are kept in the config files for possible re-tests
+- `apps/web/src/lib/funnel-config-bwk.ts`: BWK step order, `theme: "dusk"`, `flowVersion: "v8-bwk"`, men's mechanism-screen examples (were women-coded), 6s processing
+- `apps/web/src/components/onboarding-funnel.tsx`:
+  - Step navigation driven by `cfg.STEP_ORDER` (`nextOf` / `rank` / `inFunnel`); ReliefFlip / Value / Commitment screens deleted
+  - Funnel state in sessionStorage keyed per path
+  - Tracker tags `flowVersion` from config: "v8" / "v8-bwk" (was "v7" for both, due to a pathname check)
+  - Meta `Lead` fires on pattern-result (was timeline, which /start no longer has)
+  - Dusk theme: `data-theme="dark"` + `data-funnel-theme="dusk"` on the root, with a scoped token block (bg oklch(0.168 0.037 287) = #0E0C1E from ripple-lockup-dusk.png, primary = indigo from ripple-mark-indigo.png). All zinc/white/emerald/orange utilities replaced with acuity tokens + `.f-card` / `.f-sub` / `.f-tint` / `.f-track`
+  - Paywall (`SavingsScreen`) rewritten. Event names unchanged (lock_in_selected / continue_selected / plan_selected)
+  - CreateAccount: Apple button removed; email form first when `isWebView`; "Google didn't go through" notice after a failed OAuth bounce or `?oauth=failed`; OAuth pending marker now stores `path`
+  - Pre-hydration tap pickup (`funnel_entry_pretap_used`); "Ripple · 2-minute check-in" eyebrow on the entry screen; "Join thousands…" replaced with the 4.9 / 127+ rating line; mechanism headline "A few minutes. Every day." → "Talk it out. Ripple does the rest."
+- New `apps/web/src/components/funnel-ssr-entry.tsx`: shared server-rendered Screen 1 for both pages (light / dusk), plus an inline script that records a tap made before JS loads
+- `apps/web/src/app/start/page.tsx`, `start-bwk/page.tsx`: use `FunnelSsrEntry`; /start-bwk paints body navy
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts`:
+  - Accepts `funnel` (allowlisted "/start" | "/start-bwk") for success/cancel URLs. /start-bwk buyers used to return to /start
+  - `cancel_url` → `?step=savings` (was download)
+  - Removed `payment_method_types: ["card"]` so Checkout offers Apple Pay / Google Pay / Link as enabled in the Stripe dashboard
+- `apps/web/src/lib/auth.ts` (AUTH-CRITICAL):
+  - Google `prompt: "consent"` → `"select_account"`; dropped `access_type: "offline"` (nothing reads NextAuth's Google refresh token; calendar has its own OAuth)
+  - `pkceCodeVerifier` + `callbackUrl` cookies are `SameSite=None; Secure` in prod so Apple's cross-site form_post callback keeps them
+- `apps/web/src/app/auth/error/page.tsx`: when a funnel OAuth marker younger than 30 min exists, redirects to `<path>?step=create-account&oauth=failed&error=<code>` instead of stopping
+- `apps/web/src/app/api/admin/metrics/route.ts` + `admin/tabs/FunnelAnalyticsTab.tsx`: new "v8" and "v8-bwk" cohorts with step lists incl. checkout opened / card trial started; v8 is the default view
+- `apps/web/src/lib/funnel-config.test.ts`: v8 tests (11 unique steps, entry first, create-account + savings last, per-audience screens, separate cohorts / paths / themes, 6s processing). 24/24 pass
+
+### Manual steps needed
+- [ ] Say "push it". Nothing is pushed yet (Keenan)
+- [ ] Review the payment + auth changes before they ship: `create-checkout` (payment methods, funnel return URL, cancel → paywall) and `lib/auth.ts` (Google prompt, Apple cookie SameSite) (Jimmy)
+- [ ] After deploy, run the auth-critical checklist from the lib/auth.ts header: web Google sign-in, web email sign-in, and web Apple sign-in on /auth/signin (Apple should now succeed). Mobile Google/Apple use their own flows and aren't touched, but do a quick TestFlight check anyway (Jimmy)
+- [ ] Stripe dashboard → Settings → Payment methods: confirm Apple Pay, Google Pay and Link are on for live mode, and that the goripple.io domain is verified for Apple Pay (Keenan / Jimmy)
+- [ ] Turn paid traffic back on (0 live ads as of 2026-09-23) and point the men's ad group at /start-bwk via the custom-URL destination, not "direct funnel" (hardcoded to /start) (Keenan)
+- [ ] After ~150 sessions per funnel, compare Admin → Funnel Analytics "V8 /start" vs "V8 /start-bwk" (Keenan / Claude)
+
+### Notes
+- Why these screens: v6-v7 data (620 sessions) showed each post-question "story" screen losing 5-8%, and entry → first tap at 41%. Q4 and Q5 only fed a "Stuck Deep" secondary label, so pattern-result now shows only the most-affected-area card
+- Tailwind's `/opacity` modifier generates NOTHING on the var()-based acuity colors (verified with the tailwind CLI). v7 classes like `bg-acuity-primary/10` and `border-acuity-primary/30` were silently dead. Use color-mix classes (`.f-tint`) or `*-soft` tokens instead
+- Gradient/glow tokens are declared at `:root` with var() inside, so overriding `--acuity-primary` on a subtree does NOT re-tint them. The dusk block redeclares them
+- Paywall shows $4.99 because `NEW_PRICING_ENABLED` is off. All prices come from the display tier, so it flips with the flag. The paywall no longer makes any "founding rate / price rises" claim
+- Every signup gets a 7-day trial without a card (bootstrap-user). So the paywall says "Your 7 free days have started" and the card path is framed as keeping Pro after day 7. The trial-ending reminder email only goes to users WITHOUT a card, so the paywall promises no reminder
+- Apple root cause: NextAuth v4's Apple provider uses `checks: ["pkce"]` + `response_mode=form_post`, and the default PKCE cookie is SameSite=Lax, so it isn't sent on Apple's cross-site POST
+- OAuth error codes were never captured before: failures landed on /auth/error, not back in the funnel. The redirect now carries `error=` into `funnel_oauth_returned_error`
+- Loading `?step=savings` directly logs a React hydration mismatch in dev: server renders `entry`, client restores the saved step from sessionStorage. Pre-existing (same restore logic as v7). React recovers by client-rendering. Worth fixing separately by deferring the restore to an effect
+- Verified locally with Playwright at 390×844 (FB iOS UA). Both funnels walk exactly their 11 steps with no horizontal overflow. Funnel analytics, CAPI and pixel requests were blocked during the walk because the local env points at the prod DB
+- The "5.0 on the App Store" pill on create-account was removed. It contradicted the 4.9 / 127+ line shown two screens earlier
+
+---
+
 ## [2026-09-23] — Weekly business audit runs itself every Saturday night and emails the report
 
 **Requested by:** Keenan
