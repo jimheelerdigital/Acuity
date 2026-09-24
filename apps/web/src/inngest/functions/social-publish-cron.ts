@@ -106,6 +106,12 @@ export const socialPublishCronFn = inngest.createFunction(
           lane: { in: eligibleLanes },
           generatedFor: { gte: threeDaysAgo },
           socialPublishes: { none: {} },
+          // Never auto-post a slide whose baked-in text failed the vision
+          // check (2026-09-24 audit bug): carousel-daily ships the best
+          // unverified attempt marked "TEXT-UNVERIFIED … PROOFREAD BEFORE
+          // POSTING" and it was going live with possible typos. These
+          // still reach Keenan by email to proofread and post by hand.
+          slides: { none: { imagePrompt: { contains: "TEXT-UNVERIFIED" } } },
         },
         orderBy: { createdAt: "asc" },
         select: { id: true, lane: true, headline: true },

@@ -19,7 +19,10 @@ function openai(): OpenAI {
   if (!_openai) {
     const key = process.env.ACUITY_ADLAB_OPENAI_KEY || process.env.OPENAI_API_KEY;
     if (!key) throw new Error("No OpenAI API key configured (ACUITY_ADLAB_OPENAI_KEY or OPENAI_API_KEY)");
-    _openai = new OpenAI({ apiKey: key, timeout: 120_000 });
+    // 90s + 1 retry (2026-09-24): the old 120s x (1 + 2 default retries)
+    // meant ONE slow image could take 6 min, past the 300s function cap,
+    // killing the step mid-way and re-paying every attempt on replay.
+    _openai = new OpenAI({ apiKey: key, timeout: 90_000, maxRetries: 1 });
   }
   return _openai;
 }

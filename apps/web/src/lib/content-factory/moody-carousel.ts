@@ -88,7 +88,7 @@ const WOMEN_PROMPT_HEADER: Record<WomenScheme, string> = {
 };
 
 export const SCENE_BRIEF: Record<MoodyAudience, string> = {
-  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic and a DRAMATIC SKY (every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it): a black-glass penthouse tower with its crown wrapped in storm cloud, a cliff mansion glowing above a storm sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads. The building shot low and dramatic, grand and expensive, never a flat distant skyline, never a plain empty sky. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes at dusk, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; HYPER-REAL weather only — natural light a wildlife photographer could actually capture, NEVER lightning bolts, glowing skies, or painted-on effects; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a classic Ferrari gleaming under one cold garage spotlight, rain beading on an old-school Mercedes gullwing at night, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille in deep shadow, a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. One hero object, deep shadow, tactile hyperreal detail — the object must be unmistakably LUXURY and dramatic, NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (4) EPIC WARRIORS — a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS: a viking striding up a windswept grey beach with longships behind him, a samurai on a misty bamboo path in rain, a medieval knight leading his horse up a snowy mountain trail, a spartan climbing sun-bleached coastal rocks — every warrior type gets ITS OWN world matched to his culture, never one generic snowfield, and NEVER standing directly on ice or a frozen lake. FULL armor (gleaming silver, burnished gold, or blackened steel), DOING something powerful — mid-stride into the weather, arms flexed in triumph with head raised to the sky, driving a sword into the earth, climbing against the wind. The pose reads in silhouette and radiates STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to get to work. WIDE cinematic framing in an immense landscape, NEVER close to the camera, never a close-up; HYPER-REAL like a prestige-film still — real weather, real light, never a video-game render; face never visible (helmet on, visor down, or too distant to read). Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE distant armored warrior (face never visible) in warrior scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
+  men: `SCENES: dark, dramatic, luxurious photography in FOUR families (2026-09-10 library — nothing outside them): (1) DARK-LUXURY ARCHITECTURE — luxury buildings with a dark aesthetic and a DRAMATIC SKY (every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it): a black-glass penthouse tower with its crown wrapped in storm cloud, a cliff mansion glowing above a storm sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads. The building shot low and dramatic, grand and expensive, never a flat distant skyline, never a plain empty sky. (2) ALPHA WILDLIFE — one alpha animal commanding a super-cool landscape: a wolf on a cracked frozen lake beneath storm pines, a lion crossing black dunes at dusk, a stag on a ridgeline in blowing snow, an eagle sweeping low over a fjord, a panther on wet rock in night rain. Draw from the ENTIRE animal kingdom; the animal is the clear hero of the frame, the landscape epic around it; HYPER-REAL weather only — natural light a wildlife photographer could actually capture, NEVER lightning bolts, glowing skies, or painted-on effects; never reuse an animal from a recent post. (3) DARK-LUXURY OBJECTS — luxury items with a dark theme, shot like a high-end ad: a Swiss watch on black marble, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night, a superyacht moored in a storm-dark harbour. NO CARS here — cars are their own family (2026-09-24) and appear only when the COVER SCENE RULE locks a post to it. One hero object, deep shadow, tactile hyperreal detail — the object must be unmistakably LUXURY and dramatic, NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (4) EPIC WARRIORS — a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS: a viking striding up a windswept grey beach with longships behind him, a samurai on a misty bamboo path in rain, a medieval knight leading his horse up a snowy mountain trail, a spartan climbing sun-bleached coastal rocks — every warrior type gets ITS OWN world matched to his culture, never one generic snowfield, and NEVER standing directly on ice or a frozen lake. FULL armor (gleaming silver, burnished gold, or blackened steel), DOING something powerful — mid-stride into the weather, arms flexed in triumph with head raised to the sky, driving a sword into the earth, climbing against the wind. The pose reads in silhouette and radiates STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to get to work. WIDE cinematic framing in an immense landscape, NEVER close to the camera, never a close-up; HYPER-REAL like a prestige-film still — real weather, real light, never a video-game render; face never visible (helmet on, visor down, or too distant to read). Desaturated, near-monochrome, night or storm light. Every scene DIM and shadowed (white text must read on it), austere and powerful. ANTI-BLAND RULE (non-negotiable): every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape, never bare ground, reeds, or a plain horizon with nothing commanding the frame. NO people EVER — write every scene EMPTY of humans, with exactly two exceptions inside their own families: ONE lone alpha animal in wildlife scenes, and ONE distant armored warrior (face never visible) in warrior scenes. UNLIMITED LIBRARY RULE: every example above is a SEED, not a menu — INVENT a brand-new scene for every single slide of every post (new subject, new location, new season, new weather, new time, new vantage) within these four families, and never render an example verbatim or repeat a scene from a recent post. No two images across any posts should ever look alike.`,
   women: WOMEN_SCENE_BRIEFS.light,
 };
 
@@ -107,7 +107,7 @@ lines[0] (hook): "Order outside builds order inside."
 lines[1] (body): "Once a week, clear everything — room, car, files, notes. Chaos has nowhere to live."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: either a direct command to act (the shape: VERB + an object that names what the slides are about) or a direct prompt to engage what's inside (the shape: an instruction for HOW to read or answer the slides, often ending "..."). Invent the words for THIS post's subject every time. Past covers like "EARN YOUR SILENCE", "HOLD THE LINE", "READ THESE SLOWLY" and "YOU ALREADY KNOW" are SPENT — never reuse them, and never reuse any title from the recent-headlines list. Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix spent titles; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
+- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: ${audience === "men" ? `a direct COMMAND to the reader (the shape: a strong VERB + an object that names what the slides are about — see COVER COMMAND RULE)` : `either a direct command to act (the shape: VERB + an object that names what the slides are about) or a direct prompt to engage what's inside (the shape: an instruction for HOW to read or answer the slides, often ending "...")`}. Invent the words for THIS post's subject every time. Past covers like "EARN YOUR SILENCE", "HOLD THE LINE", "READ THESE SLOWLY" and "YOU ALREADY KNOW" are SPENT — never reuse them, and never reuse any title from the recent-headlines list. Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix spent titles; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
 - The request tells you EXACTLY how many items to write. Each item:
   - "name": the HEADER — a named concept in Title Case, 2-4 words, NO trailing period ("The Reset Day", "Quiet Hours", "The 90% Rule"). It should feel like naming something real the reader never had words for.
   - "lines": EXACTLY 2 entries.
@@ -414,47 +414,183 @@ const PROVE_THEME = `THEME — every post belongs to the PROVE IT family: call-o
 // still stands — families are seeds, every image invented fresh. The
 // roll happens at topic-generation time, inside a memoized Inngest
 // step, so replays keep the same family.
-const MEN_COVER_FAMILIES: { name: string; brief: string }[] = [
+interface MenCoverFamily {
+  name: string;
+  brief: string;
+  /** Variety pools (2026-09-24, per Keenan: lanes lock to one theme, "add
+   *  more variation amongst all themes"). One subject + one setting is
+   *  ROLLED per post in code, so the model can't anchor on the first
+   *  example the way it did with prose-only seeds. Items draw their own
+   *  different subjects from the same pool. */
+  subjects: string[];
+  settings: string[];
+  /** false = only reachable via a lane lock / forced family, never the
+   *  random roll (cars: Keenan's worst performer, now its own lane only;
+   *  fantasy: its own lane). */
+  inRandomPool: boolean;
+}
+
+export const MEN_COVER_FAMILIES: MenCoverFamily[] = [
   {
     name: "dark-luxury architecture",
     brief:
-      "luxury buildings with a dark aesthetic and a DRAMATIC SKY — every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it: a black-glass penthouse tower with its crown wrapped in storm cloud, a modern cliff mansion glowing above a storm-lit sea at dusk, a skyscraper silhouetted against a blood-orange sunset, a brutalist villa under rolling thunderheads, a marble estate lit cool blue beneath a breaking storm. Grand, expensive, cinematic — the building is the SUBJECT, shot low and dramatic with real presence, never a flat distant skyline, never a plain empty sky.",
+      "luxury buildings with a dark aesthetic and a DRAMATIC SKY — every building scene MUST have heavy cloud cover, cool cinematic lighting, or a burning sunset behind it. Grand, expensive, cinematic — the building is the SUBJECT, shot low and dramatic with real presence, never a flat distant skyline, never a plain empty sky.",
+    subjects: [
+      "a black-glass penthouse tower", "a modernist cliff mansion", "a brutalist concrete villa", "a marble neoclassical estate",
+      "a supertall skyscraper under construction with its crane lit", "a desert glass house", "a mountain lodge of black timber and stone",
+      "a floating infinity-pool villa", "an old-money stone manor with lit windows", "a spiral parking tower of luxury cars",
+      "a monolithic museum of raw concrete", "a lighthouse-turned-residence on black cliffs", "a rooftop helipad crowning a tower",
+      "a gothic cathedral facade lit from below", "a private island compound", "a steel-and-glass bridge penthouse spanning two towers",
+    ],
+    settings: [
+      "under a rolling thunderhead at dusk", "against a blood-orange sunset", "wrapped in low storm cloud at night",
+      "in blue-hour fog", "above a storm sea", "in heavy rain with lit windows", "in snowfall at night",
+      "under a breaking storm with shafts of light", "at golden hour after rain, streets mirrored", "in desert heat haze at sundown",
+    ],
+    inRandomPool: true,
   },
   {
     name: "alpha wildlife",
     brief:
-      "ONE alpha animal commanding a super-cool landscape — a wolf standing on a cracked frozen lake beneath storm pines, a lion crossing black dunes at dusk, a stag on a ridgeline in blowing snow, a golden eagle sweeping low over a fjord, a black panther on wet rock in night rain, a bison facing a whiteout. Draw from the ENTIRE animal kingdom; the animal is the clear HERO of the frame — close enough to feel its presence, the landscape epic around it. HYPER-REALISM RULE (2026-09-11, per Keenan): this must look like a real wildlife photograph — natural light and physically plausible weather ONLY, the kind of frame a wildlife photographer could actually capture; NEVER lightning bolts, glowing skies, or any painted-on dramatic effect. Emotion comes from the animal and the realism, not from spectacle. NEVER reuse an animal from a recent post.",
+      "ONE alpha animal commanding a super-cool landscape. The animal is the clear HERO of the frame — close enough to feel its presence, the landscape epic around it. HYPER-REALISM RULE (2026-09-11, per Keenan): this must look like a real wildlife photograph — natural light and physically plausible weather ONLY, the kind of frame a wildlife photographer could actually capture; NEVER lightning bolts, glowing skies, or any painted-on dramatic effect. Emotion comes from the animal and the realism, not from spectacle.",
+    subjects: [
+      "a grey wolf", "a black wolf", "a male lion", "a Siberian tiger", "a black panther", "a snow leopard", "a golden eagle",
+      "a bald eagle", "a grizzly bear", "a polar bear", "a bull elk", "a red stag", "an American bison", "a silverback gorilla",
+      "a jaguar", "a great white shark breaching", "an orca", "a black stallion", "a bull moose", "a peregrine falcon",
+      "a mountain gorilla", "a Cape buffalo", "a lone Arctic wolf", "a Bengal tiger crossing a river", "a condor",
+    ],
+    settings: [
+      "on a ridgeline in blowing snow", "crossing black volcanic sand at dusk", "in a misty pine forest at dawn",
+      "on wet rock in night rain", "in tall winter grass at first light", "on a cracked frozen lake beneath storm pines",
+      "in a river canyon at golden hour", "on a fog-covered savanna", "on a sea cliff in driving wind", "in a snowbound valley under grey light",
+    ],
+    inRandomPool: true,
   },
   {
     name: "dark-luxury objects",
     brief:
-      "luxury items with a dark theme, shot like a high-end ad — a classic Ferrari under one cold spotlight in a dark garage, rain beading on an old-school Mercedes gullwing parked on a night street, a vintage Porsche on a wet mountain road at dusk, a Rolls-Royce grille catching a single beam in deep shadow, a Swiss watch on black marble in low light, a signet ring beside a crystal tumbler in lamplight, a private jet on wet tarmac at night, a chess king in dramatic side light. CAR RULE: rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce, Aston Martin, anything timeless, luxurious, and inspiring; modern Lamborghini-style supercars only rarely, never the default. ONE hero object, deep shadow, controlled highlights, tactile hyperreal detail. The object must be unmistakably LUXURY and dramatic — NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life.",
+      "ONE hero luxury object with a dark theme, shot like a high-end ad — deep shadow, controlled highlights, tactile hyperreal detail. Unmistakably LUXURY and dramatic — NEVER notebooks, journals, pens, books, desks, paperwork, or any flat office/stationery still-life. (Cars live in their own family and never appear here.)",
+    subjects: [
+      "a Swiss chronograph", "a vintage dive watch", "a signet ring beside a crystal tumbler", "a private jet", "a superyacht",
+      "a chess king piece", "a bespoke leather duffel", "a custom motorcycle", "a Cuban cigar in a heavy glass ashtray",
+      "a fencing sabre on velvet", "a pair of boxing gloves hung on a nail", "a bottle of aged whiskey and one glass",
+      "a vintage Leica camera", "a gold bar on black stone", "a cased pocket watch", "a hand-forged chef's knife",
+    ],
+    settings: [
+      "on black marble in low light", "under one cold spotlight", "on wet tarmac at night", "in a dim wood-panelled study",
+      "lit by a single window at dusk", "on a rain-beaded surface", "in a dark hangar", "moored in a storm-dark harbour",
+    ],
+    inRandomPool: true,
+  },
+  {
+    name: "luxury cars",
+    brief:
+      "ONE hero car, shot like a high-end automotive ad — deep shadow, controlled highlights, rain and reflections, tactile hyperreal detail (paint depth, tire tread, badge engraving). Mix eras and marques every post (per Keenan 2026-09-24: old-school classics, Lamborghinis, Ferraris, BMW M5s and more) — never the same car twice in a row. The car is the SUBJECT; the setting frames it with drama.",
+    subjects: [
+      "a 1960s Ferrari 250 GT", "a Ferrari F40", "a modern Ferrari SF90", "a Lamborghini Countach", "a Lamborghini Aventador",
+      "a Lamborghini Miura", "a BMW M5 E39", "a BMW M5 F90", "a BMW E30 M3", "a Mercedes 300SL gullwing",
+      "a Mercedes G-Wagon", "an old-school Mercedes S-Class W126", "a Porsche 911 Turbo 930", "a Porsche 911 GT3 RS",
+      "a Rolls-Royce Phantom", "an Aston Martin DB5", "a Ford GT40", "a Bugatti Chiron", "a McLaren F1",
+      "a 1969 Dodge Charger", "a Nissan Skyline GT-R R34", "a Bentley Continental", "a Range Rover in black", "a Toyota Supra MK4",
+    ],
+    settings: [
+      "under one cold spotlight in a dark garage", "on a rain-slicked city street at night", "on a wet mountain switchback at dusk",
+      "in a neon-lit tunnel", "on an empty desert highway at sundown", "on a snowy alpine pass", "in a private hangar",
+      "outside a stone villa in the rain", "on a coastal road above a storm sea", "in a concrete parking structure at 3am",
+    ],
+    inRandomPool: false,
   },
   {
     name: "epic warrior",
     brief:
-      "a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS, hyperrealistic — a viking striding up a windswept grey beach with longships anchored behind him, a samurai walking a misty bamboo path in falling rain, a medieval knight leading his horse up a snowy mountain trail, a spartan climbing sun-bleached coastal rocks above a wine-dark sea, a crusader crossing wind-carved dunes at dusk. LANDSCAPE RULE (2026-09-11, per Keenan): every warrior type gets ITS OWN world — match the terrain to his culture and era, never default to one generic snowfield, and NEVER have him standing directly on ice or a frozen lake (a snowy path or ridgeline is fine). FULL armor (gleaming silver, burnished gold, or blackened steel). The warrior is DOING something powerful, never posing idle: mid-stride into the weather, fists clenched and arms flexed in triumph with head raised to the sky, driving a sword or spear into the earth, climbing against the wind. The pose must read in silhouette and radiate STRENGTH, CONSISTENCY, and DRIVE — the frame should make a man want to stand up and get to work. The shot is WIDE and cinematic: the warrior small-to-mid in an immense landscape, NEVER close to the camera, NEVER a close-up or portrait framing. HYPER-REALISM RULE: this must read as a still from a prestige film — real weather physics, real light, real textures, never a video-game render or painted fantasy sky. Face never visible — helmet on, visor down, or too distant to read.",
+      "a lone armored warrior seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS, hyperrealistic. LANDSCAPE RULE (2026-09-11, per Keenan): every warrior type gets ITS OWN world — match the terrain to his culture and era, never one generic snowfield, and NEVER standing directly on ice or a frozen lake (a snowy path or ridgeline is fine). FULL armor (gleaming silver, burnished gold, or blackened steel). The warrior is DOING something powerful, never posing idle: mid-stride into the weather, fists clenched and arms flexed in triumph with head raised to the sky, driving a sword or spear into the earth, climbing against the wind. The pose must read in silhouette and radiate STRENGTH, CONSISTENCY, and DRIVE. WIDE and cinematic: the warrior small-to-mid in an immense landscape, NEVER a close-up. HYPER-REALISM RULE: a still from a prestige film — real weather physics, real light, never a video-game render. Face never visible — helmet on, visor down, or too distant to read.",
+    subjects: [
+      "a viking with a round shield", "a samurai in lacquered armor", "a medieval knight leading his warhorse", "a spartan hoplite",
+      "a Roman legionary", "a crusader knight", "a Mongol horse archer", "a Scottish highlander with a claymore",
+      "a Byzantine cataphract", "a Persian immortal", "a Teutonic knight", "a Norman knight on horseback", "a gladiator",
+    ],
+    settings: [
+      "on a windswept grey beach with longships behind", "on a misty bamboo path in rain", "up a snowy mountain trail",
+      "on sun-bleached coastal rocks", "across wind-carved dunes at dusk", "on a ridge above a burning valley at night",
+      "through a pine forest in heavy fog", "on a highland moor in driving rain", "on the steppe under a vast storm sky",
+      "on the steps of a ruined temple at dawn", "along a castle rampart in sleet",
+    ],
+    inRandomPool: true,
+  },
+  {
+    name: "fantasy hero",
+    brief:
+      "EPIC FANTASY, rendered hyperreal like a still from a prestige fantasy-epic film (never a painting, never a game render): a dragon and/or a lone armored hero in a mythic world. Dragons are physically believable — real scale, leathery wing membranes with veins and scars, heavy scales catching real light, breath fogging in cold air — and the rider/hero is DISTANT, armored, face never visible (helmet or too far to read). The feeling: the reader IS the hero of his own story — the rider who answered the call. Awe, weight, danger, triumph. Desaturated, storm-lit, near-monochrome with at most one ember or fire accent.",
+    subjects: [
+      "a lone rider on a black dragon mid-flight", "a dragon perched on a cliff-top ruin with its rider standing below",
+      "an armored hero facing a dragon across a gorge", "a rider climbing a dragon's foreleg to mount it",
+      "a dragon rider banking through storm clouds", "a hero raising a sword before a sleeping dragon in a cavern",
+      "a silver dragon landing on a mountain fortress wall", "a rider and dragon silhouetted against a burning sky",
+      "a hero crossing a stone bridge toward a dragon's keep", "two dragons circling a volcanic peak with one rider",
+      "a dragon's eye opening in the dark with a hero's torch reflected in it", "a knight kneeling at the edge of a dragon's nest",
+    ],
+    settings: [
+      "above a fjord at dawn", "over a snowbound mountain range", "through volcanic ash at dusk", "over a stormy northern sea",
+      "above a walled citadel at night", "in a mist-filled canyon", "over black pine forests in rain", "above the clouds at first light",
+    ],
+    inRandomPool: false,
   },
 ];
 
+// Lane → family locks (2026-09-24, per Keenan: "if each lane stuck to a
+// specific theme... cars are cars themed... heroes are heroes, building
+// themes are building themes, animal themes are animal themed"). A lock
+// pins cover AND items to one family. muse-men stays unlocked (it runs a
+// competitor's mechanic, visuals included); timeline has its own grid
+// template. A caller-supplied sceneFamily (admin one-offs) still wins.
+export const BWK_LANE_FAMILY: Record<string, string> = {
+  "memento-men": "luxury cars",
+  watching: "alpha wildlife",
+  "discipline-real": "epic warrior",
+  "pulse-men": "dark-luxury architecture",
+  "fantasy-men": "fantasy hero",
+};
+
+// Cover command rule (2026-09-24, per Keenan: "all cover slides need to
+// be a command to the person reading it, i've noticed those get the best
+// engagement"). Appended to every BWK cover rule so it applies to every
+// BWK lane, and it overrides any softer title shape in a lane prompt.
+export const BWK_COVER_COMMAND_RULE = `COVER COMMAND RULE (overrides any other title shape in this prompt): "title" MUST be a direct COMMAND to the man reading it — an imperative that opens with a strong verb and tells HIM to do something (shapes like "STOP WAITING FOR PERMISSION", "OUTWORK YOUR EXCUSES", "BUILD IT BEFORE THEY NOTICE..." — shapes only, never reuse those words). Never a question, never a label or topic name, never first person, never a statement about other people. 2-6 words, ALL-CAPS ready, a trailing "..." allowed. It must make instant sense on its own and promise exactly what the slides deliver.`;
+
+function pick<T>(xs: T[]): T {
+  return xs[Math.floor(Math.random() * xs.length)];
+}
+
+function sample<T>(xs: T[], n: number): T[] {
+  const a = [...xs];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
+
 /** Roll one cover-scene family and return the injectable rule string.
- *  The family constrains the DNA; the scene itself must be INVENTED
- *  fresh (2026-09-08, per Keenan: "unlimited amounts actually. every
- *  post should be a unique image"). Pass `forcedFamily` (a
- *  MEN_COVER_FAMILIES name, e.g. "epic warrior") to pin the whole
- *  post — cover AND item scenes — to one family for themed one-offs
- *  (2026-09-10, per Keenan: "create a knight themed post"). */
-function rollMenCoverRule(forcedFamily?: string): string {
+ *  `forcedFamily` (a MEN_COVER_FAMILIES name — from a lane lock or an
+ *  admin one-off) pins the whole post, cover AND items, to one family.
+ *  Otherwise one family is rolled from the random pool. Either way the
+ *  cover's subject + setting are rolled in code, and items get their own
+ *  shuffled subjects, so variety doesn't depend on the model. */
+export function rollMenCoverRule(forcedFamily?: string): string {
   const forced = forcedFamily
     ? MEN_COVER_FAMILIES.find((f) => f.name === forcedFamily)
     : undefined;
-  const fam =
-    forced ??
-    MEN_COVER_FAMILIES[Math.floor(Math.random() * MEN_COVER_FAMILIES.length)];
+  const fam = forced ?? pick(MEN_COVER_FAMILIES.filter((f) => f.inRandomPool));
+  const coverSubject = pick(fam.subjects);
+  const coverSetting = pick(fam.settings);
+  const itemSubjects = sample(fam.subjects.filter((x) => x !== coverSubject), 7);
   const itemRule = forced
-    ? `FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${fam.name} family — the whole post lives in one visual world, with each slide a DIFFERENT freshly-invented scene inside it.`
-    : `Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
-  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
+    ? `FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${fam.name} family — the whole post lives in one visual world. Each item uses a DIFFERENT subject, in order from this list: ${itemSubjects.join("; ")}. Pair each with a different setting of your own invention in the family's spirit (never repeat the cover's setting).`
+    : `Item scenes follow the normal SCENES brief, and each item uses a DIFFERENT subject, in order from this list (drawn across the families): ${sample(
+        MEN_COVER_FAMILIES.filter((f) => f.inRandomPool).flatMap((f) => f.subjects).filter((x) => x !== coverSubject),
+        7
+      ).join("; ")}. Pair each with a setting of your own invention in that subject's family spirit, never one reused within the post.`;
+  return `COVER SCENE RULE (this post's family — it overrides the family list in SCENES above): "coverScene" MUST come from the ${fam.name} family — ${fam.brief} For THIS post the cover subject is ${coverSubject}, ${coverSetting} — build the cover scene around exactly that subject and setting, adding your own specific light, weather, vantage, and one telling detail so it could never be mistaken for another post. ${itemRule}\n\n${BWK_COVER_COMMAND_RULE}`;
 }
 
 // Ripple cover families (2026-09-18, per Keenan: "the pictures all
@@ -652,14 +788,82 @@ export async function generateProveTopic(
  *  original warm-dim quiet luxury (white text) — 2026-09-01, per
  *  Keenan: "make half the ripple posts light like they currently are,
  *  and the other half dark like they used to be." */
+// Camera choices rolled in code per image (2026-09-24 image-quality
+// pass): the old "vary the focal length from image to image" line was
+// meaningless — every image is a separate call that can't see the
+// others, so the model defaulted to the same eye-level medium shot.
+const VANTAGES = [
+  "low vantage from near the ground, looking up",
+  "elevated vantage looking down at an angle",
+  "straight-on at eye level with strong one-point perspective",
+  "from inside looking out through glass or an opening",
+  "three-quarter angle from the side",
+  "wide establishing shot from far back",
+];
+const LENSES = [
+  "24mm wide lens, deep focus",
+  "35mm lens, natural perspective",
+  "50mm lens at f/2.8",
+  "85mm lens at f/2, compressed background",
+  "135mm telephoto, strong compression",
+];
+const LIGHT = [
+  "hard side light raking across the subject",
+  "backlight rimming the subject's edges",
+  "low sun or last light from behind the camera",
+  "soft overcast light with deep shadows",
+  "a single practical light source in the dark",
+  "blue-hour ambient light with warm accents",
+];
+const rollCamera = () => {
+  const r = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
+  return `Camera for THIS image: ${r(VANTAGES)}, ${r(LENSES)}, ${r(LIGHT)}.`;
+};
+
+// Carve-out text is included ONLY when the scene names that kind of
+// subject (2026-09-24): the old line described armor, poses, statues and
+// animals in EVERY men's prompt — cars and buildings included — which is
+// the same "standing allowance leaks into every image" failure the
+// 2026-09-01 lone-man lesson warns about.
+const WARRIOR_RE = /\b(knight|spartan|samurai|viking|warrior|legionar|crusader|highlander|gladiator|hoplite|cataphract|immortal|horse archer|armou?r(ed)?)\b/i;
+const DRAGON_RE = /\bdragon/i;
+const STATUE_RE = /\b(statue|sculpture|bust|marble figure|bronze figure)\b/i;
+const ANIMAL_RE = /\b(wolf|wolves|lion|tiger|panther|leopard|jaguar|eagle|falcon|hawk|condor|bear|elk|stag|deer|moose|bison|buffalo|gorilla|shark|orca|whale|stallion|horse|bull|ram|owl|raven|fox|lynx|animal)\b/i;
+
+export function menSubjectRules(scene: string): string {
+  const rules: string[] = [
+    "NO people — even if the scene implies a person, render the location EMPTY of humans.",
+  ];
+  if (STATUE_RE.test(scene)) {
+    rules.push("The STATUE named in the scene is sculpture, not a person — render it as weathered stone, marble, or bronze.");
+  }
+  if (ANIMAL_RE.test(scene)) {
+    rules.push("The ONE animal named in the scene is the hero: anatomically exact, real fur/feather/hide texture, natural behavior and natural light only — a frame a wildlife photographer could actually capture, never lightning or painted skies. No other animals.");
+  } else {
+    rules.push("NO animals.");
+  }
+  if (WARRIOR_RE.test(scene) && !DRAGON_RE.test(scene)) {
+    rules.push("The ONE armored WARRIOR named in the scene is the exception to the no-people rule: always DISTANT in a wide epic shot, never a close-up; FULL hyperreal armor in silver, gold, or blackened steel; face never visible; in the landscape the scene describes, never standing directly on ice; caught in a POWERFUL ACTION pose that reads in silhouette. A prestige-film still, never a video-game look.");
+  }
+  if (DRAGON_RE.test(scene)) {
+    rules.push("The DRAGON (and at most one armored rider or hero) named in the scene is the exception: a hyperreal prestige fantasy-film still, never a painting or game render — believable scale and weight, leathery wing membranes with veins and scars, heavy scales catching the scene's real light, breath fogging in cold air; any rider DISTANT, fully armored, face never visible.");
+  }
+  rules.push("Screens may glow softly but show NO readable content.");
+  return rules.join(" ");
+}
+
 export function buildMoodyImagePrompt(
   audience: MoodyAudience | "universal",
   scene: string,
   womenScheme: WomenScheme = "light"
 ): string {
+  // 2026-09-24 image-quality pass: legibility now comes from the adaptive
+  // scrim in compose.ts, so the men's grade no longer has to be flat
+  // near-monochrome — the scene's own accent color (sunset, gold armor,
+  // car paint, ember) is allowed to glow.
   const style =
     audience === "men"
-      ? "Dark, dominant, moody minimalist photography. Desaturated, near-monochrome color grade — charcoal, slate, black, cold glass, storm light. Deep shadows, austere, powerful, commanding."
+      ? "Dark, dominant, moody photography with a muted cinematic grade — deep blacks, charcoal and slate, cold glass and storm light — where the scene's own accent color (a sunset, burnished gold, a car's paint, an ember) is allowed to glow richly. Austere, powerful, commanding."
       : audience === "universal"
         ? "Dark, moody, cinematic photography. Muted, desaturated color grade with deep shadow — dusk, night, or heavy overcast light. Vast, still, contemplative — the weight of time made visible."
         : womenScheme === "light"
@@ -676,33 +880,20 @@ export function buildMoodyImagePrompt(
     style,
     audience === "women" && womenScheme === "light"
       ? "The entire frame is SOFT and LIGHT — a bright, even, airy exposure so dark charcoal text placed at the center of the image would be perfectly legible. No harsh highlights or busy detail in the middle of the frame."
-      : "The entire frame is DIM and shadowed — dark enough that clean white text placed at the center of the image would be perfectly legible.",
+      : "Overall DIM and shadowed in mood — low-key with deep blacks — but with full contrast and real, crisp highlights, never flat or murky grey. Keep the CENTER band of the frame calm and darker: no bright sky, glare, or busy detail right behind where centered white text will sit.",
     // Clarity mandate (2026-09-03, per Keenan: "all high quality, clear
     // images that are hyper realistic").
-    "Shot on a full-frame camera, editorial architecture-magazine quality, true-to-life materials and light. TACK-SHARP and high-resolution — crisp, clear, and perfectly focused on the subject; never blurry, hazy, murky, soft, or low-quality. Physically believable optics: honest exposure, natural depth of field, at most a faint touch of grain, light behaving the way it actually does. It must be INDISTINGUISHABLE from a real photograph someone took.",
-    "Absolutely NOT a 3D render, NOT CGI, NOT digital art, NOT an illustration, NOT a matte painting, and NOT the oversaturated too-perfect AI look — no plastic surfaces, no impossible glow, no fake-clean geometry.",
+    "Shot on a full-frame camera, editorial magazine quality, true-to-life materials and light. TACK-SHARP and high-resolution, perfectly focused on the subject. Physically believable optics: honest exposure, natural depth of field, a faint touch of grain. It must be INDISTINGUISHABLE from an unretouched real photograph — no CGI, render, or illustration look, no plastic surfaces, no impossible glow.",
     // Fine-detail mandate (2026-09-04, per Keenan's blurred-leaves
     // example: "look how blurred the leaves are... better attention to
     // detail").
-    "ATTENTION TO DETAIL: every element in the frame is fully resolved with fine, true texture — individual leaves on trees, fabric weave, wood and stone grain, distant buildings all crisply defined. NO mushy, smeared, half-melted, or painterly areas ANYWHERE in the frame, including the background and edges. Any background softness must be genuine optical depth of field, never smear.",
-    "Vertical 9:16 composition, calm and uncluttered in the middle of the frame.",
-    // Variance directive (2026-08-31, per Keenan: "create a ton of
-    // variance between posts and image generations while keeping the
-    // theme intact"; widened 2026-09-03: "there should be variance
-    // everywhere").
-    "Choose a distinctive vantage for THIS image — low from the ground or a bed, from inside looking out through glass, elevated, or deep one-point perspective — so it doesn't compose like a default eye-level shot. Also make its OTHER choices its own: vary the focal length (wide vs. tight), camera distance, weather, and the light's direction and character from image to image — no two frames should ever feel like the same shot. Keep the color grade and mood exactly on theme.",
-    // People-free EVERYWHERE (2026-09-01, per Keenan: "the avatar is in
-    // literally every single post again" — the standing "at most ONE
-    // person: a lone man" allowance made gpt-image-2 paint a generic
-    // man into ~every BWK image even though the avatar reference was
-    // never attached). A man may ONLY enter via generateMoodyImage's
-    // avatar-winner exception block (≤8% of posts, and then he's
-    // Keenan).
-    // Statue/wildlife carve-outs (2026-09-08) are CONDITIONAL on the
-    // scene text naming one — never a standing allowance (the 2026-09-01
-    // "lone man" lesson: standing allowances leak into every image).
+    "ATTENTION TO DETAIL: every element is fully resolved with fine, true texture — leaves, fabric weave, wood and stone grain, distant buildings all crisply defined. No mushy, smeared, or painterly areas anywhere, including the background and edges; any softness is genuine optical depth of field.",
+    // Aspect (2026-09-24): images are generated 2:3, output 9:16, and
+    // IG/FB feeds center-crop to 4:5 — keep what matters in the middle.
+    "Vertical frame. Keep the subject and every important detail inside the central 4:5 area — the edges get cropped — with a calm, uncluttered middle band.",
+    rollCamera(),
     audience === "men"
-      ? "NO people — even if the scene description implies a person, render the location EMPTY of humans. A stone/marble/bronze STATUE is sculpture, not a person: render it ONLY when the scene explicitly describes one. ONE lone wild ANIMAL is allowed ONLY when the scene explicitly names one; otherwise NO animals. ONE armored WARRIOR (medieval knight, spartan, samurai, viking, or similar) is allowed ONLY when the scene explicitly describes one — always DISTANT in the frame (wide epic shot, never close to the camera, never a close-up), FULL hyperreal armor in silver, gold, or blackened steel, face never visible (helmet on, visor down, or too far to read), in the epic landscape the scene text describes — matched to his culture, NEVER standing directly on ice or a frozen lake — caught in a POWERFUL ACTION pose that reads in silhouette (striding into the weather, arms flexed in triumph, sword driven into the earth) — heroic strength and drive, never standing idle, rendered hyper-real like a prestige-film still, never a video-game look. Screens may glow softly but show NO readable content."
+      ? menSubjectRules(scene)
       : "NO people, NO animals, NO screens with content.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");
@@ -894,7 +1085,7 @@ That number only goes down.
 Stop wasting them."
 
 RULES:
-- "title": the cover text. 2-5 words, commanding, works in ALL CAPS (the shape: a blunt statement or imperative about time running out, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). No number in the title.
+- "title": the cover text. 2-5 words, works in ALL CAPS, a direct COMMAND to him about time running out (the shape: a strong verb telling him what to do with the time he has left, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). No number in the title.
 - The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
   - First line: ONE life-scale number — anchored to his age, measured against an average lifespan or an ending that is coming ("At 30, you have about 2,500 weekends left. On average.", "You'll see your parents about 20 more times before they're gone."). GO BIG: the number must reframe his whole remaining life, not just this month. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
   - Optional middle line: the one-sentence math or truth behind it.
@@ -3096,7 +3287,7 @@ ${men ? SCENE_BRIEF.men : WOMEN_SCENE_BRIEFS.dark}
 ${men ? rollMenCoverRule(sceneFamily) : rollWomenCoverRule(sceneFamily)}
 
 RULES:
-- "title": the cover text — the chosen issue named so the reader instantly feels seen, in their own plain words. 3-8 words, works in ALL CAPS: either the pain as a direct question ("CAN'T SWITCH OFF AT NIGHT?") or a direct fix promise ("HOW TO GET YOUR EVENINGS BACK"). SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN and name a problem a real person would recognize as theirs — if it reads vague, clever, or garbled without the slides, it is WRONG.
+- "title": the cover text — the chosen issue named so the reader instantly feels seen, in their own plain words. 3-8 words, works in ALL CAPS: ${men ? `a direct COMMAND that names the fix ("TAKE YOUR EVENINGS BACK" — shape only; see COVER COMMAND RULE)` : `either the pain as a direct question ("CAN'T SWITCH OFF AT NIGHT?") or a direct fix promise ("HOW TO GET YOUR EVENINGS BACK")`}. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN and name a problem a real person would recognize as theirs — if it reads vague, clever, or garbled without the slides, it is WRONG.
 - The request tells you EXACTLY how many items to write. Each item is ONE step of the fix, in the exact order to do them. Each slide renders as: bold HEADER, one italic HOOK line, short BODY.
   - "name": the HEADER — the step as a short imperative in Title Case, 2-4 words, NO trailing period ("Move the Charger", "Send One Text", "Pick the Night").
   - "lines": EXACTLY 2 entries.

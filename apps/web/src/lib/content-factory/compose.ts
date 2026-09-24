@@ -1658,10 +1658,108 @@ export async function composeSlideWithOverlay(
   rawImage: Buffer,
   overlayPng: Buffer
 ): Promise<Buffer> {
-  return sharp(rawImage)
+  // Light sharpen after the cover-fit upscale (item images come in at
+  // 1024x1536 and are enlarged ~1.25x), applied to the photo only.
+  const base = await sharp(rawImage)
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
-    .composite([{ input: overlayPng, top: 0, left: 0 }])
-    .jpeg({ quality: 90 })
+    .sharpen({ sigma: 0.6 })
+    .toBuffer();
+  const scrim = await buildAdaptiveScrim(base, overlayPng).catch(() => null);
+  return sharp(base)
+    .composite([
+      ...(scrim ? [{ input: scrim, top: 0, left: 0 }] : []),
+      { input: overlayPng, top: 0, left: 0 },
+    ])
+    // 4:4:4 chroma: the default 4:2:0 fringes thin white type.
+    .jpeg({ quality: 92, chromaSubsampling: "4:4:4" })
+    .toBuffer();
+}
+
+/**
+ * Adaptive text scrim (2026-09-24 image-quality pass). Legibility used to
+ * rest entirely on the photo being dark ("the entire frame is DIM"),
+ * which pushed every image flat and murky. Now a soft, feathered cloud
+ * that follows the text block sits between photo and text, and its
+ * strength is set by how bright the photo actually is under the text:
+ * almost nothing on an already-dark frame, up to ~75% on a bright one.
+ * Dark text (Ripple light scheme) gets a light scrim instead.
+ * Returns null when the overlay has no text.
+ */
+async function buildAdaptiveScrim(base: Buffer, overlayPng: Buffer): Promise<Buffer | null> {
+  const { data, info } = await sharp(overlayPng)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const W = info.width;
+  const H = info.height;
+  const C = info.channels;
+  const alpha = Buffer.alloc(W * H);
+  let minX = W, minY = H, maxX = -1, maxY = -1;
+  let lightVotes = 0, darkVotes = 0;
+  for (let p = 0, i = 0; p < W * H; p++, i += C) {
+    const a = data[i + 3];
+    alpha[p] = a;
+    if (a > 24) {
+      const x = p % W;
+      const y = (p / W) | 0;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    // Fully opaque pixels are the main text (the blurred shadow never
+    // reaches full alpha) — their color says which tone we're on.
+    if (a >= 250) {
+      const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+      if (lum > 128) lightVotes++;
+      else darkVotes++;
+    }
+  }
+  if (maxX < 0) return null;
+  const lightText = lightVotes >= darkVotes;
+
+  const pad = 40;
+  const box = {
+    left: Math.max(0, minX - pad),
+    top: Math.max(0, minY - pad),
+    width: Math.min(W, maxX + pad) - Math.max(0, minX - pad),
+    height: Math.min(H, maxY + pad) - Math.max(0, minY - pad),
+  };
+  const stats = await sharp(base).extract(box).greyscale().stats();
+  const mean = stats.channels[0].mean; // 0-255 luminance under the text
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  const strength = lightText
+    ? 0.15 + 0.6 * clamp((mean - 40) / 120)
+    : 0.15 + 0.6 * clamp((215 - mean) / 120);
+
+  // Feathered shape: the text's own alpha, spread wide, boosted to a
+  // solid core, then scaled to the chosen strength.
+  // sharp promotes 1-channel raw input to 3 channels on output, so every
+  // stage pins back to one channel (extractChannel) before raw().
+  // Thin strokes barely register once blurred, so: blur a little, boost
+  // hard so the whole text block fills solid, then blur wide to feather.
+  const filled = await sharp(alpha, { raw: { width: W, height: H, channels: 1 } })
+    .blur(22)
+    .linear(8, 0)
+    .extractChannel(0)
+    .raw()
+    .toBuffer();
+  const feathered = await sharp(filled, { raw: { width: W, height: H, channels: 1 } })
+    .blur(48)
+    .extractChannel(0)
+    .raw()
+    .toBuffer();
+  const mask = await sharp(feathered, { raw: { width: W, height: H, channels: 1 } })
+    .linear(strength, 0)
+    .extractChannel(0)
+    .raw()
+    .toBuffer();
+  const shade = lightText ? 0 : 255;
+  return sharp({
+    create: { width: W, height: H, channels: 3, background: { r: shade, g: shade, b: shade } },
+  })
+    .joinChannel(mask, { raw: { width: W, height: H, channels: 1 } })
+    .png()
     .toBuffer();
 }
 

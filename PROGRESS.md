@@ -10,6 +10,72 @@
 ## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
 
 **Requested by:** Jimmy
+## [2026-09-24] — BWK: one theme per lane, command covers, new fantasy lane, sharper and more legible images
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Each BWK lane now sticks to one picture theme:
+- memento-men: cars (old-school classics, Lamborghinis, Ferraris, M5s and more)
+- watching: animals
+- discipline-real: warriors/heroes
+- pulse-men: buildings
+- new lane: fantasy
+
+Cars no longer turn up at random in other lanes. Every theme now has a big list of subjects and settings that gets shuffled per post, and each lane is told what its last 12 covers looked like so it doesn't repeat them. Every BWK cover is now a direct command to the reader. There's a new BWK lane, "Hero's Journey": dragon riders and armored heroes, with text about being the hero of your own story. It starts after this deploy, once the lane row is created.
+
+Pictures got an overhaul:
+- Photos are no longer forced to be dark grey so the text can read. A soft shadow now sits behind the text only, as strong as that photo needs, so images keep real contrast and color (sunsets, gold armor, car paint).
+- Images come out sharper, and the white text is crisper.
+- Posts whose baked-in quote text failed the spelling check are no longer auto-posted. They still come to you by email to check first.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/moody-carousel.ts`:
+  - `MEN_COVER_FAMILIES` now has `subjects` / `settings` pools and an `inRandomPool` flag. New families "luxury cars" and "fantasy hero" (both lock-only); cars removed from "dark-luxury objects"
+  - New export `BWK_LANE_FAMILY` (lane → family). `rollMenCoverRule` rolls the cover's subject and setting in code, gives locked lanes a shuffled item-subject list, and appends the new `BWK_COVER_COMMAND_RULE` to every BWK cover rule
+  - Title rules changed to command-only for men: the shared moody prompt, memento-men, and the reddit-solve prompt (women unchanged)
+  - `buildMoodyImagePrompt`:
+    - men's grade is no longer "near-monochrome" (accent color allowed)
+    - DIM line kept as the tone marker, but it now asks for full contrast plus a calm, darker center band
+    - camera (vantage/lens/light) is rolled per image
+    - "central 4:5" framing replaces "9:16"
+    - `menSubjectRules()` includes the statue / animal / warrior / dragon allowances only when the scene names one
+- `apps/web/src/lib/content-factory/timeline-grid.ts`: cover title is now a command ("Give yourself [span] to [mission]")
+- `apps/web/src/inngest/functions/carousel-daily.ts`:
+  - `laneFamily = sceneFamily ?? BWK_LANE_FAMILY[bucket]` is passed to every generator
+  - the lane's last 12 cover scene sentences are appended to the feedback block ("RECENT COVER SCENES")
+  - unlocked lanes (muse-men) also get a shuffled item-subject list drawn across the random-pool families (never cars or fantasy)
+  - the baked-quote and texts loops stop starting new attempts after 100s once a candidate exists
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: OpenAI client `timeout: 90_000, maxRetries: 1` (was 120s × 3 attempts, which could overrun the 300s function cap)
+- `apps/web/src/lib/content-factory/compose.ts`: `composeSlideWithOverlay` now:
+  - sharpens the upscaled photo (sigma 0.6)
+  - adds an adaptive feathered scrim built from the overlay's own alpha, with strength set by photo luminance under the text (15–75%, dark or light by detected text tone)
+  - writes JPEG q92 with 4:4:4 chroma
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: skips posts with any slide marked `TEXT-UNVERIFIED`
+- New `apps/web/scripts/seed-fantasy-lane.ts`: upserts ContentLane `fantasy-men` (bwk, moody spec, 8 UTC)
+- New `apps/web/src/lib/content-factory/bwk-themes.test.ts`: 9 tests (locks valid, cars/fantasy never random, unlocked-lane item subjects, pool sizes, command rule on every roll, subject-rule gating)
+
+### Manual steps needed
+- [ ] After deploy: run `npx dotenv -e apps/web/.env.local -- tsx apps/web/scripts/seed-fantasy-lane.ts` to create the fantasy lane (Claude)
+- [ ] BWK Instagram (bwk.motivation) + Facebook auto-posting: Keenan generates a Graph API Explorer user token with the BWK page + IG selected. Claude derives the permanent page token, then Keenan adds `META_BWK_ACCESS_TOKEN`, `META_BWK_IG_USER_ID`, `META_BWK_FB_PAGE_ID` in Vercel prod and redeploys. No code changes needed: `resolveAccount` already routes BWK lanes there once these exist (Keenan / Claude)
+- [ ] Review tomorrow's BWK posts for the new look (scrim, color grade) and the command covers (Keenan)
+
+### Notes
+- Audit findings not built yet:
+  - (a) A/B test inside slides on gpt-image-2 at "medium". Today they use gpt-image-1 "medium" while covers use gpt-image-2 "high", so the look shifts after slide 1
+  - (b) A Haiku vision quality gate per image (~1¢)
+  - (c) Build the 4:5 feed version from the raw 2:3 image instead of the 9:16 upscale (feeds show ~59% of the source pixels today)
+  - (d) Store `rawImageUrl` for moody slides so text edits don't regenerate the photo (~25¢ each)
+  - (e) Cost estimate `slides*8+2` undercounts covers
+- sharp GOTCHA: 1-channel raw input comes back as 3 channels from `.raw().toBuffer()`. The first scrim version read a scrambled mask and silently did nothing. Pin with `.extractChannel(0)` before `.raw()`
+- The tone markers "SOFT and LIGHT" / "DIM and shadowed" must stay in image prompts; `recomposeSlide` keys off them
+- Cars were ~21% of BWK covers over the last 14 days (20 of 96), spread across 7 of 9 lanes. Now they appear only in memento-men
+- BWK TikTok videos (222 scraped) have no link back to their source posts, so theme-vs-performance can't be measured yet. The locks make the per-lane numbers double as per-theme numbers once matching exists (offered: thumbnail-hash matching)
+
+---
+
 ## [2026-09-24] — Men's paywall gets its own real review quote
 
 **Requested by:** Keenan

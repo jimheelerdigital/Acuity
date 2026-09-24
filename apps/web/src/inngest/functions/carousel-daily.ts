@@ -941,8 +941,13 @@ export const carouselDailyCronFn = inngest.createFunction(
         let candidateSurface = firstSurface;
         let imagePrompt = "";
 
+        // Time budget (2026-09-24): stop starting new attempts once a
+        // candidate exists and ~100s have passed, so the step finishes
+        // under the 300s function cap instead of dying mid-way.
+        const deadline = Date.now() + 100_000;
         outer: for (const surface of [firstSurface, backupSurface]) {
           for (let attempt = 1; attempt <= 2; attempt++) {
+            if (candidate && Date.now() > deadline) break outer;
             try {
               const { buffer } = await generateMoodyImage(
                 buildBakedQuotePrompt(variant, surface, pq.quote),
@@ -1153,7 +1158,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           let candidate: Buffer | null = null;
           let imagePrompt = "";
 
+          // Time budget (2026-09-24): same as the phone-quote loop — once a
+          // candidate exists, stop starting attempts after ~100s.
+          const deadline = Date.now() + 100_000;
           for (let attempt = 1; attempt <= 3; attempt++) {
+            if (candidate && Date.now() > deadline) break;
             try {
               const { buffer } = await generateMoodyImage(
                 buildBakedTextsPrompt(textsLane, message),
@@ -1311,6 +1320,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         generatePermissionTopic,
         generateDisciplineRealTopic,
         generateSpecTopic,
+        BWK_LANE_FAMILY,
       } = await import("@/lib/content-factory/moody-carousel");
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
       const recent = await prisma.carouselPost.findMany({
@@ -1318,6 +1328,28 @@ export const carouselDailyCronFn = inngest.createFunction(
         select: { headline: true },
       });
       const headlines = recent.map((p) => p.headline);
+
+      // Lane theme lock (2026-09-24): BWK lanes each live in one image
+      // family. An explicit sceneFamily on the event (admin one-off) wins.
+      const laneFamily = sceneFamily ?? BWK_LANE_FAMILY[bucket];
+
+      // Scene memory (2026-09-24): with lanes locked to one family,
+      // repeats become likely, so feed this lane's recent cover scenes
+      // back as ground not to retread. Only the scene sentence is kept —
+      // stored image prompts carry long shared style boilerplate.
+      const recentCovers = await prisma.carouselSlide.findMany({
+        where: { order: 0, carouselPost: { lane: bucket, generatedFor: { gte: thirtyDaysAgo } } },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: { imagePrompt: true },
+      });
+      const recentScenes = recentCovers
+        .map((c) => (c.imagePrompt.split("camera:")[1] ?? "").split("\n")[0].trim())
+        .filter((x) => x.length > 20)
+        .map((x) => x.slice(0, 160));
+      const sceneMemory = recentScenes.length
+        ? `\n\nRECENT COVER SCENES IN THIS LANE — never reuse these subjects, settings, or compositions (the same car, animal, warrior, or building type must not come back within this list):\n${recentScenes.map((x) => `- ${x}`).join("\n")}`
+        : "";
 
       // Ripple scheme: PINNED to "dark" (2026-09-03 — the winning
       // posts, ANSWER HONESTLY and DO THE MATH, were both dark-era;
@@ -1336,30 +1368,30 @@ export const carouselDailyCronFn = inngest.createFunction(
       const { getLaneFeedback } = await import(
         "@/lib/content-factory/performance"
       );
-      const feedback = await getLaneFeedback(bucket);
+      const feedback = ((await getLaneFeedback(bucket)) ?? "") + sceneMemory || null;
       const topic = specLane
         ? await generateSpecTopic(
             specLane.key,
             specLane.spec,
             headlines,
-            sceneFamily,
+            laneFamily,
             feedback
           )
         : bucket === "memento"
           ? await generateMementoTopic("women", headlines, "dark", undefined, feedback)
           : bucket === "memento-men"
-            ? await generateMementoTopic("men", headlines, "light", sceneFamily, feedback)
+            ? await generateMementoTopic("men", headlines, "light", laneFamily, feedback)
             : bucket === "questions"
               ? await generateQuestionsTopic(headlines, "dark", feedback)
               : bucket === "moody-men"
-                ? await generateMoodyTopic("men", headlines, sceneFamily, feedback)
+                ? await generateMoodyTopic("men", headlines, laneFamily, feedback)
                 : bucket === "watching"
-                  ? await generateWatchingTopic(headlines, sceneFamily, feedback)
+                  ? await generateWatchingTopic(headlines, laneFamily, feedback)
                   : bucket === "permission"
                     ? await generatePermissionTopic(headlines, feedback)
                     : bucket === "discipline-real"
-                      ? await generateDisciplineRealTopic(headlines, sceneFamily, feedback)
-                      : await generateProtocolTopic(headlines, sceneFamily, feedback);
+                      ? await generateDisciplineRealTopic(headlines, laneFamily, feedback)
+                      : await generateProtocolTopic(headlines, laneFamily, feedback);
 
       // Keenan-avatar roll (2026-08-31: "5-10% of generated posts,
       // max"). One roll per BWK post; a winning post gets the avatar
