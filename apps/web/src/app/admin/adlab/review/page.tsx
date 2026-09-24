@@ -309,63 +309,56 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
 
       {preview?.imageUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/85 p-4"
           onClick={() => setPreview(null)}
           role="dialog"
           aria-modal="true"
         >
-          <div
-            className="flex max-h-full w-full max-w-5xl flex-col gap-4 overflow-y-auto md:flex-row"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 gap-3">
-              <figure className="flex flex-col items-center gap-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={preview.imageUrl}
-                  alt={preview.headline}
-                  className="max-h-[80vh] w-full rounded-acuity-lg object-contain md:w-auto"
-                />
-                <figcaption className="text-[10px] uppercase tracking-wide text-acuity-text-ter">Feed</figcaption>
-              </figure>
-              {preview.storyImageUrl && (
-                <figure className="flex flex-col items-center gap-1">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={preview.storyImageUrl}
-                    alt={`${preview.headline} (Stories)`}
-                    className="max-h-[80vh] rounded-acuity-lg object-contain"
-                  />
-                  <figcaption className="text-[10px] uppercase tracking-wide text-acuity-text-ter">Stories / Reels</figcaption>
-                </figure>
-              )}
+          <div className="flex w-full max-w-5xl flex-col gap-4 py-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-wrap items-start justify-center gap-6">
+              <div>
+                <p className="mb-2 text-center text-[10px] uppercase tracking-wide text-acuity-text-ter">Feed · Instagram / Facebook</p>
+                <MetaFeedMock creative={preview} />
+              </div>
+              <div>
+                <p className="mb-2 text-center text-[10px] uppercase tracking-wide text-acuity-text-ter">
+                  Stories / Reels{preview.storyImageUrl ? "" : " · no 9:16 version (older ad)"}
+                </p>
+                <MetaStoryMock creative={preview} />
+              </div>
             </div>
-            <div className="min-w-0 flex-1 rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-4 text-sm">
-              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">Primary text</p>
-              <p className="text-white whitespace-pre-wrap mb-3">{preview.primaryText}</p>
-              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">Headline</p>
-              <p className="text-white font-semibold mb-3">{preview.headline}</p>
-              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">Description</p>
-              <p className="text-acuity-text-sec mb-3">{preview.description}</p>
-              <p className="text-[10px] uppercase tracking-wide text-acuity-text-ter mb-1">CTA</p>
-              <p className="text-acuity-text-sec mb-4">{preview.cta.replace("_", " ")}</p>
-              <div className="flex gap-2">
+            <div className="mx-auto w-full max-w-2xl rounded-acuity-lg border border-acuity-line bg-acuity-card-bg p-3 text-sm">
+              <p className="mb-1 text-[10px] uppercase tracking-wide text-acuity-text-ter">
+                Full primary text ({preview.primaryText.length} chars · Meta shows ~125 before “more”)
+              </p>
+              <p className="whitespace-pre-wrap text-white">{preview.primaryText}</p>
+            </div>
+            <div className="flex justify-center gap-2">
+              <a
+                href={preview.imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg bg-acuity-bg-inset px-3 py-1.5 text-xs text-white"
+              >
+                Open feed image
+              </a>
+              {preview.storyImageUrl && (
                 <a
-                  href={preview.imageUrl}
+                  href={preview.storyImageUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-lg bg-acuity-bg-inset px-3 py-1.5 text-xs text-white"
                 >
-                  Open original
+                  Open story image
                 </a>
-                <button
-                  type="button"
-                  onClick={() => setPreview(null)}
-                  className="rounded-lg bg-acuity-bg-inset px-3 py-1.5 text-xs text-white"
-                >
-                  Close (Esc)
-                </button>
-              </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="rounded-lg bg-acuity-bg-inset px-3 py-1.5 text-xs text-white"
+              >
+                Close (Esc)
+              </button>
             </div>
           </div>
         </div>
@@ -387,7 +380,7 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
               } ${isFail ? "opacity-60" : ""}`}
             >
               <div className="flex">
-                <div className="w-28 h-28 shrink-0 bg-acuity-bg-inset flex items-center justify-center">
+                <div className="w-28 h-[140px] shrink-0 bg-acuity-bg-inset flex items-center justify-center">
                   {c.imageUrl ? (
                     <button
                       type="button"
@@ -396,7 +389,7 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
                       aria-label={`View full image: ${c.headline}`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={c.imageUrl} alt={c.headline} className="w-28 h-28 object-cover" />
+                      <img src={c.imageUrl} alt={c.headline} className="w-28 h-[140px] object-cover" />
                     </button>
                   ) : (
                     <ImageOff className="h-6 w-6 text-acuity-text-ter" />
@@ -537,3 +530,81 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
     </section>
   );
 }
+
+// ─── Meta placement mockups (2026-09-24, per Keenan: "show as it would on
+// meta") — approximations of the IG/FB feed card and a story frame, so
+// crops, truncation and the button read the way a viewer sees them. ─────
+
+const META_CTA_LABEL: Record<string, string> = {
+  SIGN_UP: "Sign up",
+  LEARN_MORE: "Learn more",
+  GET_OFFER: "Get offer",
+  DOWNLOAD: "Download",
+  SUBSCRIBE: "Subscribe",
+};
+
+/** Meta shows ~125 characters of primary text before "… more". */
+const PRIMARY_TEXT_VISIBLE = 125;
+
+function MetaFeedMock({ creative }: { creative: Creative }) {
+  const text = creative.primaryText;
+  const cut = text.length > PRIMARY_TEXT_VISIBLE;
+  return (
+    <div className="w-[340px] overflow-hidden rounded-xl bg-white text-[13px] text-neutral-900 shadow-2xl">
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C8623C] text-xs font-bold text-white">R</div>
+        <div className="leading-tight">
+          <p className="font-semibold">Ripple</p>
+          <p className="text-[11px] text-neutral-500">Sponsored</p>
+        </div>
+      </div>
+      <p className="px-3 pb-2 leading-snug">
+        {cut ? text.slice(0, PRIMARY_TEXT_VISIBLE).trimEnd() : text}
+        {cut && <span className="text-neutral-500">… more</span>}
+      </p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={creative.imageUrl!} alt={creative.headline} className="aspect-[4/5] w-full object-cover" />
+      <div className="flex items-center justify-between gap-3 bg-neutral-100 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase text-neutral-500">goripple.io</p>
+          <p className="truncate font-semibold">{creative.headline}</p>
+          <p className="truncate text-[11px] text-neutral-500">{creative.description}</p>
+        </div>
+        <span className="shrink-0 rounded-md bg-neutral-300 px-3 py-1.5 text-xs font-semibold">
+          {META_CTA_LABEL[creative.cta] ?? "Learn more"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function MetaStoryMock({ creative }: { creative: Creative }) {
+  const src = creative.storyImageUrl ?? creative.imageUrl!;
+  return (
+    <div className="relative aspect-[9/16] w-[270px] overflow-hidden rounded-xl bg-black shadow-2xl">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`${creative.headline} (story)`}
+        className={`absolute inset-0 h-full w-full ${creative.storyImageUrl ? "object-cover" : "object-contain"}`}
+      />
+      <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/50 to-transparent p-2.5">
+        <div className="mb-2 h-0.5 w-full rounded bg-white/40">
+          <div className="h-0.5 w-1/3 rounded bg-white" />
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-white">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#C8623C] text-[10px] font-bold">R</div>
+          <span className="font-semibold">Ripple</span>
+          <span className="text-white/70">Sponsored</span>
+        </div>
+      </div>
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-1 bg-gradient-to-t from-black/60 to-transparent pb-4 pt-8">
+        <span className="text-xs text-white">⌃</span>
+        <span className="rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-neutral-900">
+          {META_CTA_LABEL[creative.cta] ?? "Learn more"}
+        </span>
+      </div>
+    </div>
+  );
+}
+

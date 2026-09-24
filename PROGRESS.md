@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-24] — Ad review previews look like Meta (feed post + story), batch regenerated in both sizes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Clicking an ad on the review page now shows it the way people will see it on Meta: an Instagram/Facebook feed post ("Ripple · Sponsored", the text cut at "… more" exactly where Meta cuts it, the 4:5 image, the headline and "Sign up" button) next to a phone-shaped Story/Reel. The card thumbnails are 4:5 instead of square. This week's batch was regenerated with the new sizes, the screenshot format and "Sign up" buttons.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/admin/adlab/review/page.tsx`: new `MetaFeedMock` and `MetaStoryMock` components (125-char primary-text cut, 4:5 image, headline/description/CTA bar; 9:16 story frame with header, CTA pill, and letterboxed fallback when `storyImageUrl` is null); full-text panel; thumbnails 112×140
+- Prod: retired the unlaunched Sep 24 experiments (`cmuev6l5r…`, `cmuevg1dl…` → concluded, "Superseded") and fired `run-weekly-batch` on the eb5e4d2c code
+
+### Manual steps needed
+- [ ] Keenan: review the new batch (~20 min to generate) and launch
+
+### Notes
+- The mockups are approximations for judging crops and truncation, not pixel-exact Meta UI
+
+---
+
 ## [2026-09-24] — Ads in the right sizes for every placement, real-app-screenshot format, "Start free trial" everywhere
 
 **Requested by:** Keenan
