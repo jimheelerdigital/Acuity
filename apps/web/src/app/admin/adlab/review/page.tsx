@@ -18,6 +18,7 @@ import {
   XCircle,
   Rocket,
   ImageOff,
+  Sparkles,
 } from "lucide-react";
 
 interface Creative {
@@ -86,14 +87,48 @@ export default function ReviewPage() {
     load();
   }, [load]);
 
+  // On-demand batch (2026-09-24): the weekly batch used to be runnable only
+  // by the Sunday cron or a CRON_SECRET call. This queues the same job;
+  // nothing touches Meta — new ads land here for approval (~10 min, and the
+  // review email arrives when done).
+  const [batchState, setBatchState] = useState<"idle" | "sending" | "queued" | "error">("idle");
+  const runBatch = async () => {
+    if (!confirm("Make a fresh set of ads for both groups? It takes about 10 minutes and replaces the ads shown here. Nothing goes to Meta until you launch.")) return;
+    setBatchState("sending");
+    try {
+      const res = await fetch("/api/admin/adlab/run-weekly-batch", { method: "POST" });
+      setBatchState(res.ok ? "queued" : "error");
+    } catch {
+      setBatchState("error");
+    }
+  };
+
   return (
     <>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white mb-1">Weekly Batch Review</h1>
-        <p className="text-sm text-acuity-text-ter">
-          Reddit-grounded ads generated every Sunday. Approve the ones you like, set budget
-          and destination per group, then launch. Nothing spends money until you hit Launch.
-        </p>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-1">Weekly Batch Review</h1>
+          <p className="text-sm text-acuity-text-ter">
+            Reddit-grounded ads generated every Sunday. Approve the ones you like, set budget
+            and destination per group, then launch. Nothing spends money until you hit Launch.
+          </p>
+        </div>
+        <div className="text-right">
+          <button
+            onClick={runBatch}
+            disabled={batchState === "sending" || batchState === "queued"}
+            className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3.5 py-2 text-sm font-semibold text-white hover:bg-white/15 disabled:opacity-50">
+            {batchState === "sending" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Make new ads
+          </button>
+          <p className="mt-1.5 text-xs text-acuity-text-ter">
+            {batchState === "queued"
+              ? "Generating — ready in ~10 min (you'll get the email). Refresh then."
+              : batchState === "error"
+                ? "Couldn't start it — try again."
+                : "Fresh batch for both groups, on demand."}
+          </p>
+        </div>
       </div>
 
       {loading ? (

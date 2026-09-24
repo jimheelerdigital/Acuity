@@ -187,9 +187,10 @@ async function textBlock(
   markup: string,
   fontPath: string | null,
   width: number,
-  spacing = 8
+  spacing = 8,
+  align: "centre" | "left" = "centre"
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
-  const opts: Record<string, unknown> = { text: markup, width, rgba: true, align: "centre", spacing };
+  const opts: Record<string, unknown> = { text: markup, width, rgba: true, align, spacing };
   if (fontPath) opts.fontfile = fontPath;
   else opts.font = "sans-serif";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -290,6 +291,148 @@ export async function renderAppProofPlacements(
   const [feed, story] = await Promise.all([
     renderAppProof(groupKey, copy, FEED, false),
     renderAppProof(groupKey, copy, STORY, true),
+  ]);
+  return { feed, story };
+}
+
+// ─── Say-catch format (2026-09-24, per Keenan: ads "aren't really tying in
+// the users pains to what our product does and how we solve it") ─────────
+//
+// Shows the product's mechanism in one glance, drawn in code so every word
+// is exact: the pain as the headline, then "You say it:" with a line she'd
+// actually say out loud, then "Ripple catches it:" with the tasks / habits /
+// patterns Ripple pulls from that line, then the fix in one sentence and the
+// CTA. Same palette as app-proof per group.
+
+export interface SayCatchCopy {
+  headline: string;
+  said: string;
+  caught: string[];
+  solution: string;
+  ctaLabel: string;
+}
+
+function roundedRect(w: number, h: number, r: number, fill: string, opacity = 1): Buffer {
+  return Buffer.from(
+    `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${w}" height="${h}" rx="${r}" fill="${fill}" fill-opacity="${opacity}"/></svg>`
+  );
+}
+
+async function renderSayCatch(
+  groupKey: BatchGroupKey,
+  copy: SayCatchCopy,
+  size: { w: number; h: number },
+  story: boolean
+): Promise<Buffer> {
+  const t = THEME[groupKey];
+  const bold = await ensureFontFile("Bold");
+  const medium = await ensureFontFile("Medium");
+  const italic = await ensureFontFile("MediumItalic").catch(() => medium);
+  const k = story ? 1.15 : 1.06;
+  const top = story ? 250 : 64;
+  const bottom = story ? 340 : 56;
+  const side = 64;
+  const cardW = size.w - side * 2;
+  const pad = 36;
+  const inner = cardW - pad * 2;
+
+  // Build every block first (relative y), then center the stack between
+  // the top margin and the CTA pill so neither size ends up top-heavy.
+  const blocks: { input: Buffer; y: number; left: number }[] = [];
+  let y = 0;
+
+  const head = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(62 * k)}" foreground="${t.text}">${esc(copy.headline)}</span>`,
+    bold, size.w - side * 2, 0
+  );
+  blocks.push({ input: head.buffer, y, left: Math.round((size.w - head.width) / 2) });
+  y += head.height + Math.round(40 * k);
+
+  const label = async (text: string) =>
+    textBlock(
+      `<span font_desc="Poppins Bold ${Math.round(25 * k)}" foreground="${t.accent}" letter_spacing="2048">${esc(text.toUpperCase())}</span>`,
+      bold, inner, 0, "left"
+    );
+
+  const l1 = await label("You say it");
+  blocks.push({ input: l1.buffer, y, left: side + 4 });
+  y += l1.height + 14;
+  const quote = await textBlock(
+    `<span font_desc="Poppins Medium Italic ${Math.round(35 * k)}" foreground="${t.text}">“${esc(copy.said)}”</span>`,
+    italic, inner, 8, "left"
+  );
+  const qH = quote.height + pad * 2;
+  blocks.push({ input: roundedRect(cardW, qH, 28, t.accent, groupKey === "men" ? 0.14 : 0.1), y, left: side });
+  blocks.push({ input: quote.buffer, y: y + pad, left: side + pad });
+  y += qH + Math.round(34 * k);
+
+  const l2 = await label("Ripple catches it");
+  blocks.push({ input: l2.buffer, y, left: side + 4 });
+  y += l2.height + 14;
+  // Checkmark drawn as a shape — a glyph isn't guaranteed in Poppins and
+  // can render as an empty box on the server.
+  const icon = Math.round(36 * k);
+  const check = Buffer.from(
+    `<svg width="${icon}" height="${icon}" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg"><circle cx="17" cy="17" r="17" fill="${t.accent}"/><path d="M9.5 17.5l5 5 10-11" fill="none" stroke="${t.ctaText}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  );
+  const iconGap = 22;
+  const rows: { buffer: Buffer; height: number }[] = [];
+  for (const item of copy.caught.slice(0, 3)) {
+    rows.push(
+      await textBlock(
+        `<span font_desc="Poppins Medium ${Math.round(34 * k)}" foreground="${t.text}">${esc(item)}</span>`,
+        medium, inner - icon - iconGap, 4, "left"
+      )
+    );
+  }
+  const rowGap = Math.round(24 * k);
+  const listH = rows.reduce((n, r) => n + r.height, 0) + rowGap * (rows.length - 1) + pad * 2;
+  const cardFill = groupKey === "men" ? "#1C1C1E" : "#FFFFFF";
+  blocks.push({ input: roundedRect(cardW, listH, 28, cardFill), y, left: side });
+  let ry = y + pad;
+  for (const r of rows) {
+    const firstLine = Math.min(r.height, Math.round(icon * 1.4));
+    blocks.push({ input: check, y: ry + Math.max(0, Math.round((firstLine - icon) / 2)), left: side + pad });
+    blocks.push({ input: r.buffer, y: ry, left: side + pad + icon + iconGap });
+    ry += r.height + rowGap;
+  }
+  y += listH + Math.round(40 * k);
+
+  const sol = await textBlock(
+    `<span font_desc="Poppins Medium ${Math.round(33 * k)}" foreground="${t.sub}">${esc(copy.solution)}</span>`,
+    medium, size.w - side * 2, 6
+  );
+  blocks.push({ input: sol.buffer, y, left: Math.round((size.w - sol.width) / 2) });
+  y += sol.height;
+  const stackH = y;
+
+  const cta = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(38 * k)}" foreground="${t.ctaText}">${esc(copy.ctaLabel)}</span>`,
+    bold, 600, 0
+  );
+  const pillW = Math.min(size.w - 200, cta.width + 130);
+  const pillH = cta.height + 48;
+  const pillTop = size.h - bottom - pillH;
+  const avail = pillTop - Math.round(36 * k) - top;
+  const offset = top + Math.max(0, Math.round((avail - stackH) / 2));
+
+  const composites = blocks.map((b) => ({ input: b.input, top: offset + b.y, left: b.left }));
+  composites.push({ input: roundedRect(pillW, pillH, pillH / 2, t.accent), top: pillTop, left: Math.round((size.w - pillW) / 2) });
+  composites.push({ input: cta.buffer, top: pillTop + Math.round((pillH - cta.height) / 2), left: Math.round((size.w - cta.width) / 2) });
+
+  return sharp({ create: { width: size.w, height: size.h, channels: 3, background: t.bg } })
+    .composite(composites)
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+export async function renderSayCatchPlacements(
+  groupKey: BatchGroupKey,
+  copy: SayCatchCopy
+): Promise<{ feed: Buffer; story: Buffer }> {
+  const [feed, story] = await Promise.all([
+    renderSayCatch(groupKey, copy, FEED, false),
+    renderSayCatch(groupKey, copy, STORY, true),
   ]);
   return { feed, story };
 }

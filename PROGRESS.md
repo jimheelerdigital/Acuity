@@ -7,6 +7,49 @@
 
 ---
 
+## [2026-09-24] — Ads now show the pain → how Ripple fixes it, plus a "Make new ads" button
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+This week's ads were mostly mood photos (a coffee cup, a notebook, a phone with a record button) with clever lines that didn't say what problem they solve or what Ripple does. Every ad now has to name a real pain in the audience's own words, say exactly what Ripple does about it, and show the result.
+
+A new ad style shows the product working: "You say it: 'Emma's permission slip is due Friday, I need to call about Mom's refill…'" → "Ripple catches it: ✓ Sign Emma's slip, Friday ✓ Call about Mom's refill ✓ Third week in a row: no time for you", then the fix in one line and the trial button.
+
+Photo ads now show the actual pain moment, and the checklist ads list benefits specific to that ad's pain instead of the same three every time. The ad review page has a "Make new ads" button, so you don't have to wait for Sunday.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/weekly-batch.ts`:
+  - `BatchAdSchema` requires `solutionLine`, `benefits[3]`, `said`, `caught[3]`
+  - system prompt rewritten around the pain → mechanism → result bridge (pain-in-their-words headline test; mechanism must name a real feature; no duration claims; no "journal"/"brain dump")
+  - `imageScene` must depict the pain moment
+- Formats v2:
+  - hook-overlay / statement-card add the solution line
+  - notes-app / checklist-photo use per-ad benefits (fall back to `overlayValueProps`)
+  - new `say-catch` (code-composed)
+  - `app-in-scene` retired from new batches (`offered: false`, still resolvable)
+  - Mix asked for: 3 say-catch + 2 app-proof per 10
+- Extra copy fields ride in `generationPrompt` as an `[[AD_COPY:{json}]]` tag (no schema change):
+  - `encodeAdCopy` / `decodeAdCopy` / `stripAdCopy`
+  - `generateBatchImage` strips the tag before the image model and renders say-catch from it
+- `apps/web/src/lib/adlab/ad-render.ts`: `renderSayCatchPlacements` (feed 1080x1350 + story 1080x1920, group palettes from app-proof, checkmarks drawn as SVG so no missing-glyph boxes, stack vertically centered); `textBlock` gained an `align` option
+- `apps/web/src/inngest/functions/adlab-regen-images.ts`: rebuilds prompts with `decodeAdCopy` so the new fields survive a regen
+- `apps/web/src/app/admin/adlab/review/page.tsx`: "Make new ads" button → POST `/api/admin/adlab/run-weekly-batch` (admin session). Queues the same Inngest job as the Sunday cron; never touches Meta
+- New `apps/web/src/lib/adlab/ad-formats.test.ts` (4 tests)
+
+### Manual steps needed
+- [ ] After deploy: press "Make new ads" at /admin/adlab/review (≈10 min, ~$5 of images at gpt-image-2 high), review, then launch both groups (Keenan)
+- [ ] If the men's launch still fails, send the "Meta says:" text (Keenan)
+
+### Notes
+- Why a tag in the prompt instead of new columns: avoids a `db:push` (main-only, Keenan's home network) for fields only the image builders read
+- Checked on real renders before shipping: both palettes, feed and story. Story keeps its bottom ~18% clear for IG/FB reply chrome
+- Meta policy line kept: no "before/after transformation" framing. The ads show the mechanism (what you say → what Ripple catches), not a before/after of the person
+
+---
+
 ## [2026-09-24] — Correction: top image quality is for ads and social covers only
 
 **Requested by:** Keenan

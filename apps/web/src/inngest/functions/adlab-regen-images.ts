@@ -39,7 +39,7 @@ export const adlabRegenImagesFn = inngest.createFunction(
       // 1. Load creatives + group, rebuild prompts (deterministic, no AI)
       const plan = await step.run(`rebuild-prompts-${experimentId}`, async () => {
         const { prisma } = await import("@/lib/prisma");
-        const { buildAdImagePrompt, BATCH_GROUPS } = await import("@/lib/adlab/weekly-batch");
+        const { buildAdImagePrompt, BATCH_GROUPS, decodeAdCopy } = await import("@/lib/adlab/weekly-batch");
 
         const experiment = await prisma.adLabExperiment.findUnique({
           where: { id: experimentId },
@@ -84,7 +84,9 @@ export const adlabRegenImagesFn = inngest.createFunction(
           const imageScene = sceneMatch ? sceneMatch[1].trim() : "";
           const prompt = buildAdImagePrompt(
             c.formatKey ?? i,
-            { headline: c.headline, description: c.description, cta: c.cta, imageScene },
+            // decodeAdCopy recovers the pain → fix fields (solution line,
+            // benefits, said/caught) stored in the prompt's AD_COPY tag.
+            { headline: c.headline, description: c.description, cta: c.cta, imageScene, ...decodeAdCopy(c.generationPrompt) },
             groupKey
           );
           await prisma.adLabCreative.update({

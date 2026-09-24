@@ -24,7 +24,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
 import { displayMonthly } from "@/lib/pricing";
-import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements } from "@/lib/adlab/ad-render";
+import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements } from "@/lib/adlab/ad-render";
 
 // ─── Groups ───────────────────────────────────────────────────────────────
 
@@ -187,12 +187,49 @@ const CTA_LABELS: Record<string, string> = {
   SUBSCRIBE: "Start free trial",
 };
 
-interface AdImageCopy {
+export interface AdImageCopy {
   headline: string;
   description: string;
   cta: string;
   imageScene: string;
+  // Pain → fix bridge (2026-09-24, per Keenan: ads "aren't really tying in
+  // the users pains to what our product does and how we solve it"). All
+  // optional so older creatives still rebuild.
+  /** What Ripple concretely does about THIS ad's pain, one sentence. */
+  solutionLine?: string;
+  /** Three benefit lines tied to THIS pain (replaces the fixed per-group props). */
+  benefits?: string[];
+  /** Something she/he would actually say out loud in a debrief. */
+  said?: string;
+  /** What Ripple pulls out of `said`: tasks, habits, promises, patterns. */
+  caught?: string[];
 }
+
+// The extra copy fields aren't DB columns, so they ride in the stored
+// generationPrompt as one tagged line. generateBatchImage strips it before
+// anything reaches the image model; the regen path parses it back.
+const AD_COPY_TAG = "[[AD_COPY:";
+export function encodeAdCopy(c: AdImageCopy): string {
+  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught };
+  return `\n${AD_COPY_TAG}${JSON.stringify(extra)}]]`;
+}
+export function decodeAdCopy(prompt: string | null | undefined): Partial<AdImageCopy> {
+  if (!prompt) return {};
+  const i = prompt.lastIndexOf(AD_COPY_TAG);
+  if (i < 0) return {};
+  try {
+    return JSON.parse(prompt.slice(i + AD_COPY_TAG.length, prompt.lastIndexOf("]]")));
+  } catch {
+    return {};
+  }
+}
+export function stripAdCopy(prompt: string): string {
+  const i = prompt.lastIndexOf(AD_COPY_TAG);
+  return i < 0 ? prompt : prompt.slice(0, i).trimEnd();
+}
+
+const benefitsFor = (c: AdImageCopy, g: GroupConfig): string[] =>
+  c.benefits && c.benefits.length >= 3 ? c.benefits.slice(0, 3) : g.overlayValueProps;
 
 const EXACT_TEXT_RULES = `TEXT RENDERING RULES (critical):
 - Render every quoted string EXACTLY as written — correct spelling, no words added, none dropped.
@@ -205,60 +242,87 @@ const EXACT_TEXT_RULES = `TEXT RENDERING RULES (critical):
 type AdFormatBuilder = (copy: AdImageCopy, g: GroupConfig) => string;
 
 export const APP_PROOF_FORMAT = "app-proof";
+export const SAY_CATCH_FORMAT = "say-catch";
 
-/** key → prompt builder. Order defines the rotation across a batch. */
-export const AD_FORMATS: Array<{ key: string; build: AdFormatBuilder }> = [
+/**
+ * key → prompt builder. Order defines the rotation across a batch.
+ * v2 (2026-09-24): every format carries the PAIN → FIX bridge — the
+ * headline names the pain, the solution line / benefits say what Ripple
+ * does about THAT pain, and photo scenes show the pain moment itself
+ * instead of generic mood (coffee cups, notebooks). `offered: false`
+ * keeps a retired format resolvable for old creatives but out of new
+ * batches.
+ */
+export const AD_FORMATS: Array<{ key: string; build: AdFormatBuilder; offered?: boolean }> = [
   {
-    // 1. Classic hook overlay — photo background, big hook, CTA pill
+    // 1. Pain photo + hook + the fix — the scene is the pain moment
     key: "hook-overlay",
     build: (c, g) => `Direct-response social media ad, vertical 2:3 portrait.
-Background photograph: ${g.photoStyle} Scene: ${c.imageScene} Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
+Background photograph: ${g.photoStyle} Scene — show THIS exact moment of the problem, happening, so a viewer recognizes their own life in it: ${c.imageScene} Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
 Text baked into the image:
 - Large bold headline across the upper third: "${c.headline}"
+- Medium-weight line in the lower third, above the button: "${c.solutionLine ?? c.description}"
 - Rounded solid CTA button pill centered near the bottom with the label: "${ctaLabel(c.cta)}"
 ${EXACT_TEXT_RULES}`,
   },
   {
-    // 2. Notes-app "ugly ad" — native-feeling checklist screenshot style
+    // 2. Notes-app "ugly ad" — the pain as the note title, the fix as the checklist
     key: "notes-app",
-    build: (c, g) => `Social media ad styled like a clean screenshot of a minimal phone notes app on a plain ${g.cardBackground}. Native, un-designed, screenshot-like feel — this intentionally does NOT look like a polished ad.
+    build: (c, g) => {
+      const b = benefitsFor(c, g);
+      return `Social media ad styled like a clean screenshot of a minimal phone notes app on a plain ${g.cardBackground}. Native, un-designed, screenshot-like feel — this intentionally does NOT look like a polished ad.
 The note contains, top to bottom:
 - Note title in bold: "${c.headline}"
-- Three checklist lines, each with a small checkbox: "${g.overlayValueProps[0]}", "${g.overlayValueProps[1]}", "${g.overlayValueProps[2]}"
+- Three checklist lines, each with a small checkbox: "${b[0]}", "${b[1]}", "${b[2]}"
 - A thin divider, then a small button-style bar at the bottom: "${ctaLabel(c.cta)}"
-${EXACT_TEXT_RULES}`,
+${EXACT_TEXT_RULES}`;
+    },
   },
   {
-    // 3. Bold statement card — typographic scroll-stopper
+    // 3. Bold statement card — the pain big, the fix beneath it
     key: "statement-card",
     build: (c, g) => `Typographic direct-response social ad, vertical 2:3 portrait, on a flat ${g.cardBackground}. No photograph — typography IS the creative.
 Text baked into the image:
 - Huge bold statement filling most of the frame: "${c.headline}"
-- Smaller supporting line beneath it: "${c.description}"
+- Smaller supporting line beneath it: "${c.solutionLine ?? c.description}"
 - Small rounded CTA button pill at the bottom: "${ctaLabel(c.cta)}"
 - Tiny brand name bottom corner: "Ripple"
 ${EXACT_TEXT_RULES}`,
   },
   {
-    // 4. Checklist over photo — hook + value props + CTA
+    // 4. Checklist over the pain photo — hook + three pain-specific fixes
     key: "checklist-photo",
-    build: (c, g) => `Direct-response social media ad, vertical 2:3 portrait.
-Background photograph, heavily darkened/softened so text dominates: ${g.photoStyle} Scene: ${c.imageScene}
+    build: (c, g) => {
+      const b = benefitsFor(c, g);
+      return `Direct-response social media ad, vertical 2:3 portrait.
+Background photograph, heavily darkened/softened so text dominates: ${g.photoStyle} Scene — the moment of the problem: ${c.imageScene}
 Text baked into the image:
 - Bold headline at top: "${c.headline}"
-- Three lines below it, each preceded by a small checkmark: "${g.overlayValueProps[0]}", "${g.overlayValueProps[1]}", "${g.overlayValueProps[2]}"
+- Three lines below it, each preceded by a small checkmark: "${b[0]}", "${b[1]}", "${b[2]}"
 - Rounded solid CTA button pill at the bottom: "${ctaLabel(c.cta)}"
-${EXACT_TEXT_RULES}`,
+${EXACT_TEXT_RULES}`;
+    },
   },
   {
-    // 5. App-in-scene — phone with minimal record screen + hook
+    // 5. RETIRED from new batches (2026-09-24): a phone with a record
+    // button said nothing about what Ripple does. Kept resolvable.
     key: "app-in-scene",
+    offered: false,
     build: (c, g) => `Direct-response social media ad for a voice journaling app, vertical 2:3 portrait.
 Background photograph: ${g.photoStyle} A smartphone rests naturally in the scene (on a table or held, hands only), its screen showing an extremely minimal dark app interface: a large round record button and a soft audio waveform — no readable UI text on the phone screen.
 Text baked into the image:
 - Large bold headline across the top: "${c.headline}"
+- Medium-weight line above the button: "${c.solutionLine ?? c.description}"
 - Rounded solid CTA button pill at the bottom: "${ctaLabel(c.cta)}"
 ${EXACT_TEXT_RULES}`,
+  },
+  {
+    // 6. Say-catch (2026-09-24) — the mechanism in one glance: what you
+    // say out loud → what Ripple catches from it. Composed in code
+    // (lib/adlab/ad-render.ts) so every word is exact; this string is
+    // only a stored marker (the copy rides in the AD_COPY tag).
+    key: SAY_CATCH_FORMAT,
+    build: (c) => `SAY_CATCH (composed in code, no image model): headline "${c.headline}", said "${c.said ?? ""}".`,
   },
   {
     // 6. App-proof (2026-09-24) — a REAL app screenshot under the hook.
@@ -273,7 +337,7 @@ function ctaLabel(cta: string): string {
   return CTA_LABELS[cta] ?? "Start free trial";
 }
 
-export const AD_FORMAT_KEYS = AD_FORMATS.map((f) => f.key) as [string, ...string[]];
+export const AD_FORMAT_KEYS = AD_FORMATS.filter((f) => f.offered !== false).map((f) => f.key) as [string, ...string[]];
 
 /**
  * Resolve a format by key (stored AdLabCreative.formatKey) or, for rows
@@ -298,7 +362,7 @@ export function buildAdImagePrompt(
   copy: AdImageCopy,
   groupKey: BatchGroupKey
 ): string {
-  return resolveAdFormat(format).build(copy, BATCH_GROUPS[groupKey]);
+  return resolveAdFormat(format).build(copy, BATCH_GROUPS[groupKey]) + encodeAdCopy(copy);
 }
 
 // ─── Project seeding ──────────────────────────────────────────────────────
@@ -364,6 +428,11 @@ const BatchAdSchema = z.object({
   description: z.string().max(255),
   cta: z.string(),
   imageScene: z.string(),
+  // Pain → fix bridge (2026-09-24)
+  solutionLine: z.string().max(90),
+  benefits: z.array(z.string().max(40)).length(3),
+  said: z.string().max(140),
+  caught: z.array(z.string().max(44)).length(3),
   // Learning loop (2026-09-24): which image format carries this ad, and
   // whether it applies a proven winning pattern or tests something new.
   format: z.enum(AD_FORMAT_KEYS).optional(),
@@ -467,13 +536,18 @@ VALUE SURFACE DEFINITIONS:
 REQUIREMENTS:
 - EXACTLY 10 ads. Each rooted in a DIFFERENT theme where possible (reuse a theme only if there are fewer than 10).
 - The 10 must span at least 6 different valueSurface values — every ad should feel like a different TYPE of ad, not a rewrite.
-- Each ad must bridge: their pain (in language echoing THEIR OWN PHRASES) → what Ripple concretely does about it. The bridge is the ad.
-- headline: HARD max 40 characters, count them (mobile truncation).
+- THE BRIDGE IS THE AD (non-negotiable, per the owner: ads must tie the user's pain to what Ripple does and how it solves it). Every ad has three beats: (1) the PAIN, named in the audience's own words so a stranger instantly knows which problem this is; (2) the MECHANISM — the specific thing Ripple does about that exact pain (pulls the tasks out of what you say, checks off the habit you mentioned, tracks the promise you made, names the pattern that repeats, scores the life area that's slipping, writes the weekly report); (3) the RESULT for them. Clever abstract lines that don't name a problem ("Same week. Different eyes.", "Silence is where the work is.") are WRONG.
+- headline: the PAIN, HARD max 40 characters, count them (mobile truncation). A concrete, recognizable problem in plain words — ideally their own phrasing. Test: could someone who has never heard of Ripple tell exactly what problem this ad is about?
+- solutionLine: max 90 characters. What Ripple concretely does about THIS headline's pain, as a plain statement ("Say it once. Ripple turns it into your to-do list and keeps it."). Must name a real feature from PRODUCT. No durations.
+- benefits: exactly 3 lines, each max 40 characters, each a concrete thing Ripple does for THIS pain (not generic, not repeated across ads).
+- said: max 140 characters. One realistic thing this person would actually say out loud in a debrief, in their voice, with specifics (names, days, errands, excuses) that show this ad's pain.
+- caught: exactly 3 lines, each max 44 characters — what Ripple pulls out of "said": tasks ("Sign Emma's permission slip — Friday"), habits ("Habit missed: gym, 3rd time"), promises, or a pattern ("Third week in a row: no time for you"). Only things "said" actually contains.
 - primaryText: 1-2 sentences, HARD max 125 characters — Meta cuts to "…more" after that and compliance flags anything longer.
 - description: max 100 characters.
 - cta: always "SIGN_UP" (renders as "Start free trial"). In our own data SIGN_UP ads produced trial starts at roughly half the cost of LEARN_MORE.
-- imageScene: 1-2 sentence BACKGROUND scene for this ad's image, matching the brand's photography style. Scene only — the headline/CTA overlay is composed separately. No faces.
-- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo + big hook + CTA pill; notes-app = native-looking phone-notes checklist ("ugly ad"); statement-card = typography-only bold statement; checklist-photo = hook + 3 checkmarked value props over a darkened photo; app-in-scene = phone with the record screen in a real scene; app-proof = the hook above a REAL screenshot of the app (${groupKey === "women" ? "the Life Matrix: 6 life areas scored over time" : "the Theme Map: the recurring themes in what he says"}) — the headline must set up what the screenshot proves, and the description becomes the one-line subline under it (≤60 chars). Use app-proof for 2 of the 10. Use at least 4 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
+- imageScene: 1-2 sentences showing THIS ad's pain as a concrete moment happening (e.g. a kitchen counter buried in permission slips, a calendar and sticky notes at 11pm; a gym bag untouched by the door at 7am, a phone lit in a dark bedroom at 2am), matching the brand's photography style. NOT generic mood (no lone coffee cups, candles, or empty notebooks). Scene only — text is composed separately. No faces.
+- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo of the pain moment + the pain headline + the solution line + CTA; notes-app = native-looking phone-notes checklist (pain as title, benefits as checklist — "ugly ad"); statement-card = typography only (pain big, solution line beneath); checklist-photo = pain headline + the 3 benefits over a darkened pain photo; say-catch = the mechanism in one glance: "You say it:" (said) → "Ripple catches it:" (caught) → solution line; app-proof = the pain headline above a REAL screenshot of the app (${groupKey === "women" ? "the Life Matrix: 6 life areas scored over time" : "the Theme Map: the recurring themes in what he says"}) — the description becomes the one-line subline saying what the screenshot proves (≤60 chars). Use say-catch for 3 of the 10 and app-proof for 2. Use at least 4 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
+- No recording-duration claims anywhere ("a minute", "60 seconds", "one minute a day"), never "journaling"/"journal" as the category, never "brain dump".
 - strategy: "exploit" or "explore"${exploitCount ? ` — exactly ${exploitCount} exploit (see EXPLOIT / EXPLORE SPLIT)` : ` — no performance history yet, mark all "explore"`}.
 
 META POLICY (violations get ads rejected — follow strictly):
@@ -482,7 +556,7 @@ META POLICY (violations get ads rejected — follow strictly):
 - NEVER use before/after transformation framing or promise wellness outcomes.
 - Use third-person or general framing for sensitive topics: "Most people forget what they promised themselves by Thursday."
 
-Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, format, strategy`;
+Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits, said, caught, format, strategy`;
 
   const userPrompt = `Generate the 10 ads for this week's batch. Return only the JSON array.`;
 
@@ -500,7 +574,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
     const raw2 = await callAdLabClaude({
       purpose: `weekly-batch-${groupKey}-retry`,
       systemPrompt,
-      userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
+      userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits (3), said, caught (3), format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
       maxTokens: 8000,
     });
     ads = BatchAdsSchema.parse(JSON.parse(extractJson(raw2)));
@@ -580,7 +654,19 @@ export async function generateBatchImage(
     // image model, cut into the two crops (prompts keep text in the
     // shared safe zone — see ad-render.ts).
     let placements: { feed: Buffer; story: Buffer };
-    if (creative.formatKey === APP_PROOF_FORMAT) {
+    if (creative.formatKey === SAY_CATCH_FORMAT) {
+      const tags = creative.angle.experiment.campaignTags;
+      const groupKey: BatchGroupKey = tags.includes("men") ? "men" : "women";
+      const extra = decodeAdCopy(creative.generationPrompt);
+      if (!extra.said || !extra.caught?.length) throw new Error("say-catch creative has no said/caught copy");
+      placements = await renderSayCatchPlacements(groupKey, {
+        headline: creative.headline,
+        said: extra.said,
+        caught: extra.caught,
+        solution: extra.solutionLine ?? creative.description,
+        ctaLabel: ctaLabel(creative.cta),
+      });
+    } else if (creative.formatKey === APP_PROOF_FORMAT) {
       const tags = creative.angle.experiment.campaignTags;
       const groupKey: BatchGroupKey = tags.includes("men") ? "men" : "women";
       placements = await renderAppProofPlacements(groupKey, {
@@ -597,7 +683,8 @@ export async function generateBatchImage(
         // Always max fidelity for ads (2026-09-24, per Keenan: "all adlab images
         // should be generated with the high quality images from the gpt2 api").
         quality: "high",
-        prompt: creative.generationPrompt ?? creative.headline,
+        // The AD_COPY tag is data for us, never text for the image model.
+        prompt: stripAdCopy(creative.generationPrompt ?? creative.headline),
         n: 1,
         size: SOURCE_SIZE,
       });
