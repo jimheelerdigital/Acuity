@@ -1265,7 +1265,8 @@ function bwkGetPaywallTestimonialPool(_branch: Branch | null): { quote: string; 
 // ─── Mechanism screen examples (Screen 6) ───────────────────────────────────
 //
 // /start's examples are women-coded ("Call the pharmacy about Mom's refill").
-// Same four-card shape per branch: a task, a goal, a mood shift, a pattern.
+// Same five-card shape per branch as /start: a task, a goal, a habit
+// checked off from the debrief, a mood shift, a pattern.
 // Examples of what Ripple would pull out, never advice.
 
 const BWK_MECHANISM_CONTENT: Record<Branch, { cards: string[]; insight: string }> = {
@@ -1273,6 +1274,7 @@ const BWK_MECHANISM_CONTENT: Record<Branch, { cards: string[]; insight: string }
     cards: [
       "Send the invoice you said you\u2019d send Friday",
       "Get back to the project you keep pushing \u2014 Day 1",
+      "Habit checked off: gym before work \u00B7 4 days running",
       "Stretched \u2192 Steady",
       "You mentioned 3 of these last week and still haven\u2019t closed them",
     ],
@@ -1282,6 +1284,7 @@ const BWK_MECHANISM_CONTENT: Record<Branch, { cards: string[]; insight: string }
     cards: [
       "Note what set it off before it turned into a fight",
       "Catch the buildup before the blowup \u2014 Day 1",
+      "Habit checked off: walk away before it escalates \u00B7 3 days running",
       "Reactive \u2192 Aware",
       "The tension started 2 days before the argument, every time",
     ],
@@ -1291,6 +1294,7 @@ const BWK_MECHANISM_CONTENT: Record<Branch, { cards: string[]; insight: string }
     cards: [
       "Answer the email that\u2019s been sitting in your head",
       "Set the day down before it piles up \u2014 Day 1",
+      "Habit checked off: phone out of the bedroom \u00B7 5 nights running",
       "Racing \u2192 Settled",
       "The late-night loop starts with something from 8 hours earlier",
     ],
@@ -1300,6 +1304,7 @@ const BWK_MECHANISM_CONTENT: Record<Branch, { cards: string[]; insight: string }
     cards: [
       "Make the one call that moves the plan forward",
       "Put an hour on the thing you keep saying you\u2019ll start \u2014 Day 1",
+      "Habit checked off: first hour on the real work \u00B7 3 days running",
       "Knowing \u2192 Doing",
       "You said you\u2019d start it in 4 debriefs. Nothing on the calendar yet.",
     ],
@@ -1309,6 +1314,7 @@ const BWK_MECHANISM_CONTENT: Record<Branch, { cards: string[]; insight: string }
     cards: [
       "Tell one person how things actually are",
       "Check in with how you actually feel \u2014 Day 1",
+      "Habit checked off: 20-minute run \u00B7 4 days running",
       "\u201CI\u2019m good\u201D \u2192 Honest",
       "You said \u2018I\u2019m good\u2019 on your lowest days. Every time.",
     ],

@@ -1302,6 +1302,7 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     cards: () => [
       { text: "Call the pharmacy about Mom\u2019s refill", icon: "\u25A1" },
       { text: "Get back to the goal you keep pushing \u2014 Day 1", icon: "\u25B2" },
+      { text: "Habit checked off: walk after dinner \u00B7 4 days running", icon: "\u21BB" },
       { text: "Overwhelmed \u2192 Lighter", icon: "\u25CF" },
       { text: "You mentioned 3 of these before and still haven\u2019t done them", icon: "\u25C6" },
     ],
@@ -1312,6 +1313,7 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     cards: () => [
       { text: "Note what set it off before it escalated", icon: "\u25A1" },
       { text: "Catch the buildup before the blowup \u2014 Day 1", icon: "\u25B2" },
+      { text: "Habit checked off: pause before replying \u00B7 3 days running", icon: "\u21BB" },
       { text: "Reactive \u2192 Aware", icon: "\u25CF" },
       { text: "The tension started 2 days before the argument \u2014 every time", icon: "\u25C6" },
     ],
@@ -1322,6 +1324,7 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     cards: () => [
       { text: "Reply to the message that\u2019s been nagging you", icon: "\u25A1" },
       { text: "Set the day down before it piles up \u2014 Day 1", icon: "\u25B2" },
+      { text: "Habit checked off: phone out of the bedroom \u00B7 5 nights running", icon: "\u21BB" },
       { text: "Racing \u2192 Settled", icon: "\u25CF" },
       { text: "Your spiral starts with something from 8 hours earlier", icon: "\u25C6" },
     ],
@@ -1332,6 +1335,7 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     cards: () => [
       { text: "Move one thing forward on the goal you keep parking", icon: "\u25A1" },
       { text: "Protect an hour for your own life \u2014 Day 1", icon: "\u25B2" },
+      { text: "Habit checked off: 20 minutes on your own goal \u00B7 3 days running", icon: "\u21BB" },
       { text: "Spinning \u2192 Moving", icon: "\u25CF" },
       { text: "Almost all your energy went to maintenance, none to your goals", icon: "\u25C6" },
     ],
@@ -1342,6 +1346,7 @@ const MECH_CONTENT: Record<Branch, MechBranchContent> = {
     cards: () => [
       { text: "Tell one person how you actually feel", icon: "\u25A1" },
       { text: "Check in with how I actually feel \u2014 Day 1", icon: "\u25B2" },
+      { text: "Habit checked off: one honest check-in with yourself \u00B7 4 days running", icon: "\u21BB" },
       { text: "Performing \u2192 Honest", icon: "\u25CF" },
       { text: "You said \u2018I\u2019m fine\u2019 on your lowest days. Every time.", icon: "\u25C6" },
     ],
@@ -1412,7 +1417,7 @@ function MechanismScreen({ branch, answers, onContinue, track }: {
       <div className="mb-8" style={fadeUp(2200)}>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-acuity-primary">Step 2</p>
         <p className="mb-1.5 text-xl font-bold text-acuity-text">Ripple pulls out what matters.</p>
-        <p className="mb-4 text-sm leading-5 text-acuity-text-ter">Tasks, goals, moods, patterns &mdash; so nothing you said falls through the cracks, and nothing sits on your shoulders alone.</p>
+        <p className="mb-4 text-sm leading-5 text-acuity-text-ter">Tasks, goals, habits, moods, patterns &mdash; so nothing you said falls through the cracks. Mention a habit you kept and it&rsquo;s checked off for you.</p>
         <div className="space-y-2">
           {cards.map((c, i) => (
             <div key={i} className="flex items-center rounded-xl border-l-[3px] border-acuity-primary bg-acuity-card-bg px-3.5 py-3 shadow-sm"
@@ -1604,6 +1609,7 @@ function PatternResultScreen({ branch, answers, track, onContinue }: {
             {[
               { label: "Surface the triggers you can\u2019t see from inside the pattern", icon: "\u25C6" },
               { label: "Track the tasks and goals that keep slipping through", icon: "\u2611" },
+              { label: "Check off your habits from what you say, so your streaks keep themselves", icon: "\u21BB" },
               { label: "Show you which life areas are draining and which are growing", icon: "\u25CE" },
               { label: "Catch subconscious patterns before they run another week", icon: "\u25C8" },
               { label: "Give you a weekly mirror \u2014 so you stop guessing and start seeing", icon: "\u25A8" },
@@ -2086,10 +2092,12 @@ const FREE_FEATURES = [
   { name: "Voice debrief & task extraction", description: "Talk instead of type; your action items pulled out automatically." },
 ];
 
+// Habit tracking leads: it's a key feature for both audiences (Keenan,
+// 2026-09-24) and the easiest one to picture.
 const PRO_FEATURES = [
+  { name: "Habit tracking", description: "Set your habits. When a debrief mentions one, it\u2019s checked off for you and the streak keeps going." },
   { name: "Deep Insights", description: "Observations about you that you\u2019d never notice on your own." },
   { name: "Pattern detection", description: "Recurring themes surfaced across your entries." },
-  { name: "Habit tracking", description: "Habits you mention get checked off automatically \u2014 streaks build themselves." },
   { name: "Signals", description: "Next-step guidance based on what you actually said." },
 ];
 

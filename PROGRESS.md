@@ -7,14 +7,14 @@
 
 ---
 
-## [2026-09-24] — Both sign-up funnels cut to 11 steps, men's funnel goes dark, new paywall, sign-in fixes
+## [2026-09-24] — Both sign-up funnels cut to 11 steps, men's funnel goes dark, new paywall, habit tracking featured, sign-in fixes
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
 **Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
-Both ad funnels (goripple.io/start for women, /start-bwk for men) are now 11 steps, paywall included. They were 18, and people dropped off on every extra screen. Each funnel keeps the screens that suit its audience. The women's funnel keeps the "here's the shift" before/after screen. The men's funnel ends on the Week 1 / Month 1 / Year 1 plan instead. The men's funnel now uses the dark navy-and-indigo look of the dark logo instead of orange. The paywall is rebuilt for both. The fake crossed-out prices, "founding rate for life" and "less than a coffee" lines are gone. It now shows the real price, a plain "Today $0 → Day 7 billing starts" timeline and one clear "Start free trial" button, with "Continue without a card" as a quiet link. Apple sign-in is removed from the funnels (it worked 1 time in 15). Inside Facebook and Instagram, email sign-up now comes first (it never failed there), and anyone whose Google sign-in fails is sent back with a note to use email instead of hitting a dead-end error page.
+Both ad funnels (goripple.io/start for women, /start-bwk for men) are now 11 steps, paywall included. They were 18, and people dropped off on every extra screen. Each funnel keeps the screens that suit its audience. The women's funnel keeps the "here's the shift" before/after screen. The men's funnel ends on the Week 1 / Month 1 / Year 1 plan instead. The men's funnel now uses the dark navy-and-indigo look of the dark logo instead of orange. The paywall is rebuilt for both. The fake crossed-out prices, "founding rate for life" and "less than a coffee" lines are gone. It now shows the real price, a plain "Today $0 → Day 7 billing starts" timeline and one clear "Start free trial" button, with "Continue without a card" as a quiet link. The paywall quotes the current $9.99/month and $89.99/year (the prices already live in Stripe). Habit tracking now shows up in both funnels: an example habit being checked off on the "how it works" screen, a line on the pattern result, and first in the Pro list on the paywall. Apple sign-in is removed from the funnels (it worked 1 time in 15). Inside Facebook and Instagram, email sign-up now comes first (it never failed there), and anyone whose Google sign-in fails is sent back with a note to use email instead of hitting a dead-end error page.
 
 ### Technical changes (for Jimmy)
 - `apps/web/src/lib/funnel-config.ts`: new `FunnelStep` type + `STEP_ORDER` (11 steps); `FunnelVariantConfig` gains `STEP_ORDER`, `theme` ("light" | "dusk"), `flowVersion`, `path`, optional `MECHANISM_CONTENT`. `PROCESSING_STAGES` 10s → 6s. Header skeleton rewritten for v8
@@ -31,6 +31,7 @@ Both ad funnels (goripple.io/start for women, /start-bwk for men) are now 11 ste
   - Paywall (`SavingsScreen`) rewritten. Event names unchanged (lock_in_selected / continue_selected / plan_selected)
   - CreateAccount: Apple button removed; email form first when `isWebView`; "Google didn't go through" notice after a failed OAuth bounce or `?oauth=failed`; OAuth pending marker now stores `path`
   - Pre-hydration tap pickup (`funnel_entry_pretap_used`); "Ripple · 2-minute check-in" eyebrow on the entry screen; "Join thousands…" replaced with the 4.9 / 127+ rating line; mechanism headline "A few minutes. Every day." → "Talk it out. Ripple does the rest."
+- Habit tracking (both funnels): a 5th mechanism card per branch, "Habit checked off: … · N days running" (↻ icon; men's examples in `BWK_MECHANISM_CONTENT`). Mechanism step-2 copy now names habits. New "How Ripple helps" line on pattern-result. `PRO_FEATURES` leads with Habit tracking, copy matching what `lib/habits-autocheck.ts` actually does
 - New `apps/web/src/components/funnel-ssr-entry.tsx`: shared server-rendered Screen 1 for both pages (light / dusk), plus an inline script that records a tap made before JS loads
 - `apps/web/src/app/start/page.tsx`, `start-bwk/page.tsx`: use `FunnelSsrEntry`; /start-bwk paints body navy
 - `apps/web/src/app/api/onboarding/create-checkout/route.ts`:
@@ -56,7 +57,8 @@ Both ad funnels (goripple.io/start for women, /start-bwk for men) are now 11 ste
 - Why these screens: v6-v7 data (620 sessions) showed each post-question "story" screen losing 5-8%, and entry → first tap at 41%. Q4 and Q5 only fed a "Stuck Deep" secondary label, so pattern-result now shows only the most-affected-area card
 - Tailwind's `/opacity` modifier generates NOTHING on the var()-based acuity colors (verified with the tailwind CLI). v7 classes like `bg-acuity-primary/10` and `border-acuity-primary/30` were silently dead. Use color-mix classes (`.f-tint`) or `*-soft` tokens instead
 - Gradient/glow tokens are declared at `:root` with var() inside, so overriding `--acuity-primary` on a subtree does NOT re-tint them. The dusk block redeclares them
-- Paywall shows $4.99 because `NEW_PRICING_ENABLED` is off. All prices come from the display tier, so it flips with the flag. The paywall no longer makes any "founding rate / price rises" claim
+- Pricing: prod already runs V2. `NEXT_PUBLIC_NEW_PRICING_ENABLED` is on, and `STRIPE_PRICE_MONTHLY`/`_YEARLY` were repointed to the $9.99 / $89.99 prices on 09-23. The paywall reads `displayTier()`, so prod shows $9.99/mo, $89.99/yr, Save 25%. Verified by rendering with the flag on. Local dev shows $4.99 only because the local env lacks the flag. No hardcoded prices remain in funnel files, and the paywall makes no "founding rate / price rises" claim
+- Habits are live in prod (`ENABLE_HABITS`): 9 habits, 75 checks, 3 auto-checked from debriefs, last check 2026-09-22. Checked before advertising the feature
 - Every signup gets a 7-day trial without a card (bootstrap-user). So the paywall says "Your 7 free days have started" and the card path is framed as keeping Pro after day 7. The trial-ending reminder email only goes to users WITHOUT a card, so the paywall promises no reminder
 - Apple root cause: NextAuth v4's Apple provider uses `checks: ["pkce"]` + `response_mode=form_post`, and the default PKCE cookie is SameSite=Lax, so it isn't sent on Apple's cross-site POST
 - OAuth error codes were never captured before: failures landed on /auth/error, not back in the funnel. The redirect now carries `error=` into `funnel_oauth_returned_error`
