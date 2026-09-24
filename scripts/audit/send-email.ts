@@ -23,7 +23,7 @@ const root = path.resolve(here, "..", "..");
 const out = (f: string) => path.join(root, "audits", "out", f);
 const read = (p: string) => (existsSync(p) ? readFileSync(p, "utf8") : "");
 
-const TO = (process.env.AUDIT_EMAIL_TO || "keenan@heelerdigital.com").split(",").map((s) => s.trim()).filter(Boolean);
+const TO = (process.env.AUDIT_EMAIL_TO || "keenan@heelerdigital.com,jim@heelerdigital.com").split(",").map((s) => s.trim()).filter(Boolean);
 // goripple.io is the verified Resend domain but has no MX — replies must go elsewhere.
 const FROM = process.env.AUDIT_EMAIL_FROM || "Ripple Audit <hello@goripple.io>";
 const REPLY_TO = process.env.AUDIT_EMAIL_REPLY_TO || "keenan@heelerdigital.com";

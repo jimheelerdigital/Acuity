@@ -151,7 +151,7 @@ jobs:
         if: ${{ github.event_name == 'schedule' || inputs.send_email }}
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          AUDIT_EMAIL_TO: ${{ vars.AUDIT_EMAIL_TO || 'keenan@heelerdigital.com' }}
+          AUDIT_EMAIL_TO: ${{ vars.AUDIT_EMAIL_TO || 'keenan@heelerdigital.com,jim@heelerdigital.com' }}
           AUDIT_JOB_RESULT: ${{ needs.audit.result }}
           AUDIT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: scripts/audit/node_modules/.bin/tsx scripts/audit/send-email.ts

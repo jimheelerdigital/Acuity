@@ -28,13 +28,16 @@ Every Saturday at 9 PM Central a robot audits all of Ripple and emails you the r
   - `RUNNER.md` holds the mechanics (paths, output contract, positioning-doc rule for copy). `run-audit.sh` does the prompt assembly, tool allowlist, 38-min timeout and salvage-from-final-message. `publish-to-branch.sh` uses a temp worktree and never touches main. `send-email.ts` renders the report or a failure notice; checks the Resend response body; attaches the .md
 - New `audits/WEEKLY_AUDIT_PROMPT.md` (Keenan's prompt, word for word; edit on main to change the audit) and `audits/manual-costs.json` template
 - `.gitignore`: `audits/data/`, `audits/out/`, `scripts/audit/node_modules/` (generated files only live on the `audits` branch)
+- **Stripe account is shared with Heeler Digital side projects** (agency retainers, ~$1,699/mo, which fund Ripple's expenses). The collector scopes Stripe to products matching /acuity|ripple/i (`AUDIT_STRIPE_PRODUCT_MATCH`) and their customers' charges/refunds/fees. Side-project MRR is reported separately as `stripe.other_business_revenue` for runway context, never as Ripple revenue. Live check 09-23: Ripple web MRR $49.94, 12 paying (matches DB), 14 subscriptions stuck in `unpaid`
+- Recipients: Keenan + Jim by default (override with repo variable `AUDIT_EMAIL_TO`)
 - Model default `claude-fable-5-1`; override with repo variable `AUDIT_MODEL` (e.g. `claude-opus-5-5`, about half the cost)
 
 ### Manual steps needed
 - [ ] Say "push it". The workflow only exists for GitHub after it's on main (Keenan)
-- [ ] Add GitHub repo secrets (Settings → Secrets and variables → Actions): `ANTHROPIC_API_KEY`, `RESEND_API_KEY` (the current goripple.io-authorized key), `AUDIT_DATABASE_URL` (read-only role), `STRIPE_RESTRICTED_KEY` (live `rk_live_`), `REVENUECAT_API_KEY` + `REVENUECAT_PROJECT_ID` (Keenan; DB role: Jimmy)
-- [ ] Optional secrets: `ANTHROPIC_ADMIN_KEY`, `OPENAI_ADMIN_KEY`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (Keenan)
-- [ ] Create the read-only Postgres role for `AUDIT_DATABASE_URL` (SQL in the hand-off message) (Jimmy)
+- [x] GitHub secrets copied from Vercel by Claude (09-23): `AUDIT_DATABASE_URL` (= Vercel DIRECT_URL, session pooler), `STRIPE_RESTRICTED_KEY` (= Vercel live STRIPE_SECRET_KEY), `RESEND_API_KEY`, `REVENUECAT_PROJECT_ID`
+- [ ] Add `ANTHROPIC_API_KEY` GitHub secret. It's marked sensitive in Vercel so it can't be copied; create a dedicated "weekly-audit" key in the Anthropic Console (Keenan)
+- [ ] Add `REVENUECAT_API_KEY` GitHub secret (Vercel `RC_SECRET_KEY` is sensitive; paste it or make a new read-only v2 key) (Keenan / Jimmy)
+- [ ] Optional: `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` (sensitive in Vercel), `ANTHROPIC_ADMIN_KEY`, `OPENAI_ADMIN_KEY` (Keenan)
 - [ ] Fill `monthly_usd` values in `audits/manual-costs.json` (Keenan)
 - [ ] After push + secrets: Actions → Weekly audit → Run workflow, then confirm the email arrives from goripple.io and the `audits` branch appears (Keenan / Claude)
 

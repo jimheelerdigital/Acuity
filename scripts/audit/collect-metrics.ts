@@ -62,6 +62,9 @@ async function safe<T>(source: string, fn: () => Promise<T>, fix?: string): Prom
   }
 }
 
+// `vercel env pull` writes "[SENSITIVE]" for unreadable vars — treat as unset.
+for (const [k, v] of Object.entries(process.env)) if (v === "[SENSITIVE]" || v === "") delete process.env[k];
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchJson(url: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<any> {
@@ -511,7 +514,36 @@ async function collectStripe(cur: Win, prev: Win) {
   const inWin = (ts: number | null | undefined, w: Win) => ts != null && ts * 1000 >= w.start.getTime() && ts * 1000 < w.end.getTime();
   const out: Record<string, unknown> = {};
 
-  const subs = await safe("stripe.subscriptions", () => stripeList(key, "subscriptions", { status: "all" }));
+  // The Stripe account is SHARED with Heeler Digital agency clients (retainers
+  // etc.). Everything below is scoped to Ripple/Acuity products and the
+  // customers who subscribe to them — never count agency revenue as Ripple's.
+  const productMatch = new RegExp(process.env.AUDIT_STRIPE_PRODUCT_MATCH || "acuity|ripple", "i");
+  const products = await safe("stripe.products", () => stripeList(key, "products", {}));
+  const rippleProducts = new Set((products ?? []).filter((p) => productMatch.test(p.name ?? "")).map((p) => p.id));
+  if (products && rippleProducts.size === 0) blind("stripe.products", `No Stripe product matches /${productMatch.source}/`, "Set AUDIT_STRIPE_PRODUCT_MATCH to the product-name pattern");
+  const allSubs = await safe("stripe.subscriptions", () => stripeList(key, "subscriptions", { status: "all" }));
+  const isRipple = (sub: any) => sub.items.data.some((i: any) => rippleProducts.has(i.price?.product));
+  const subs = allSubs?.filter(isRipple) ?? null;
+  const rippleCustomers = new Set((subs ?? []).map((sub) => sub.customer));
+  out.scope = {
+    ripple_products: [...rippleProducts].length,
+    other_products_excluded: (products?.length ?? 0) - rippleProducts.size,
+    non_ripple_subscriptions_excluded: (allSubs?.length ?? 0) - (subs?.length ?? 0),
+    note: "Shared Stripe account: only subscriptions on products matching the Ripple/Acuity pattern, and charges/refunds/fees from those customers, are counted.",
+  };
+  // Heeler Digital side projects on the same account fund Ripple's expenses.
+  // Reported separately so the audit can reason about runway — never mixed
+  // into Ripple MRR, margin, or unit economics.
+  const others = (allSubs ?? []).filter((sub) => !isRipple(sub) && ["active", "past_due"].includes(sub.status));
+  out.other_business_revenue = {
+    active_subscriptions: others.length,
+    mrr_usd: round(others.reduce((sum, sub) => sum + sub.items.data.reduce((a: number, i: any) => {
+      const p = i.price ?? {};
+      const perMonth = { day: 30.44, week: 4.345, month: 1, year: 1 / 12 }[p.recurring?.interval as string] ?? 0;
+      return a + ((p.unit_amount ?? 0) * (i.quantity ?? 1) * perMonth) / (p.recurring?.interval_count ?? 1);
+    }, 0), 0) / 100, 2),
+    note: "Heeler Digital side-project retainers on the shared Stripe account. They cover Ripple's business expenses. Use only for runway/burn context; NOT Ripple revenue.",
+  };
   if (subs) {
     const monthly = (item: any) => {
       const p = item.price ?? item.plan;
@@ -539,6 +571,7 @@ async function collectStripe(cur: Win, prev: Win) {
       mrr_usd: round(mrrCents / 100, 2),
       active_paying: paying.length,
       past_due: subs.filter((s) => s.status === "past_due").length,
+      unpaid: subs.filter((s) => s.status === "unpaid").length,
       active_trials: subs.filter((s) => s.status === "trialing").length,
       new_trials_this_week: subs.filter((s) => s.trial_start && inWin(s.created, cur)).length,
       new_trials_last_week: subs.filter((s) => s.trial_start && inWin(s.created, prev)).length,
@@ -556,10 +589,12 @@ async function collectStripe(cur: Win, prev: Win) {
 
   const money = async (w: Win) => {
     const range = { "created[gte]": unix(w.start), "created[lt]": unix(w.end) };
-    const charges = await stripeList(key, "charges", range);
+    const charges = (await stripeList(key, "charges", range)).filter((c) => rippleCustomers.has(c.customer));
     const ok = charges.filter((c) => c.paid && c.status === "succeeded");
-    const refunds = await stripeList(key, "refunds", range);
-    const bts = await stripeList(key, "balance_transactions", range);
+    const refunds = (await stripeList(key, "refunds", { ...range, "expand[]": "data.charge" }))
+      .filter((r) => rippleCustomers.has(r.charge?.customer));
+    const bts = (await stripeList(key, "balance_transactions", { ...range, "expand[]": "data.source" }))
+      .filter((b) => rippleCustomers.has(b.source?.customer));
     const fees = bts.reduce((s, b) => s + (b.fee ?? 0), 0);
     return {
       gross_revenue_usd: round(ok.reduce((s, c) => s + c.amount, 0) / 100, 2),
