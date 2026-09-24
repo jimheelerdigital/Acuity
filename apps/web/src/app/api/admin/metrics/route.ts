@@ -150,7 +150,11 @@ export async function GET(req: NextRequest) {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
           const flow = req.nextUrl.searchParams.get("flow") as "v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
-          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v8");
+          // traffic=inapp keeps only sessions seen in a social in-app browser
+          // (FB/IG/TikTok), which drops Meta's ad-review crawler and link
+          // preloads. Default "all" so any other caller sees unchanged numbers.
+          const traffic = req.nextUrl.searchParams.get("traffic") === "inapp" ? "inapp" : "all";
+          return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v8", traffic);
         }
         case "guide":
           return getGuide();
@@ -1908,8 +1912,26 @@ export async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, 
 // Pain Hook / diagnostic events polluting the new branching quiz metrics.
 const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8") {
+// Social in-app browsers. Paid social clicks open in these; Meta's ad-review
+// crawler and link preloads arrive with generic Safari/Chrome UAs and fire only
+// the entry view (2026-09-24: ~90 of ~108 v8 sessions).
+const IN_APP_UA = /FBAN|FBAV|FB_IAB|Instagram|musical_ly|TikTok|BytedanceWebview/i;
+
+type FunnelStepDef = {
+  key: string;
+  event: string;
+  label: string;
+  /** Other events that also count as reaching this step. */
+  alt?: string[];
+  /** Branch outcome (paywall choices, download): counted only when hit, never
+   *  back-filled, and compared against `base` rather than the row above. */
+  outcome?: boolean;
+  base?: string;
+};
+
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "all" = "all") {
  try {
+  const isV8 = flowVersion === "v8" || flowVersion === "v8-bwk";
   // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
   // and "all" (floor at v2 epoch to exclude ancient v1 diagnostic events).
   // v2 needs NO epoch clamping because its unique event names
@@ -1998,38 +2020,47 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   ];
 
   // v8 (2026-09-24) — both funnels cut to 11 steps, each its own cohort.
-  // "v8" = /start (women), "v8-bwk" = /start-bwk (men). Cut vs v7: Q4, Q5,
-  // Relief Flip, Value, Commit; plus current-future (men) or timeline (women).
-  // Paywall is one primary "Start free trial" (lock_in_selected) + a quiet
-  // "Continue without a card" (continue_selected).
-  const FUNNEL_STEPS_V8_TAIL = [
-    { key: "create_account", event: "funnel_create_account_viewed", label: "Create Account" },
-    { key: "account_created", event: "funnel_account_created", label: "Account Created" },
-    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall" },
-    { key: "lock_in_selected", event: "funnel_paywall_lock_in_selected", label: "Start trial tapped" },
-    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout opened" },
-    { key: "trial_started", event: "funnel_savings_locked_in", label: "Card trial started" },
-    { key: "continue_selected", event: "funnel_paywall_continue_selected", label: "No card (free)" },
-    { key: "download", event: "funnel_download_viewed", label: "Download" },
-  ];
-  const FUNNEL_STEPS_V8 = [
-    { key: "entry", event: "funnel_entry_selected", label: "Entry" },
+  // "v8" = /start (Ripple, women), "v8-bwk" = /start-bwk (BWK, men). Order
+  // mirrors cfg.STEP_ORDER in lib/funnel-config.ts / funnel-config-bwk.ts:
+  // Ripple has current-future before mechanism; BWK has timeline after the
+  // pattern result. Top of funnel is the page view (Landed), so the first
+  // row shows the screen-1 tap rate.
+  //
+  // After the paywall the funnel splits. Those rows are outcomes: counted only
+  // when the event exists, and compared with their own base step.
+  //   Card trial started = Stripe checkout completed. The webhook writes
+  //   funnel_payment_completed ("<plan>:first_payment") into the user's funnel
+  //   session; funnel_savings_locked_in is the client-side confirmation on
+  //   return. Renewals are renamed to funnel_payment_renewal on load, so they
+  //   never count here.
+  const FUNNEL_STEPS_V8_HEAD: FunnelStepDef[] = [
+    { key: "landed", event: "funnel_entry_viewed", label: "Landed" },
+    { key: "entry", event: "funnel_entry_selected", label: "Answered Q1" },
     { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Q2" },
     { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
     { key: "branch_q6", event: "funnel_branch_q6_viewed", label: "Q6 (Cost)" },
     { key: "pain", event: "funnel_pain_viewed", label: "Pain / Mirror" },
+  ];
+  const FUNNEL_STEPS_V8_TAIL: FunnelStepDef[] = [
+    { key: "create_account", event: "funnel_create_account_viewed", label: "Account screen" },
+    { key: "account_created", event: "funnel_account_created", label: "Account created" },
+    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall" },
+    { key: "lock_in_selected", event: "funnel_paywall_lock_in_selected", label: "Start trial tapped", outcome: true, base: "savings_offered" },
+    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout opened", outcome: true, base: "lock_in_selected" },
+    { key: "paid", event: "funnel_payment_completed", alt: ["funnel_savings_locked_in"], label: "Card trial started", outcome: true, base: "checkout_started" },
+    { key: "trial_continued", event: "funnel_paywall_continue_selected", label: "Free plan chosen", outcome: true, base: "savings_offered" },
+    { key: "download", event: "funnel_download_viewed", label: "Download page", outcome: true, base: "account_created" },
+  ];
+  const FUNNEL_STEPS_V8: FunnelStepDef[] = [
+    ...FUNNEL_STEPS_V8_HEAD,
     { key: "current_future", event: "funnel_current_future_viewed", label: "Current vs Future" },
     { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
     { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
     { key: "pattern_result", event: "funnel_pattern_result_viewed", label: "Pattern Result" },
     ...FUNNEL_STEPS_V8_TAIL,
   ];
-  const FUNNEL_STEPS_V8_BWK = [
-    { key: "entry", event: "funnel_entry_selected", label: "Entry" },
-    { key: "branch_q2", event: "funnel_branch_q2_viewed", label: "Q2" },
-    { key: "branch_q3", event: "funnel_branch_q3_viewed", label: "Q3" },
-    { key: "branch_q6", event: "funnel_branch_q6_viewed", label: "Q6 (Cost)" },
-    { key: "pain", event: "funnel_pain_viewed", label: "Pain / Mirror" },
+  const FUNNEL_STEPS_V8_BWK: FunnelStepDef[] = [
+    ...FUNNEL_STEPS_V8_HEAD,
     { key: "mechanism", event: "funnel_mechanism_viewed", label: "Mechanism" },
     { key: "processing", event: "funnel_processing_viewed", label: "Processing" },
     { key: "pattern_result", event: "funnel_pattern_result_viewed", label: "Pattern Result" },
@@ -2169,7 +2200,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
 
-  const FUNNEL_STEPS = flowVersion === "v8" ? FUNNEL_STEPS_V8 : flowVersion === "v8-bwk" ? FUNNEL_STEPS_V8_BWK : flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v7" ? FUNNEL_STEPS_V7 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
+  const FUNNEL_STEPS: FunnelStepDef[] = flowVersion === "v8" ? FUNNEL_STEPS_V8 : flowVersion === "v8-bwk" ? FUNNEL_STEPS_V8_BWK : flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v7" ? FUNNEL_STEPS_V7 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
 
   // flowVersion filter — v1/v2/v3 filter strictly on the column.
   // "all" returns everything. v1 events have flowVersion=null or "v1".
@@ -2187,7 +2218,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     : {}; // "all" — no filter
 
   // Fetch funnel events in range, filtered by version
-  const events = await prisma.onboardingEvent.findMany({
+  const fetchedEvents = await prisma.onboardingEvent.findMany({
     where: {
       event: { startsWith: "funnel_" },
       createdAt: { gte: effectiveStart, lte: effectiveEnd },
@@ -2202,6 +2233,59 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       createdAt: true, utmSource: true, utmMedium: true, utmCampaign: true, utmContent: true, browser: true,
     },
   });
+
+  // Stripe renewals are written as funnel_payment_completed into the user's
+  // ORIGINAL funnel session (value "<plan>:renewal"), which made a months-old
+  // session look like a fresh conversion. Rename them so no step counts them.
+  for (const e of fetchedEvents) {
+    if (e.event === "funnel_payment_completed" && e.value?.endsWith(":renewal")) e.event = "funnel_payment_renewal";
+  }
+  type FunnelEventRow = { sessionToken: string | null; browser: string | null; event: string };
+
+  // Traffic filter: a session is in-app if ANY of its events carries a social
+  // in-app UA (server-written payment rows have no UA; they ride along).
+  const sessionsBeforeTraffic = new Set<string>(fetchedEvents.map((e: FunnelEventRow) => e.sessionToken!));
+  let events = fetchedEvents;
+  if (traffic === "inapp") {
+    const inApp = new Set<string>();
+    for (const e of fetchedEvents) if (e.browser && IN_APP_UA.test(e.browser)) inApp.add(e.sessionToken!);
+    events = fetchedEvents.filter((e: FunnelEventRow) => inApp.has(e.sessionToken!));
+  }
+  const keptSessionCount = new Set<string>(events.map((e: FunnelEventRow) => e.sessionToken!)).size;
+  const trafficSummary = {
+    mode: traffic,
+    keptSessions: keptSessionCount,
+    excludedSessions: sessionsBeforeTraffic.size - keptSessionCount,
+  };
+
+  // Which steps a session reached. Main steps back-fill (reaching Pain means
+  // you passed Q6); outcome steps count only when their event exists, and imply
+  // the main step they branch from. Legacy step lists have no outcomes, so for
+  // them this is the old "max step reached" rule unchanged.
+  const stepByKey = new Map(FUNNEL_STEPS.map((st, i) => [st.key, i]));
+  const hitStep = (st: FunnelStepDef, names: Set<string>) => names.has(st.event) || (st.alt?.some((a) => names.has(a)) ?? false);
+  const mainAnchor = (i: number): number => {
+    let j = i;
+    while (j >= 0 && FUNNEL_STEPS[j].outcome && FUNNEL_STEPS[j].base) j = stepByKey.get(FUNNEL_STEPS[j].base!) ?? -1;
+    return j;
+  };
+  const reachedSteps = (names: Set<string>) => {
+    let mainMax = -1;
+    const outcomes: number[] = [];
+    FUNNEL_STEPS.forEach((st, i) => {
+      if (!hitStep(st, names)) return;
+      if (st.outcome) { outcomes.push(i); mainMax = Math.max(mainMax, mainAnchor(i)); }
+      else mainMax = Math.max(mainMax, i);
+    });
+    const idx = new Set<number>(outcomes);
+    for (let i = 0; i <= mainMax; i++) if (!FUNNEL_STEPS[i].outcome) idx.add(i);
+    const furthest = idx.size ? Math.max(...idx) : -1;
+    return {
+      keys: new Set([...idx].map((i) => FUNNEL_STEPS[i].key)),
+      stepNumber: furthest + 1,
+      label: furthest >= 0 ? FUNNEL_STEPS[furthest].label : "Unknown",
+    };
+  };
 
   // Group by session
   const sessionMap = new Map<string, typeof events>();
@@ -2249,22 +2333,13 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     const eventNames = new Set(evts.map((e) => e.event));
     const hasInteracted = interactedSessions.has(token);
 
-    // Determine max step reached
-    let maxStep = 0;
-    let maxStepLabel = "Unknown";
-    for (let i = 0; i < FUNNEL_STEPS.length; i++) {
-      const s = FUNNEL_STEPS[i];
-      if (eventNames.has(s.event)) {
-        maxStep = i + 1;
-        maxStepLabel = s.label;
-        // Only count interacted sessions in step reach (excludes bot prefetches)
-        if (hasInteracted) stepReach[s.key].add(token);
-      }
-    }
-    // Also count earlier steps (if you reached Mirror, you reached Pain Hook)
-    for (let i = 0; i < maxStep; i++) {
-      if (hasInteracted) stepReach[FUNNEL_STEPS[i].key].add(token);
-    }
+    // Steps reached. Legacy flows only count interacted sessions (excludes bot
+    // prefetches); v8 counts every session so Landed is the real page-view
+    // count, and relies on the traffic filter to drop crawlers instead.
+    const reached = reachedSteps(eventNames as Set<string>);
+    const maxStep = reached.stepNumber;
+    const maxStepLabel = reached.label;
+    if (isV8 || hasInteracted) for (const k of reached.keys) stepReach[k].add(token);
 
     const minutesSinceLast = (Date.now() - new Date(last.createdAt).getTime()) / 60000;
     const clickedAppStore = eventNames.has("funnel_app_store_clicked") || eventNames.has("funnel_play_store_clicked");
@@ -2337,25 +2412,34 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       // Same definition as the funnel Entry step / stepReach["entry"]: a real
       // entry is an interacted session that reached step 1 (Entry). This is what
       // the corrected v5 funnel counts, so the sessions table can match it.
-      enteredFunnel: hasInteracted && maxStep >= 1,
+      // v8: entered = answered Q1 (Landed is step 1 there, so maxStep >= 1
+      // would include every bounce).
+      enteredFunnel: isV8 ? reached.keys.has("entry") : hasInteracted && maxStep >= 1,
     });
   }
 
   sessions.sort((a, b) => new Date(b.started).getTime() - new Date(a.started).getTime());
 
   // ── Conversion funnel bars ──
-  const funnelSteps = FUNNEL_STEPS.map((s, i) => {
-    const count = stepReach[s.key].size;
-    const prevCount = i > 0 ? stepReach[FUNNEL_STEPS[i - 1].key].size : count;
-    const entryCount = stepReach["entry"].size;
+  // % of previous = vs the main step above (outcomes: vs their base step).
+  // % of top = vs Landed on v8, vs Entry on legacy flows.
+  const topKey = isV8 ? "landed" : "entry";
+  const funnelSteps = FUNNEL_STEPS.map((st, i) => {
+    const count = stepReach[st.key].size;
+    let prevKey: string | null = null;
+    if (st.outcome && st.base) prevKey = st.base;
+    else for (let j = i - 1; j >= 0; j--) if (!FUNNEL_STEPS[j].outcome) { prevKey = FUNNEL_STEPS[j].key; break; }
+    const prevCount = prevKey ? stepReach[prevKey].size : count;
+    const topCount = stepReach[topKey]?.size ?? stepReach[FUNNEL_STEPS[0].key].size;
     const stepConversion = prevCount > 0 ? Math.round((count / prevCount) * 100) : 0;
-    const overallConversion = entryCount > 0 ? Math.round((count / entryCount) * 100) : 0;
+    const overallConversion = topCount > 0 ? Math.round((count / topCount) * 100) : 0;
     return {
-      key: s.key,
-      label: s.label,
+      key: st.key,
+      label: st.label,
       count,
       stepConversion,
       overallConversion,
+      outcome: !!st.outcome,
       color: stepConversion >= 70 ? "green" : stepConversion >= 50 ? "yellow" : "red",
     };
   });
@@ -2408,7 +2492,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const totalSessions = interactedSessionsList.length;
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const todaySessions = interactedSessionsList.filter((s) => new Date(s.started) >= todayStart).length;
-  const entryCountTotal = stepReach["entry"].size;
+  const entryCountTotal = stepReach[topKey]?.size ?? stepReach["entry"].size;
   const paidCount = stepReach["paid"]?.size ?? 0;
   const completionRate = entryCountTotal > 0 ? Math.round((paidCount / entryCountTotal) * 100) : 0;
 
@@ -2417,13 +2501,15 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const trialContinuedCount = stepReach["trial_continued"]?.size ?? 0;
 
   // Biggest drop-off
+  // Main path only: outcome rows are branches, not a straight line.
   let biggestDrop = { step: "N/A", dropPct: 0 };
-  for (let i = 1; i < funnelSteps.length; i++) {
-    const prev = funnelSteps[i - 1].count;
-    const curr = funnelSteps[i].count;
+  const mainSteps = funnelSteps.filter((f) => !f.outcome);
+  for (let i = 1; i < mainSteps.length; i++) {
+    const prev = mainSteps[i - 1].count;
+    const curr = mainSteps[i].count;
     const drop = prev > 0 ? Math.round(((prev - curr) / prev) * 100) : 0;
     if (drop > biggestDrop.dropPct) {
-      biggestDrop = { step: funnelSteps[i].label, dropPct: drop };
+      biggestDrop = { step: mainSteps[i].label, dropPct: drop };
     }
   }
 
@@ -2446,21 +2532,11 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     for (const s of FUNNEL_STEPS) cStepReach[s.key] = 0;
 
     for (const sess of csessions) {
-      const eventNames = new Set(sess.events.map((e) => e.event));
-      let maxIdx = -1;
-      for (let i = 0; i < FUNNEL_STEPS.length; i++) {
-        const fs = FUNNEL_STEPS[i];
-        if (eventNames.has(fs.event)) {
-          maxIdx = i;
-        }
-      }
-      for (let i = 0; i <= maxIdx; i++) {
-        cStepReach[FUNNEL_STEPS[i].key]++;
-      }
+      for (const k of reachedSteps(new Set<string>(sess.events.map((e) => e.event))).keys) cStepReach[k]++;
     }
 
     const total = csessions.length;
-    const paidC = cStepReach["paid"];
+    const paidC = cStepReach["paid"] ?? 0;
     const convRate = total > 0 ? Math.round((paidC / total) * 100) : 0;
     const completedC = csessions.filter((s) => s.status === "completed" || s.status === "paid");
     const avgTime = completedC.length > 0
@@ -2496,6 +2572,11 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
         commit: cStepReach["commit"] ?? 0,
         account: cStepReach["account_created"] ?? cStepReach["signup"] ?? 0,
         paid: paidC,
+        // v8 columns
+        landed: cStepReach["landed"] ?? 0,
+        entry: cStepReach["entry"] ?? 0,
+        pattern_result: cStepReach["pattern_result"] ?? 0,
+        create_account: cStepReach["create_account"] ?? 0,
       },
       conversionRate: convRate,
       avgTimeSec: avgTime,
@@ -2514,7 +2595,10 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const BRANCH_KEYS = ["overload", "patterns", "rumination", "stuck", "mask"];
   const branchMap = new Map<string, typeof sessions>();
   for (const s of interactedSessionsList) {
-    const entryEvent = s.events.find((e) => e.event === "funnel_entry_selected");
+    // entry_selected fires twice per tap on v8: once with the branch key, once
+    // with the answer text. Prefer the branch key.
+    const entryEvent = s.events.find((e) => e.event === "funnel_entry_selected" && BRANCH_KEYS.includes(e.value ?? ""))
+      ?? s.events.find((e) => e.event === "funnel_entry_selected");
     const b = entryEvent?.value ?? "unknown";
     if (!branchMap.has(b)) branchMap.set(b, []);
     branchMap.get(b)!.push(s);
@@ -2546,6 +2630,27 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       };
     })
     .sort((a, b) => b.sessions - a.sessions);
+
+  // v8 per-branch path (the legacy table above reads Q4/Mirror/Commit, which
+  // v8 doesn't have). Counts sessions per branch that reached each key step.
+  const BRANCH_STEP_KEYS = ["entry", "pain", "pattern_result", "create_account", "account_created", "paid"];
+  const branchSteps = isV8
+    ? {
+        columns: BRANCH_STEP_KEYS.map((k) => ({ key: k, label: FUNNEL_STEPS[stepByKey.get(k) ?? -1]?.label ?? k })),
+        rows: [...branchMap.entries()]
+          .filter(([key]) => BRANCH_KEYS.includes(key))
+          .map(([branch, bSessions]) => {
+            const counts: Record<string, number> = {};
+            for (const k of BRANCH_STEP_KEYS) counts[k] = 0;
+            for (const sess of bSessions) {
+              const keys = reachedSteps(new Set<string>(sess.events.map((e) => e.event))).keys;
+              for (const k of BRANCH_STEP_KEYS) if (keys.has(k)) counts[k]++;
+            }
+            return { branch, counts };
+          })
+          .sort((a, b) => b.counts.entry - a.counts.entry),
+      }
+    : null;
 
   // ── Time per step (median seconds between step viewed events) ──
   const stepTimeBuckets: Record<string, number[]> = {};
@@ -2589,6 +2694,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { event: "funnel_branch_q2_selected", label: "Branch Q2" },
     { event: "funnel_branch_q3_selected", label: "Branch Q3" },
     { event: "funnel_branch_q4_selected", label: "Branch Q4" },
+    { event: "funnel_branch_q6_selected", label: "Q6: What\u2019s it costing?" },
     { event: "funnel_shared_q5_selected", label: "Q5: How long?" },
     { event: "funnel_shared_q6_selected", label: "Q6: What\u2019s it costing?" },
     { event: "funnel_shared_q7_selected", label: "Q7: Imagine change" },
@@ -2781,7 +2887,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       avgFunnelTimeSec,
       pageLoadCount,
       interactedCount,
-      accountCreationRate: (stepReach["timeline"]?.size ?? 0) > 0
+      accountCreationRate: isV8
+        ? ((stepReach["create_account"]?.size ?? 0) > 0 ? Math.round(((stepReach["account_created"]?.size ?? 0) / stepReach["create_account"].size) * 100) : 0)
+        : (stepReach["timeline"]?.size ?? 0) > 0
         ? Math.round(((stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) / (stepReach["timeline"]?.size ?? 1)) * 100) : 0,
       immediatePayRate: (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 0) > 0
         ? Math.round(((stepReach["paid"]?.size ?? 0) / (stepReach["account_created"]?.size ?? stepReach["signup"]?.size ?? 1)) * 100) : 0,
@@ -2804,6 +2912,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       commitCompletedSessions,
     },
     adMatchStats,
+    traffic: trafficSummary,
+    flow: flowVersion,
+    branchSteps,
     readyForChange,
     feelingsDistribution,
     tallyDistribution,
