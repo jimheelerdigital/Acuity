@@ -84,21 +84,24 @@ export interface Question {
 
 export interface EntryIntro {
   headline: string;
-  sub: string;
-  /** What a person says out loud. Rendered as a quote. */
+  /** What a person says out loud. Rendered as a speech bubble. */
   said: string;
-  /** What Ripple pulls out of it. Rendered as checked items. */
-  caught: string[];
-  /** Line above the question: how long the quiz is and what they get. */
+  /** What Ripple pulls out of it, as chips: tasks get a check, a pattern
+   *  gets the repeat mark (shows the patterns surface, not just to-dos). */
+  caught: { text: string; kind: "task" | "pattern" }[];
+  /** Quiet line under the chips, after the rating: quiz length + payoff. */
   quizLine: string;
 }
 
 export const ENTRY_INTRO: EntryIntro = {
   headline: "You say it. Ripple catches it.",
-  sub: "Your to-dos, your moods and the patterns you keep repeating, pulled from your own words.",
   said: "Mom\u2019s refill is due Friday, and I still haven\u2019t booked Emma\u2019s dentist\u2026",
-  caught: ["Call about Mom\u2019s refill \u00b7 Fri", "Book Emma\u2019s dentist"],
-  quizLine: "Answer 4 questions. See your pattern.",
+  caught: [
+    { text: "Mom\u2019s refill \u00b7 Fri", kind: "task" },
+    { text: "Book Emma\u2019s dentist", kind: "task" },
+    { text: "3rd week the dentist came up", kind: "pattern" },
+  ],
+  quizLine: "4 quick questions",
 };
 
 // ─── Entry Question (Screen 1) ──────────────────────────────────────────────

@@ -151,14 +151,15 @@ describe("v8.2 entry intro", () => {
     for (const intro of intros) {
       expect(intro.headline).toMatch(/Ripple/);
       expect(intro.said.length).toBeGreaterThan(20);
-      expect(intro.caught.length).toBeGreaterThanOrEqual(2);
+      expect(intro.caught.filter((c) => c.kind === "task").length).toBeGreaterThanOrEqual(2);
+      expect(intro.caught.some((c) => c.kind === "pattern")).toBe(true);
     }
   });
 
   it("follows the positioning doc's language rules", () => {
     const banned = /journal|brain dump|nightly|before bed|\bAI\b|\d+\s*-?\s*(second|sec|minute|min)\b/i;
     for (const intro of intros) {
-      for (const text of [intro.headline, intro.sub, intro.said, intro.quizLine, ...intro.caught]) {
+      for (const text of [intro.headline, intro.said, intro.quizLine, ...intro.caught.map((c) => c.text)]) {
         expect(text).not.toMatch(banned);
       }
     }
@@ -167,7 +168,7 @@ describe("v8.2 entry intro", () => {
   it("the quiz line's question count matches the questions before the result", () => {
     for (const cfg of [DEFAULT_FUNNEL_CONFIG, BWK_FUNNEL_CONFIG]) {
       const questions = cfg.STEP_ORDER.filter((s) => s === "entry" || s.startsWith("branch-")).length;
-      expect(cfg.ENTRY_INTRO.quizLine).toContain(`${questions} questions`);
+      expect(cfg.ENTRY_INTRO.quizLine).toMatch(new RegExp(`^${questions} (quick )?questions`));
     }
   });
 });

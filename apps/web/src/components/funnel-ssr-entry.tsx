@@ -29,7 +29,8 @@ export function FunnelSsrEntry({ question, intro, theme, totalSteps }: {
   const css = `
     .ssr-entry{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem 2rem;background:${t.bg};color:${t.text};position:relative}
     .ssr-entry__inner{position:relative;max-width:28rem;width:100%}
-    .ssr-entry h2{font-size:1.25rem;font-weight:700;letter-spacing:-.025em;line-height:1.3;text-align:center;margin:0 0 1.25rem}
+    .ssr-entry h2{font-size:1.5rem;font-weight:700;letter-spacing:-.025em;line-height:1.25;text-align:center;margin:0 0 1.5rem}
+    @media(min-width:640px){.ssr-entry h2{font-size:1.875rem}}
     .ssr-entry__opt{width:100%;text-align:left;border-radius:1rem;border:1px solid ${t.optBorder};background:${t.optBg};padding:1rem 1.25rem;font-size:0.9375rem;color:${t.optText};margin-bottom:0.75rem;cursor:pointer;transition:background 0.15s}
     .ssr-entry__opt[data-picked]{border-color:${accent};box-shadow:inset 0 0 0 1px ${accent}}
     .ssr-entry__progress{position:fixed;top:0;left:0;right:0;height:3px;background:${t.track}}

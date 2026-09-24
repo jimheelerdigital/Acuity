@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-24] — Funnel screen 1 intro redesigned to sit cleanly above the question
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The first version of the new screen 1 looked cluttered. Its example sat in a white box that looked like an extra answer button, and there were five different text styles before the question. It now reads as one quiet header. A small line says "You say it. Ripple catches it." Under it, what you said sits in a soft speech bubble, with small tinted tags for what Ripple caught, including one pattern tag ("3rd week the dentist came up"). One short line covers the stars and "4 quick questions". Then a thin divider, and the question in the biggest type on the page. Same layout on both funnels.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-entry-intro.tsx`:
+  - Speech bubble (asymmetric radius, 4.5–7% tint) plus accent-tinted pill chips (`color-mix` on the accent), replacing the bordered card, the mono labels and the sub-line
+  - Single meta line (`white-space:nowrap`) and a 2.5rem hairline rule
+  - Headline 17px
+- `EntryIntro` type: `sub` removed. `caught` is now `{ text, kind: "task" | "pattern" }[]`; pattern chips use ↻, task chips ✓. Copy updated in `lib/funnel-config.ts` and `lib/funnel-config-bwk.ts`, with shorter chip text so two fit per row at 390px
+- Entry question is now the largest text: `text-2xl sm:text-3xl` in `onboarding-funnel.tsx` (compactQuestion) and 1.5rem / 1.875rem in `funnel-ssr-entry.tsx`
+- `lib/funnel-config.test.ts`: intro tests updated (a pattern chip is required, and the quiz line starts with the question count). 27/27 pass
+
+### Manual steps needed
+- [ ] Say "push it" (Keenan)
+
+### Notes
+- Checked at 390×740 (SSR and hydrated) and 1160×900 for both funnels. No horizontal overflow; the first answer sits about 60% down the phone screen
+- Keep the intro out of the answer-card shape (white fill + border + 18px radius). Anything that looks like a card reads as a tappable answer on this screen
+
+---
+
 ## [2026-09-24] — Paywall follow-up emails reach funnel signups again; paywall back button + reassurance
 
 **Requested by:** Keenan

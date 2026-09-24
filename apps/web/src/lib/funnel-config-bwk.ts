@@ -53,10 +53,13 @@ const BWK_STEP_ORDER: FunnelStep[] = [
 
 export const BWK_ENTRY_INTRO: EntryIntro = {
   headline: "You say it. Ripple catches it.",
-  sub: "The tasks, the pressure and the stuff you keep putting off, pulled from your own words.",
   said: "Dave\u2019s invoice goes out Friday, and I still haven\u2019t called about the truck\u2026",
-  caught: ["Send Dave\u2019s invoice \u00b7 Fri", "Call about the truck"],
-  quizLine: "Answer 4 questions. See your pattern.",
+  caught: [
+    { text: "Dave\u2019s invoice \u00b7 Fri", kind: "task" },
+    { text: "Call about the truck", kind: "task" },
+    { text: "3rd week the truck came up", kind: "pattern" },
+  ],
+  quizLine: "4 quick questions",
 };
 
 // ─── Entry Question (Screen 1) ──────────────────────────────────────────────

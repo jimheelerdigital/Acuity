@@ -2,9 +2,12 @@ import type { EntryIntro } from "@/lib/funnel-config";
 import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 
 /**
- * Screen 1 intro for /start and /start-bwk: what Ripple is, one "you say it →
- * Ripple catches it" example, and the rating line. Sits above the entry
- * question.
+ * Screen 1 intro for /start and /start-bwk: what Ripple is, shown as one
+ * "you say it → Ripple catches it" exchange (a speech bubble, then chips for
+ * what Ripple pulled out), plus a quiet rating/quiz line and a short rule. It
+ * reads as a header for the question below, so it deliberately avoids the
+ * white bordered card shape the answer buttons use (v8.2.1, Keenan: the first
+ * version's card looked like an extra answer).
  *
  * Rendered twice with the same markup: by FunnelSsrEntry (server HTML, shows
  * before JS loads in the FB/IG in-app browsers) and by OnboardingFunnel once it
@@ -44,19 +47,16 @@ export const ENTRY_THEMES = {
 export type EntryTheme = keyof typeof ENTRY_THEMES;
 
 const css = (t: (typeof ENTRY_THEMES)[EntryTheme], theme: EntryTheme) => `
-  .fei[data-theme-k="${theme}"]{--fei-text:${t.text};--fei-sub:${t.sub};--fei-card:${t.cardBg};--fei-line:${t.cardBorder};--fei-accent:${t.accent}}
+  .fei[data-theme-k="${theme}"]{--fei-text:${t.text};--fei-sub:${t.sub};--fei-bubble:${theme === "dusk" ? "oklch(1 0 0 / 0.07)" : "oklch(0 0 0 / 0.045)"};--fei-line:${t.cardBorder};--fei-accent:${t.accent}}
   .fei{text-align:center;color:var(--fei-text)}
-  .fei__h{font-size:26px;font-weight:700;letter-spacing:-.025em;line-height:1.15;margin:0}
-  .fei__sub{font-size:15px;line-height:1.45;color:var(--fei-sub);margin:.625rem auto 0;max-width:22rem}
-  .fei__demo{margin:1rem 0 0;border-radius:18px;border:1px solid var(--fei-line);background:var(--fei-card);padding:.875rem 1rem;text-align:left}
-  .fei__label{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--fei-sub);margin:0 0 .25rem}
-  .fei__said{font-size:14px;font-style:italic;line-height:1.45;margin:0 0 .75rem}
-  .fei__caught{list-style:none;margin:0;padding:0}
-  .fei__caught li{display:flex;gap:.5rem;align-items:baseline;font-size:14px;font-weight:600;line-height:1.4;padding:.125rem 0}
-  .fei__tick{color:var(--fei-accent);font-weight:700}
-  .fei__rating{font-size:13px;font-weight:600;color:var(--fei-sub);margin:.875rem 0 0}
-  .fei__stars{color:#FBBF24;letter-spacing:.05em}
-  .fei__quiz{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--fei-accent);margin:1.375rem 0 .5rem}
+  .fei__h{font-size:17px;font-weight:700;letter-spacing:-.015em;line-height:1.3;margin:0}
+  .fei__said{display:inline-block;max-width:19rem;margin:.75rem auto 0;padding:.55rem .85rem;border-radius:18px 18px 18px 6px;background:var(--fei-bubble);font-size:13.5px;line-height:1.45;color:var(--fei-text);text-align:left}
+  .fei__caught{list-style:none;margin:.625rem auto 0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:.3rem;max-width:22rem}
+  .fei__chip{display:inline-flex;align-items:center;gap:.25rem;padding:.22rem .55rem;border-radius:999px;font-size:12px;font-weight:600;line-height:1.3;color:var(--fei-text);background:color-mix(in oklch, var(--fei-accent) 13%, transparent);border:1px solid color-mix(in oklch, var(--fei-accent) 28%, transparent)}
+  .fei__mark{color:var(--fei-accent);font-weight:700}
+  .fei__meta{font-size:12px;white-space:nowrap;font-weight:500;color:var(--fei-sub);margin:.875rem 0 0}
+  .fei__stars{color:#FBBF24;letter-spacing:.04em}
+  .fei__rule{width:2.5rem;height:1px;border:0;background:var(--fei-line);margin:1.25rem auto 1.25rem}
 `;
 
 export function FunnelEntryIntro({ intro, theme }: { intro: EntryIntro; theme: EntryTheme }) {
@@ -64,22 +64,20 @@ export function FunnelEntryIntro({ intro, theme }: { intro: EntryIntro; theme: E
     <>
       <style dangerouslySetInnerHTML={{ __html: css(ENTRY_THEMES[theme], theme) }} />
       <div className="fei" data-theme-k={theme}>
-        <h1 className="fei__h">{intro.headline}</h1>
-        <p className="fei__sub">{intro.sub}</p>
-        <div className="fei__demo" aria-label="Example">
-          <p className="fei__label">You say</p>
-          <p className="fei__said">&ldquo;{intro.said}&rdquo;</p>
-          <p className="fei__label">Ripple catches</p>
-          <ul className="fei__caught">
-            {intro.caught.map((c) => (
-              <li key={c}><span className="fei__tick" aria-hidden>&#10003;</span>{c}</li>
-            ))}
-          </ul>
-        </div>
-        <p className="fei__rating">
-          <span className="fei__stars" aria-label="5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span> {APP_STORE_RATING_LABEL}
+        <p className="fei__h">{intro.headline}</p>
+        <p className="fei__said">&ldquo;{intro.said}&rdquo;</p>
+        <ul className="fei__caught" aria-label="What Ripple catches">
+          {intro.caught.map((c) => (
+            <li key={c.text} className="fei__chip">
+              <span className="fei__mark" aria-hidden>{c.kind === "task" ? "\u2713" : "\u21bb"}</span>
+              {c.text}
+            </li>
+          ))}
+        </ul>
+        <p className="fei__meta">
+          <span className="fei__stars" aria-label="5 stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span> {APP_STORE_RATING_LABEL} &middot; {intro.quizLine}
         </p>
-        <p className="fei__quiz">{intro.quizLine}</p>
+        <hr className="fei__rule" />
       </div>
     </>
   );

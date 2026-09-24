@@ -997,7 +997,7 @@ function SingleSelectScreen({ question, questionLarge, compactQuestion, options,
         {questionLarge ? (
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-center mb-10 funnel-screen">{questionLarge}</h1>
         ) : question ? (
-          <h2 className={`text-xl sm:text-2xl font-bold tracking-tight text-center funnel-screen ${compactQuestion ? "mb-5" : "mb-8"}`}>{question}</h2>
+          <h2 className={`font-bold tracking-tight text-center funnel-screen ${compactQuestion ? "text-2xl sm:text-3xl leading-tight mb-6" : "text-xl sm:text-2xl mb-8"}`}>{question}</h2>
         ) : null}
         <div className="space-y-3" style={{ minHeight: `${options.length * 64}px` }}>
           {options.map((opt, i) => {
