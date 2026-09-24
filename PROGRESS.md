@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-24] — First competitor ad scrape ran; brand-rule guard on competitor ideas
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The first competitor research run worked: 100 current US ads for the women's audience and 111 for the men's, 151 of them running 30+ days (proven). Each audience got a written brief. The women's brief found that nobody combines voice journaling, mental-load relief, and women in their 40s, so that position is open for Ripple. A couple of its suggestions ("a 3-minute window", "before sleep") break our brand rules, so the weekly ads now keep the insight but drop that framing.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/competitor-research.ts`: `renderCompetitorBriefForBatch` states that brand rules override the competitor section (no duration or fixed-time framing)
+- Prod verification: deploy 255b8123 Ready; `PUT /api/inngest` registered (modified:true); `run-competitor-research` fired → 16 sources scraped (Day One returned 0 after the page-name filter; Rosebud, Stoic, Rise and BetterHelp only 2–5), 2 AdLabCompetitorBrief rows
+
+### Manual steps needed
+None. The Saturday cron runs it weekly from here.
+
+### Notes
+- The Apify actor's field names parsed correctly on first run: adStartedAt populated on all 211 rows
+- Brand filters with low yield (Day One 0, BetterHelp 2) likely match on page names that differ from the query. Tune `COMPETITOR_SOURCES` if those brands matter
+
+---
+
 ## [2026-09-24] — Ads now optimize for signups on a fixed $100/day, and the daily engine counts correctly
 
 **Requested by:** Keenan

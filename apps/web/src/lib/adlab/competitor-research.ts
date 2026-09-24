@@ -347,7 +347,7 @@ export async function getLatestCompetitorBrief(groupKey: BatchGroupKey): Promise
 /** Prompt section for the weekly batch; "" when there's no fresh brief. */
 export function renderCompetitorBriefForBatch(brief: CompetitorBrief | null): string {
   if (!brief) return "";
-  return `WHAT'S WORKING FOR COMPETITORS (proven = running 30+ days in the US Meta Ad Library). Borrow STRUCTURES only — never copy wording, never name or allude to a competitor. Our own performance data above outranks this when they disagree.
+  return `WHAT'S WORKING FOR COMPETITORS (proven = running 30+ days in the US Meta Ad Library). Borrow STRUCTURES only — never copy wording, never name or allude to a competitor. Our own performance data above outranks this when they disagree. Our brand rules above ALWAYS override this section: if an idea below implies a recording duration ("3 minutes") or a fixed time of day ("before sleep", "nightly"), keep the insight but drop that framing.
 SUMMARY: ${brief.summary}
 PROVEN HOOK STRUCTURES:
 ${brief.hooks.map((h) => `- ${h}`).join("\n")}
