@@ -68,7 +68,7 @@ Pictures got an overhaul:
     - camera (vantage/lens/light) is rolled per image
     - "central 4:5" framing replaces "9:16"
     - `menSubjectRules()` includes the statue / animal / warrior / dragon allowances only when the scene names one
-- `apps/web/src/lib/content-factory/timeline-grid.ts`: cover title is now a command ("Give yourself [span] to [mission]")
+- `apps/web/src/lib/content-factory/timeline-grid.ts`: cover title shape "[span] to [mission]" with the mission as a direct verb phrase at him ("18 months to clean up your act", per Keenan) — timeline is exempt from the general command rule
 - `apps/web/src/inngest/functions/carousel-daily.ts`:
   - `laneFamily = sceneFamily ?? BWK_LANE_FAMILY[bucket]` is passed to every generator
   - the lane's last 12 cover scene sentences are appended to the feedback block ("RECENT COVER SCENES")

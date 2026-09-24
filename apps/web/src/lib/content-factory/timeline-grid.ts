@@ -94,7 +94,7 @@ const SYSTEM = `You write photo-carousel roadmap posts for a men's discipline ac
 ${VOICE_LINE}
 
 FORMAT — the post is a span-of-time roadmap:
-- "title": the cover headline. Punchy, ALL CAPS register (you write it in normal case, it renders uppercase), 4-9 words naming the span and the mission as a direct COMMAND to the reader (2026-09-24, per Keenan: commanding covers get the best engagement), shape: "Give yourself [span] to [mission]" or "[Verb] for [span] straight" (e.g. "Give yourself 4 months to get your sh*t together"; the example is the SHAPE only, never reuse its words). Never a question, never a statement about someone else. Mild censored profanity (sh*t) is allowed sparingly, never required.
+- "title": the cover headline. Punchy, ALL CAPS register (you write it in normal case, it renders uppercase), 4-9 words, shape: "[span] to [mission]", where the mission is a direct verb phrase aimed at him, the thing he's being told to do (2026-09-24, per Keenan: "18 months to clean up your act" — the SHAPE only, never reuse its words). No "Give yourself", no question, no statement about someone else, never first person. Mild censored profanity (sh*t) is allowed sparingly, never required.
 - "phases": one entry per sequential phase of the span, in order, no gaps.
   - "header": the phase window, e.g. "MONTH 01", "MONTHS 4-6", "YEAR 2".
   - "bandTitle": that phase's mission in 3-5 words, caps register, following a consistent family across the post (reference: "GET YOURSELF TOGETHER" / "GET YOUR MIND TOGETHER" / "GET YOUR MONEY TOGETHER" / "GET YOUR FUTURE TOGETHER"). Invent your own family each post, do not copy that one.
