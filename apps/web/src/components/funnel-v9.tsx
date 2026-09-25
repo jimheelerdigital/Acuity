@@ -98,6 +98,21 @@ function sessionId(): string {
   }
 }
 
+/** A light tap on phones that support it (Android). No-op elsewhere. */
+function haptic() {
+  try {
+    navigator.vibrate?.(8);
+  } catch {}
+}
+
+/** Small encouragement pills at checkpoints (engagement, per the redesign ask). */
+const MILESTONES: Record<string, string> = {
+  "s-name": "Nice. 5 quick sliders.",
+  offload: "Halfway there.",
+  talktype: "You're doing great. A few more.",
+  name: "Almost done.",
+};
+
 function randomPassword(): string {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
@@ -343,6 +358,13 @@ export function FunnelV9() {
       )}
 
       <main className="max-w-lg mx-auto px-5 pt-20 pb-44">
+        {MILESTONES[stepId] && (
+          <div key={`m-${stepId}`} className="up -mt-1 mb-4 flex justify-center">
+            <span className="flex items-center gap-1.5 rounded-full card px-3 py-1 text-[12px] font-semibold text-acuity-text-sec">
+              <Sparkles className="h-3.5 w-3.5 text-acuity-primary" /> {MILESTONES[stepId]}
+            </span>
+          </div>
+        )}
         <StepView
           key={step.id}
           step={step}
@@ -502,7 +524,10 @@ function OptionCard({ icon: Icon, label, selected, onClick, trailing = "check", 
 }) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => {
+        haptic();
+        onClick();
+      }}
       style={{ animationDelay: `${delay}ms` }}
       className={`up w-full flex items-center gap-3.5 text-left rounded-2xl px-4 py-3.5 transition active:scale-[0.985] ${selected ? "card card-sel" : "card"}`}
     >
@@ -591,7 +616,10 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
             return (
               <button
                 key={o.id}
-                onClick={() => toggle(o.id)}
+                onClick={() => {
+                  haptic();
+                  toggle(o.id);
+                }}
                 style={{ animationDelay: `${i * 40}ms` }}
                 className={`up relative rounded-2xl px-3 pt-4 pb-3.5 flex flex-col items-center gap-2 text-center transition active:scale-[0.97] ${sel ? "card card-sel" : "card"}`}
               >
@@ -647,7 +675,11 @@ function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
   const [moved, setMoved] = useState(answers.sliders[step.id] != null);
   const pos = SLIDER_STEPS.findIndex((s) => s.id === step.id);
   const lean = val < 42 ? "left" : val > 58 ? "right" : "middle";
+  const done = useRef(false);
   const commit = () => {
+    if (done.current) return;
+    done.current = true;
+    haptic();
     const five = Math.min(5, Math.max(1, Math.round(val / 25) + 1));
     setAnswers((a) => ({ ...a, sliders: { ...a.sliders, [step.id]: five } }));
     track(`funnel_v9_${step.id.replace(/-/g, "_")}_answered`, String(five));
@@ -655,7 +687,7 @@ function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
   };
   return (
     <div className="enter">
-      <Heading eyebrow={`Statement ${pos + 1} of ${SLIDER_STEPS.length}`} title="Which sounds more like you?" sub="Drag toward the one that fits." />
+      <Heading eyebrow={`Statement ${pos + 1} of ${SLIDER_STEPS.length}`} title="Which sounds more like you?" sub="Drag toward the one that fits, then let go." />
       <div className="card rounded-3xl p-5">
         <div className="grid grid-cols-2 gap-3">
           {[step.left, step.right].map((s, i) => {
@@ -681,6 +713,10 @@ function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
               setVal(Number(e.target.value));
               setMoved(true);
             }}
+            // One gesture per statement: letting go of the thumb moves on.
+            // The Next button stays for keyboards and accessibility.
+            onPointerUp={() => moved && setTimeout(commit, 380)}
+            onTouchEnd={() => moved && setTimeout(commit, 380)}
             className="v9-range"
           />
           <div className="mt-3 flex justify-between text-[12px] font-medium text-acuity-text-ter">
@@ -990,13 +1026,20 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
   );
 }
 
-function EmailScreen({ answers, setAnswers, firstName, next, track }: ViewProps) {
+function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewProps) {
   const [email, setEmail] = useState(answers.email);
   const [optIn, setOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [exists, setExists] = useState(false);
   const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup });
+
+  // Already gave an email this session (refresh, a ?step=email link, or
+  // history): the account exists, so go straight to the result instead of
+  // re-running signup into "you already have an account".
+  useEffect(() => {
+    if (answers.email) go("result");
+  }, [answers.email, go]);
 
   const submit = async () => {
     const e = email.trim().toLowerCase();
@@ -1241,6 +1284,10 @@ const PRO_FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
 
 function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: ViewProps) {
   const [open, setOpen] = useState<number | null>(null);
+  // Warm Stripe.js while she reads the paywall so checkout mounts fast.
+  useEffect(() => {
+    loadStripeJs().catch(() => {});
+  }, []);
   const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup });
   const after = plan === "yearly" ? `${displayAnnual()}/year` : `${displayMonthly()}/month`;
   const pick = (p: Plan) => {

@@ -46,6 +46,7 @@ This also fixes a Meta tracking gap. When a card trial started, the event sent t
   - Clip URLs are cached at `living/<postId>/clips-<model>.json`, so reruns don't re-bill Higgsfield.
 
 ### Manual steps needed
+- [ ] Meta Events Manager → pixel 869829585445303 → Settings → Traffic permissions: add goripple.io and www.goripple.io to the allow list (or remove them from the block list). The pixel is refusing to run on goripple.io. (Keenan)
 - [ ] Stripe: Settings → Payment method domains → add goripple.io and www.goripple.io. Embedded Checkout only shows Apple Pay / Google Pay on registered domains. (Keenan)
 - [ ] Confirm `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is set in Vercel production. Without it, /start-test falls back to the hosted Stripe page. (Keenan)
 - [ ] Point one ad set at /start-test with the same audience and budget as /start. Aim for ~300–500 sessions before judging. (Keenan)
@@ -67,6 +68,17 @@ This also fixes a Meta tracking gap. When a card trial started, the event sent t
     - Once the account exists, back to anything before the result lands on the result.
   - The admin Funnel → Test view shows one row per screen (`V9_STEP_LABELS`), each label linking to its screen URL. `FunnelStepDef.href` was added.
   - The hosted-checkout cancel URL for /start-test is now `?step=paywall`, not `savings`.
+- **2026-09-25 bug sweep + UX pass:**
+  - The prod sweep was clean: FCP 0.72s, 281KB JS, no console errors.
+  - A full local e2e ran through: quiz → email gate (account, sign-in, free plan) → result → plan → paywall → embedded checkout mounts → back → free plan → success. Throwaway accounts were deleted afterwards.
+  - Fixes and upgrades:
+    - A `?step=email` visit with a saved email now skips to the result (it used to re-run signup into "already have an account").
+    - Sliders advance on release.
+    - Haptic taps.
+    - Milestone pills at the slider, halfway, and name steps.
+    - Stripe.js preloads on the paywall.
+  - Local e2e needs `DELETED_USER_EMAIL_HMAC_KEY` (prod has it; any value works for a new test email) and can't finish checkout, because the local Stripe test key doesn't see the live price IDs.
+  - **FOUND: the Meta pixel is blocked on goripple.io by Traffic Permissions** ("[Meta pixel] 869829585445303 is unavailable on this website due to its traffic permission settings"). Browser-side Meta events don't record on any funnel.
 - Kling 3.0 living reels for the 2026-09-25 run: `apps/web/scripts/living-kling.ts`. The phases are `prep <date> <plan.json>`, then Kling clips generated through the Higgsfield APP account (chat MCP, since Kling isn't on the dev API), then `assemble <plan.json> <clips.json>`. It uploads `reels/<postId>.mp4`, which the IG/FB publisher already reuses, and emails each video separately from the picture-slide emails. The dev-API Higgsfield account is out of credits (`not_enough_credits` on DoP Lite).
 - The research report's verdict: the losses are at screen 1 and at the account gate, not in the quiz. The real-demo idea is unproven, so it stays out of v9 and is a later A/B arm.
 - The paywall defaults to yearly per Keenan (2026-09-25). This overrides the positioning doc's "never lead with annual", for /start-test only.
