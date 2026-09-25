@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-09-25] — /start-test-bwk restyled: charcoal, cream, purple, white, with a serif quote and no logo
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The men's test funnel (/start-test-bwk) now uses a quieter, more premium look throughout: warm charcoal backgrounds, cream text, one refined purple for buttons and accents, and white only on the main button text. The ripple logo at the top is gone. On the "Does this sound like you?" screens, the question is now a small, spaced-out line in capitals, and the statement is the star: set large in an elegant italic serif, in cream, under a thin purple line. The little face above it now matches the palette (cream lines on charcoal with a purple ring) instead of its own color. Screen headings use the same serif. Stars are cream instead of yellow. The women's /start-test and the normal /start-bwk are unchanged.
+
+### Technical changes (for Jimmy)
+- `components/funnel-v9.tsx` CSS:
+  - The `.v9[data-funnel-theme="dusk"]` token block was rewritten: warm charcoal (hue 60) surfaces, cream text/line tokens (override the global dark-theme values), purple primary oklch(0.62 0.13 300), cream `--acuity-warn` (stars), a flatter 160° gradient and a subtle purple top glow
+  - New `.lux-serif` and `.lux-caps` classes; the dusk `.card` gets an inset highlight
+- `StatementScreen`, dusk only (`lux`):
+  - no logo or wordmark
+  - title rendered as a `lux-caps` eyebrow
+  - the figure is a 52px avatar (`tone="lux"`), then a 32px purple hairline, then a Cormorant Garamond italic blockquote at clamp(27px, 7.8vw, 33px)
+  - the hook line moved under the card
+  - primary button with an inset highlight
+  - Light theme untouched. The unused `DUSK_MARK` filter was removed
+- `Heading`: in the dusk theme it renders in the serif (34px, 600)
+- `components/mood-avatar.tsx`: new `tone: "hue" | "lux"` prop. Lux is a charcoal disc with a purple ring, cream features and a purple cue. Used on the statement card and the result list for BWK
+- `app/start-test-bwk/page.tsx`: loads Cormorant Garamond (500/600, italic + normal) via next/font as `--font-lux`, on this page only; the body background is charcoal
+
+### Manual steps needed
+- [ ] Say "push it" (Keenan)
+
+### Notes
+- Scope is deliberately BWK test only. The normal /start-bwk keeps its navy dusk theme, and the women's test funnel keeps coral/light. Say if the same treatment should go to /start-test
+- The serif only renders where `.lux-serif` is inside the page wrapper that carries `--font-lux`. The BottomBar portal is outside it, so don't use the serif in bottom bars
+- Checked at 390×800 (hook, statement, age, week chips) and 1000×820
+
+---
+
 ## [2026-09-25] — Reset guides now look typed onto real paper
 
 **Requested by:** Keenan

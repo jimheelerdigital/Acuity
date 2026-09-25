@@ -140,19 +140,27 @@ function loadStripeJs(): Promise<boolean> {
 
 /** The brand config for the page (Ripple /start-test or BWK /start-test-bwk). */
 const V9Ctx = createContext<V9Config>(RIPPLE_V9);
-/** The only transparent mark is coral; shift it to the dusk indigo for BWK. */
-const DUSK_MARK = { filter: "hue-rotate(262deg) saturate(1.15) brightness(1.1)" } as const;
 const useV9 = () => useContext(V9Ctx);
 
 const CSS = `
 .v9[data-funnel-theme="dusk"] {
-  --acuity-primary: oklch(0.64 0.16 292); --acuity-primary-hi: oklch(0.74 0.14 293); --acuity-primary-lo: oklch(0.54 0.19 291);
-  --acuity-primary-soft: oklch(0.64 0.16 292 / 0.18);
-  --acuity-bg: oklch(0.168 0.037 287); --acuity-bg-sub: oklch(0.2 0.042 287); --acuity-bg-inset: oklch(0.14 0.03 287); --acuity-card-bg: oklch(0.215 0.048 287);
-  --acuity-grad-primary: linear-gradient(135deg, var(--acuity-primary-hi) 0%, var(--acuity-primary) 55%, var(--acuity-primary-lo) 100%);
-  --acuity-hero-grad: radial-gradient(120% 70% at 50% 0%, oklch(0.34 0.12 292 / 0.35) 0%, transparent 60%), linear-gradient(180deg, oklch(0.19 0.042 287) 0%, oklch(0.168 0.037 287) 100%);
+  /* Charcoal / cream / purple / white (2026-09-25, Keenan: "luxury accents,
+     on brand"). Warm charcoal surfaces, cream type and hairlines, one
+     refined purple, white only on the primary button. */
+  --acuity-primary: oklch(0.62 0.13 300); --acuity-primary-hi: oklch(0.68 0.12 300); --acuity-primary-lo: oklch(0.55 0.14 300);
+  --acuity-primary-soft: oklch(0.62 0.13 300 / 0.16);
+  --acuity-bg: oklch(0.195 0.006 60); --acuity-bg-sub: oklch(0.23 0.007 60); --acuity-bg-inset: oklch(0.17 0.005 60); --acuity-card-bg: oklch(0.235 0.007 60);
+  --acuity-text: oklch(0.95 0.022 85); --acuity-text-sec: oklch(0.83 0.02 82); --acuity-text-ter: oklch(0.69 0.016 78); --acuity-text-quiet: oklch(0.54 0.012 72);
+  --acuity-line: oklch(0.95 0.022 85 / 0.08); --acuity-line-strong: oklch(0.95 0.022 85 / 0.14);
+  --acuity-warn: oklch(0.9 0.045 85);
+  --lux-cream: oklch(0.95 0.022 85);
+  --acuity-grad-primary: linear-gradient(160deg, var(--acuity-primary-hi) 0%, var(--acuity-primary-lo) 100%);
+  --acuity-hero-grad: radial-gradient(90% 45% at 50% 0%, oklch(0.62 0.13 300 / 0.14) 0%, transparent 70%), linear-gradient(180deg, oklch(0.21 0.007 60) 0%, oklch(0.18 0.006 60) 100%);
   color-scheme: dark;
 }
+.v9[data-funnel-theme="dusk"] .card { box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04), 0 18px 40px -24px oklch(0 0 0 / 0.6); }
+.v9[data-funnel-theme="dusk"] .lux-serif { font-family: var(--font-lux), "Cormorant Garamond", Georgia, serif; }
+.v9[data-funnel-theme="dusk"] .lux-caps { font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--acuity-text-ter); }
 .v9 { --v9-tint: color-mix(in oklch, var(--acuity-primary) 9%, var(--acuity-card-bg)); --v9-ring: color-mix(in oklch, var(--acuity-primary) 38%, transparent); }
 .v9 .card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); box-shadow: 0 1px 2px rgba(20,16,40,.04), 0 6px 18px rgba(20,16,40,.05); }
 .v9 .card-sel { background: var(--v9-tint); border-color: var(--acuity-primary); box-shadow: 0 0 0 3px var(--v9-ring); }
@@ -458,10 +466,12 @@ function StepView(p: ViewProps) {
 }
 
 function Heading({ eyebrow, title, sub }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode }) {
+  // Charcoal/cream theme: headings in the serif, like the statement quotes.
+  const lux = useV9().theme === "dusk";
   return (
     <div className="text-center mb-7">
       {eyebrow && <p className="mb-2 text-[13px] font-semibold tracking-wide text-acuity-primary">{eyebrow}</p>}
-      <h1 className="text-[27px] leading-[1.15] font-bold tracking-tight text-balance">{title}</h1>
+      <h1 className={lux ? "lux-serif text-[34px] leading-[1.08] font-semibold text-balance" : "text-[27px] leading-[1.15] font-bold tracking-tight text-balance"}>{title}</h1>
       {sub && <p className="mt-2.5 text-[15px] leading-relaxed text-acuity-text-sec text-balance">{sub}</p>}
     </div>
   );
@@ -801,12 +811,27 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
   };
   const pos = statementSteps(C).findIndex((s) => s.id === step.id);
   const prev = answers.single[step.id];
+  const lux = C.theme === "dusk";
   return (
     <div className="flex min-h-[calc(100svh-6rem)] flex-col justify-center">
-      {isHook ? (
+      {lux ? (
+        // Charcoal/cream theme (BWK): no logo; the question is a quiet
+        // small-caps eyebrow and the statement itself is the hero, set in
+        // a serif (2026-09-25, Keenan: "luxury accents… make the quote look better").
+        <>
+          {!isHook && (
+            <p className="up mb-2 text-center lux-caps">
+              Tap what&rsquo;s true &middot; {pos} of {statementSteps(C).length - 1}
+            </p>
+          )}
+          <h1 className="up mb-6 text-center lux-caps" style={{ color: "var(--acuity-text-sec)" }}>
+            {step.title ?? "Does this sound like you?"}
+          </h1>
+        </>
+      ) : isHook ? (
         <div className="up mb-5 flex flex-col items-center text-center">
           <div className="flex items-center gap-2">
-            <img src="/ripple-mark-coral-t.png" alt="" width={36} height={36} className="h-9 w-9" style={C.theme === "dusk" ? DUSK_MARK : undefined} />
+            <img src="/ripple-mark-coral-t.png" alt="" width={36} height={36} className="h-9 w-9" />
             <span className="text-[24px] font-bold tracking-tight">ripple</span>
           </div>
           <p className="mt-2.5 max-w-[20rem] text-[14px] leading-snug text-acuity-text-sec text-balance">{C.hookLine}</p>
@@ -816,22 +841,35 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
           Tap what&rsquo;s true &middot; {pos} of {statementSteps(C).length - 1}
         </p>
       )}
-      <h1 className="up mb-5 text-center text-[clamp(22px,6.6vw,27px)] font-bold leading-tight tracking-tight">{step.title ?? "Does this sound like you?"}</h1>
+      {!lux && <h1 className="up mb-5 text-center text-[clamp(22px,6.6vw,27px)] font-bold leading-tight tracking-tight">{step.title ?? "Does this sound like you?"}</h1>}
 
       {/* The statement as a quote: a face showing the feeling, then the line
           centered in italics (2026-09-25, per Keenan). */}
-      <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-        <MoodAvatar mood={step.mood} dark={C.theme === "dusk"} size={60} />
-        <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
-          &ldquo;{step.statement}&rdquo;
-        </blockquote>
-      </figure>
+      {lux ? (
+        <figure className={`card-in relative flex flex-col items-center rounded-[30px] card px-7 pb-9 pt-8 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
+          <MoodAvatar mood={step.mood} tone="lux" size={52} />
+          <span aria-hidden className="mt-5 block h-px w-8" style={{ background: "var(--acuity-primary)" }} />
+          <blockquote className="lux-serif mt-5 text-[clamp(27px,7.8vw,33px)] font-medium italic leading-[1.18] text-balance" style={{ color: "var(--lux-cream)" }}>
+            &ldquo;{step.statement}&rdquo;
+          </blockquote>
+        </figure>
+      ) : (
+        <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
+          <MoodAvatar mood={step.mood} size={60} />
+          <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
+            &ldquo;{step.statement}&rdquo;
+          </blockquote>
+        </figure>
+      )}
+      {lux && isHook && (
+        <p className="up mt-5 text-center text-[14px] leading-snug text-acuity-text-ter text-balance" style={{ animationDelay: "120ms" }}>{C.hookLine}</p>
+      )}
 
       <div className="mt-5 space-y-1.5">
         <button
           onClick={() => answer("yes")}
-          className="w-full rounded-full grad py-4 text-[17px] font-semibold text-white transition active:scale-[0.98] flex items-center justify-center gap-2"
-          style={{ boxShadow: "0 10px 26px -8px var(--acuity-primary)" }}
+          className={`w-full rounded-full grad py-4 text-[17px] font-semibold text-white transition active:scale-[0.98] flex items-center justify-center gap-2 ${lux ? "tracking-[0.01em]" : ""}`}
+          style={{ boxShadow: lux ? "inset 0 1px 0 oklch(1 0 0 / 0.18), 0 12px 28px -14px var(--acuity-primary)" : "0 10px 26px -8px var(--acuity-primary)" }}
         >
           {fly === "yes" || prev === "yes" ? <Check className="h-5 w-5" strokeWidth={3} /> : null}
           Yes, that&rsquo;s me
@@ -1402,7 +1440,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
           <div className="space-y-2">
             {statementSteps(C).filter((st) => answers.single[st.id] === "yes").map((st, i) => (
               <p key={st.id} className="up flex items-center gap-2.5 text-[15px] italic leading-snug" style={{ animationDelay: `${300 + i * 120}ms` }}>
-                <MoodAvatar mood={st.mood} dark={C.theme === "dusk"} size={28} />
+                <MoodAvatar mood={st.mood} tone={C.theme === "dusk" ? "lux" : "hue"} size={28} />
                 <span>&ldquo;{st.statement}&rdquo;</span>
               </p>
             ))}
