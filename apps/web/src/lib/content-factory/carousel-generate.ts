@@ -703,6 +703,91 @@ export async function regenerateSlide(slideId: string): Promise<string> {
  * Downloads the original raw image from the existing imageUrl, strips
  * old text by re-composing from scratch. Returns new image URL.
  */
+/**
+ * Regenerate the text-free photo for an overlay slide from its stored
+ * prompt (shared by recomposeSlide and the living-reel pipeline).
+ *
+ * Avatar slides (capped at ≤8% of posts since 2026-08-31) store an avatar
+ * block mentioning the "reference photo" in their prompt — re-attach the
+ * reference so the man stays Keenan. Match on the phrase, not the current
+ * MOODY_AVATAR_PROMPT constant, so historical prompts stored under older
+ * block wording still work. Ripple avatar-led lanes (2026-09-17) re-attach
+ * the LANE's reference, not the BWK one — otherwise the lane's recurring
+ * woman would be swapped for Keenan. If the reference is missing, cut the
+ * block (it always starts at one of the known lead-ins) so the model isn't
+ * told to match a photo that isn't attached.
+ */
+export async function regenerateOverlayRaw(
+  imagePrompt: string,
+  lane: string | null,
+  slot: ImageSlot = "cover"
+): Promise<Buffer> {
+  if (imagePrompt.includes("reference photo")) {
+    const { RIPPLE_AVATAR_LANES, rippleAvatarReferencePath } = await import(
+      "./moody-carousel"
+    );
+    const refPath = (RIPPLE_AVATAR_LANES as readonly string[]).includes(lane ?? "")
+      ? rippleAvatarReferencePath(lane as RippleAvatarLane)
+      : undefined;
+    const reference = await getAvatarReference(refPath);
+    if (reference) return generateImageWithReference(imagePrompt, reference);
+    const cutAt = ["EXCEPTION to the no-people rule", "IDENTITY: the lone man"]
+      .map((m) => imagePrompt.indexOf(m))
+      .filter((i) => i >= 0)
+      .sort((a, b) => a - b)[0];
+    return generateImage(
+      cutAt !== undefined ? imagePrompt.slice(0, cutAt).trimEnd() : imagePrompt,
+      slot
+    );
+  }
+  return generateImage(imagePrompt, slot);
+}
+
+/**
+ * Text treatment for an overlay slide (shared by recomposeSlide and the
+ * living-reel pipeline).
+ *
+ * QUOTE (Playfair serif italic) is dead — 2026-08-30, per Keenan: "get rid
+ * of the italicized ripple characters. make everything consistent". All
+ * item slides render as ITEM. Phone-quote COVERS carry a lowercase
+ * sentence-case hook — ITEM treatment, never the uppercase COVER style.
+ *
+ * Tone comes from the STORED image prompt, not the lane: since 2026-09-01
+ * every Ripple women-lane post rolls a 50/50 light/dark scheme. The
+ * buildMoodyImagePrompt exposure line doubles as the marker ("SOFT and
+ * LIGHT" → dark charcoal text, "DIM and shadowed" → white text).
+ * LIGHT_LANES is only the fallback for prompts that predate the markers.
+ */
+export function moodyOverlayStyle(
+  lane: string | null,
+  slideKind: string,
+  imagePrompt: string | null
+): { kind: "COVER" | "ITEM" | "SIGN"; tone: "white" | "dark" } {
+  const kind =
+    lane === "sign" || lane === "aura"
+      ? ("SIGN" as const)
+      : lane === "phone-quote" ||
+          lane === "phone-quote-men" ||
+          lane === "letter" ||
+          lane === "texts-younger" ||
+          lane === "future-texts"
+        ? ("ITEM" as const)
+        : slideKind === "COVER"
+          ? ("COVER" as const)
+          : ("ITEM" as const);
+  const LIGHT_LANES = new Set([
+    "questions", "sign", "free", "nobody", "memento", "forbidden",
+  ]);
+  const tone = imagePrompt?.includes("SOFT and LIGHT")
+    ? ("dark" as const)
+    : imagePrompt?.includes("DIM and shadowed")
+      ? ("white" as const)
+      : LIGHT_LANES.has(lane ?? "")
+        ? ("dark" as const)
+        : ("white" as const);
+  return { kind, tone };
+}
+
 export async function recomposeSlide(slideId: string, newText: string): Promise<string> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -872,85 +957,19 @@ export async function recomposeSlide(slideId: string, newText: string): Promise<
         // fall through to regeneration
       }
     }
-    // Avatar slides (capped at ≤8% of posts since 2026-08-31) store an
-    // avatar block mentioning the "reference photo" in their prompt —
-    // re-attach the reference on edit so the man stays Keenan. Match on
-    // the phrase, not the current MOODY_AVATAR_PROMPT constant, so
-    // historical prompts stored under older block wording still work.
-    // If the reference is missing, cut the block (it always starts at
-    // one of the known lead-ins) so the model isn't told to match a
-    // photo that isn't attached.
-    if (rawReused) {
-      // photo kept — nothing to generate
-    } else if (slide.imagePrompt.includes("reference photo")) {
-      // Ripple avatar-led lanes (2026-09-17) re-attach the LANE's
-      // reference, not the BWK one — otherwise an edit would swap the
-      // lane's recurring woman for Keenan.
-      const { RIPPLE_AVATAR_LANES, rippleAvatarReferencePath } = await import(
-        "./moody-carousel"
+    // No stored photo → regenerate it (avatar-reference aware, see
+    // regenerateOverlayRaw).
+    if (!rawReused) {
+      rawBuffer = await regenerateOverlayRaw(
+        slide.imagePrompt,
+        slide.carouselPost.lane
       );
-      const editLane = slide.carouselPost.lane ?? "";
-      const refPath = (RIPPLE_AVATAR_LANES as readonly string[]).includes(
-        editLane
-      )
-        ? rippleAvatarReferencePath(editLane as RippleAvatarLane)
-        : undefined;
-      const reference = await getAvatarReference(refPath);
-      if (reference) {
-        rawBuffer = await generateImageWithReference(slide.imagePrompt, reference);
-      } else {
-        const cutAt = ["EXCEPTION to the no-people rule", "IDENTITY: the lone man"]
-          .map((m) => slide.imagePrompt.indexOf(m))
-          .filter((i) => i >= 0)
-          .sort((a, b) => a - b)[0];
-        rawBuffer = await generateImage(
-          cutAt !== undefined
-            ? slide.imagePrompt.slice(0, cutAt).trimEnd()
-            : slide.imagePrompt
-        );
-      }
-    } else {
-      rawBuffer = await generateImage(slide.imagePrompt);
     }
-    // QUOTE (Playfair serif italic) is dead — 2026-08-30, per Keenan:
-    // "get rid of the italicized ripple characters. make everything
-    // consistent". All item slides re-render as ITEM, matching the
-    // daily pipeline.
-    const lane = slide.carouselPost.lane;
-    // Phone-quote COVERS carry a lowercase sentence-case hook ("this
-    // quote kept me up all night...") — ITEM treatment, never the
-    // uppercase COVER style.
-    const moodyKind =
-      lane === "sign" || lane === "aura"
-        ? "SIGN"
-        : lane === "phone-quote" ||
-            lane === "phone-quote-men" ||
-            lane === "letter" ||
-            lane === "texts-younger" ||
-            lane === "future-texts"
-          ? "ITEM"
-          : slide.kind === "COVER"
-            ? "COVER"
-            : "ITEM";
-    // Text tone comes from the STORED image prompt, not the lane:
-    // since 2026-09-01 every Ripple women-lane post rolls a 50/50
-    // light/dark scheme, so a lane no longer implies a tone. The
-    // buildMoodyImagePrompt exposure line doubles as the marker
-    // ("SOFT and LIGHT" → dark charcoal text, "DIM and shadowed" →
-    // white text) — this also fixes the old gotcha where recomposing
-    // a pre-kill dark memento/forbidden slide via the lane table
-    // rendered dark text on a dark image. LIGHT_LANES is only the
-    // fallback for slides whose prompts predate the markers.
-    const LIGHT_LANES = new Set([
-      "questions", "sign", "free", "nobody", "memento", "forbidden",
-    ]);
-    const tone = slide.imagePrompt?.includes("SOFT and LIGHT")
-      ? ("dark" as const)
-      : slide.imagePrompt?.includes("DIM and shadowed")
-        ? ("white" as const)
-        : LIGHT_LANES.has(lane ?? "")
-          ? ("dark" as const)
-          : ("white" as const);
+    const { kind: moodyKind, tone } = moodyOverlayStyle(
+      slide.carouselPost.lane,
+      slide.kind,
+      slide.imagePrompt
+    );
     const overlay = await renderMoodyTextOverlay(
       newText.split("\n\n"),
       moodyKind,

@@ -1717,7 +1717,7 @@ export async function composeFeedWithOverlay(
  * Dark text (Ripple light scheme) gets a light scrim instead.
  * Returns null when the overlay has no text.
  */
-async function buildAdaptiveScrim(base: Buffer, overlayPng: Buffer): Promise<Buffer | null> {
+export async function buildAdaptiveScrim(base: Buffer, overlayPng: Buffer): Promise<Buffer | null> {
   const { data, info } = await sharp(overlayPng)
     .ensureAlpha()
     .raw()

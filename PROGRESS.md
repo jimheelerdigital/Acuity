@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-09-24] — Living reels: every slide's photo comes to life (Higgsfield), first DoP Lite test
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (this entry is amended into the commit)
+
+### In plain English (for Keenan)
+Posts can now be turned into "living" reels. Each slide's photo is animated so rain falls, waves roll and animals move, while the words stay perfectly still on top. Slides blend smoothly into each other and the reel ends on the brand slide with music. Two hand-made tests (BWK and Ripple) were built with the Kling 3.0 model on the Higgsfield app account and emailed. This change lets the automatic system build the same thing with the model we pay for through Higgsfield's developer API (DoP Lite), so the two can be compared before every post gets this treatment.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/living-reel.ts`:
+  - `livingMotionPrompt` builds scene-specific motion from keyword rules. Only motions the scene contains; DoP executes whatever it's told.
+  - `buildLivingSlideLayer` produces the base frame plus a transparent scrim+overlay PNG.
+  - `livingSlideSeconds`: cover 3.5s, items 5–8s by word count.
+  - `assembleLivingReel` (ffmpeg): clips slowed to slot length, `tpad` holds the last frame for short clips, text fades out/in around each 0.6s crossfade, brand CTA, music.
+- New Inngest fn `apps/web/src/inngest/functions/carousel-living-reel.ts`:
+  - Event `content-factory/living-reel.build` with data `{postId, model?, email?}`.
+  - Steps: prepare per slide (raw → base+layer, uploaded to `living/<postId>/`), submit to the Higgsfield dev API via `submitCoverVideo`, poll every 30s for up to 20 min, assemble to `living/<postId>/reel.mp4`, then email with the attachment.
+  - Model: `event.data.model` ?? `HIGGSFIELD_LIVING_MODEL` ?? `HIGGSFIELD_VIDEO_MODEL`.
+  - Registered in `app/api/inngest/route.ts`.
+- `apps/web/src/app/api/admin/carousels/route.ts`: new action `living-reel` (CRON_SECRET or admin session).
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: extracted `regenerateOverlayRaw()` (avatar-reference aware) and `moodyOverlayStyle()` (kind + tone) out of `recomposeSlide`, which now calls them. No behavior change.
+- `apps/web/src/lib/content-factory/compose.ts`: `buildAdaptiveScrim` exported.
+- Data: the slides of test posts cmuf4mkis0005oxapp383zvd4 (BWK watching) and cmuf8xglg0004q1aryvniv0oh (Ripple memento) got `rawImageUrl` pointed at the demo text-free photos in `content-factory/tmp/`.
+
+### Manual steps needed
+- [ ] Watch the DoP Lite reels and pick the model: DoP Lite, or upgrade (Keenan)
+- [ ] Check the Higgsfield developer-API credit balance at cloud.higgsfield.ai. The daily living reels will draw from it (Keenan)
+- [ ] Inngest resync after deploy (new function): `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- Cost on Kling 3.0 (app account): 7.5 credits per 5s clip, about 43 credits per post, about 14,000 credits/month for all 11 reel lanes. DoP Lite pricing on the dev API is unknown.
+- Kling is not on the developer API, which only offers Higgsfield's own DoP models (see the 2026-08-07 notes). App credits and API credits are separate.
+- Crossfading slides that carry text stacked both paragraphs, so text must be off during every transition.
+- The motion list must be scene-driven. "rain-slicked garage" produced "rain falling" indoors, and a generic "light" rule made outdoor sunlight flicker. Both are fixed in MOTION_RULES.
+- Not yet wired into the daily publisher or the TikTok email. That comes after the model decision.
+
 ## [2026-09-24] — Posts on both brands are now reels with music (one carousel lane per brand)
 
 **Requested by:** Keenan

@@ -196,6 +196,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "living-reel": {
+      // Living reel (2026-09-24): every slide animated by Higgsfield, text
+      // burned on, clean transitions, music, emailed. Optional `model`
+      // overrides the Higgsfield developer-API model path for comparisons.
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "content-factory/living-reel.build",
+        data: {
+          postId,
+          model: (body as { model?: string }).model,
+          email: (body as { email?: boolean }).email !== false,
+        },
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
     case "animate-all": {
       // Full animated-post treatment: animate every slide except the CTA
       // and send the email after renders finish. Same path as the daily
