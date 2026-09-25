@@ -64,6 +64,8 @@ function errorMessage(status: number | undefined, timeout: boolean): string {
   switch (status) {
     case 401:
       return "Please sign in again to use Ask.";
+    case 402:
+      return "Ask is a Pro feature. Upgrade to ask across your whole journal.";
     case 404:
       return "Ask isn't available on your account yet.";
     case 429:

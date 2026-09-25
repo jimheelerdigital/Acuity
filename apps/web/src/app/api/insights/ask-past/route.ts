@@ -37,6 +37,7 @@ import {
 } from "@/lib/journal-query";
 import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { requireEntitlement } from "@/lib/paywall";
 import { rateLimitedResponse, checkRateLimit, limiters } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +85,13 @@ export async function POST(req: NextRequest) {
 
   const gated = await gateFeatureFlag(userId, "ask_your_past_self");
   if (gated) return gated;
+
+  // AI = Pro. Ask draws on the Claude pipeline, so gate it on the same
+  // entitlement as extraction/MCP (PRO + active TRIAL; not FREE/post-trial).
+  // Returns 402 SUBSCRIPTION_REQUIRED on reject; the mobile screen maps that
+  // to an upgrade nudge.
+  const proGate = await requireEntitlement("canExtractEntries", userId);
+  if (!proGate.ok) return proGate.response;
 
   // Daily cap — 10 questions per user per day via the askPast
   // limiter. Fail-open when Upstash isn't configured (local dev
