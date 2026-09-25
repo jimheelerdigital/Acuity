@@ -84,16 +84,25 @@ export const APP_VERSION_CONFIG: Record<AppPlatform, AppVersionConfig> = {
     // The version we'd LIKE everyone on. Bump when a new App Store
     // build ships (currently v1.1 is in review; will become "1.1.0"
     // once it's released, then "1.2.0" when v1.2 lands).
-    recommendedVersion: "1.1.0",
-    headline: "A new version of Ripple is ready.",
-    body: "We've shipped improvements to the Life Matrix, Theme Map, and the way your insights surface. Update in the App Store to get them.",
+    // ⚠️ DEPLOY-COUPLED TO THE 1.8 APP STORE RELEASE. Bumping this to
+    // 1.8.0 makes every user below it (live store is ~1.5.x) get the
+    // update nudge — so only DEPLOY this file once 1.8.0 is actually
+    // live in the App Store. It also drives the in-app "What's New in
+    // 1.8" sheet (shown when running version == recommendedVersion), so
+    // these notes are what updated users see.
+    recommendedVersion: "1.8.0",
+    headline: "Ripple 1.8 is here.",
+    body: "Ask Your Past Self is now native, you can connect your own AI to your journal, and Siri does more. Update in the App Store to get it.",
     ctaText: "Update",
     dismissible: true,
     appStoreUrl: `https://apps.apple.com/app/id${IOS_APP_STORE_ID}`,
-    // Empty array (not null) so the modal's "render bullets if any"
-    // branch trips when Jim populates this for v1.2. Add 3-5 bullets
-    // when v1.2 ships — see the procedure in the file header.
-    releaseNotes: [],
+    releaseNotes: [
+      "Ask Your Past Self — now built into the app",
+      "Connect your own AI to your journal (Pro)",
+      "Siri: start a check-in, add a habit, check your streak",
+      "Obsidian export now works on Android, with linked themes",
+      "Home Screen and Lock Screen widgets",
+    ],
   },
   // Android placeholder. No Android build is in distribution yet; the
   // mobile client only checks ?platform=ios for now. Kept here so the
