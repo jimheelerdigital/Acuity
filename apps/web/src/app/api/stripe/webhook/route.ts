@@ -566,7 +566,7 @@ export async function POST(req: NextRequest) {
           orderBy: { createdAt: "desc" },
           select: { fbclid: true },
         });
-        sendConversionEvent({
+        await sendConversionEvent({
           eventName: "Purchase",
           eventId: capiEventId,
           userId,

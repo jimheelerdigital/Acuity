@@ -158,7 +158,18 @@ export async function POST(req: NextRequest) {
     // Same bootstrap as Google OAuth signups. Trial clock + Life
     // Matrix + UserMemory + trial_started event.
     const { bootstrapNewUser } = await import("@/lib/bootstrap-user");
-    const attr = body?.attribution;
+    // Client attribution first; fill gaps from the first-touch attribution
+    // cookie. The funnels read UTMs from sessionStorage, which is empty in
+    // some in-app/desktop sessions, so signups arrived with no UTMs and the
+    // founder email said "direct / organic" for ad signups (2026-09-25:
+    // Cindy, Blessen, Erika were all Meta ad clicks).
+    const { getAttributionFromCookie } = await import("@/lib/attribution");
+    const cookieAttr = getAttributionFromCookie(req.headers.get("cookie") ?? "") ?? {};
+    const clientAttr = Object.fromEntries(
+      Object.entries(body?.attribution ?? {}).filter(([, v]) => typeof v === "string" && v.length > 0)
+    ) as Record<string, string>;
+    const merged = { ...cookieAttr, ...clientAttr } as Record<string, string | number | undefined>;
+    const attr = Object.keys(merged).length > 0 ? (merged as Record<string, string>) : undefined;
     console.log("[attribution] POST /api/auth/signup — received from client:", JSON.stringify(attr ?? null));
     // skipWelcomeEmail=true: combined welcome+verify email goes out
     // below — see mobile-signup for full rationale.
@@ -240,7 +251,10 @@ export async function POST(req: NextRequest) {
     const reqHeaders = req.headers;
     const nameParts = (name ?? "").trim().split(/\s+/);
 
-    sendConversionEvent({
+    // Awaited: fire-and-forget fetches can be cut off when the serverless
+    // function freezes after responding, and a dropped CompleteRegistration
+    // is a missing ad result in Meta. sendConversionEvent never throws.
+    await sendConversionEvent({
       eventName: "CompleteRegistration",
       eventId,
       userId,

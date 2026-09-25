@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
   const reqHeaders = req.headers;
   const nameParts = (user.name ?? "").trim().split(/\s+/);
 
-  sendConversionEvent({
+  // Awaited so the serverless function can't freeze mid-request.
+  await sendConversionEvent({
     eventName: "CompleteRegistration",
     eventId,
     userId: session.user.id,

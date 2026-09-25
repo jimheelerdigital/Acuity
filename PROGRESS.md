@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-25] — Meta signup events no longer get dropped; signup emails show the real ad source
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Meta *is* recording ad signups. The women's ads show 4 results for 4 real ad signups. But two things were making it look broken:
+- Our "new user" emails labelled some ad signups "direct / organic" because the ad details reached the server a moment after the email went out. They were Meta ad clicks (Cindy, Blessen, Erika).
+- The signup event we send to Meta could sometimes get cut off before it finished sending.
+
+Both are fixed. Separately, Meta is still blocking the browser pixel on goripple.io (traffic permissions), so only the server-side events count until that setting is changed.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/auth/signup/route.ts`: attribution now merges the `acuity_attribution` first-touch cookie with the client body (client wins). This feeds bootstrapNewUser, which drives both the stored signup UTMs and the founder notification. The CompleteRegistration CAPI call is now awaited.
+- `apps/web/src/app/api/capi/complete-registration/route.ts` and the Stripe webhook Purchase CAPI: now awaited. Fire-and-forget fetches can be killed when the serverless function freezes after responding. Evidence: Erika's signup has no `meta_capi_*` log row, while Blessen's and Charlene's do.
+
+### Manual steps needed
+- [ ] Events Manager → pixel 869829585445303 → Settings → Traffic permissions: allow goripple.io and www.goripple.io. Re-checked 2026-09-25 15:00 UTC: still blocked, 0 pixel requests on /start. (Keenan)
+- [ ] Ads Manager: add the Purchases (or custom "Trials") column. The ad sets optimize for CompleteRegistration, so card trials don't show under Results. (Keenan)
+
+### Notes
+- Reconciliation for 2026-09-24/25. Women /start: Gina, Cindy, Regina, Blessen = 4 ad signups; Meta shows 4. Men /start-bwk: Aug, Erika, Charlene = 3; Meta shows 1. Charlene was 13:39 UTC today (reporting lag). Aug was on desktop, before the Purchase fbclid fix.
+- Anatoly came from utm_source=facebook / social / bio-link, which is organic, not an ad.
+- `meta_capi_*` rows in OnboardingEvent show Meta answering `events_received: 1` for Blessen and Charlene (CompleteRegistration) and for Erika (Purchase).
+
 ## [2026-09-25] — /start-test: an evidence-based long funnel with email-only signup and Apple/Google Pay; Meta tracking fixes
 
 **Requested by:** Keenan
