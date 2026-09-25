@@ -36,6 +36,7 @@ import { ProcessingNotifierProvider } from "@/contexts/processing-notifier";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
+import { WhatsNewOverlay } from "@/components/WhatsNewOverlay";
 import { CelebrationModal } from "@/components/achievements/CelebrationModal";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
@@ -419,6 +420,11 @@ function ThemedApp() {
           the Stack so it covers any route, BELOW the lock overlay so
           a locked app can't be bypassed by tapping through. */}
       <UpdatePromptOverlay />
+      {/* v1.8 "What's New" sheet. Shown once on the first launch after an
+          update (running version == server recommendedVersion), reusing the
+          release's releaseNotes. Mutually exclusive with the update prompt
+          above by construction. */}
+      <WhatsNewOverlay />
       {/* v1.3 achievements celebration. Polls /pending on app
           foreground + cold launch; renders the CelebrationModal
           sequentially for each unseen UserAchievement row. Sits
