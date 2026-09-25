@@ -51,3 +51,28 @@ export function publishHabitsToWidget(
     // Widget data is best-effort; never let it break the app.
   }
 }
+
+/**
+ * Publishes the resolved theme colors into the App Group so the phone-side
+ * WatchConnectivity sender (plugins/RippleWatchConnectivity.swift) can hand them
+ * to the watch. The watch uses these for its accent + the record orb gradient,
+ * so changing palette on the phone reflects on the wrist. iOS only.
+ * Hex strings (e.g. "#ED9672"); watch parses them. Note: watchOS has no light
+ * mode, so only the accent/brand colors cross over — not a light/dark flip.
+ */
+export function publishThemeToWatch(theme: {
+  primary: string;
+  primaryHi: string;
+  secondary: string;
+  accent: string;
+}): void {
+  if (!storage) return;
+  try {
+    storage.set("themePrimary", theme.primary);
+    storage.set("themePrimaryHi", theme.primaryHi);
+    storage.set("themeSecondary", theme.secondary);
+    storage.set("themeAccent", theme.accent);
+  } catch {
+    // Best-effort; never break the app over watch theming.
+  }
+}

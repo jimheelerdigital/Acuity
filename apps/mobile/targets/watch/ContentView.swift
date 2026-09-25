@@ -1,20 +1,27 @@
 import SwiftUI
 
-// Watch home: the hub. Record (hero) + a streak glance + drill-ins to Growth
-// (habits + goals, mirroring the phone) and Tasks. Shows an "open Ripple on your
-// phone" nudge until the phone has handed a token over WatchConnectivity; once
-// the token is cached the watch works on its own.
+// Watch shell — mirrors the phone's layout: a 3-page swipe with Record in the
+// center (mic/orb), Tasks to the left, Growth to the right. Shows an "open Ripple
+// on your phone" nudge until the phone has handed a token over WatchConnectivity;
+// once the token is cached the watch works on its own.
 
 struct ContentView: View {
     @EnvironmentObject var session: WatchSession
+    @EnvironmentObject var router: RecordRouter
 
     var body: some View {
-        NavigationStack {
-            if session.isSignedIn {
-                home
-            } else {
-                needsPhone
+        if session.isSignedIn {
+            TabView(selection: $router.selectedTab) {
+                NavigationStack { TasksView() }
+                    .tag(0)
+                RecordView()
+                    .tag(1)
+                NavigationStack { GrowthView() }
+                    .tag(2)
             }
+            .tabViewStyle(.page)
+        } else {
+            needsPhone
         }
     }
 
@@ -22,7 +29,7 @@ struct ContentView: View {
         VStack(spacing: 8) {
             Image(systemName: "iphone.and.arrow.forward")
                 .font(.title2)
-                .foregroundStyle(Color("AccentColor"))
+                .foregroundStyle(session.primary)
             Text("Open Ripple on your phone")
                 .font(.headline)
                 .multilineTextAlignment(.center)
@@ -32,42 +39,5 @@ struct ContentView: View {
                 .multilineTextAlignment(.center)
         }
         .padding()
-        .navigationTitle("Ripple")
-    }
-
-    private var home: some View {
-        List {
-            Section {
-                NavigationLink {
-                    RecordView()
-                } label: {
-                    Label("Record a debrief", systemImage: "mic.fill")
-                        .font(.headline)
-                }
-                .listRowBackground(Color("AccentColor").opacity(0.25))
-            }
-
-            Section {
-                NavigationLink {
-                    GrowthView()
-                } label: {
-                    Label("Growth", systemImage: "chart.line.uptrend.xyaxis")
-                }
-                NavigationLink {
-                    TasksView()
-                } label: {
-                    Label("Tasks", systemImage: "checklist")
-                }
-            }
-
-            Section {
-                HStack {
-                    Image(systemName: "flame.fill").foregroundStyle(Color("AccentColor"))
-                    Text("\(session.streak)-day streak")
-                        .font(.subheadline.weight(.semibold))
-                }
-            }
-        }
-        .navigationTitle("Ripple")
     }
 }

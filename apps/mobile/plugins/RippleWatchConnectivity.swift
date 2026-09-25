@@ -52,6 +52,11 @@ final class RippleWatchConnectivity: NSObject, WCSessionDelegate {
         if let streak = defaults?.object(forKey: "streak") as? Int {
             ctx["streak"] = streak
         }
+        // Brand colors so the watch accent + record orb follow the user's
+        // palette (written to the App Group by lib/widget-data.ts).
+        for key in ["themePrimary", "themePrimaryHi", "themeSecondary", "themeAccent"] {
+            if let v = defaults?.string(forKey: key), !v.isEmpty { ctx[key] = v }
+        }
         guard ctx["token"] != nil else { return } // nothing useful to send yet
         try? session.updateApplicationContext(ctx)
     }

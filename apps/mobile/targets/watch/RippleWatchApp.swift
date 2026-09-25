@@ -2,25 +2,25 @@ import SwiftUI
 
 // Ripple watchOS app entry (1.9).
 //
-// The watch is the one surface that captures audio independently of the phone,
-// so its headline job is a wrist debrief; it also shows today's habits + streak
-// and lets you check a habit off. All of it runs against the Ripple API using a
-// session token handed over from the phone via WatchConnectivity (see
-// WatchSession) — an App Group can't bridge phone↔watch (separate devices).
+// The watch mirrors the phone: a 3-page swipe (Tasks · Record · Growth) with a
+// morphing record orb in the center, colored by the user's palette. All of it
+// runs against the Ripple API using a session token handed over from the phone
+// via WatchConnectivity (WatchSession) — an App Group can't bridge phone↔watch.
 //
-// UNVERIFIED until an EAS build installs this on a paired Apple Watch. Written
-// to compile cleanly by inspection; watchOS behavior (mic permission, WCSession
-// activation timing, upload over cellular) can only be confirmed on-device.
+// Action Button / Siri: StartDebriefIntent (WatchIntents.swift) routes through
+// RecordRouter to open the record page and start.
 
 @main
 struct RippleWatchApp: App {
     @StateObject private var session = WatchSession.shared
+    @StateObject private var router = RecordRouter.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(session)
-                .tint(Color("AccentColor"))
+                .environmentObject(router)
+                .tint(session.primary)
         }
     }
 }

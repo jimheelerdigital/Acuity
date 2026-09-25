@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import WatchConnectivity
 
 // WatchConnectivity bridge (watch side).
@@ -26,16 +27,37 @@ final class WatchSession: NSObject, ObservableObject, WCSessionDelegate {
     private static let tokenKey = "ripple.session.token"
     private static let apiBaseKey = "ripple.api.base"
     private static let defaultApiBase = "https://goripple.io"
+    private static let primaryKey = "ripple.theme.primary"
+    private static let primaryHiKey = "ripple.theme.primaryHi"
+    private static let secondaryKey = "ripple.theme.secondary"
+
+    // Coral (default palette) fallbacks — used until the phone pushes the
+    // user's resolved palette. #ED9672 matches the AccentColor asset.
+    private static let defaultPrimary = "#ED9672"
+    private static let defaultPrimaryHi = "#F4B49B"
+    private static let defaultSecondary = "#9B86D4"
 
     @Published private(set) var token: String?
     @Published private(set) var apiBase: String
     @Published private(set) var streak: Int = 0
     @Published private(set) var habits: [WatchHabit] = []
 
+    @Published private(set) var primaryHex: String
+    @Published private(set) var primaryHiHex: String
+    @Published private(set) var secondaryHex: String
+
+    /// Brand colors, following the user's palette (parsed from the pushed hex).
+    var primary: Color { Color(hex: primaryHex) ?? .orange }
+    var primaryHi: Color { Color(hex: primaryHiHex) ?? primary }
+    var secondary: Color { Color(hex: secondaryHex) ?? primary }
+
     private override init() {
         let d = UserDefaults.standard
         token = d.string(forKey: Self.tokenKey)
         apiBase = d.string(forKey: Self.apiBaseKey) ?? Self.defaultApiBase
+        primaryHex = d.string(forKey: Self.primaryKey) ?? Self.defaultPrimary
+        primaryHiHex = d.string(forKey: Self.primaryHiKey) ?? Self.defaultPrimaryHi
+        secondaryHex = d.string(forKey: Self.secondaryKey) ?? Self.defaultSecondary
         super.init()
         if WCSession.isSupported() {
             WCSession.default.delegate = self
@@ -60,6 +82,18 @@ final class WatchSession: NSObject, ObservableObject, WCSessionDelegate {
         if let b = context["apiBase"] as? String, !b.isEmpty {
             apiBase = b
             UserDefaults.standard.set(b, forKey: Self.apiBaseKey)
+        }
+        if let p = context["themePrimary"] as? String, !p.isEmpty {
+            primaryHex = p
+            UserDefaults.standard.set(p, forKey: Self.primaryKey)
+        }
+        if let p = context["themePrimaryHi"] as? String, !p.isEmpty {
+            primaryHiHex = p
+            UserDefaults.standard.set(p, forKey: Self.primaryHiKey)
+        }
+        if let p = context["themeSecondary"] as? String, !p.isEmpty {
+            secondaryHex = p
+            UserDefaults.standard.set(p, forKey: Self.secondaryKey)
         }
         if let s = context["streak"] as? Int { streak = s }
         if let raw = context["habits"] as? [[String: Any]] {

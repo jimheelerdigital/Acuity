@@ -98,6 +98,7 @@ struct GrowthView: View {
 }
 
 private struct GrowthHabitRow: View {
+    @EnvironmentObject var session: WatchSession
     let habit: WatchHabit
     let onTap: () async -> Void
     @State private var busy = false
@@ -110,7 +111,7 @@ private struct GrowthHabitRow: View {
         } label: {
             HStack {
                 Image(systemName: habit.done ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(habit.done ? Color("AccentColor") : .secondary)
+                    .foregroundStyle(habit.done ? session.primary : .secondary)
                 Text(habit.name).font(.subheadline)
                 Spacer()
                 if busy { ProgressView() }
@@ -122,6 +123,7 @@ private struct GrowthHabitRow: View {
 }
 
 private struct GoalRow: View {
+    @EnvironmentObject var session: WatchSession
     let goal: WatchGoal
 
     private var fraction: Double {
@@ -132,7 +134,7 @@ private struct GoalRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(goal.title).font(.subheadline)
             ProgressView(value: fraction)
-                .tint(Color("AccentColor"))
+                .tint(session.primary)
             HStack {
                 if let area = goal.lifeArea, !area.isEmpty {
                     Text(area).font(.caption2).foregroundStyle(.secondary)

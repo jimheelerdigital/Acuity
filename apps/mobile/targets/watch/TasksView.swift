@@ -24,7 +24,7 @@ struct TasksView: View {
                 VStack(spacing: 6) {
                     Image(systemName: "checkmark.circle")
                         .font(.title3)
-                        .foregroundStyle(Color("AccentColor"))
+                        .foregroundStyle(session.primary)
                     Text("All clear").font(.headline)
                     Text("No open tasks").font(.caption2).foregroundStyle(.secondary)
                 }
