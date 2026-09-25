@@ -23,7 +23,7 @@ type Interval = "monthly" | "yearly";
 // Funnel paths Stripe may send the buyer back to. Allowlisted so the request
 // body can't point success_url anywhere else. /start-bwk buyers used to land
 // on /start (women's copy, wrong cohort tag) after paying.
-const FUNNEL_PATHS = new Set(["/start", "/start-bwk"]);
+const FUNNEL_PATHS = new Set(["/start", "/start-bwk", "/start-test"]);
 
 export async function POST(req: NextRequest) {
   // TODO: v1.4 GDPR — If this checkout ever switches from deferred
@@ -38,10 +38,15 @@ export async function POST(req: NextRequest) {
 
   let interval: Interval = "monthly";
   let funnelPath = "/start";
+  // embedded (2026-09-24, /start-test): Stripe's Embedded Checkout mounts
+  // on our own paywall, with Apple Pay / Google Pay at the top and the card
+  // form below. Returns a client secret instead of a redirect URL.
+  let embedded = false;
   try {
-    const body = (await req.json()) as { interval?: Interval; funnel?: string } | null;
+    const body = (await req.json()) as { interval?: Interval; funnel?: string; embedded?: boolean } | null;
     if (body?.interval === "yearly") interval = "yearly";
     if (body?.funnel && FUNNEL_PATHS.has(body.funnel)) funnelPath = body.funnel;
+    embedded = body?.embedded === true;
   } catch {}
 
   // Use PRICING config which includes env-var fallbacks for local dev
@@ -77,7 +82,17 @@ export async function POST(req: NextRequest) {
       hasCustomerId: !!user?.stripeCustomerId,
     });
 
+    const returnUrl = `${process.env.NEXTAUTH_URL}${funnelPath}?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`;
     const checkoutSession = await stripe.checkout.sessions.create({
+      ...(embedded
+        ? { ui_mode: "embedded" as const, return_url: returnUrl }
+        : {
+            success_url: returnUrl,
+            // Back from Checkout = back to the paywall, where they can switch
+            // plan or take the no-card path. (Was step=download, which
+            // dropped them past the choice with no way back.)
+            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=savings`,
+          }),
       mode: "subscription",
       // No payment_method_types: Checkout then offers every method enabled in
       // the Stripe dashboard (card, Apple Pay, Google Pay, Link) instead of
@@ -90,14 +105,12 @@ export async function POST(req: NextRequest) {
         trial_period_days: trialDays,
         metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
       },
-      success_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      // Back from Checkout = back to the paywall, where they can switch plan
-      // or take the no-card path. (Was step=download, which dropped them past
-      // the choice with no way back.)
-      cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=savings`,
       metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
     });
 
+    if (embedded) {
+      return NextResponse.json({ clientSecret: checkoutSession.client_secret });
+    }
     return NextResponse.json({ url: checkoutSession.url });
   } catch (err: unknown) {
     const stripeErr = err as { type?: string; code?: string; message?: string; statusCode?: number };

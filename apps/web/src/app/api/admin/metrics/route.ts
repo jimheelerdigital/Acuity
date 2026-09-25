@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
-          const flow = req.nextUrl.searchParams.get("flow") as "v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
+          const flow = req.nextUrl.searchParams.get("flow") as "v8" | "v8-bwk" | "v9-test" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
           // traffic=inapp keeps only sessions seen in a social in-app browser
           // (FB/IG/TikTok), which drops Meta's ad-review crawler and link
           // preloads. Default "all" so any other caller sees unchanged numbers.
@@ -1929,9 +1929,9 @@ type FunnelStepDef = {
   base?: string;
 };
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "all" = "all") {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "all" = "all") {
  try {
-  const isV8 = flowVersion === "v8" || flowVersion === "v8-bwk";
+  const isV8 = flowVersion === "v8" || flowVersion === "v8-bwk" || flowVersion === "v9-test";
   // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
   // and "all" (floor at v2 epoch to exclude ancient v1 diagnostic events).
   // v2 needs NO epoch clamping because its unique event names
@@ -2200,7 +2200,30 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     { key: "download", event: "funnel_download_viewed", label: "Download" },
   ];
 
-  const FUNNEL_STEPS: FunnelStepDef[] = flowVersion === "v8" ? FUNNEL_STEPS_V8 : flowVersion === "v8-bwk" ? FUNNEL_STEPS_V8_BWK : flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v7" ? FUNNEL_STEPS_V7 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
+  // v9-test (2026-09-24) — /start-test, the evidence-based long funnel
+  // (lib/funnel-v9-config.ts). "Rendered" is the client-side screen-1
+  // event, so prefetch hits don't count as visits.
+  const FUNNEL_STEPS_V9: FunnelStepDef[] = [
+    { key: "rendered", event: "funnel_entry_rendered", label: "Screen 1 shown" },
+    { key: "entry", event: "funnel_entry_selected", label: "Answered Q1" },
+    { key: "age", event: "funnel_v9_age_viewed", label: "Age" },
+    { key: "plate", event: "funnel_v9_plate_viewed", label: "On your plate" },
+    { key: "reassure", event: "funnel_v9_reassure_viewed", label: "Reassurance" },
+    { key: "sliders", event: "funnel_v9_s_name_viewed", label: "Sliders" },
+    { key: "offload", event: "funnel_v9_offload_viewed", label: "Off your mind" },
+    { key: "how", event: "funnel_v9_how_viewed", label: "How Ripple works" },
+    { key: "name", event: "funnel_v9_name_viewed", label: "Name" },
+    { key: "email_gate", event: "funnel_email_gate_viewed", label: "Email gate" },
+    { key: "account_created", event: "funnel_account_created", label: "Email given (account)" },
+    { key: "result", event: "funnel_v9_result_viewed", label: "Result" },
+    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall" },
+    { key: "lock_in_selected", event: "funnel_paywall_paid_selected", label: "Start trial tapped", outcome: true, base: "savings_offered" },
+    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout opened", outcome: true, base: "lock_in_selected" },
+    { key: "paid", event: "funnel_payment_completed", label: "Card trial started", outcome: true, base: "checkout_started" },
+    { key: "trial_continued", event: "funnel_paywall_skip_selected", label: "Free plan chosen", outcome: true, base: "savings_offered" },
+  ];
+
+  const FUNNEL_STEPS: FunnelStepDef[] = flowVersion === "v9-test" ? FUNNEL_STEPS_V9 : flowVersion === "v8" ? FUNNEL_STEPS_V8 : flowVersion === "v8-bwk" ? FUNNEL_STEPS_V8_BWK : flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v7" ? FUNNEL_STEPS_V7 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
 
   // flowVersion filter — v1/v2/v3 filter strictly on the column.
   // "all" returns everything. v1 events have flowVersion=null or "v1".
@@ -2208,6 +2231,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   const flowVersionWhere =
     flowVersion === "v8" ? { flowVersion: "v8" as const }
     : flowVersion === "v8-bwk" ? { flowVersion: "v8-bwk" as const }
+    : flowVersion === "v9-test" ? { flowVersion: "v9-test" as const }
     : flowVersion === "v7" ? { flowVersion: "v7" as const }
     : flowVersion === "v6" ? { flowVersion: "v6" as const }
     : flowVersion === "v5" ? { flowVersion: "v5" as const }

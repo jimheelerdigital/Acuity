@@ -53,6 +53,7 @@ const EXCLUDED_PREFIXES = [
   // showing the banner on every screen until 2026-09-24.)
   "/start",
   "/start-bwk",
+  "/start-test",
 ];
 
 function isEligibleRoute(pathname: string): boolean {

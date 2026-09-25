@@ -5,13 +5,14 @@ import { useState, useEffect } from "react";
 // The two live v8 funnels. Each tags its events with its own flowVersion, so
 // they're tracked as separate cohorts with their own step lists (see
 // getFunnelAnalytics in api/admin/metrics/route.ts).
-type View = "ripple" | "bwk" | "both" | "legacy";
+type View = "ripple" | "bwk" | "test" | "both" | "legacy";
 type LegacyFlow = "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all";
 type Traffic = "inapp" | "all";
 
 const FUNNELS = {
   ripple: { flow: "v8", name: "Ripple", path: "/start" },
   bwk: { flow: "v8-bwk", name: "BWK", path: "/start-bwk" },
+  test: { flow: "v9-test", name: "Test", path: "/start-test" },
 } as const;
 
 const LEGACY_LABELS: Record<LegacyFlow, string> = {
@@ -120,6 +121,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           <button onClick={() => setView("ripple")} style={seg(view === "ripple")}>Ripple <span style={{ opacity: 0.6, fontWeight: 500 }}>/start</span></button>
           <button onClick={() => setView("bwk")} style={seg(view === "bwk")}>BWK <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-bwk</span></button>
+          <button onClick={() => setView("test")} style={seg(view === "test")}>Test <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test</span></button>
           <button onClick={() => setView("both")} style={seg(view === "both")}>Side by side</button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -144,7 +146,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
       {view === "both"
         ? <SideBySide start={start} end={end} traffic={traffic} />
         : <SingleFunnel key={`${view}-${legacyFlow}-${traffic}`} start={start} end={end} traffic={traffic}
-            flow={view === "ripple" ? FUNNELS.ripple.flow : view === "bwk" ? FUNNELS.bwk.flow : legacyFlow} />}
+            flow={view === "ripple" ? FUNNELS.ripple.flow : view === "bwk" ? FUNNELS.bwk.flow : view === "test" ? FUNNELS.test.flow : legacyFlow} />}
     </div>
   );
 }

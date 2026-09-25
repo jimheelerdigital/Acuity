@@ -43,10 +43,16 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     select: { flowVersion: true },
   });
-  const path = lastFunnelEvent?.flowVersion?.includes("bwk") ? "/start-bwk" : "/start";
+  const fv = lastFunnelEvent?.flowVersion ?? "";
+  // v9 (/start-test) names its paywall step "paywall"; v8 funnels use "savings".
+  const [path, paywallStep] = fv.startsWith("v9")
+    ? ["/start-test", "paywall"]
+    : fv.includes("bwk")
+      ? ["/start-bwk", "savings"]
+      : ["/start", "savings"];
 
   const dest = new URL(path, url);
-  dest.searchParams.set("step", "savings");
+  dest.searchParams.set("step", paywallStep);
   for (const [k, v] of url.searchParams) {
     if (k.startsWith("utm_")) dest.searchParams.set(k, v);
   }
