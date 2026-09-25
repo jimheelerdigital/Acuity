@@ -95,9 +95,13 @@ export async function POST(req: NextRequest) {
             cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") ? "paywall" : "savings"}`,
           }),
       mode: "subscription",
-      // No payment_method_types: Checkout then offers every method enabled in
-      // the Stripe dashboard (card, Apple Pay, Google Pay, Link) instead of
-      // card-only. v6-v7: only 43% of people who opened Checkout finished.
+      // Card + Link only (2026-09-25, Keenan). Apple Pay and Google Pay are
+      // wallets on the "card" type, so they still show when enabled in the
+      // dashboard. This keeps out bank debits (they "succeed" then bounce
+      // days later on insufficient funds), Cash App Pay, Klarna and Amazon
+      // Pay, none of which suit a $0-today trial. Was: no list, which showed
+      // every dashboard method. Funnel checkout only; /upgrade is separate.
+      payment_method_types: ["card", "link"],
       customer: user?.stripeCustomerId ?? undefined,
       customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
       client_reference_id: session.user.id,

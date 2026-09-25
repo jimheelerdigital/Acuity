@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-09-25] — Funnel checkout limited to card + Link (and Stripe recovery settings reviewed)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The funnel checkout now offers only card and Link. Apple Pay and Google Pay still appear on phones, because Stripe counts them as card payments. Cash App Pay, Klarna, Amazon Pay and direct bank debits are gone. Bank debits look successful and then bounce days later for insufficient funds, and none of these suit a $0-today trial. One bank option still comes through Link; turn that off in Stripe (below). The in-app /upgrade page is unchanged.
+
+Reviewing Stripe's recovery settings turned up the bigger problem: failed-payment and expiring-card emails link customers to heelerdigital.com instead of a page where they can update their card. Stripe shows a 22.5% failure rate and only 28.6% of failed payments recovered over the last year.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts`: `payment_method_types: ["card", "link"]`, for both hosted and embedded. Previously there was no list (every dashboard method). The v8 note said an empty list was needed for Apple/Google Pay; it isn't, since wallets ride on `card`
+- Verified with a test-mode embedded subscription session with a 7-day trial: Stripe accepts it, and the form shows Link + Card, plus "Bank" via Link
+- `/api/stripe/checkout` (/upgrade) is untouched
+
+### Manual steps needed
+- [ ] Say "push it", after Jimmy's review of the funnel checkout changes (Keenan / Jimmy)
+- [ ] Stripe → Billing → Revenue recovery → Emails: "Send emails when card payments fail" and "Send emails about expiring cards" → **Link to a Stripe hosted page**. Both are currently a custom link to heelerdigital.com (Keenan)
+- [ ] Stripe → Settings → Payment methods → Link: turn off bank account payments ("Instant Bank Payments") (Keenan)
+- [ ] Stripe → Product catalog: rename "Acuity Pro" to "Ripple Pro" (Keenan)
+- [ ] Stripe → Developers → Webhooks: confirm the prod endpoint is subscribed to `customer.subscription.trial_will_end`. The day-4 card-trial reminder the paywall promises depends on it (Jimmy)
+- [ ] Decide: keep users on Pro during Stripe's retry window instead of the immediate FREE downgrade on `invoice.payment_failed` (Keenan / Jimmy)
+
+### Notes
+- Stripe settings seen 2026-09-25:
+  - Smart Retries on; after all retries → subscription unpaid, invoice uncollectible
+  - Public business name "Ripple // Heeler Digital"
+  - Statement descriptor "RIPPLE/HEELER DIGITAL"
+- The "you authorize HEELER DIGITAL LLC JAMES CUNNINGHAM MBR…" line Keenan saw in live checkout is probably the bank/Link mandate wording using the legal entity. Re-check once bank methods are off
+- Recovery stats (1y): $34.93 failed, $9.98 recovered, failure rate 22.5%
+
+---
+
 ## [2026-09-25] — Every Instagram/Facebook post is now a reel with music
 
 **Requested by:** Keenan
