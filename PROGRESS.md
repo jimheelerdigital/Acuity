@@ -58,7 +58,7 @@ People who sign up through the ad funnel but don't start the free week now get e
 - Email copy scan: rescue_*, stall_*, keep_momentum, winback_*, nr_winback_* have no trial wording and no plan filter, so FREE funnel users already got them
 
 ### Manual steps needed
-- [ ] Confirm the LIVE Stripe webhook endpoint has `customer.subscription.trial_will_end` enabled. The paywall and both emails promise "we email you before you're charged", and that email only sends on this event. The local key is test mode, and the test endpoint is MISSING it. (Keenan)
+- [x] Confirm the LIVE Stripe webhook endpoint has `customer.subscription.trial_will_end` enabled. DONE 2026-09-24 by Keenan: "Ripple production" now listens to 7 events. The paywall and both emails promise "we email you before you're charged", and that email only sends on this event. The local key is test mode, and the test endpoint is MISSING it. (Keenan)
 - [ ] Jimmy review: the /pro-trial route sends users into the card-trial checkout (Jimmy)
 
 ### Notes
