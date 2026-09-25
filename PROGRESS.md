@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-24] — Posts on both brands are now reels with music (one carousel lane per brand)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (this entry is amended into the commit)
+
+### In plain English (for Keenan)
+Ripple and BWK posts to Instagram and Facebook now go out as reels with music, instead of silent swipeable photo posts. One lane per brand stays a swipeable photo post for comparison: BWK "What Discipline Actually Looks Like" and Ripple "Muse". Instagram doesn't let automated photo posts carry music, but reels can. BWK uses its own motivational tracks and never Ripple's calm piano. Each lane can also have its own playlist: drop tracks into a folder named after the lane and that lane uses them first.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/social-publish.ts`: `laneWantsReel()` is true for every lane except new `CAROUSEL_LANES` = [discipline-real, muse] (one carousel lane per brand); REEL_LANES kept as the record of the 09-14 hybrid test
+- `apps/web/src/lib/content-factory/slideshow-reel.ts`: `pickMusicTrack()` checks `music/<brand>/<lane-key>/` first, then the brand folder; BWK no longer falls back to `music/ripple`
+- Knock-on in `social-publish-cron.ts` (no code change): every post now renders a reel MP4 per post (memoized step), and YouTube rows are queued for all lanes once YouTube creds exist
+- The silent photo-carousel fallback still applies when a lane has no tracks or a render fails
+
+### Manual steps needed
+- [ ] Upload better tracks. Brand folders are `music/ripple` and `music/bwk` in the content-factory bucket. Optional per-lane folders use the lane key, e.g. `music/bwk/fantasy-men`, `music/ripple/memento` (Keenan)
+
+### Notes
+- Lane keys: BWK = discipline-real, fantasy-men, memento-men, muse-men, pulse-men, watching. Ripple = memento, muse, phone-quote, pulse, questions, selfie, texts-younger.
+- GOTCHA: Supabase Storage LIST matches folder names case-insensitively, but public URLs are case-sensitive. Listing `music/bwk` returned the tracks in `music/BWK`, and the lowercase URL 400'd, so every BWK reel would have fallen back to a silent carousel. `pickMusicTrack()` now HEAD-checks the URL before returning it. Verified locally: fantasy-men and watching pick `music/BWK/...` (200); memento and selfie pick `music/ripple/...` (200).
+- Decision is made at publish time, so posts already queued as PENDING also go out as reels.
+- Watch the first runs: every post now does an ffmpeg render inside the 30-min cron (max 3 posts per run, each render in its own step).
+
 ## [2026-09-24] — Funnel screen 1 intro redesigned: header above the question, example below the answers
 
 **Requested by:** Keenan

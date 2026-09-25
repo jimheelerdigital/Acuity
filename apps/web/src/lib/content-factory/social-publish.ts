@@ -79,8 +79,22 @@ export const AUTO_LANES = [
  */
 export const REEL_LANES = ["memento", "selfie"] as const;
 
+/**
+ * Lanes that stay silent swipeable photo carousels: one per brand
+ * (2026-09-24, per Keenan: "keep one photo carousel each lane. discipline
+ * & muse"). BWK = discipline-real, Ripple = muse.
+ */
+export const CAROUSEL_LANES = ["discipline-real", "muse"] as const;
+
+/**
+ * Every other lane, both brands, publishes as a reel since 2026-09-24 (per
+ * Keenan: "make everything a reel for both BWK and for Ripple across the
+ * board"). The Graph API can't put music on a photo carousel, and music was
+ * the ask. REEL_LANES is kept as the record of the 09-14 hybrid test. If a
+ * lane has no music track, the cron still falls back to the silent carousel.
+ */
 export function laneWantsReel(lane: string | null): boolean {
-  return (REEL_LANES as readonly string[]).includes(lane ?? "");
+  return !(CAROUSEL_LANES as readonly string[]).includes(lane ?? "");
 }
 
 /**

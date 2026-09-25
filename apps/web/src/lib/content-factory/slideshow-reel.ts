@@ -12,8 +12,9 @@
  *
  * MUSIC LIBRARY: Keenan uploads royalty-free MP3s to the content-factory
  * bucket under music/ripple/ and music/bwk/ (Supabase dashboard →
- * Storage). A random track is picked per render; if the BWK folder is
- * empty, BWK lanes borrow Ripple's library; if NO tracks exist at all,
+ * Storage), optionally per lane in music/<brand>/<lane-key>/. A random
+ * track is picked per render (lane folder first, then brand folder);
+ * BWK never borrows Ripple's library; if NO tracks exist at all,
  * the caller falls back to publishing the silent photo carousel — a
  * silent Reel defeats the purpose (music was the whole ask).
  */
@@ -71,9 +72,16 @@ export async function pickMusicTrack(lane: string | null): Promise<string | null
   const isBwk = (await laneBrand(lane)) === "bwk";
   // Supabase Storage paths are case-sensitive and the dashboard-created
   // BWK folder is uppercase — check both spellings.
-  const folders = isBwk
-    ? ["music/bwk", "music/BWK", "music/ripple"]
-    : ["music/ripple"];
+  // A lane can have its own playlist (2026-09-24): a subfolder named after
+  // the lane key, e.g. music/bwk/fantasy-men/, is used first when it has
+  // tracks; otherwise the brand folder. BWK no longer borrows Ripple's
+  // calm lo-fi — BWK has to sound motivational, so an empty BWK library
+  // means a silent carousel rather than piano under a discipline post.
+  const brandFolders = isBwk ? ["music/bwk", "music/BWK"] : ["music/ripple"];
+  const folders = [
+    ...(lane ? brandFolders.map((f) => `${f}/${lane}`) : []),
+    ...brandFolders,
+  ];
 
   for (const folder of folders) {
     const { data, error } = await supabase.storage
@@ -83,9 +91,19 @@ export async function pickMusicTrack(lane: string | null): Promise<string | null
     const tracks = (data ?? []).filter((f) => AUDIO_EXT.test(f.name));
     if (tracks.length === 0) continue;
     const pick = tracks[Math.floor(Math.random() * tracks.length)];
-    return supabase.storage
+    const url = supabase.storage
       .from("content-factory")
       .getPublicUrl(`${folder}/${pick.name}`).data.publicUrl;
+    // Storage LIST matches folder names case-insensitively, but public URLs
+    // are case-sensitive: listing music/bwk returns the tracks that live in
+    // music/BWK, and the lowercase URL 400s (found 2026-09-24). Only return
+    // a URL that actually serves; otherwise try the next spelling.
+    try {
+      const head = await fetch(url, { method: "HEAD" });
+      if (head.ok) return url;
+    } catch {
+      // fall through to the next folder
+    }
   }
   return null;
 }
