@@ -31,6 +31,8 @@ export type V9Step =
   | { id: string; kind: "single"; title: string; sub?: string; options: V9Option[] }
   | { id: string; kind: "multi"; title: string; sub?: string; options: V9Option[] }
   | { id: string; kind: "slider"; title: string; left: string; right: string }
+  /** One statement, two big buttons (2026-09-25, per Keenan: "one question at a time with less multiple choice"). */
+  | { id: string; kind: "statement"; statement: string; title?: string }
   | { id: string; kind: "info"; screen: "reassure" | "review" | "how" }
   | { id: string; kind: "name" }
   | { id: string; kind: "loader" }
@@ -44,17 +46,8 @@ export type V9Step =
 export const V9_HOOK_LINE = "Ripple keeps track of what you say, so your head doesn't have to.";
 
 export const V9_STEPS: V9Step[] = [
-  {
-    id: "hook",
-    kind: "single",
-    title: "How often is your head still full when the day is done?",
-    options: [
-      { id: "daily", label: "Almost every day" },
-      { id: "weekly", label: "A few times a week" },
-      { id: "sometimes", label: "Now and then" },
-      { id: "rarely", label: "Rarely" },
-    ],
-  },
+  // Screen 1: a yes/no recognition statement (the /start split-test opener).
+  { id: "hook", kind: "statement", statement: "My head\u2019s too full and I keep forgetting things." },
   {
     id: "age",
     kind: "single",
@@ -80,13 +73,14 @@ export const V9_STEPS: V9Step[] = [
       { id: "health", label: "My own health" },
     ],
   },
+  { id: "st-remember", kind: "statement", statement: "I\u2019m the one who remembers everything for everyone." },
+  { id: "st-slip", kind: "statement", statement: "Things I mean to do slip through the cracks." },
   {
     id: "pileup",
     kind: "single",
     title: "When do the thoughts pile up most?",
     options: [
       { id: "morning", label: "First thing in the morning" },
-      { id: "car", label: "In the car" },
       { id: "quiet", label: "Once the house goes quiet" },
       { id: "night", label: "In the middle of the night" },
       { id: "allday", label: "All day, honestly" },
@@ -94,9 +88,9 @@ export const V9_STEPS: V9Step[] = [
   },
   { id: "reassure", kind: "info", screen: "reassure" },
   { id: "s-name", kind: "slider", title: "Where do you land?", left: "I know what's bothering me", right: "I can't quite name it" },
-  { id: "s-slip", kind: "slider", title: "Where do you land?", left: "What I mean to do gets done", right: "Things slip through the cracks" },
+  { id: "st-myself", kind: "statement", statement: "I put my own stuff last." },
   { id: "s-repeat", kind: "slider", title: "Where do you land?", left: "I can see my own patterns", right: "The same weeks keep repeating" },
-  { id: "s-keeper", kind: "slider", title: "Where do you land?", left: "Someone helps keep track", right: "It's all on me" },
+  { id: "st-blur", kind: "statement", statement: "Whole weeks blur together and I can\u2019t say where they went." },
   { id: "s-lists", kind: "slider", title: "Where do you land?", left: "Lists and notebooks work for me", right: "I've tried them. They don't stick" },
   {
     id: "offload",
@@ -108,11 +102,11 @@ export const V9_STEPS: V9Step[] = [
       { id: "tasks", label: "Tasks I keep forgetting" },
       { id: "worry", label: "Worry I can't put down" },
       { id: "behind", label: "Feeling behind on my own life" },
-      { id: "drain", label: "Knowing why some days drain me" },
     ],
   },
   { id: "review", kind: "info", screen: "review" },
   { id: "how", kind: "info", screen: "how" },
+  { id: "st-talk", kind: "statement", statement: "Saying things out loud helps me sort them out." },
   {
     id: "talktype",
     kind: "single",
@@ -133,7 +127,6 @@ export const V9_STEPS: V9Step[] = [
       { id: "lifts", label: "What lifts me" },
       { id: "habits", label: "Habits I'm building" },
       { id: "putoff", label: "What I keep putting off" },
-      { id: "mood", label: "How my mood moves through the week" },
     ],
   },
   {
@@ -148,6 +141,7 @@ export const V9_STEPS: V9Step[] = [
       { id: "whenever", label: "Whenever it hits me" },
     ],
   },
+  { id: "st-lighter", kind: "statement", statement: "I want to feel lighter without adding another chore.", title: "Last one. True for you?" },
   {
     id: "commit",
     kind: "single",
@@ -168,33 +162,42 @@ export const V9_STEPS: V9Step[] = [
 ];
 
 /** Dashboard label per screen (admin Funnel tab, "Test" view). */
-export const V9_STEP_LABELS: Record<string, string> = {
-  hook: "1. Head still full? (screen 1)",
-  age: "2. Age range",
-  plate: "3. On your plate",
-  pileup: "4. When thoughts pile up",
-  reassure: "5. You're not the only one",
-  "s-name": "6. Slider: can't name it",
-  "s-slip": "7. Slider: things slip",
-  "s-repeat": "8. Slider: weeks repeat",
-  "s-keeper": "9. Slider: all on me",
-  "s-lists": "10. Slider: lists don't stick",
-  offload: "11. Off your mind",
-  review: "12. Reviews",
-  how: "13. How Ripple works (demo)",
-  talktype: "14. Talk or type",
-  notice: "15. What Ripple notices",
-  when: "16. Where you'd talk",
-  commit: "17. Ready?",
-  name: "18. Name",
-  loader: "19. Loader",
-  email: "20. Email gate",
-  result: "21. Result",
-  plan: "22. First week plan",
-  paywall: "23. Paywall",
-  checkout: "24. Checkout",
-  download: "25. Success / download",
+const V9_SHORT: Record<string, string> = {
+  hook: "Head too full? (screen 1, yes/no)",
+  age: "Age range",
+  plate: "On your plate",
+  "st-remember": "Yes/no: remembers for everyone",
+  "st-slip": "Yes/no: things slip",
+  pileup: "When thoughts pile up",
+  reassure: "You're not the only one",
+  "s-name": "Slider: can't name it",
+  "st-myself": "Yes/no: own stuff last",
+  "s-repeat": "Slider: weeks repeat",
+  "st-blur": "Yes/no: weeks blur",
+  "s-lists": "Slider: lists don't stick",
+  offload: "Off your mind",
+  review: "Reviews",
+  how: "How Ripple works (demo)",
+  "st-talk": "Yes/no: talking helps",
+  talktype: "Talk or type",
+  notice: "What Ripple notices",
+  when: "Where you'd talk",
+  "st-lighter": "Yes/no: lighter, no chore",
+  commit: "Ready?",
+  name: "Name",
+  loader: "Loader",
+  email: "Email gate",
+  result: "Result",
+  plan: "First week plan",
+  paywall: "Paywall",
+  checkout: "Checkout",
+  download: "Success / download",
 };
+
+/** Dashboard label per screen (admin Funnel tab, "Test" view), numbered in funnel order. */
+export const V9_STEP_LABELS: Record<string, string> = Object.fromEntries(
+  V9_STEPS.map((st, i) => [st.id, `${i + 1}. ${V9_SHORT[st.id] ?? st.id}`])
+);
 
 /** Steps that count toward the progress bar (the quiz up to the result). */
 export const V9_PROGRESS_END = V9_STEPS.findIndex((s) => s.id === "result");
@@ -252,18 +255,21 @@ export function v9StateName(a: {
   plate: string[];
   sliders: Record<string, number>;
   pileup?: string;
+  /** Yes/no statement answers ("yes" | "no"), keyed by step id. */
+  said?: Record<string, string>;
 }): { name: string; line: string } {
   const s = (id: string) => a.sliders[id] ?? 3;
-  if (s("s-keeper") >= 4 && a.plate.length >= 2) {
+  const yes = (id: string) => a.said?.[id] === "yes";
+  if (yes("st-remember") && a.plate.length >= 2) {
     return { name: "The Keeper", line: "You hold the plan for everyone, and nobody holds it for you." };
   }
-  if (s("s-slip") >= 4) {
+  if (yes("st-slip")) {
     return { name: "The Juggler", line: "Plenty gets done. The things that fall are usually your own." };
   }
   if (a.pileup === "night" || s("s-name") >= 4) {
     return { name: "The Replayer", line: "Your mind keeps turning things over, looking for somewhere to set them down." };
   }
-  if (s("s-repeat") >= 4) {
+  if (s("s-repeat") >= 4 || yes("st-blur")) {
     return { name: "The Loop", line: "The weeks blur because the same things keep coming back around." };
   }
   return { name: "The Carrier", line: "You carry more than you say out loud." };

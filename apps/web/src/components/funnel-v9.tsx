@@ -107,7 +107,7 @@ function haptic() {
 
 /** Small encouragement pills at checkpoints (engagement, per the redesign ask). */
 const MILESTONES: Record<string, string> = {
-  "s-name": "Nice. 5 quick sliders.",
+  "st-remember": "Quick ones now. Tap what's true.",
   offload: "Halfway there.",
   talktype: "You're doing great. A few more.",
   name: "Almost done.",
@@ -407,6 +407,8 @@ function StepView(p: ViewProps) {
       return <MultiScreen {...p} step={step} />;
     case "slider":
       return <SliderScreen {...p} step={step} />;
+    case "statement":
+      return <StatementScreen {...p} step={step} />;
     case "info":
       return step.screen === "reassure" ? <ReassureScreen {...p} /> : step.screen === "review" ? <ReviewScreen {...p} /> : <HowScreen {...p} />;
     case "name":
@@ -666,6 +668,70 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
   );
 }
 
+const STATEMENT_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
+
+/** One statement, two big buttons. Auto-advances on tap. */
+function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "statement" }> }) {
+  const isHook = step.id === "hook";
+  const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
+  const advancing = useRef(false);
+  const answer = (v: "yes" | "no") => {
+    if (advancing.current) return;
+    advancing.current = true;
+    haptic();
+    setPicked(v);
+    setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: v } }));
+    track(`funnel_v9_${step.id.replace(/-/g, "_")}_answered`, v);
+    if (isHook) track("funnel_entry_selected", v);
+    setTimeout(next, 300);
+  };
+  const pos = STATEMENT_STEPS.findIndex((s) => s.id === step.id);
+  return (
+    <div className="enter">
+      {isHook && (
+        <div className="mb-6">
+          <RippleMark />
+          <p className="mt-5 text-center text-[15px] font-semibold text-acuity-text-sec text-balance">{V9_HOOK_LINE}</p>
+        </div>
+      )}
+      <Heading
+        eyebrow={isHook ? undefined : `Quick one ${pos} of ${STATEMENT_STEPS.length - 1}`}
+        title={step.title ?? "Does this sound like you?"}
+      />
+      <figure className="card rounded-3xl px-6 py-7 text-center">
+        <Quote_ />
+        <blockquote className="mt-2 text-[21px] font-semibold leading-snug text-balance">{step.statement}</blockquote>
+      </figure>
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <button
+          onClick={() => answer("no")}
+          className={`rounded-2xl py-4 text-[16px] font-semibold transition active:scale-[0.97] ${picked === "no" ? "card card-sel" : "card"}`}
+        >
+          Not really
+        </button>
+        <button
+          onClick={() => answer("yes")}
+          className={`rounded-2xl py-4 text-[16px] font-semibold text-white grad transition active:scale-[0.97] ${picked === "yes" ? "ring-4 ring-[var(--v9-ring)]" : ""}`}
+          style={{ boxShadow: "0 8px 22px -6px var(--acuity-primary)" }}
+        >
+          {picked === "yes" ? "\u2713 That\u2019s me" : "That\u2019s me"}
+        </button>
+      </div>
+      {isHook && (
+        <div className="mt-7">
+          <Stars />
+          <p className="mt-2 text-center text-[12px] text-acuity-text-ter">About 2 minutes. No card to see your results.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Decorative open-quote mark for statement cards. */
+function Quote_() {
+  return <span className="block text-[44px] leading-none font-serif grad-text select-none" aria-hidden>&ldquo;</span>;
+}
+
 const SLIDER_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "slider" }> => s.kind === "slider");
 
 function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "slider" }> }) {
@@ -687,7 +753,7 @@ function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
   };
   return (
     <div className="enter">
-      <Heading eyebrow={`Statement ${pos + 1} of ${SLIDER_STEPS.length}`} title="Which sounds more like you?" sub="Drag toward the one that fits, then let go." />
+      <Heading eyebrow={`Slider ${pos + 1} of ${SLIDER_STEPS.length}`} title="Which sounds more like you?" sub="Drag toward the one that fits, then let go." />
       <div className="card rounded-3xl p-5">
         <div className="grid grid-cols-2 gap-3">
           {[step.left, step.right].map((s, i) => {
@@ -1032,7 +1098,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [exists, setExists] = useState(false);
-  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup });
+  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
 
   // Already gave an email this session (refresh, a ?step=email link, or
   // history): the account exists, so go straight to the result instead of
@@ -1168,7 +1234,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
 // ─── Result, plan, paywall ─────────────────────────────────────────────────
 
 function ResultScreen({ answers, firstName, next }: ViewProps) {
-  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup });
+  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
   const bars = SLIDER_STEPS.map((s) => {
     const v = answers.sliders[s.id] ?? 3;
     return { label: s.right, pct: Math.round(((v - 1) / 4) * 100) };
@@ -1203,6 +1269,20 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
           ))}
         </div>
       </div>
+
+      {STATEMENT_STEPS.some((st) => answers.single[st.id] === "yes") && (
+        <div className="mt-4 card rounded-3xl p-5">
+          <p className="text-[13px] font-bold mb-2.5">In your own words</p>
+          <div className="space-y-2">
+            {STATEMENT_STEPS.filter((st) => answers.single[st.id] === "yes").map((st, i) => (
+              <p key={st.id} className="up flex gap-2 text-[15px] leading-snug" style={{ animationDelay: `${300 + i * 120}ms` }}>
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-acuity-primary" strokeWidth={3} />
+                <span>&ldquo;{st.statement}&rdquo;</span>
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {plate.length > 0 && (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -1288,7 +1368,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
   useEffect(() => {
     loadStripeJs().catch(() => {});
   }, []);
-  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup });
+  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
   const after = plan === "yearly" ? `${displayAnnual()}/year` : `${displayMonthly()}/month`;
   const pick = (p: Plan) => {
     setPlan(p);

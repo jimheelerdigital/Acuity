@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-09-25] — /start-test: one question at a time, yes/no statements, longer funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+/start-test now opens with the same yes/no "Does this sound like you?" screen being tested on /start. The quiz is more one-tap-per-screen:
+- Six new quick "That's me / Not really" statements, such as "I'm the one who remembers everything for everyone" and "I put my own stuff last".
+- Two sliders became statements, and the longer lists are cut to 4 options.
+- It's longer: 23 screens before the email step.
+- The result screen now quotes back every statement she said yes to, under "In your own words".
+
+### Technical changes (for Jimmy)
+- `lib/funnel-v9-config.ts`:
+  - New step kind `statement`. Answers are stored in `answers.single[id]` as "yes" or "no".
+  - `hook` is now a statement.
+  - New steps: st-remember, st-slip, st-myself, st-blur, st-talk, st-lighter.
+  - s-slip and s-keeper sliders removed.
+  - pileup, offload and notice cut to 4 options.
+  - `V9_STEP_LABELS` is generated and numbered from V9_STEPS.
+  - `v9StateName` reads statement answers (`said`).
+- `components/funnel-v9.tsx`: `StatementScreen` auto-advances. The hook statement fires `funnel_entry_selected` so Answered Q1 stays comparable. "In your own words" card on the result screen.
+- Admin metrics: the v9 funnel adds a "→ Answered screen 1" row under screen 1.
+
+### Manual steps needed
+- None.
+
+### Notes
+- Walked the full path locally (hook → … → email) with no errors.
+
 ## [2026-09-25] — Screen 1 split test: yes/no opener vs the 5-option list (/start + /start-bwk)
 
 **Requested by:** Keenan

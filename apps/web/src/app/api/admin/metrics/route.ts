@@ -2260,6 +2260,9 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
         label: V9_STEP_LABELS[st.id] ?? st.id,
         href: `/start-test?step=${st.id}`,
       };
+      if (st.id === "hook") {
+        return [row, { key: "entry", event: "funnel_entry_selected", label: "\u2192 Answered screen 1" }];
+      }
       if (st.id === "email") {
         return [row, { key: "account_created", event: "funnel_account_created", label: "→ Email given (account)" }];
       }
