@@ -1,4 +1,5 @@
-import type { EntryIntro, Question } from "@/lib/funnel-config";
+import type { Branch, EntryIntro, Question } from "@/lib/funnel-config";
+import { S1_ASSIGN_SCRIPT } from "@/lib/funnel-s1-test";
 import { ENTRY_THEMES, FunnelEntryIntro, type EntryTheme } from "@/components/funnel-entry-intro";
 
 /**
@@ -18,11 +19,13 @@ import { ENTRY_THEMES, FunnelEntryIntro, type EntryTheme } from "@/components/fu
 
 export const PRE_TAP_KEY = "__funnelPreTap";
 
-export function FunnelSsrEntry({ question, intro, theme, totalSteps }: {
+export function FunnelSsrEntry({ question, intro, theme, totalSteps, yesno }: {
   question: Question;
   intro: EntryIntro;
   theme: EntryTheme;
   totalSteps: number;
+  /** Screen-1 split test (lib/funnel-s1-test.ts). Omitted = list only. */
+  yesno?: { statement: string; branch: Branch };
 }) {
   const t = ENTRY_THEMES[theme];
   const accent = t.accent;
@@ -35,24 +38,52 @@ export function FunnelSsrEntry({ question, intro, theme, totalSteps }: {
     .ssr-entry__opt[data-picked]{border-color:${accent};box-shadow:inset 0 0 0 1px ${accent}}
     .ssr-entry__progress{position:fixed;top:0;left:0;right:0;height:3px;background:${t.track}}
     .ssr-entry__progress-bar{height:100%;width:${(100 / totalSteps).toFixed(2)}%;background:${accent}}
+    html[data-s1v="yesno"] .s1-list{display:none}
+    html:not([data-s1v="yesno"]) .s1-yesno{display:none}
+    .s1-quote{border-radius:1rem;border:1px solid ${t.optBorder};background:${t.optBg};padding:1.25rem;font-size:1.125rem;font-weight:600;line-height:1.4;text-align:center;color:${t.optText};margin:0 0 1.25rem}
+    .s1-yes{width:100%;border-radius:9999px;border:0;background:${accent};color:#fff;font-weight:700;font-size:1rem;padding:1rem;margin-bottom:.75rem;cursor:pointer}
+    .s1-no{width:100%;border-radius:9999px;border:1px solid ${t.optBorder};background:transparent;color:${t.optText};font-weight:600;font-size:1rem;padding:.9rem;cursor:pointer}
+    .s1-more{display:none;margin-top:1rem}
+    .ssr-entry[data-more-open] .s1-more{display:block}
+    .ssr-entry[data-more-open] .s1-no{display:none}
   `;
-  const preTap = `(function(){var r=document.getElementById('ssr-entry');if(!r)return;r.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-branch]');if(!b||window.${PRE_TAP_KEY})return;window.${PRE_TAP_KEY}={branch:b.getAttribute('data-branch')};b.setAttribute('data-picked','1');});})();`;
+  // data-more ("Not quite") only opens the other options; it isn't an answer.
+  const preTap = `(function(){var r=document.getElementById('ssr-entry');if(!r)return;r.addEventListener('click',function(e){var t=e.target;if(t&&t.closest&&t.closest('[data-more]')){r.setAttribute('data-more-open','1');window.${PRE_TAP_KEY}_more=true;return;}var b=t&&t.closest&&t.closest('[data-branch]');if(!b||window.${PRE_TAP_KEY})return;window.${PRE_TAP_KEY}={branch:b.getAttribute('data-branch'),via:b.getAttribute('data-via')||'list'};b.setAttribute('data-picked','1');});})();`;
+  const otherOptions = yesno ? question.options.filter((o) => o.branch !== yesno.branch) : [];
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: css }} />
+      {yesno && <script dangerouslySetInnerHTML={{ __html: S1_ASSIGN_SCRIPT }} />}
       <div id="ssr-entry" className="ssr-entry">
         <div className="ssr-entry__progress"><div className="ssr-entry__progress-bar" /></div>
         <div className="ssr-entry__inner">
           <FunnelEntryIntro intro={intro} theme={theme} part="top" />
-          <h2>{question.text}</h2>
-          <div>
-            {question.options.map((opt) => (
-              <button key={opt.label} type="button" className="ssr-entry__opt" data-branch={opt.branch}>
-                {opt.label}
-              </button>
-            ))}
+          <div className="s1-list">
+            <h2>{question.text}</h2>
+            <div>
+              {question.options.map((opt) => (
+                <button key={opt.label} type="button" className="ssr-entry__opt" data-branch={opt.branch}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
+          {yesno && (
+            <div className="s1-yesno">
+              <h2>Does this sound like you?</h2>
+              <p className="s1-quote">&ldquo;{yesno.statement}&rdquo;</p>
+              <button type="button" className="s1-yes" data-branch={yesno.branch} data-via="yes">Yes, that&rsquo;s me</button>
+              <button type="button" className="s1-no" data-more="1">Not quite</button>
+              <div className="s1-more">
+                {otherOptions.map((opt) => (
+                  <button key={opt.label} type="button" className="ssr-entry__opt" data-branch={opt.branch} data-via="more">
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <FunnelEntryIntro intro={intro} theme={theme} part="bottom" />
         </div>
       </div>

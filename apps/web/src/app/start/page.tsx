@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { StartPageClient } from "./client";
 import { ENTRY_QUESTION, ENTRY_INTRO, DEFAULT_FUNNEL_CONFIG } from "@/lib/funnel-config";
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
+import { S1_YESNO } from "@/lib/funnel-s1-test";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -36,7 +37,7 @@ export default async function StartPage({
 
   return (
     <>
-      <FunnelSsrEntry question={ENTRY_QUESTION} intro={ENTRY_INTRO} theme="light" totalSteps={DEFAULT_FUNNEL_CONFIG.STEP_ORDER.length} />
+      <FunnelSsrEntry question={ENTRY_QUESTION} intro={ENTRY_INTRO} theme="light" totalSteps={DEFAULT_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8"]} />
 
       {/* Client component hydrates on top — hides SSR content and takes over */}
       <StartPageClient />

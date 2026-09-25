@@ -78,6 +78,40 @@ function TrafficNote({ data, traffic }: { data: any; traffic: Traffic }) {
   );
 }
 
+// Screen-1 split test (yes/no opener vs 5-option list). Hidden until data exists.
+function S1TestCard({ data }: { data: any }) {
+  const t = data?.s1Test;
+  if (!t || !t.variants?.some((v: any) => v.sessions > 0)) return null;
+  const label: Record<string, string> = { yesno: "Yes/No opener", list: "5-option list" };
+  const lead = [...t.variants].sort((a: any, b: any) => b.rate - a.rate)[0];
+  const minN = Math.min(...t.variants.map((v: any) => v.sessions));
+  return (
+    <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={H}>Screen 1 split test</div>
+      <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ color: "rgba(255,255,255,0.35)", textAlign: "left" }}>
+            <th style={{ padding: "4px 0" }}>Variant</th><th>Real visitors</th><th>Answered Q1</th><th>Answer rate</th><th>Accounts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {t.variants.map((v: any) => (
+            <tr key={v.variant} style={{ color: "var(--acuity-text)" }}>
+              <td style={{ padding: "4px 0", fontWeight: 600 }}>{label[v.variant] ?? v.variant}</td>
+              <td>{v.sessions}</td><td>{v.answered}</td><td style={{ fontWeight: 700 }}>{v.rate}%</td><td>{v.accounts}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+        {t.significant
+          ? <>Winner: <b>{label[lead.variant]}</b> (p = {t.pValue.toFixed(3)}, statistically real).</>
+          : <>Not decided yet{t.pValue !== null ? ` (p = ${t.pValue.toFixed(2)})` : ""}. {minN < t.targetPerArm ? `Aim for ~${t.targetPerArm} visitors per variant before calling it (now ${minN}).` : "Enough visitors, but no clear difference."}</>}
+      </div>
+    </div>
+  );
+}
+
 function SideBySide({ start, end, traffic }: { start: string; end: string; traffic: Traffic }) {
   const [pair, setPair] = useState<{ ripple: any; bwk: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -362,6 +396,7 @@ function SingleFunnel({ start, end, flow, traffic }: { start: string; end: strin
         <div style={H}>Conversion Funnel{isV8 ? ` \u2014 ${flow === "v8" ? "Ripple /start" : "BWK /start-bwk"}` : ""}</div>
         <FunnelBars steps={steps} />
         <TrafficNote data={data} traffic={traffic} />
+        <S1TestCard data={data} />
 
         {/* Paid (Stripe-verified) — below funnel bars */}
         {(data.stripePaid ?? []).length > 0 && (

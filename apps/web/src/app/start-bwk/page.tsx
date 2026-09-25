@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { StartBwkPageClient } from "./client";
 import { BWK_ENTRY_QUESTION, BWK_ENTRY_INTRO, BWK_FUNNEL_CONFIG } from "@/lib/funnel-config-bwk";
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
+import { S1_YESNO } from "@/lib/funnel-s1-test";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -43,7 +44,7 @@ export default async function StartBwkPage({
   return (
     <>
       {bodyBg}
-      <FunnelSsrEntry question={BWK_ENTRY_QUESTION} intro={BWK_ENTRY_INTRO} theme="dusk" totalSteps={BWK_FUNNEL_CONFIG.STEP_ORDER.length} />
+      <FunnelSsrEntry question={BWK_ENTRY_QUESTION} intro={BWK_ENTRY_INTRO} theme="dusk" totalSteps={BWK_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8-bwk"]} />
 
       {/* Client component hydrates on top — hides SSR content and takes over */}
       <StartBwkPageClient />

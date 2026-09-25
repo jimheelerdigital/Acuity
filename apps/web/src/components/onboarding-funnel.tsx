@@ -9,6 +9,7 @@ import { AppleLogo, GoogleLogo } from "@/components/debrief-shared";
 import { fireFbq, waitForFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
 import { detectBrowserEnv, useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
 import { PRE_TAP_KEY } from "@/components/funnel-ssr-entry";
+import { readS1Variant, S1_YESNO, type S1Variant } from "@/lib/funnel-s1-test";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import {
@@ -277,6 +278,11 @@ export function OnboardingFunnel() {
     if (p && (["overload","patterns","rumination","stuck","mask"] as string[]).includes(p)) return p as Branch;
     return undefined;
   });
+  // Screen-1 split test (lib/funnel-s1-test.ts). null until mounted, so the
+  // entry screen waits one frame for the variant the inline script assigned
+  // instead of flashing the list and swapping.
+  const yesnoCfg = S1_YESNO[cfg.flowVersion];
+  const [s1v, setS1v] = useState<S1Variant | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   // Monthly is the locked default-selected plan. We intentionally do NOT restore
@@ -553,16 +559,26 @@ export function OnboardingFunnel() {
   const progressPct = step === "download" ? 100 : ((order.indexOf(step) + 1) / order.length) * 100;
 
   // ── Entry answer — shared by the live screen and the pre-hydration tap ──
-  const selectEntry = (opt: { label: string; branch?: Branch }, via: "tap" | "pretap") => {
+  const selectEntry = (opt: { label: string; branch?: Branch }, via: "tap" | "pretap", s1How?: "yes" | "more" | "list") => {
     if (!opt.branch) return;
     setBranch(opt.branch);
     handleAnswer("entry", opt.label, "funnel_entry_selected");
     track("funnel_entry_selected", { value: opt.branch });
     if (via === "pretap") track("funnel_entry_pretap_used", { value: opt.branch });
+    if (yesnoCfg) track("funnel_s1_answered", { value: `${s1v ?? readS1Variant()}:${s1How ?? "list"}` });
     if (adMatchBranch) {
       track("funnel_ad_match", { value: opt.branch === adMatchBranch ? "matched" : "different" });
     }
   };
+
+  // Screen-1 variant: read once on mount and log it for the split test.
+  useEffect(() => {
+    if (!yesnoCfg) return;
+    const v = readS1Variant();
+    setS1v(v);
+    if (step === "entry") track("funnel_s1_variant", { value: v });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A tap on the server-rendered Screen 1 before JS loaded (see
   // FunnelSsrEntry). Apply it once, as if it happened here.
@@ -570,10 +586,10 @@ export function OnboardingFunnel() {
   useEffect(() => {
     if (preTapApplied.current || step !== "entry") return;
     preTapApplied.current = true;
-    const pre = (window as unknown as Record<string, { branch?: string } | undefined>)[PRE_TAP_KEY];
+    const pre = (window as unknown as Record<string, { branch?: string; via?: "yes" | "more" | "list" } | undefined>)[PRE_TAP_KEY];
     const opt = pre?.branch ? cfg.ENTRY_QUESTION.options.find((o) => o.branch === pre.branch) : undefined;
     if (!opt) return;
-    selectEntry(opt, "pretap");
+    selectEntry(opt, "pretap", pre?.via);
     setStep(nextOf("entry"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -816,6 +832,29 @@ export function OnboardingFunnel() {
         const eventBase = isEntry ? "funnel_entry" : `funnel_${step.replace("-", "_")}`;
         const answerKey = isEntry ? "entry" : step.replace("branch-", "branch_");
 
+        if (isEntry && yesnoCfg && s1v === null) return null;
+        if (isEntry && yesnoCfg && s1v === "yesno") {
+          const top = q.options.find((o) => o.branch === yesnoCfg.branch);
+          if (top) {
+            return (
+              <YesNoEntryScreen
+                key="entry-yesno"
+                statement={yesnoCfg.statement}
+                others={q.options.filter((o) => o.branch !== yesnoCfg.branch)}
+                initialOpen={typeof window !== "undefined" && !!(window as unknown as Record<string, unknown>)[`${PRE_TAP_KEY}_more`]}
+                topSlot={<EntryIntroSlot track={track} />}
+                bottomSlot={<EntryExampleSlot />}
+                onOpenMore={() => track("funnel_s1_not_quite")}
+                onPick={(opt, how) => {
+                  selectEntry(opt, "tap", how);
+                  setTimeout(() => setStep(nextStep()), 350);
+                }}
+                yesOption={top}
+              />
+            );
+          }
+        }
+
         if (q.multiSelect) {
           return (
             <MultiSelectScreen
@@ -974,6 +1013,81 @@ const CHOICE_BASE =
   "funnel-choice funnel-card-stagger w-full text-left rounded-2xl px-5 py-4 text-[15px] flex items-center gap-3 text-acuity-text";
 
 // ─── Single Select Question Screen ──────────────────────────────────────────
+
+/**
+ * Screen-1 "yes/no" variant (split test, lib/funnel-s1-test.ts): the most-picked
+ * answer as a statement to agree with. "Not quite" reveals the other options,
+ * so nobody hits a dead end and we still learn their pain.
+ */
+function YesNoEntryScreen({ statement, yesOption, others, initialOpen, topSlot, bottomSlot, onPick, onOpenMore }: {
+  statement: string;
+  yesOption: { label: string; branch?: Branch };
+  others: { label: string; branch?: Branch }[];
+  initialOpen?: boolean;
+  topSlot?: React.ReactNode;
+  bottomSlot?: React.ReactNode;
+  onPick: (opt: { label: string; branch?: Branch }, how: "yes" | "more") => void;
+  onOpenMore: () => void;
+}) {
+  const [open, setOpen] = useState(!!initialOpen);
+  const [picked, setPicked] = useState<string | null>(null);
+  const pick = (opt: { label: string; branch?: Branch }, how: "yes" | "more") => {
+    if (picked) return;
+    setPicked(opt.label);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
+    onPick(opt, how);
+  };
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-8 pb-8 text-acuity-text">
+      <div className="max-w-md w-full">
+        {topSlot && <div className="w-full funnel-screen">{topSlot}</div>}
+        <h2 className="font-bold tracking-tight text-center text-2xl sm:text-3xl leading-tight mb-5 funnel-screen">Does this sound like you?</h2>
+        <p className="rounded-2xl f-card px-5 py-5 text-center text-[18px] font-semibold leading-snug mb-5">&ldquo;{statement}&rdquo;</p>
+        <button
+          onClick={() => pick(yesOption, "yes")}
+          disabled={!!picked}
+          className="w-full rounded-full bg-acuity-primary py-4 text-[16px] font-bold text-white transition active:scale-[0.98] disabled:opacity-70"
+          style={{ boxShadow: "0 8px 22px -6px var(--acuity-primary)" }}
+        >
+          {picked === yesOption.label ? "\u2713 Yes, that\u2019s me" : "Yes, that\u2019s me"}
+        </button>
+        {!open ? (
+          <button
+            onClick={() => {
+              setOpen(true);
+              onOpenMore();
+            }}
+            disabled={!!picked}
+            className="mt-3 w-full rounded-full f-sub py-3.5 text-[15px] font-semibold text-acuity-text-sec transition active:scale-[0.98]"
+          >
+            Not quite
+          </button>
+        ) : (
+          <div className="mt-5">
+            <p className="mb-3 text-center text-[13px] text-acuity-text-ter">Which is closer?</p>
+            <div className="space-y-3">
+              {others.map((opt) => {
+                const isSel = picked === opt.label;
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => pick(opt, "more")}
+                    disabled={!!picked}
+                    className={`${CHOICE_BASE} ${isSel ? "funnel-choice-selected" : picked ? "funnel-choice-dim" : ""}`}
+                  >
+                    <span className="funnel-marker" data-on={isSel ? "1" : undefined} />
+                    <span className="flex-1">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {bottomSlot && <div className="w-full">{bottomSlot}</div>}
+      </div>
+    </div>
+  );
+}
 
 function SingleSelectScreen({ question, questionLarge, compactQuestion, options, normalization, onSelect, highlightBranch, topSlot, bottomSlot }: {
   question?: string;

@@ -1922,6 +1922,8 @@ const IN_APP_UA = /FBAN|FBAV|FB_IAB|Instagram|musical_ly|TikTok|BytedanceWebview
 const PAGE_LOAD_EVENTS = new Set([
   "funnel_entry_viewed", "funnel_entry_rendered", "funnel_social_proof_viewed",
   "funnel_webview_detected", "funnel_inapp_browser_detected", "funnel_v9_hook_viewed",
+  // Fired on mount for every session (crawlers run JS too), not an action.
+  "funnel_s1_variant",
 ]);
 
 type FunnelStepDef = {
@@ -1937,6 +1939,42 @@ type FunnelStepDef = {
   /** Link to the screen itself (v9 test funnel — one URL per screen). */
   href?: string;
 };
+
+/**
+ * Screen-1 split test (lib/funnel-s1-test.ts): per variant, real sessions that
+ * saw Screen 1, how many answered it, and how many made an account. Two-sided
+ * two-proportion z-test on the answer rate (significant at p < 0.05).
+ */
+function computeS1Test(sessionMap: Map<string, { event: string; value: string | null }[]>) {
+  const stats: Record<string, { sessions: number; answered: number; accounts: number }> = {};
+  for (const evts of sessionMap.values()) {
+    const v = evts.find((e) => e.event === "funnel_s1_variant")?.value;
+    if (v !== "yesno" && v !== "list") continue;
+    const st = (stats[v] ??= { sessions: 0, answered: 0, accounts: 0 });
+    st.sessions++;
+    if (evts.some((e) => e.event === "funnel_entry_selected")) st.answered++;
+    if (evts.some((e) => e.event === "funnel_account_created")) st.accounts++;
+  }
+  const a = stats.yesno, b = stats.list;
+  let pValue: number | null = null;
+  if (a && b && a.sessions > 0 && b.sessions > 0) {
+    const p1 = a.answered / a.sessions, p2 = b.answered / b.sessions;
+    const pp = (a.answered + b.answered) / (a.sessions + b.sessions);
+    const se = Math.sqrt(pp * (1 - pp) * (1 / a.sessions + 1 / b.sessions));
+    if (se > 0) {
+      const z = Math.abs(p1 - p2) / se;
+      // Normal CDF tail via Abramowitz-Stegun erf approximation.
+      const t = 1 / (1 + 0.3275911 * (z / Math.SQRT2));
+      const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(z * z) / 2);
+      pValue = Math.max(0, Math.min(1, 1 - erf));
+    }
+  }
+  const variants = (["yesno", "list"] as const).map((v) => {
+    const st = stats[v] ?? { sessions: 0, answered: 0, accounts: 0 };
+    return { variant: v, ...st, rate: st.sessions ? Math.round((st.answered / st.sessions) * 1000) / 10 : 0 };
+  });
+  return { variants, pValue, significant: pValue !== null && pValue < 0.05, targetPerArm: 350 };
+}
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "real" | "all" = "real") {
  try {
@@ -2962,6 +3000,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     },
     adMatchStats,
     traffic: trafficSummary,
+    s1Test: computeS1Test(sessionMap),
     flow: flowVersion,
     branchSteps,
     readyForChange,

@@ -7,6 +7,62 @@
 
 ---
 
+## [2026-09-25] — Screen 1 split test: yes/no opener vs the 5-option list (/start + /start-bwk)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Half of visitors now see a quicker first screen: "Does this sound like you?" with the most-picked answer as a quote, plus "Yes, that's me" and "Not quite" buttons. "Not quite" opens the other options, so nobody hits a dead end. The other half see the original 5-option list.
+- Each visitor always sees the same version.
+- The admin Funnel tab shows the answer rate for each version and says when the difference is statistically real. That should take about 350 real visitors per version, or 1–2 weeks.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/funnel-s1-test.ts`:
+  - `S1_ASSIGN_SCRIPT`: an inline, pre-paint 50/50 coin flip that sets `<html data-s1v>` and a 30-day `acuity_s1v` cookie.
+  - `S1_YESNO` statements per flowVersion: v8 = overload, v8-bwk = stuck (the most-picked answers).
+  - `readS1Variant()` for the client.
+- `components/funnel-ssr-entry.tsx`: renders both variants and shows the assigned one with CSS. The pre-tap script also handles "Not quite" (`data-more`) and records `via` (yes/more/list).
+- `components/onboarding-funnel.tsx`: new `YesNoEntryScreen`. `s1v` state waits one frame for the variant. The pre-tap passes `via`. Events: `funnel_s1_variant`, `funnel_s1_not_quite`, `funnel_s1_answered` (`<variant>:<yes|more|list>`). `funnel_entry_selected` is unchanged, so "Answered Q1" stays comparable.
+- `app/start/page.tsx`, `app/start-bwk/page.tsx`: pass `yesno`.
+- Admin metrics: `computeS1Test()` computes sessions, answered, accounts and answer rate per variant, with a two-sided two-proportion z-test. `S1TestCard` in the Funnel tab. `funnel_s1_variant` was added to `PAGE_LOAD_EVENTS` so crawlers stay filtered out of "real visitors".
+
+### Manual steps needed
+- None. Check the Funnel tab's "Screen 1 split test" card after about a week.
+
+### Notes
+- Don't call the test before about 350 real visitors per arm. At a ~30% baseline, that's what it takes to reliably detect a lift to about 40%.
+- In dev, `funnel_s1_variant` fires twice (StrictMode). The metrics read one value per session, so counts aren't affected.
+
+## [2026-09-25] — Every Ripple and BWK photo post now uses the header / italic line / body text layout
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The newer text style (bold header, italic line under it, short text below) was only showing up on some lanes. Memento, memento-men, questions and muse posts still came out as a centered block of plain text. From the next overnight run, those four lanes write and render in the same headed style as pulse, pulse-men, muse-men, watching, discipline-real and fantasy-men. That means every text-over-photo post on both Ripple and BWK now uses it.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `named` is now always `true` for moody-family buckets. It used to be true only for some hard-coded buckets plus spec lanes with `spec.named`/`redditTheme`. When it was false, the item `name` was discarded before rendering.
+- `apps/web/src/lib/content-factory/moody-carousel.ts`:
+  - memento (women + men) prompts rewritten to header ("Weekends Left") + hook (the life-math number, italic) + body (truth + command), under 30 words, output schema gains `name`, `requireName: true`
+  - questions prompt rewritten to header (the nerve, e.g. "Who Notices") + hook (the question, italic) + body (one 4-12 word line that presses without advising), `requireName: true`, `minLines: 2`
+  - `generateSpecTopic`: base-theme path always `requireName: true`, `minLines: 2` (spec `named` flag is now legacy)
+- Prod DB `ContentLane` row `muse`: `spec.named` → true; theme text "headerless, plain-spoken lines" → "plain-spoken lines under a short named header"
+- No renderer change: `renderHeadedItemOverlay` in compose.ts already detects the header by shape, so the edit/regenerate path picks it up too.
+
+### Manual steps needed
+- [ ] Check the first memento / memento-men / questions / muse posts from the next overnight run (Keenan)
+
+### Notes
+- Left alone on purpose: the special-format lanes selfie (mirror-selfie caption), texts-younger (text bubbles baked into a phone photo), phone-quote (Notes-app screen) and timeline (grid collage). They have no text block over a photo, so a header/hook/body layout doesn't apply. Say the word if you want those changed too.
+- Posts already generated keep their old text. Memento/questions drafts have no header text stored, so re-rendering them can't produce the new layout without rewriting the copy.
+- Local previews rendered fine: Poppins Bold header, MediumItalic hook, Medium body, left-aligned.
+
+---
+
 ## [2026-09-25] — Meta signup events no longer get dropped; signup emails show the real ad source
 
 **Requested by:** Keenan
