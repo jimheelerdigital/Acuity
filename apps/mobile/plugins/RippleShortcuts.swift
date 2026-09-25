@@ -366,6 +366,10 @@ struct RippleAppShortcuts: AppShortcutsProvider {
                 "Check in with \(.applicationName)",
                 "Start a debrief in \(.applicationName)",
                 "New debrief in \(.applicationName)",
+                "Start a recording in \(.applicationName)",
+                "Record an entry in \(.applicationName)",
+                "New entry in \(.applicationName)",
+                "Start journaling in \(.applicationName)",
             ],
             shortTitle: "Start a Check-in",
             systemImageName: "mic.fill"
