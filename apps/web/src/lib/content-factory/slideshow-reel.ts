@@ -124,7 +124,9 @@ async function download(url: string, dest: string): Promise<void> {
  */
 export async function renderSlideshowReel(
   imageUrls: string[],
-  musicUrl: string
+  musicUrl: string,
+  /** Per-slide hold; text-dense lanes (paper reset guides) need longer. */
+  slideSec: number = SLIDE_SEC
 ): Promise<{ buf: Buffer; transition: ReelTransition }> {
   const bin = ffmpegPath();
   if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
@@ -142,15 +144,15 @@ export async function renderSlideshowReel(
     await download(musicUrl, musicPath);
 
     const n = imgPaths.length;
-    const totalSec = n * SLIDE_SEC - (n - 1) * XFADE_SEC;
+    const totalSec = n * slideSec - (n - 1) * XFADE_SEC;
     const transition =
       REEL_TRANSITIONS[Math.floor(Math.random() * REEL_TRANSITIONS.length)];
 
     const args: string[] = ["-y", "-loglevel", "warning"];
-    // Each still becomes a SLIDE_SEC-long video stream (-loop 1 -t) —
+    // Each still becomes a slideSec-long video stream (-loop 1 -t) —
     // xfade needs finite, timestamped inputs at a common fps.
     for (const p of imgPaths) {
-      args.push("-loop", "1", "-t", SLIDE_SEC.toFixed(2), "-framerate", String(FPS), "-i", p);
+      args.push("-loop", "1", "-t", slideSec.toFixed(2), "-framerate", String(FPS), "-i", p);
     }
     // Loop the track in case it's shorter than the video; -shortest ends
     // the encode when the (finite) video stream does.
@@ -166,7 +168,7 @@ export async function renderSlideshowReel(
     let videoLabel = "[v0]";
     if (n > 1) {
       for (let j = 0; j < n - 1; j++) {
-        const offset = ((j + 1) * (SLIDE_SEC - XFADE_SEC)).toFixed(2);
+        const offset = ((j + 1) * (slideSec - XFADE_SEC)).toFixed(2);
         const out = j === n - 2 ? "[vout]" : `[x${j}]`;
         const left = j === 0 ? "[v0]" : `[x${j - 1}]`;
         filters.push(

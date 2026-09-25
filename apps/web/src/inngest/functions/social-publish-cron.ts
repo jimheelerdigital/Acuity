@@ -307,7 +307,9 @@ export const socialPublishCronFn = inngest.createFunction(
               }
               const { buf, transition } = await renderSlideshowReel(
                 [...reelSlides.map((s) => s.imageUrl), ctaSlideUrl],
-                music
+                music,
+                // Paper reset guides are ~40 words a slide (2026-09-25).
+                post.lane?.startsWith("reset-guide") ? 6 : undefined
               );
               const { error } = await supabase.storage
                 .from("content-factory")

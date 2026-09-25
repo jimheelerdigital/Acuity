@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-25] — Every Instagram/Facebook post is now a reel with music
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Publish every lane as a music reel on Instagram and Facebook")
+
+### In plain English (for Keenan)
+No lane posts silent photo carousels anymore. Every Ripple and BWK post on Instagram and Facebook goes out as a reel with that lane's music, including the two lanes that used to stay carousels (discipline, muse) and the new reset guides. Reset-guide slides stay on screen for 6 seconds instead of 3.5 so there's time to read them.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/social-publish.ts`: `CAROUSEL_LANES` is now empty (typed `readonly string[]`), so `laneWantsReel` is true for every lane.
+- `apps/web/src/lib/content-factory/slideshow-reel.ts`: `renderSlideshowReel` takes an optional `slideSec` (default `SLIDE_SEC` 3.5).
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: `reset-guide*` lanes render at 6s per slide.
+- `apps/web/scripts/living-kling.ts`:
+  - `prep` takes an optional postId.
+  - `assemble` takes the clip length and a model label.
+  - Used for the first animated fantasy-men reel ("RIDE INTO THE STORM.", Higgsfield Cinema Studio 3.0 plus one Kling 3.0 clip, 8s clips).
+
+### Manual steps needed
+None.
+
+### Notes
+- Reels render at publish time, so posts already queued as carousels go out as reels on their next attempt.
+- A lane with no music track still falls back to the silent carousel. Keep music in every brand/lane folder.
+- Cinema Studio 3.0 blocked one dragon-rider clip with `ip_detected`. Kling 3.0, with a prompt that avoided the word "dragon", generated it fine.
+
 ## [2026-09-25] — Stripe checkout embedded in the normal funnels; test-funnel plan runs to Day 365
 
 **Requested by:** Keenan

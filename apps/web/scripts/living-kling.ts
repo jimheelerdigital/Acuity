@@ -41,14 +41,14 @@ async function upload(path: string, buf: Buffer, type: string): Promise<string> 
   return supabase.storage.from("content-factory").getPublicUrl(path).data.publicUrl;
 }
 
-async function prep(date: string, out: string) {
+async function prep(date: string, out: string, onlyPostId?: string) {
   const { prisma } = await import("@/lib/prisma");
   const { laneWantsReel, laneBrand } = await import("@/lib/content-factory/social-publish");
   const { buildLivingSlideLayer, livingMotionPrompt, livingSlideSeconds } = await import("@/lib/content-factory/living-reel");
   const { regenerateOverlayRaw } = await import("@/lib/content-factory/carousel-generate");
   const day = new Date(`${date}T00:00:00Z`);
   const posts = await prisma.carouselPost.findMany({
-    where: { generatedFor: { gte: day, lt: new Date(day.getTime() + 86_400_000) }, lane: { not: null } },
+    where: onlyPostId ? { id: onlyPostId } : { generatedFor: { gte: day, lt: new Date(day.getTime() + 86_400_000) }, lane: { not: null } },
     orderBy: { createdAt: "asc" },
     select: {
       id: true, lane: true, headline: true, caption: true,
@@ -91,7 +91,7 @@ async function prep(date: string, out: string) {
   console.log(`plan: ${plan.length} posts, ${plan.reduce((a, p) => a + p.slides.length, 0)} clips`);
 }
 
-async function assemble(planPath: string, clipsPath: string) {
+async function assemble(planPath: string, clipsPath: string, clipSeconds = 5, modelLabel = "Kling 3.0") {
   const plan = JSON.parse(fs.readFileSync(planPath, "utf8")) as PlanPost[];
   const clips = JSON.parse(fs.readFileSync(clipsPath, "utf8")) as Record<string, string[]>;
   const { assembleLivingReel } = await import("@/lib/content-factory/living-reel");
@@ -116,7 +116,7 @@ async function assemble(planPath: string, clipsPath: string) {
         clips: await Promise.all(urls.map(get)),
         layers: await Promise.all(p.slides.map((s) => get(s.layerUrl))),
         seconds: p.slides.map((s) => s.seconds),
-        clipSeconds: 5,
+        clipSeconds,
         ctaUrl: `https://goripple.io/cta-slide-${p.brand}.jpg`,
         musicUrl: music,
       });
@@ -128,7 +128,7 @@ async function assemble(planPath: string, clipsPath: string) {
       const { error } = await resend.emails.send({
         from: "Ripple Content <keenan@getacuity.io>",
         to: ["keenan@heelerdigital.com"],
-        subject: `🎬 ${brandName} living reel (Kling 3.0): ${p.headline}`,
+        subject: `🎬 ${brandName} living reel (${modelLabel}): ${p.headline}`,
         html: `<p><b>${brandName}</b> · lane <b>${p.lane}</b> · ${p.slides.length} slides + end card · ${seconds.toFixed(1)}s</p>
 <p>This is the video version. It posts to Instagram/Facebook in place of the photo slideshow. The picture slides come in their own email as usual.</p>
 <p>Music: ${decodeURIComponent(music.split("/").pop() ?? "")}</p>
@@ -144,10 +144,10 @@ async function assemble(planPath: string, clipsPath: string) {
 }
 
 (async () => {
-  const [mode, a, b] = process.argv.slice(2);
-  if (mode === "prep") await prep(a, b);
-  else if (mode === "assemble") await assemble(a, b);
-  else console.log("usage: prep <date> <out.json> | assemble <plan.json> <clips.json>");
+  const [mode, a, b, c] = process.argv.slice(2);
+  if (mode === "prep") await prep(a, b, c);
+  else if (mode === "assemble") await assemble(a, b, c ? Number(c) : 5, process.argv[6]);
+  else console.log("usage: prep <date> <out.json> [postId] | assemble <plan.json> <clips.json>");
   process.exit(0);
 })().catch((e) => {
   console.error(e);
