@@ -10,17 +10,12 @@ export const metadata: Metadata = {
 
 /**
  * /start-test-bwk — the v9 evidence-based funnel for the men's/BWK audience
- * (2026-09-25, per Keenan). Same engine as /start-test, BWK copy on the dusk
- * theme (lib/funnel-v9-config.ts → BWK_V9).
+ * (2026-09-25, per Keenan). Same engine and the same light look as
+ * /start-test, with BWK copy (lib/funnel-v9-config.ts → BWK_V9).
  */
-// Steel body behind the funnel so overscroll never flashes another color.
-const bodyBg = <style dangerouslySetInnerHTML={{ __html: "body{background:oklch(0.175 0.013 250)}" }} />;
 
 export default function StartTestBwkPage() {
   return (
-    <>
-      {bodyBg}
-      <FunnelV9 brand="bwk" />
-    </>
+    <FunnelV9 brand="bwk" />
   );
 }

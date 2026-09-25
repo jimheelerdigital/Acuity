@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-25] — /start-test-bwk uses the same light look as /start-test
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The men's test funnel now looks exactly like the women's test funnel: the light background, coral buttons, the ripple logo on the first screen, and the colorful feeling faces. All the words stay written for men ("I know what I should be doing. I'm just not doing it.", invoices and gym sessions on the list, and so on). The dark steel/blue version is retired.
+
+### Technical changes (for Jimmy)
+- `lib/funnel-v9-config.ts`: `BWK_V9.theme` "dusk" → "light". Every theme-driven branch in `funnel-v9.tsx` now takes the light path for BWK: the hook with the logo, hue avatars and coral tokens
+- `app/start-test-bwk/page.tsx`: the steel body background was removed
+- The dusk/steel styling (`.v9[data-funnel-theme="dusk"]` tokens, the `lux` StatementScreen branch, MoodAvatar `tone="steel"`) is kept but unused
+
+### Manual steps needed
+- None
+
+### Notes
+- Design direction for the test funnels: both use the same light Ripple look and differ only in copy. The charcoal/serif and steel/cobalt versions were both rejected on 2026-09-25
+
+---
+
 ## [2026-09-25] — Funnel checkout limited to card + Link (and Stripe recovery settings reviewed)
 
 **Requested by:** Keenan

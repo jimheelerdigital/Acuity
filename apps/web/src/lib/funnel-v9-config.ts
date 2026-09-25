@@ -528,7 +528,10 @@ export const BWK_V9: V9Config = {
   brand: "bwk",
   flowVersion: "v9-test-bwk",
   path: "/start-test-bwk",
-  theme: "dusk",
+  // Same light/coral look as /start-test (2026-09-25, Keenan: "same color
+  // scheme as normal ripple test funnel", men's copy). The steel "dusk"
+  // styling in funnel-v9.tsx is kept but unused.
+  theme: "light",
   hookLine: "Ripple keeps track of what you say, so you can get on with doing it.",
   steps: BWK_V9_STEPS,
   stepLabels: numberedLabels(BWK_V9_STEPS, BWK_SHORT),
