@@ -27,6 +27,8 @@ export const V9_FLOW_VERSION = "v9-test";
 export const V9_PATH = "/start-test";
 
 export type V9Option = { id: string; label: string };
+/** chip = what she taps; task = how Ripple would write it on the list. */
+export type V9WeekItem = { id: string; chip: string; task: string };
 
 export type V9Step =
   | { id: string; kind: "single"; title: string; sub?: string; options: V9Option[] }
@@ -34,6 +36,10 @@ export type V9Step =
   | { id: string; kind: "slider"; title: string; left: string; right: string }
   /** One statement, two big buttons (2026-09-25, per Keenan: "one question at a time with less multiple choice"). */
   | { id: string; kind: "statement"; statement: string; title?: string; /** Feeling shown by the MoodAvatar on the card. */ mood: Mood }
+  /** "What's on your list this week?" chips (2026-09-25, Keenan). Each chip
+   *  has the task Ripple would catch from it; the loader and result reuse
+   *  the picks. Stored in answers.multi[id]. */
+  | { id: string; kind: "week"; title: string; sub?: string; items: V9WeekItem[] }
   | { id: string; kind: "info"; screen: "reassure" | "review" | "how" }
   | { id: string; kind: "name" }
   | { id: string; kind: "loader" }
@@ -94,15 +100,23 @@ export const V9_STEPS: V9Step[] = [
   { id: "st-blur", kind: "statement", statement: "Whole weeks blur together and I can\u2019t say where they went.", mood: "foggy" },
   { id: "s-lists", kind: "slider", title: "Where do you land?", left: "Lists and notebooks work for me", right: "I've tried them. They don't stick" },
   {
-    id: "offload",
-    kind: "multi",
-    title: "What would you most like off your mind?",
-    sub: "Pick all that apply.",
-    options: [
-      { id: "everyone", label: "Remembering everything for everyone" },
-      { id: "tasks", label: "Tasks I keep forgetting" },
-      { id: "worry", label: "Worry I can't put down" },
-      { id: "behind", label: "Feeling behind on my own life" },
+    id: "week",
+    kind: "week",
+    title: "What\u2019s on your list this week?",
+    sub: "Tap everything that\u2019s in your head right now.",
+    items: [
+      { id: "school", chip: "A school form", task: "Sign the school form" },
+      { id: "mom", chip: "Mom\u2019s appointment", task: "Book Mom\u2019s appointment" },
+      { id: "deadline", chip: "A work deadline", task: "Get the work deadline done" },
+      { id: "bills", chip: "Bills", task: "Pay the bills" },
+      { id: "groceries", chip: "Groceries", task: "Order the groceries" },
+      { id: "dentist", chip: "The dentist", task: "Book the dentist" },
+      { id: "gift", chip: "A birthday gift", task: "Get the birthday gift" },
+      { id: "pickups", chip: "Pickups and drop-offs", task: "Sort this week\u2019s pickups" },
+      { id: "emails", chip: "Emails I owe", task: "Answer the emails you owe" },
+      { id: "callback", chip: "Calling someone back", task: "Call them back" },
+      { id: "workout", chip: "Fitting in a workout", task: "Fit in a workout" },
+      { id: "me", chip: "Time for me", task: "Block an hour for yourself" },
     ],
   },
   { id: "review", kind: "info", screen: "review" },
@@ -176,7 +190,7 @@ const V9_SHORT: Record<string, string> = {
   "s-repeat": "Slider: weeks repeat",
   "st-blur": "Yes/no: weeks blur",
   "s-lists": "Slider: lists don't stick",
-  offload: "Off your mind",
+  week: "This week\u2019s list (chips)",
   review: "Reviews",
   how: "How Ripple works (demo)",
   "st-talk": "Yes/no: talking helps",
@@ -335,7 +349,7 @@ export const RIPPLE_V9: V9Config = {
     cta: "That’s me",
   },
   plateLabels: { kids: "your kids", parents: "your parents", work: "work", partner: "your partner", house: "the house", health: "your health" },
-  milestones: { offload: "Halfway there.", talktype: "You're doing great. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", talktype: "You're doing great. A few more.", name: "Almost done." },
   resultOutro: "None of this means something is wrong with you. It means there’s nowhere to set it down. That’s the part Ripple does.",
 };
 
@@ -386,15 +400,23 @@ export const BWK_V9_STEPS: V9Step[] = [
   { id: "st-blur", kind: "statement", statement: "Months go by and I can’t say what I actually built.", mood: "foggy" },
   { id: "s-lists", kind: "slider", title: "Where do you land?", left: "Apps and lists work for me", right: "I've tried them. They don't stick" },
   {
-    id: "offload",
-    kind: "multi",
-    title: "What do you want to lock in?",
-    sub: "Pick all that apply.",
-    options: [
-      { id: "follow", label: "Following through on plans" },
-      { id: "train", label: "Training consistently" },
-      { id: "money", label: "Getting my money right" },
-      { id: "remember", label: "Not dropping the small stuff" },
+    id: "week",
+    kind: "week",
+    title: "What\u2019s on your list this week?",
+    sub: "Tap everything that\u2019s in your head right now.",
+    items: [
+      { id: "invoices", chip: "Invoices", task: "Send the invoices" },
+      { id: "deadline", chip: "A work deadline", task: "Hit the deadline" },
+      { id: "gym", chip: "Gym sessions", task: "Get your sessions in" },
+      { id: "bills", chip: "Bills", task: "Pay the bills" },
+      { id: "car", chip: "Car stuff", task: "Deal with the car" },
+      { id: "side", chip: "The side project", task: "Move the side project forward" },
+      { id: "calls", chip: "Calls to return", task: "Return the calls" },
+      { id: "kids", chip: "Kids\u2019 stuff", task: "Handle the kids\u2019 stuff" },
+      { id: "plans", chip: "Plans with my partner", task: "Lock in plans with your partner" },
+      { id: "paperwork", chip: "Paperwork", task: "Get the paperwork done" },
+      { id: "house", chip: "Fixes around the house", task: "Fix the thing at home" },
+      { id: "followup", chip: "People to follow up with", task: "Follow up with people" },
     ],
   },
   { id: "review", kind: "info", screen: "review" },
@@ -467,7 +489,7 @@ const BWK_SHORT: Record<string, string> = {
   "s-repeat": "Slider: same weeks",
   "st-blur": "Yes/no: months go by",
   "s-lists": "Slider: lists don't stick",
-  offload: "What to lock in",
+  week: "This week\u2019s list (chips)",
   review: "Reviews",
   how: "How Ripple works (demo)",
   "st-talk": "Yes/no: out loud helps",
@@ -556,7 +578,7 @@ export const BWK_V9: V9Config = {
     cta: "Fair",
   },
   plateLabels: { work: "work", side: "your side project", training: "training", money: "money", family: "family", partner: "your relationship" },
-  milestones: { offload: "Halfway there.", talktype: "Keep going. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", talktype: "Keep going. A few more.", name: "Almost done." },
   resultOutro: "None of this means you’re soft or lazy. It means there’s nowhere to put it down. That’s the part Ripple does.",
 };
 

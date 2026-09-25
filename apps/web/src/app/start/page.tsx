@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { StartPageClient } from "./client";
 import { ENTRY_QUESTION, ENTRY_INTRO, DEFAULT_FUNNEL_CONFIG } from "@/lib/funnel-config";
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
 import { S1_YESNO } from "@/lib/funnel-s1-test";
+import { FSPLIT_COOKIE, isFunnelSplitOn, normalArmScript, pickArm, testFunnelUrl } from "@/lib/funnel-split";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -26,6 +29,16 @@ export default async function StartPage({
 }) {
   const step = typeof searchParams.step === "string" ? searchParams.step : null;
 
+  // Normal-vs-test split (lib/funnel-split.ts). Only fresh landings are
+  // split: a ?step= return always stays where it was.
+  let inSplit = false;
+  if (!step && (await isFunnelSplitOn())) {
+    const { arm } = pickArm(cookies().get(FSPLIT_COOKIE)?.value);
+    if (arm === "test") redirect(testFunnelUrl("/start", searchParams));
+    inSplit = true;
+  }
+  const armScript = inSplit ? <script dangerouslySetInnerHTML={{ __html: normalArmScript() }} /> : null;
+
   // If returning to a specific step (refresh, OAuth, Stripe), skip SSR — let client handle
   if (step) {
     return (
@@ -37,6 +50,7 @@ export default async function StartPage({
 
   return (
     <>
+      {armScript}
       <FunnelSsrEntry question={ENTRY_QUESTION} intro={ENTRY_INTRO} theme="light" totalSteps={DEFAULT_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8"]} />
 
       {/* Client component hydrates on top — hides SSR content and takes over */}

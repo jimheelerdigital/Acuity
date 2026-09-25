@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { StartBwkPageClient } from "./client";
 import { BWK_ENTRY_QUESTION, BWK_ENTRY_INTRO, BWK_FUNNEL_CONFIG } from "@/lib/funnel-config-bwk";
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
 import { S1_YESNO } from "@/lib/funnel-s1-test";
+import { FSPLIT_COOKIE, isFunnelSplitOn, normalArmScript, pickArm, testFunnelUrl } from "@/lib/funnel-split";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -31,6 +34,16 @@ export default async function StartBwkPage({
 }) {
   const step = typeof searchParams.step === "string" ? searchParams.step : null;
 
+  // Normal-vs-test split (lib/funnel-split.ts). Only fresh landings are
+  // split: a ?step= return always stays where it was.
+  let inSplit = false;
+  if (!step && (await isFunnelSplitOn())) {
+    const { arm } = pickArm(cookies().get(FSPLIT_COOKIE)?.value);
+    if (arm === "test") redirect(testFunnelUrl("/start-bwk", searchParams));
+    inSplit = true;
+  }
+  const armScript = inSplit ? <script dangerouslySetInnerHTML={{ __html: normalArmScript() }} /> : null;
+
   // If returning to a specific step (refresh, OAuth, Stripe), skip SSR — let client handle
   if (step) {
     return (
@@ -43,6 +56,7 @@ export default async function StartBwkPage({
 
   return (
     <>
+      {armScript}
       {bodyBg}
       <FunnelSsrEntry question={BWK_ENTRY_QUESTION} intro={BWK_ENTRY_INTRO} theme="dusk" totalSteps={BWK_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8-bwk"]} />
 

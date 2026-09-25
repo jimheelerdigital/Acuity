@@ -22,16 +22,17 @@
  * forgot-password email) so she can sign in to the app.
  */
 
+import { consumeTestArrival } from "@/lib/funnel-split-shared";
 import { MoodAvatar } from "@/components/mood-avatar";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
 import {
   Activity, ArrowRight, Baby, BatteryLow, Bell, Brain, Briefcase, CalendarCheck, CalendarClock,
-  CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, CloudRain, Compass,
+  CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, Compass,
   Eye, Feather, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
-  LineChart, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles,
-  Star, Sunrise, Target, TrendingDown, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
+  LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles,
+  Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
 } from "lucide-react";
 
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
@@ -75,7 +76,6 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "age:u35": User, "age:35": User, "age:45": User, "age:55": User,
   "plate:kids": Baby, "plate:parents": HeartHandshake, "plate:work": Briefcase, "plate:partner": Heart, "plate:house": Home, "plate:health": Activity,
   "pileup:morning": Sunrise, "pileup:car": Car, "pileup:quiet": Moon, "pileup:night": Hourglass, "pileup:allday": Repeat,
-  "offload:everyone": Users, "offload:tasks": ListTodo, "offload:worry": CloudRain, "offload:behind": TrendingDown, "offload:drain": BatteryLow,
   "talktype:talk": Mic, "talktype:type": Keyboard, "talktype:both": Layers,
   "notice:drains": BatteryLow, "notice:lifts": TrendingUp, "notice:habits": Target, "notice:putoff": Hourglass, "notice:mood": LineChart,
   "when:car": Car, "when:walk": Footprints, "when:quiet": Moon, "when:whenever": Zap,
@@ -84,7 +84,6 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "age:u25": User, "age:25": User,
   "plate:side": Rocket, "plate:training": Dumbbell, "plate:money": Wallet, "plate:family": Users,
   "pileup:drive": Car,
-  "offload:follow": Target, "offload:train": Dumbbell, "offload:money": Wallet, "offload:remember": ListTodo,
   "notice:fires": Flame,
   "when:truck": Truck, "when:gym": Dumbbell,
 };
@@ -223,6 +222,9 @@ export function FunnelV9({ brand = "ripple" }: { brand?: V9Brand }) {
       const { setAttributionCookie } = require("@/lib/attribution");
       setAttributionCookie();
     } catch {}
+    // Arrived from /start or /start-bwk through the normal-vs-test split:
+    // remember the arm and log it once (lib/funnel-split.ts).
+    if (consumeTestArrival()) track("funnel_split_arm", "test");
     const params = new URLSearchParams(window.location.search);
     try {
       fetch("/api/capi/pageview", {
@@ -428,6 +430,8 @@ function StepView(p: ViewProps) {
       return <SingleScreen {...p} step={step} />;
     case "multi":
       return <MultiScreen {...p} step={step} />;
+    case "week":
+      return <WeekScreen {...p} step={step} />;
     case "slider":
       return <SliderScreen {...p} step={step} />;
     case "statement":
@@ -694,6 +698,84 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
     </div>
   );
 }
+
+/**
+ * "What's on your list this week?" (2026-09-25, Keenan picked this from the
+ * engagement ideas). Tappable chips for everyday things; a counter shows how
+ * much she's holding as she taps. The picks come back on the loader
+ * ("Catching …") and as a "Your week, caught" list on the result. Mirror,
+ * not coach: the only reaction is "That's a lot to hold."
+ */
+function WeekScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "week" }> }) {
+  const picked = answers.multi[step.id] ?? [];
+  const toggle = (id: string) =>
+    setAnswers((a) => {
+      const cur = a.multi[step.id] ?? [];
+      const nextSel = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      return { ...a, multi: { ...a.multi, [step.id]: nextSel } };
+    });
+  const n = picked.length;
+  const fill = Math.min(1, n / 8);
+  return (
+    <div className="enter">
+      <Heading title={step.title} sub={step.sub} />
+      <div className="flex flex-wrap justify-center gap-2">
+        {step.items.map((it, i) => {
+          const sel = picked.includes(it.id);
+          return (
+            <button
+              key={it.id}
+              onClick={() => {
+                haptic();
+                toggle(it.id);
+              }}
+              aria-pressed={sel}
+              style={{ animationDelay: `${i * 35}ms` }}
+              className={`up flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[15px] font-medium transition active:scale-[0.96] ${sel ? "grad text-white shadow-[0_6px_16px_-8px_var(--acuity-primary)]" : "card"}`}
+            >
+              {sel && <Check className="pop h-4 w-4" strokeWidth={3} />}
+              {it.chip}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-7 card rounded-3xl px-5 py-4" aria-live="polite">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[15px] font-semibold">
+            <span className="tabular-nums">{n}</span> {n === 1 ? "thing" : "things"} you&rsquo;re holding
+          </p>
+          {n >= 5 && <p className="pop text-[13px] italic text-acuity-text-sec">That&rsquo;s a lot to hold.</p>}
+        </div>
+        <div className="mt-3 h-2.5 rounded-full soft overflow-hidden">
+          <div className="h-full rounded-full grad transition-[width] duration-300 ease-out" style={{ width: `${Math.max(n ? 6 : 0, fill * 100)}%` }} />
+        </div>
+      </div>
+
+      <BottomBar>
+        <PrimaryButton
+          disabled={n === 0}
+          onClick={() => {
+            track(`funnel_v9_${step.id}_answered`, picked.join(","));
+            next();
+          }}
+        >
+          {n === 0 ? "Tap at least one" : `Continue with ${n}`}
+        </PrimaryButton>
+      </BottomBar>
+    </div>
+  );
+}
+
+/** The picked week items, in step order. */
+function weekPicks(C: V9Config, answers: Answers) {
+  const step = C.steps.find((s): s is Extract<V9Step, { kind: "week" }> => s.kind === "week");
+  if (!step) return [];
+  const picked = answers.multi[step.id] ?? [];
+  return step.items.filter((it) => picked.includes(it.id));
+}
+const weekTasks = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.task);
+const weekChips = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.chip);
 
 const statementSteps = (C: V9Config) => C.steps.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
 
@@ -1067,11 +1149,20 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
   const lines = useMemo(
     () => [
       { icon: Users, text: `Reading your answers about ${plateLabel(answers.multi.plate ?? [], C.plateLabels)}` },
-      { icon: Layers, text: "Weighing what slips through the cracks" },
+      (() => {
+        const chips = weekChips(C, answers);
+        if (chips.length === 0) return { icon: Layers, text: "Weighing what slips through the cracks" };
+        // Lowercase mid-sentence, except possessive names ("Mom’s appointment").
+        const lc = (c: string) => (/^\S+[’']s\b/.test(c) ? c : c.charAt(0).toLowerCase() + c.slice(1));
+        const shown = chips.slice(0, 2).map(lc);
+        const rest = chips.length - shown.length;
+        const list = rest > 0 ? `${shown.join(", ")} and ${rest} more` : shown.join(" and ");
+        return { icon: ListChecks, text: `Catching ${chips.length} ${chips.length === 1 ? "thing" : "things"}: ${list}` };
+      })(),
       { icon: Brain, text: "Matching you to how Ripple sorts a debrief" },
       { icon: Sparkles, text: firstName ? `Building ${firstName}'s first week` : "Building your first week" },
     ],
-    [answers.multi.plate, firstName]
+    [answers.multi.plate, answers.multi.week, firstName]
   );
   const [pct, setPct] = useState(0);
   useEffect(() => {
@@ -1316,6 +1407,25 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
               </p>
             ))}
           </div>
+        </div>
+      )}
+
+      {weekTasks(C, answers).length > 0 && (
+        <div className="mt-4 card rounded-3xl p-5">
+          <p className="text-[13px] font-bold">Your week, caught</p>
+          <p className="mt-1 text-[13px] leading-snug text-acuity-text-sec">
+            Say these out loud once and Ripple turns them into a list like this.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {weekTasks(C, answers).map((t, i) => (
+              <li key={t} className="up flex items-center gap-2.5 text-[15px] leading-snug" style={{ animationDelay: `${300 + i * 90}ms` }}>
+                <span className="h-5 w-5 shrink-0 rounded-md grad flex items-center justify-center">
+                  <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                </span>
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

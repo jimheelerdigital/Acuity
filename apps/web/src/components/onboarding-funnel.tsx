@@ -292,6 +292,15 @@ export function OnboardingFunnel() {
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
   const track = useFunnelTracker(cfg.flowVersion);
 
+  // Normal arm of the normal-vs-test split: the server's inline script sets
+  // window.__fsplit (lib/funnel-split.ts). Logged once per page load.
+  useEffect(() => {
+    if ((window as unknown as { __fsplit?: string }).__fsplit === "normal") {
+      track("funnel_split_arm", { value: "normal" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Wrap setStep to persist state + push browser history on every transition.
   // This makes both refresh AND browser-back work correctly.
   const isPopstateNav = useRef(false);
