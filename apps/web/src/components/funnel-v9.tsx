@@ -22,6 +22,7 @@
  * forgot-password email) so she can sign in to the app.
  */
 
+import { loadStripeJs } from "@/lib/stripe-embedded";
 import { consumeTestArrival } from "@/lib/funnel-split-shared";
 import { MoodAvatar } from "@/components/mood-avatar";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -30,8 +31,8 @@ import { signIn } from "next-auth/react";
 import {
   Activity, ArrowRight, Baby, BatteryLow, Bell, Brain, Briefcase, CalendarCheck, CalendarClock,
   CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, Compass,
-  Eye, Feather, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
-  LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles,
+  Eye, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
+  LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles, Sprout, Waves,
   Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
 } from "lucide-react";
 
@@ -114,29 +115,6 @@ function randomPassword(): string {
   return `Rp-${Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("")}-9a`;
 }
 
-declare global {
-  interface Window {
-    Stripe?: (pk: string) => {
-      initEmbeddedCheckout: (opts: {
-        fetchClientSecret: () => Promise<string>;
-      }) => Promise<{ mount: (el: HTMLElement | string) => void; destroy: () => void }>;
-    };
-  }
-}
-
-function loadStripeJs(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (window.Stripe) return resolve(true);
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://js.stripe.com/v3"]');
-    const s = existing ?? document.createElement("script");
-    s.src = "https://js.stripe.com/v3";
-    s.async = true;
-    s.onload = () => resolve(!!window.Stripe);
-    s.onerror = () => resolve(false);
-    if (!existing) document.head.appendChild(s);
-    setTimeout(() => resolve(!!window.Stripe), 8000);
-  });
-}
 
 /** The brand config for the page (Ripple /start-test or BWK /start-test-bwk). */
 const V9Ctx = createContext<V9Config>(RIPPLE_V9);
@@ -980,8 +958,9 @@ function ReassureScreen({ next }: ViewProps) {
           </span>
         ))}
         <div className="absolute left-1/2 bottom-2 -translate-x-1/2 w-[190px] rounded-3xl card px-4 py-3 flex items-center gap-2.5">
+          {/* The Ripple mark in white on the brand square, like the app icon. */}
           <span className="h-9 w-9 rounded-xl grad flex items-center justify-center">
-            <Feather className="h-4 w-4 text-white" />
+            <img src="/ripple-mark-coral-t.png" alt="" width={22} height={22} className="h-[22px] w-[22px]" style={{ filter: "brightness(0) invert(1)" }} />
           </span>
           <div className="text-left">
             <p className="text-[13px] font-bold">Ripple</p>
@@ -1490,6 +1469,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
 }
 
 function PlanScreen({ answers, firstName, next }: ViewProps) {
+  const C = useV9();
   const notice = answers.multi.notice ?? [];
   const noticeText: Record<string, string> = {
     drains: "what drains you",
@@ -1505,10 +1485,26 @@ function PlanScreen({ answers, firstName, next }: ViewProps) {
     { day: "Day 1", icon: ListTodo, title: "Your to-do list writes itself", text: `${talk} whatever's on your mind. Ripple pulls out the tasks.` },
     { day: "Day 3", icon: Target, title: "Habits track themselves", text: "The habits you mention start tracking on their own. Your mood gets a read after every debrief." },
     { day: "Day 7", icon: Eye, title: "You see your own pattern", text: day7 },
+    // Day 30 / 365 added 2026-09-25 (Keenan): the ripple effect, then the
+    // whole-life view. Describes what Ripple shows, not promised outcomes.
+    {
+      day: "Day 30",
+      icon: Waves,
+      title: "The ripple effect starts",
+      text: "A month of your own words adds up. Fewer things slip, the habits that stuck are clear, and you can see which weeks wear you down.",
+    },
+    {
+      day: "Day 365",
+      icon: Sprout,
+      title: "It spreads through your whole life",
+      text: C.brand === "bwk"
+        ? "A year of debriefs across work, training, money and family, all in your Life Matrix. You can see how far you've come, in your own words."
+        : "A year of debriefs across work, family, health and money, all in your Life Matrix. You can see how far you've come, in your own words.",
+    },
   ];
   return (
     <div className="enter">
-      <Heading eyebrow="Built from your answers" title={firstName ? `${firstName}'s first week with Ripple` : "Your first week with Ripple"} />
+      <Heading eyebrow="Built from your answers" title={firstName ? `${firstName}'s year with Ripple` : "Your year with Ripple"} />
       <ol className="relative">
         <span className="absolute left-[27px] top-4 bottom-4 w-0.5 soft" />
         {rows.map((r, i) => {
