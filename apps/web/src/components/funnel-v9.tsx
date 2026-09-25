@@ -107,7 +107,6 @@ function haptic() {
 
 /** Small encouragement pills at checkpoints (engagement, per the redesign ask). */
 const MILESTONES: Record<string, string> = {
-  "st-remember": "Quick ones now. Tap what's true.",
   offload: "Halfway there.",
   talktype: "You're doing great. A few more.",
   name: "Almost done.",
@@ -157,6 +156,10 @@ const CSS = `
 @keyframes v9-ripple { 0% { transform: scale(.55); opacity: .55; } 100% { transform: scale(1.6); opacity: 0; } }
 @keyframes v9-float { 0% { transform: translate(var(--x0), -30px) rotate(var(--r)); opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(0, 112px) rotate(0deg) scale(.6); opacity: 0; } }
 @keyframes v9-bar { from { width: 0; } }
+@keyframes v9-card-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
+.v9 .card-in { animation: v9-card-in .45s cubic-bezier(.2,.8,.2,1) both; }
+.v9 .fly-yes { transform: translateX(115%) rotate(10deg); opacity: 0; transition: transform .38s ease-in, opacity .38s ease-in; }
+.v9 .fly-no { transform: translateX(-115%) rotate(-10deg); opacity: 0; transition: transform .38s ease-in, opacity .38s ease-in; }
 @keyframes v9-caret { 50% { opacity: 0; } }
 .v9 .enter { animation: v9-in .38s cubic-bezier(.2,.8,.2,1) both; }
 .v9 .up { animation: v9-up .45s cubic-bezier(.2,.8,.2,1) both; }
@@ -334,7 +337,7 @@ export function FunnelV9() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {(showProgress || canGoBack) && (
-        <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-md" style={{ background: "color-mix(in oklch, var(--acuity-bg) 82%, transparent)" }}>
+        <header className="fixed top-0 inset-x-0 z-50">
           <div className="max-w-lg mx-auto flex items-center gap-3 px-4 h-14">
             <button
               onClick={stepId === "checkout" ? () => go("paywall") : back}
@@ -350,14 +353,14 @@ export function FunnelV9() {
             ) : (
               <div className="flex-1" />
             )}
-            <div className="w-9 shrink-0 text-right text-[12px] font-semibold tabular-nums text-acuity-text-ter">
-              {showProgress ? `${Math.min(idx + 1, V9_PROGRESS_END)}/${V9_PROGRESS_END}` : ""}
-            </div>
+            <div className="w-9 shrink-0" />
           </div>
         </header>
       )}
 
-      <main className="max-w-lg mx-auto px-5 pt-20 pb-44">
+      {/* Screens with a fixed bottom CTA bar need room under the content;
+          tap-to-advance screens don't, so they can center in the viewport. */}
+      <main className={`max-w-lg mx-auto px-5 pt-16 ${["statement", "single", "loader", "checkout", "download"].includes(step.kind) ? "pb-8" : "pb-44"}`}>
         {MILESTONES[stepId] && (
           <div key={`m-${stepId}`} className="up -mt-1 mb-4 flex justify-center">
             <span className="flex items-center gap-1.5 rounded-full card px-3 py-1 text-[12px] font-semibold text-acuity-text-sec">
@@ -670,66 +673,75 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
 
 const STATEMENT_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
 
-/** One statement, two big buttons. Auto-advances on tap. */
+/**
+ * One statement as a big "thought" card, two stacked buttons. The card flies
+ * right on "That's me" and left on "Not really", then the next one arrives.
+ * Vertically centered so the screen never has a dead lower half.
+ */
 function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "statement" }> }) {
   const isHook = step.id === "hook";
-  const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
+  const [fly, setFly] = useState<"yes" | "no" | null>(null);
   const advancing = useRef(false);
   const answer = (v: "yes" | "no") => {
     if (advancing.current) return;
     advancing.current = true;
     haptic();
-    setPicked(v);
+    setFly(v);
     setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: v } }));
     track(`funnel_v9_${step.id.replace(/-/g, "_")}_answered`, v);
     if (isHook) track("funnel_entry_selected", v);
-    setTimeout(next, 300);
+    setTimeout(next, 380);
   };
   const pos = STATEMENT_STEPS.findIndex((s) => s.id === step.id);
+  const prev = answers.single[step.id];
   return (
-    <div className="enter">
-      {isHook && (
-        <div className="mb-6">
-          <RippleMark />
-          <p className="mt-5 text-center text-[15px] font-semibold text-acuity-text-sec text-balance">{V9_HOOK_LINE}</p>
+    <div className="flex min-h-[calc(100svh-6rem)] flex-col justify-center">
+      {isHook ? (
+        <div className="up mb-5 flex flex-col items-center text-center">
+          <div className="flex items-center gap-2">
+            <img src="/ripple-mark-coral-t.png" alt="" width={36} height={36} className="h-9 w-9" />
+            <span className="text-[24px] font-bold tracking-tight">ripple</span>
+          </div>
+          <p className="mt-2.5 max-w-[20rem] text-[14px] leading-snug text-acuity-text-sec text-balance">{V9_HOOK_LINE}</p>
         </div>
+      ) : (
+        <p className="up mb-3 text-center text-[13px] font-semibold tracking-wide text-acuity-primary">
+          Tap what&rsquo;s true &middot; {pos} of {STATEMENT_STEPS.length - 1}
+        </p>
       )}
-      <Heading
-        eyebrow={isHook ? undefined : `Quick one ${pos} of ${STATEMENT_STEPS.length - 1}`}
-        title={step.title ?? "Does this sound like you?"}
-      />
-      <figure className="card rounded-3xl px-6 py-7 text-center">
-        <Quote_ />
-        <blockquote className="mt-2 text-[21px] font-semibold leading-snug text-balance">{step.statement}</blockquote>
-      </figure>
-      <div className="mt-6 grid grid-cols-2 gap-3">
+      <h1 className="up mb-5 text-center text-[clamp(22px,6.6vw,27px)] font-bold leading-tight tracking-tight">{step.title ?? "Does this sound like you?"}</h1>
+
+      <div className={`card-in relative overflow-hidden rounded-[28px] card px-6 py-[clamp(20px,6vw,32px)] ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
+        <span className="absolute left-0 top-0 h-full w-1.5 grad" aria-hidden />
+        <img src="/ripple-mark-coral-t.png" alt="" aria-hidden className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 opacity-[0.07]" />
+        <p className="relative text-[clamp(19px,5.8vw,23px)] font-semibold leading-[1.3] tracking-tight text-balance">{step.statement}</p>
+      </div>
+
+      <div className="mt-5 space-y-1.5">
+        <button
+          onClick={() => answer("yes")}
+          className="w-full rounded-full grad py-4 text-[17px] font-semibold text-white transition active:scale-[0.98] flex items-center justify-center gap-2"
+          style={{ boxShadow: "0 10px 26px -8px var(--acuity-primary)" }}
+        >
+          {fly === "yes" || prev === "yes" ? <Check className="h-5 w-5" strokeWidth={3} /> : null}
+          Yes, that&rsquo;s me
+        </button>
         <button
           onClick={() => answer("no")}
-          className={`rounded-2xl py-4 text-[16px] font-semibold transition active:scale-[0.97] ${picked === "no" ? "card card-sel" : "card"}`}
+          className="w-full rounded-full py-3.5 text-[16px] font-semibold text-acuity-text-sec transition hover:text-acuity-text active:scale-[0.98]"
         >
           Not really
         </button>
-        <button
-          onClick={() => answer("yes")}
-          className={`rounded-2xl py-4 text-[16px] font-semibold text-white grad transition active:scale-[0.97] ${picked === "yes" ? "ring-4 ring-[var(--v9-ring)]" : ""}`}
-          style={{ boxShadow: "0 8px 22px -6px var(--acuity-primary)" }}
-        >
-          {picked === "yes" ? "\u2713 That\u2019s me" : "That\u2019s me"}
-        </button>
       </div>
+
       {isHook && (
-        <div className="mt-7">
+        <div className="up mt-4" style={{ animationDelay: "250ms" }}>
           <Stars />
-          <p className="mt-2 text-center text-[12px] text-acuity-text-ter">About 2 minutes. No card to see your results.</p>
+          <p className="mt-1.5 text-center text-[12px] text-acuity-text-ter">About 2 minutes. No card to see your results.</p>
         </div>
       )}
     </div>
   );
-}
-
-/** Decorative open-quote mark for statement cards. */
-function Quote_() {
-  return <span className="block text-[44px] leading-none font-serif grad-text select-none" aria-hidden>&ldquo;</span>;
 }
 
 const SLIDER_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "slider" }> => s.kind === "slider");

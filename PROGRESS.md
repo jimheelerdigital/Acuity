@@ -37,6 +37,17 @@
 
 ### Notes
 - Walked the full path locally (hook → … → email) with no errors.
+- **Visual pass (same day, per Keenan: "this just doesn't look good… get rid of the 1/24, keep the bar"):**
+  - The counter is removed on every screen. The progress bar stays, and the header no longer paints a band over the gradient.
+  - Statement screens:
+    - The real Ripple mark and wordmark (`/ripple-mark-coral-t.png`) on screen 1 instead of the generic orb.
+    - One label ("Tap what's true · n of 6") instead of a milestone pill, eyebrow and heading.
+    - The statement is a large left-aligned "thought" card with a coral edge and a faint mark watermark.
+    - Stacked buttons: full-width "Yes, that's me", with "Not really" as a quiet text button.
+    - The card flies right on yes and left on no.
+    - Vertically centered, with `clamp()` type so it fits the iPhone SE without scrolling.
+  - Screens without a fixed CTA bar drop the 11rem bottom padding.
+
 
 ## [2026-09-25] — Screen 1 split test: yes/no opener vs the 5-option list (/start + /start-bwk)
 
