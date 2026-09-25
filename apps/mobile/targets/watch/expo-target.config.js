@@ -28,7 +28,8 @@ module.exports = {
     // Coral accent — matches the app + widget. Color("AccentColor") in Swift.
     AccentColor: "#ED9672",
   },
-  entitlements: {
-    "com.apple.security.application-groups": ["group.com.heelerdigital.acuity"],
-  },
+  // No entitlements: slice 1 uses WatchConnectivity + UserDefaults.standard, not
+  // the App Group (App Groups don't bridge phone↔watch anyway). Adding the
+  // App Groups capability made EAS fail patching it on the watch bundle id.
+  // A future watch widget that needs on-watch shared storage can add it back.
 };
