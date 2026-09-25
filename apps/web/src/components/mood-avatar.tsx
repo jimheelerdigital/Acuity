@@ -209,17 +209,17 @@ function Cue({ mood }: { mood: Mood }) {
 export function MoodAvatar({ mood, dark = false, tone = "hue", size = 56 }: {
   mood: Mood;
   dark?: boolean;
-  /** "hue": each mood in its own color. "lux": the charcoal/cream/purple
-   *  theme (/start-test-bwk), same face and cue for every mood. */
-  tone?: "hue" | "lux";
+  /** "hue": each mood in its own color. "steel": the BWK test funnel
+   *  (gunmetal + cobalt, amber cue), same palette for every mood. */
+  tone?: "hue" | "steel";
   size?: number;
 }) {
   const h = HUE[mood];
-  const lux = tone === "lux";
-  const disc = lux ? "oklch(0.265 0.008 60)" : dark ? `oklch(0.34 0.07 ${h})` : `oklch(0.93 0.055 ${h})`;
-  const ring = lux ? "oklch(0.62 0.13 300 / 0.5)" : dark ? `oklch(1 0 0 / 0.10)` : `oklch(0.86 0.07 ${h})`;
-  const ink = lux ? "oklch(0.95 0.022 85)" : dark ? `oklch(0.93 0.03 ${h})` : `oklch(0.36 0.07 ${h})`;
-  const cue = lux ? "oklch(0.72 0.12 300)" : dark ? `oklch(0.78 0.12 ${h})` : `oklch(0.62 0.14 ${h})`;
+  const steel = tone === "steel";
+  const disc = steel ? "oklch(0.3 0.03 252)" : dark ? `oklch(0.34 0.07 ${h})` : `oklch(0.93 0.055 ${h})`;
+  const ring = steel ? "oklch(0.6 0.17 256 / 0.7)" : dark ? `oklch(1 0 0 / 0.10)` : `oklch(0.86 0.07 ${h})`;
+  const ink = steel ? "oklch(0.97 0.004 250)" : dark ? `oklch(0.93 0.03 ${h})` : `oklch(0.36 0.07 ${h})`;
+  const cue = steel ? "oklch(0.8 0.15 75)" : dark ? `oklch(0.78 0.12 ${h})` : `oklch(0.62 0.14 ${h})`;
   return (
     <svg
       width={size}
@@ -233,7 +233,7 @@ export function MoodAvatar({ mood, dark = false, tone = "hue", size = 56 }: {
       strokeLinejoin="round"
     >
       <title>{LABEL[mood]}</title>
-      <circle cx={32} cy={32} r={31} fill={disc} stroke={ring} strokeWidth={lux ? 1.2 : 1.5} />
+      <circle cx={32} cy={32} r={31} fill={disc} stroke={ring} strokeWidth={1.5} />
       {/* Features scaled up around the lower-middle so they read at 56-60px */}
       <g stroke={ink} color={ink} transform="translate(32 41) scale(1.25) translate(-32 -41)">
         <Brows mood={mood} />

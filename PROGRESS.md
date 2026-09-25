@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-09-25] — /start-test-bwk redone on the regular /start look in steel and cobalt
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The charcoal/cream/serif version of the men's test funnel didn't land. It now follows the look of the regular /start funnel: a bold promise line with the App Store stars at the top, a big "Does this sound like you?", the statement in bold white type on a steel card, a solid blue "Yes, that's me" button and an outlined "Not really" button. The colors are built for men: gunmetal/steel backgrounds, crisp white text, one cobalt blue accent and amber stars. The feeling face is steel with a blue ring and an amber cue. No logo. Every screen in the men's test funnel picks this up. The women's /start-test and the normal /start-bwk are unchanged.
+
+### Technical changes (for Jimmy)
+- `components/funnel-v9.tsx`:
+  - The `.v9[data-funnel-theme="dusk"]` tokens are now steel (hue 250) surfaces and near-white text tokens
+  - Cobalt primary oklch(0.6 0.17 256) is flat: `--acuity-grad-primary` is a solid fill; a faint cobalt top glow; stars keep the global amber `--acuity-warn`
+  - `.lux-serif` / `.lux-caps` and the dusk card inset were removed
+  - `StatementScreen` dusk branch mirrors /start:
+    - hook: `hookLine` as an 18px bold promise with stars, "on the App Store · about 2 minutes"
+    - h1 at clamp(26px, 7.4vw, 30px)
+    - card: 56px steel avatar and a bold sans quote
+    - outlined "Not really", 12px gap, a smaller button glow
+    - no bottom stars block
+  - `Heading` is back to sans for every theme
+- `components/mood-avatar.tsx`: `tone: "hue" | "steel"` (replaces `"lux"`). Steel is a slate disc with a cobalt ring, white features and an amber cue
+- `app/start-test-bwk/page.tsx`: the Cormorant Garamond load was removed; the body background is steel
+
+### Manual steps needed
+- [ ] Say "push it" (Keenan)
+
+### Notes
+- The luxury serif direction was rejected by Keenan ("still just looks absolutely terrible"). For BWK, follow the regular /start structure (bold sans, solid button, outlined secondary) and masculine colors, not editorial styling
+- Cobalt + amber is the design system's "cobalt" accent preset (§2.1), so it stays on-system
+- Checked at 390×800 (hook, statement, week chips) and 760×780
+
+---
+
 ## [2026-09-25] — /start-test-bwk restyled: charcoal, cream, purple, white, with a serif quote and no logo
 
 **Requested by:** Keenan
