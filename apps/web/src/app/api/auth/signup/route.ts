@@ -243,6 +243,7 @@ export async function POST(req: NextRequest) {
     sendConversionEvent({
       eventName: "CompleteRegistration",
       eventId,
+      userId,
       eventSourceUrl: `${req.nextUrl.origin}/auth/signup`,
       userData: {
         email,

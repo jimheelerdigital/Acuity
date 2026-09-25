@@ -58,6 +58,8 @@ interface UserData {
 interface ConversionEvent {
   eventName: string;
   eventId: string;
+  /** Our user, when known — used only to log Meta's response (below). */
+  userId?: string;
   eventTime?: number;
   eventSourceUrl?: string;
   actionSource?: "website" | "app" | "email" | "phone_call" | "chat" | "physical_store" | "system_generated" | "other";
@@ -118,6 +120,7 @@ export async function sendConversionEvent(event: ConversionEvent): Promise<void>
     });
 
     const responseBody = await res.text();
+    await recordCapiOutcome(event, res.ok, `${res.status} ${responseBody.slice(0, 200)}`);
     if (!res.ok) {
       console.error(`[meta-capi] ${event.eventName} FAILED (${res.status}):`, responseBody);
       try {
@@ -132,6 +135,7 @@ export async function sendConversionEvent(event: ConversionEvent): Promise<void>
     }
   } catch (err) {
     console.error(`[meta-capi] ${event.eventName} NETWORK ERROR:`, err);
+    await recordCapiOutcome(event, false, `network ${err instanceof Error ? err.message.slice(0, 180) : "error"}`);
     try {
       const Sentry = await import("@sentry/nextjs");
       Sentry.captureException(err, {
@@ -169,4 +173,27 @@ export function extractFbCookies(cookieHeader: string | null): {
     fbp: cookies._fbp || undefined,
     fbc: cookies._fbc || undefined,
   };
+}
+
+
+/**
+ * Record Meta's answer for every conversion event (2026-09-25). Vercel logs
+ * aren't reachable from ops scripts, so "did Meta accept the signup?" had no
+ * answer. Rows land in OnboardingEvent as meta_capi_<event>_ok|failed with
+ * the HTTP status + response body. PageView is skipped (volume).
+ */
+async function recordCapiOutcome(event: ConversionEvent, ok: boolean, detail: string): Promise<void> {
+  if (event.eventName === "PageView") return;
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    await prisma.onboardingEvent.create({
+      data: {
+        userId: event.userId ?? null,
+        event: `meta_capi_${event.eventName.toLowerCase()}_${ok ? "ok" : "failed"}`,
+        value: `${event.eventId} | ${detail}`.slice(0, 500),
+      },
+    });
+  } catch {
+    // Logging must never break the conversion call.
+  }
 }

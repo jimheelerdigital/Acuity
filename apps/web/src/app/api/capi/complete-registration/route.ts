@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
   sendConversionEvent({
     eventName: "CompleteRegistration",
     eventId,
+    userId: session.user.id,
     eventSourceUrl: "https://goripple.io/start",
     userData: {
       email: user.email ?? undefined,

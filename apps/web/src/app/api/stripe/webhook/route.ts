@@ -556,12 +556,24 @@ export async function POST(req: NextRequest) {
         const { planValueDollars } = await import("@/lib/pricing");
         const purchaseValue = planValueDollars(interval);
         const capiEventId = generateEventId("Purchase");
+        // The ad click id (fbclid) from the buyer's funnel session. Without
+        // it Meta can only match the purchase by hashed email, which often
+        // fails to attribute it to the ad (2026-09-25: a paid BWK trial
+        // showed no result in Ads Manager).
+        const { prisma: capiPrisma } = await import("@/lib/prisma");
+        const clickRow = await capiPrisma.onboardingEvent.findFirst({
+          where: { userId, fbclid: { not: null } },
+          orderBy: { createdAt: "desc" },
+          select: { fbclid: true },
+        });
         sendConversionEvent({
           eventName: "Purchase",
           eventId: capiEventId,
+          userId,
           eventSourceUrl: "https://goripple.io/start",
           userData: {
             email: user.email ?? undefined,
+            fbclid: clickRow?.fbclid ?? undefined,
           },
           customData: {
             currency: "USD",
