@@ -53,6 +53,11 @@ This also fixes a Meta tracking gap. When a card trial started, the event sent t
 - [ ] Phone test inside the FB/IG in-app browsers: does Apple Pay / Google Pay appear in embedded checkout? (Keenan)
 
 ### Notes
+- **2026-09-25 redesign (per Keenan, "not cohesive… make it more intuitive, interactive, creative"):**
+  - Screens: centered /start-style headings, icon answer cards with a pop check, and a 2-column icon grid for long multi-selects.
+  - Interactions: a draggable slider that lights up the statement she leans toward, an animated "You say it. Ripple catches it." demo (typewriter, then tasks she can tick off, then mood, then pattern), and a progress-ring loader.
+  - Result and paywall: a blurred locked-result teaser at the email gate, a gradient result card plus animated bars of her own slider answers, a Headway-style horizontal trial timeline and Pro feature list on the paywall, and confetti on success.
+  - Gotcha: the slide-in transform animation made the fixed CTA bar position relative to the screen, so it floated mid-page over inputs. BottomBar is now portaled to document.body.
 - The research report's verdict: the losses are at screen 1 and at the account gate, not in the quiz. The real-demo idea is unproven, so it stays out of v9 and is a later A/B arm.
 - The paywall defaults to yearly per Keenan (2026-09-25). This overrides the positioning doc's "never lead with annual", for /start-test only.
 - Local dev shows legacy prices ($4.99/$39.99) because NEXT_PUBLIC_NEW_PRICING_ENABLED is only set in Vercel. Prod shows $9.99/$89.99.
