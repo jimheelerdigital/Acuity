@@ -1286,24 +1286,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           bucket === "discipline-real"
         ? "men"
         : "women";
-    // Lanes whose items carry a "Name." header (discipline tests,
-    // protocol steps, prices, claims). NO numbers on the header
-    // (2026-09-08, per Keenan: he curates each post by hand and
-    // sometimes omits a slide or two — "1-7" numbering breaks the
-    // moment one is dropped). Memento lanes carry no header — the
-    // numbers ARE the content.
-    const named = specLane
-      ? // Reddit solve posts (2026-09-19) always carry a step-name
-        // header regardless of the lane spec's `named` flag — the
-        // solve format IS "Step name." + exact instructions. (The
-        // renderer drops an empty name, so the no-digest fallback to
-        // the headerless base theme still renders cleanly.)
-        specLane.spec.named || specLane.spec.redditTheme === true
-      : bucket === "moody-men" ||
-        bucket === "watching" ||
-        bucket === "protocol" ||
-        // discipline-real: the "Name." IS the myth being punctured.
-        bucket === "discipline-real";
+    // EVERY moody-family lane's items carry a header (2026-09-25, per
+    // Keenan: "the newest text with the main text, subheader
+    // italicized, and then lower text is the best way to have it...
+    // change to ALL posts across both ripple and bwk"). Memento,
+    // questions and headerless spec lanes (muse) now write a header +
+    // italic hook + body like everything else, so the renderer's
+    // headed layout fires on every item slide. NO numbers on the header
+    // (2026-09-08: Keenan curates by hand and drops slides). The
+    // renderer drops an empty name, so a model slip still renders.
+    const named = true;
     // Every lane's item slides render in the same ITEM style
     // (2026-08-30, per Keenan: "get rid of the italicized ripple
     // characters. make everything consistent" — the Playfair QUOTE

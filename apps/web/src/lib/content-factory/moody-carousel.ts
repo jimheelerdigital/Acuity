@@ -1019,7 +1019,8 @@ export function buildMoodyCaption(audience: MoodyAudience, slug: string): string
 // "memento" targets women 40-50 (Ripple), "memento-men" targets young
 // men (BWK). Same skeleton: cover + slides of sobering time-math
 // ("You'll see your parents about 15 more times."), each landing on a
-// short command. NO "N. Name." headers — the numbers ARE the content.
+// short command. 2026-09-25: now headed like every lane — the header
+// names what is counted, the number is the italic hook.
 // 2026-09-01: "memento" (women) REVIVED into Ripple ("add the 'do the
 // math' / less time than you think back to ripple... add memento mori
 // posts back"). 2026-09-03: pinned to the DARK scheme with dusk-coast
@@ -1043,20 +1044,20 @@ AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it
 
 ${MEMENTO_WOMEN_SCENES[scheme]}${scheme === "dark" ? `\n\n${MEMENTO_COVER_RULE}` : ""}
 
-FORMAT — each slide reads like this (match the rhythm):
-"At 45, you have about 1,700 weekends left. On average.
-
-That's the whole number. Not this year's.
-
-Stop giving them away."
+FORMAT — every slide is a tight three-part build rendered as: bold HEADER, one italic HOOK line, short BODY. Match this shape exactly:
+name: "Weekends Left"
+lines[0] (hook): "At 45, you have about 1,700 weekends left. On average."
+lines[1] (body): "That's the whole number, not this year's. Stop giving them away."
 
 RULES:
 - "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides (the shape: an imperative about counting, time, or looking honestly at the numbers, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix spent titles; if a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
-- The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
-  - First line: ONE life-scale number — anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
-  - Optional middle line: the one-sentence math or truth behind it.
-  - Last line: a 2-5 word command ("Call them tonight.", "Stop giving them away.").
-- Vary the subject across the slides: weekends left, aging parents, summers or holidays with the kids, healthy years, old friendships, hours lost to the phone. Never two slides on the same subject. Vary the rhythm too — let one slide be just the number and the command, no middle line.
+- The request tells you EXACTLY how many items to write. Each item:
+  - "name": the HEADER — what is being counted, in Title Case, 2-4 words, NO trailing period ("Weekends Left", "Visits With Mom", "Summers at Home").
+  - "lines": EXACTLY 2 entries.
+    - lines[0]: the HOOK — ONE life-scale number, anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). It renders in italics under the header. GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
+    - lines[1]: the BODY — the one-sentence truth behind the number (optional), ending on a 2-5 word command ("Call them tonight.", "Stop giving them away.").
+- HARD LIMIT: each slide's hook + body totals UNDER 30 words.
+- Vary the subject across the slides: weekends left, aging parents, summers or holidays with the kids, healthy years, old friendships, hours lost to the phone. Never two slides on the same subject.
 - Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
 - US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Naming death in the slides is allowed ("before they're gone", "until you die") — but never on the cover.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
@@ -1066,7 +1067,7 @@ OUTPUT (strict JSON, no markdown):
   "title": "...",
   "coverScene": "...",
   "items": [
-    { "lines": ["...", "...", "..."], "scene": "..." }
+    { "name": "...", "lines": ["hook", "body"], "scene": "..." }
   ]
 }`;
 
@@ -1077,20 +1078,20 @@ VOICE: calm command energy. Short declarative sentences. Direct second person. A
 
 SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion crossing black dunes at dusk, a stag in blowing snow; the whole animal kingdom, never a recent post's animal; HYPER-REAL weather only — natural light a wildlife photographer could capture, NEVER lightning bolts or painted-on skies), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL armor, seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS — a viking on a windswept grey beach with longships behind, a samurai on a misty bamboo path in rain, a knight leading his horse up a snowy mountain trail, a spartan on sun-bleached coastal rocks; each warrior type gets ITS OWN world, never one generic snowfield, NEVER standing directly on ice or a frozen lake; DOING something powerful — striding into the weather, arms flexed in triumph, sword driven into the earth — a pose that reads in silhouette and radiates strength and drive; hyper-real like a prestige-film still, wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
 
-FORMAT — each slide reads like this (match the rhythm):
-"At 30, you have about 2,500 weekends left. On average.
-
-That number only goes down.
-
-Stop wasting them."
+FORMAT — every slide is a tight three-part build rendered as: bold HEADER, one italic HOOK line, short BODY. Match this shape exactly:
+name: "Weekends Left"
+lines[0] (hook): "At 30, you have about 2,500 weekends left. On average."
+lines[1] (body): "That number only goes down. Stop wasting them."
 
 RULES:
 - "title": the cover text. 2-5 words, works in ALL CAPS, a direct COMMAND to him about time running out (the shape: a strong verb telling him what to do with the time he has left, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). No number in the title.
-- The request tells you EXACTLY how many items to write. Each item's "lines": 2-3 short paragraphs.
-  - First line: ONE life-scale number — anchored to his age, measured against an average lifespan or an ending that is coming ("At 30, you have about 2,500 weekends left. On average.", "You'll see your parents about 20 more times before they're gone."). GO BIG: the number must reframe his whole remaining life, not just this month. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
-  - Optional middle line: the one-sentence math or truth behind it.
-  - Last line: a 2-5 word command ("Stop wasting them.", "Start tonight.").
-- Vary the subject across the slides: weekends left until the end, parents, peak physical years, healthy decades, hours lost to the scroll, the window to build something. Never two slides on the same subject. Vary the rhythm too — let one slide be just the number and the command, no middle line.
+- The request tells you EXACTLY how many items to write. Each item:
+  - "name": the HEADER — what is being counted, in Title Case, 2-4 words, NO trailing period ("Weekends Left", "Peak Years", "The Build Window").
+  - "lines": EXACTLY 2 entries.
+    - lines[0]: the HOOK — ONE life-scale number, anchored to his age, measured against an average lifespan or an ending that is coming ("At 30, you have about 2,500 weekends left. On average.", "You'll see your parents about 20 more times before they're gone."). It renders in italics under the header. GO BIG: the number must reframe his whole remaining life, not just this month. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
+    - lines[1]: the BODY — the one-sentence truth behind the number (optional), ending on a 2-5 word command ("Stop wasting them.", "Start tonight.").
+- HARD LIMIT: each slide's hook + body totals UNDER 30 words.
+- Vary the subject across the slides: weekends left until the end, parents, peak physical years, healthy decades, hours lost to the scroll, the window to build something. Never two slides on the same subject.
 - Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
 - US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Naming death in the slides is allowed ("until you die", "before they're gone") — but never on the cover.
 - "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
@@ -1100,7 +1101,7 @@ OUTPUT (strict JSON, no markdown):
   "title": "...",
   "coverScene": "...",
   "items": [
-    { "lines": ["...", "...", "..."], "scene": "..." }
+    { "name": "...", "lines": ["hook", "body"], "scene": "..." }
   ]
 }`;
 
@@ -1127,7 +1128,7 @@ export async function generateMementoTopic(
       : buildMementoWomenSystemPrompt(scheme),
     user: `Write one new memento mori life-math post with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: men ? "memento-men" : "memento",
-    requireName: false,
+    requireName: true,
     minLines: 2,
     minItems: men ? 4 : 3,
     maxItems: itemCount,
@@ -1176,7 +1177,11 @@ ${rollWomenCoverRule()}
 
 RULES:
 - "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS (the shape: an instruction for HOW to face the questions, often ending "...", in new words each post; "READ THESE SLOWLY", "YOU ALREADY KNOW" and "WHOSE LIFE IS THIS" are spent, never reuse them or any recent title). Not itself a question. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must clearly set up questions to answer. Do NOT stitch together or remix spent titles; "DON'T LIE NOW" is the kind of garbled title that gets a post killed — if a title reads odd or random without the slides, it is WRONG — write a different one.
-- The request tells you EXACTLY how many items to write. Each item's "lines": exactly ONE line — the question. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise.
+- The request tells you EXACTLY how many items to write. Each slide renders as: bold HEADER, one italic HOOK line, short BODY. Each item:
+  - "name": the HEADER — the nerve the question presses on, named in Title Case, 2-4 words, NO trailing period ("The Waiting Body", "Unsaid Things", "Who Notices").
+  - "lines": EXACTLY 2 entries.
+    - lines[0]: the HOOK — the question itself. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise. It renders in italics.
+    - lines[1]: the BODY — ONE short line (4-12 words) that presses the question closer without answering it or advising ("Not the answer you'd give them. Yours.", "Count the days, not the reasons."). Never a command to fix anything.
 - Each question hits a DIFFERENT nerve: identity, resentment, time, what she's postponing, what she'd never admit. Never two questions on the same nerve.
 - The questions must be answerable only by the reader — never rhetorical, never yes-obvious.
 - US English. No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI.
@@ -1187,7 +1192,7 @@ OUTPUT (strict JSON, no markdown):
   "title": "...",
   "coverScene": "...",
   "items": [
-    { "lines": ["...?"], "scene": "..." }
+    { "name": "...", "lines": ["...?", "..."], "scene": "..." }
   ]
 }`;
 
@@ -1204,8 +1209,8 @@ export async function generateQuestionsTopic(
     system: buildQuestionsSystemPrompt(scheme),
     user: `Write one new hard-questions post with exactly ${itemCount} questions.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: "questions",
-    requireName: false,
-    minLines: 1,
+    requireName: true,
+    minLines: 2,
     minItems: 4,
     maxItems: 6,
     brand: "ripple",
@@ -3449,8 +3454,10 @@ export async function generateSpecTopic(
     }),
     user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${mandate}${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: laneKey,
-    requireName: spec.named,
-    minLines: spec.named ? 2 : 1,
+    // Every lane is headed (2026-09-25, per Keenan: header + italic
+    // hook + body on ALL posts) — the spec's `named` flag is legacy.
+    requireName: true,
+    minLines: 2,
     minItems: Math.min(lo, 4),
     maxItems: itemCount,
     // Ambient pulse only for ordinary spec lanes — a mandated lane
