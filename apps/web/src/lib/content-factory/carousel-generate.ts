@@ -433,6 +433,11 @@ export async function generateImage(
   slot: ImageSlot = "cover"
 ): Promise<Buffer> {
   const cover = slot === "cover";
+  // Covers get one long attempt (2026-09-25): a "high" 1024x1792 cover of
+  // a complex scene (the fantasy-men dragons) routinely runs past 90s, so
+  // the shared 90s x2 budget timed out twice and killed the step. 170s,
+  // no SDK retry, keeps one cover inside the 300s function cap; Inngest's
+  // step retry is the second chance.
   const response = await openai().images.generate({
     // Top quality is for the COVER only on social posts (2026-09-24, per
     // Keenan: "image quality being top quality is ONLY for adlab, not for
@@ -446,7 +451,7 @@ export async function generateImage(
     n: 1,
     size: cover ? "1024x1792" : "1024x1536",
     quality: cover ? "high" : "medium",
-  });
+  }, cover ? { timeout: 170_000, maxRetries: 0 } : undefined);
 
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("image generation returned no image data");
@@ -578,7 +583,9 @@ export async function generateCheckedMoodyImage(
   });
   if (verdict.ok) return { ...first, qc: verdict.reason };
   console.warn(`[carousel] Image failed quality check (${verdict.reason}) — regenerating once`);
-  if (Date.now() - started > 120_000) {
+  // A cover's regen can take up to 170s by itself, so it only happens
+  // when the first pass was quick.
+  if (Date.now() - started > (slot === "cover" ? 90_000 : 120_000)) {
     return { ...first, qc: `failed, no time to retry: ${verdict.reason}` };
   }
   try {

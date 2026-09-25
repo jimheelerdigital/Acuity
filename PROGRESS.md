@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-25] — BWK videos now post to Facebook; fantasy lane stops failing
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Post BWK to Facebook as the Page and stop fantasy covers timing out")
+
+### In plain English (for Keenan)
+BWK posts had never made it to the BWK Facebook page. Every attempt was rejected because we were posting as a person instead of as the page. They now post as the page. The dragon/fantasy lane was also silently failing most nights: its cover pictures take longer to make than the time we allowed, so the post was dropped. Covers now get enough time.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/social-publish.ts`: new `fbPageToken(account)`.
+  - It exchanges the account token via `GET /{pageId}?fields=access_token` for the Page token, caches it, and falls back to the original token if the lookup fails.
+  - Used by `publishFbPhotoPost`, `publishFbReel` and `publishFbVideo`.
+- `apps/web/src/lib/content-factory/carousel-generate.ts`: `generateImage` gives covers one 170s attempt (`maxRetries: 0`), up from 90s x2. The cover quality-regen cutoff drops to 90s.
+- `apps/web/src/lib/content-factory/moody-carousel.ts`: `checkMoodyImageQuality` no longer fails a dragon scene just for being fantasy.
+
+### Manual steps needed
+- [ ] After deploy: re-queue the 5 failed/pending BWK Facebook SocialPublish rows from 2026-09-25 (Claude Code).
+- [ ] If BWK Facebook still fails after deploy: the account behind META_BWK_ACCESS_TOKEN needs the pages_manage_posts permission and admin access on the Build with Key page (Keenan).
+
+### Notes
+- Errors seen in SocialPublish:
+  - "(#200) Unpublished posts must be posted to a page as the page itself"
+  - "(#100) No permission to publish the video"
+  
+  Ripple works because IG_ACCESS_TOKEN is already a Page token.
+- The fantasy-men cover timings: the 08:00 UTC run never produced a cover, and the 20:10 manual run took 8 min on the cover step (one step timeout) before posting "RIDE INTO THE STORM." A local cover test took 96s, over the old 90s cap.
+- No Inngest keys locally. ClaudeCallLog plus storage file timestamps were enough to trace a run's progress.
+
 ## [2026-09-25] — /start-test-bwk redone on the regular /start look in steel and cobalt
 
 **Requested by:** Keenan

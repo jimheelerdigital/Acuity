@@ -2747,7 +2747,7 @@ export async function checkMoodyImageQuality(
               text: `You are a photo editor checking one AI-generated background photo before it is posted. The intended scene: "${scene}"
 
 FAIL it if ANY of these is clearly true:
-1. It looks like CGI, a 3D render, an illustration, or a painting rather than a real photograph.
+1. It looks like CGI, a 3D render, an illustration, or a painting rather than a real photograph.${/\bdragon/i.test(scene) ? " The scene is deliberately FANTASY: the dragon itself is expected, so judge only whether the frame looks like a hyperreal live-action film still, not whether the creature could exist." : ""}
 2. There are smeared, melted, garbled, or malformed areas (warped objects, broken anatomy, mangled hands or faces).
 3. Any readable text, letters, numbers, logos, or watermarks appear.
 4. ${opts.personAllowed ? "More than the people the scene describes appear." : "A person appears, unless the scene explicitly describes a distant armored warrior, a rider, or a statue."}

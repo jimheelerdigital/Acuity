@@ -461,6 +461,33 @@ export async function publishIgCarousel(
 }
 
 /**
+ * Page writes must be made AS the Page (live incident 2026-09-25: every BWK
+ * Facebook post failed with "(#200) Unpublished posts must be posted to a
+ * page as the page itself" and "(#100) No permission to publish the video",
+ * because META_BWK_ACCESS_TOKEN is a user/system-user token). Exchange the
+ * account token for the Page's own token; if the account token already is a
+ * Page token (Ripple), the same call just returns it. Cached per process.
+ */
+const pageTokenCache = new Map<string, string>();
+async function fbPageToken(account: SocialAccount): Promise<string> {
+  const pageId = account.fbPageId;
+  if (!pageId) return account.accessToken;
+  const hit = pageTokenCache.get(pageId);
+  if (hit) return hit;
+  try {
+    const json = await graphGet(pageId, { fields: "access_token" }, account.accessToken);
+    const token = typeof json.access_token === "string" ? json.access_token : null;
+    if (token) {
+      pageTokenCache.set(pageId, token);
+      return token;
+    }
+  } catch (err) {
+    console.warn(`[social-publish] Page token lookup failed for ${account.key}: ${err instanceof Error ? err.message : err}`);
+  }
+  return account.accessToken;
+}
+
+/**
  * Publish a multi-photo post to the Facebook Page: upload each photo
  * unpublished, then create one feed post attaching them all.
  */
@@ -473,13 +500,14 @@ export async function publishFbPhotoPost(
     throw new Error(`FB page id not configured for account "${account.key}"`);
   }
   if (imageUrls.length === 0) throw new Error("No images to publish");
+  const pageToken = await fbPageToken(account);
 
   const photoIds: string[] = [];
   for (const url of imageUrls) {
     const photo = await graphPost(
       `${account.fbPageId}/photos`,
       { url, published: "false" },
-      account.accessToken
+      pageToken
     );
     photoIds.push(String(photo.id));
     await sleep(500);
@@ -492,7 +520,7 @@ export async function publishFbPhotoPost(
   const post = await graphPost(
     `${account.fbPageId}/feed`,
     params,
-    account.accessToken
+    pageToken
   );
   const postId = String(post.id);
 
@@ -501,7 +529,7 @@ export async function publishFbPhotoPost(
     const detail = await graphGet(
       postId,
       { fields: "permalink_url" },
-      account.accessToken
+      pageToken
     );
     permalink = (detail.permalink_url as string | undefined) ?? null;
   } catch {
@@ -572,11 +600,12 @@ export async function publishFbReel(
   if (!account.fbPageId) {
     throw new Error(`FB page id not configured for account "${account.key}"`);
   }
+  const pageToken = await fbPageToken(account);
 
   const start = await graphPost(
     `${account.fbPageId}/video_reels`,
     { upload_phase: "start" },
-    account.accessToken
+    pageToken
   );
   const videoId = String(start.video_id ?? "");
   const uploadUrl = String(start.upload_url ?? "");
@@ -590,7 +619,7 @@ export async function publishFbReel(
   const up = await fetch(uploadUrl, {
     method: "POST",
     headers: {
-      Authorization: `OAuth ${account.accessToken}`,
+      Authorization: `OAuth ${pageToken}`,
       file_url: videoUrl,
     },
   });
@@ -612,7 +641,7 @@ export async function publishFbReel(
       video_state: "PUBLISHED",
       description: caption,
     },
-    account.accessToken
+    pageToken
   );
 
   // Reel permalinks are deterministic; processing finishes async on
@@ -638,10 +667,11 @@ export async function publishFbVideo(
   if (!account.fbPageId) {
     throw new Error(`FB page id not configured for account "${account.key}"`);
   }
+  const pageToken = await fbPageToken(account);
   const post = await graphPost(
     `${account.fbPageId}/videos`,
     { file_url: videoUrl, description: caption },
-    account.accessToken
+    pageToken
   );
   const videoId = String(post.id);
 
@@ -650,7 +680,7 @@ export async function publishFbVideo(
     const detail = await graphGet(
       videoId,
       { fields: "permalink_url" },
-      account.accessToken
+      pageToken
     );
     const p = detail.permalink_url as string | undefined;
     // Video permalink_url comes back relative ("/{page}/videos/{id}/").
