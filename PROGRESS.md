@@ -8,6 +8,7 @@
 ---
 
 ## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
+## [2026-09-24] — Siri voice actions (1.7): add habit/task, check off a habit, start a check-in — all by voice
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
@@ -236,6 +237,22 @@ The first two-size batch had flaws: the Stories versions cut letters off headlin
 
 ### Notes
 - The 2:3 source render isn't stored, so any re-cut means a regen (about 20 image calls). Worth storing the source if cropping gets tuned again
+You can now talk to Ripple through Siri without opening the app. "Hey Siri, add a habit," "add a task," "I did my stretching today" (checks off a habit), "start a Ripple check-in," and "what's my streak." The add/check-off ones happen in the background and Siri just talks back to confirm — no tapping. Needs a new TestFlight build and a quick test on a real phone before it's live.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/plugins/RippleShortcuts.swift`: expanded from the single StartDebrief intent to a full set. New background App Intents (openAppWhenRun=false, speak a result): `AddHabitIntent` → POST /api/habits, `AddTaskIntent` → POST /api/tasks, `CompleteHabitIntent` (HabitEntity param + EntityStringQuery so Siri matches the spoken habit name) → POST /api/habits/{id}/check with the local date, `CurrentStreakIntent` (reads streak from the App Group). Open-app intents kept. "Start a Ripple check-in" phrases added to StartDebrief. All call the API as the user with the bearer read from the Keychain; graceful "open Ripple and sign in" when no token. 8 shortcuts registered (under the iOS 10 cap).
+- Token is read from the **Keychain**, not the App Group. `RippleShortcuts.swift` reads the app's existing `expo-secure-store` session-token item directly via `SecItemCopyMatching` (service `app:no-auth`, account = UTF-8 data of `acuity_session_token`, matching expo-secure-store's exact schema). The App Intent runs as the app's own bundle, so it shares the app's default keychain access group — no shared-access-group entitlement, no provisioning change.
+- `apps/mobile/lib/siri-shortcuts-data.ts` (new): publishes only NON-secrets into the App Group — `apiBase` and `habitsForSiri` [{id,name}] (same sensitivity as the habit names the widget already shows). No credential ever touches the App Group.
+- `apps/mobile/lib/auth.ts`: publishes the non-secret `apiBase` on setToken / cold-launch hydration; clearToken deletes the Keychain token the intents read (so a signed-out device can't act via Siri).
+- `apps/mobile/lib/widget-data.ts`: also publish the active-habit list for the check-off entity resolver.
+
+### Manual steps needed
+- **Jimmy:** EAS build from `feat/siri-actions` (no new provisioning — App Intents compile into the main target, App Group already entitled), then on-device test the phrases (see the chat handoff for the exact list). If Siri phrase-matching on habit names needs tuning, that's iterable in the Swift.
+
+### Notes
+- **Security:** the session bearer stays in the Keychain only — the intents read the app's existing SecureStore item directly. Nothing secret is written to the App Group (only the API base and habit names, the latter already exposed by the widget). No new entitlement or provisioning change.
+- Branch `feat/siri-actions` off `feat/ios-widgets` (the real 1.7 stack). Not pushed — waiting on "push it".
+- TypeScript clean on the three edited/added TS files; Swift is structurally verified (balanced, all intents registered) but only a real Xcode/EAS build + on-device Siri test confirms it — same loop as builds 129–131.
 
 ---
 

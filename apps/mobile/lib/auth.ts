@@ -27,6 +27,8 @@ import * as WebBrowser from "expo-web-browser";
 import { useMemo } from "react";
 import { Platform } from "react-native";
 
+import { publishSiriConfig } from "@/lib/siri-shortcuts-data";
+
 // Required for expo-auth-session on web + some Expo Go edge cases.
 // No-op on native iOS but safe to call anywhere.
 WebBrowser.maybeCompleteAuthSession();
@@ -206,7 +208,13 @@ export async function getToken(): Promise<string | null> {
   // if a value is present, cache it so subsequent calls skip the
   // keychain entirely.
   const stored = await safeGetItem(TOKEN_KEY);
-  if (stored) memoryToken = stored;
+  if (stored) {
+    memoryToken = stored;
+    // Publish the (non-secret) API base for the Siri intents. The bearer they
+    // use is read directly from this same Keychain item — nothing secret is
+    // written to the App Group.
+    publishSiriConfig(apiBaseUrl());
+  }
   return stored;
 }
 
@@ -215,10 +223,15 @@ export async function setToken(token: string): Promise<void> {
   // the new value even if the keychain write is still committing.
   memoryToken = token;
   await safeSetItem(TOKEN_KEY, token);
+  // Publish the (non-secret) API base for the Siri intents. The intents read
+  // this very token from the Keychain; nothing secret goes to the App Group.
+  publishSiriConfig(apiBaseUrl());
 }
 
 export async function clearToken(): Promise<void> {
   memoryToken = null;
+  // Deletes the Keychain item the Siri intents read, so a signed-out device
+  // can no longer act via Siri. No App Group cleanup needed (no secret there).
   await safeDeleteItem(TOKEN_KEY);
 }
 
