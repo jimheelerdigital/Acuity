@@ -23,6 +23,24 @@ export const carouselLivingReelFn = inngest.createFunction(
     retries: 1,
     concurrency: { limit: 2 },
     triggers: [{ event: "content-factory/living-reel.build" }],
+    // Write the failure next to the reel so ops scripts (which can read
+    // Storage but not Inngest logs) can see why a build died.
+    onFailure: async ({ event, error }) => {
+      const postId = (event.data as { event?: { data?: { postId?: string } } })?.event?.data?.postId;
+      if (!postId) return;
+      try {
+        const { supabase } = await import("@/lib/supabase.server");
+        await supabase.storage
+          .from("content-factory")
+          .upload(
+            `living/${postId}/error.txt`,
+            Buffer.from(`${new Date().toISOString()}\n${error?.message ?? String(error)}`),
+            { contentType: "text/plain", upsert: true }
+          );
+      } catch {
+        // best effort
+      }
+    },
   },
   async ({ event, step, logger }) => {
     const { postId, model: modelOverride, email = true } = event.data as {

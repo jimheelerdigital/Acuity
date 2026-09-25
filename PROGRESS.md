@@ -28,6 +28,7 @@ Posts can now be turned into "living" reels. Each slide's photo is animated so r
   - Model: `event.data.model` ?? `HIGGSFIELD_LIVING_MODEL` ?? `HIGGSFIELD_VIDEO_MODEL`.
   - Registered in `app/api/inngest/route.ts`.
 - `apps/web/src/app/api/admin/carousels/route.ts`: new action `living-reel` (CRON_SECRET or admin session).
+- `carouselLivingReelFn` onFailure writes `living/<postId>/error.txt` so failures are readable without Inngest dashboard access (the first DoP Lite run died silently after frame prep).
 - `livingReelQueueFn` (cron every 5 min): claims `living-requests/<postId>.json` files from the content-factory bucket (deletes them first) and sends the build event. This lets ops scripts, which only hold the service-role key, trigger builds. The local CRON_SECRET does not match prod.
 - `apps/web/src/lib/content-factory/carousel-generate.ts`: extracted `regenerateOverlayRaw()` (avatar-reference aware) and `moodyOverlayStyle()` (kind + tone) out of `recomposeSlide`, which now calls them. No behavior change.
 - `apps/web/src/lib/content-factory/compose.ts`: `buildAdaptiveScrim` exported.
