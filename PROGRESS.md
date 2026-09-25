@@ -7,6 +7,80 @@
 
 ---
 
+## [2026-09-25] — Week chips in the test funnels, a normal-vs-test split switch, and a 4-funnel admin comparison
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 2fbf4ca9 (chips + split routing), (this commit) (admin comparison)
+
+### In plain English (for Keenan)
+Three pieces for next week's test.
+
+**Chip screen.** Both test funnels (/start-test, /start-test-bwk) have a new screen: "What's on your list this week?" She taps everyday things like a school form, Mom's appointment, bills or emails she owes (the men's version has invoices, gym sessions, calls to return and so on). A counter shows how many things she's holding and says "That's a lot to hold" at five or more. The loading screen then says "Catching 3 things: a school form, Mom's appointment and 1 more". The results screen shows them as a checked-off list under "Your week, caught", with an honest line: "Say these out loud once and Ripple turns them into a list like this." It replaces the "What would you most like off your mind?" screen, so the funnel is no longer.
+
+**The split.** When you switch it on, anyone landing on /start has a 50/50 chance of being sent to /start-test, and /start-bwk does the same with /start-test-bwk. Each person keeps their version for 30 days, and the ad tracking comes along with them. Ads keep pointing at /start and /start-bwk, so nothing changes in Meta. The switch is in admin → Feature flags → "Funnel split: normal vs test". It is **OFF** now, and turning it off again sends everyone back to the normal funnels within a minute.
+
+**Admin.** The Funnel tab opens on "Normal vs test" with three views: Ripple (normal vs test), BWK (normal vs test) and All four side by side. Each view compares the same milestones across the funnels:
+- landed
+- answered screen 1
+- reached the signup step
+- signed up
+- saw the paywall
+- checkout
+- card trial
+- free plan
+- download
+
+The better version on each row is tinted. The view also says when a difference is real, and it won't call a winner before about 350 real visitors per version.
+
+### Technical changes (for Jimmy)
+- **Week chips:**
+  - `lib/funnel-v9-config.ts`: new step kind `week` (`items: { id, chip, task }[]`), which replaces `offload` in both configs; the milestone and step-label keys moved to `week`
+  - `components/funnel-v9.tsx`: `WeekScreen` (pill chips, a counter with a fill bar, "Continue with N"), plus `weekPicks` / `weekTasks` / `weekChips`
+  - The loader line uses the chip names (possessive names keep their capital)
+  - The result gets a "Your week, caught" card
+  - Picks go to `answers.multi.week`, and the screen logs `funnel_v9_week_answered`
+  - Removed the offload icon mappings and the unused CloudRain / TrendingDown imports
+- **Split:**
+  - `lib/funnel-split.ts` (server): `isFunnelSplitOn()` reads FeatureFlag `funnel_test_split` directly with a 30 s memo. `lib/feature-flags`' per-instance cache never refreshes, so it can't serve as a kill switch
+  - The same file has `pickArm` (cookie `acuity_fsplit`, else a coin flip) and `testFunnelUrl` (keeps every query param and adds `fsplit=test`)
+  - For local testing only, `FUNNEL_SPLIT_FORCE=on|off` overrides the flag. It is ignored in production
+  - `lib/funnel-split-shared.ts`: browser-safe helpers, kept out of the server file so the funnels don't bundle Prisma: `normalArmScript()` and `consumeTestArrival()`
+  - `app/start/page.tsx` and `app/start-bwk/page.tsx`: when the flag is on and there's no `?step=`, the test arm gets a 307 to the test funnel; the normal arm renders with an inline script that sets the cookie and `window.__fsplit`
+  - `onboarding-funnel.tsx` logs `funnel_split_arm=normal`. `funnel-v9.tsx` logs `funnel_split_arm=test` on arrival and strips `fsplit` from the URL
+- **Prod data:** FeatureFlag row `funnel_test_split` created with enabled=false and rollout 100. No schema change
+- **Admin:**
+  - `api/admin/metrics/route.ts`:
+    - `tab=funnel-compare` → `getFunnelCompare()`, a milestone ladder per flowVersion (v8, v9-test, v8-bwk, v9-test-bwk)
+    - `traffic` and `split` params
+    - two-proportion p-values via the new `twoProportionP` (also used by the S1 card)
+    - `traffic`/`split` added to the cache key, which fixes stale numbers when switching filters
+  - `admin/tabs/FunnelAnalyticsTab.tsx`:
+    - `CompareView` with the Ripple / BWK / All four switch and a flag status line
+    - "Split visitors only" filter, the better arm tinted per row, and a significance panel with the 350-per-arm caution
+    - an expandable per-funnel screen list
+    - the existing single-funnel views sit under "One funnel"
+
+### Manual steps needed
+- [ ] Say "push it" (Keenan)
+- [ ] When the test funnels are final: admin → Feature flags → "Funnel split: normal vs test" → enable. Keep rollout at 100 (Keenan)
+- [ ] Watch Admin → Funnel → Normal vs test with "Social in-app" + "Split visitors only". Don't call a winner before ~350 real visitors per arm (Keenan / Claude)
+
+### Notes
+- Verified locally with `FUNNEL_SPLIT_FORCE=on`:
+  - 12/20 /start and 5/10 /start-bwk hits were sent to the test funnel
+  - UTMs and fbclid were preserved
+  - a cookie of `test` or `normal` is sticky
+  - `?step=` is never redirected
+  - the test funnel set the cookie and logged `funnel_split_arm:test`
+- With the real flag off: no redirects even with a `test` cookie, and no arm script
+- The gate milestone differs by funnel: account creation on the normal funnels, email on the test funnels (`funnel_email_submitted`). The admin footnote says so. Compare "signed up" rates knowing the test gate asks for less
+- The existing yes/no screen-1 test on /start and /start-bwk (`funnel-s1-test.ts`) still runs inside the normal arm. Pausing it for the week would keep the normal arm clean; not done
+- Test-funnel numbers before the split are internal walkthroughs (0 in-app visitors). Ignore them
+- Rejected idea, don't revisit: a voice or "try it" step in the funnel. `reports/Web funnel conversion evidence.md` found mic access unreliable in FB/IG in-app browsers and no evidence that a real demo beats simulated personalisation before a paywall
+
+---
+
 ## [2026-09-25] — /start-test quotes: centered, italic, with a face showing the feeling
 
 **Requested by:** Keenan

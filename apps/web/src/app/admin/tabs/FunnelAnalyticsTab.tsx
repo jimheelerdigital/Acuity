@@ -5,7 +5,9 @@ import { useState, useEffect } from "react";
 // The two live v8 funnels. Each tags its events with its own flowVersion, so
 // they're tracked as separate cohorts with their own step lists (see
 // getFunnelAnalytics in api/admin/metrics/route.ts).
-type View = "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy";
+type View = "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy";
+type CompareMode = "cmp-ripple" | "cmp-bwk" | "cmp-all";
+type SplitFilter = "auto" | "on" | "off";
 type LegacyFlow = "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all";
 type Traffic = "real" | "inapp" | "all";
 
@@ -22,6 +24,10 @@ const LEGACY_LABELS: Record<LegacyFlow, string> = {
 
 const fetchFunnel = (start: string, end: string, flow: string, traffic: Traffic) =>
   fetch(`/api/admin/metrics?tab=funnel-analytics&start=${start}&end=${end}&flow=${flow}&traffic=${traffic}`)
+    .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
+
+const fetchCompare = (start: string, end: string, traffic: Traffic, split: SplitFilter) =>
+  fetch(`/api/admin/metrics?tab=funnel-compare&start=${start}&end=${end}&traffic=${traffic}${split === "auto" ? "" : `&split=${split}`}`)
     .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
 
 const H: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)", marginBottom: 12 };
@@ -144,8 +150,189 @@ function SideBySide({ start, end, traffic }: { start: string; end: string; traff
   );
 }
 
+
+// ── Normal vs test comparison (the /start ↔ /start-test 50/50 split) ─────────
+// Each funnel has its own screens, so they're lined up on a shared milestone
+// ladder (see getFunnelCompare in api/admin/metrics/route.ts for the exact
+// events per funnel). % = share of that funnel's Landed; small % = vs the
+// milestone it follows or branches from.
+
+const COMPARE_COLUMNS: Record<CompareMode, (keyof typeof FUNNELS)[]> = {
+  "cmp-ripple": ["ripple", "test"],
+  "cmp-bwk": ["bwk", "testbwk"],
+  "cmp-all": ["ripple", "test", "bwk", "testbwk"],
+};
+const COLUMN_LABEL: Record<keyof typeof FUNNELS, { title: string; arm: string }> = {
+  ripple: { title: "Ripple", arm: "Normal" },
+  test: { title: "Ripple", arm: "Test" },
+  bwk: { title: "BWK", arm: "Normal" },
+  testbwk: { title: "BWK", arm: "Test" },
+};
+
+function SplitStatus({ flag }: { flag: { exists: boolean; enabled: boolean; updatedAt: string | null } }) {
+  const on = flag.enabled;
+  const since = flag.updatedAt ? new Date(flag.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--acuity-text-sec)" }}>
+      <span style={{ width: 8, height: 8, borderRadius: 999, background: on ? "var(--acuity-good)" : "var(--acuity-text-quiet)" }} />
+      {on
+        ? <>50/50 split is <b style={{ color: "var(--acuity-text)" }}>on</b>{since ? <> (last changed {since})</> : null}: /start ↔ /start-test and /start-bwk ↔ /start-test-bwk.</>
+        : <>50/50 split is <b style={{ color: "var(--acuity-text)" }}>off</b>{flag.exists ? "" : " (feature flag funnel_test_split not created yet)"}. Test-funnel numbers below are direct visits only.</>}
+    </div>
+  );
+}
+
+function PairVerdicts({ tests, target, title }: { tests: any[]; target: number; title?: string }) {
+  const n = Math.min(tests[0]?.normal.of ?? 0, tests[0]?.test.of ?? 0);
+  const rate = (x: { count: number; of: number }) => (x.of ? `${Math.round((x.count / x.of) * 1000) / 10}%` : "–");
+  return (
+    <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ ...H, marginBottom: 8 }}>{title ?? "Is the difference real?"}</div>
+      {tests.map((t) => {
+        const lead = t.normal.of && t.test.of ? (t.test.count / t.test.of > t.normal.count / t.normal.of ? "Test" : "Normal") : null;
+        return (
+          <div key={t.key} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline", fontSize: 12, padding: "3px 0", color: "var(--acuity-text-sec)" }}>
+            <span style={{ minWidth: 140, color: "var(--acuity-text)", fontWeight: 600 }}>{t.label}</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>Normal {rate(t.normal)} · Test {rate(t.test)}</span>
+            <span style={{ fontSize: 11, color: t.significant && n >= target ? "var(--acuity-good)" : "rgba(255,255,255,0.4)" }}>
+              {n < target
+                ? `Not enough data yet (${n} of ~${target} visitors per arm)${t.pValue !== null ? `, p = ${t.pValue.toFixed(2)}` : ""}`
+                : t.pValue === null
+                  ? "No difference to test yet"
+                  : t.significant
+                    ? `${lead} wins (p = ${t.pValue.toFixed(3)})`
+                    : `No clear difference (p = ${t.pValue.toFixed(2)})`}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NativeSteps({ start, end, traffic, fk }: { start: string; end: string; traffic: Traffic; fk: keyof typeof FUNNELS }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open || data) return;
+    fetchFunnel(start, end, FUNNELS[fk].flow, traffic).then(setData).catch((e) => setError(e.message));
+  }, [open, data, start, end, traffic, fk]);
+  const c = COLUMN_LABEL[fk];
+  return (
+    <div style={{ background: "var(--acuity-card-bg)", borderRadius: 12, padding: "12px 16px" }}>
+      <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--acuity-text-sec)", fontSize: 12, fontWeight: 600 }}>
+        {open ? "\u25be" : "\u25b8"} Every screen: {c.title} {c.arm.toLowerCase()} <span style={{ opacity: 0.5, fontWeight: 500 }}>{FUNNELS[fk].path}</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          {error ? <div style={{ color: "var(--acuity-bad)", fontSize: 12 }}>Error: {error}</div>
+            : !data ? <div style={{ color: "var(--acuity-text-ter)", fontSize: 12 }}>Loading...</div>
+            : <FunnelBars steps={data.funnelSteps || []} compact />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompareView({ start, end, traffic, mode }: { start: string; end: string; traffic: Traffic; mode: CompareMode }) {
+  const [split, setSplit] = useState<SplitFilter>("auto");
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setData(null); setError(null);
+    fetchCompare(start, end, traffic, split).then(setData).catch((e) => setError(e.message));
+  }, [start, end, traffic, split]);
+  if (error) return <div style={{ color: "var(--acuity-bad)", padding: 40, textAlign: "center" }}>Error: {error}</div>;
+  if (!data) return <div style={{ color: "var(--acuity-text-ter)", padding: 40, textAlign: "center" }}>Loading comparison...</div>;
+
+  const cols = COMPARE_COLUMNS[mode];
+  const funnel = (fk: keyof typeof FUNNELS) => data.funnels.find((f: any) => f.flow === FUNNELS[fk].flow);
+  const rows = funnel(cols[0]).milestones as any[];
+  const twoWay = cols.length === 2;
+  const bothLanded = twoWay && cols.every((fk) => funnel(fk).sessions > 0);
+  const cellW = twoWay ? 150 : 118;
+  const TH: React.CSSProperties = { padding: "8px 10px", fontSize: 11, textAlign: "right", color: "var(--acuity-text-sec)", fontWeight: 600, borderBottom: "1px solid rgba(255,255,255,0.08)", minWidth: cellW };
+  const splitOn = data.splitOnly;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <SplitStatus flag={data.flag} />
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--acuity-text-sec)", cursor: "pointer" }}
+          title="Only sessions that arrived through the 50/50 split (they carry a funnel_split_arm event). Defaults on while the split is on.">
+          <input type="checkbox" checked={splitOn} onChange={(e) => setSplit(e.target.checked ? "on" : "off")} />
+          Split visitors only
+        </label>
+      </div>
+
+      <div style={{ background: "var(--acuity-card-bg)", borderRadius: 12, padding: 16, overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ ...TH, textAlign: "left", minWidth: 150 }}>Milestone</th>
+              {cols.map((fk) => (
+                <th key={fk} style={TH}>
+                  <div style={{ color: "var(--acuity-text)", fontSize: 12 }}>{COLUMN_LABEL[fk].title} · {COLUMN_LABEL[fk].arm}</div>
+                  <div style={{ fontWeight: 500, opacity: 0.55 }}>{FUNNELS[fk].path}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => {
+              const cells = cols.map((fk) => funnel(fk).milestones[ri]);
+              // Better arm per row (2-way only, needs both arms to have visitors).
+              const best = bothLanded && ri > 0 && cells[0].pctOfLanded !== cells[1].pctOfLanded
+                ? (cells[0].pctOfLanded > cells[1].pctOfLanded ? 0 : 1) : -1;
+              return (
+                <tr key={row.key}>
+                  <td style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: row.branch ? "rgba(255,255,255,0.45)" : "var(--acuity-text-sec)", whiteSpace: "nowrap" }}>
+                    {row.branch ? "\u21b3 " : ""}{row.label}
+                  </td>
+                  {cells.map((c: any, ci: number) => (
+                    <td key={ci} style={{
+                      padding: "8px 10px", textAlign: "right", borderBottom: "1px solid rgba(255,255,255,0.04)", fontVariantNumeric: "tabular-nums",
+                      background: best === ci ? "color-mix(in oklch, var(--acuity-good) 12%, transparent)" : undefined,
+                    }}>
+                      <span style={{ color: "var(--acuity-text)", fontWeight: 700 }}>{c.count}</span>
+                      {ri > 0 && (
+                        <>
+                          <span style={{ color: best === ci ? "var(--acuity-good)" : "var(--acuity-text-sec)", marginLeft: 6 }}>{c.pctOfLanded}%</span>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }} title={`vs ${c.prevLabel}`}>{c.pctOfPrev}% of prev</div>
+                        </>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 10, lineHeight: 1.5 }}>
+          Big % = share of that funnel&rsquo;s visitors who reached the milestone. Small % = vs the step before it (↳ rows branch from the paywall or the gate). The gate is account creation on the normal funnels and the email step on the test funnels.
+          {" "}{cols.map((fk) => {
+            const f = funnel(fk);
+            return `${COLUMN_LABEL[fk].title} ${COLUMN_LABEL[fk].arm.toLowerCase()}: ${f.excludedByTraffic} hidden by the traffic filter${splitOn ? `, ${f.excludedBySplit} direct (non-split) visits hidden` : ""}.`;
+          }).join(" ")}
+        </div>
+      </div>
+
+      {mode !== "cmp-bwk" && <PairVerdicts tests={data.tests.ripple} target={data.targetPerArm} title={mode === "cmp-all" ? "Ripple: normal vs test" : undefined} />}
+      {mode !== "cmp-ripple" && <PairVerdicts tests={data.tests.bwk} target={data.targetPerArm} title={mode === "cmp-all" ? "BWK: normal vs test" : undefined} />}
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+        Don&rsquo;t call a winner before ~{data.targetPerArm} real visitors per arm. Card trials need far more than that; use &ldquo;Passed the gate&rdquo; as the early read.
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+        {cols.map((fk) => <NativeSteps key={`${fk}-${traffic}-${start}-${end}`} start={start} end={end} traffic={traffic} fk={fk} />)}
+      </div>
+    </div>
+  );
+}
+
 export default function FunnelAnalyticsTab({ start, end }: { start: string; end: string }) {
-  const [view, setView] = useState<View>("ripple");
+  const [view, setView] = useState<View>("cmp-ripple");
   const [legacyFlow, setLegacyFlow] = useState<LegacyFlow>("v7");
   const [traffic, setTraffic] = useState<Traffic>("real");
 
@@ -157,8 +344,15 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginRight: 4 }}>Normal vs test:</span>
+        <button onClick={() => setView("cmp-ripple")} style={seg(view === "cmp-ripple")}>Ripple</button>
+        <button onClick={() => setView("cmp-bwk")} style={seg(view === "cmp-bwk")}>BWK</button>
+        <button onClick={() => setView("cmp-all")} style={seg(view === "cmp-all")}>All four</button>
+      </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginRight: 4 }}>One funnel:</span>
           <button onClick={() => setView("ripple")} style={seg(view === "ripple")}>Ripple <span style={{ opacity: 0.6, fontWeight: 500 }}>/start</span></button>
           <button onClick={() => setView("bwk")} style={seg(view === "bwk")}>BWK <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-bwk</span></button>
           <button onClick={() => setView("test")} style={seg(view === "test")}>Test <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test</span></button>
@@ -185,7 +379,9 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         </div>
       </div>
 
-      {view === "both"
+      {view === "cmp-ripple" || view === "cmp-bwk" || view === "cmp-all"
+        ? <CompareView key={view} start={start} end={end} traffic={traffic} mode={view} />
+        : view === "both"
         ? <SideBySide start={start} end={end} traffic={traffic} />
         : <SingleFunnel key={`${view}-${legacyFlow}-${traffic}`} start={start} end={end} traffic={traffic}
             flow={view === "ripple" ? FUNNELS.ripple.flow : view === "bwk" ? FUNNELS.bwk.flow : view === "test" ? FUNNELS.test.flow : view === "testbwk" ? FUNNELS.testbwk.flow : legacyFlow} />}

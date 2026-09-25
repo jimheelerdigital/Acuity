@@ -36,6 +36,7 @@ const TAB_TTLS: Record<string, number> = {
   "growth-metrics": 15 * 60_000,
   "business-metrics": 10 * 60_000,
   "funnel-analytics": 2 * 60_000,
+  "funnel-compare": 2 * 60_000,
   guide: Infinity, // static content
 };
 
@@ -97,7 +98,11 @@ export async function GET(req: NextRequest) {
   const showBotsParam = req.nextUrl.searchParams.get("showBots") === "true";
   const resetParam = req.nextUrl.searchParams.get("resetAfter") ?? "";
   const flowParam = req.nextUrl.searchParams.get("flow") ?? "";
-  const extraParams = `${showBotsParam ? ":bots" : ""}${resetParam ? `:r${resetParam}` : ""}${flowParam ? `:f${flowParam}` : ""}`;
+  // traffic + split change the funnel numbers, so they must be in the cache key
+  // (traffic was missing, so switching the traffic filter could serve stale data).
+  const trafficParam = req.nextUrl.searchParams.get("traffic") ?? "";
+  const splitParam = req.nextUrl.searchParams.get("split") ?? "";
+  const extraParams = `${showBotsParam ? ":bots" : ""}${resetParam ? `:r${resetParam}` : ""}${flowParam ? `:f${flowParam}` : ""}${trafficParam ? `:t${trafficParam}` : ""}${splitParam ? `:s${splitParam}` : ""}`;
   const cacheKey = `tab:${tab}:${startStr}:${endStr}${extraParams}`;
   const t0 = Date.now();
 
@@ -157,6 +162,13 @@ export async function GET(req: NextRequest) {
           const tp = req.nextUrl.searchParams.get("traffic");
           const traffic = tp === "inapp" ? "inapp" : tp === "all" ? "all" : "real";
           return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v8", traffic);
+        }
+        case "funnel-compare": {
+          const showBots = req.nextUrl.searchParams.get("showBots") === "true";
+          const tp = req.nextUrl.searchParams.get("traffic");
+          const traffic = tp === "inapp" ? "inapp" : tp === "all" ? "all" : "real";
+          const sp = req.nextUrl.searchParams.get("split");
+          return getFunnelCompare(prisma, start, end, showBots, traffic, sp === "on" ? "on" : sp === "off" ? "off" : null);
         }
         case "guide":
           return getGuide();
@@ -1945,6 +1957,23 @@ type FunnelStepDef = {
  * saw Screen 1, how many answered it, and how many made an account. Two-sided
  * two-proportion z-test on the answer rate (significant at p < 0.05).
  */
+/**
+ * Two-sided two-proportion z-test p-value (x1 of n1 vs x2 of n2). Null when
+ * either arm is empty or both rates are 0% / 100% (no variance to test).
+ */
+function twoProportionP(x1: number, n1: number, x2: number, n2: number): number | null {
+  if (n1 <= 0 || n2 <= 0) return null;
+  const p1 = x1 / n1, p2 = x2 / n2;
+  const pp = (x1 + x2) / (n1 + n2);
+  const se = Math.sqrt(pp * (1 - pp) * (1 / n1 + 1 / n2));
+  if (!(se > 0)) return null;
+  const z = Math.abs(p1 - p2) / se;
+  // Normal CDF tail via Abramowitz-Stegun erf approximation.
+  const t = 1 / (1 + 0.3275911 * (z / Math.SQRT2));
+  const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(z * z) / 2);
+  return Math.max(0, Math.min(1, 1 - erf));
+}
+
 function computeS1Test(sessionMap: Map<string, { event: string; value: string | null }[]>) {
   const stats: Record<string, { sessions: number; answered: number; accounts: number }> = {};
   for (const evts of sessionMap.values()) {
@@ -1956,24 +1985,173 @@ function computeS1Test(sessionMap: Map<string, { event: string; value: string | 
     if (evts.some((e) => e.event === "funnel_account_created")) st.accounts++;
   }
   const a = stats.yesno, b = stats.list;
-  let pValue: number | null = null;
-  if (a && b && a.sessions > 0 && b.sessions > 0) {
-    const p1 = a.answered / a.sessions, p2 = b.answered / b.sessions;
-    const pp = (a.answered + b.answered) / (a.sessions + b.sessions);
-    const se = Math.sqrt(pp * (1 - pp) * (1 / a.sessions + 1 / b.sessions));
-    if (se > 0) {
-      const z = Math.abs(p1 - p2) / se;
-      // Normal CDF tail via Abramowitz-Stegun erf approximation.
-      const t = 1 / (1 + 0.3275911 * (z / Math.SQRT2));
-      const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(z * z) / 2);
-      pValue = Math.max(0, Math.min(1, 1 - erf));
-    }
-  }
+  const pValue = a && b ? twoProportionP(a.answered, a.sessions, b.answered, b.sessions) : null;
   const variants = (["yesno", "list"] as const).map((v) => {
     const st = stats[v] ?? { sessions: 0, answered: 0, accounts: 0 };
     return { variant: v, ...st, rate: st.sessions ? Math.round((st.answered / st.sessions) * 1000) / 10 : 0 };
   });
   return { variants, pValue, significant: pValue !== null && pValue < 0.05, targetPerArm: 350 };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Normal vs test funnel comparison (2026-09-25, per Keenan: "show the funnels
+// side by side ... along with all four side by side").
+//
+// The 50/50 split: /start sends half its visitors to /start-test, /start-bwk
+// half to /start-test-bwk (FeatureFlag `funnel_test_split`, cookie
+// `acuity_fsplit`). Both arms log `funnel_split_arm` ("normal" | "test") once
+// per session when the visitor came through the split.
+//
+// The four funnels have different screens, so they're compared on one shared
+// milestone ladder, each milestone mapped to that funnel's own events
+// (verified against prod rows 2026-09-25):
+//   Landed          funnel_entry_viewed (v9 also: funnel_entry_rendered, funnel_v9_hook_viewed)
+//   Answered s1     funnel_entry_selected
+//   Reached gate    v8: funnel_create_account_viewed | v9: funnel_email_gate_viewed, funnel_v9_email_viewed
+//   Passed gate     v8: funnel_account_created       | v9: funnel_email_submitted, funnel_account_created
+//   Saw paywall     funnel_savings_viewed (v9 also: funnel_v9_paywall_viewed)
+//   Checkout        funnel_checkout_started
+//   Card trial      funnel_payment_completed (first payment only) | funnel_savings_locked_in
+//   Free plan       v8: funnel_paywall_continue_selected, funnel_paywall_skip_selected | v9: funnel_paywall_skip_selected
+//   Download        v8: funnel_download_viewed | v9: funnel_v9_download_viewed
+// Main milestones (landed → paywall) back-fill: reaching a later one means the
+// earlier ones were passed. Branch milestones count only when hit; a card
+// trial implies checkout.
+// ════════════════════════════════════════════════════════════════════════
+
+const COMPARE_FLOWS = ["v8", "v9-test", "v8-bwk", "v9-test-bwk"] as const;
+type CompareFlow = (typeof COMPARE_FLOWS)[number];
+
+type Milestone = { key: string; label: string; v8: string[]; v9: string[]; main?: boolean; base?: string; test?: boolean };
+const COMPARE_MILESTONES: Milestone[] = [
+  { key: "landed", label: "Landed", main: true, v8: ["funnel_entry_viewed"], v9: ["funnel_entry_viewed", "funnel_entry_rendered", "funnel_v9_hook_viewed"] },
+  { key: "answered", label: "Answered screen 1", main: true, test: true, v8: ["funnel_entry_selected"], v9: ["funnel_entry_selected"] },
+  { key: "gate", label: "Reached the gate", main: true, v8: ["funnel_create_account_viewed"], v9: ["funnel_email_gate_viewed", "funnel_v9_email_viewed"] },
+  { key: "passed", label: "Passed the gate", main: true, test: true, v8: ["funnel_account_created"], v9: ["funnel_email_submitted", "funnel_account_created"] },
+  { key: "paywall", label: "Saw paywall", main: true, v8: ["funnel_savings_viewed"], v9: ["funnel_savings_viewed", "funnel_v9_paywall_viewed"] },
+  { key: "checkout", label: "Started checkout", base: "paywall", v8: ["funnel_checkout_started"], v9: ["funnel_checkout_started"] },
+  { key: "trial", label: "Card trial started", base: "checkout", test: true, v8: ["funnel_payment_completed", "funnel_savings_locked_in"], v9: ["funnel_payment_completed", "funnel_savings_locked_in"] },
+  { key: "free", label: "Free plan chosen", base: "paywall", v8: ["funnel_paywall_continue_selected", "funnel_paywall_skip_selected"], v9: ["funnel_paywall_skip_selected"] },
+  { key: "download", label: "Download", base: "passed", v8: ["funnel_download_viewed"], v9: ["funnel_v9_download_viewed"] },
+];
+
+async function getFunnelCompare(
+  prisma: P,
+  start: Date,
+  end: Date,
+  showBots: boolean,
+  traffic: "inapp" | "real" | "all",
+  splitOnlyParam: "on" | "off" | null,
+) {
+  const flagRow = await prisma.featureFlag.findUnique({
+    where: { key: "funnel_test_split" },
+    select: { enabled: true, updatedAt: true },
+  }).catch(() => null);
+  const flag = { exists: !!flagRow, enabled: flagRow?.enabled ?? false, updatedAt: flagRow?.updatedAt ?? null };
+  // Default: split visitors only while the split is on, everyone otherwise.
+  const splitOnly = splitOnlyParam ? splitOnlyParam === "on" : flag.enabled;
+
+  const fetched = await prisma.onboardingEvent.findMany({
+    where: {
+      event: { startsWith: "funnel_" },
+      createdAt: { gte: start, lte: end },
+      sessionToken: { not: null },
+      flowVersion: { in: [...COMPARE_FLOWS] },
+      ...(showBots ? {} : { isBot: false }),
+    },
+    take: 100000,
+    select: { sessionToken: true, event: true, value: true, browser: true, flowVersion: true },
+  });
+
+  // Group per funnel + session. Renewals are renamed so they never count.
+  type Sess = { names: Set<string>; inApp: boolean; acted: boolean; arm: string | null };
+  const byFlow = new Map<CompareFlow, Map<string, Sess>>(COMPARE_FLOWS.map((f) => [f, new Map()]));
+  for (const e of fetched) {
+    const flow = e.flowVersion as CompareFlow;
+    const m = byFlow.get(flow);
+    if (!m) continue;
+    const token = e.sessionToken!;
+    let s = m.get(token);
+    if (!s) { s = { names: new Set(), inApp: false, acted: false, arm: null }; m.set(token, s); }
+    const name = e.event === "funnel_payment_completed" && e.value?.endsWith(":renewal") ? "funnel_payment_renewal" : e.event;
+    s.names.add(name);
+    if (e.browser && IN_APP_UA.test(e.browser)) s.inApp = true;
+    if (!PAGE_LOAD_EVENTS.has(name)) s.acted = true;
+    if (name === "funnel_split_arm" && (e.value === "normal" || e.value === "test")) s.arm = e.value;
+  }
+
+  const funnels = COMPARE_FLOWS.map((flow) => {
+    const family = flow.startsWith("v9") ? "v9" : "v8";
+    const all = [...byFlow.get(flow)!.values()];
+    const trafficKept = all.filter((s) => traffic === "all" || s.inApp || (traffic === "real" && s.acted));
+    const kept = splitOnly ? trafficKept.filter((s) => s.arm !== null) : trafficKept;
+
+    const counts: Record<string, number> = Object.fromEntries(COMPARE_MILESTONES.map((m) => [m.key, 0]));
+    const mains = COMPARE_MILESTONES.filter((m) => m.main);
+    const mainIdx = (key: string) => mains.findIndex((m) => m.key === key);
+    const byKey = new Map(COMPARE_MILESTONES.map((m) => [m.key, m]));
+    for (const s of kept) {
+      const hit = (key: string) => byKey.get(key)![family].some((n) => s.names.has(n));
+      let furthest = -1;
+      mains.forEach((m, i) => { if (hit(m.key)) furthest = i; });
+      const trial = hit("trial");
+      const checkout = trial || hit("checkout");
+      const free = hit("free");
+      const download = hit("download");
+      // A branch event means the visitor reached the step it branches from.
+      if (checkout || free) furthest = Math.max(furthest, mainIdx("paywall"));
+      if (download) furthest = Math.max(furthest, mainIdx("passed"));
+      for (let i = 0; i <= furthest; i++) counts[mains[i].key]++;
+      if (checkout) counts.checkout++;
+      if (trial) counts.trial++;
+      if (free) counts.free++;
+      if (download) counts.download++;
+    }
+    const landed = counts.landed;
+    const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : 0);
+    const milestones = COMPARE_MILESTONES.map((m, i) => {
+      const prevKey = m.base ?? (i > 0 ? COMPARE_MILESTONES[i - 1].key : null);
+      return {
+        key: m.key,
+        label: m.label,
+        branch: !m.main,
+        count: counts[m.key],
+        pctOfLanded: pct(counts[m.key], landed),
+        pctOfPrev: prevKey ? pct(counts[m.key], counts[prevKey]) : null,
+        prevLabel: prevKey ? COMPARE_MILESTONES.find((x) => x.key === prevKey)!.label : null,
+      };
+    });
+    return {
+      flow,
+      sessions: kept.length,
+      excludedByTraffic: all.length - trafficKept.length,
+      excludedBySplit: trafficKept.length - kept.length,
+      splitArms: { normal: trafficKept.filter((s) => s.arm === "normal").length, test: trafficKept.filter((s) => s.arm === "test").length },
+      milestones,
+    };
+  });
+
+  // Normal vs test per audience, on the milestones worth testing. Each rate
+  // is measured against Landed so the arms are compared on the same base.
+  const pairTests = (normal: CompareFlow, test: CompareFlow) => {
+    const a = funnels.find((f) => f.flow === normal)!, b = funnels.find((f) => f.flow === test)!;
+    const na = a.milestones[0].count, nb = b.milestones[0].count;
+    return COMPARE_MILESTONES.filter((m) => m.test).map((m) => {
+      const xa = a.milestones.find((x) => x.key === m.key)!.count;
+      const xb = b.milestones.find((x) => x.key === m.key)!.count;
+      const p = twoProportionP(xa, na, xb, nb);
+      return { key: m.key, label: m.label, normal: { count: xa, of: na }, test: { count: xb, of: nb }, pValue: p, significant: p !== null && p < 0.05 };
+    });
+  };
+
+  return {
+    flag,
+    splitOnly,
+    traffic,
+    targetPerArm: 350,
+    funnels,
+    tests: { ripple: pairTests("v8", "v9-test"), bwk: pairTests("v8-bwk", "v9-test-bwk") },
+  };
 }
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v9-test-bwk" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "real" | "all" = "real") {
