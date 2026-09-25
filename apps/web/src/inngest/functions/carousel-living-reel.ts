@@ -221,3 +221,49 @@ export const carouselLivingReelFn = inngest.createFunction(
     return { built: true, model, ...reel };
   }
 );
+
+/**
+ * Request queue for living reels (2026-09-24). Ops scripts can't reach the
+ * prod CRON_SECRET or Inngest event key, but they can write to Storage with
+ * the service-role key. Drop `living-requests/<postId>.json` ({ model?,
+ * email? }) into the content-factory bucket; this cron claims it (deletes
+ * the file first, so a request fires once) and sends the build event.
+ */
+export const livingReelQueueFn = inngest.createFunction(
+  {
+    id: "carousel-living-reel-queue",
+    name: "Content Factory — Living Reel Request Queue",
+    retries: 0,
+    triggers: [{ cron: "*/5 * * * *" }],
+  },
+  async ({ step }) => {
+    const requests = await step.run("claim-requests", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data } = await supabase.storage
+        .from("content-factory")
+        .list("living-requests", { limit: 20 });
+      const claimed: { postId: string; model?: string; email?: boolean }[] = [];
+      for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        const path = `living-requests/${f.name}`;
+        const dl = await supabase.storage.from("content-factory").download(path);
+        const { error } = await supabase.storage.from("content-factory").remove([path]);
+        if (error) continue;
+        let body: { model?: string; email?: boolean } = {};
+        try {
+          body = dl.data ? JSON.parse(await dl.data.text()) : {};
+        } catch {
+          // empty or bad JSON → defaults
+        }
+        claimed.push({ postId: f.name.replace(/\.json$/, ""), ...body });
+      }
+      return claimed;
+    });
+    if (requests.length > 0) {
+      await step.sendEvent(
+        "send-builds",
+        requests.map((r) => ({ name: "content-factory/living-reel.build", data: r }))
+      );
+    }
+    return { queued: requests.map((r) => r.postId) };
+  }
+);
