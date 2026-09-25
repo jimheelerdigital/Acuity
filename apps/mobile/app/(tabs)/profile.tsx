@@ -89,7 +89,7 @@ export default function ProfileTab() {
       }
       if (out.reason === "cancelled") return;
       if (out.reason === "unsupported") {
-        Alert.alert("Not available yet", "Markdown export is iOS-only for now.");
+        Alert.alert("Sharing unavailable", "This device has no app to share the file to.");
         return;
       }
       Alert.alert("Export failed", out.message ?? "Please try again.");

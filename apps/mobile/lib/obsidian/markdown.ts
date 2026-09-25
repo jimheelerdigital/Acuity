@@ -41,6 +41,9 @@ export interface ExportEntry {
   wins: string[];
   blockers: string[];
   insights: string[];
+  /** Optional — people mentioned in the entry, rendered as [[wikilinks]]
+   *  when present so the vault graph connects entries to people. */
+  people?: string[];
 }
 
 export interface ExportTask {
@@ -67,6 +70,19 @@ export function yamlScalar(value: string): string {
     /^[\d.+-]/.test(v);
   if (!needsQuote) return v;
   return `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Obsidian wikilink target. Strips the characters Obsidian can't have inside
+ * `[[ ]]` (`[ ] | # ^`) and collapses whitespace, so a theme like
+ * "work | overload" or "focus #deep" still produces a valid, clickable link.
+ */
+export function wikilink(name: string): string {
+  const clean = name
+    .replace(/[[\]|#^]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return clean ? `[[${clean}]]` : "";
 }
 
 function yamlList(name: string, items: string[]): string[] {
@@ -153,6 +169,18 @@ export function renderEntryMarkdown(
   const body: string[] = [`# Debrief — ${date}`, ""];
 
   if (entry.summary) body.push(...section("Summary", [entry.summary]));
+
+  // Obsidian graph links — themes and (when supplied) people become
+  // [[wikilinks]] so entries connect to theme/person notes in the vault.
+  // Frontmatter `tags` stays too: tags power search/Dataview, wikilinks power
+  // the graph — different Obsidian features, both worth having.
+  const connections: string[] = [];
+  const themeLinks = entry.themes.map(wikilink).filter(Boolean);
+  if (themeLinks.length) connections.push(`**Themes:** ${themeLinks.join(" · ")}`);
+  const peopleLinks = (entry.people ?? []).map(wikilink).filter(Boolean);
+  if (peopleLinks.length) connections.push(`**People:** ${peopleLinks.join(" · ")}`);
+  if (connections.length) body.push(...section("Connections", connections));
+
   if (observation) body.push(...section("Something worth noticing", [observation]));
   body.push(...section("Wins", entry.wins.map((w) => `- ${w}`)));
   body.push(...section("Blockers", entry.blockers.map((b) => `- ${b}`)));

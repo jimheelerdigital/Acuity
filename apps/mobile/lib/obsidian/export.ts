@@ -1,5 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
-import { Platform, Share } from "react-native";
+import * as Sharing from "expo-sharing";
 
 import {
   bulkFilename,
@@ -14,27 +14,36 @@ import {
  * Deliver a debrief export to the user's own storage.
  *
  * ── No server, no OAuth, no vault path ───────────────────────────────
- * v1 writes a Markdown file to the app's cache directory and hands it to
- * the OS share sheet. The user drops it wherever their vault lives. We
- * never ask for a vault location, never index their filesystem, and never
- * upload anything — the whole point of an export is to be a way OUT of our
- * storage, and asking for filesystem access to "help" would undercut that.
+ * Writes a Markdown file to the app's cache directory and hands it to the OS
+ * share sheet. The user drops it wherever their vault lives. We never ask for
+ * a vault location, never index their filesystem, and never upload anything —
+ * the whole point of an export is to be a way OUT of our storage.
  *
- * ── Platform reality (v1 is iOS-first, stated not implied) ───────────
- * React Native's built-in Share supports a file `url` on iOS, which is what
- * puts "Save to Files" in the sheet. On ANDROID the same API only carries
- * text/message — a file url is ignored — so Android would silently share
- * nothing. Rather than pretend, exportEntry() reports `unsupported` there.
+ * ── Cross-platform (1.8) ─────────────────────────────────────────────
+ * Uses `expo-sharing`, which shares a real file on BOTH iOS (share sheet →
+ * "Save to Files") and Android (content:// provider → any file/vault app).
+ * This replaces v1's RN `Share`, whose file `url` only worked on iOS. Note:
+ * `expo-sharing` exposes no cancel signal, so a resolved share is reported
+ * as `ok` (the previous `cancelled` result no longer occurs, but stays in the
+ * union for callers).
  *
- * Making Android work needs a content:// provider (expo-sharing), which is
- * a native module and a new build. Deliberately not pulled in for v1: the
- * flag exists so this can ship to iOS and be measured before taking on a
- * native dependency for it.
+ * ── Not here: continuous vault sync ──────────────────────────────────
+ * Writing new entries straight into a user-chosen vault folder across launches
+ * needs persistent directory access. Android has the Storage Access Framework
+ * (feasible via expo-file-system), but iOS requires security-scoped bookmarks —
+ * a native module not available in managed Expo without a config plugin. Since
+ * Ripple is iOS-first, continuous sync is deferred to a native task rather than
+ * shipped Android-only. The share-sheet export above is the cross-platform
+ * mechanism for now.
  */
 
 export type ExportResult =
   | { ok: true; filename: string }
-  | { ok: false; reason: "unsupported" | "write_failed" | "cancelled" | "error"; message?: string };
+  | {
+      ok: false;
+      reason: "unsupported" | "write_failed" | "cancelled" | "error";
+      message?: string;
+    };
 
 /** Where staged files live. Cache, not Documents: the OS may reclaim it. */
 function stagingDir(): string | null {
@@ -45,10 +54,6 @@ async function writeAndShare(
   filename: string,
   contents: string
 ): Promise<ExportResult> {
-  if (Platform.OS !== "ios") {
-    return { ok: false, reason: "unsupported" };
-  }
-
   const dir = stagingDir();
   if (!dir) return { ok: false, reason: "write_failed" };
 
@@ -69,10 +74,18 @@ async function writeAndShare(
   }
 
   try {
-    const res = await Share.share({ url: uri });
-    if (res.action === Share.dismissedAction) {
-      return { ok: false, reason: "cancelled" };
+    const available = await Sharing.isAvailableAsync();
+    if (!available) {
+      // No share provider (rare — some Android ROMs, or a simulator without
+      // Files). The staged file is written; nothing to hand it to.
+      return { ok: false, reason: "unsupported" };
     }
+    await Sharing.shareAsync(uri, {
+      mimeType: "text/markdown",
+      // iOS UTI so the sheet offers markdown-aware targets (Obsidian, Files).
+      UTI: "net.daringfireball.markdown",
+      dialogTitle: "Export to Obsidian",
+    });
     return { ok: true, filename };
   } catch (err) {
     return {
@@ -82,8 +95,7 @@ async function writeAndShare(
     };
   }
   // The staged file is deliberately left in place. Deleting it immediately
-  // races the share sheet, which reads the file AFTER this promise
-  // resolves — removing it here produced an empty share on the first try.
+  // races the share sheet, which reads the file AFTER this promise resolves.
   // The OS reclaims the cache directory on its own schedule.
 }
 
@@ -99,7 +111,11 @@ export async function exportEntry(
 }
 
 export async function exportAll(
-  items: Array<{ entry: ExportEntry; tasks?: ExportTask[]; observation?: string | null }>,
+  items: Array<{
+    entry: ExportEntry;
+    tasks?: ExportTask[];
+    observation?: string | null;
+  }>,
   now: Date = new Date()
 ): Promise<ExportResult> {
   return writeAndShare(bulkFilename(now), renderBulkMarkdown(items, now));

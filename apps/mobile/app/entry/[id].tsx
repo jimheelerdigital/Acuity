@@ -144,8 +144,8 @@ export default function EntryDetailScreen() {
     if (res.reason === "cancelled") return; // Their choice, not an error.
     if (res.reason === "unsupported") {
       Alert.alert(
-        "Not available yet",
-        "Markdown export is iOS-only for now."
+        "Sharing unavailable",
+        "This device has no app to share the file to."
       );
       return;
     }
