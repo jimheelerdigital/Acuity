@@ -554,8 +554,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           // 9:16 for TikTok/email, plus the native 4:5 feed rendition the
           // image proxy serves to IG/FB (?ar=4x5 → "-feed.jpg").
           const [tall, feed] = await Promise.all([
-            renderPaperSlide({ paper, W: 1080, H: 1920, ...all[i] }),
-            renderPaperSlide({ paper, W: 1080, H: 1350, ...all[i] }),
+            renderPaperSlide({ paper, W: 1080, H: 1920, seed: topic.slug, ...all[i] }),
+            renderPaperSlide({ paper, W: 1080, H: 1350, seed: topic.slug, ...all[i] }),
           ]);
           const imageUrl = await uploadImage(tall, `${base}.jpg`);
           await uploadImage(feed, `${base}-feed.jpg`);

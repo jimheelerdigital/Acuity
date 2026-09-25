@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-25] — Reset guides now look typed onto real paper
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Type the reset guides onto real paper photos")
+
+### In plain English (for Keenan)
+The reset-guide carousels now look like the viral reference: plain black "typed" text on a real photographed sheet of paper, for both brands. Before, Ripple's was a flat digital page and BWK's was white text on a dark grey card. Ripple uses warm cream sheets and BWK uses cool grey sheets. The writing is also shorter per slide so lines don't wrap, and it uses US dollars.
+
+### Technical changes (for Jimmy)
+- New `apps/web/public/paper/` with four 1080x1920 paper photos, generated once with Nano Banana Pro (Higgsfield):
+  - Ripple: `cream-1.jpg`, `cream-2.jpg`
+  - BWK: `stone-1.jpg`, `stone-2.jpg`
+- `apps/web/src/lib/content-factory/paper-guide.ts`:
+  - The procedural paper and palette are gone. `loadPaperPhoto` loads from local public/paper and falls back to the goripple.io/paper CDN.
+  - `pickPaper(paper, seed)` keeps one sheet per post.
+  - Ink is `#141413`, composited with `blend: "multiply"` plus a 0.4 blur.
+  - Layout is measured off the reference: 9% left margin, body 0.046W, leading 1.2, header in bold caps with 0.06em tracking. Cover is 0.078W.
+  - Prompt: max ~36 characters per line and 7 body lines per step; American English and $.
+- `apps/web/src/inngest/functions/carousel-daily.ts`: passes `seed: topic.slug` to `renderPaperSlide`.
+
+### Manual steps needed
+None.
+
+### Notes
+- Spec value "charcoal" is kept for the seeded BWK row. It now means cool grey paper with black ink, not a dark background.
+- The textures are static assets, so posts make no per-post image-model calls. Higgsfield was used only to generate the four blank sheets once.
+- Sharp registers one fontfile per text render, so the header (Tinos Bold) and body (Tinos Regular) render as separate blocks.
+
 ## [2026-09-25] — Week chips in the test funnels, a normal-vs-test split switch, and a 4-funnel admin comparison
 
 **Requested by:** Keenan

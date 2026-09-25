@@ -5,7 +5,7 @@
  *
  * Modeled on the anastasiyadc "Reset your life" viral carousel (9.4K likes,
  * 8.7K saves, 1.9K shares on 8 slides): plain book-serif text set on a
- * textured paper background. No photos, so no image-model cost.
+ * textured paper background. No per-post image-model cost.
  *   1. COVER — one big sentence-case promise ("1 weekend can reset your
  *      entire 2026").
  *   2..N. STEPS — BOLD CAPS header ("FRIDAY NIGHT"), a short subline with a
@@ -15,8 +15,9 @@
  * Saves are the point of this format: the copy must be specific and
  * practical enough to come back to.
  *
- * Ripple lane = cream paper, dark type (women 40-50). BWK lane = charcoal
- * paper, cream type (men, discipline voice).
+ * Both lanes are black type on a real photographed sheet (public/paper,
+ * Nano Banana Pro textures, 2026-09-25): Ripple warm sheets ("cream"), BWK
+ * cool grey sheets (spec value "charcoal", kept for the seeded rows).
  *
  * Fonts: Tinos (OFL, metric-compatible with Times New Roman) in
  * public/fonts, resolved like compose.ts ensureFontFile (local, then CDN).
@@ -89,7 +90,8 @@ What makes it work, and what every post must do:
 - The cover is ONE plain sentence-case promise with a concrete number or span ("1 weekend…", "7 days to…", "The 20-minute Sunday reset", "3 habits that…"). No clickbait, no ALL CAPS, max 9 words.
 - Each step: a HEADER that is a time block or a step name (1-3 words, will be set in caps), a SUB line naming the action with a time box in parentheses, then 2-6 short lines. Bullets start with "• ". Use "" for a blank line between groups.
 - Practical and specific enough to save and actually do: real actions, real questions to ask yourself, real time boxes. No vague advice ("believe in yourself"), no fluff, no hashtags, no emojis.
-- Short words, short lines. Max ~50 words per step.
+- Short words, short lines, like the reference. Max ~40 words per step and at most 7 body lines. Each line fits on one line of the page: max ~36 characters, including the SUB line (keep the time box short: "(20 min)", "(2 hrs)"). Split a longer thought into two lines instead of one long line.
+- American English and US dollars ($), never £ or British spellings.
 - The LAST step is the small recurring habit that keeps the reset going, ending on a one-line takeaway.
 - Never mention any app, brand, or product. Never say "journal", "journaling", or "brain dump". Writing things down or saying them out loud is fine.
 - No invented statistics, no medical or therapy claims.
@@ -170,9 +172,14 @@ async function generateOnce(
 
 // ─── Rendering ──────────────────────────────────────────────────────────────
 
-const PALETTE = {
-  cream: { base: [233, 229, 220], ink: "#1c1b19", sub: "#1c1b19", grain: 18 },
-  charcoal: { base: [36, 35, 33], ink: "#f1ede4", sub: "#e6e1d6", grain: 14 },
+// Ink is the same near-black on every sheet: the look is text TYPED onto a
+// real photographed page (2026-09-25, per Keenan: "they need to look like
+// they're both TYPED onto paper in the normal typing font"). Ripple gets warm
+// sheets, BWK cool grey ones.
+const INK = "#141413";
+const PAPERS = {
+  cream: ["cream-1.jpg", "cream-2.jpg"],
+  charcoal: ["stone-1.jpg", "stone-2.jpg"],
 } as const;
 
 async function ensureTinos(variant: "Regular" | "Bold"): Promise<string | null> {
@@ -203,30 +210,36 @@ async function ensureTinos(variant: "Regular" | "Bold"): Promise<string | null> 
 
 const paperCache = new Map<string, Buffer>();
 
-/** Textured paper: flat tone + fine grain + soft uneven light, like a photographed page. */
-async function paperBackground(paper: "cream" | "charcoal", W: number, H: number): Promise<Buffer> {
-  const key = `${paper}:${W}x${H}`;
-  const hit = paperCache.get(key);
+/** Loads a bundled paper photo (public/paper), falling back to the CDN copy. */
+async function loadPaperPhoto(file: string): Promise<Buffer> {
+  const hit = paperCache.get(file);
   if (hit) return hit;
-  const pal = PALETTE[paper];
-  const noise = Buffer.alloc(W * H);
-  for (let i = 0; i < noise.length; i++) noise[i] = 128 + Math.round((Math.random() - 0.5) * 2 * pal.grain);
-  const grain = await sharp(noise, { raw: { width: W, height: H, channels: 1 } }).blur(0.6).extractChannel(0).raw().toBuffer();
-  const rgb = Buffer.alloc(W * H * 3);
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const i = y * W + x;
-      // Soft light from the upper left, falling off to the right edge.
-      const light = 1.04 - 0.1 * (x / W) - 0.05 * Math.abs(y / H - 0.4);
-      const g = grain[i] - 128;
-      for (let c = 0; c < 3; c++) {
-        rgb[i * 3 + c] = Math.max(0, Math.min(255, Math.round(pal.base[c] * light + g)));
-      }
+  let buf: Buffer | null = null;
+  for (const p of [
+    path.join(process.cwd(), "public", "paper", file),
+    path.join(process.cwd(), ".next", "server", "public", "paper", file),
+    path.join(process.cwd(), ".next", "standalone", "public", "paper", file),
+  ]) {
+    if (fs.existsSync(p)) {
+      buf = fs.readFileSync(p);
+      break;
     }
   }
-  const out = await sharp(rgb, { raw: { width: W, height: H, channels: 3 } }).png().toBuffer();
-  paperCache.set(key, out);
-  return out;
+  if (!buf) {
+    const res = await fetch(`https://goripple.io/paper/${file}`);
+    if (!res.ok) throw new Error(`Paper texture missing: ${file} (${res.status})`);
+    buf = Buffer.from(await res.arrayBuffer());
+  }
+  paperCache.set(file, buf);
+  return buf;
+}
+
+/** One sheet per post (seeded), so every slide of a carousel is the same page. */
+function pickPaper(paper: "cream" | "charcoal", seed: string): string {
+  const list = PAPERS[paper];
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return list[h % list.length];
 }
 
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -251,38 +264,49 @@ export async function renderPaperSlide(opts: {
   paper: "cream" | "charcoal";
   W: number;
   H: number;
+  /** Same seed for every slide of a post → same sheet of paper. */
+  seed?: string;
   cover?: string;
   slide?: PaperGuideSlide;
 }): Promise<Buffer> {
   const { W, H } = opts;
-  const pal = PALETTE[opts.paper];
   const [regular, bold] = await Promise.all([ensureTinos("Regular"), ensureTinos("Bold")]);
-  const bg = await paperBackground(opts.paper, W, H);
-  const left = Math.round(W * 0.085);
-  const textW = Math.round(W * 0.84);
-  const layers: { input: Buffer; top: number; left: number }[] = [];
-
+  const bg = await sharp(await loadPaperPhoto(pickPaper(opts.paper, opts.seed ?? opts.cover ?? opts.slide?.header ?? "")))
+    .resize(W, H, { fit: "cover" })
+    .toBuffer();
+  // Proportions measured off the reference: text starts ~9% in, body type
+  // ~4.4% of the width, tight 1.2 leading, header the same size in bold
+  // caps with slight tracking, the subline directly under it.
+  const left = Math.round(W * 0.09);
+  const textW = Math.round(W * 0.8);
+  const size = Math.round(W * 0.046);
+  // Header and body are separate blocks because sharp registers one
+  // fontfile per text render (Lambda needs Bold and Regular each).
+  const blocks: { buf: Buffer; h: number; dy: number }[] = [];
   if (opts.cover) {
-    const size = Math.round(W * 0.078);
-    const block = await textBlock(`<span font_desc="Tinos ${size}" foreground="${pal.ink}" line_height="1.15">${esc(opts.cover)}</span>`, regular, textW);
-    layers.push({ input: block.buf, top: Math.round(H * 0.44 - block.h / 2), left });
+    const c = await textBlock(`<span font_desc="Tinos ${Math.round(W * 0.078)}" foreground="${INK}" line_height="1.15">${esc(opts.cover)}</span>`, regular, textW);
+    blocks.push({ buf: c.buf, h: c.h, dy: 0 });
   } else if (opts.slide) {
     const s = opts.slide;
-    const headSize = Math.round(W * 0.047);
-    const bodySize = Math.round(W * 0.043);
     const head = await textBlock(
-      `<span font_desc="Tinos Bold ${headSize}" foreground="${pal.ink}" letter_spacing="${Math.round(headSize * 25)}">${esc(s.header)}</span>`,
+      `<span font_desc="Tinos Bold ${size}" foreground="${INK}" letter_spacing="${Math.round(size * 1024 * 0.06)}">${esc(s.header.toUpperCase())}</span>`,
       bold,
       textW
     );
-    const lines = [s.sub, "", ...s.body].map((l) => esc(l)).join("\n");
-    const body = await textBlock(`<span font_desc="Tinos ${bodySize}" foreground="${pal.sub}" line_height="1.3">${lines}</span>`, regular, textW);
-    const gap = Math.round(bodySize * 0.15);
-    const total = head.h + gap + body.h;
-    const top = Math.max(Math.round(H * 0.12), Math.round(H * 0.46 - total / 2));
-    layers.push({ input: head.buf, top, left });
-    layers.push({ input: body.buf, top: top + head.h + gap, left });
+    const rest = [s.sub, "", ...s.body].map((l) => esc(l)).join("\n");
+    const body = await textBlock(`<span font_desc="Tinos ${size}" foreground="${INK}" line_height="1.2">${rest}</span>`, regular, textW);
+    blocks.push({ buf: head.buf, h: head.h, dy: 0 });
+    blocks.push({ buf: body.buf, h: body.h, dy: head.h + Math.round(size * 0.3) });
   }
-
-  return sharp(bg).composite(layers).jpeg({ quality: 92, chromaSubsampling: "4:4:4" }).toBuffer();
+  const total = blocks.reduce((m, b) => Math.max(m, b.dy + b.h), 0);
+  const top = Math.max(Math.round(H * 0.1), Math.round(H * 0.47 - total / 2));
+  // Ink, not a sticker: multiply lets the paper's grain and light show
+  // through the letters, and a hair of blur takes off the digital edge.
+  const layers = await Promise.all(
+    blocks.map(async (b) => ({ input: await sharp(b.buf).blur(0.4).png().toBuffer(), top: top + b.dy, left, blend: "multiply" as const }))
+  );
+  return sharp(bg)
+    .composite(layers)
+    .jpeg({ quality: 92, chromaSubsampling: "4:4:4" })
+    .toBuffer();
 }
