@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-09-25] — /start-test quotes: centered, italic, with a face showing the feeling
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every "Does this sound like you?" card in both test funnels (/start-test and /start-test-bwk) now shows the statement as a centered, italic quote. Above it is a small round face showing the feeling behind the line: overloaded (scribble over the head), stretched thin (three things in the air), worried (sweat drop), drained (low battery), foggy (blur lines), stuck ("…"), frustrated (tension zigzag), talking it out (sound waves) and hopeful (sparkle). Each feeling has its own color. The results screen's "In your own words" list uses the same faces, smaller, next to each statement she said yes to.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/components/mood-avatar.tsx`: `MoodAvatar({ mood, dark, size })`, a hand-drawn 64×64 SVG
+  - 9 moods, each with its own hue
+  - disc, ink and cue shades are oklch literals, with light and dusk variants
+  - features are scaled 1.25× so they read at 60px
+  - carries `role="img"`, an aria-label and a `<title>`
+- `lib/funnel-v9-config.ts`: statement steps require `mood: Mood`; all 14 statements (7 per audience) are tagged
+- `components/funnel-v9.tsx` `StatementScreen`: the card is now a `<figure>` with the avatar (60px) above a centered italic `<blockquote>` in curly quotes. The left gradient stripe and the watermark logo are removed. The result screen's "In your own words" list shows 28px avatars instead of check icons
+- Chose SVG over emoji: emoji render differently per OS and clash with the funnel's type
+
+### Manual steps needed
+- [ ] Say "push it" (Keenan)
+
+### Notes
+- The mood mapping lives next to each statement in the config. A new statement fails the type check until it gets a `mood`
+- The first version of "frustrated" (dark red + steam puffs) read as a devil with horns. It's now hue 48 with a zigzag. Avoid anything pointy above the head
+- Unrelated test failures seen while verifying (3 files, 6 tests: rc-observer-build, v10-paywall-copy, v2-product-ids). They concern the mobile EAS profiles and pricing flags, not this change
+- The /start and /start-bwk screen-1 yes/no split-test card (`YesNoEntryScreen`) is unchanged
+
+---
+
 ## [2026-09-25] — /start-test-bwk: the men's version of the test funnel
 
 **Requested by:** Keenan

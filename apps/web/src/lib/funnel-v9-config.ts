@@ -1,3 +1,4 @@
+import type { Mood } from "@/components/mood-avatar";
 /**
  * /start-test — the v9 evidence-based funnel (2026-09-24, per Keenan).
  *
@@ -32,7 +33,7 @@ export type V9Step =
   | { id: string; kind: "multi"; title: string; sub?: string; options: V9Option[] }
   | { id: string; kind: "slider"; title: string; left: string; right: string }
   /** One statement, two big buttons (2026-09-25, per Keenan: "one question at a time with less multiple choice"). */
-  | { id: string; kind: "statement"; statement: string; title?: string }
+  | { id: string; kind: "statement"; statement: string; title?: string; /** Feeling shown by the MoodAvatar on the card. */ mood: Mood }
   | { id: string; kind: "info"; screen: "reassure" | "review" | "how" }
   | { id: string; kind: "name" }
   | { id: string; kind: "loader" }
@@ -47,7 +48,7 @@ export const V9_HOOK_LINE = "Ripple keeps track of what you say, so your head do
 
 export const V9_STEPS: V9Step[] = [
   // Screen 1: a yes/no recognition statement (the /start split-test opener).
-  { id: "hook", kind: "statement", statement: "My head\u2019s too full and I keep forgetting things." },
+  { id: "hook", kind: "statement", statement: "My head\u2019s too full and I keep forgetting things.", mood: "overloaded" },
   {
     id: "age",
     kind: "single",
@@ -73,8 +74,8 @@ export const V9_STEPS: V9Step[] = [
       { id: "health", label: "My own health" },
     ],
   },
-  { id: "st-remember", kind: "statement", statement: "I\u2019m the one who remembers everything for everyone." },
-  { id: "st-slip", kind: "statement", statement: "Things I mean to do slip through the cracks." },
+  { id: "st-remember", kind: "statement", statement: "I\u2019m the one who remembers everything for everyone.", mood: "stretched" },
+  { id: "st-slip", kind: "statement", statement: "Things I mean to do slip through the cracks.", mood: "worried" },
   {
     id: "pileup",
     kind: "single",
@@ -88,9 +89,9 @@ export const V9_STEPS: V9Step[] = [
   },
   { id: "reassure", kind: "info", screen: "reassure" },
   { id: "s-name", kind: "slider", title: "Where do you land?", left: "I know what's bothering me", right: "I can't quite name it" },
-  { id: "st-myself", kind: "statement", statement: "I put my own stuff last." },
+  { id: "st-myself", kind: "statement", statement: "I put my own stuff last.", mood: "drained" },
   { id: "s-repeat", kind: "slider", title: "Where do you land?", left: "I can see my own patterns", right: "The same weeks keep repeating" },
-  { id: "st-blur", kind: "statement", statement: "Whole weeks blur together and I can\u2019t say where they went." },
+  { id: "st-blur", kind: "statement", statement: "Whole weeks blur together and I can\u2019t say where they went.", mood: "foggy" },
   { id: "s-lists", kind: "slider", title: "Where do you land?", left: "Lists and notebooks work for me", right: "I've tried them. They don't stick" },
   {
     id: "offload",
@@ -106,7 +107,7 @@ export const V9_STEPS: V9Step[] = [
   },
   { id: "review", kind: "info", screen: "review" },
   { id: "how", kind: "info", screen: "how" },
-  { id: "st-talk", kind: "statement", statement: "Saying things out loud helps me sort them out." },
+  { id: "st-talk", kind: "statement", statement: "Saying things out loud helps me sort them out.", mood: "talking" },
   {
     id: "talktype",
     kind: "single",
@@ -141,7 +142,7 @@ export const V9_STEPS: V9Step[] = [
       { id: "whenever", label: "Whenever it hits me" },
     ],
   },
-  { id: "st-lighter", kind: "statement", statement: "I want to feel lighter without adding another chore.", title: "Last one. True for you?" },
+  { id: "st-lighter", kind: "statement", statement: "I want to feel lighter without adding another chore.", mood: "hopeful", title: "Last one. True for you?" },
   {
     id: "commit",
     kind: "single",
@@ -339,7 +340,7 @@ export const RIPPLE_V9: V9Config = {
 };
 
 export const BWK_V9_STEPS: V9Step[] = [
-  { id: "hook", kind: "statement", statement: "I know what I should be doing. I’m just not doing it." },
+  { id: "hook", kind: "statement", statement: "I know what I should be doing. I’m just not doing it.", mood: "stuck" },
   {
     id: "age",
     kind: "single",
@@ -365,8 +366,8 @@ export const BWK_V9_STEPS: V9Step[] = [
       { id: "partner", label: "A relationship" },
     ],
   },
-  { id: "st-plan", kind: "statement", statement: "I make the plan. Then I don’t follow it." },
-  { id: "st-slip", kind: "statement", statement: "Things I say I’ll do slip for weeks." },
+  { id: "st-plan", kind: "statement", statement: "I make the plan. Then I don’t follow it.", mood: "frustrated" },
+  { id: "st-slip", kind: "statement", statement: "Things I say I’ll do slip for weeks.", mood: "worried" },
   {
     id: "pileup",
     kind: "single",
@@ -380,9 +381,9 @@ export const BWK_V9_STEPS: V9Step[] = [
   },
   { id: "reassure", kind: "info", screen: "reassure" },
   { id: "s-name", kind: "slider", title: "Where do you land?", left: "I know what's holding me back", right: "I can't pin it down" },
-  { id: "st-myself", kind: "statement", statement: "My own goals always come last." },
+  { id: "st-myself", kind: "statement", statement: "My own goals always come last.", mood: "drained" },
   { id: "s-repeat", kind: "slider", title: "Where do you land?", left: "I can see my own patterns", right: "Same weeks, same excuses" },
-  { id: "st-blur", kind: "statement", statement: "Months go by and I can’t say what I actually built." },
+  { id: "st-blur", kind: "statement", statement: "Months go by and I can’t say what I actually built.", mood: "foggy" },
   { id: "s-lists", kind: "slider", title: "Where do you land?", left: "Apps and lists work for me", right: "I've tried them. They don't stick" },
   {
     id: "offload",
@@ -398,7 +399,7 @@ export const BWK_V9_STEPS: V9Step[] = [
   },
   { id: "review", kind: "info", screen: "review" },
   { id: "how", kind: "info", screen: "how" },
-  { id: "st-talk", kind: "statement", statement: "Saying it out loud helps me think straight." },
+  { id: "st-talk", kind: "statement", statement: "Saying it out loud helps me think straight.", mood: "talking" },
   {
     id: "talktype",
     kind: "single",
@@ -433,7 +434,7 @@ export const BWK_V9_STEPS: V9Step[] = [
       { id: "whenever", label: "Whenever it hits me" },
     ],
   },
-  { id: "st-lighter", kind: "statement", statement: "I want a system, not another app to babysit.", title: "Last one. True for you?" },
+  { id: "st-lighter", kind: "statement", statement: "I want a system, not another app to babysit.", mood: "hopeful", title: "Last one. True for you?" },
   {
     id: "commit",
     kind: "single",

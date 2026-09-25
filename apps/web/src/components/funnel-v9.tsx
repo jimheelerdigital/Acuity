@@ -22,6 +22,7 @@
  * forgot-password email) so she can sign in to the app.
  */
 
+import { MoodAvatar } from "@/components/mood-avatar";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
@@ -735,11 +736,14 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
       )}
       <h1 className="up mb-5 text-center text-[clamp(22px,6.6vw,27px)] font-bold leading-tight tracking-tight">{step.title ?? "Does this sound like you?"}</h1>
 
-      <div className={`card-in relative overflow-hidden rounded-[28px] card px-6 py-[clamp(20px,6vw,32px)] ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-        <span className="absolute left-0 top-0 h-full w-1.5 grad" aria-hidden />
-        <img src="/ripple-mark-coral-t.png" alt="" aria-hidden className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 opacity-[0.07]" style={C.theme === "dusk" ? DUSK_MARK : undefined} />
-        <p className="relative text-[clamp(19px,5.8vw,23px)] font-semibold leading-[1.3] tracking-tight text-balance">{step.statement}</p>
-      </div>
+      {/* The statement as a quote: a face showing the feeling, then the line
+          centered in italics (2026-09-25, per Keenan). */}
+      <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
+        <MoodAvatar mood={step.mood} dark={C.theme === "dusk"} size={60} />
+        <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
+          &ldquo;{step.statement}&rdquo;
+        </blockquote>
+      </figure>
 
       <div className="mt-5 space-y-1.5">
         <button
@@ -1306,8 +1310,8 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
           <p className="text-[13px] font-bold mb-2.5">In your own words</p>
           <div className="space-y-2">
             {statementSteps(C).filter((st) => answers.single[st.id] === "yes").map((st, i) => (
-              <p key={st.id} className="up flex gap-2 text-[15px] leading-snug" style={{ animationDelay: `${300 + i * 120}ms` }}>
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-acuity-primary" strokeWidth={3} />
+              <p key={st.id} className="up flex items-center gap-2.5 text-[15px] italic leading-snug" style={{ animationDelay: `${300 + i * 120}ms` }}>
+                <MoodAvatar mood={st.mood} dark={C.theme === "dusk"} size={28} />
                 <span>&ldquo;{st.statement}&rdquo;</span>
               </p>
             ))}
