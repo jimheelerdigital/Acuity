@@ -82,9 +82,10 @@ export const REEL_LANES = ["memento", "selfie"] as const;
 /**
  * Lanes that stay silent swipeable photo carousels: one per brand
  * (2026-09-24, per Keenan: "keep one photo carousel each lane. discipline
- * & muse"). BWK = discipline-real, Ripple = muse.
+ * & muse"). BWK = discipline-real, Ripple = muse. The paper "reset guide"
+ * lanes (2026-09-25) are text-on-paper swipe carousels by design.
  */
-export const CAROUSEL_LANES = ["discipline-real", "muse"] as const;
+export const CAROUSEL_LANES = ["discipline-real", "muse", "reset-guide", "reset-guide-men"] as const;
 
 /**
  * Every other lane, both brands, publishes as a reel since 2026-09-24 (per

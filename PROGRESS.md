@@ -37,6 +37,40 @@ Every "Does this sound like you?" card in both test funnels (/start-test and /st
 
 ---
 
+## [2026-09-25] — New "reset guide" photo carousel lanes for Ripple and BWK
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Add paper reset-guide carousel lanes for Ripple and BWK")
+
+### In plain English (for Keenan)
+Ripple and BWK each get a new daily photo carousel in the "Reset your life" style. It is plain serif text on paper: a one-line cover, then slides with a bold time-block header and short bullet steps (weekend resets, brain resets, getting ahead of the week). Ripple's is on cream paper and written for her. BWK's is on charcoal paper in the command voice. Each one posts as a swipe carousel on IG/FB and lands in your inbox like the other lanes.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/paper-guide.ts`:
+  - `PaperLaneSpec` plus `parsePaperLaneSpec`.
+  - `generatePaperGuideTopic` (Claude, via `withHeadlineRetry`, returns title plus slides of `{header, sub, body[]}`).
+  - `renderPaperSlide`: procedural paper texture with Tinos serif, rendered with sharp/Pango.
+- New fonts: `apps/web/public/fonts/Tinos-Regular.ttf` and `Tinos-Bold.ttf` (OFL).
+- `apps/web/src/inngest/functions/carousel-daily.ts`:
+  - New PAPER-GUIDE block for ContentLane rows with `template: "paper-guide"`: load lane, generate topic, render slides, then save the CarouselPost and email.
+  - Slide sizes: 1080x1920 story plus 1080x1350 feed.
+- `apps/web/src/lib/content-factory/social-publish.ts`: `reset-guide` and `reset-guide-men` added to `CAROUSEL_LANES`, so they post as photo carousels, not reels.
+- `apps/web/src/inngest/functions/carousel-living-reel.ts`: the 5-min queue fn now also claims `content-factory/lane-requests/<laneKey>.json` and fires `content-factory/daily.generate` for that lane. This gives an on-demand lane run from a laptop, where the local CRON_SECRET and Claude keys don't work.
+- New `apps/web/scripts/seed-reset-guide-lanes.ts`: upserts ContentLane rows.
+  - `reset-guide`: ripple, cream, 06 UTC.
+  - `reset-guide-men`: bwk, charcoal, 07 UTC.
+- No schema change.
+
+### Manual steps needed
+- [ ] After deploy: run `seed-reset-guide-lanes.ts` against prod (Claude Code can do it). Seed only after deploy, or the cron dispatches the lanes to code that doesn't know the template.
+- [ ] After deploy: drop `lane-requests/reset-guide.json` and `lane-requests/reset-guide-men.json` for a first live test run (Claude Code).
+
+### Notes
+- Local Anthropic key is invalid, so topic generation can only be tested in prod. The renderer was checked locally in cream and charcoal.
+- Pango on macOS ignores `fontfile`. Tinos must be installed in ~/Library/Fonts for local previews; Lambda honours `fontfile`.
+- Paper lanes cost one Claude call per post; there are no image model calls.
+
 ## [2026-09-25] — /start-test-bwk: the men's version of the test funnel
 
 **Requested by:** Keenan

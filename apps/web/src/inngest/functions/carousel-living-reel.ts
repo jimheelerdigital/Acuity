@@ -305,6 +305,25 @@ export const livingReelQueueFn = inngest.createFunction(
         requests.map((r) => ({ name: "content-factory/living-reel.build", data: r }))
       );
     }
-    return { queued: requests.map((r) => r.postId) };
+
+    // Same drop-a-file trigger for generating a lane's post on demand
+    // (2026-09-25): `lane-requests/<laneKey>.json` → content-factory/daily.generate.
+    const laneRuns = await step.run("claim-lane-requests", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data } = await supabase.storage.from("content-factory").list("lane-requests", { limit: 20 });
+      const claimed: string[] = [];
+      for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        const { error } = await supabase.storage.from("content-factory").remove([`lane-requests/${f.name}`]);
+        if (!error) claimed.push(f.name.replace(/\.json$/, ""));
+      }
+      return claimed;
+    });
+    if (laneRuns.length > 0) {
+      await step.sendEvent(
+        "send-lane-runs",
+        laneRuns.map((bucket) => ({ name: "content-factory/daily.generate" as const, data: { bucket } }))
+      );
+    }
+    return { queued: requests.map((r) => r.postId), lanes: laneRuns };
   }
 );

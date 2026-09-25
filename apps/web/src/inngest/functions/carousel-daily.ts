@@ -510,6 +510,98 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 1, bucket: laneKey, ...gridResult };
     }
 
+    // ── PAPER-GUIDE lanes (template "paper-guide", 2026-09-25) ──────
+    // Per Keenan: practical "reset guide" carousels, plain serif text on
+    // paper (the anastasiyadc "Reset your life" format). No photos, so the
+    // only cost is one Claude call. See lib/content-factory/paper-guide.ts.
+    const paperLane =
+      !isLegacyBucket && b
+        ? await step.run("load-paper-lane", async () => {
+            const { prisma } = await import("@/lib/prisma");
+            const row = await prisma.contentLane.findUnique({ where: { key: b } });
+            if (!row || row.status === "RETIRED" || row.template !== "paper-guide") return null;
+            const { parsePaperLaneSpec } = await import("@/lib/content-factory/paper-guide");
+            const spec = parsePaperLaneSpec(row.spec);
+            if (!spec) {
+              throw new Error(`[carousel-cron] ContentLane "${b}" has an unusable paper-guide spec — fix the row`);
+            }
+            return { key: row.key, spec };
+          })
+        : null;
+    if (paperLane) {
+      const laneKey = paperLane.key;
+      const topic = await step.run("generate-paper-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generatePaperGuideTopic } = await import("@/lib/content-factory/paper-guide");
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: new Date(Date.now() - 30 * 86_400_000) }, lane: laneKey },
+          select: { headline: true },
+        });
+        const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+        return generatePaperGuideTopic(paperLane.spec, recent.map((p) => p.headline), await getLaneFeedback(laneKey));
+      });
+      logger.info(`[carousel-cron] Paper guide (${laneKey}): "${topic.title}" (${topic.slides.length} steps)`);
+
+      const paperSlides = await step.run("render-paper-slides", async () => {
+        const { ensureBucket, uploadImage } = await import("@/lib/content-factory/carousel-generate");
+        const { renderPaperSlide } = await import("@/lib/content-factory/paper-guide");
+        await ensureBucket();
+        const paper = paperLane.spec.paper;
+        const all = [{ cover: topic.title }, ...topic.slides.map((slide) => ({ slide }))];
+        const out: { imageUrl: string; overlayText: string }[] = [];
+        for (let i = 0; i < all.length; i++) {
+          const base = `carousels/${dateStr}/${topic.slug}/slide-${i}`;
+          // 9:16 for TikTok/email, plus the native 4:5 feed rendition the
+          // image proxy serves to IG/FB (?ar=4x5 → "-feed.jpg").
+          const [tall, feed] = await Promise.all([
+            renderPaperSlide({ paper, W: 1080, H: 1920, ...all[i] }),
+            renderPaperSlide({ paper, W: 1080, H: 1350, ...all[i] }),
+          ]);
+          const imageUrl = await uploadImage(tall, `${base}.jpg`);
+          await uploadImage(feed, `${base}-feed.jpg`);
+          const it = all[i] as { cover?: string; slide?: { header: string; sub: string; body: string[] } };
+          out.push({
+            imageUrl,
+            overlayText: it.cover ?? `${it.slide!.header}\n${it.slide!.sub}\n\n${it.slide!.body.join("\n")}`,
+          });
+        }
+        return out;
+      });
+
+      const paperResult = await step.run("save-and-email-paper", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildMoodyCaption } = await import("@/lib/content-factory/moody-carousel");
+        const { extractHashtags } = await import("@/lib/content-factory/carousel-generate");
+        const caption = buildMoodyCaption(paperLane.spec.audience, topic.slug);
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: topic.slug,
+            headline: topic.title,
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: laneKey,
+            slides: {
+              create: paperSlides.map((s, i) => ({
+                order: i,
+                kind: i === 0 ? ("COVER" as const) : ("REASON" as const),
+                overlayText: s.overlayText,
+                imagePrompt: `paper-guide:${paperLane.spec.paper}`,
+                imageUrl: s.imageUrl,
+              })),
+            },
+          },
+        });
+        const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+        await sendCarouselEmail(post.id);
+        return { postId: post.id, slideCount: paperSlides.length, estimatedCostCents: 2 };
+      });
+      logger.info(`[carousel-cron] Generated paper guide (${laneKey}) "${topic.title}": ${paperResult.slideCount} slides`);
+      return { generated: 1, bucket: laneKey, ...paperResult };
+    }
+
     // ── SELFIE bucket: realistic first-person photo slideshow ──────
     // 2026-08-25, per Keenan; 2026-08-28: ONE selfie per slideshow;
     // killed 2026-08-28, REVIVED 2026-08-30 ("add the selfie carousel
