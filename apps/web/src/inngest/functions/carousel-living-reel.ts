@@ -127,9 +127,24 @@ export const carouselLivingReelFn = inngest.createFunction(
       );
     }
 
+    // Finished clips are cached per post + model, so a rerun after a later
+    // failure (e.g. assembly) doesn't pay Higgsfield for the same clips again.
+    const cacheKey = `living/${postId}/clips-${model.replace(/[^a-z0-9]+/gi, "_")}.json`;
+    const cached = await step.run("load-cached-clips", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data } = await supabase.storage.from("content-factory").download(cacheKey);
+      if (!data) return null;
+      try {
+        const urls = JSON.parse(await data.text()) as string[];
+        return Array.isArray(urls) && urls.length === prepared.length ? urls : null;
+      } catch {
+        return null;
+      }
+    });
+
     // ── 2. Submit every slide to Higgsfield ──────────────────────────
     const requestIds: string[] = [];
-    for (let i = 0; i < prepared.length; i++) {
+    for (let i = 0; i < (cached ? 0 : prepared.length); i++) {
       requestIds.push(
         await step.run(`submit-${i}`, async () => {
           const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
@@ -145,8 +160,8 @@ export const carouselLivingReelFn = inngest.createFunction(
     }
 
     // ── 3. Poll until every clip is done (max ~20 min) ───────────────
-    let clipUrls: (string | null)[] = requestIds.map(() => null);
-    for (let round = 0; round < 40; round++) {
+    let clipUrls: (string | null)[] = cached ?? requestIds.map(() => null);
+    for (let round = 0; round < (cached ? 0 : 40); round++) {
       await step.sleep(`wait-${round}`, "30s");
       clipUrls = await step.run(`poll-${round}`, async () => {
         const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
@@ -165,6 +180,14 @@ export const carouselLivingReelFn = inngest.createFunction(
     }
     if (!clipUrls.every(Boolean)) {
       throw new Error(`[living-reel] Clips still pending after 20 min for post ${postId}`);
+    }
+    if (!cached) {
+      await step.run("cache-clips", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        await supabase.storage
+          .from("content-factory")
+          .upload(cacheKey, Buffer.from(JSON.stringify(clipUrls)), { contentType: "application/json", upsert: true });
+      });
     }
 
     // ── 4. Assemble + store ──────────────────────────────────────────

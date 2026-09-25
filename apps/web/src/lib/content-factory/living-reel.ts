@@ -201,10 +201,13 @@ export async function assembleLivingReel(opts: {
       f.push(
         `[${n + i}:v]format=rgba,fps=30,${fadeIn}fade=t=out:st=${(d - XFADE_SEC - TEXT_FADE_SEC).toFixed(2)}:d=${TEXT_FADE_SEC}:alpha=1[l${i}]`
       );
-      f.push(`[bg${i}][l${i}]overlay=0:0:shortest=1,format=yuv420p[s${i}]`);
+      // fps + settb after the overlay: xfade needs every input at a constant
+      // frame rate and the same timebase. DoP clips arrive VFR ("current rate
+      // of 1/0 is invalid" on 2026-09-25); Kling clips happened to be CFR.
+      f.push(`[bg${i}][l${i}]overlay=0:0:shortest=1,format=yuv420p,fps=30,settb=AVTB[s${i}]`);
     }
     f.push(
-      `[${2 * n}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,format=yuv420p[s${n}]`
+      `[${2 * n}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,format=yuv420p,settb=AVTB[s${n}]`
     );
     const all = [...opts.seconds, CTA_SEC];
     let prev = "s0";

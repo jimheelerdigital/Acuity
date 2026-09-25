@@ -7,6 +7,58 @@
 
 ---
 
+## [2026-09-25] — /start-test: an evidence-based long funnel with email-only signup and Apple/Google Pay; Meta tracking fixes
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (this entry is amended into the commits)
+
+### In plain English (for Keenan)
+There's a new test funnel at /start-test, built from research into how Noom, Calm, Flo, Cal AI and others convert (full report: reports/Web funnel conversion evidence.md).
+- **The quiz:** it's longer and made to feel personal. Sliders, a real review in the middle, a sample of what one debrief turns into, and a loader that says what it's doing.
+- **Sign-up:** people only give their email to see their results. No password until after they've paid.
+- **The paywall:** yearly is picked by default and shown as a monthly price. There's a reminder timeline, and reviews plus FAQs sit under the button.
+- **Checkout:** it sits right on the page, with Apple Pay / Google Pay above the card form.
+- **/start and /start-bwk are unchanged.** The admin Funnel tab has a new "Test" view to compare them.
+
+This also fixes a Meta tracking gap. When a card trial started, the event sent to Meta only had the buyer's email, not the ad click, so Meta often couldn't credit the ad. It now includes the click, and every event we send to Meta records whether Meta accepted it.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/start-test/page.tsx`, `apps/web/src/components/funnel-v9.tsx` and `apps/web/src/lib/funnel-v9-config.ts`: flowVersion `v9-test`, 27 steps, state in sessionStorage.
+  - Screen 1 is SSR'd (the client component renders server-side).
+  - `funnel_entry_rendered` fires client-side for the prefetch-proof visit count.
+- **Email gate:** POSTs `/api/auth/signup` with a random password the user never sees, then `signIn("credentials")`, then `/api/onboarding/funnel-free-plan`. Fires the Lead pixel, plus CompleteRegistration using the returned capiEventId. On 409 it shows "sign in".
+- **Post-payment:** a "set a password" button calls `/api/auth/forgot-password`, i.e. the reset email.
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts`:
+  - `/start-test` added to FUNNEL_PATHS.
+  - New `embedded: true` returns `{clientSecret}` for `ui_mode: "embedded"` with `return_url`. Hosted mode is unchanged.
+  - The client loads js.stripe.com/v3 (already allowed by CSP) and calls `initEmbeddedCheckout`. If the publishable key or Stripe.js is missing, it falls back to hosted checkout.
+- **Admin:** a `v9-test` cohort in `app/api/admin/metrics/route.ts` (FUNNEL_STEPS_V9, union types, isV8 treatment) and a "Test" button in `FunnelAnalyticsTab.tsx`.
+- `app/pro-trial/route.ts`: v9 users are sent to `/start-test?step=paywall`.
+- `components/install-banner.tsx`: `/start-test` is excluded.
+- `lib/meta-capi.ts`:
+  - `ConversionEvent.userId` added.
+  - `recordCapiOutcome` writes `meta_capi_<event>_ok|failed` rows to OnboardingEvent, containing the status and response body. PageView is skipped.
+  - Callers pass `userId`: signup, capi/complete-registration and the stripe webhook.
+- **Stripe webhook:** the Purchase CAPI now includes the fbclid, taken from the buyer's latest funnel event. Before this, it sent the email only.
+- **Living reel:**
+  - `assembleLivingReel` adds `fps=30,settb=AVTB` before `xfade`. DoP Lite clips are VFR, and ffmpeg failed with "current rate of 1/0 is invalid". A local repro with a VFR clip now passes.
+  - Clip URLs are cached at `living/<postId>/clips-<model>.json`, so reruns don't re-bill Higgsfield.
+
+### Manual steps needed
+- [ ] Stripe: Settings → Payment method domains → add goripple.io and www.goripple.io. Embedded Checkout only shows Apple Pay / Google Pay on registered domains. (Keenan)
+- [ ] Confirm `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is set in Vercel production. Without it, /start-test falls back to the hosted Stripe page. (Keenan)
+- [ ] Point one ad set at /start-test with the same audience and budget as /start. Aim for ~300–500 sessions before judging. (Keenan)
+- [ ] Jimmy review: email-gate account creation (random password + credentials sign-in), embedded checkout, Purchase CAPI fbclid. (Jimmy)
+- [ ] Phone test inside the FB/IG in-app browsers: does Apple Pay / Google Pay appear in embedded checkout? (Keenan)
+
+### Notes
+- The research report's verdict: the losses are at screen 1 and at the account gate, not in the quiz. The real-demo idea is unproven, so it stays out of v9 and is a later A/B arm.
+- The paywall defaults to yearly per Keenan (2026-09-25). This overrides the positioning doc's "never lead with annual", for /start-test only.
+- Local dev shows legacy prices ($4.99/$39.99) because NEXT_PUBLIC_NEW_PRICING_ENABLED is only set in Vercel. Prod shows $9.99/$89.99.
+- The marketing opt-in checkbox on the email gate is sent in `attribution.marketingOptIn`, but nothing stores it yet.
+- 6 pre-existing test failures in src/lib/evidence (RC/EAS mobile pricing) are unrelated.
+
 ## [2026-09-24] — Living reels: every slide's photo comes to life (Higgsfield), first DoP Lite test
 
 **Requested by:** Keenan
