@@ -35,6 +35,69 @@ struct RippleAPI {
         return f.string(from: Date())
     }
 
+    // MARK: Reads (Growth + Tasks) — same bearer path, live from the API.
+
+    /// GET /api/habits → { habits: [{id,name,...}], checks: [{habitId,localDate}] }.
+    /// A habit is "done today" when a check exists for today's localDate.
+    func fetchHabits() async throws -> [WatchHabit] {
+        var req = request("/api/habits")
+        req.httpMethod = "GET"
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        try Self.ensureOK(resp)
+        let decoded = try JSONDecoder().decode(HabitsDTO.self, from: data)
+        let today = Self.todayLocalDate()
+        let doneToday = Set(
+            decoded.checks.filter { $0.localDate == today }.map { $0.habitId }
+        )
+        return decoded.habits.map {
+            WatchHabit(id: $0.id, name: $0.name, done: doneToday.contains($0.id))
+        }
+    }
+
+    /// GET /api/goals → { goals: [{id,title,progress,lifeArea,status}] }.
+    func fetchGoals() async throws -> [WatchGoal] {
+        var req = request("/api/goals")
+        req.httpMethod = "GET"
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        try Self.ensureOK(resp)
+        let decoded = try JSONDecoder().decode(GoalsDTO.self, from: data)
+        return decoded.goals.map {
+            WatchGoal(
+                id: $0.id,
+                title: $0.title,
+                progress: $0.progress ?? 0,
+                lifeArea: $0.lifeArea,
+                status: $0.status
+            )
+        }
+    }
+
+    /// GET /api/tasks → open tasks (server excludes DONE by default).
+    func fetchTasks() async throws -> [WatchTask] {
+        var req = request("/api/tasks")
+        req.httpMethod = "GET"
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        try Self.ensureOK(resp)
+        let decoded = try JSONDecoder().decode(TasksDTO.self, from: data)
+        return decoded.tasks.compactMap { t in
+            let label = t.title ?? t.text
+            guard let label, !label.isEmpty else { return nil }
+            return WatchTask(id: t.id, title: label, priority: t.priority)
+        }
+    }
+
+    /// PATCH /api/tasks { id, action: "complete" } — the app's own contract.
+    func completeTask(id: String) async throws {
+        var req = request("/api/tasks")
+        req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(
+            withJSONObject: ["id": id, "action": "complete"]
+        )
+        let (_, resp) = try await URLSession.shared.data(for: req)
+        try Self.ensureOK(resp)
+    }
+
     func checkHabit(id: String, checked: Bool) async throws {
         var req = request("/api/habits/\(id)/check")
         req.httpMethod = "POST"
@@ -91,4 +154,51 @@ struct RippleAPI {
             throw RippleAPIError.http(http.statusCode)
         }
     }
+}
+
+// MARK: - Watch domain models (shared across views)
+
+struct WatchGoal: Identifiable, Equatable {
+    let id: String
+    let title: String
+    /// 0–100 integer (Goal.progress is an Int in the schema).
+    let progress: Int
+    let lifeArea: String?
+    let status: String?
+}
+
+struct WatchTask: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let priority: String?
+}
+
+// MARK: - Wire DTOs (decode only the fields the watch needs)
+
+private struct HabitsDTO: Decodable {
+    struct Habit: Decodable { let id: String; let name: String }
+    struct Check: Decodable { let habitId: String; let localDate: String }
+    let habits: [Habit]
+    let checks: [Check]
+}
+
+private struct GoalsDTO: Decodable {
+    struct Goal: Decodable {
+        let id: String
+        let title: String
+        let progress: Int?
+        let lifeArea: String?
+        let status: String?
+    }
+    let goals: [Goal]
+}
+
+private struct TasksDTO: Decodable {
+    struct Task: Decodable {
+        let id: String
+        let title: String?
+        let text: String?
+        let priority: String?
+    }
+    let tasks: [Task]
 }
