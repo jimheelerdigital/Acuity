@@ -25,10 +25,15 @@ Both are fixed. Separately, Meta is still blocking the browser pixel on goripple
 - `apps/web/src/app/api/capi/complete-registration/route.ts` and the Stripe webhook Purchase CAPI: now awaited. Fire-and-forget fetches can be killed when the serverless function freezes after responding. Evidence: Erika's signup has no `meta_capi_*` log row, while Blessen's and Charlene's do.
 
 ### Manual steps needed
-- [ ] Events Manager → pixel 869829585445303 → Settings → Traffic permissions: allow goripple.io and www.goripple.io. Re-checked 2026-09-25 15:00 UTC: still blocked, 0 pixel requests on /start. (Keenan)
+- [x] Events Manager → pixel 869829585445303 → Traffic permissions: goripple.io allowed (DONE 2026-09-25 by Keenan; www is covered by the root domain). Verified 14:12 UTC: the pixel fires PageView on /start and the warning is gone.
 - [ ] Ads Manager: add the Purchases (or custom "Trials") column. The ad sets optimize for CompleteRegistration, so card trials don't show under Results. (Keenan)
 
 ### Notes
+- **Admin funnel dashboard fix (same day, per Keenan: "landed to answered is incorrect and the stages are wrong, we have two funnel conversions"):**
+  - The default "Social in-app" filter hid every session outside the FB/IG app, including both BWK card trials (Aug and Erika finished in a normal browser).
+  - New default `traffic=real` = in-app sessions plus any session with an event beyond page load (`PAGE_LOAD_EVENTS`). Meta's ad-review crawler posing as iPhone Safari / Windows Chrome never answers, so it stays out: 47 iPhone-Safari and 19 Windows-Chrome sessions, 0 answers.
+  - "Paid (Stripe)" is now scoped to users with events in that funnel. It had counted all new subscribers, so both funnels showed 2.
+  - Verified since 09-24: BWK 27 landed → 8 answered → 4 accounts → 2 card trials. Ripple 47 → 16 → 5 → 0.
 - Reconciliation for 2026-09-24/25. Women /start: Gina, Cindy, Regina, Blessen = 4 ad signups; Meta shows 4. Men /start-bwk: Aug, Erika, Charlene = 3; Meta shows 1. Charlene was 13:39 UTC today (reporting lag). Aug was on desktop, before the Purchase fbclid fix.
 - Anatoly came from utm_source=facebook / social / bio-link, which is organic, not an ad.
 - `meta_capi_*` rows in OnboardingEvent show Meta answering `events_received: 1` for Blessen and Charlene (CompleteRegistration) and for Erika (Purchase).
@@ -72,7 +77,7 @@ This also fixes a Meta tracking gap. When a card trial started, the event sent t
   - Clip URLs are cached at `living/<postId>/clips-<model>.json`, so reruns don't re-bill Higgsfield.
 
 ### Manual steps needed
-- [ ] Meta Events Manager → pixel 869829585445303 → Settings → Traffic permissions: add goripple.io and www.goripple.io to the allow list (or remove them from the block list). The pixel is refusing to run on goripple.io. (Keenan)
+- [x] (DONE 2026-09-25) Meta Events Manager → pixel 869829585445303 → Settings → Traffic permissions: add goripple.io and www.goripple.io to the allow list (or remove them from the block list). The pixel is refusing to run on goripple.io. (Keenan)
 - [ ] Stripe: Settings → Payment method domains → add goripple.io and www.goripple.io. Embedded Checkout only shows Apple Pay / Google Pay on registered domains. (Keenan)
 - [ ] Confirm `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is set in Vercel production. Without it, /start-test falls back to the hosted Stripe page. (Keenan)
 - [ ] Point one ad set at /start-test with the same audience and budget as /start. Aim for ~300–500 sessions before judging. (Keenan)

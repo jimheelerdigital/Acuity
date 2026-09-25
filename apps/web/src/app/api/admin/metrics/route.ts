@@ -154,7 +154,8 @@ export async function GET(req: NextRequest) {
           // traffic=inapp keeps only sessions seen in a social in-app browser
           // (FB/IG/TikTok), which drops Meta's ad-review crawler and link
           // preloads. Default "all" so any other caller sees unchanged numbers.
-          const traffic = req.nextUrl.searchParams.get("traffic") === "inapp" ? "inapp" : "all";
+          const tp = req.nextUrl.searchParams.get("traffic");
+          const traffic = tp === "inapp" ? "inapp" : tp === "all" ? "all" : "real";
           return getFunnelAnalytics(prisma, start, end, showBots, resetAfter, flow ?? "v8", traffic);
         }
         case "guide":
@@ -1917,6 +1918,11 @@ const FUNNEL_V2_EPOCH = new Date("2026-05-28T02:35:00Z");
 // crawler and link preloads arrive with generic Safari/Chrome UAs and fire only
 // the entry view (2026-09-24: ~90 of ~108 v8 sessions).
 const IN_APP_UA = /FBAN|FBAV|FB_IAB|Instagram|musical_ly|TikTok|BytedanceWebview/i;
+/** Events a page load fires on its own. Anything else means a person acted. */
+const PAGE_LOAD_EVENTS = new Set([
+  "funnel_entry_viewed", "funnel_entry_rendered", "funnel_social_proof_viewed",
+  "funnel_webview_detected", "funnel_inapp_browser_detected", "funnel_v9_hook_viewed",
+]);
 
 type FunnelStepDef = {
   key: string;
@@ -1932,7 +1938,7 @@ type FunnelStepDef = {
   href?: string;
 };
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "all" = "all") {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "real" | "all" = "real") {
  try {
   const isV8 = flowVersion === "v8" || flowVersion === "v8-bwk" || flowVersion === "v9-test";
   // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
@@ -2275,10 +2281,18 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   // in-app UA (server-written payment rows have no UA; they ride along).
   const sessionsBeforeTraffic = new Set<string>(fetchedEvents.map((e: FunnelEventRow) => e.sessionToken!));
   let events = fetchedEvents;
-  if (traffic === "inapp") {
-    const inApp = new Set<string>();
-    for (const e of fetchedEvents) if (e.browser && IN_APP_UA.test(e.browser)) inApp.add(e.sessionToken!);
-    events = fetchedEvents.filter((e: FunnelEventRow) => inApp.has(e.sessionToken!));
+  if (traffic === "inapp" || traffic === "real") {
+    const keep = new Set<string>();
+    for (const e of fetchedEvents) if (e.browser && IN_APP_UA.test(e.browser)) keep.add(e.sessionToken!);
+    // "real" (default, 2026-09-25): in-app sessions PLUS any session that did
+    // something beyond loading the page. The in-app-only view hid real buyers
+    // who finished in Safari/Chrome/desktop (both BWK card trials, Aug and
+    // Erika), while Meta's ad-review crawler, which poses as iPhone Safari and
+    // Windows Chrome, never answers a question, so it still drops out.
+    if (traffic === "real") {
+      for (const e of fetchedEvents) if (!PAGE_LOAD_EVENTS.has(e.event)) keep.add(e.sessionToken!);
+    }
+    events = fetchedEvents.filter((e: FunnelEventRow) => keep.has(e.sessionToken!));
   }
   const keptSessionCount = new Set<string>(events.map((e: FunnelEventRow) => e.sessionToken!)).size;
   const trafficSummary = {
@@ -2825,11 +2839,16 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   }
 
   // ── Stripe-verified paid count (actual subscriptions, not funnel events) ──
+  // Scoped to this funnel's own users (2026-09-25): it used to count every
+  // new Stripe subscriber, so /start and /start-bwk both showed the same 2
+  // even though both trials came from /start-bwk.
+  const funnelUserIds = [...new Set(fetchedEvents.map((e: { userId: string | null }) => e.userId).filter((u: string | null): u is string => !!u))];
   const stripePaid = await prisma.user.findMany({
     where: {
       subscriptionStatus: "PRO",
       stripeSubscriptionId: { not: null },
       createdAt: { gte: effectiveStart, lte: effectiveEnd },
+      ...(flowVersion === "all" ? {} : { id: { in: funnelUserIds } }),
     },
     select: { id: true, email: true, createdAt: true, signupMethod: true },
   });

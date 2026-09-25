@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 // getFunnelAnalytics in api/admin/metrics/route.ts).
 type View = "ripple" | "bwk" | "test" | "both" | "legacy";
 type LegacyFlow = "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all";
-type Traffic = "inapp" | "all";
+type Traffic = "real" | "inapp" | "all";
 
 const FUNNELS = {
   ripple: { flow: "v8", name: "Ripple", path: "/start" },
@@ -69,8 +69,10 @@ function TrafficNote({ data, traffic }: { data: any; traffic: Traffic }) {
   if (!t) return null;
   return (
     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 10 }}>
-      {traffic === "inapp"
-        ? <>{t.keptSessions} in-app sessions. {t.excludedSessions} other sessions hidden (mostly Meta&rsquo;s ad-review crawler and link previews).</>
+      {traffic === "real"
+        ? <>{t.keptSessions} real sessions: every Facebook/Instagram in-app visit, plus anyone in another browser who answered a question. {t.excludedSessions} page-load-only visits hidden (Meta&rsquo;s ad-review crawler poses as iPhone Safari / Windows Chrome and never answers).</>
+        : traffic === "inapp"
+        ? <>{t.keptSessions} in-app sessions only. {t.excludedSessions} other sessions hidden, including real people who finished in a normal browser.</>
         : <>{t.keptSessions} sessions, all browsers. Includes crawler and link-preview visits.</>}
     </div>
   );
@@ -110,7 +112,7 @@ function SideBySide({ start, end, traffic }: { start: string; end: string; traff
 export default function FunnelAnalyticsTab({ start, end }: { start: string; end: string }) {
   const [view, setView] = useState<View>("ripple");
   const [legacyFlow, setLegacyFlow] = useState<LegacyFlow>("v7");
-  const [traffic, setTraffic] = useState<Traffic>("inapp");
+  const [traffic, setTraffic] = useState<Traffic>("real");
 
   const seg = (on: boolean): React.CSSProperties => ({
     padding: "6px 12px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
@@ -129,6 +131,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 4 }} title="Social in-app = sessions opened inside Instagram, Facebook or TikTok, where ad clicks land. All = includes crawler and link-preview visits.">
+            <button onClick={() => setTraffic("real")} style={{ ...seg(traffic === "real"), fontSize: 11, padding: "4px 10px" }}>Real visitors</button>
             <button onClick={() => setTraffic("inapp")} style={{ ...seg(traffic === "inapp"), fontSize: 11, padding: "4px 10px" }}>Social in-app</button>
             <button onClick={() => setTraffic("all")} style={{ ...seg(traffic === "all"), fontSize: 11, padding: "4px 10px" }}>All sessions</button>
           </div>
@@ -363,7 +366,7 @@ function SingleFunnel({ start, end, flow, traffic }: { start: string; end: strin
         {/* Paid (Stripe-verified) — below funnel bars */}
         {(data.stripePaid ?? []).length > 0 && (
           <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderTop: "1px solid var(--acuity-bg-inset)" }}>
-            <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "var(--acuity-good)", fontWeight: 700 }} title="All new Stripe subscribers in the date range, both funnels and any version">Paid (Stripe)</span>
+            <span style={{ width: 80, textAlign: "right", fontSize: 11, color: "var(--acuity-good)", fontWeight: 700 }} title="New Stripe subscribers in the date range who came through this funnel">Paid (Stripe)</span>
             <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: 4, height: 26, position: "relative", overflow: "hidden" }}>
               <div style={{ width: `${Math.max(2, ((data.stripePaid?.length ?? 0) / (steps[0]?.count || 1)) * 100)}%`, background: "var(--acuity-good)", borderRadius: 4, height: "100%", display: "flex", alignItems: "center", paddingLeft: 8 }}>
                 <span style={{ color: "var(--acuity-text)", fontSize: 11, fontWeight: 600 }}>{data.stripePaid?.length ?? 0}</span>
