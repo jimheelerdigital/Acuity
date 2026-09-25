@@ -30,7 +30,7 @@ const H: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: "
 // from an earlier step rather than following the row above.
 function FunnelBars({ steps, compact }: { steps: any[]; compact?: boolean }) {
   const maxCount = Math.max(1, ...steps.map((s: any) => s.count));
-  const labelW = compact ? 104 : 132;
+  const labelW = compact ? 104 : steps.some((s: any) => s.href) ? 190 : 132;
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 9, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -45,7 +45,10 @@ function FunnelBars({ steps, compact }: { steps: any[]; compact?: boolean }) {
         return (
           <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <span style={{ width: labelW, flexShrink: 0, textAlign: "right", fontSize: 11, color: s.outcome ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={s.label}>
-              {s.outcome ? "\u21b3 " : ""}{s.label}
+              {s.outcome ? "\u21b3 " : ""}
+              {s.href ? (
+                <a href={s.href} target="_blank" rel="noreferrer" style={{ color: "inherit", textDecoration: "underline", textDecorationColor: "rgba(255,255,255,0.2)" }}>{s.label}</a>
+              ) : s.label}
             </span>
             <div style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", borderRadius: 4, height: compact ? 22 : 26, overflow: "hidden" }}>
               <div style={{ width: `${pct}%`, background: color, opacity: s.outcome ? 0.75 : 1, borderRadius: 4, height: "100%", display: "flex", alignItems: "center", paddingLeft: 8 }}>

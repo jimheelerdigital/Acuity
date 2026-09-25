@@ -91,7 +91,8 @@ export async function POST(req: NextRequest) {
             // Back from Checkout = back to the paywall, where they can switch
             // plan or take the no-card path. (Was step=download, which
             // dropped them past the choice with no way back.)
-            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=savings`,
+            // /start-test (v9) calls its paywall step "paywall".
+            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath === "/start-test" ? "paywall" : "savings"}`,
           }),
       mode: "subscription",
       // No payment_method_types: Checkout then offers every method enabled in

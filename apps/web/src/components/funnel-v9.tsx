@@ -200,17 +200,26 @@ export function FunnelV9() {
       }).catch(() => {});
     } catch {}
 
+    // Every screen has its own URL (?step=<id>). A bare /start-test link is
+    // a fresh start on screen 1; a ?step= link resumes with the answers
+    // saved in this browser session (refresh, back/forward, Stripe return).
+    const urlStep = params.get("step");
     let saved: Persisted | null = null;
-    try {
-      const raw = sessionStorage.getItem(STATE_KEY);
-      if (raw) saved = JSON.parse(raw) as Persisted;
-    } catch {}
+    if (urlStep) {
+      try {
+        const raw = sessionStorage.getItem(STATE_KEY);
+        if (raw) saved = JSON.parse(raw) as Persisted;
+      } catch {}
+    } else {
+      try {
+        sessionStorage.removeItem(STATE_KEY);
+      } catch {}
+    }
     if (saved) {
       setAnswers({ ...EMPTY, ...saved.answers });
       setPlan(saved.plan ?? "yearly");
     }
 
-    const urlStep = params.get("step");
     if (urlStep === "download" && params.get("payment") === "success" && params.get("session_id")) {
       setStepId("download");
       fetch(`/api/onboarding/verify-payment?session_id=${encodeURIComponent(params.get("session_id")!)}`)
@@ -228,9 +237,8 @@ export function FunnelV9() {
         })
         .catch(() => {});
     } else if (urlStep && V9_STEPS.some((s) => s.id === urlStep)) {
-      setStepId(urlStep);
-    } else if (saved?.stepId && saved.stepId !== "loader") {
-      setStepId(saved.stepId);
+      // The loader auto-advances; landing on it directly shows the email gate.
+      setStepId(urlStep === "loader" ? "email" : urlStep);
     }
     setReady(true);
     // Screen actually rendered + interactive (the report's measurement fix:
@@ -245,6 +253,37 @@ export function FunnelV9() {
       sessionStorage.setItem(STATE_KEY, JSON.stringify({ stepId, answers, plan } satisfies Persisted));
     } catch {}
   }, [ready, stepId, answers, plan]);
+
+  // ── URL per screen: push on every step change, follow back/forward ──
+  const urlSynced = useRef(false);
+  useEffect(() => {
+    if (!ready) return;
+    const u = new URL(window.location.href);
+    if (u.searchParams.get("step") === stepId && urlSynced.current) return;
+    u.searchParams.set("step", stepId);
+    u.searchParams.delete("payment");
+    u.searchParams.delete("session_id");
+    if (urlSynced.current) window.history.pushState({ v9: stepId }, "", u);
+    else window.history.replaceState({ v9: stepId }, "", u);
+    urlSynced.current = true;
+  }, [ready, stepId]);
+
+  const accountRef = useRef(false);
+  accountRef.current = !!answers.email;
+  useEffect(() => {
+    const onPop = () => {
+      const target = new URLSearchParams(window.location.search).get("step") ?? "hook";
+      const ti = V9_STEPS.findIndex((s) => s.id === target);
+      if (ti < 0) return;
+      // Once the account exists, anything before the result (the quiz, the
+      // email gate) is a dead end: send them to their result instead.
+      const resultIdx = V9_STEPS.findIndex((s) => s.id === "result");
+      const dest = accountRef.current && ti < resultIdx ? "result" : target === "loader" ? "email" : target;
+      setStepId(dest);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -489,6 +528,10 @@ function OptionCard({ icon: Icon, label, selected, onClick, trailing = "check", 
 function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
   const isHook = step.id === "hook";
   const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
+  // Guards a double-tap from advancing twice. It must NOT key off `picked`:
+  // going back to an answered question pre-fills picked, which made every
+  // option dead and stranded the user (2026-09-25).
+  const advancing = useRef(false);
   return (
     <div className="enter">
       {isHook && (
@@ -507,7 +550,8 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
             label={o.label}
             selected={picked === o.id}
             onClick={() => {
-              if (picked) return;
+              if (advancing.current) return;
+              advancing.current = true;
               setPicked(o.id);
               setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: o.id } }));
               track(`funnel_v9_${step.id}_answered`, o.id);
@@ -597,7 +641,9 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
 const SLIDER_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "slider" }> => s.kind === "slider");
 
 function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "slider" }> }) {
-  const [val, setVal] = useState<number>(answers.sliders[step.id] ?? 50);
+  // Stored answers are 1-5; the range input is 0-100.
+  const saved = answers.sliders[step.id];
+  const [val, setVal] = useState<number>(saved != null ? (saved - 1) * 25 : 50);
   const [moved, setMoved] = useState(answers.sliders[step.id] != null);
   const pos = SLIDER_STEPS.findIndex((s) => s.id === step.id);
   const lean = val < 42 ? "left" : val > 58 ? "right" : "middle";

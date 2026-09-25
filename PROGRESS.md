@@ -58,6 +58,15 @@ This also fixes a Meta tracking gap. When a card trial started, the event sent t
   - Interactions: a draggable slider that lights up the statement she leans toward, an animated "You say it. Ripple catches it." demo (typewriter, then tasks she can tick off, then mood, then pattern), and a progress-ring loader.
   - Result and paywall: a blurred locked-result teaser at the email gate, a gradient result card plus animated bars of her own slider answers, a Headway-style horizontal trial timeline and Pro feature list on the paywall, and confetti on success.
   - Gotcha: the slide-in transform animation made the fixed CTA bar position relative to the screen, so it floated mid-page over inputs. BottomBar is now portaled to document.body.
+- **2026-09-25 navigation fixes (per Keenan: "the funnel breaks if i go back and try to modify my answers… won't start on a new screen… each screen must have its own funnel link that will correlate with a dashboard"):**
+  - Single-choice answers went dead after Back. The double-tap guard keyed off the pre-filled answer; it now uses a per-screen ref.
+  - A slider restored to the wrong spot after Back (1–5 answers were read as 0–100).
+  - Every screen is its own URL, `?step=<id>`, pushed to history so native back/forward work.
+    - A bare `/start-test` always starts fresh on screen 1 and clears the saved session state.
+    - A `?step=` link restores the session answers.
+    - Once the account exists, back to anything before the result lands on the result.
+  - The admin Funnel → Test view shows one row per screen (`V9_STEP_LABELS`), each label linking to its screen URL. `FunnelStepDef.href` was added.
+  - The hosted-checkout cancel URL for /start-test is now `?step=paywall`, not `savings`.
 - Kling 3.0 living reels for the 2026-09-25 run: `apps/web/scripts/living-kling.ts`. The phases are `prep <date> <plan.json>`, then Kling clips generated through the Higgsfield APP account (chat MCP, since Kling isn't on the dev API), then `assemble <plan.json> <clips.json>`. It uploads `reels/<postId>.mp4`, which the IG/FB publisher already reuses, and emails each video separately from the picture-slide emails. The dev-API Higgsfield account is out of credits (`not_enough_credits` on DoP Lite).
 - The research report's verdict: the losses are at screen 1 and at the account gate, not in the quiz. The real-demo idea is unproven, so it stays out of v9 and is a later A/B arm.
 - The paywall defaults to yearly per Keenan (2026-09-25). This overrides the positioning doc's "never lead with annual", for /start-test only.

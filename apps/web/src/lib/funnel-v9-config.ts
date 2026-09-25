@@ -167,6 +167,35 @@ export const V9_STEPS: V9Step[] = [
   { id: "download", kind: "download" },
 ];
 
+/** Dashboard label per screen (admin Funnel tab, "Test" view). */
+export const V9_STEP_LABELS: Record<string, string> = {
+  hook: "1. Head still full? (screen 1)",
+  age: "2. Age range",
+  plate: "3. On your plate",
+  pileup: "4. When thoughts pile up",
+  reassure: "5. You're not the only one",
+  "s-name": "6. Slider: can't name it",
+  "s-slip": "7. Slider: things slip",
+  "s-repeat": "8. Slider: weeks repeat",
+  "s-keeper": "9. Slider: all on me",
+  "s-lists": "10. Slider: lists don't stick",
+  offload: "11. Off your mind",
+  review: "12. Reviews",
+  how: "13. How Ripple works (demo)",
+  talktype: "14. Talk or type",
+  notice: "15. What Ripple notices",
+  when: "16. Where you'd talk",
+  commit: "17. Ready?",
+  name: "18. Name",
+  loader: "19. Loader",
+  email: "20. Email gate",
+  result: "21. Result",
+  plan: "22. First week plan",
+  paywall: "23. Paywall",
+  checkout: "24. Checkout",
+  download: "25. Success / download",
+};
+
 /** Steps that count toward the progress bar (the quiz up to the result). */
 export const V9_PROGRESS_END = V9_STEPS.findIndex((s) => s.id === "result");
 

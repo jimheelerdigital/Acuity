@@ -1,3 +1,4 @@
+import { V9_STEPS, V9_STEP_LABELS } from "@/lib/funnel-v9-config";
 import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -1927,6 +1928,8 @@ type FunnelStepDef = {
    *  back-filled, and compared against `base` rather than the row above. */
   outcome?: boolean;
   base?: string;
+  /** Link to the screen itself (v9 test funnel — one URL per screen). */
+  href?: string;
 };
 
 async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "all" = "all") {
@@ -2204,23 +2207,25 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   // (lib/funnel-v9-config.ts). "Rendered" is the client-side screen-1
   // event, so prefetch hits don't count as visits.
   const FUNNEL_STEPS_V9: FunnelStepDef[] = [
-    { key: "rendered", event: "funnel_entry_rendered", label: "Screen 1 shown" },
-    { key: "entry", event: "funnel_entry_selected", label: "Answered Q1" },
-    { key: "age", event: "funnel_v9_age_viewed", label: "Age" },
-    { key: "plate", event: "funnel_v9_plate_viewed", label: "On your plate" },
-    { key: "reassure", event: "funnel_v9_reassure_viewed", label: "Reassurance" },
-    { key: "sliders", event: "funnel_v9_s_name_viewed", label: "Sliders" },
-    { key: "offload", event: "funnel_v9_offload_viewed", label: "Off your mind" },
-    { key: "how", event: "funnel_v9_how_viewed", label: "How Ripple works" },
-    { key: "name", event: "funnel_v9_name_viewed", label: "Name" },
-    { key: "email_gate", event: "funnel_email_gate_viewed", label: "Email gate" },
-    { key: "account_created", event: "funnel_account_created", label: "Email given (account)" },
-    { key: "result", event: "funnel_v9_result_viewed", label: "Result" },
-    { key: "savings_offered", event: "funnel_savings_viewed", label: "Paywall" },
-    { key: "lock_in_selected", event: "funnel_paywall_paid_selected", label: "Start trial tapped", outcome: true, base: "savings_offered" },
-    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout opened", outcome: true, base: "lock_in_selected" },
+    { key: "rendered", event: "funnel_entry_rendered", label: "0. Page shown (real views)" },
+    // One row per screen, in funnel order, each linked to its own URL.
+    ...V9_STEPS.filter((st) => st.id !== "checkout" && st.id !== "download").flatMap((st): FunnelStepDef[] => {
+      const row: FunnelStepDef = {
+        key: `v9_${st.id}`,
+        event: `funnel_v9_${st.id.replace(/-/g, "_")}_viewed`,
+        label: V9_STEP_LABELS[st.id] ?? st.id,
+        href: `/start-test?step=${st.id}`,
+      };
+      if (st.id === "email") {
+        return [row, { key: "account_created", event: "funnel_account_created", label: "→ Email given (account)" }];
+      }
+      return [row];
+    }),
+    { key: "lock_in_selected", event: "funnel_paywall_paid_selected", label: "Start trial tapped", outcome: true, base: "v9_paywall" },
+    { key: "checkout_started", event: "funnel_checkout_started", label: "Checkout opened", outcome: true, base: "lock_in_selected", href: "/start-test?step=checkout" },
     { key: "paid", event: "funnel_payment_completed", label: "Card trial started", outcome: true, base: "checkout_started" },
-    { key: "trial_continued", event: "funnel_paywall_skip_selected", label: "Free plan chosen", outcome: true, base: "savings_offered" },
+    { key: "trial_continued", event: "funnel_paywall_skip_selected", label: "Free plan chosen", outcome: true, base: "v9_paywall" },
+    { key: "download", event: "funnel_v9_download_viewed", label: "Success / download", outcome: true, base: "account_created", href: "/start-test?step=download" },
   ];
 
   const FUNNEL_STEPS: FunnelStepDef[] = flowVersion === "v9-test" ? FUNNEL_STEPS_V9 : flowVersion === "v8" ? FUNNEL_STEPS_V8 : flowVersion === "v8-bwk" ? FUNNEL_STEPS_V8_BWK : flowVersion === "v1" ? FUNNEL_STEPS_V1 : flowVersion === "v7" ? FUNNEL_STEPS_V7 : flowVersion === "v6" ? FUNNEL_STEPS_V6 : flowVersion === "v5" ? FUNNEL_STEPS_V5 : flowVersion === "v4" ? FUNNEL_STEPS_V4 : flowVersion === "v3" ? FUNNEL_STEPS_V3_COPY : FUNNEL_STEPS_V3;
@@ -2460,6 +2465,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     return {
       key: st.key,
       label: st.label,
+      href: st.href ?? null,
       count,
       stepConversion,
       overallConversion,
