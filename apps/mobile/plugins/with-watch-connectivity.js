@@ -79,8 +79,14 @@ function withAppDelegateActivation(config) {
     const merged = mergeContents({
       tag: "ripple-watch-connectivity",
       src: cfg.modResults.contents,
-      // Insert right after the launch method opens.
-      anchor: /didFinishLaunchingWithOptions/,
+      // Insert as the FIRST statement inside the launch method body. The SDK 54
+      // AppDelegate signature spans multiple lines and ends with
+      // `... = nil\n) -> Bool {`, so we must anchor on the body-opening brace
+      // (`-> Bool {`), NOT on `didFinishLaunchingWithOptions` — anchoring on the
+      // latter injects the call into the parameter list and breaks the build
+      // ("expected ',' separator"). The launch method is the first `-> Bool {`
+      // in the file, so the first match is the correct one.
+      anchor: /-> Bool \{/,
       offset: 1,
       comment: "//",
       newSrc: `    ${ACTIVATE_CALL}`,
